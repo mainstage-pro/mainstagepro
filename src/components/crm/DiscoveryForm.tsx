@@ -1,5 +1,5 @@
-import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { ClipboardList, Settings, Truck, Handshake, Music, Wine, Building2, Calendar, Package, Palette, Sliders, DollarSign, Eye, Image as ImageIcon, Folder, FileText, PenLine, BarChart3, Paperclip, Lightbulb, Phone, List, Zap, Camera, Monitor, Sparkles, PartyPopper, Clock, type LucideIcon } from "lucide-react";
+import { useState, useRef, useCallback, useEffect, useMemo, type ReactNode } from "react";
+import { ClipboardList, Settings, Truck, Handshake, Music, Wine, Building2, Calendar, Package, Palette, Sliders, DollarSign, Eye, Image as ImageIcon, Folder, FileText, PenLine, BarChart3, Paperclip, Lightbulb, Phone, List, Zap, Sparkles, PartyPopper, Clock, type LucideIcon } from "lucide-react";
 import TimePicker from "@/components/ui/TimePicker";
 import VenuePicker from "@/components/ui/VenuePicker";
 import { SelectorEquiposInventario, type SeleccionEquipos, type PaquetePublico, type ProductoPublico } from '@/components/SelectorEquiposInventario';
@@ -14,7 +14,7 @@ import { parseCoberturas, coberturaMatch } from "@/lib/constants";
 const PASOS_DISCOVERY: Array<{ id: number; label: string; icon: LucideIcon }> = [
   { id: 1, label: "Info Básica", icon: ClipboardList },
   { id: 2, label: "Producción", icon: Settings },
-  { id: 3, label: "Info extra", icon: Truck },
+  { id: 3, label: "Contexto", icon: Truck },
   { id: 4, label: "Comercial", icon: Handshake },
 ];
 
@@ -267,7 +267,6 @@ function DescubrimientoCatalogo({
         <Sparkles strokeWidth={1.75} className="w-4 h-4 text-[#B3985B]" />
         <p className="text-sm text-white font-semibold">Sugerencias para {etiquetaNicho}</p>
       </div>
-      <p className="text-[11px] text-gray-500 -mt-2">Todo es sugerencia. Nada obliga ni limita lo que puedes elegir abajo.</p>
 
       {/* 1. Paquete(s) base sugerido(s) */}
       {candidatos.length > 0 && (
@@ -530,9 +529,11 @@ function DescubrimientoCatalogo({
 
 export default function DiscoveryForm({
   id, trato, setTrato, onComplete, readOnly = false,
-  clientMode = false, token, huerfano = false, contacto, setContacto, modalidad,
+  clientMode = false, token, huerfano = false, contacto, setContacto, modalidad, renderScouting,
 }: {
   id: string, trato: any, setTrato: any, onComplete?: () => void, readOnly?: boolean,
+  // Tarjeta de Scouting (estado en la página); se coloca dentro del Paso 3 (Contexto).
+  renderScouting?: ReactNode,
   // Modalidad de la propuesta elegida en el paso previo: INVENTARIO (equipo Mainstage)
   // o CONTRA_RIDER (el cliente trae un rider específico / equipos de otras marcas).
   modalidad?: "INVENTARIO" | "CONTRA_RIDER",
@@ -678,6 +679,7 @@ export default function DiscoveryForm({
   const autoSaveScoutTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Paso activo del wizard de descubrimiento (persisted in localStorage)
   const [pasoActivo, setPasoActivo] = useState(1);
+  const [avisoPaso1, setAvisoPaso1] = useState(false);
   const [saving, setSaving] = useState(false);
   const [creandoCotizacion, setCreandoCotizacion] = useState(false);
   const [eliminandoCotizacion, setEliminandoCotizacion] = useState<string | null>(null);
@@ -818,6 +820,21 @@ export default function DiscoveryForm({
       return { ...p, equiposInteres: JSON.stringify({ ...sel, modoCotizacion: m }) };
     });
     requestAnimationFrame(() => selectorEquiposRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }, []);
+
+  // Ruta del trato: 'full' (descubrimiento completo) vs 'direct' (salta a cotización).
+  // Se guarda dentro de `equiposInteres` (sin migración), igual que modoCotizacion.
+  const rutaDirecta = useMemo<boolean>(() => {
+    try { const s = discForm.equiposInteres ? JSON.parse(discForm.equiposInteres) : null; return s?.ruta === "direct"; }
+    catch { return false; }
+  }, [discForm.equiposInteres]);
+  const setRutaTrato = useCallback((r: "full" | "direct") => {
+    setDiscForm(p => {
+      let sel: Record<string, unknown> = {};
+      try { sel = p.equiposInteres ? JSON.parse(p.equiposInteres) : {}; } catch { sel = {}; }
+      return { ...p, equiposInteres: JSON.stringify({ ...sel, ruta: r }) };
+    });
+    if (r === "direct") setPasoActivo(1);
   }, []);
 
   // Hidratar el formulario con la información ya capturada en el trato
@@ -1208,14 +1225,28 @@ export default function DiscoveryForm({
   });
   const briefFaltanN = briefFaltantes.length;
 
+  // ── Candados del Paso 1 (solo vendedor) ──────────────────────────────────
+  // El nicho es candado solo si el tipo de evento tiene nichos configurados en el
+  // catálogo; el subtipo "Otro" cuenta como cumplido. El tipo de servicio siempre.
+  const tipoTieneNichos = catNichos.some(n => n.tipoEventoSlug === discForm.tipoEvento);
+  const nichoOk = !tipoTieneNichos || !!discForm.nichoSlug || (discForm.subtipoEvento?.split(", ").some(s => s.startsWith("Otro")) ?? false);
+  const servicioOk = !!discForm.tipoServicio;
+  const paso1Incompleto = !clientMode && (!nichoOk || !servicioOk);
+  const irAPaso = (target: number) => {
+    if (paso1Incompleto && target > 1) { setAvisoPaso1(true); setPasoActivo(1); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+    setPasoActivo(target); window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  // Pasos visibles: en ruta directa solo se muestra el Paso 1.
+  const pasosVisibles = (!clientMode && rutaDirecta) ? PASOS_DISCOVERY.slice(0, 1) : PASOS_DISCOVERY;
+
   return (
     <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-2xl overflow-hidden w-full">
                   {/* Step tabs */}
             <div className="px-5 pt-4 pb-2 border-b border-[#1a1a1a]">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex gap-1 overflow-x-auto pb-1">
-                  {PASOS_DISCOVERY.map(paso => (
-                    <button key={paso.id} onClick={() => { setPasoActivo(paso.id); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                  {pasosVisibles.map(paso => (
+                    <button key={paso.id} onClick={() => irAPaso(paso.id)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
                         pasoActivo === paso.id
                           ? "bg-[#B3985B] text-black"
@@ -1227,6 +1258,13 @@ export default function DiscoveryForm({
                 </div>
                 {!clientMode && (
                   <div className="flex items-center gap-2 shrink-0">
+                    {rutaDirecta && (
+                      <button type="button" onClick={() => setRutaTrato("full")}
+                        title="Volver al descubrimiento completo"
+                        className="text-[10px] px-2 py-1 rounded-full bg-[#B3985B]/15 text-[#B3985B] border border-[#B3985B]/30 whitespace-nowrap hover:bg-[#B3985B]/25 transition-colors">
+                        Ruta directa · volver a descubrimiento
+                      </button>
+                    )}
                     {autoSaveStatus === "saving" && <span className="text-[10px] text-gray-500">Guardando…</span>}
                     {autoSaveStatus === "saved" && <span className="text-[10px] text-emerald-500">Guardado ✓</span>}
                     {briefFaltanN > 0 ? (
@@ -1361,6 +1399,9 @@ export default function DiscoveryForm({
                         className="mt-3 w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
                       />
                     )}
+                    {!clientMode && avisoPaso1 && !nichoOk && (
+                      <p className="text-[11px] text-red-400 mt-2">Selecciona el nicho para continuar</p>
+                    )}
                   </div>
                 )}
               </div>
@@ -1383,6 +1424,9 @@ export default function DiscoveryForm({
                     </button>
                   ))}
                 </div>
+                {!clientMode && avisoPaso1 && !servicioOk && (
+                  <p className="text-[11px] text-red-400 mt-2">Selecciona el tipo de servicio para continuar</p>
+                )}
               </div>
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Nombre del evento / proyecto</label>
@@ -1524,22 +1568,20 @@ export default function DiscoveryForm({
 
             </div>
 
-            {/* Ruta: descubrimiento completo vs. ir directo a cotización (solo vendedor) */}
+            {/* Ruta del trato: descubrimiento completo vs. directo a cotización (solo vendedor) */}
             {!clientMode && (
-              <div className="border border-[#2a2a2a] bg-[#111] rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm text-white font-medium">¿Es algo simple?</p>
-                  <p className="text-[11px] text-gray-500 mt-0.5 leading-relaxed">
-                    Si el evento es muy básico, salta directo a la cotización. Si no, sigue con <span className="text-gray-400">Siguiente</span> para el descubrimiento completo.
-                  </p>
+              <div className="border border-[#2a2a2a] bg-[#111] rounded-xl p-4 space-y-2">
+                <p className="text-[11px] text-gray-500 uppercase tracking-wider font-semibold">Ruta del trato</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => setRutaTrato("full")}
+                    className={`rounded-lg border p-3 text-left text-sm font-semibold transition-colors ${!rutaDirecta ? "border-[#B3985B] bg-[#B3985B]/10 text-[#B3985B]" : "border-[#2a2a2a] text-white hover:border-[#555]"}`}>
+                    Hacer descubrimiento
+                  </button>
+                  <button type="button" onClick={() => setRutaTrato("direct")}
+                    className={`rounded-lg border p-3 text-left text-sm font-semibold transition-colors ${rutaDirecta ? "border-[#B3985B] bg-[#B3985B]/10 text-[#B3985B]" : "border-[#2a2a2a] text-white hover:border-[#555]"}`}>
+                    Ir directo a cotización
+                  </button>
                 </div>
-                <Link
-                  href={`/cotizaciones/nuevo?tratoId=${trato.id}&clienteId=${trato.cliente.id}`}
-                  onClick={() => { if (!trato.descubrimientoCompleto) guardarDescubrimiento(true); }}
-                  className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-xs font-semibold px-4 py-2 rounded-lg transition-colors shrink-0 whitespace-nowrap text-center"
-                >
-                  Ir directo a cotización →
-                </Link>
               </div>
             )}
 
@@ -1599,7 +1641,6 @@ export default function DiscoveryForm({
                 <div className="rounded-xl border border-[#2a2a2a] bg-[#0e0e0e] p-4 space-y-3">
                   <div>
                     <p className="text-sm text-white font-semibold">¿Cómo quieres cotizar este evento?</p>
-                    <p className="text-[11px] text-gray-500 mt-0.5">Elige la estrategia para armar la propuesta. Te llevamos directo a esa sección; las sugerencias se ajustan al tipo de evento, nicho y número de asistentes. Los adicionales quedan disponibles en cualquier caso.</p>
                   </div>
                   <div className="grid grid-cols-3 gap-2">
                     {([
@@ -1695,9 +1736,9 @@ export default function DiscoveryForm({
                 {/* ── Selector de equipos del inventario (igual que producción) ── */}
                 <div ref={selectorEquiposRef}>
                   <label className="text-xs text-gray-400 uppercase tracking-wider block mb-1">Equipos e inventario de interés</label>
-                  <p className="text-[11px] text-gray-600 mb-3">{clientMode
-                    ? "Elige las categorías que te interesan y cuéntanos los detalles de cada una. No necesitas saber de equipos: tu asesor arma la propuesta."
-                    : "Elige las categorías y describe los detalles. Seleccionar los equipos y piezas exactas es opcional; lo seleccionado se sugiere al armar la cotización."}</p>
+                  {clientMode && (
+                    <p className="text-[11px] text-gray-600 mb-3">Elige las categorías que te interesan y cuéntanos los detalles de cada una. No necesitas saber de equipos: tu asesor arma la propuesta.</p>
+                  )}
                   <SelectorEquiposInventario
                     clientMode={clientMode}
                     readOnly={readOnly}
@@ -1863,9 +1904,9 @@ export default function DiscoveryForm({
                 {/* ── Selector de equipos del inventario ─────────────────── */}
                 <div ref={selectorEquiposRef}>
                   <label className="text-xs text-gray-400 uppercase tracking-wider block mb-1">Equipos e inventario de interés</label>
-                  <p className="text-[11px] text-gray-600 mb-3">{clientMode
-                    ? "Elige las categorías que te interesan y cuéntanos los detalles de cada una. No necesitas saber de equipos: tu asesor arma la propuesta."
-                    : "Elige las categorías y describe los detalles. Seleccionar los equipos y piezas exactas es opcional; lo seleccionado se sugiere al armar la cotización."}</p>
+                  {clientMode && (
+                    <p className="text-[11px] text-gray-600 mb-3">Elige las categorías que te interesan y cuéntanos los detalles de cada una. No necesitas saber de equipos: tu asesor arma la propuesta.</p>
+                  )}
                   <SelectorEquiposInventario
                     clientMode={clientMode}
                     readOnly={readOnly}
@@ -1884,59 +1925,6 @@ export default function DiscoveryForm({
                       subtipos: discForm.subtipoEvento ? discForm.subtipoEvento.split(", ").filter(Boolean) : [],
                     }}
                     modo={modoCotizacion}
-                  />
-                </div>
-
-                {/* ── Servicios Adicionales ─────────────────────── */}
-                <div className="pt-2 border-t border-[#1a1a1a]">
-                  <label className="text-xs text-[#B3985B] uppercase tracking-wider font-semibold block mb-3">Servicios Adicionales (Opcionales)</label>
-                  <div className="flex flex-col gap-3 mb-3">
-                    {([
-                      {
-                        id: "SA_FOTO_VIDEO",
-                        icon: Camera,
-                        label: "Fotografía y Video",
-                        desc: "Levantamiento y entrega de material de fotografía y video profesional, fotografías editadas, videos after movie, videos formato corto o videovlog."
-                      },
-                      {
-                        id: "SA_RENDER",
-                        icon: Monitor,
-                        label: "Render de Producción",
-                        desc: "Propuesta de render de la producción, imágenes con diferentes vistas, render a escala real, videos de la producción en operación (principalmente iluminación) y plots técnicos de producción (audio, luces, stage, estructuras etc) y entrega de materiales de imagen y videos así como los plots de producción."
-                      }
-                    ] as const).map(srv => {
-                      const isSelected = discForm.serviciosInteres.includes(srv.id);
-                      return (
-                        <div key={srv.id} onClick={() => toggleServicio(srv.id)}
-                          className={`flex items-start gap-3 p-3 rounded-lg border transition-colors cursor-pointer ${
-                            isSelected
-                              ? "border-[#B3985B]/30 bg-[#B3985B]/10"
-                              : "border-[#2a2a2a] hover:border-[#444] bg-[#111]"
-                          }`}
-                        >
-                          <div className={`mt-0.5 flex-shrink-0 w-4 h-4 rounded flex items-center justify-center border transition-colors ${
-                            isSelected ? "border-[#B3985B] bg-[#B3985B]" : "border-[#444] bg-transparent"
-                          }`}>
-                            {isSelected && <span className="text-black text-[10px]">✓</span>}
-                          </div>
-                          <div>
-                            <p className={`text-sm font-medium inline-flex items-center gap-1.5 ${isSelected ? "text-[#B3985B]" : "text-gray-300"}`}>
-                              <srv.icon strokeWidth={1.75} className="w-4 h-4" /> {srv.label}
-                            </p>
-                            <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">
-                              {srv.desc}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <input
-                    type="text"
-                    value={discForm.serviciosAdicionalesOtro || ""}
-                    onChange={e => setDiscForm(p => ({ ...p, serviciosAdicionalesOtro: e.target.value }))}
-                    placeholder="Otro servicio adicional (especifica)..."
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
                   />
                 </div>
               </div>
@@ -2202,6 +2190,8 @@ export default function DiscoveryForm({
 
             </div>)} {/* /paso3 */}
 
+            {/* Scouting · Visita en sitio — vive dentro del Paso 3 (Contexto) */}
+            {!clientMode && pasoActivo === 3 && renderScouting}
 
             {/* PASO 4: Opciones comerciales */}
             {pasoActivo === 4 && (<div className="space-y-4">
@@ -2318,9 +2308,17 @@ export default function DiscoveryForm({
                 className="text-xs text-gray-500 hover:text-white transition-colors disabled:opacity-30 px-3 py-2 rounded-lg border border-[#222] hover:border-[#444]">
                 ← Anterior
               </button>
-              <span className="text-[10px] text-gray-600">{pasoActivo} / {PASOS_DISCOVERY.length}</span>
-              {pasoActivo < PASOS_DISCOVERY.length ? (
-                <button onClick={() => { setPasoActivo(p => p + 1); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="text-xs px-4 py-2 bg-[#B3985B] text-black font-semibold rounded-lg hover:bg-[#c9a96a] transition-colors">
+              <span className="text-[10px] text-gray-600">{pasoActivo} / {pasosVisibles.length}</span>
+              {!clientMode && rutaDirecta ? (
+                <Link
+                  href={`/cotizaciones/nuevo?tratoId=${trato.id}&clienteId=${trato.cliente.id}`}
+                  onClick={() => { if (!trato.descubrimientoCompleto) guardarDescubrimiento(true); }}
+                  className="text-xs px-4 py-2 bg-[#B3985B] text-black font-semibold rounded-lg hover:bg-[#c9a96a] transition-colors">
+                  Hacer cotización →
+                </Link>
+              ) : pasoActivo < pasosVisibles.length ? (
+                <button onClick={() => irAPaso(pasoActivo + 1)}
+                  className={`text-xs px-4 py-2 font-semibold rounded-lg transition-colors ${paso1Incompleto && pasoActivo === 1 ? "bg-[#B3985B]/40 text-black/60" : "bg-[#B3985B] text-black hover:bg-[#c9a96a]"}`}>
                   Siguiente →
                 </button>
               ) : (

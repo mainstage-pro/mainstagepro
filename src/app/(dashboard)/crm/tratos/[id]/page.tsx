@@ -2124,12 +2124,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             </div>
           </div>
 
-          <DiscoveryForm id={id} trato={trato} setTrato={setTrato} />
-        </div>
-      )}
-
-            {/* ═══ SCOUTING · VISITA EN SITIO (oculta en prospección) ═════════════ */}
-      {!ETAPAS_FRONTALES.includes(trato.etapa) && trato.etapa !== "VENTA_PERDIDA" && trato.etapa !== "VENTA_CERRADA" && (() => {
+          <DiscoveryForm id={id} trato={trato} setTrato={setTrato} renderScouting={trato.etapa !== "VENTA_CERRADA" ? (() => {
         const fotosScouting = archivos.filter(a => a.tipo === "SCOUTING");
         return (
           <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-2xl p-6 space-y-5 my-8 ms-card-deep">
@@ -2196,7 +2191,9 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             </div>
           </div>
         );
-      })()}
+      })() : null} />
+        </div>
+      )}
       </>)}
 
             {/* ── Modal: Editar Cliente ── */}

@@ -1115,10 +1115,6 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
                 </div>
               ) : (
               <>
-              <p className="text-gray-500 text-xs">
-                Toca cada categoría para desplegarla, marca los equipos y ajusta las piezas con − / + o el menú.
-              </p>
-
               {/* Categorías de servicio (roles técnicos) — colapsables */}
               {serviciosElegidos.map((svc) => {
                 const abierta = expandidas.has(svc.id);
@@ -1571,11 +1567,6 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
         </div>
       )}
 
-      {!clientMode && paso === 2 && subTab === "equipos" && (
-        <p className="text-gray-700 text-[11px] pt-1 text-center">
-          Si no encuentras lo que necesitas, agrégalo arriba o menciónalo en las notas.
-        </p>
-      )}
     </div>
   );
 }
