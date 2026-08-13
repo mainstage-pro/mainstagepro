@@ -1091,11 +1091,21 @@ export function ProductosSection() {
   );
 
   const porCategoria = useMemo(() => {
-    const cats = [...new Set(visibles.map((p) => p.categoria ?? "OTRO"))].sort();
+    // Orden de categorías = mismo que el inventario de equipos (CategoriaEquipo.orden),
+    // que es como llega categoriasInv desde /api/inventario/categorias. Las que no
+    // estén en ese catálogo van al final, alfabéticas.
+    const orderIdx = (c: string) => {
+      const i = categoriasInv.indexOf(c);
+      return i === -1 ? Number.MAX_SAFE_INTEGER : i;
+    };
+    const cats = [...new Set(visibles.map((p) => p.categoria ?? "OTRO"))].sort((a, b) => {
+      const d = orderIdx(a) - orderIdx(b);
+      return d !== 0 ? d : a.localeCompare(b);
+    });
     return cats
       .map((cat) => ({ cat, items: visibles.filter((p) => (p.categoria ?? "OTRO") === cat) }))
       .filter((g) => g.items.length > 0);
-  }, [visibles]);
+  }, [visibles, categoriasInv]);
 
   return (
     <div>

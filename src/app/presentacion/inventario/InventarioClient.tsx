@@ -16,7 +16,7 @@ interface EquipoData {
   imagenUrl?: string | null; precioRenta: number;
 }
 interface CategoriaData { nombre: string; orden: number; equipos: EquipoData[]; }
-interface Props { data: { categorias: CategoriaData[]; totalEquipos: number; totalUnidades: number } }
+interface Props { data: { categorias: CategoriaData[]; totalEquipos: number; totalUnidades: number; categoriaOrden?: string[] } }
 // Productos = "sistemas armados a partir del inventario" (cargados en cliente vía /api/productos/publico)
 interface ProductoItemData { cantidad: number; equipo: { id: string; descripcion: string; marca: string | null; modelo: string | null } }
 interface ProductoCoberturaData { tipoEvento: string; rangos: string | null; subtipos: string | null }
@@ -436,9 +436,11 @@ function TabSelector({ active, onChange, quoteCount }: { active: Tab; onChange: 
 }
 
 // ─── Productos (sistemas armados a partir del inventario) ─────────────────────────
-function ProductosTab({ productos, loading }: { productos: ProductoData[]; loading: boolean }) {
+function ProductosTab({ productos, loading, categoriaOrden = [] }: { productos: ProductoData[]; loading: boolean; categoriaOrden?: string[] }) {
   const COLS = "48px 1.5fr 2.1fr 1.1fr 96px";
-  // Agrupa por categoría preservando el orden que envía el API (categoria → orden → nombre).
+  // Agrupa por categoría y ordena los grupos por el mismo orden que el inventario de
+  // equipos (CategoriaEquipo.orden, recibido en categoriaOrden). Las categorías que no
+  // estén en ese catálogo van al final, alfabéticas.
   const grupos = useMemo(() => {
     const map = new Map<string, ProductoData[]>();
     for (const p of productos) {
@@ -446,8 +448,17 @@ function ProductosTab({ productos, loading }: { productos: ProductoData[]; loadi
       if (!map.has(cat)) map.set(cat, []);
       map.get(cat)!.push(p);
     }
-    return Array.from(map.entries()).map(([cat, items]) => ({ cat, items }));
-  }, [productos]);
+    const orderIdx = (c: string) => {
+      const i = categoriaOrden.indexOf(c);
+      return i === -1 ? Number.MAX_SAFE_INTEGER : i;
+    };
+    return Array.from(map.entries())
+      .map(([cat, items]) => ({ cat, items }))
+      .sort((a, b) => {
+        const d = orderIdx(a.cat) - orderIdx(b.cat);
+        return d !== 0 ? d : a.cat.localeCompare(b.cat);
+      });
+  }, [productos, categoriaOrden]);
 
   return (
     <div className="max-w-6xl mx-auto py-16 px-4 sm:px-6">
@@ -1464,7 +1475,7 @@ export default function InventarioClient({ data }: Props) {
       )}
 
       {activeTab === "productos" && (
-        <ProductosTab productos={productos} loading={productosLoading} />
+        <ProductosTab productos={productos} loading={productosLoading} categoriaOrden={data.categoriaOrden ?? []} />
       )}
 
       {activeTab === "lista" && (

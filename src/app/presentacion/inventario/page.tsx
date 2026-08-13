@@ -32,6 +32,14 @@ export default async function InventarioPage() {
     orderBy: [{ categoria: { orden: "asc" } }, { descripcion: "asc" }],
   });
 
+  // Orden canónico de categorías (CategoriaEquipo.orden) — el mismo que usa la sección
+  // de Equipos. Sirve para ordenar los Productos por categoría de forma consistente.
+  const categoriasCatalogo = await prisma.categoriaEquipo.findMany({
+    orderBy: { orden: "asc" },
+    select: { nombre: true },
+  });
+  const categoriaOrden = categoriasCatalogo.map((c) => c.nombre);
+
   const catMap = new Map<string, { nombre: string; orden: number; equipos: typeof equipos }>();
   for (const eq of equipos) {
     const key = eq.categoria.nombre;
@@ -58,6 +66,7 @@ export default async function InventarioPage() {
     })),
     totalEquipos: equipos.length,
     totalUnidades: equipos.reduce((s, e) => s + e.cantidadTotal, 0),
+    categoriaOrden,
   };
 
   return <InventarioClient data={data} />;
