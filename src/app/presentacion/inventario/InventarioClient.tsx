@@ -17,6 +17,14 @@ interface EquipoData {
 }
 interface CategoriaData { nombre: string; orden: number; equipos: EquipoData[]; }
 interface Props { data: { categorias: CategoriaData[]; totalEquipos: number; totalUnidades: number } }
+// Productos = "sistemas armados a partir del inventario" (cargados en cliente vía /api/productos/publico)
+interface ProductoItemData { cantidad: number; equipo: { id: string; descripcion: string; marca: string | null; modelo: string | null } }
+interface ProductoCoberturaData { tipoEvento: string; rangos: string | null; subtipos: string | null }
+interface ProductoData {
+  id: string; nombre: string; descripcion: string | null; categoria: string | null;
+  tiposEvento: string | null; imagenUrl: string | null; precioFinal: number;
+  coberturas: ProductoCoberturaData[]; items: ProductoItemData[];
+}
 interface QuoteItem {
   id: string;
   descripcion: string;
@@ -26,10 +34,13 @@ interface QuoteItem {
   precioUnitario: number;
   esPersonalizado: boolean;
 }
-type Tab = "catalogo" | "lista" | "precios" | "cotizador";
-// Pestañas ocultas temporalmente del sitio público.
+type Tab = "catalogo" | "productos" | "lista" | "precios" | "cotizador";
+// Pestañas ocultas por completo del sitio público.
 const HIDDEN_TABS: Tab[] = ["precios", "cotizador"];
+// Pestañas accesibles como pill (nav compacta) pero SIN tarjeta grande en el hero — presencia discreta.
+const HERO_HIDDEN_TABS: Tab[] = ["lista"];
 const isTabVisible = (t: Tab) => !HIDDEN_TABS.includes(t);
+const isHeroCardVisible = (t: Tab) => !HIDDEN_TABS.includes(t) && !HERO_HIDDEN_TABS.includes(t);
 
 // ─── Image mapping ──────────────────────────────────────────────────────────────
 const MARCA_IMGS: Record<string, string> = {
@@ -146,6 +157,31 @@ function getEqImg(eq: EquipoData, imageMap?: ImageMap): string | null {
 function fmtPrice(n: number) { return "$" + n.toLocaleString("es-MX", { maximumFractionDigits: 0 }); }
 function eqDisplayName(eq: EquipoData) { return [eq.marca, eq.modelo].filter(Boolean).join(" ") || eq.descripcion; }
 
+// ─── Productos (sistemas armados) — helpers ──────────────────────────────────────
+const TIPO_EVENTO_LABEL: Record<string, string> = { MUSICAL: "Musical", SOCIAL: "Social", EMPRESARIAL: "Empresarial" };
+function parseTags(json: string | null): string[] {
+  if (!json) return [];
+  try { const v = JSON.parse(json); return Array.isArray(v) ? v : []; } catch { return []; }
+}
+function nombreEqProd(e: ProductoItemData["equipo"]): string {
+  return e.marca && e.modelo ? `${e.marca} ${e.modelo}` : e.marca || e.modelo || e.descripcion;
+}
+function composicionStr(p: ProductoData): string {
+  return p.items.map(it => `${it.cantidad}× ${nombreEqProd(it.equipo)}`).join(", ");
+}
+// Capacidad global: mínimo de los mínimos y máximo de los máximos entre los rangos de todas las coberturas.
+function capacidadProd(p: ProductoData): { min: number; max: number } | null {
+  let min = Infinity, max = -Infinity;
+  for (const c of p.coberturas ?? [])
+    for (const label of parseTags(c.rangos)) {
+      const m = label.match(/(\d+)\D+(\d+)/);
+      if (!m) continue;
+      min = Math.min(min, parseInt(m[1], 10));
+      max = Math.max(max, parseInt(m[2], 10));
+    }
+  return isFinite(min) && isFinite(max) ? { min, max } : null;
+}
+
 // ─── Hooks ──────────────────────────────────────────────────────────────────────
 function useReveal(threshold = 0.08) {
   const ref = useRef<HTMLDivElement>(null);
@@ -249,6 +285,7 @@ function StatBlock({ target, suffix = "", label, sub }: { target: number; suffix
 function TabNav({ active, onChange, quoteCount }: { active: Tab; onChange: (t: Tab) => void; quoteCount: number }) {
   const tabs: { key: Tab; label: string }[] = ([
     { key: "catalogo", label: "Catálogo" },
+    { key: "productos", label: "Productos" },
     { key: "lista",    label: "Lista" },
     { key: "precios",  label: "Lista de precios" },
     { key: "cotizador", label: "Cotizador" },
@@ -289,6 +326,17 @@ function TabSelector({ active, onChange, quoteCount }: { active: Tab; onChange: 
       desc: "Explora todo el equipo disponible por categoría con fichas técnicas y fotos.",
     },
     {
+      key: "productos",
+      icon: (
+        <svg width="22" height="22" viewBox="0 0 32 32" fill="none">
+          <path d="M16 3l11 6v14l-11 6-11-6V9l11-6z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+          <path d="M5 9l11 6 11-6M16 15v14" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+        </svg>
+      ),
+      title: "Productos",
+      desc: "Sistemas armados a partir del inventario, listos para operar, con el equipo que los compone.",
+    },
+    {
       key: "lista",
       icon: (
         <svg width="22" height="22" viewBox="0 0 32 32" fill="none">
@@ -327,7 +375,7 @@ function TabSelector({ active, onChange, quoteCount }: { active: Tab; onChange: 
       title: "Cotizador",
       desc: "Selecciona equipos y obtén un presupuesto estimado al instante para tu evento.",
     },
-  ] as { key: Tab; icon: React.ReactNode; title: string; desc: string }[]).filter(c => isTabVisible(c.key));
+  ] as { key: Tab; icon: React.ReactNode; title: string; desc: string }[]).filter(c => isHeroCardVisible(c.key));
   if (cards.length <= 1) return null;
   return (
     <section style={{ background: "#060606", borderBottom: `1px solid ${GOLD}10`, padding: "3rem 1.5rem" }}>
@@ -384,6 +432,126 @@ function TabSelector({ active, onChange, quoteCount }: { active: Tab; onChange: 
         </div>
       </div>
     </section>
+  );
+}
+
+// ─── Productos (sistemas armados a partir del inventario) ─────────────────────────
+function ProductosTab({ productos, loading }: { productos: ProductoData[]; loading: boolean }) {
+  const COLS = "48px 1.5fr 2.1fr 1.1fr 96px";
+  // Agrupa por categoría preservando el orden que envía el API (categoria → orden → nombre).
+  const grupos = useMemo(() => {
+    const map = new Map<string, ProductoData[]>();
+    for (const p of productos) {
+      const cat = (p.categoria || "OTRO").trim() || "OTRO";
+      if (!map.has(cat)) map.set(cat, []);
+      map.get(cat)!.push(p);
+    }
+    return Array.from(map.entries()).map(([cat, items]) => ({ cat, items }));
+  }, [productos]);
+
+  return (
+    <div className="max-w-6xl mx-auto py-16 px-4 sm:px-6">
+      <R>
+        <div className="mb-10">
+          <p className="text-white/20 text-xs tracking-[0.3em] uppercase mb-3 font-mono">Mainstage Pro · Sistemas listos</p>
+          <h2 className="font-bold text-white" style={{ fontSize: "clamp(2rem,5vw,3.5rem)", letterSpacing: "-0.03em" }}>Productos por categoría</h2>
+          <p className="text-white/35 text-sm mt-3 max-w-2xl">Sistemas armados a partir de nuestro inventario, listos para operar. Cada producto integra el equipo que lo compone.</p>
+        </div>
+      </R>
+
+      {loading && productos.length === 0 ? (
+        <R><p className="text-white/30 text-sm py-16 text-center">Cargando productos…</p></R>
+      ) : grupos.length === 0 ? (
+        <R><p className="text-white/30 text-sm py-16 text-center">Aún no hay productos publicados.</p></R>
+      ) : (
+        <div className="space-y-10">
+          {grupos.map((g, gi) => (
+            <R key={g.cat} delay={Math.min(gi * 30, 300)}>
+              <section>
+                <div className="flex items-center justify-between gap-4 mb-4 pb-3" style={{ borderBottom: `1px solid ${GOLD}18` }}>
+                  <h3 className="font-bold text-white" style={{ fontSize: "clamp(1.15rem,3vw,1.7rem)", letterSpacing: "-0.02em" }}>{g.cat}</h3>
+                  <span className="text-xs px-2.5 py-1 rounded-full font-medium shrink-0" style={{ background: `${GOLD}15`, color: GOLD, border: `1px solid ${GOLD}20` }}>
+                    {g.items.length} {g.items.length === 1 ? "producto" : "productos"}
+                  </span>
+                </div>
+
+                <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)" }}>
+                  {/* Encabezados (desktop) */}
+                  <div className="hidden md:grid px-5 py-3 text-[10px] font-semibold text-white/25 tracking-widest uppercase"
+                       style={{ gridTemplateColumns: COLS, gap: "16px" }}>
+                    <span />
+                    <span>Producto</span>
+                    <span>Equipos que lo componen</span>
+                    <span>Tipo de evento</span>
+                    <span className="text-right">Capacidad</span>
+                  </div>
+
+                  {g.items.map((p) => {
+                    const cap = capacidadProd(p);
+                    const tipos = parseTags(p.tiposEvento);
+                    const comp = composicionStr(p);
+                    const thumb = (
+                      <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center shrink-0"
+                           style={{ background: "#080808", border: "1px solid rgba(255,255,255,0.06)" }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={p.imagenUrl || "/logo-icon.png"} alt="" draggable={false} loading="lazy"
+                             className={`object-contain ${p.imagenUrl ? "w-9 h-9" : "w-4 h-4 opacity-15"}`} />
+                      </div>
+                    );
+                    const tiposBadges = tipos.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {tipos.map(t => (
+                          <span key={t} className="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                                style={{ background: `${GOLD}12`, color: GOLD, border: `1px solid ${GOLD}20` }}>
+                            {TIPO_EVENTO_LABEL[t] || t}
+                          </span>
+                        ))}
+                      </div>
+                    ) : <span className="text-white/20 text-xs">—</span>;
+                    const capChip = cap
+                      ? <span className="text-white/70 text-xs tabular-nums whitespace-nowrap">{cap.min}–{cap.max} pers.</span>
+                      : <span className="text-white/20 text-xs">—</span>;
+                    return (
+                      <div key={p.id}>
+                        {/* Desktop */}
+                        <div className="hidden md:grid px-5 py-3.5 items-center transition-colors hover:bg-white/[0.025]"
+                             style={{ gridTemplateColumns: COLS, gap: "16px", borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+                          {thumb}
+                          <div className="min-w-0">
+                            <p className="text-white text-sm font-medium leading-snug line-clamp-2">{p.nombre}</p>
+                            {p.descripcion && <p className="text-white/35 text-xs leading-snug line-clamp-1 mt-0.5">{p.descripcion}</p>}
+                          </div>
+                          <span className="text-white/45 text-xs leading-snug line-clamp-2">{comp || "—"}</span>
+                          {tiposBadges}
+                          <span className="text-right">{capChip}</span>
+                        </div>
+                        {/* Mobile */}
+                        <div className="md:hidden flex gap-3 px-4 py-3.5" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+                          {thumb}
+                          <div className="min-w-0 flex-1">
+                            <p className="text-white text-sm font-medium leading-snug line-clamp-2">{p.nombre}</p>
+                            {comp && <p className="text-white/40 text-xs leading-snug line-clamp-2 mt-1">{comp}</p>}
+                            <div className="flex items-center gap-2 flex-wrap mt-2">
+                              {tipos.map(t => (
+                                <span key={t} className="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                                      style={{ background: `${GOLD}12`, color: GOLD, border: `1px solid ${GOLD}20` }}>
+                                  {TIPO_EVENTO_LABEL[t] || t}
+                                </span>
+                              ))}
+                              {cap && <span className="text-white/50 text-[11px] tabular-nums">· {cap.min}–{cap.max} pers.</span>}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            </R>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1014,6 +1182,9 @@ export default function InventarioClient({ data }: Props) {
   // DB images loaded asynchronously — not in initial HTML payload
   const [imageMap, setImageMap]           = useState<ImageMap>({});
   const [galeriaMap, setGaleriaMap]       = useState<GaleriaMap>({});
+  // Productos (sistemas armados) — cargados en cliente vía endpoint público
+  const [productos, setProductos]         = useState<ProductoData[]>([]);
+  const [productosLoading, setProductosLoading] = useState(true);
 
   // Fetch DB images after hydration (runs once on client)
   useEffect(() => {
@@ -1024,6 +1195,15 @@ export default function InventarioClient({ data }: Props) {
         setGaleriaMap(res.galeria ?? {});
       })
       .catch(() => { /* silently ignore — static fallback images still work */ });
+  }, []);
+
+  // Fetch productos after hydration (runs once on client)
+  useEffect(() => {
+    fetch("/api/productos/publico")
+      .then(r => r.ok ? r.json() : { productos: [] })
+      .then((res: { productos?: ProductoData[] }) => setProductos(res.productos ?? []))
+      .catch(() => { /* silently ignore */ })
+      .finally(() => setProductosLoading(false));
   }, []);
 
   // Lightbox helpers (gallery-capable)
@@ -1281,6 +1461,10 @@ export default function InventarioClient({ data }: Props) {
             </div>
           </section>
         </>
+      )}
+
+      {activeTab === "productos" && (
+        <ProductosTab productos={productos} loading={productosLoading} />
       )}
 
       {activeTab === "lista" && (
