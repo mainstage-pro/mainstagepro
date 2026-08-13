@@ -140,16 +140,18 @@ export default function CatalogoEventosPage() {
 
   const tipoNombre = (slug: string) => cat.tipos.find((t) => t.slug.toUpperCase() === slug.toUpperCase())?.nombre || slug;
 
-  // Agrega una pieza (producto o equipo del inventario) a la composición de un
-  // adicional desde la lista, con un solo clic. Optimista + PATCH; si falla recarga.
-  async function agregarPiezaAdicional(a: Adicional, item: ItemInv) {
+  // Agrega una o varias piezas (productos/equipos del inventario) a la composición
+  // de un adicional desde la lista. Optimista + un solo PATCH; si falla recarga.
+  async function agregarPiezasAdicional(a: Adicional, items: ItemInv[]) {
     const comp = parseComposicion(a.composicion);
-    if (comp.some((l) => l.tipo === item.tipo && l.referenciaId === item.id)) { error("Ya está en la composición"); return; }
-    const nueva: LineaComp[] = [...comp, { tipo: item.tipo, referenciaId: item.id, cantidad: 1, obligatorio: true }];
+    const existentes = new Set(comp.map((l) => `${l.tipo}:${l.referenciaId}`));
+    const nuevos = items.filter((it) => !existentes.has(`${it.tipo}:${it.id}`));
+    if (nuevos.length === 0) { error("Ya está en la composición"); return; }
+    const nueva: LineaComp[] = [...comp, ...nuevos.map((it) => ({ tipo: it.tipo, referenciaId: it.id, cantidad: 1, obligatorio: true }))];
     setCat((prev) => ({ ...prev, adicionales: prev.adicionales.map((x) => (x.id === a.id ? { ...x, composicion: JSON.stringify(nueva) } : x)) }));
     const r = await fetch(`/api/catalogo/adicionales/${a.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ composicion: nueva }) });
     if (!r.ok) { error("No se pudo agregar la pieza"); await cargar(true); return; }
-    success(`Agregado a ${a.nombre}`);
+    success(`${nuevos.length} pza${nuevos.length > 1 ? "s" : ""} agregada${nuevos.length > 1 ? "s" : ""} a ${a.nombre}`);
   }
 
   // Reordena adicionales: recibe los ids en su nuevo orden global (arriba→abajo,
@@ -276,7 +278,7 @@ export default function CatalogoEventosPage() {
               onEdit={(a) => setEditAdicional({ ...a, _tipos: parseArr(a.tiposEvento), _nichos: parseArr(a.nichos) })}
               onDelete={(a) => borrar("adicionales", a.id, a.nombre)}
               onReordenar={reordenarAdicionales}
-              onAgregarPieza={agregarPiezaAdicional}
+              onAgregarPieza={agregarPiezasAdicional}
             />
           )}
 
@@ -365,7 +367,7 @@ function AdicionalesSeccion({ adicionales, tipos, inventario, tipoNombre, onNuev
   onEdit: (a: Adicional) => void;
   onDelete: (a: Adicional) => void;
   onReordenar: (idsEnOrden: string[]) => void;
-  onAgregarPieza: (a: Adicional, item: ItemInv) => void;
+  onAgregarPieza: (a: Adicional, items: ItemInv[]) => void;
 }) {
   const [dragId, setDragId] = useState<string | null>(null);
 
@@ -449,7 +451,7 @@ function AdicionalesSeccion({ adicionales, tipos, inventario, tipoNombre, onNuev
                           <span className={`text-[10px] px-1.5 py-0.5 rounded ${nLineas > 0 ? "bg-green-500/15 text-green-400" : "bg-red-500/15 text-red-400"}`}>{nLineas > 0 ? `${nLineas} pza${nLineas > 1 ? "s" : ""}` : "Sin composición"}</span>
                         </div>
                       </div>
-                      <QuickAddPieza inventario={inventario} existentes={new Set(parseComposicion(a.composicion).map((l) => `${l.tipo}:${l.referenciaId}`))} onAgregar={(i) => onAgregarPieza(a, i)} />
+                      <QuickAddPieza inventario={inventario} existentes={new Set(parseComposicion(a.composicion).map((l) => `${l.tipo}:${l.referenciaId}`))} onAgregar={(items) => onAgregarPieza(a, items)} />
                       <button onClick={() => onEdit(a)} className="text-gray-500 hover:text-white p-1"><Pencil size={14} /></button>
                       <button onClick={() => onDelete(a)} className="text-gray-500 hover:text-red-400 p-1"><Trash2 size={14} /></button>
                     </div>
@@ -592,35 +594,56 @@ function PreguntasSeccion({ preguntas, tipos, nichos, onNuevo, onEdit, onDelete,
   );
 }
 
-// Botón de un clic para sumar una pieza (producto/equipo del inventario) a la
-// composición de un adicional, con buscador emergente. `existentes` evita repetir.
-function QuickAddPieza({ inventario, existentes, onAgregar }: { inventario: ItemInv[]; existentes: Set<string>; onAgregar: (i: ItemInv) => void }) {
+// Botón para sumar una o varias piezas (productos/equipos del inventario) a la
+// composición de un adicional, con buscador emergente y selección múltiple.
+// `existentes` evita repetir lo que ya está en la composición.
+function QuickAddPieza({ inventario, existentes, onAgregar }: { inventario: ItemInv[]; existentes: Set<string>; onAgregar: (items: ItemInv[]) => void }) {
   const [open, setOpen] = useState(false);
   const [busca, setBusca] = useState("");
+  const [sel, setSel] = useState<Map<string, ItemInv>>(new Map());
   const resultados = useMemo(() => {
     const q = busca.trim().toLowerCase();
     if (!q) return [] as ItemInv[];
-    return inventario.filter((i) => !existentes.has(`${i.tipo}:${i.id}`) && i.nombre.toLowerCase().includes(q)).slice(0, 8);
+    return inventario.filter((i) => !existentes.has(`${i.tipo}:${i.id}`) && i.nombre.toLowerCase().includes(q)).slice(0, 12);
   }, [busca, inventario, existentes]);
+  function toggle(i: ItemInv) {
+    const k = `${i.tipo}:${i.id}`;
+    setSel((prev) => { const m = new Map(prev); if (m.has(k)) m.delete(k); else m.set(k, i); return m; });
+  }
+  function cerrar() { setOpen(false); setBusca(""); setSel(new Map()); }
+  function confirmar() {
+    if (sel.size === 0) return;
+    onAgregar([...sel.values()]);
+    cerrar();
+  }
   return (
     <div className="relative">
-      <button onClick={() => setOpen((v) => !v)} title="Agregar pieza a la composición" className="text-gray-500 hover:text-[#B3985B] p-1"><Plus size={14} /></button>
+      <button onClick={() => setOpen((v) => !v)} title="Agregar piezas a la composición" className="text-gray-500 hover:text-[#B3985B] p-1"><Plus size={14} /></button>
       {open && (
         <>
-          <div className="fixed inset-0 z-20" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 z-30 mt-1 w-64 rounded-lg border border-[#2a2a2a] bg-[#0d0d0d] p-2 shadow-xl">
+          <div className="fixed inset-0 z-20" onClick={cerrar} />
+          <div className="absolute right-0 z-30 mt-1 w-80 rounded-lg border border-[#2a2a2a] bg-[#0d0d0d] p-2 shadow-xl">
             <input autoFocus className={inputCls} placeholder="Buscar producto o equipo…" value={busca} onChange={(e) => setBusca(e.target.value)} />
             {busca.trim() && (
-              <div className="mt-1 max-h-56 overflow-auto">
+              <div className="mt-1 max-h-64 overflow-auto">
                 {resultados.length === 0 ? (
                   <p className="text-xs text-gray-600 px-2 py-1.5">Sin resultados.</p>
-                ) : resultados.map((i) => (
-                  <button key={`${i.tipo}:${i.id}`} type="button" onClick={() => { onAgregar(i); setBusca(""); setOpen(false); }} className="w-full flex items-center gap-2 px-2 py-1.5 text-left rounded-md hover:bg-[#161616]">
-                    <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded ${i.tipo === "equipo" ? "bg-sky-500/15 text-sky-400" : "bg-violet-500/15 text-violet-400"}`}>{i.tipo === "equipo" ? "Equipo" : "Prod"}</span>
-                    <span className="flex-1 text-sm text-gray-200 truncate">{i.nombre}</span>
-                  </button>
-                ))}
+                ) : resultados.map((i) => {
+                  const on = sel.has(`${i.tipo}:${i.id}`);
+                  return (
+                    <button key={`${i.tipo}:${i.id}`} type="button" onClick={() => toggle(i)} className={`w-full flex items-center gap-2 px-2 py-1.5 text-left rounded-md ${on ? "bg-[#B3985B]/15" : "hover:bg-[#161616]"}`}>
+                      <span className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center text-[10px] ${on ? "bg-[#B3985B] border-[#B3985B] text-black" : "border-[#333] text-transparent"}`}>✓</span>
+                      <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded ${i.tipo === "equipo" ? "bg-sky-500/15 text-sky-400" : "bg-violet-500/15 text-violet-400"}`}>{i.tipo === "equipo" ? "Equipo" : "Prod"}</span>
+                      <span className="flex-1 text-sm text-gray-200 truncate">{i.nombre}</span>
+                    </button>
+                  );
+                })}
               </div>
+            )}
+            {sel.size > 0 && (
+              <button type="button" onClick={confirmar} className="mt-2 w-full bg-[#B3985B] hover:bg-[#c4a869] text-black text-xs font-semibold px-3 py-2 rounded-lg">
+                Agregar {sel.size} pza{sel.size > 1 ? "s" : ""}
+              </button>
             )}
           </div>
         </>
@@ -733,6 +756,7 @@ function AdicionalEditor({ value, tipos, nichos, inventario, onClose, onSaved, t
     tipos: value._tipos || [], nichosSel: value._nichos || [], composicion: compInicial,
   });
   const [busca, setBusca] = useState("");
+  const [selBusq, setSelBusq] = useState<Map<string, ItemInv>>(new Map());
   const [guardando, setGuardando] = useState(false);
   const nichosDisponibles = useMemo(() => nichos.filter((n) => f.tipos.includes(n.tipoEventoSlug.toUpperCase())), [nichos, f.tipos]);
   const invMap = useMemo(() => new Map(inventario.map((i) => [`${i.tipo}:${i.id}`, i])), [inventario]);
@@ -741,13 +765,23 @@ function AdicionalEditor({ value, tipos, nichos, inventario, onClose, onSaved, t
     const q = busca.trim().toLowerCase();
     if (!q) return [] as ItemInv[];
     const enComp = new Set(f.composicion.map(claveInv));
-    return inventario.filter((i) => !enComp.has(`${i.tipo}:${i.id}`) && i.nombre.toLowerCase().includes(q)).slice(0, 8);
+    return inventario.filter((i) => !enComp.has(`${i.tipo}:${i.id}`) && i.nombre.toLowerCase().includes(q)).slice(0, 12);
   }, [busca, inventario, f.composicion]);
   const total = useMemo(() => f.composicion.reduce((s, l) => s + l.cantidad * (invMap.get(claveInv(l))?.precio ?? 0), 0), [f.composicion, invMap]);
 
-  function agregar(i: ItemInv) {
-    setF((p) => ({ ...p, composicion: [...p.composicion, { tipo: i.tipo, referenciaId: i.id, cantidad: 1, obligatorio: true }] }));
+  function toggleBusq(i: ItemInv) {
+    const k = `${i.tipo}:${i.id}`;
+    setSelBusq((prev) => { const m = new Map(prev); if (m.has(k)) m.delete(k); else m.set(k, i); return m; });
+  }
+  function agregarSeleccionados() {
+    if (selBusq.size === 0) return;
+    setF((p) => {
+      const enComp = new Set(p.composicion.map(claveInv));
+      const nuevos = [...selBusq.values()].filter((i) => !enComp.has(`${i.tipo}:${i.id}`));
+      return { ...p, composicion: [...p.composicion, ...nuevos.map((i) => ({ tipo: i.tipo, referenciaId: i.id, cantidad: 1, obligatorio: true }))] };
+    });
     setBusca("");
+    setSelBusq(new Map());
   }
   function actualizar(idx: number, patch: Partial<LineaComp>) {
     setF((p) => ({ ...p, composicion: p.composicion.map((l, i) => (i === idx ? { ...l, ...patch } : l)) }));
@@ -769,7 +803,7 @@ function AdicionalEditor({ value, tipos, nichos, inventario, onClose, onSaved, t
     } catch (e) { toast.error(e instanceof Error ? e.message : "Error"); } finally { setGuardando(false); }
   }
   return (
-    <Modal open onClose={onClose} title={value.id ? "Editar adicional" : "Nuevo adicional"} maxWidth="max-w-lg">
+    <Modal open onClose={onClose} title={value.id ? "Editar adicional" : "Nuevo adicional"} maxWidth="max-w-2xl">
       <div className="p-6">
         <Campo label="Nombre"><input className={inputCls} value={f.nombre} onChange={(e) => setF({ ...f, nombre: e.target.value })} /></Campo>
         <Campo label="Descripción"><input className={inputCls} value={f.descripcion} onChange={(e) => setF({ ...f, descripcion: e.target.value })} /></Campo>
@@ -805,19 +839,28 @@ function AdicionalEditor({ value, tipos, nichos, inventario, onClose, onSaved, t
             {f.composicion.length === 0 && <p className="text-xs text-gray-600 py-1">Aún sin piezas. Busca productos o equipos del inventario abajo.</p>}
           </div>
           <div className="relative mt-2">
-            <input className={inputCls} placeholder="Buscar producto o equipo…" value={busca} onChange={(e) => setBusca(e.target.value)} />
+            <input className={inputCls} placeholder="Buscar producto o equipo… (selecciona varios)" value={busca} onChange={(e) => setBusca(e.target.value)} />
             {resultados.length > 0 && (
-              <div className="absolute z-10 left-0 right-0 mt-1 bg-[#0d0d0d] border border-[#242424] rounded-lg shadow-xl max-h-56 overflow-auto">
-                {resultados.map((i) => (
-                  <button key={`${i.tipo}:${i.id}`} type="button" onClick={() => agregar(i)} className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-[#161616]">
-                    <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded ${i.tipo === "equipo" ? "bg-sky-500/15 text-sky-400" : "bg-violet-500/15 text-violet-400"}`}>{i.tipo === "equipo" ? "Equipo" : "Prod"}</span>
-                    <span className="flex-1 text-sm text-gray-200 truncate">{i.nombre}</span>
-                    {i.categoria && <span className="text-[10px] text-gray-600 truncate max-w-[90px]">{i.categoria}</span>}
-                  </button>
-                ))}
+              <div className="absolute z-10 left-0 right-0 mt-1 bg-[#0d0d0d] border border-[#242424] rounded-lg shadow-xl max-h-72 overflow-auto">
+                {resultados.map((i) => {
+                  const on = selBusq.has(`${i.tipo}:${i.id}`);
+                  return (
+                    <button key={`${i.tipo}:${i.id}`} type="button" onClick={() => toggleBusq(i)} className={`w-full flex items-center gap-2 px-3 py-2 text-left ${on ? "bg-[#B3985B]/15" : "hover:bg-[#161616]"}`}>
+                      <span className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center text-[10px] ${on ? "bg-[#B3985B] border-[#B3985B] text-black" : "border-[#333] text-transparent"}`}>✓</span>
+                      <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded ${i.tipo === "equipo" ? "bg-sky-500/15 text-sky-400" : "bg-violet-500/15 text-violet-400"}`}>{i.tipo === "equipo" ? "Equipo" : "Prod"}</span>
+                      <span className="flex-1 text-sm text-gray-200 truncate">{i.nombre}</span>
+                      {i.categoria && <span className="text-[10px] text-gray-600 truncate max-w-[90px]">{i.categoria}</span>}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
+          {selBusq.size > 0 && (
+            <button type="button" onClick={agregarSeleccionados} className="mt-2 w-full bg-[#B3985B] hover:bg-[#c4a869] text-black text-xs font-semibold px-3 py-2 rounded-lg">
+              Agregar {selBusq.size} pza{selBusq.size > 1 ? "s" : ""} a la composición
+            </button>
+          )}
           {f.composicion.length > 0 && (
             <p className="text-[11px] text-gray-500 mt-1.5">Estimado (renta): <span className="text-gray-300">${total.toLocaleString("es-MX", { maximumFractionDigits: 0 })}</span></p>
           )}
