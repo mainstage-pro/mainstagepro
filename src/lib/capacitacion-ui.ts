@@ -15,6 +15,14 @@ export function colorBloque(letra: string): string {
   return BLOQUE_COLORS[(letra || "A").toUpperCase()] ?? "#6b7280";
 }
 
+// Slug estable para una sub-área (usado en la URL /capacitacion/area/[slug]/[sub]).
+export function subAreaSlug(nombre: string): string {
+  return (nombre || "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().trim()
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "general";
+}
+
 // Íconos disponibles para las áreas.
 export const ICONOS: Record<string, LucideIcon> = {
   GraduationCap, Landmark, Megaphone, BadgeDollarSign, Package,

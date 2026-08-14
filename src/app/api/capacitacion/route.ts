@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
   if (!puedeEditarCapacitacion(session)) return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
 
   const body = await req.json();
-  const { titulo, descripcion, categoriaId, bloque, bloqueLetra, duracion, objetivos, puntosBase } = body;
+  const { titulo, descripcion, categoriaId, bloque, bloqueLetra, subArea, duracion, objetivos, puntosBase } = body;
   if (!titulo || !categoriaId) return NextResponse.json({ error: "Falta título o área" }, { status: 400 });
 
   const maxNumero = await prisma.sesionCapacitacion.aggregate({ _max: { numero: true } });
@@ -85,6 +85,7 @@ export async function POST(req: NextRequest) {
       categoriaId,
       bloque: bloque ?? "Bloque A",
       bloqueLetra: (bloqueLetra ?? "A").toUpperCase().slice(0, 1),
+      subArea: subArea ?? null,
       duracion: duracion ?? 60,
       objetivos: objetivos ?? [],
       puntosBase: puntosBase ?? [],

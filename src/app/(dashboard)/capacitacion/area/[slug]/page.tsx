@@ -2,9 +2,8 @@
 
 import React, { useEffect, useState, useMemo, use } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { colorBloque, iconoArea } from "@/lib/capacitacion-ui";
-import { ArrowLeft, Plus, X, Play, RotateCcw, CheckCircle2, Pencil, Clock, Trash2 } from "lucide-react";
+import { colorBloque, iconoArea, subAreaSlug } from "@/lib/capacitacion-ui";
+import { ArrowLeft, Plus, X, CheckCircle2, ChevronRight } from "lucide-react";
 
 interface Sesion {
   id: string;
@@ -25,15 +24,8 @@ interface Sesion {
   aprobado: boolean | null;
 }
 
-const ESTADO: Record<string, { label: string; color: string; bg: string }> = {
-  "no-iniciado": { label: "Sin iniciar", color: "#6b7280", bg: "#1a1a1a" },
-  "en-progreso": { label: "En progreso", color: "#F59E0B", bg: "#1c1500" },
-  completado: { label: "Completada", color: "#22c55e", bg: "#0a1f0a" },
-};
-
 export default function AreaPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
-  const router = useRouter();
   const [sesiones, setSesiones] = useState<Sesion[]>([]);
   const [areaInfo, setAreaInfo] = useState<{ id: string; nombre: string; color: string; icono: string } | null>(null);
   const [puedeEditar, setPuedeEditar] = useState(false);
@@ -67,11 +59,13 @@ export default function AreaPage({ params }: { params: Promise<{ slug: string }>
 
   // Agrupa por sub-área del plan de trabajo; si el tema no la tiene, cae en su bloque.
   const bySubArea = useMemo(() => {
-    const map = new Map<string, { letra: string; nombre: string; sesiones: Sesion[] }>();
+    const map = new Map<string, { letra: string; nombre: string; slug: string; total: number; completadas: number }>();
     for (const s of sesiones) {
       const nombre = s.subArea?.trim() || s.bloque;
-      if (!map.has(nombre)) map.set(nombre, { letra: s.bloqueLetra, nombre, sesiones: [] });
-      map.get(nombre)!.sesiones.push(s);
+      if (!map.has(nombre)) map.set(nombre, { letra: s.bloqueLetra, nombre, slug: subAreaSlug(nombre), total: 0, completadas: 0 });
+      const g = map.get(nombre)!;
+      g.total++;
+      if (s.estadoUsuario === "completado") g.completadas++;
     }
     return Array.from(map.values());
   }, [sesiones]);
@@ -116,103 +110,69 @@ export default function AreaPage({ params }: { params: Promise<{ slug: string }>
             {puedeEditar && <p className="text-xs mt-1" style={{ color: "#4b5563" }}>Crea la primera con el botón de arriba.</p>}
           </div>
         ) : (
-          <div className="space-y-6">
-            {bySubArea.map((g) => {
-              const c = colorBloque(g.letra);
-              return (
-                <div key={g.nombre}>
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-2 h-2 rounded-full" style={{ background: c }} />
-                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: c }}>{g.nombre}</p>
-                    <div className="flex-1 h-px" style={{ background: `${c}30` }} />
-                  </div>
-                  <div className="space-y-2">
-                    {g.sesiones.map((s) => <SesionRow key={s.id} s={s} puedeEditar={puedeEditar} onTomar={() => router.push(`/capacitacion/${s.id}/tomar`)} onEliminada={cargar} />)}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <>
+            <p className="text-xs mb-4" style={{ color: "#6b7280" }}>Elige una sub-área para ver sus capacitaciones.</p>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {bySubArea.map((g) => {
+                const c = colorBloque(g.letra);
+                const pct = g.total ? Math.round((g.completadas / g.total) * 100) : 0;
+                return (
+                  <Link key={g.nombre} href={`/capacitacion/area/${slug}/${g.slug}`} className="group block">
+                    <div className="relative h-full rounded-2xl border p-5 transition-all duration-200 hover:border-[#3a3a3a] overflow-hidden"
+                      style={{ background: "#111", borderColor: "#262626" }}>
+                      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: c, opacity: 0.85 }} />
+                      <div className="flex items-start justify-between gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0"
+                          style={{ background: `${c}1a`, border: `1px solid ${c}33`, color: c }}>
+                          {g.nombre.trim().charAt(0).toUpperCase()}
+                        </div>
+                        <ChevronRight size={18} className="mt-2 transition-transform group-hover:translate-x-0.5" style={{ color: "#4b5563" }} />
+                      </div>
+                      <h3 className="text-sm font-semibold text-white leading-snug mb-1 group-hover:text-[#c9a96a] transition-colors">
+                        {g.nombre}
+                      </h3>
+                      <span className="text-[11px]" style={{ color: "#6b7280" }}>
+                        {g.total} {g.total === 1 ? "curso" : "cursos"}
+                        {g.completadas > 0 && (
+                          <span className="inline-flex items-center gap-1 ml-2" style={{ color: "#22c55e" }}>
+                            <CheckCircle2 size={11} /> {g.completadas}
+                          </span>
+                        )}
+                      </span>
+                      <div className="mt-4 h-1 rounded-full overflow-hidden" style={{ background: "#1a1a1a" }}>
+                        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: c }} />
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
 
       {creando && areaInfo && (
-        <ModalCapacitacion areaId={areaInfo.id} onClose={() => setCreando(false)} onCreada={() => { setCreando(false); cargar(); }} />
+        <ModalCapacitacion areaId={areaInfo.id} subAreas={bySubArea.map((g) => g.nombre)} onClose={() => setCreando(false)} onCreada={() => { setCreando(false); cargar(); }} />
       )}
     </div>
   );
 }
 
-function SesionRow({ s, puedeEditar, onTomar, onEliminada }: { s: Sesion; puedeEditar: boolean; onTomar: () => void; onEliminada: () => void }) {
-  const est = ESTADO[s.estadoUsuario];
-  const c = colorBloque(s.bloqueLetra);
-  const [eliminando, setEliminando] = useState(false);
-
-  async function eliminar() {
-    if (eliminando) return;
-    if (!confirm(`¿Eliminar "${s.titulo}"? Se borrarán su contenido, evaluación y el progreso de todos. No se puede deshacer.`)) return;
-    setEliminando(true);
-    const r = await fetch(`/api/capacitacion/${s.id}`, { method: "DELETE" });
-    if (r.ok) onEliminada();
-    else { setEliminando(false); alert("No se pudo eliminar."); }
-  }
-
-  return (
-    <div className="flex items-center gap-4 px-4 py-3 rounded-xl border transition-colors hover:border-[#333]" style={{ background: "#111", borderColor: "#1e1e1e" }}>
-      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: c }} />
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <h3 className="text-sm font-semibold text-white truncate">{s.titulo}</h3>
-          {s.estadoUsuario === "completado" && <CheckCircle2 size={14} style={{ color: "#22c55e" }} />}
-        </div>
-        <p className="text-xs truncate" style={{ color: "#6b7280" }}>{s.descripcion || "Sin descripción"}</p>
-      </div>
-
-      <div className="flex items-center gap-3 shrink-0">
-        <span className="text-[11px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: est.bg, color: est.color }}>
-          {est.label}{s.estadoUsuario === "completado" && s.calificacion !== null ? ` · ${s.calificacion}%` : ""}
-        </span>
-        <span className="hidden sm:flex items-center gap-1 text-[11px]" style={{ color: "#4b5563" }}><Clock size={11} /> {s.duracion}m</span>
-
-        {!s.tieneContenido ? (
-          <span className="text-[11px] px-2 py-1 rounded-lg" style={{ color: "#4b5563" }}>Sin contenido</span>
-        ) : s.estadoUsuario === "completado" ? (
-          <button onClick={onTomar} className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors hover:border-[#c9a96a] hover:text-[#c9a96a]" style={{ borderColor: "#262626", color: "#9ca3af" }}>
-            <RotateCcw size={13} /> Repasar
-          </button>
-        ) : (
-          <button onClick={onTomar} className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium" style={{ background: "#c9a96a", color: "#000" }}>
-            <Play size={13} /> {s.estadoUsuario === "en-progreso" ? "Continuar" : "Tomar"}
-          </button>
-        )}
-
-        {puedeEditar && (
-          <Link href={`/capacitacion/${s.id}`} className="text-[#6b7280] hover:text-white p-1" title="Editar contenido"><Pencil size={14} /></Link>
-        )}
-        {puedeEditar && (
-          <button onClick={eliminar} disabled={eliminando} className="text-[#6b7280] hover:text-[#EF4444] p-1 disabled:opacity-40" title="Eliminar capacitación"><Trash2 size={14} /></button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function ModalCapacitacion({ areaId, onClose, onCreada }: { areaId: string; onClose: () => void; onCreada: () => void }) {
+function ModalCapacitacion({ areaId, subAreas, onClose, onCreada }: { areaId: string; subAreas: string[]; onClose: () => void; onCreada: () => void }) {
   const [titulo, setTitulo] = useState("");
   const [descripcion, setDescripcion] = useState("");
-  const [bloqueLetra, setBloqueLetra] = useState("A");
-  const [bloqueNombre, setBloqueNombre] = useState("");
+  const [subArea, setSubArea] = useState(subAreas[0] ?? "");
   const [duracion, setDuracion] = useState(60);
   const [guardando, setGuardando] = useState(false);
 
   async function guardar() {
     if (!titulo.trim() || guardando) return;
     setGuardando(true);
-    const bloque = bloqueNombre.trim() ? `Bloque ${bloqueLetra} · ${bloqueNombre.trim()}` : `Bloque ${bloqueLetra}`;
+    const sa = subArea.trim();
     const r = await fetch("/api/capacitacion", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ titulo, descripcion, categoriaId: areaId, bloque, bloqueLetra, duracion }),
+      body: JSON.stringify({ titulo, descripcion, categoriaId: areaId, subArea: sa || null, bloque: sa || "General", bloqueLetra: "A", duracion }),
     });
     setGuardando(false);
     if (r.ok) onCreada();
@@ -230,20 +190,23 @@ function ModalCapacitacion({ areaId, onClose, onCreada }: { areaId: string; onCl
         <input autoFocus value={titulo} onChange={(e) => setTitulo(e.target.value)}
           className="w-full mb-4 bg-[#0a0a0a] border border-[#262626] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#c9a96a]" />
 
-        <label className="block text-xs mb-1.5" style={{ color: "#6b7280" }}>Descripción</label>
+        <label className="block text-xs mb-1.5" style={{ color: "#6b7280" }}>Descripción · Qué vas a aprender</label>
         <textarea value={descripcion} onChange={(e) => setDescripcion(e.target.value)} rows={2}
           className="w-full mb-4 bg-[#0a0a0a] border border-[#262626] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#c9a96a] resize-none" />
 
         <div className="grid grid-cols-3 gap-3 mb-6">
-          <div>
-            <label className="block text-xs mb-1.5" style={{ color: "#6b7280" }}>Bloque</label>
-            <input value={bloqueLetra} onChange={(e) => setBloqueLetra(e.target.value.toUpperCase().slice(0, 1))} maxLength={1}
-              className="w-full bg-[#0a0a0a] border border-[#262626] rounded-lg px-3 py-2 text-sm text-white text-center focus:outline-none focus:border-[#c9a96a]" />
-          </div>
           <div className="col-span-2">
-            <label className="block text-xs mb-1.5" style={{ color: "#6b7280" }}>Tema del bloque</label>
-            <input value={bloqueNombre} onChange={(e) => setBloqueNombre(e.target.value)} placeholder="Opcional"
+            <label className="block text-xs mb-1.5" style={{ color: "#6b7280" }}>Sub-área</label>
+            <input list="subareas-list" value={subArea} onChange={(e) => setSubArea(e.target.value)} placeholder="Ej: Coordinación de Producción"
               className="w-full bg-[#0a0a0a] border border-[#262626] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#c9a96a]" />
+            <datalist id="subareas-list">
+              {subAreas.map((s) => <option key={s} value={s} />)}
+            </datalist>
+          </div>
+          <div>
+            <label className="block text-xs mb-1.5" style={{ color: "#6b7280" }}>Duración (min)</label>
+            <input type="number" min={5} value={duracion} onChange={(e) => setDuracion(Number(e.target.value) || 60)}
+              className="w-full bg-[#0a0a0a] border border-[#262626] rounded-lg px-3 py-2 text-sm text-white text-center focus:outline-none focus:border-[#c9a96a]" />
           </div>
         </div>
 
