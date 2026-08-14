@@ -186,12 +186,29 @@ export default function AnnualCalendar({ calendario }: { calendario: CalendarioK
 
       {/* Leyenda */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-        {cal.tipos.map(t => (
-          <div key={t.key} className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: t.color }} />
-            <span className="text-xs text-gray-400">{t.label}</span>
-          </div>
-        ))}
+        {cal.coloresPorEntrada ? (
+          <>
+            {periodos.map(e => (
+              <div key={e.id} className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: colorEntrada(cal, e) }} />
+                <span className="text-xs text-gray-400">{e.icono ? `${e.icono} ` : ""}{e.titulo}</span>
+              </div>
+            ))}
+            {cal.tipos.filter(t => !t.periodo).map(t => (
+              <div key={t.key} className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: t.color }} />
+                <span className="text-xs text-gray-400">{t.label}</span>
+              </div>
+            ))}
+          </>
+        ) : (
+          cal.tipos.map(t => (
+            <div key={t.key} className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: t.color }} />
+              <span className="text-xs text-gray-400">{t.label}</span>
+            </div>
+          ))
+        )}
       </div>
 
       {/* Temporada actual / siguiente (calendarios con temporadas) */}

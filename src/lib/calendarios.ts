@@ -24,6 +24,7 @@ export interface CalendarioDef {
   ideasLabel: string;       // rótulo del campo de ideas
   ligaTipoEvento?: boolean; // muestra el selector "tipo de evento" (comercial)
   ligaServicio?: boolean;   // muestra el campo "servicio" (comercial)
+  coloresPorEntrada?: boolean; // true = cada temporada (periodo) recibe su propio color distinto
 }
 
 // ── Definiciones de los tres calendarios anuales ─────────────────────────────
@@ -53,6 +54,7 @@ export const CALENDARIOS: Record<CalendarioKey, CalendarioDef> = {
     ideasLabel: "Ideas de campañas · productos · paquetes",
     ligaTipoEvento: true,
     ligaServicio: true,
+    coloresPorEntrada: true,
     tipos: [
       { key: "TEMPORALIDAD", label: "Temporalidad",  color: "#ec4899", periodo: true },
       { key: "FECHA_CLAVE",  label: "Fecha clave",   color: "#B3985B" },
@@ -121,8 +123,29 @@ export function tipoDef(cal: CalendarioDef, tipoKey: string): TipoEntrada {
   return cal.tipos.find(t => t.key === tipoKey) ?? cal.tipos[0];
 }
 
+// Paleta de colores distintos para temporadas (calendarios con coloresPorEntrada).
+// Evita el dorado (#B3985B, reservado a fechas clave) y el morado (#8b5cf6, campaña).
+const PALETA_TEMPORADAS = [
+  "#ec4899", "#06b6d4", "#10b981", "#f59e0b", "#ef4444",
+  "#3b82f6", "#f97316", "#14b8a6", "#a855f7", "#84cc16",
+];
+
+function hashTitulo(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+// Color estable y distinto por temporada, derivado del título.
+export function colorTemporada(titulo: string): string {
+  return PALETA_TEMPORADAS[hashTitulo(titulo) % PALETA_TEMPORADAS.length];
+}
+
 export function colorEntrada(cal: CalendarioDef, e: Entrada): string {
-  return e.color || tipoDef(cal, e.tipo).color;
+  if (e.color) return e.color;
+  const td = tipoDef(cal, e.tipo);
+  if (cal.coloresPorEntrada && td.periodo) return colorTemporada(e.titulo);
+  return td.color;
 }
 
 // ¿La entrada abarca un rango de varios días (temporada / periodo)?
