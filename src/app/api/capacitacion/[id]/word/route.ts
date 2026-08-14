@@ -38,6 +38,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     : [];
   const letra = (i: number) => String.fromCharCode(65 + i);
 
+  const listaHtml = (titulo: string, items: string[], marker = "ul") =>
+    items.length
+      ? `<h2>${titulo}</h2><${marker}>${items.map((x) => `<li>${esc(x)}</li>`).join("")}</${marker}>`
+      : "";
+
   const html = `<!DOCTYPE html>
 <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
 <head>
@@ -60,9 +65,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 <body>
   <div class="brand">MAINSTAGE PRO</div>
   <h1>${num}. ${esc(sesion.titulo)}</h1>
-  <div class="meta">${esc(area)} &middot; ${sesion.duracion} min &middot; Impartidor: ${esc(sesion.impartidor)}</div>
+  <div class="meta">${esc(area)}${sesion.subArea ? ` &rsaquo; ${esc(sesion.subArea)}` : ""} &middot; ${sesion.duracion} min &middot; Impartidor: ${esc(sesion.impartidor)}</div>
 
   ${sesion.descripcion ? `<h2>Descripción</h2><p>${esc(sesion.descripcion)}</p>` : ""}
+
+  ${sesion.publicoObjetivo?.trim() ? `<h2>Público objetivo</h2><p>${esc(sesion.publicoObjetivo)}</p>` : ""}
+
+  ${listaHtml("Prerrequisitos", sesion.prerrequisitos)}
 
   ${
     sesion.objetivos.length
@@ -75,6 +84,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       ? `<h2>Desarrollo del tema</h2><ol>${puntos.map((p) => `<li>${esc(p)}</li>`).join("")}</ol>`
       : ""
   }
+
+  ${listaHtml("Procedimiento paso a paso", sesion.procedimiento, "ol")}
+
+  ${listaHtml("Errores comunes", sesion.erroresComunes)}
+
+  ${listaHtml("Checklist de aplicación", sesion.checklistAplicacion)}
+
+  ${listaHtml("Recursos y enlaces", sesion.recursos)}
 
   ${sesion.notas?.trim() ? `<h2>Notas del instructor</h2><div class="nota">${esc(sesion.notas)}</div>` : ""}
 

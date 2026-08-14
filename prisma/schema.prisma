@@ -4240,6 +4240,13 @@ model SesionCapacitacion {
   objetivos       String[]
   puntosBase      String[]
   puntosEditados  String[]
+  subArea             String?
+  publicoObjetivo     String?
+  prerrequisitos      String[]
+  procedimiento       String[]
+  erroresComunes      String[]
+  checklistAplicacion String[]
+  recursos            String[]
   semana          Int                     @default(1)
   fechaProgramada DateTime?
   duracion        Int                     @default(60)

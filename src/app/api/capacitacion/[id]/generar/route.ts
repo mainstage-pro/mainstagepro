@@ -18,6 +18,13 @@ type SesionData = {
   impartidor: string;
   puntos: string[];
   notas: string | null;
+  subArea?: string | null;
+  publicoObjetivo?: string | null;
+  prerrequisitos?: string[];
+  procedimiento?: string[];
+  erroresComunes?: string[];
+  checklistAplicacion?: string[];
+  recursos?: string[];
 };
 
 export async function POST(req: NextRequest) {
@@ -43,7 +50,11 @@ export async function POST(req: NextRequest) {
     return new Response(JSON.stringify({ error: "Body inválido" }), { status: 400 });
   }
 
-  const { numero, titulo, bloque, fechaStr, duracion, impartidor, puntos, notas } = sesionData;
+  const {
+    numero, titulo, bloque, fechaStr, duracion, impartidor, puntos, notas,
+    subArea, publicoObjetivo, prerrequisitos, procedimiento, erroresComunes,
+    checklistAplicacion, recursos,
+  } = sesionData;
 
   // ── System prompt ──────────────────────────────────────────────────────────
   const systemPrompt = `Eres el diseñador de presentaciones de capacitación interna de Mainstage Pro.
@@ -227,6 +238,19 @@ CALIDAD DEL CONTENIDO:
 • La narrativa va de lo general/¿por qué? hacia lo específico/¿cómo? hacia el compromiso
 • Evita el jargon vacío: no "sinergia", no "paradigma", no "en este sentido"`;
 
+  // ── Bloques opcionales de la ficha (solo se incluyen si tienen contenido) ────
+  const bloqueLista = (label: string, items?: string[]) =>
+    items && items.length ? `\n${label}:\n${items.map((x) => `• ${x}`).join("\n")}` : "";
+
+  const fichaExtra =
+    (subArea?.trim() ? `\nSUB-ÁREA: ${subArea}` : "") +
+    (publicoObjetivo?.trim() ? `\nPÚBLICO OBJETIVO: ${publicoObjetivo}` : "") +
+    bloqueLista("PRERREQUISITOS", prerrequisitos) +
+    bloqueLista("PROCEDIMIENTO PASO A PASO (base para las slides de PROCESO / CÓMO FUNCIONA)", procedimiento) +
+    bloqueLista("ERRORES COMUNES A EVITAR (conviértelos en una slide de advertencias o comparación)", erroresComunes) +
+    bloqueLista("CHECKLIST DE APLICACIÓN (úsalo en la slide de resumen o cierre como compromiso)", checklistAplicacion) +
+    bloqueLista("RECURSOS Y ENLACES A MÓDULOS DE MAINSTAGE PRO (menciónalos donde apliquen)", recursos);
+
   // ── User prompt ────────────────────────────────────────────────────────────
   const userPrompt = `Genera la presentación para esta sesión de capacitación de Mainstage Pro:
 
@@ -235,7 +259,7 @@ TÍTULO: ${titulo}
 BLOQUE: ${bloque}
 FECHA: ${fechaStr}
 DURACIÓN: ${duracion} minutos
-IMPARTIDOR: ${impartidor}
+IMPARTIDOR: ${impartidor}${fichaExtra}
 
 PUNTOS DE LA SESIÓN (sintetiza, expande y conecta — no los copies literal):
 ${puntos.map((p, i) => `${String(i + 1).padStart(2, "0")}. ${p}`).join("\n")}

@@ -7,9 +7,16 @@ export interface ModuloPDFData {
   numero: number;
   titulo: string;
   area: string;
+  subArea?: string | null;
   descripcion: string;
+  publicoObjetivo?: string | null;
+  prerrequisitos?: string[];
   objetivos: string[];
   puntos: string[];
+  procedimiento?: string[];
+  erroresComunes?: string[];
+  checklistAplicacion?: string[];
+  recursos?: string[];
   notas: string | null;
   duracion: number;
   impartidor: string;
@@ -65,7 +72,7 @@ export function CapacitacionModuloPDF({ data }: { data: ModuloPDFData }) {
           {String(data.numero).padStart(2, "0")}. {data.titulo}
         </Text>
         <Text style={s.meta}>
-          {data.area} · {data.duracion} min · Impartidor: {data.impartidor}
+          {data.area}{data.subArea ? ` › ${data.subArea}` : ""} · {data.duracion} min · Impartidor: {data.impartidor}
         </Text>
       </View>
 
@@ -75,6 +82,25 @@ export function CapacitacionModuloPDF({ data }: { data: ModuloPDFData }) {
           <Text style={s.para}>{data.descripcion}</Text>
         </View>
       ) : null}
+
+      {data.publicoObjetivo?.trim() ? (
+        <View style={base.seccion}>
+          <Text style={s.h2}>PÚBLICO OBJETIVO</Text>
+          <Text style={s.para}>{data.publicoObjetivo}</Text>
+        </View>
+      ) : null}
+
+      {data.prerrequisitos && data.prerrequisitos.length > 0 && (
+        <View style={base.seccion}>
+          <Text style={s.h2}>PRERREQUISITOS</Text>
+          {data.prerrequisitos.map((p, i) => (
+            <View key={i} style={s.li} wrap={false}>
+              <Text style={s.liBullet}>◆</Text>
+              <Text style={s.liText}>{p}</Text>
+            </View>
+          ))}
+        </View>
+      )}
 
       {data.objetivos.length > 0 && (
         <View style={base.seccion}>
@@ -94,6 +120,54 @@ export function CapacitacionModuloPDF({ data }: { data: ModuloPDFData }) {
           {data.puntos.map((p, i) => (
             <View key={i} style={s.li} wrap={false}>
               <Text style={s.liNum}>{String(i + 1).padStart(2, "0")}</Text>
+              <Text style={s.liText}>{p}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {data.procedimiento && data.procedimiento.length > 0 && (
+        <View style={base.seccion}>
+          <Text style={s.h2}>PROCEDIMIENTO PASO A PASO</Text>
+          {data.procedimiento.map((p, i) => (
+            <View key={i} style={s.li} wrap={false}>
+              <Text style={s.liNum}>{String(i + 1).padStart(2, "0")}</Text>
+              <Text style={s.liText}>{p}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {data.erroresComunes && data.erroresComunes.length > 0 && (
+        <View style={base.seccion}>
+          <Text style={s.h2}>ERRORES COMUNES</Text>
+          {data.erroresComunes.map((p, i) => (
+            <View key={i} style={s.li} wrap={false}>
+              <Text style={s.liBullet}>✕</Text>
+              <Text style={s.liText}>{p}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {data.checklistAplicacion && data.checklistAplicacion.length > 0 && (
+        <View style={base.seccion}>
+          <Text style={s.h2}>CHECKLIST DE APLICACIÓN</Text>
+          {data.checklistAplicacion.map((p, i) => (
+            <View key={i} style={s.li} wrap={false}>
+              <Text style={s.liBullet}>☐</Text>
+              <Text style={s.liText}>{p}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {data.recursos && data.recursos.length > 0 && (
+        <View style={base.seccion}>
+          <Text style={s.h2}>RECURSOS Y ENLACES</Text>
+          {data.recursos.map((p, i) => (
+            <View key={i} style={s.li} wrap={false}>
+              <Text style={s.liBullet}>→</Text>
               <Text style={s.liText}>{p}</Text>
             </View>
           ))}

@@ -33,6 +33,13 @@ interface Sesion {
   impartidor: string;
   estado: string;
   notas: string | null;
+  subArea: string | null;
+  publicoObjetivo: string | null;
+  prerrequisitos: string[];
+  procedimiento: string[];
+  erroresComunes: string[];
+  checklistAplicacion: string[];
+  recursos: string[];
   versiones: VersionMeta[];
   evaluacion: { id: string } | null;
 }
@@ -492,6 +499,13 @@ export default function CapacitacionDetailPage() {
             impartidor,
             puntos: puntos.map((p) => p.text),
             notas,
+            subArea: sesion.subArea,
+            publicoObjetivo: sesion.publicoObjetivo,
+            prerrequisitos: sesion.prerrequisitos,
+            procedimiento: sesion.procedimiento,
+            erroresComunes: sesion.erroresComunes,
+            checklistAplicacion: sesion.checklistAplicacion,
+            recursos: sesion.recursos,
           },
         }),
       });

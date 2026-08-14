@@ -43,7 +43,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { id } = await params;
   const body = await req.json();
 
-  const { notas, puntosEditados, estado, fechaProgramada, duracion, impartidor } = body;
+  const {
+    notas, puntosEditados, estado, fechaProgramada, duracion, impartidor,
+    subArea, publicoObjetivo, prerrequisitos, procedimiento, erroresComunes,
+    checklistAplicacion, recursos,
+  } = body;
 
   // Fetch current state to determine auto-state promotion
   const current = await prisma.sesionCapacitacion.findUnique({
@@ -60,6 +64,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (fechaProgramada !== undefined) updateData.fechaProgramada = fechaProgramada ? new Date(fechaProgramada) : null;
   if (duracion !== undefined) updateData.duracion = duracion;
   if (impartidor !== undefined) updateData.impartidor = impartidor;
+  if (subArea !== undefined) updateData.subArea = subArea;
+  if (publicoObjetivo !== undefined) updateData.publicoObjetivo = publicoObjetivo;
+  if (prerrequisitos !== undefined) updateData.prerrequisitos = prerrequisitos;
+  if (procedimiento !== undefined) updateData.procedimiento = procedimiento;
+  if (erroresComunes !== undefined) updateData.erroresComunes = erroresComunes;
+  if (checklistAplicacion !== undefined) updateData.checklistAplicacion = checklistAplicacion;
+  if (recursos !== undefined) updateData.recursos = recursos;
 
   // Auto-promote: pendiente → en-preparacion when notes or points are updated
   if (current.estado === "pendiente" && (notas !== undefined || puntosEditados !== undefined)) {
