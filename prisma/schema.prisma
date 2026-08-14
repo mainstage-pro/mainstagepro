@@ -964,6 +964,7 @@ model CategoriaEquipo {
   id                 String      @id @default(cuid())
   nombre             String      @unique
   orden              Int         @default(0)
+  disciplina         String? // AUDIO | ILUMINACION | VIDEO | STAGE | ELECTRICIDAD | RIGGING | DJ | PRODUCCION | STAFF_GENERAL — liga con los roles técnicos para sugerirlos al cotizar
   descripcionInterna String? // Descripción amplia interna (módulo de inventario)
   descMusical        String? // Descripción amigable para eventos musicales (cotización/presentación)
   descSocial         String? // Descripción amigable para eventos sociales

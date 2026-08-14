@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { calcularDescuentoVolumen, calcularDescuentoMultidia, formatCurrency, formatPct } from "@/lib/cotizador";
 import { DESCUENTO_B2B, IVA, VIABILIDAD, JORNADA_LABELS } from "@/lib/constants";
 import { getSugerenciasTecnicos } from "@/lib/sugerencias-tecnicos";
+import { DISCIPLINA_LABELS, DISCIPLINA_COLORS } from "@/lib/disciplinaColors";
 import { diasEvento } from "@/lib/fechas-evento";
 import VenuePicker from "@/components/ui/VenuePicker";
 import NumSelect from "@/components/ui/NumSelect";
@@ -26,7 +27,7 @@ interface Equipo {
   cantidadTotal: number;
   imagenUrl: string | null;
   proveedorDefaultId: string | null;
-  categoria: { id: string; nombre: string; orden: number };
+  categoria: { id: string; nombre: string; orden: number; disciplina?: string | null };
   proveedoresPrecios: { precio: number; proveedor: { id: string; nombre: string; empresa: string | null; prioridad: number } }[];
 }
 
@@ -42,6 +43,7 @@ interface LineaOcasional {
 interface RolTecnico {
   id: string;
   nombre: string;
+  disciplina?: string | null;
   tipoPago: string;
   tarifaAAACorta: number | null; tarifaAAAMedia: number | null; tarifaAAALarga: number | null;
   tarifaAACorta: number | null;  tarifaAAMedia: number | null;  tarifaAALarga: number | null;
@@ -839,12 +841,39 @@ function CotizadorForm() {
 
   // Categorías únicas derivadas del catálogo cargado
   const categoriasList = useMemo(() => {
-    const map = new Map<string, { id: string; nombre: string }>();
+    const map = new Map<string, { id: string; nombre: string; disciplina: string | null }>();
     for (const eq of equipos) {
-      if (!map.has(eq.categoria.id)) map.set(eq.categoria.id, { id: eq.categoria.id, nombre: eq.categoria.nombre });
+      if (!map.has(eq.categoria.id)) map.set(eq.categoria.id, { id: eq.categoria.id, nombre: eq.categoria.nombre, disciplina: eq.categoria.disciplina ?? null });
     }
     return Array.from(map.values()).sort((a, b) => a.nombre.localeCompare(b.nombre));
   }, [equipos]);
+
+  // Roles técnicos sugeridos según la disciplina del equipo seleccionado en la cotización.
+  // Reúne las disciplinas de: equipos ya agregados (propios/terceros), categorías de
+  // interés del descubrimiento y equipos específicos elegidos. Con ellas lista los roles
+  // vigentes de esas disciplinas (sin cantidades) para orientar el plan de jornadas.
+  const rangoRol = (n: string) => { const s = n.toLowerCase(); return s.includes("ingenier") ? 0 : s.includes("operador") ? 1 : (s.includes("técnico") || s.includes("tecnico")) ? 2 : 1.5; };
+  const rolesSugeridos = useMemo(() => {
+    const discPorCat = new Map<string, string | null>();
+    for (const c of categoriasList) discPorCat.set(c.id, c.disciplina);
+    const discPorEquipo = new Map<string, string | null>();
+    for (const e of equipos) discPorEquipo.set(e.id, e.categoria.disciplina ?? null);
+
+    const discs = new Set<string>();
+    for (const l of lineasEquipo) { const d = discPorEquipo.get(l.equipoId); if (d) discs.add(d); }
+    for (const l of lineasExterno) { const d = discPorEquipo.get(l.equipoId); if (d) discs.add(d); }
+    for (const catId of equiposInteres.categorias) { const d = discPorCat.get(catId); if (d) discs.add(d); }
+    for (const eqId of equiposInteres.equipos) { const d = discPorEquipo.get(eqId); if (d) discs.add(d); }
+
+    if (discs.size === 0) return [] as RolTecnico[];
+    return roles
+      .filter(r => r.disciplina && discs.has(r.disciplina) && r.nombre !== "DJ")
+      .sort((a, b) =>
+        (a.disciplina ?? "").localeCompare(b.disciplina ?? "") ||
+        rangoRol(a.nombre) - rangoRol(b.nombre) ||
+        a.nombre.localeCompare(b.nombre)
+      );
+  }, [roles, equipos, categoriasList, lineasEquipo, lineasExterno, equiposInteres.categorias, equiposInteres.equipos]);
 
   // ── Agregar equipo ──
   async function agregarEquipo() {
@@ -1127,6 +1156,19 @@ function CotizadorForm() {
       id: uid(), rolTecnicoId: rol.id, descripcion: rol.nombre,
       nivel, jornada: selRolJornada, cantidad, dias,
       precioUnitario: tarifa, subtotal: tarifa * cantidad * dias,
+    }]);
+  }
+
+  // Agrega un rol sugerido a operación técnica con cantidad 1 (editable después).
+  function agregarRolSugerido(rol: RolTecnico) {
+    const dias = parseInt(evento.diasOperacion) || 1;
+    const nivel = rol.tipoPago === "POR_JORNADA" ? "AAA" : selRolNivel;
+    const tarifa = getRolTarifa(rol, nivel, selRolJornada);
+    if (lineasOp.some(l => l.rolTecnicoId === rol.id && l.jornada === selRolJornada)) return;
+    setLineasOp(prev => [...prev, {
+      id: uid(), rolTecnicoId: rol.id, descripcion: rol.nombre,
+      nivel, jornada: selRolJornada, cantidad: 1, dias,
+      precioUnitario: tarifa, subtotal: tarifa * dias,
     }]);
   }
 
@@ -3150,6 +3192,36 @@ function CotizadorForm() {
                 </>
               )}
             </div>
+            {rolesSugeridos.length > 0 && (
+              <div className="mb-4 bg-[#0d0d0d] border border-[#B3985B]/30 rounded-xl p-4">
+                <p className="text-[#B3985B] text-[10px] font-bold uppercase tracking-wider mb-1 inline-flex items-center gap-1.5">
+                  <Sparkles strokeWidth={1.75} className="w-3.5 h-3.5" /> Técnicos sugeridos
+                </p>
+                <p className="text-gray-500 text-xs mb-3">Según el equipo seleccionado. Antes de armar las jornadas, estos son los roles que probablemente necesites (sin cantidades — tú las defines).</p>
+                <div className="flex flex-wrap gap-2">
+                  {rolesSugeridos.map(rol => {
+                    const disc = rol.disciplina ?? "";
+                    const color = DISCIPLINA_COLORS[disc] ?? "#9ca3af";
+                    const yaAgregado = lineasOp.some(l => l.rolTecnicoId === rol.id);
+                    return (
+                      <button
+                        key={rol.id}
+                        type="button"
+                        onClick={() => agregarRolSugerido(rol)}
+                        disabled={yaAgregado}
+                        title={yaAgregado ? "Ya agregado a operación técnica" : "Agregar a operación técnica"}
+                        className="group flex items-center gap-2 text-sm bg-[#111] border border-[#1e1e1e] rounded-full pl-2.5 pr-3 py-1 hover:border-[#B3985B]/50 disabled:opacity-50 disabled:cursor-default transition-colors"
+                      >
+                        <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                        <span className="text-gray-200">{rol.nombre}</span>
+                        <span className="text-[9px] uppercase tracking-wider" style={{ color }}>{DISCIPLINA_LABELS[disc] ?? disc}</span>
+                        <span className="text-[11px] text-gray-500 group-hover:text-[#B3985B]">{yaAgregado ? "✓" : "+"}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             <p className="text-xs text-gray-500 mb-3">Define cada día de trabajo por fecha y tipo de operación (montaje, operación del evento, desmontaje). Puedes registrar desde un solo día hasta múltiples jornadas agregando días.</p>
             {jornadasPlan.map((jornada, ji) => {
               const pending = pendingSlots[jornada.id] ?? { rolId: "", nivel: "AA", jornada: "CORTA", cantidad: "1" };
