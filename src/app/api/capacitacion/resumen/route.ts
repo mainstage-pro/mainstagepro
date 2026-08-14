@@ -45,21 +45,39 @@ export async function GET() {
       evaluacion: {
         select: {
           minAprobar: true,
+          preguntas: true,
           sesion: { select: { titulo: true, numero: true, categoria: { select: { nombre: true, color: true } } } },
         },
       },
     },
   });
-  const historial = intentosFull.map((it) => ({
-    usuario: it.usuario.name,
-    area: it.usuario.area,
-    sesionTitulo: it.evaluacion.sesion.titulo,
-    categoria: it.evaluacion.sesion.categoria,
-    calificacion: it.calificacion,
-    aprobado: it.aprobado,
-    minAprobar: it.evaluacion.minAprobar,
-    creadoEn: it.creadoEn,
-  }));
+  type Pregunta = { pregunta: string; opciones: string[]; correcta: number };
+  const historial = intentosFull.map((it) => {
+    const preguntas = (Array.isArray(it.evaluacion.preguntas) ? it.evaluacion.preguntas : []) as unknown as Pregunta[];
+    const respuestas = (Array.isArray(it.respuestas) ? it.respuestas : []) as unknown as number[];
+    const detalle = preguntas.map((q, i) => {
+      const elegidaIdx = respuestas[i];
+      return {
+        pregunta: q.pregunta,
+        elegida: q.opciones?.[elegidaIdx] ?? "(sin responder)",
+        correcta: q.opciones?.[q.correcta] ?? "",
+        ok: elegidaIdx === q.correcta,
+      };
+    });
+    return {
+      usuario: it.usuario.name,
+      area: it.usuario.area,
+      sesionTitulo: it.evaluacion.sesion.titulo,
+      categoria: it.evaluacion.sesion.categoria,
+      calificacion: it.calificacion,
+      aprobado: it.aprobado,
+      minAprobar: it.evaluacion.minAprobar,
+      creadoEn: it.creadoEn,
+      aciertos: detalle.filter((d) => d.ok).length,
+      total: detalle.length,
+      detalle,
+    };
+  });
 
   const registros = progresos.map((p) => {
     const evalId = p.sesion.evaluacion?.id;
