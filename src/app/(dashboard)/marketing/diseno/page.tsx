@@ -72,9 +72,33 @@ export default async function DisenoHub() {
         <h1 style={{ color: "#fff", fontSize: 30, fontWeight: 800, letterSpacing: -0.6, margin: 0 }}>
           Diseño
         </h1>
-        <p style={{ color: "#8a8578", fontSize: 15, marginTop: 8, marginBottom: 40 }}>
+        <p style={{ color: "#8a8578", fontSize: 15, marginTop: 8, marginBottom: 20 }}>
           Generador de diseños Mainstage. Cada plantilla jala datos reales de la plataforma y arma las piezas con la directriz de marca.
         </p>
+
+        <Link
+          href="/marketing/diseno/brandbook"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 16,
+            padding: "16px 22px",
+            borderRadius: 14,
+            marginBottom: 40,
+            background: "rgba(179,152,91,0.10)",
+            border: `1px solid ${GOLD}`,
+            textDecoration: "none",
+          }}
+        >
+          <span style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            <span style={{ color: "#fff", fontSize: 16, fontWeight: 700, letterSpacing: -0.3 }}>Directriz de marca</span>
+            <span style={{ color: "#b8b0a0", fontSize: 13 }}>
+              La base exacta de toda pieza: color, tipografía y reglas. Vive en tokens.ts y se descarga el brandbook.
+            </span>
+          </span>
+          <span style={{ flexShrink: 0, color: GOLD, fontSize: 22, fontWeight: 700 }}>→</span>
+        </Link>
 
         {CATEGORIAS.map(({ key, label }) => {
           const items = templatesPorCategoria(key);

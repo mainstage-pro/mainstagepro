@@ -1,5 +1,5 @@
 import React from "react";
-import { CANVAS, COLOR, SPACE, FONT, SCRIM } from "../tokens";
+import { CANVAS, COLOR, SPACE, FONT, FONT_MONO, GRID, SCRIM } from "../tokens";
 import type { BriefTecnicoData, EquipoItem, StatItem } from "./data";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -17,9 +17,9 @@ function GoldBar() {
         right: 0,
         top: 90,
         bottom: 90,
-        width: 7,
+        width: 4,
         display: "flex",
-        background: `linear-gradient(180deg, rgba(179,152,91,0) 0%, ${COLOR.goldBright} 50%, rgba(179,152,91,0) 100%)`,
+        background: `linear-gradient(180deg, rgba(179,152,91,0) 0%, ${COLOR.gold} 50%, rgba(179,152,91,0) 100%)`,
       }}
     />
   );
@@ -55,11 +55,11 @@ function CornerNumber({ index }: { index: number }) {
         bottom: 18,
         display: "flex",
         fontFamily: FONT,
-        fontWeight: 900,
+        fontWeight: 800,
         fontSize: 300,
         lineHeight: 1,
         letterSpacing: -6,
-        color: "rgba(179,152,91,0.13)",
+        color: "rgba(179,152,91,0.07)",
       }}
     >
       {String(index).padStart(2, "0")}
@@ -114,9 +114,9 @@ function Title({ gold, white, size = 92 }: { gold: string; white: string; size?:
   const base: React.CSSProperties = {
     display: "flex",
     fontFamily: FONT,
-    fontWeight: 900,
+    fontWeight: 800,
     fontSize: size,
-    lineHeight: 0.98,
+    lineHeight: 1.02,
     letterSpacing: -2,
     textTransform: "uppercase",
   };
@@ -161,7 +161,7 @@ function RichLine({ segments, size, color, lineHeight = 1.4 }: { segments: { t: 
   segments.forEach((seg, si) => {
     seg.t.split(" ").forEach((w, wi) => {
       words.push(
-        <div key={`${si}-${wi}`} style={{ display: "flex", fontWeight: seg.bold ? 900 : 400, marginRight: size * 0.28 }}>
+        <div key={`${si}-${wi}`} style={{ display: "flex", fontWeight: seg.bold ? 800 : 400, marginRight: size * 0.28 }}>
           {w}
         </div>,
       );
@@ -183,19 +183,19 @@ function EquipoRow({ item }: { item: EquipoItem }) {
         gap: 24,
         background: COLOR.cardBg,
         border: `1px solid ${COLOR.cardBorder}`,
-        borderRadius: 18,
+        borderRadius: GRID.radius,
         paddingTop: 26,
         paddingBottom: 26,
         paddingLeft: 30,
         paddingRight: 34,
       }}
     >
-      <div style={{ display: "flex", width: 13, height: 13, borderRadius: 7, background: COLOR.gold }} />
+      <div style={{ display: "flex", width: 12, height: 12, borderRadius: 6, background: COLOR.gold }} />
       <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
         <div style={{ display: "flex", fontWeight: 700, fontSize: 35, color: COLOR.white, letterSpacing: -0.5 }}>{item.nombre}</div>
-        <div style={{ display: "flex", fontWeight: 400, fontSize: 26, color: COLOR.mute, marginTop: 7 }}>{item.sub}</div>
+        <div style={{ display: "flex", fontWeight: 400, fontSize: 26, color: COLOR.textMute, marginTop: 7 }}>{item.sub}</div>
       </div>
-      <div style={{ display: "flex", fontWeight: 900, fontSize: 48, color: COLOR.gold }}>{item.cant}</div>
+      <div style={{ display: "flex", fontFamily: FONT_MONO, fontWeight: 700, fontSize: 46, color: COLOR.gold }}>{item.cant}</div>
     </div>
   );
 }
@@ -209,7 +209,7 @@ function StatRow({ item }: { item: StatItem }) {
         gap: 26,
         background: COLOR.cardBg,
         border: `1px solid ${COLOR.cardBorder}`,
-        borderRadius: 16,
+        borderRadius: GRID.radius,
         paddingTop: 22,
         paddingBottom: 22,
         paddingLeft: 32,
@@ -217,7 +217,7 @@ function StatRow({ item }: { item: StatItem }) {
       }}
     >
       <div style={{ display: "flex", width: 40 }}>{ArrowIcon}</div>
-      <div style={{ display: "flex", width: 108, fontWeight: 900, fontSize: 66, color: COLOR.gold, letterSpacing: -2 }}>{item.n}</div>
+      <div style={{ display: "flex", width: 108, fontFamily: FONT_MONO, fontWeight: 700, fontSize: 62, color: COLOR.gold, letterSpacing: -2 }}>{item.n}</div>
       <div style={{ display: "flex", fontWeight: 700, fontSize: 35, color: COLOR.white, letterSpacing: 0.3, textTransform: "uppercase" }}>{item.label}</div>
     </div>
   );
@@ -234,13 +234,13 @@ function InfoCard({ label, value }: { label: string; value: string }) {
         minHeight: 152,
         background: COLOR.cardBg,
         border: `1px solid ${COLOR.cardBorder}`,
-        borderRadius: 16,
+        borderRadius: GRID.radius,
         paddingLeft: 30,
         paddingRight: 24,
         gap: 12,
       }}
     >
-      <div style={{ display: "flex", fontWeight: 700, fontSize: 21, letterSpacing: 3, color: COLOR.gold, textTransform: "uppercase" }}>{label}</div>
+      <div style={{ display: "flex", fontWeight: 600, fontSize: 21, letterSpacing: 4, color: COLOR.gold, textTransform: "uppercase" }}>{label}</div>
       <div style={{ display: "flex", fontWeight: 700, fontSize: 33, color: COLOR.white, lineHeight: 1.12 }}>{value}</div>
     </div>
   );

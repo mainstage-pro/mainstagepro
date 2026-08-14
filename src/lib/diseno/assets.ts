@@ -5,22 +5,38 @@ import { CANVAS } from "./tokens";
 // serverless: se sirve por CDN. Por eso leemos los assets por HTTP desde el
 // propio origin del request (fetch), no con fs. Todo se cachea a nivel módulo.
 
-export const FONT_NAME = "Inter";
+export const FONT_NAME = "Montserrat";
+export const FONT_MONO_NAME = "JetBrains Mono";
 
-let fontCache: { name: string; data: ArrayBuffer; weight: 400 | 700 | 900; style: "normal" }[] | null = null;
+type FontFace = { name: string; data: ArrayBuffer; weight: 300 | 400 | 600 | 700 | 800; style: "normal" };
+let fontCache: FontFace[] | null = null;
 
-// Fuentes Inter (woff) servidas desde /public/diseno/fonts.
-export async function interFonts(origin: string) {
+// Tipografías de marca (TTF) servidas desde /public/diseno/fonts.
+// Montserrat (300/400/600/700/800) para todo + JetBrains Mono para datos.
+export async function brandFonts(origin: string): Promise<FontFace[]> {
   if (fontCache) return fontCache;
   const load = async (f: string) => {
     const res = await fetch(`${origin}/diseno/fonts/${f}`);
     if (!res.ok) throw new Error(`font ${f}: ${res.status}`);
     return res.arrayBuffer();
   };
+  const [m3, m4, m6, m7, m8, jm4, jm7] = await Promise.all([
+    load("montserrat-300.ttf"),
+    load("montserrat-400.ttf"),
+    load("montserrat-600.ttf"),
+    load("montserrat-700.ttf"),
+    load("montserrat-800.ttf"),
+    load("jetbrainsmono-400.ttf"),
+    load("jetbrainsmono-700.ttf"),
+  ]);
   fontCache = [
-    { name: FONT_NAME, data: await load("inter-400.woff"), weight: 400, style: "normal" },
-    { name: FONT_NAME, data: await load("inter-700.woff"), weight: 700, style: "normal" },
-    { name: FONT_NAME, data: await load("inter-900.woff"), weight: 900, style: "normal" },
+    { name: FONT_NAME, data: m3, weight: 300, style: "normal" },
+    { name: FONT_NAME, data: m4, weight: 400, style: "normal" },
+    { name: FONT_NAME, data: m6, weight: 600, style: "normal" },
+    { name: FONT_NAME, data: m7, weight: 700, style: "normal" },
+    { name: FONT_NAME, data: m8, weight: 800, style: "normal" },
+    { name: FONT_MONO_NAME, data: jm4, weight: 400, style: "normal" },
+    { name: FONT_MONO_NAME, data: jm7, weight: 700, style: "normal" },
   ];
   return fontCache;
 }

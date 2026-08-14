@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-import { interFonts, localImage, localPng } from "./assets";
+import { brandFonts, localImage, localPng } from "./assets";
 import { getTemplate } from "./registry";
 import { getRenderer } from "./renderers";
 import { applyOverrides, type DesignOverrides } from "./overrides";
@@ -50,7 +50,7 @@ export async function renderDesign(
   const [bg, logo, fonts] = await Promise.all([
     localImage(origin, bgRef),
     localPng(origin, "logo-white.png"),
-    interFonts(origin),
+    brandFonts(origin),
   ]);
 
   return new ImageResponse(renderer.render(slide, data, { bg, logo }, index), {
