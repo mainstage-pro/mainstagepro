@@ -1197,6 +1197,7 @@ model RolTecnico {
   cotizacionLineas CotizacionLinea[]
   proyectoPersonal ProyectoPersonal[]
   tecnicos         Tecnico[]
+  tecnicoRoles     TecnicoRol[]
   paqueteConceptos PaqueteConcepto[]
 
   @@map("roles_tecnicos")
@@ -1207,23 +1208,34 @@ model Tecnico {
   nombre             String
   celular            String?
   rolId              String?
-  rol                RolTecnico? @relation(fields: [rolId], references: [id])
+  rol                RolTecnico? @relation(fields: [rolId], references: [id]) // rol principal (derivado del primero de roles)
   nivel              String      @default("A") // AAA | AA | A
   zonaHabitual       String?
   evaluacionPromedio Float?
   cuentaBancaria     String?
   datosFiscales      String?
   activo             Boolean     @default(true)
-  prioridad          Int         @default(0) // 0=sin prioridad, 1-3=estrellas
+  prioridad          Int         @default(0) // 0=normal, 1=preferente
   comentarios        String?
   habilidades        String? // JSON array of skill tags
-  disciplina         String[]    @default([])
+  disciplina         String[]    @default([]) // derivado de los roles asignados
   createdAt          DateTime    @default(now())
 
+  roles            TecnicoRol[]
   proyectoPersonal ProyectoPersonal[]
   cuentasPagar     CuentaPagar[]
 
   @@map("tecnicos")
+}
+
+model TecnicoRol {
+  tecnicoId    String
+  rolTecnicoId String
+  tecnico      Tecnico    @relation(fields: [tecnicoId], references: [id], onDelete: Cascade)
+  rolTecnico   RolTecnico @relation(fields: [rolTecnicoId], references: [id], onDelete: Cascade)
+
+  @@id([tecnicoId, rolTecnicoId])
+  @@map("tecnico_roles")
 }
 
 model Proveedor {

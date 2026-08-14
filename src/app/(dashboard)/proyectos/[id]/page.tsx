@@ -33,6 +33,7 @@ interface SugerenciaTecnico {
   id: string; nombre: string; celular: string | null; nivel: string | null;
   prioridad: number; evaluacionPromedio: number | null; zonaHabitual: string | null;
   rol: { id: string; nombre: string } | null;
+  rolCoincide?: boolean;
   yaAsignado: boolean; ocupado: boolean;
 }
 interface Personal {
@@ -3010,17 +3011,24 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   }
 
   // ── Sugerencias de técnicos por disciplina (operación técnica) ──
-  async function cargarSugerencias(disciplina: string, nivel: string | null, key: string) {
-    if (sugerenciasAbiertas === key) { setSugerenciasAbiertas(null); return; }
-    setSugerenciasAbiertas(key);
-    if (sugerenciasCache[key]) return; // ya cacheado
-    setSugerenciasLoading(key);
-    const qs = new URLSearchParams({ disciplina });
+  async function cargarSugerencias(
+    disciplina: string, nivel: string | null, key: string,
+    opts?: { rolId?: string | null; todos?: boolean },
+  ) {
+    const cacheKey = opts?.todos ? `${key}::todos` : key;
+    if (sugerenciasAbiertas === cacheKey) { setSugerenciasAbiertas(null); return; }
+    setSugerenciasAbiertas(cacheKey);
+    if (sugerenciasCache[cacheKey]) return; // ya cacheado
+    setSugerenciasLoading(cacheKey);
+    const qs = new URLSearchParams();
+    if (disciplina) qs.set("disciplina", disciplina);
     if (nivel) qs.set("nivel", nivel);
+    if (opts?.rolId) qs.set("rolId", opts.rolId);
+    if (opts?.todos) qs.set("todos", "true");
     const res = await fetch(`/api/proyectos/${id}/sugerencias-tecnicos?${qs.toString()}`);
     if (res.ok) {
       const d = await res.json();
-      setSugerenciasCache(prev => ({ ...prev, [key]: d.sugerencias ?? [] }));
+      setSugerenciasCache(prev => ({ ...prev, [cacheKey]: d.sugerencias ?? [] }));
     }
     setSugerenciasLoading(null);
   }
@@ -5211,9 +5219,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     {lineas.map(linea => {
                       const disciplina = linea.rolTecnico?.disciplina ?? null;
                       const sugKey = linea.id;
-                      const abierto = sugerenciasAbiertas === sugKey;
-                      const sugerencias = sugerenciasCache[sugKey] ?? [];
-                      const cargando = sugerenciasLoading === sugKey;
+                      const sugKeyTodos = `${linea.id}::todos`;
+                      const abiertoRol = sugerenciasAbiertas === sugKey;
+                      const abiertoTodos = sugerenciasAbiertas === sugKeyTodos;
+                      const abierto = abiertoRol || abiertoTodos;
+                      const activeKey = abiertoTodos ? sugKeyTodos : sugKey;
+                      const sugerencias = sugerenciasCache[activeKey] ?? [];
+                      const cargando = sugerenciasLoading === activeKey;
                       return (
                       <div key={linea.id} className="py-2">
                         <div className="flex items-center gap-3">
@@ -5235,13 +5247,22 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                           <div className="text-right shrink-0">
                             <div className="text-xs text-[#B3985B] font-semibold">{fmt(linea.precioUnitario)}<span className="text-gray-600 font-normal"> × {linea.cantidad}</span></div>
                           </div>
-                          {disciplina ? (
-                            <button
-                              onClick={() => cargarSugerencias(disciplina, linea.nivel, sugKey)}
-                              className={`shrink-0 text-xs px-3 py-1.5 rounded-lg transition-colors border ${abierto ? "bg-[#B3985B]/20 border-[#B3985B]/40 text-[#B3985B]" : "bg-[#1e1e1e] hover:bg-[#2a2a2a] border-[#2a2a2a] text-gray-300"}`}
-                            >
-                              {abierto ? "Ocultar" : "Sugerir técnicos"}
-                            </button>
+                          {disciplina || linea.rolTecnicoId ? (
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                onClick={() => cargarSugerencias(disciplina ?? "", linea.nivel, sugKey, { rolId: linea.rolTecnicoId })}
+                                className={`text-xs px-3 py-1.5 rounded-lg transition-colors border ${abiertoRol ? "bg-[#B3985B]/20 border-[#B3985B]/40 text-[#B3985B]" : "bg-[#1e1e1e] hover:bg-[#2a2a2a] border-[#2a2a2a] text-gray-300"}`}
+                              >
+                                {abiertoRol ? "Ocultar" : "Sugerir técnicos"}
+                              </button>
+                              <button
+                                onClick={() => cargarSugerencias(disciplina ?? "", linea.nivel, sugKey, { rolId: linea.rolTecnicoId, todos: true })}
+                                title="Elegir de todo el directorio de técnicos"
+                                className={`text-[11px] px-2.5 py-1.5 rounded-lg transition-colors border ${abiertoTodos ? "bg-[#B3985B]/20 border-[#B3985B]/40 text-[#B3985B]" : "bg-transparent hover:bg-[#1e1e1e] border-[#2a2a2a] text-gray-500 hover:text-gray-300"}`}
+                              >
+                                {abiertoTodos ? "Ocultar" : "Cualquiera"}
+                              </button>
+                            </div>
                           ) : (
                             <a
                               href="/catalogo/roles"
@@ -5265,7 +5286,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             {cargando ? (
                               <div className="text-[11px] text-gray-500 py-2">Cargando técnicos…</div>
                             ) : sugerencias.length === 0 ? (
-                              <div className="text-[11px] text-gray-600 py-2">Sin técnicos de esta disciplina en la base.</div>
+                              <div className="text-[11px] text-gray-600 py-2">{abiertoTodos ? "No hay técnicos en el directorio." : "Sin técnicos de esta disciplina en la base."}</div>
                             ) : (
                               sugerencias.map(s => (
                                 <div key={s.id} className="flex items-center gap-2 py-1">
@@ -5273,7 +5294,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                     <div className="flex items-center gap-1.5">
                                       <span className={`text-xs truncate ${s.yaAsignado ? "text-gray-500 line-through" : "text-white"}`}>{s.nombre}</span>
                                       {s.nivel && <span className="text-[9px] text-gray-500 shrink-0">{s.nivel}</span>}
-                                      {s.prioridad > 0 && <span className="text-[9px] text-[#B3985B] shrink-0">{"★".repeat(s.prioridad)}</span>}
+                                      {s.prioridad > 0 && <span className="text-[9px] text-[#B3985B] shrink-0" title="Técnico preferente">★</span>}
+                                      {s.rolCoincide && <span className="text-[9px] text-green-400 bg-green-900/20 px-1 rounded shrink-0">rol exacto</span>}
                                       {s.ocupado && <span className="text-[9px] text-red-400 bg-red-900/20 px-1 rounded shrink-0">ocupado ese día</span>}
                                     </div>
                                     <div className="flex items-center gap-2 mt-0.5">

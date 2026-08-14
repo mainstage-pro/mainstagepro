@@ -7,19 +7,20 @@ import { Modal } from "@/components/Modal";
 import { DISCIPLINA_COLORS, DISCIPLINA_LABELS, DISCIPLINAS } from "@/lib/disciplinaColors";
 import { Sliders, Users } from "lucide-react";
 
-type Rol = { id: string; nombre: string };
+type Rol = { id: string; nombre: string; disciplina?: string | null };
 type Tecnico = {
   id: string;
   nombre: string;
   celular: string | null;
   rolId: string | null;
   rol: Rol | null;
+  roles: { id: string; nombre: string; disciplina: string | null }[];
   nivel: string;
   zonaHabitual: string | null;
   cuentaBancaria: string | null;
   datosFiscales: string | null;
   activo: boolean;
-  prioridad: number;
+  prioridad: number; // 0=normal, 1=preferente
   comentarios: string | null;
   evaluacionPromedio: number | null;
   habilidades: string | null;
@@ -45,56 +46,37 @@ const NIVEL_COLORS: Record<string, string> = {
   A:   "text-gray-400 bg-gray-800/20 border-gray-700/40",
 };
 
-function DisciplinaPill({ disc, size = 'sm' }: { disc: string; size?: 'sm' | 'xs' }) {
-  const color = DISCIPLINA_COLORS[disc] ?? '#6b7280';
-  const label = DISCIPLINA_LABELS[disc] ?? disc;
-  const cls = size === 'xs'
-    ? 'text-[9px] px-1.5 py-0.5'
-    : 'text-[11px] px-2 py-0.5';
+/** Pastilla de rol, coloreada por su disciplina. */
+function RolPill({ nombre, disciplina, size = 'sm' }: { nombre: string; disciplina: string | null; size?: 'sm' | 'xs' }) {
+  const color = disciplina ? (DISCIPLINA_COLORS[disciplina] ?? '#6b7280') : '#6b7280';
+  const cls = size === 'xs' ? 'text-[9px] px-1.5 py-0.5' : 'text-[11px] px-2 py-0.5';
   return (
-    <span
-      className={`${cls} rounded-full font-medium text-white whitespace-nowrap`}
-      style={{ backgroundColor: color }}
-    >
-      {label}
+    <span className={`${cls} rounded-full font-medium text-white whitespace-nowrap`} style={{ backgroundColor: color }}>
+      {nombre}
     </span>
   );
 }
 
 const STAR_COLOR = '#c9a96a';
 
-function StarRating({ value, onChange, size = 16 }: {
-  value: number;
-  onChange?: (v: number) => void;
-  size?: number;
-}) {
+/** Estrella única = técnico preferente (on/off). */
+function PrefStar({ on, onToggle, size = 16 }: { on: boolean; onToggle?: () => void; size?: number }) {
   return (
-    <div className="flex items-center gap-0.5">
-      {[1, 2, 3].map(n => (
-        <button
-          key={n}
-          type="button"
-          onClick={() => onChange?.(value === n ? 0 : n)}
-          className="leading-none transition-transform hover:scale-110 focus:outline-none"
-          style={{
-            fontSize: size,
-            color: n <= value ? STAR_COLOR : '#2a2a2a',
-            cursor: onChange ? 'pointer' : 'default',
-            lineHeight: 1,
-          }}
-          title={onChange ? `${n} estrella${n > 1 ? 's' : ''}` : undefined}
-        >
-          {n <= value ? '\u2605' : '\u2606'}
-        </button>
-      ))}
-    </div>
+    <button
+      type="button"
+      onClick={onToggle}
+      className="leading-none transition-transform hover:scale-110 focus:outline-none"
+      style={{ fontSize: size, color: on ? STAR_COLOR : '#2a2a2a', cursor: onToggle ? 'pointer' : 'default', lineHeight: 1 }}
+      title={on ? 'Técnico preferente' : (onToggle ? 'Marcar como preferente' : undefined)}
+    >
+      {on ? '\u2605' : '\u2606'}
+    </button>
   );
 }
 
 const EMPTY = {
-  nombre: "", celular: "", rolId: "", nivel: "A",
+  nombre: "", celular: "", roles: [] as string[], nivel: "A",
   zonaHabitual: "", cuentaBancaria: "", datosFiscales: "", comentarios: "", habilidades: "",
-  disciplina: [] as string[],
   prioridad: 0,
 };
 
@@ -117,13 +99,12 @@ export default function TecnicosPage() {
 
   const [sortBy, setSortBy] = useState<SortKey>("nombre");
   const [showInactivos, setShowInactivos] = useState(false);
-  const [inlineEdit, setInlineEdit] = useState<{ id: string; field: 'rol' | 'categoria' } | null>(null);
+  const [inlineEdit, setInlineEdit] = useState<{ id: string; field: 'roles' } | null>(null);
   const [ranking, setRanking] = useState<RankingItem[]>([]);
   const [loadingRanking, setLoadingRanking] = useState(false);
   const [detalleId, setDetalleId] = useState<string | null>(null);
   const [detalle, setDetalle] = useState<DetalleTecnico | null>(null);
   const [loadingDetalle, setLoadingDetalle] = useState(false);
-  const [prioPopover, setPrioPopover] = useState<string | null>(null);
 
   async function load() {
     const [tRes, rRes] = await Promise.all([
@@ -145,23 +126,19 @@ export default function TecnicosPage() {
     return () => window.removeEventListener('keydown', handler);
   }, [inlineEdit]);
 
-  async function saveInlineField(
-    id: string,
-    field: 'rolId' | 'disciplina',
-    value: string | string[] | null
-  ) {
-    await fetch(`/api/tecnicos/${id}`, {
+  async function saveInlineRoles(id: string, roleIds: string[]) {
+    const res = await fetch(`/api/tecnicos/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ [field]: value }),
+      body: JSON.stringify({ roles: roleIds }),
     });
+    const d = await res.json().catch(() => null);
+    const updated = d?.tecnico;
     setTecnicos(prev => prev.map(t => {
       if (t.id !== id) return t;
-      if (field === 'rolId') {
-        const newRol = value ? roles.find(r => r.id === value) ?? null : null;
-        return { ...t, rolId: value as string | null, rol: newRol ? { id: newRol.id, nombre: newRol.nombre } : null };
-      }
-      return { ...t, disciplina: value as string[] };
+      if (updated) return { ...t, ...updated };
+      const picked = roles.filter(r => roleIds.includes(r.id)).map(r => ({ id: r.id, nombre: r.nombre, disciplina: r.disciplina ?? null }));
+      return { ...t, roles: picked };
     }));
   }
 
@@ -196,17 +173,17 @@ export default function TecnicosPage() {
       const payload = {
         nombre: form.nombre,
         celular: form.celular || null,
-        rolId: form.rolId || null,
+        roles: form.roles ?? [],
         nivel: form.nivel,
         zonaHabitual: form.zonaHabitual || null,
         cuentaBancaria: form.cuentaBancaria || null,
         datosFiscales: form.datosFiscales || null,
         comentarios: form.comentarios || null,
         habilidades: habilidadesArr.length ? JSON.stringify(habilidadesArr) : null,
-        disciplina: form.disciplina ?? [],
       };
-      await fetch(`/api/tecnicos/${editing.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      setTecnicos(prev => prev.map(t => t.id === editing.id ? { ...t, ...payload } : t));
+      const res = await fetch(`/api/tecnicos/${editing.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const d = await res.json().catch(() => null);
+      setTecnicos(prev => prev.map(t => t.id === editing.id ? (d?.tecnico ? { ...t, ...d.tecnico } : t) : t));
       setAutoSaved(true); setTimeout(() => setAutoSaved(false), 2000);
     }, 1200);
   }, [form]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -217,14 +194,13 @@ export default function TecnicosPage() {
     setForm({
       nombre: t.nombre,
       celular: t.celular ?? "",
-      rolId: t.rolId ?? "",
+      roles: (t.roles ?? []).map(r => r.id),
       nivel: t.nivel,
       zonaHabitual: t.zonaHabitual ?? "",
       cuentaBancaria: t.cuentaBancaria ?? "",
       datosFiscales: t.datosFiscales ?? "",
       comentarios: t.comentarios ?? "",
       habilidades: t.habilidades ? (() => { try { return (JSON.parse(t.habilidades!) as string[]).join(", "); } catch { return t.habilidades!; } })() : "",
-      disciplina: t.disciplina ?? [],
       prioridad: t.prioridad ?? 0,
     });
     setCreating(false);
@@ -249,14 +225,13 @@ export default function TecnicosPage() {
     const payload = {
       nombre: form.nombre,
       celular: form.celular || null,
-      rolId: form.rolId || null,
+      roles: form.roles ?? [],
       nivel: form.nivel,
       zonaHabitual: form.zonaHabitual || null,
       cuentaBancaria: form.cuentaBancaria || null,
       datosFiscales: form.datosFiscales || null,
       comentarios: form.comentarios || null,
       habilidades: habilidadesArr.length ? JSON.stringify(habilidadesArr) : null,
-      disciplina: form.disciplina ?? [],
     };
     const url = editing ? `/api/tecnicos/${editing.id}` : "/api/tecnicos";
     const method = editing ? "PATCH" : "POST";
@@ -266,10 +241,9 @@ export default function TecnicosPage() {
     setSaving(false);
   }
 
-  async function handleSetPrioridad(id: string, value: number) {
-    // Optimistic update
+  async function togglePreferente(id: string, current: number) {
+    const value = current > 0 ? 0 : 1;
     setTecnicos(prev => prev.map(t => t.id === id ? { ...t, prioridad: value } : t));
-    setPrioPopover(null);
     try {
       const res = await fetch(`/api/tecnicos/${id}`, {
         method: 'PATCH',
@@ -278,7 +252,6 @@ export default function TecnicosPage() {
       });
       if (!res.ok) throw new Error('PATCH failed');
     } catch {
-      // Revert on error — reload from server
       load();
     }
   }
@@ -379,20 +352,20 @@ export default function TecnicosPage() {
                 className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
                 placeholder="442 000 0000" />
             </div>
-            {/* Categoría técnica */}
+            {/* Roles técnicos (del tabulador freelancers) */}
             <div className="col-span-2">
-              <label className="block text-xs text-gray-500 mb-2">Categoría técnica</label>
+              <label className="block text-xs text-gray-500 mb-2">Roles técnicos</label>
               <div className="flex flex-wrap gap-2">
-                {DISCIPLINAS.map(disc => {
-                  const active = (form.disciplina ?? []).includes(disc);
-                  const color = DISCIPLINA_COLORS[disc];
+                {roles.map(r => {
+                  const active = (form.roles ?? []).includes(r.id);
+                  const color = r.disciplina ? (DISCIPLINA_COLORS[r.disciplina] ?? '#6b7280') : '#6b7280';
                   return (
                     <button
-                      key={disc}
+                      key={r.id}
                       type="button"
                       onClick={() => {
-                        const cur = form.disciplina ?? [];
-                        set('disciplina', active ? cur.filter(d => d !== disc) : [...cur, disc]);
+                        const cur = form.roles ?? [];
+                        set('roles', active ? cur.filter(x => x !== r.id) : [...cur, r.id]);
                       }}
                       className="px-3 py-1.5 rounded-full text-xs font-medium border transition-all"
                       style={active
@@ -400,34 +373,22 @@ export default function TecnicosPage() {
                         : { backgroundColor: 'transparent', borderColor: '#2a2a2a', color: '#6b7280' }
                       }
                     >
-                      {DISCIPLINA_LABELS[disc]}
+                      {r.nombre}
                     </button>
                   );
                 })}
+                {roles.length === 0 && <span className="text-xs text-gray-600">No hay roles en el tabulador.</span>}
               </div>
             </div>
-            {/* Prioridad */}
+            {/* Preferente */}
             <div className="col-span-2">
-              <label className="block text-xs text-gray-500 mb-2">Prioridad</label>
+              <label className="block text-xs text-gray-500 mb-2">Preferente</label>
               <div className="flex items-center gap-3">
-                <StarRating
-                  value={form.prioridad ?? 0}
-                  onChange={v => set('prioridad', v)}
-                  size={20}
-                />
+                <PrefStar on={(form.prioridad ?? 0) > 0} onToggle={() => set('prioridad', (form.prioridad ?? 0) > 0 ? 0 : 1)} size={22} />
                 <span className="text-xs text-gray-600">
-                  {(form.prioridad ?? 0) === 0 ? 'Sin prioridad' : `${form.prioridad} estrella${(form.prioridad ?? 0) > 1 ? 's' : ''}`}
+                  {(form.prioridad ?? 0) > 0 ? 'Técnico preferente' : 'Marcar como preferente'}
                 </span>
               </div>
-            </div>
-            <div className="col-span-2">
-              <label className="text-xs text-gray-500 mb-1 block">Rol Técnico</label>
-              <Combobox
-                value={form.rolId}
-                onChange={v => set("rolId", v)}
-                options={[{ value: "", label: "Sin rol definido" }, ...roles.map(r => ({ value: r.id, label: r.nombre }))]}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-              />
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Zona habitual</label>
@@ -550,10 +511,6 @@ export default function TecnicosPage() {
         />
       )}
 
-      {prioPopover && (
-        <div className="fixed inset-0 z-40" onClick={() => setPrioPopover(null)} />
-      )}
-
       {filtered.length === 0 && !creating ? (
         <div className="text-center py-16">
           {filterDisciplina !== 'TODOS'
@@ -589,9 +546,8 @@ export default function TecnicosPage() {
             <thead className="ms-thead">
               <tr>
                 <th className="ms-th">Técnico</th>
-                <th className="ms-th">Rol</th>
-                <th className="ms-th">Categoría</th>
-                <th className="ms-th">Prioridad</th>
+                <th className="ms-th">Roles</th>
+                <th className="ms-th">Preferente</th>
                 <th className="ms-th">Zona</th>
                 <th className="ms-th">Contacto</th>
                 <th className="ms-th"></th>
@@ -613,82 +569,47 @@ export default function TecnicosPage() {
                   <td className="px-4 py-3">
                     <div className="relative">
                       <button
-                        onClick={() => setInlineEdit(inlineEdit?.id === t.id && inlineEdit.field === 'rol' ? null : { id: t.id, field: 'rol' })}
-                        className="text-sm text-gray-300 hover:text-white hover:bg-[#1a1a1a] px-2 py-1 rounded-lg transition-colors text-left w-full"
+                        onClick={() => setInlineEdit(inlineEdit?.id === t.id && inlineEdit.field === 'roles' ? null : { id: t.id, field: 'roles' })}
+                        className="flex flex-wrap gap-1 hover:opacity-80 transition-opacity min-h-[24px] items-center text-left"
+                        title="Editar roles"
                       >
-                        {t.rol?.nombre ?? <span className="text-gray-600 italic">Sin rol</span>}
-                      </button>
-
-                      {/* Rol inline popover */}
-                      {inlineEdit?.id === t.id && inlineEdit.field === 'rol' && (
-                        <div
-                          className="absolute left-0 top-full mt-1 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl p-2 min-w-[200px] max-h-64 overflow-y-auto"
-                          onClick={e => e.stopPropagation()}
-                        >
-                          <button
-                            onClick={() => { saveInlineField(t.id, 'rolId', null); setInlineEdit(null); }}
-                            className="w-full text-left px-3 py-1.5 text-xs text-gray-500 italic hover:bg-[#1a1a1a] rounded-lg transition-colors"
-                          >
-                            Sin rol
-                          </button>
-                          {roles.map(r => (
-                            <button
-                              key={r.id}
-                              onClick={() => { saveInlineField(t.id, 'rolId', r.id); setInlineEdit(null); }}
-                              className={`w-full text-left px-3 py-1.5 text-xs rounded-lg transition-colors ${
-                                t.rolId === r.id ? 'bg-[#c9a96a]/10 text-[#c9a96a]' : 'text-gray-300 hover:bg-[#1a1a1a]'
-                              }`}
-                            >
-                              {r.nombre}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="relative">
-                      <button
-                        onClick={() => setInlineEdit(inlineEdit?.id === t.id && inlineEdit.field === 'categoria' ? null : { id: t.id, field: 'categoria' })}
-                        className="flex flex-wrap gap-1 hover:opacity-80 transition-opacity min-h-[24px] items-center"
-                        title="Editar categoría"
-                      >
-                        {(t.disciplina ?? []).length === 0 ? (
-                          <span className="text-gray-600 text-xs italic">Sin categoría</span>
+                        {(t.roles ?? []).length === 0 ? (
+                          <span className="text-gray-600 text-xs italic">Sin roles</span>
                         ) : (
-                          (t.disciplina ?? []).map(disc => <DisciplinaPill key={disc} disc={disc} size="xs" />)
+                          (t.roles ?? []).map(r => <RolPill key={r.id} nombre={r.nombre} disciplina={r.disciplina} size="xs" />)
                         )}
                       </button>
 
-                      {/* Categoría inline popover */}
-                      {inlineEdit?.id === t.id && inlineEdit.field === 'categoria' && (
+                      {/* Roles inline popover (multi-select) */}
+                      {inlineEdit?.id === t.id && inlineEdit.field === 'roles' && (
                         <div
-                          className="absolute left-0 top-full mt-1 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl p-3 min-w-[220px]"
+                          className="absolute left-0 top-full mt-1 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl p-3 min-w-[240px] max-h-72 overflow-y-auto"
                           onClick={e => e.stopPropagation()}
                         >
-                          <p className="text-[9px] text-gray-600 uppercase tracking-wider mb-2">Categoría técnica</p>
+                          <p className="text-[9px] text-gray-600 uppercase tracking-wider mb-2">Roles técnicos</p>
                           <div className="flex flex-wrap gap-2">
-                            {DISCIPLINAS.map(disc => {
-                              const active = (t.disciplina ?? []).includes(disc);
-                              const color = DISCIPLINA_COLORS[disc];
+                            {roles.map(r => {
+                              const active = (t.roles ?? []).some(x => x.id === r.id);
+                              const color = r.disciplina ? (DISCIPLINA_COLORS[r.disciplina] ?? '#6b7280') : '#6b7280';
                               return (
                                 <button
-                                  key={disc}
+                                  key={r.id}
                                   type="button"
                                   onClick={() => {
-                                    const cur = t.disciplina ?? [];
-                                    const next = active ? cur.filter(d => d !== disc) : [...cur, disc];
-                                    saveInlineField(t.id, 'disciplina', next);
+                                    const cur = (t.roles ?? []).map(x => x.id);
+                                    const next = active ? cur.filter(x => x !== r.id) : [...cur, r.id];
+                                    saveInlineRoles(t.id, next);
                                   }}
                                   className="px-2.5 py-1 rounded-full text-xs font-medium border transition-all"
                                   style={active
                                     ? { backgroundColor: color, borderColor: color, color: '#fff' }
                                     : { backgroundColor: 'transparent', borderColor: '#2a2a2a', color: '#6b7280' }}
                                 >
-                                  {DISCIPLINA_LABELS[disc]}
+                                  {r.nombre}
                                 </button>
                               );
                             })}
+                            {roles.length === 0 && <span className="text-xs text-gray-600">No hay roles en el tabulador.</span>}
                           </div>
                           <button
                             onClick={() => setInlineEdit(null)}
@@ -701,40 +622,7 @@ export default function TecnicosPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="relative">
-                      <button
-                        onClick={() => setPrioPopover(prioPopover === t.id ? null : t.id)}
-                        className="flex items-center gap-1.5 cursor-pointer group"
-                      >
-                        <StarRating value={t.prioridad} size={13} />
-                        {t.prioridad === 0 && <span className="text-[9px] text-gray-700">Sin prioridad</span>}
-                      </button>
-
-                      {prioPopover === t.id && (
-                        <div
-                          className="ms-dropdown left-0 top-full mt-1 py-2"
-                          style={{ width: 180 }}
-                          onClick={e => e.stopPropagation()}
-                        >
-                          <p className="text-[9px] text-gray-600 uppercase tracking-wider px-3 pb-2">Prioridad</p>
-                          {([0, 1, 2, 3] as const).map(n => (
-                            <button
-                              key={n}
-                              onClick={() => handleSetPrioridad(t.id, n)}
-                              className={`w-full flex items-center justify-between px-3 py-2 text-xs transition-colors ${
-                                t.prioridad === n ? 'bg-[#1e1e1e] text-white' : 'text-gray-400 hover:bg-[#1a1a1a]'
-                              }`}
-                            >
-                              <div className="flex items-center gap-2">
-                                <StarRating value={n} size={11} />
-                                <span>{n === 0 ? 'Sin prioridad' : n === 1 ? '1 estrella' : n === 2 ? '2 estrellas' : '3 estrellas'}</span>
-                              </div>
-                              {t.prioridad === n && <span style={{ color: STAR_COLOR }} className="text-xs">✓</span>}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                    <PrefStar on={t.prioridad > 0} onToggle={() => togglePreferente(t.id, t.prioridad)} size={15} />
                   </td>
                   <td className="px-4 py-3 text-xs text-[#6b7280]">{t.zonaHabitual ?? "—"}</td>
                   <td className="px-4 py-3 text-xs text-[#6b7280]">
@@ -763,20 +651,19 @@ export default function TecnicosPage() {
                   <td className="px-4 py-3">
                     <p className="text-gray-400 text-sm">{t.nombre}</p>
                   </td>
-                  <td className="px-4 py-3 text-xs text-[#555]">{t.rol?.nombre ?? "—"}</td>
                   <td className="px-4 py-3">
-                    {(t.disciplina ?? []).length === 0 ? (
+                    {(t.roles ?? []).length === 0 ? (
                       <span className="text-gray-700">—</span>
                     ) : (
                       <div className="flex flex-wrap gap-1">
-                        {(t.disciplina ?? []).map(disc => (
-                          <DisciplinaPill key={disc} disc={disc} size="xs" />
+                        {(t.roles ?? []).map(r => (
+                          <RolPill key={r.id} nombre={r.nombre} disciplina={r.disciplina} size="xs" />
                         ))}
                       </div>
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    {t.prioridad > 0 && <StarRating value={t.prioridad} size={11} />}
+                    {t.prioridad > 0 && <PrefStar on size={13} />}
                   </td>
                   <td className="px-4 py-3 text-xs text-[#555]">{t.zonaHabitual ?? "—"}</td>
                   <td className="px-4 py-3 text-xs text-[#555]">{t.celular ?? "—"}</td>
@@ -822,7 +709,7 @@ export default function TecnicosPage() {
                           {(() => {
                             const tech = tecnicos.find(t => t.id === r.id);
                             if (!tech || tech.prioridad === 0) return null;
-                            return <StarRating value={tech.prioridad} size={10} />;
+                            return <PrefStar on size={12} />;
                           })()}
                         </div>
                       </td>
@@ -974,9 +861,9 @@ function TecnicoCard({ tecnico: t, onEdit, onToggle }: {
   onEdit: (t: Tecnico) => void;
   onToggle: (t: Tecnico) => void;
 }) {
-  const nivelStyle = NIVEL_COLORS[t.nivel] ?? "text-gray-400 bg-gray-800/20 border-gray-700/40";
   const initials = t.nombre.split(" ").slice(0, 2).map(n => n[0]).join("").toUpperCase();
-  const borderColor = t.disciplina?.[0] ? (DISCIPLINA_COLORS[t.disciplina[0]] + '60') : '#2a2a2a';
+  const primeraDisc = t.roles?.[0]?.disciplina ?? null;
+  const borderColor = primeraDisc ? ((DISCIPLINA_COLORS[primeraDisc] ?? '#2a2a2a') + '60') : '#2a2a2a';
 
   return (
     <div
@@ -996,19 +883,15 @@ function TecnicoCard({ tecnico: t, onEdit, onToggle }: {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {t.prioridad > 0 && (
-            <div className="flex items-center gap-1">
-              <StarRating value={t.prioridad} size={11} />
-            </div>
-          )}
+          {t.prioridad > 0 && <PrefStar on size={13} />}
         </div>
       </div>
 
-      {/* Categoría pills */}
-      {(t.disciplina ?? []).length > 0 && (
+      {/* Roles pills */}
+      {(t.roles ?? []).length > 0 && (
         <div className="flex flex-wrap gap-1">
-          {t.disciplina.map(disc => (
-            <DisciplinaPill key={disc} disc={disc} size="xs" />
+          {t.roles.map(r => (
+            <RolPill key={r.id} nombre={r.nombre} disciplina={r.disciplina} size="xs" />
           ))}
         </div>
       )}

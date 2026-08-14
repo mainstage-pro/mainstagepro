@@ -20,9 +20,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { id } = await params;
   const disciplina = req.nextUrl.searchParams.get("disciplina");
+  const rolId = req.nextUrl.searchParams.get("rolId");
   const nivelCotizado = req.nextUrl.searchParams.get("nivel");
-
-  if (!disciplina) return NextResponse.json({ sugerencias: [] });
+  const todos = req.nextUrl.searchParams.get("todos") === "true";
 
   const proyecto = await prisma.proyecto.findUnique({
     where: { id },
@@ -37,9 +37,23 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     proyecto.personal.map(p => p.tecnicoId).filter((x): x is string => !!x)
   );
 
+  // Filtro: por rol exacto O por disciplina. Con ?todos=true se listan todos
+  // (para casos donde el técnico aún no está categorizado con roles).
+  let where: Record<string, unknown> = { activo: true };
+  if (!todos) {
+    const or: Record<string, unknown>[] = [];
+    if (rolId) or.push({ roles: { some: { rolTecnicoId: rolId } } });
+    if (disciplina) or.push({ disciplina: { has: disciplina } });
+    if (or.length === 0) return NextResponse.json({ sugerencias: [] });
+    where = { activo: true, OR: or };
+  }
+
   const tecnicos = await prisma.tecnico.findMany({
-    where: { activo: true, disciplina: { has: disciplina } },
-    include: { rol: { select: { id: true, nombre: true } } },
+    where,
+    include: {
+      rol: { select: { id: true, nombre: true } },
+      roles: { select: { rolTecnicoId: true } },
+    },
   });
 
   // ── Detectar ocupados en otro proyecto la misma fecha ──────────────────────
@@ -71,11 +85,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       evaluacionPromedio: t.evaluacionPromedio,
       zonaHabitual: t.zonaHabitual,
       rol: t.rol,
+      rolCoincide: rolId ? t.roles.some(r => r.rolTecnicoId === rolId) : false,
       yaAsignado: yaAsignados.has(t.id),
       ocupado: ocupados.has(t.id),
     }))
     .sort((a, b) => {
       if (a.yaAsignado !== b.yaAsignado) return a.yaAsignado ? 1 : -1;
+      if (a.rolCoincide !== b.rolCoincide) return a.rolCoincide ? -1 : 1;
       if (b.prioridad !== a.prioridad) return b.prioridad - a.prioridad;
       if (nivelCotizado) {
         const am = a.nivel === nivelCotizado ? 0 : 1;

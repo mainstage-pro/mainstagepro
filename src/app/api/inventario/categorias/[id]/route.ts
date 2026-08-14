@@ -11,11 +11,12 @@ export async function PATCH(
 
   const { id } = await params;
   const body = await req.json();
-  const { nombre, orden, descripcionInterna, descMusical, descSocial, descEmpresarial } = body;
+  const { nombre, orden, descripcionInterna, descMusical, descSocial, descEmpresarial, disciplina } = body;
 
-  const data: { nombre?: string; orden?: number; descripcionInterna?: string | null; descMusical?: string | null; descSocial?: string | null; descEmpresarial?: string | null } = {};
+  const data: { nombre?: string; orden?: number; disciplina?: string | null; descripcionInterna?: string | null; descMusical?: string | null; descSocial?: string | null; descEmpresarial?: string | null } = {};
   if (nombre !== undefined) data.nombre = nombre.trim();
   if (orden !== undefined) data.orden = Number(orden);
+  if (disciplina !== undefined) data.disciplina = disciplina || null;
   if (descripcionInterna !== undefined) data.descripcionInterna = descripcionInterna || null;
   if (descMusical !== undefined) data.descMusical = descMusical || null;
   if (descSocial !== undefined) data.descSocial = descSocial || null;

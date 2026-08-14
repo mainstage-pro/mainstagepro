@@ -67,10 +67,13 @@ const EMPTY: Omit<Rol, "id"> = {
   tarifaHoraAA: null,  tarifaHoraA: null,
 };
 
+type CategoriaInv = { id: string; nombre: string; disciplina: string | null };
+
 export default function RolesPage() {
   const toast = useToast();
   const confirm = useConfirm();
   const [roles, setRoles] = useState<Rol[]>([]);
+  const [categorias, setCategorias] = useState<CategoriaInv[]>([]);
   const [editing, setEditing] = useState<Rol | null>(null);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState<Omit<Rol, "id">>(EMPTY);
@@ -80,12 +83,32 @@ export default function RolesPage() {
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   async function load() {
-    const res = await fetch("/api/roles-tecnicos", { cache: "no-store" });
-    const data = await res.json();
-    setRoles(data.roles ?? []);
+    const [rRes, cRes] = await Promise.all([
+      fetch("/api/roles-tecnicos", { cache: "no-store" }),
+      fetch("/api/inventario/categorias", { cache: "no-store" }),
+    ]);
+    const [rData, cData] = await Promise.all([rRes.json(), cRes.json()]);
+    setRoles(rData.roles ?? []);
+    setCategorias((cData.categorias ?? []).map((c: CategoriaInv) => ({ id: c.id, nombre: c.nombre, disciplina: c.disciplina })));
   }
 
   useEffect(() => { load(); }, []);
+
+  async function toggleCategoriaLink(catId: string, disc: string, linked: boolean) {
+    const nueva = linked ? null : disc;
+    setCategorias(prev => prev.map(c => c.id === catId ? { ...c, disciplina: nueva } : c));
+    try {
+      const res = await fetch(`/api/inventario/categorias/${catId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ disciplina: nueva }),
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      toast.error("No se pudo actualizar la categoría");
+      load();
+    }
+  }
 
   // Auto-save when editing existing rol
   useEffect(() => {
@@ -234,6 +257,45 @@ export default function RolesPage() {
             />
             <p className="text-[10px] text-gray-600 mt-1">Liga este rol con la base de técnicos para sugerencias.</p>
           </div>
+          {/* Categorías de inventario ligadas a esta disciplina */}
+          {form.disciplina && (
+            <div className="md:col-span-3">
+              <label className="text-xs text-gray-500 mb-1 block">
+                Categorías de inventario en {DISCIPLINA_LABELS[form.disciplina] ?? form.disciplina}
+              </label>
+              <p className="text-[10px] text-gray-600 mb-2">
+                Marca qué categorías del inventario pertenecen a esta disciplina. Así el sistema sabe qué técnicos sugerir cuando se cotiza ese equipo.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {categorias.length === 0 && <span className="text-xs text-gray-600">Sin categorías de inventario.</span>}
+                {[...categorias]
+                  .sort((a, b) => {
+                    const al = a.disciplina === form.disciplina ? 0 : a.disciplina ? 2 : 1;
+                    const bl = b.disciplina === form.disciplina ? 0 : b.disciplina ? 2 : 1;
+                    return al - bl || a.nombre.localeCompare(b.nombre);
+                  })
+                  .map(c => {
+                    const linked = c.disciplina === form.disciplina;
+                    const otra = !linked && c.disciplina ? (DISCIPLINA_LABELS[c.disciplina] ?? c.disciplina) : null;
+                    const color = DISCIPLINA_COLORS[form.disciplina!] ?? "#B3985B";
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => toggleCategoriaLink(c.id, form.disciplina!, linked)}
+                        title={otra ? `Ligada actualmente a ${otra}` : undefined}
+                        className="px-2.5 py-1 rounded-full text-xs font-medium border transition-all"
+                        style={linked
+                          ? { backgroundColor: color, borderColor: color, color: "#fff" }
+                          : { backgroundColor: "transparent", borderColor: "#2a2a2a", color: otra ? "#9ca3af" : "#6b7280" }}
+                      >
+                        {c.nombre}{otra && <span className="ml-1 opacity-60">· {otra}</span>}
+                      </button>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
           <div className="md:col-span-3">
             <label className="text-xs text-gray-500 mb-1 block">Tipo de pago</label>
             <Combobox
