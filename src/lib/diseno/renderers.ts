@@ -3,6 +3,7 @@ import { renderStory } from "./brief-tecnico/templates";
 import { briefBg, briefEditableFields, briefSlides, SUPRATERRA, type BriefTecnicoData } from "./brief-tecnico/data";
 import { buildBriefTecnicoData } from "./brief-tecnico/build";
 import type { EditableField } from "./overrides";
+import type { FormatoPerfil } from "./formatos";
 
 // ── Renderers (server-only) ──────────────────────────────────────────────────
 // Aquí sí se importa lo pesado (prisma vía build, templates). Cada plantilla del
@@ -20,7 +21,7 @@ export type TemplateRenderer = {
   // Campos que el usuario puede editar manualmente (para el editor).
   editableFields: (data: unknown) => EditableField[];
   // Elemento Satori para un slide dado (index = número de esquina, 1-based).
-  render: (slide: string, data: unknown, assets: { bg: string; logo: string }, index: number) => ReactElement;
+  render: (slide: string, data: unknown, assets: { bg: string; logo: string }, index: number, fmt: FormatoPerfil) => ReactElement;
 };
 
 export const RENDERERS: Record<string, TemplateRenderer> = {
@@ -30,7 +31,7 @@ export const RENDERERS: Record<string, TemplateRenderer> = {
     slides: (data) => briefSlides(data as BriefTecnicoData),
     bgFor: (slide, data) => briefBg(data as BriefTecnicoData, slide),
     editableFields: (data) => briefEditableFields(data as BriefTecnicoData),
-    render: (slide, data, assets, index) => renderStory(slide, data as BriefTecnicoData, assets, index),
+    render: (slide, data, assets, index, fmt) => renderStory(slide, data as BriefTecnicoData, assets, index, fmt),
   },
 };
 

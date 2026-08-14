@@ -9,5 +9,6 @@ export async function GET(req: Request) {
   return renderDesign(url.origin, url.searchParams.get("template"), slide, {
     proyectoId: url.searchParams.get("proyectoId"),
     disenoId: url.searchParams.get("disenoId"),
+    formato: url.searchParams.get("formato"),
   });
 }

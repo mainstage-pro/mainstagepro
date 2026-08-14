@@ -4,7 +4,7 @@ import { getTemplate } from "./registry";
 import { getRenderer } from "./renderers";
 import { applyOverrides, type DesignOverrides } from "./overrides";
 import { getDiseno } from "./guardados";
-import { CANVAS } from "./tokens";
+import { getFormato } from "./formatos";
 
 // Ensambla la imagen de un slide de cualquier plantilla registrada. Usada por la
 // ruta genérica /api/diseno/render y por rutas de compatibilidad (ej. brief).
@@ -13,8 +13,9 @@ export async function renderDesign(
   origin: string,
   templateId: string | null,
   slideParam: string | null,
-  params: { proyectoId?: string | null; disenoId?: string | null },
+  params: { proyectoId?: string | null; disenoId?: string | null; formato?: string | null },
 ): Promise<Response> {
+  const fmt = getFormato(params.formato);
   // Si viene un diseño guardado, él manda: define plantilla, proyecto y overrides.
   let overrides: DesignOverrides | null = null;
   let proyectoId = params.proyectoId ?? null;
@@ -53,9 +54,9 @@ export async function renderDesign(
     brandFonts(origin),
   ]);
 
-  return new ImageResponse(renderer.render(slide, data, { bg, logo }, index), {
-    width: CANVAS.W,
-    height: CANVAS.H,
+  return new ImageResponse(renderer.render(slide, data, { bg, logo }, index, fmt), {
+    width: fmt.w,
+    height: fmt.h,
     fonts: fonts.map((f) => ({ name: f.name, data: f.data, weight: f.weight, style: f.style })),
   });
 }
