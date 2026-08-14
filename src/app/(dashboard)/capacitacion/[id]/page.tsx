@@ -34,6 +34,7 @@ interface Sesion {
   estado: string;
   notas: string | null;
   versiones: VersionMeta[];
+  evaluacion: { id: string } | null;
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -905,6 +906,45 @@ export default function CapacitacionDetailPage() {
                 >
                   {savingConfig ? "Guardando..." : "Guardar configuración"}
                 </button>
+              </div>
+
+              {/* Card: Documentos descargables */}
+              <div className="rounded-xl border p-5 space-y-2" style={{ background: "#111", borderColor: "#262626" }}>
+                <h3 className="text-sm font-semibold text-white mb-3">Documentos</h3>
+                <a
+                  href={`/api/capacitacion/${id}/pdf`}
+                  className="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors hover:border-[#c9a96a] hover:text-[#c9a96a]"
+                  style={{ border: "1px solid #262626", color: "#9ca3af" }}
+                >
+                  <span>PDF del módulo</span>
+                  <span>↓</span>
+                </a>
+                <a
+                  href={`/api/capacitacion/${id}/word`}
+                  className="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors hover:border-[#c9a96a] hover:text-[#c9a96a]"
+                  style={{ border: "1px solid #262626", color: "#9ca3af" }}
+                >
+                  <span>Documento Word</span>
+                  <span>↓</span>
+                </a>
+                {sesion.evaluacion ? (
+                  <a
+                    href={`/api/capacitacion/${id}/evaluacion/pdf`}
+                    className="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors hover:border-[#c9a96a] hover:text-[#c9a96a]"
+                    style={{ border: "1px solid #262626", color: "#9ca3af" }}
+                  >
+                    <span>PDF del examen</span>
+                    <span>↓</span>
+                  </a>
+                ) : (
+                  <div
+                    className="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium"
+                    style={{ border: "1px solid #1a1a1a", color: "#4b5563" }}
+                  >
+                    <span>PDF del examen</span>
+                    <span>sin evaluación</span>
+                  </div>
+                )}
               </div>
 
               {/* Card: Historial de versiones */}
