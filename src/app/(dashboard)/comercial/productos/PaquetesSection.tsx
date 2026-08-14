@@ -5,7 +5,7 @@ import { upload } from "@vercel/blob/client";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Modal } from "@/components/Modal";
-import { SUBTIPOS_EVENTO, parseCoberturas, coberturaMatch, rangoBounds, TEMPORADAS_PAQUETE, TEMPORADA_POR_KEY, type Cobertura } from "@/lib/constants";
+import { SUBTIPOS_EVENTO, parseCoberturas, coberturaMatch, rangoBounds, TEMPORADAS_PAQUETE, type Cobertura, type TemporadaPaquete } from "@/lib/constants";
 import { Music, Wine, Building2, Sparkles, ImageIcon, Package, Puzzle, Users, type LucideIcon } from "lucide-react";
 
 // ── Constantes ────────────────────────────────────────────────────────────────
@@ -1013,11 +1013,18 @@ export default function PaquetesSection({ modo = "tipo" }: { modo?: "tipo" | "te
   const [rangosModalOpen, setRangosModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [tipoTab, setTipoTab] = useState<string>("MUSICAL");
+  // Temporadas en vivo (derivadas del calendario comercial); arranca con las de
+  // código como default y se reemplaza al cargar desde /api/paquetes/temporadas.
+  const [temporadas, setTemporadas] = useState<TemporadaPaquete[]>(TEMPORADAS_PAQUETE);
   const [temporadaTab, setTemporadaTab] = useState<string>(TEMPORADAS_PAQUETE[0]?.key ?? "");
   const [baseTab, setBaseTab] = useState<"TODOS" | "BASE" | "MEDIDA">("TODOS");
 
+  const temporadaMap = useMemo(
+    () => Object.fromEntries(temporadas.map((t) => [t.key, t])) as Record<string, TemporadaPaquete>,
+    [temporadas],
+  );
   // En modo temporada el tipoEvento (para editor y cobertura) lo fija la temporada activa.
-  const tipoEventoActivo = esTemporada ? (TEMPORADA_POR_KEY[temporadaTab]?.tipoEvento ?? "SOCIAL") : tipoTab;
+  const tipoEventoActivo = esTemporada ? (temporadaMap[temporadaTab]?.tipoEvento ?? "SOCIAL") : tipoTab;
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -1037,6 +1044,11 @@ export default function PaquetesSection({ modo = "tipo" }: { modo?: "tipo" | "te
         fetch("/api/catalogo").then((r) => r.json()).catch(() => ({})),
       ]);
       setPaquetes(rp.paquetes ?? []);
+      if (esTemporada && Array.isArray(rp.temporadas)) {
+        const temps: TemporadaPaquete[] = rp.temporadas;
+        setTemporadas(temps);
+        setTemporadaTab((prev) => (temps.some((t) => t.key === prev) ? prev : temps[0]?.key ?? ""));
+      }
       setEquipos(re.equipos ?? []);
       setProductos(rpr.productos ?? []);
       setRoles(rr.roles ?? []);
@@ -1179,7 +1191,7 @@ export default function PaquetesSection({ modo = "tipo" }: { modo?: "tipo" | "te
       <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
         {esTemporada ? (
           <div className="flex items-center gap-1.5 p-1 bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl flex-wrap">
-            {TEMPORADAS_PAQUETE.map((t) => (
+            {temporadas.map((t) => (
               <button key={t.key} onClick={() => setTemporadaTab(t.key)}
                 className={`px-3 py-2 rounded-lg text-sm transition-colors inline-flex items-center gap-1.5 ${temporadaTab === t.key ? "bg-[#B3985B] text-black font-semibold" : "text-gray-400 hover:text-white"}`}>
                 <span>{t.emoji}</span> {t.label}
@@ -1226,7 +1238,7 @@ export default function PaquetesSection({ modo = "tipo" }: { modo?: "tipo" | "te
         <div className="text-center py-16">
           <p className="text-gray-500 mb-4">
             {esTemporada
-              ? `Aún no hay paquetes para ${TEMPORADA_POR_KEY[temporadaTab]?.label ?? "esta temporada"}.`
+              ? `Aún no hay paquetes para ${temporadaMap[temporadaTab]?.label ?? "esta temporada"}.`
               : `Aún no hay paquetes para eventos ${TIPOS_EVENTO.find((t) => t.key === tipoTab)?.label.toLowerCase()}.`}
           </p>
           <button onClick={abrirNuevo} className="px-4 py-2 rounded-lg bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold">+ Crear el primero</button>
@@ -1279,7 +1291,7 @@ export default function PaquetesSection({ modo = "tipo" }: { modo?: "tipo" | "te
       )}
 
       <Modal open={modalOpen} onClose={() => setModalOpen(false)}
-        title={`${editId ? "Editar" : "Nuevo"} paquete · ${esTemporada ? `${TEMPORADA_POR_KEY[temporadaTab]?.emoji ?? ""} ${TEMPORADA_POR_KEY[temporadaTab]?.label ?? ""}` : TIPOS_EVENTO.find((t) => t.key === tipoTab)?.label}`}
+        title={`${editId ? "Editar" : "Nuevo"} paquete · ${esTemporada ? `${temporadaMap[temporadaTab]?.emoji ?? ""} ${temporadaMap[temporadaTab]?.label ?? ""}` : TIPOS_EVENTO.find((t) => t.key === tipoTab)?.label}`}
         maxWidth="max-w-3xl">
         <PaqueteEditor form={form} setForm={setForm} tipoEvento={tipoEventoActivo} equipos={equipos} productos={productos} roles={roles} rangos={rangos.map((r) => r.label)} nichosCat={nichosCat} adicionalesCat={adicionalesCat} generandoIA={generandoIA} onGenerarIA={generarIA} />
         <div className="flex items-center justify-end gap-2 mt-6 pt-4 border-t border-[#1a1a1a]">

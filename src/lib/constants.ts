@@ -29,6 +29,11 @@ const TIPO_EVENTO_POR_SLUG: Record<string, string> = {
   empresarial: "EMPRESARIAL",
 };
 
+// Mapea un slug de tipo de evento (calendario) al enum de paquetes; default SOCIAL.
+export function tipoEventoDeSlug(slug?: string | null): string {
+  return TIPO_EVENTO_POR_SLUG[(slug ?? "").toLowerCase()] ?? "SOCIAL";
+}
+
 export function slugTemporada(titulo: string): string {
   return titulo
     .toLowerCase()
@@ -45,16 +50,14 @@ export type TemporadaPaquete = {
   tipoEvento: string;
 };
 
+// Default de arranque para la UI (semillas en código). En runtime se reemplaza
+// por las temporadas EN VIVO del calendario comercial (tabla calendario_entradas).
 export const TEMPORADAS_PAQUETE: TemporadaPaquete[] = SEEDS.COMERCIAL.map((s) => ({
   key: slugTemporada(s.titulo),
   label: s.titulo,
   emoji: s.icono ?? "📅",
-  tipoEvento: TIPO_EVENTO_POR_SLUG[s.tipoEvento ?? "social"] ?? "SOCIAL",
+  tipoEvento: tipoEventoDeSlug(s.tipoEvento),
 }));
-
-export const TEMPORADA_POR_KEY: Record<string, TemporadaPaquete> = Object.fromEntries(
-  TEMPORADAS_PAQUETE.map((t) => [t.key, t]),
-);
 
 // ── Cobertura de capacidad de productos ───────────────────────────────────────
 // Helpers PUROS (sin prisma) para poder importarse desde componentes cliente.

@@ -9,13 +9,13 @@ export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  await ensurePlantillasTemporada();
+  const temporadas = await ensurePlantillasTemporada();
 
   const paquetes = await prisma.paquete.findMany({
-    where: { activo: true },
+    where: { activo: true, temporada: { not: null } },
     include: PAQUETE_INCLUDE,
-    orderBy: [{ tipoEvento: "asc" }, { orden: "asc" }, { nombre: "asc" }],
+    orderBy: [{ orden: "asc" }, { nombre: "asc" }],
   });
 
-  return NextResponse.json({ paquetes });
+  return NextResponse.json({ paquetes, temporadas });
 }

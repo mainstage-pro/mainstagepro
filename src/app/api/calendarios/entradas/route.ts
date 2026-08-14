@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { ensureCalendariosTabla } from "@/lib/migraciones-lazy";
 import { CALENDARIOS, type CalendarioKey } from "@/lib/calendarios";
+import { crearPlantillaTemporada } from "@/lib/paquetes";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapRow(r: any) {
@@ -76,5 +77,17 @@ export async function POST(req: NextRequest) {
     b.servicio?.trim() || null,
     Number(b.orden) || 0,
   );
-  return NextResponse.json({ entrada: mapRow(rows[0]) }, { status: 201 });
+  const entrada = mapRow(rows[0]);
+
+  // Alta de una fecha comercial ⇒ genera su plantilla de paquete en blanco.
+  // No debe tumbar la creación de la entrada si algo falla.
+  if (cal === "COMERCIAL") {
+    try {
+      await crearPlantillaTemporada(entrada.titulo, entrada.icono, entrada.tipoEventoSlug);
+    } catch (e) {
+      console.error("No se pudo crear la plantilla de temporada:", e);
+    }
+  }
+
+  return NextResponse.json({ entrada }, { status: 201 });
 }
