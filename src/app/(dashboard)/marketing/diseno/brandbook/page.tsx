@@ -43,6 +43,22 @@ export default async function BrandbookPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: COLOR.black, padding: "44px 36px", color: COLOR.white }}>
+      {/* Carga la Montserrat/JetBrains Mono REALES (mismos .ttf que incrusta el
+          render de las piezas) para que esta referencia se vea con la marca y no
+          con la fuente por defecto del navegador. */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+            @font-face { font-family: 'Montserrat'; font-style: normal; font-weight: 300; font-display: swap; src: url('/diseno/fonts/montserrat-300.ttf') format('truetype'); }
+            @font-face { font-family: 'Montserrat'; font-style: normal; font-weight: 400; font-display: swap; src: url('/diseno/fonts/montserrat-400.ttf') format('truetype'); }
+            @font-face { font-family: 'Montserrat'; font-style: normal; font-weight: 600; font-display: swap; src: url('/diseno/fonts/montserrat-600.ttf') format('truetype'); }
+            @font-face { font-family: 'Montserrat'; font-style: normal; font-weight: 700; font-display: swap; src: url('/diseno/fonts/montserrat-700.ttf') format('truetype'); }
+            @font-face { font-family: 'Montserrat'; font-style: normal; font-weight: 800; font-display: swap; src: url('/diseno/fonts/montserrat-800.ttf') format('truetype'); }
+            @font-face { font-family: 'JetBrains Mono'; font-style: normal; font-weight: 400; font-display: swap; src: url('/diseno/fonts/jetbrainsmono-400.ttf') format('truetype'); }
+            @font-face { font-family: 'JetBrains Mono'; font-style: normal; font-weight: 700; font-display: swap; src: url('/diseno/fonts/jetbrainsmono-700.ttf') format('truetype'); }
+          `,
+        }}
+      />
       <div style={{ maxWidth: 1080, margin: "0 auto" }}>
         <Link href="/marketing/diseno" style={{ color: COLOR.textMute, fontSize: 13, textDecoration: "none" }}>
           ← Diseño
