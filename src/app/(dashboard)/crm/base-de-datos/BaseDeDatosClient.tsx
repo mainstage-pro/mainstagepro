@@ -30,6 +30,8 @@ interface Contacto {
   perfilProspecto: string | null;
   perfilesProspecto: string | null;
   esProspecto: boolean;
+  porContactar?: boolean;
+  contactarDesde?: Date | string | null;
   origenLead: string | null;
   notas?: string | null;
   vendedorId: string | null;
@@ -441,7 +443,7 @@ function FilterSelect({ label, value, onChange, options }: {
 function ContactoRow({
   c, usuarios, tab, actividadMap,
   onSaved, onVendedorChange, onDelete, deleting,
-  onConvertir, onReclasificar, onCrearTarea,
+  onConvertir, onReclasificar, onCrearTarea, onToggleContactar,
   empresaPopoverOpen, onEmpresaClick, empresaMode, setEmpresaMode,
   empresaSearch, setEmpresaSearch, empresaResults, empresaSearching,
   onVincularEmpresa, onCloseEmpresa,
@@ -458,6 +460,7 @@ function ContactoRow({
   onConvertir: () => void;
   onReclasificar: (esProspecto: boolean) => void;
   onCrearTarea: () => void;
+  onToggleContactar: () => void;
   empresaPopoverOpen: boolean; onEmpresaClick: () => void;
   empresaMode: "view" | "search"; setEmpresaMode: (m: "view" | "search") => void;
   empresaSearch: string; setEmpresaSearch: (s: string) => void;
@@ -521,6 +524,11 @@ function ContactoRow({
             <span className="flex items-center gap-0.5">
               <p className="text-[10px] text-[#3a3a3a] truncate max-w-[155px]">{c.correo}</p>
               <CopyButton value={c.correo} size="xs" />
+            </span>
+          )}
+          {c.porContactar && (
+            <span className="inline-flex items-center gap-1 w-fit text-[9px] font-medium text-amber-400/90 bg-amber-950/30 border border-amber-900/40 rounded-md px-1.5 py-0.5">
+              <PhoneIcon /> Por contactar
             </span>
           )}
           {(saving || saved) && (
@@ -623,6 +631,17 @@ function ContactoRow({
       {/* Acciones — overlay flotante para no encimarse con las columnas vecinas */}
       <td data-no-nav className="relative px-3 py-2.5 align-middle">
         <div className="absolute inset-y-0 right-0 flex items-center justify-end gap-1.5 pr-3 pl-14 bg-gradient-to-l from-[#111] from-60% to-transparent opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity">
+          {tab === "prospectos" && (
+            <button onClick={e => { e.stopPropagation(); onToggleContactar(); }}
+              className={`cursor-pointer inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-md border transition-all whitespace-nowrap ${
+                c.porContactar
+                  ? "border-amber-500/50 text-amber-400 bg-amber-500/10"
+                  : "border-[#1e1e1e] text-[#888] hover:text-amber-400 hover:border-amber-500/40 hover:bg-amber-500/10"
+              }`}
+              title={c.porContactar ? "Quitar de 'por contactar'" : "Marcar para contactar"}>
+              <PhoneIcon /> {c.porContactar ? "Contactar ✓" : "Contactar"}
+            </button>
+          )}
           {tab === "prospectos" && (
             <button onClick={e => { e.stopPropagation(); onConvertir(); }}
               className="cursor-pointer text-[10px] font-medium px-2 py-1 rounded-md border border-emerald-800/30 text-emerald-500/80 hover:text-emerald-400 hover:border-emerald-500/50 hover:bg-emerald-500/10 transition-all whitespace-nowrap">
@@ -812,6 +831,7 @@ function ModalNuevoContacto({ onClose, onCreado, usuarios, modo, perfilesCustom,
 function ContactList({
   contactos, usuarios, tab, actividadMap,
   onSaved, onVendedorChange, onDelete, deletingId, onConvertir, onReclasificar, onCrearTarea,
+  onToggleContactar,
   empresaPopoverId, setEmpresaPopoverId, empresaMode, setEmpresaMode,
   empresaSearch, setEmpresaSearch, empresaResults, empresaSearching,
   handleVincularEmpresa, closeEmpresaPopover,
@@ -828,6 +848,7 @@ function ContactList({
   onConvertir: (c: Contacto) => void;
   onReclasificar: (c: Contacto, esProspecto: boolean) => void;
   onCrearTarea: (c: Contacto) => void;
+  onToggleContactar: (c: Contacto) => void;
   empresaPopoverId: string | null; setEmpresaPopoverId: (id: string | null) => void;
   empresaMode: "view" | "search"; setEmpresaMode: (m: "view" | "search") => void;
   empresaSearch: string; setEmpresaSearch: (s: string) => void;
@@ -878,6 +899,7 @@ function ContactList({
               onConvertir={() => onConvertir(c)}
               onReclasificar={esp => onReclasificar(c, esp)}
               onCrearTarea={() => onCrearTarea(c)}
+              onToggleContactar={() => onToggleContactar(c)}
               empresaPopoverOpen={empresaPopoverId === c.id}
               onEmpresaClick={() => {
                 if (empresaPopoverId === c.id) { setEmpresaPopoverId(null); return; }
@@ -1132,6 +1154,14 @@ function WaIcon() {
   );
 }
 
+function PhoneIcon() {
+  return (
+    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0122 16.92z"/>
+    </svg>
+  );
+}
+
 export default function BaseDeDatosClient({ clientes: initClientes, prospectos: initProspectos, sinClasificar: initSin, usuarios, actividadMap }: Props) {
   const confirm = useConfirm();
   const toast = useToast();
@@ -1198,11 +1228,12 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
   const [filtroPerfil, setFiltroPerfil]             = useState("");
   const [filtroVendedor, setFiltroVendedor]         = useState("");
   const [filtroActividad, setFiltroActividad]       = useState("");
+  const [soloPorContactar, setSoloPorContactar]     = useState(false);
 
-  const hayFiltros = busqueda || filtroTipo || filtroClasificacion || filtroPerfil || filtroVendedor || filtroActividad;
+  const hayFiltros = busqueda || filtroTipo || filtroClasificacion || filtroPerfil || filtroVendedor || filtroActividad || soloPorContactar;
   function limpiarFiltros() {
     setBusqueda(""); setFiltroTipo(""); setFiltroClasificacion(""); setFiltroPerfil("");
-    setFiltroVendedor(""); setFiltroActividad("");
+    setFiltroVendedor(""); setFiltroActividad(""); setSoloPorContactar(false);
   }
 
   const vendedorOptions = usuarios.map(u => ({ value: u.id, label: u.name }));
@@ -1293,6 +1324,16 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
     else setClientes(prev => [merged, ...prev]);
     toast.success(`${c.nombre} movido a ${esProspecto ? "Prospectos" : "Clientes"}`);
   }
+  async function toggleContactar(c: Contacto) {
+    const nuevo = !c.porContactar;
+    actualizarCampos(c.id, { porContactar: nuevo });
+    const res = await fetch(`/api/clientes/${c.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ porContactar: nuevo }),
+    });
+    if (!res.ok) { actualizarCampos(c.id, { porContactar: !nuevo }); toast.error("No se pudo actualizar"); return; }
+    toast.success(nuevo ? `${c.nombre} marcado para contactar` : `${c.nombre} ya no está por contactar`);
+  }
   async function eliminar(c: Contacto) {
     const ok = await confirm({ message: `¿Eliminar a "${c.nombre}"? Esta acción no se puede deshacer.`, danger: true, confirmText: "Eliminar" });
     if (!ok) return;
@@ -1319,13 +1360,14 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
       if (filtroPerfil && !parsePerfiles(c.perfilesProspecto ?? c.perfilProspecto).includes(filtroPerfil)) return false;
       if (filtroVendedor && c.vendedorId !== filtroVendedor) return false;
       if (filtroActividad && (actividadMap[c.id] ?? "INACTIVO") !== filtroActividad) return false;
+      if (soloPorContactar && !c.porContactar) return false;
       return true;
     });
   }
 
-  const clientesFiltrados    = useMemo(() => filtrar(clientes),      [clientes,      busqueda, filtroTipo, filtroClasificacion, filtroPerfil, filtroVendedor, filtroActividad]);
-  const prospectosFiltrados  = useMemo(() => filtrar(prospectos),    [prospectos,    busqueda, filtroTipo, filtroClasificacion, filtroPerfil, filtroVendedor, filtroActividad]);
-  const sinClasifFiltrados   = useMemo(() => filtrar(sinClasificar), [sinClasificar, busqueda, filtroTipo, filtroClasificacion, filtroPerfil, filtroVendedor, filtroActividad]);
+  const clientesFiltrados    = useMemo(() => filtrar(clientes),      [clientes,      busqueda, filtroTipo, filtroClasificacion, filtroPerfil, filtroVendedor, filtroActividad, soloPorContactar]);
+  const prospectosFiltrados  = useMemo(() => filtrar(prospectos),    [prospectos,    busqueda, filtroTipo, filtroClasificacion, filtroPerfil, filtroVendedor, filtroActividad, soloPorContactar]);
+  const sinClasifFiltrados   = useMemo(() => filtrar(sinClasificar), [sinClasificar, busqueda, filtroTipo, filtroClasificacion, filtroPerfil, filtroVendedor, filtroActividad, soloPorContactar]);
 
   const listaActual = tab === "clientes" ? clientesFiltrados : tab === "prospectos" ? prospectosFiltrados : sinClasifFiltrados;
 
@@ -1336,6 +1378,7 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
     onSaved: actualizarCampos, onVendedorChange: actualizarVendedor, onDelete: eliminar, deletingId,
     onConvertir: convertirACliente, onReclasificar: reclasificar,
     onCrearTarea: (c: Contacto) => setTareaModal({ clienteId: c.id, clienteNombre: c.nombre }),
+    onToggleContactar: toggleContactar,
     empresaPopoverId, setEmpresaPopoverId, empresaMode, setEmpresaMode,
     empresaSearch, setEmpresaSearch, empresaResults, empresaSearching,
     handleVincularEmpresa, closeEmpresaPopover,
@@ -1452,6 +1495,14 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
               <FilterSelect label="Responsable" value={filtroVendedor} onChange={setFiltroVendedor} options={vendedorOptions} />
               <FilterSelect label="Actividad" value={filtroActividad} onChange={setFiltroActividad}
                 options={[{ value: "ACTIVO", label: "Activo" }, { value: "EN_PROCESO", label: "En proceso" }, { value: "INACTIVO", label: "Inactivo" }]} />
+              <button onClick={() => setSoloPorContactar(v => !v)}
+                className={`text-[10px] font-medium px-2.5 py-1.5 rounded-lg border transition-colors ${
+                  soloPorContactar
+                    ? "border-amber-500/50 text-amber-400 bg-amber-500/10"
+                    : "border-[#1a1a1a] text-[#444] hover:text-amber-400 hover:border-amber-500/40"
+                }`}>
+                Por contactar
+              </button>
               {hayFiltros && (
                 <button onClick={limpiarFiltros}
                   className="text-[10px] text-[#444] hover:text-red-400 border border-[#1a1a1a] hover:border-red-900/40 px-2.5 py-1.5 rounded-lg transition-colors">

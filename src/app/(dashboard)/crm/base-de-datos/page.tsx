@@ -14,6 +14,8 @@ const SELECT = {
   perfilProspecto: true,
   perfilesProspecto: true,
   esProspecto: true,
+  porContactar: true,
+  contactarDesde: true,
   origenLead: true,
   vendedorId: true,
   createdAt: true,

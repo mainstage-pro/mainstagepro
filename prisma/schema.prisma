@@ -160,6 +160,8 @@ model Cliente {
   notas             String?
   categoriaKARE     String?  @default("SIN_CATEGORIZAR") // KEEP | ATTAIN | RECOVER | EXPAND | SIN_CATEGORIZAR
   esProspecto       Boolean  @default(false) // true mientras no haya tenido VENTA_CERRADA
+  porContactar      Boolean  @default(false) // marcado manual: "lo tengo que contactar"
+  contactarDesde    DateTime? // cuándo se marcó para contactar
   // ── Origen del prospecto (se llena al capturar el lead, sin necesitar un Trato) ──
   origenLead        String? // META_ADS | GOOGLE_ADS | ORGANICO | REFERIDO | RECOMPRA | PROSPECCION | OTRO
   campana           String? // nombre de la campaña de origen (Meta Ads, Google Ads, etc.)
@@ -179,6 +181,27 @@ model Cliente {
   tareas                Tarea[]                @relation("TareasDeCliente")
 
   @@map("clientes")
+}
+
+// Bandeja de entrada de prospectos: capturas crudas (pegadas desde notas del iPhone)
+// pendientes de categorizar antes de trasladarse a la lista de prospectos (Cliente).
+model EntradaProspecto {
+  id                String   @id @default(cuid())
+  textoOriginal     String // la fila tal cual se pegó, sin alterar
+  nombre            String?
+  empresa           String?
+  telefono          String?
+  correo            String?
+  perfilesProspecto String? // JSON array de perfiles (mismo formato que Cliente)
+  origenLead        String?
+  notas             String?
+  estado            String   @default("PENDIENTE") // PENDIENTE | TRASLADADO
+  clienteId         String? // Cliente creado al trasladar
+  capturadoPor      String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("entradas_prospecto")
 }
 
 model PrecioClienteEquipo {

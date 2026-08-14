@@ -90,6 +90,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if ("esProspecto" in body) {
     data.esProspecto = Boolean(body.esProspecto);
   }
+  // Marca "por contactar": al activarla se sella la fecha; al quitarla se limpia.
+  if ("porContactar" in body) {
+    const on = Boolean(body.porContactar);
+    data.porContactar = on;
+    data.contactarDesde = on ? new Date() : null;
+  }
 
   // Handle empresa: accept empresaId (FK) or plain empresa name
   if ("empresaId" in body) {
