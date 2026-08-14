@@ -99,11 +99,16 @@ export const TEMPLATES: DesignTemplateMeta[] = [
     nombre: "Contenido informativo",
     categoria: "Contenido",
     descripcion:
-      "Calendario de contenido ligado a servicios, tipos de evento e inventario. Genera hasta un año de piezas.",
+      "Calendario de contenido de valor: una pieza por semana ligada a servicios, tipos de evento e inventario.",
     formato: "Story · 1080×1920",
-    slides: [],
-    disponible: false,
+    slides: [
+      { id: "gancho", label: "Gancho" },
+      { id: "valor", label: "Contenido de valor" },
+      { id: "cierre", label: "Cierre / contacto" },
+    ],
+    disponible: true,
     fuente: "Servicios · Eventos · Inventario",
+    href: "/marketing/diseno/contenido-informativo",
   },
   {
     id: "contenido-campanas",

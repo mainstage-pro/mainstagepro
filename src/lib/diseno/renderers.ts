@@ -11,6 +11,9 @@ import { buildTiposEventoData } from "./tipos-evento/build";
 import { renderEquipo } from "./inventario/templates";
 import { inventarioBg, inventarioEditableFields, inventarioSlides, type InventarioData } from "./inventario/data";
 import { buildInventarioData } from "./inventario/build";
+import { renderContenido } from "./contenido/templates";
+import { contenidoBg, contenidoEditableFields, contenidoSlides, type ContenidoData } from "./contenido/data";
+import { buildContenidoData } from "./contenido/build";
 import type { EditableField } from "./overrides";
 import type { FormatoPerfil } from "./formatos";
 
@@ -18,7 +21,7 @@ import type { FormatoPerfil } from "./formatos";
 // Aquí sí se importa lo pesado (prisma vía build, templates). Cada plantilla del
 // registro que esté "disponible" debe tener su entrada aquí.
 
-export type RenderParams = { proyectoId?: string | null };
+export type RenderParams = { proyectoId?: string | null; pieza?: string | null };
 
 export type TemplateRenderer = {
   // Arma los datos de la pieza (deterministas + IA). Sin proyecto usa la muestra.
@@ -62,6 +65,13 @@ export const RENDERERS: Record<string, TemplateRenderer> = {
     bgFor: (slide, data) => inventarioBg(data as InventarioData, slide),
     editableFields: (data) => inventarioEditableFields(data as InventarioData),
     render: (slide, data, assets, index, fmt) => renderEquipo(slide, data as InventarioData, assets, index, fmt),
+  },
+  "contenido-informativo": {
+    buildData: async ({ pieza }) => buildContenidoData(pieza),
+    slides: () => contenidoSlides(),
+    bgFor: (_slide, data) => contenidoBg(data as ContenidoData),
+    editableFields: () => contenidoEditableFields(),
+    render: (slide, data, assets, index, fmt) => renderContenido(slide, data as ContenidoData, assets, index, fmt),
   },
 };
 
