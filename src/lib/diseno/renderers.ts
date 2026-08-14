@@ -2,6 +2,9 @@ import type { ReactElement } from "react";
 import { renderStory } from "./brief-tecnico/templates";
 import { briefBg, briefEditableFields, briefSlides, SUPRATERRA, type BriefTecnicoData } from "./brief-tecnico/data";
 import { buildBriefTecnicoData } from "./brief-tecnico/build";
+import { renderServicio } from "./servicios/templates";
+import { serviciosBg, serviciosEditableFields, serviciosSlides, type ServiciosData } from "./servicios/data";
+import { buildServiciosData } from "./servicios/build";
 import type { EditableField } from "./overrides";
 import type { FormatoPerfil } from "./formatos";
 
@@ -32,6 +35,13 @@ export const RENDERERS: Record<string, TemplateRenderer> = {
     bgFor: (slide, data) => briefBg(data as BriefTecnicoData, slide),
     editableFields: (data) => briefEditableFields(data as BriefTecnicoData),
     render: (slide, data, assets, index, fmt) => renderStory(slide, data as BriefTecnicoData, assets, index, fmt),
+  },
+  "servicios-mainstage": {
+    buildData: async () => buildServiciosData(),
+    slides: (data) => serviciosSlides(data as ServiciosData),
+    bgFor: (slide, data) => serviciosBg(data as ServiciosData, slide),
+    editableFields: (data) => serviciosEditableFields(data as ServiciosData),
+    render: (slide, data, assets, index, fmt) => renderServicio(slide, data as ServiciosData, assets, index, fmt),
   },
 };
 
