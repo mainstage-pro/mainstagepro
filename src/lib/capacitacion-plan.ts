@@ -89,21 +89,41 @@ export function asignacionesEfectivas(
   }));
 }
 
+/** Normaliza un nombre para comparar sub-áreas entre taxonomías (puesto vs capacitación). */
+export function normalizaNombre(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 /**
  * Deriva la asignación por defecto desde el área + sub-área del puesto:
- *   - con sub-área → esa sub-área (OBLIGATORIO) dentro de la categoría del área;
- *   - sin sub-área → el área completa (OBLIGATORIO).
+ *   - con sub-área que EXISTE en la capacitación del área → esa sub-área (OBLIGATORIO);
+ *   - sin sub-área, o cuya sub-área no tiene contraparte en capacitación → área completa.
+ *
+ * El maestro de sub-áreas del puesto (PTSubArea) y el de capacitación
+ * (SesionCapacitacion.subArea) se escribieron por separado y sus nombres rara vez
+ * coinciden; por eso NUNCA inventamos una sub-área: si no hay match real, se marca
+ * el área completa (fiel a "si no tienen sub-área asignada, el área completa").
  * Devuelve [] si no hay categoría de capacitación que corresponda al área.
  */
 export function derivarAsignacionesDefault(
   area: string | null | undefined,
   subAreaNombre: string | null | undefined,
-  categorias: { id: string; slug: string }[],
+  categorias: { id: string; slug: string; subAreas?: string[] }[],
 ): CapAsignacion[] {
   const slugs = slugsDeArea(area);
   const cat = categorias.find((c) => slugs.includes((c.slug || "").toLowerCase()));
   if (!cat) return [];
-  return [{ categoriaId: cat.id, subArea: subAreaNombre?.trim() || null, nivel: "OBLIGATORIO" }];
+  const sub = subAreaNombre?.trim();
+  if (sub) {
+    const match = (cat.subAreas ?? []).find((x) => normalizaNombre(x) === normalizaNombre(sub));
+    if (match) return [{ categoriaId: cat.id, subArea: match, nivel: "OBLIGATORIO" }];
+  }
+  return [{ categoriaId: cat.id, subArea: null, nivel: "OBLIGATORIO" }];
 }
 
 /** Clave estable de una asignación para dedup/toggle en UI. */
