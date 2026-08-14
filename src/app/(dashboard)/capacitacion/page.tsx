@@ -19,6 +19,7 @@ interface Area {
 export default function PortalCapacitacionPage() {
   const [areas, setAreas] = useState<Area[]>([]);
   const [puedeEditar, setPuedeEditar] = useState(false);
+  const [puedeVerResumen, setPuedeVerResumen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [creando, setCreando] = useState(false);
@@ -41,6 +42,16 @@ export default function PortalCapacitacionPage() {
 
   useEffect(() => { cargar(); }, []);
 
+  useEffect(() => {
+    fetch("/api/me", { cache: "no-store" })
+      .then(r => (r.ok ? r.json() : null))
+      .then(me => {
+        const nombre = (me?.name ?? "").toLowerCase();
+        setPuedeVerResumen(["mauricio", "emiliano"].some(n => nombre.includes(n)));
+      })
+      .catch(() => {});
+  }, []);
+
   const totalGlobal = areas.reduce((a, c) => a + c.total, 0);
   const completadasGlobal = areas.reduce((a, c) => a + c.completadas, 0);
 
@@ -56,23 +67,23 @@ export default function PortalCapacitacionPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {puedeVerResumen && (
+              <Link
+                href="/capacitacion/resumen"
+                className="flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-lg border transition-colors hover:border-[#c9a96a]"
+                style={{ borderColor: "#262626", color: "#c9a96a" }}
+              >
+                <BarChart3 size={15} /> Resumen
+              </Link>
+            )}
             {puedeEditar && (
-              <>
-                <Link
-                  href="/capacitacion/resumen"
-                  className="flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-lg border transition-colors hover:border-[#c9a96a]"
-                  style={{ borderColor: "#262626", color: "#c9a96a" }}
-                >
-                  <BarChart3 size={15} /> Resumen
-                </Link>
-                <button
-                  onClick={() => setCreando(true)}
-                  className="flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-lg"
-                  style={{ background: "#c9a96a", color: "#000" }}
-                >
-                  <Plus size={15} /> Área
-                </button>
-              </>
+              <button
+                onClick={() => setCreando(true)}
+                className="flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-lg"
+                style={{ background: "#c9a96a", color: "#000" }}
+              >
+                <Plus size={15} /> Área
+              </button>
             )}
           </div>
         </div>
