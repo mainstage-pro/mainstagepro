@@ -4,27 +4,64 @@
  * No template-literal escape issues — this file is served as-is.
  */
 
-var cur=0,_s=[],_d=[],_c=null,_ok=false,_edit=false;
+var cur=0,_s=[],_d=[],_c=null,_ok=false,_edit=false,_end=null;
 
 // Read session/version IDs from meta tags injected by the route handler
 var _sidEl=document.querySelector('meta[name="ms-sid"]');
 var _vidEl=document.querySelector('meta[name="ms-vid"]');
+var _evalEl=document.querySelector('meta[name="ms-has-eval"]');
 var _sid=_sidEl?_sidEl.getAttribute('content'):null;
 var _vid=_vidEl?_vidEl.getAttribute('content'):null;
+var _hasEval=_evalEl?_evalEl.getAttribute('content')==='1':false;
 
 function pad2(n){return(n<10?'0':'')+n;}
 function toArr(nl){var a=[];for(var i=0;i<nl.length;i++)a.push(nl[i]);return a;}
 
 function msShow(idx){
   try{
+    var atEnd=(idx===_s.length);
     for(var i=0;i<_s.length;i++){
       _s[i].style.display=(i===idx)?'flex':'none';
     }
+    if(_end)_end.style.display=atEnd?'flex':'none';
     if(_d[cur])_d[cur].className='ms-dot';
     cur=idx;
     if(_d[cur])_d[cur].className='ms-dot on';
-    if(_c)_c.textContent=pad2(cur+1)+' / '+pad2(_s.length);
+    if(_c)_c.textContent=atEnd?'Fin':(pad2(cur+1)+' / '+pad2(_s.length));
   }catch(e){}
+}
+
+// Pantalla final: se anexa al <body> (fuera de #deck para no persistirse al guardar).
+// Es la slide-tope tras la última: ofrece repasar o pasar a la evaluación.
+function msBuildEnd(){
+  _end=document.getElementById('ms-end');
+  if(_end)return;
+  var wrap=document.createElement('div');
+  wrap.id='ms-end';
+  wrap.style.cssText='position:fixed;inset:0;display:none;flex-direction:column;'
+    +'align-items:center;justify-content:center;text-align:center;'
+    +'padding:24px 24px 96px;background:#040404;z-index:900';
+  var titulo=_hasEval?'\u00bfListo para la evaluaci\u00f3n?':'\u00a1Terminaste la lecci\u00f3n!';
+  var sub=_hasEval
+    ?'Repasa el curso las veces que necesites. Cuando te sientas seguro, presenta la evaluaci\u00f3n.'
+    :'Repasa el curso las veces que necesites y m\u00e1rcalo como completado cuando termines.';
+  var evalLabel=_hasEval?'Tomar evaluaci\u00f3n \u2192':'Marcar como completado \u2713';
+  wrap.innerHTML=
+     '<div class="ms-eyebrow" style="justify-content:center">Fin del curso</div>'
+    +'<h1 class="ms-title lg" style="max-width:16ch">'+titulo+'</h1>'
+    +'<p class="ms-subtitle" style="max-width:52ch;margin-left:auto;margin-right:auto">'+sub+'</p>'
+    +'<div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:36px">'
+    +'<button id="ms-repasar" style="padding:0 22px;height:46px;border-radius:10px;background:none;border:1px solid rgba(255,255,255,.18);color:#fff;font-size:14px;font-weight:600;cursor:pointer">\u21ba Repasar curso</button>'
+    +'<button id="ms-eval-go" style="padding:0 22px;height:46px;border-radius:10px;background:#B3985B;border:none;color:#000;font-size:14px;font-weight:800;cursor:pointer">'+evalLabel+'</button>'
+    +'</div>';
+  document.body.appendChild(wrap);
+  _end=wrap;
+  var rp=document.getElementById('ms-repasar');
+  if(rp)rp.onclick=function(){goTo(0);};
+  var eg=document.getElementById('ms-eval-go');
+  if(eg)eg.onclick=function(){
+    try{if(window.parent)window.parent.postMessage({type:'ms-finalizar'},'*');}catch(e){}
+  };
 }
 
 function msInit(){
@@ -36,6 +73,7 @@ function msInit(){
     _s=toArr(found);
     _d=toArr(document.querySelectorAll('.ms-dot'));
     _c=document.getElementById('ms-counter');
+    msBuildEnd();
     msShow(0);
     msAddEditUI();
   }catch(e){
@@ -46,7 +84,10 @@ function msInit(){
 function goTo(n){
   if(!_ok)msInit();
   if(!_s.length)return;
-  n=((parseInt(n,10)%_s.length)+_s.length)%_s.length;
+  n=parseInt(n,10);
+  if(isNaN(n))return;
+  if(n<0)n=0;                 // tope inicial: no rebasa la primera slide
+  if(n>_s.length)n=_s.length; // tope final: la pantalla de evaluación es el límite
   if(n===cur)return;
   msShow(n);
 }

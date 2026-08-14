@@ -151,7 +151,7 @@ function getLogoUrl(): string {
 }
 
 // ── fixHtml ────────────────────────────────────────────────────
-function fixHtml(html: string, logoUrl: string, sessionId: string, versionId: string): string {
+function fixHtml(html: string, logoUrl: string, sessionId: string, versionId: string, tieneEval: boolean): string {
   // 1. Strip ALL scripts from Claude (closed and unclosed)
   let result = html.replace(/<script[\s\S]*?<\/script>/gi, "");
   result = result.replace(/<script[\s\S]*/i, "");
@@ -169,7 +169,8 @@ function fixHtml(html: string, logoUrl: string, sessionId: string, versionId: st
 
   // 4. Inject meta tags + CSS into <head>
   const metaTags = `<meta name="ms-sid" content="${sessionId}">
-<meta name="ms-vid" content="${versionId}">`;
+<meta name="ms-vid" content="${versionId}">
+<meta name="ms-has-eval" content="${tieneEval ? "1" : "0"}">`;
 
   const headInject = metaTags + "\n" + MS_CSS;
 
@@ -210,17 +211,23 @@ export async function GET(
 
   const { id, vid } = await params;
 
-  const version = await prisma.versionPresentacion.findFirst({
-    where: { id: vid, sesionId: id },
-    select: { htmlContent: true, version: true },
-  });
+  const [version, evaluacion] = await Promise.all([
+    prisma.versionPresentacion.findFirst({
+      where: { id: vid, sesionId: id },
+      select: { htmlContent: true, version: true },
+    }),
+    prisma.evaluacionCapacitacion.findUnique({
+      where: { sesionId: id },
+      select: { id: true },
+    }),
+  ]);
 
   if (!version) {
     return new NextResponse("Versión no encontrada", { status: 404 });
   }
 
   const logoUrl = getLogoUrl();
-  const fixed = fixHtml(version.htmlContent, logoUrl, id, vid);
+  const fixed = fixHtml(version.htmlContent, logoUrl, id, vid, !!evaluacion);
 
 
   return new NextResponse(fixed, {

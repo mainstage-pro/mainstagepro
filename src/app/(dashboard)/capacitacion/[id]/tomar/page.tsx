@@ -117,7 +117,7 @@ export default function TomarPage({ params }: { params: Promise<{ id: string }> 
   }
 
   // ── Finalizar ────────────────────────────────────────────────────────────────
-  async function finalizar() {
+  const finalizar = useCallback(async () => {
     if (finalizando) return;
     setFinalizando(true);
     const tieneEval = !!sesion?.evaluacion;
@@ -129,7 +129,17 @@ export default function TomarPage({ params }: { params: Promise<{ id: string }> 
 
     if (tieneEval) router.push(`/capacitacion/${id}/evaluacion`);
     else router.push(sesion?.categoria ? `/capacitacion/area/${sesion.categoria.slug}` : "/capacitacion");
-  }
+  }, [finalizando, sesion, id, router]);
+
+  // La pantalla final de la presentación (dentro del iframe) avisa por postMessage
+  // cuando el usuario elige "Tomar evaluación" / "Marcar como completado".
+  useEffect(() => {
+    function onMsg(e: MessageEvent) {
+      if (e.data && e.data.type === "ms-finalizar") finalizar();
+    }
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+  }, [finalizar]);
 
   const vid = sesion?.versiones?.[0]?.id;
   const puntos = (sesion?.puntosEditados?.length ? sesion.puntosEditados : sesion?.puntosBase) ?? [];
