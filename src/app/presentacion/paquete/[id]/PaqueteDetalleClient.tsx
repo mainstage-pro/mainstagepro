@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import PresentacionNav from "@/components/presentacion/PresentacionNav";
 import { usePresentacionEdit, EditableText } from "@/components/presentacion/editable";
+import { calcularTotalPaquete, money } from "@/lib/paquete-precio";
 
 const GOLD = "#B3985B";
 const WA_BASE = "https://wa.me/524461432565?text=";
@@ -13,10 +14,10 @@ type Foto = { src: string; caption: string };
 type ProductoEquipo = { cantidad: number; descripcion: string | null; marca: string | null; modelo: string | null; imagenUrl: string | null; categoria: string | null; galeria: Foto[] };
 type Item = {
   tipo: string; cantidad: number;
-  equipo: { descripcion: string | null; marca: string | null; modelo: string | null; imagenUrl: string | null; categoria: string | null; galeria: Foto[] } | null;
-  producto: { nombre: string; imagenUrl: string | null; categoria: string | null; equipos: ProductoEquipo[] } | null;
+  equipo: { descripcion: string | null; marca: string | null; modelo: string | null; precioRenta: number; imagenUrl: string | null; categoria: string | null; galeria: Foto[] } | null;
+  producto: { nombre: string; precioFinal: number; imagenUrl: string | null; categoria: string | null; equipos: ProductoEquipo[] } | null;
 };
-type Concepto = { tipo: string; descripcion: string };
+type Concepto = { tipo: string; descripcion: string; cantidad: number; dias: number; precioUnitario: number };
 type Adicional = { id: string; nombre: string; descripcion: string | null; imagenUrl: string | null; composicion: string | null };
 type ItemVista = { titulo: string; descripcion: string; cantidad: number; imagenUrl: string | null; galeria: Foto[] };
 
@@ -170,6 +171,7 @@ export default function PaqueteDetalleClient({
   const gruposEquipo = agruparPorCategoria(p.items);
   // Ocultamos "1 comida por persona" (se confirma aparte, no es parte del show técnico).
   const servicios = p.conceptos.map((c) => c.descripcion).filter((d) => d && !/comida\s*por\s*persona/i.test(d));
+  const total = calcularTotalPaquete(p.items, p.conceptos);
   const confirmarMsg = `Hola, quiero confirmar el paquete "${p.nombre}" para mi evento. ¿Cómo continuamos?`;
   const fraseFallback = FRASE_EMOCIONAL[p.tipoEvento] ?? FRASE_EMOCIONAL.SOCIAL;
 
@@ -255,6 +257,13 @@ export default function PaqueteDetalleClient({
               <div className="rounded-2xl p-6" style={{ border: `1px solid ${GOLD}33`, background: "rgba(179,152,91,0.05)" }}>
                 <p className="text-[11px] uppercase tracking-[0.14em] mb-2.5" style={{ color: GOLD }}>Por qué elegirlo</p>
                 <p className="text-white/75 text-[15px] leading-relaxed whitespace-pre-line">{p.propuestaValor}</p>
+              </div>
+            )}
+
+            {total > 0 && (
+              <div className="mt-6 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <span className="text-[11px] uppercase tracking-[0.16em] text-white/40">Total del paquete</span>
+                <span className="font-bold leading-none" style={{ fontSize: "clamp(1.8rem, 3.6vw, 2.4rem)", color: GOLD, letterSpacing: "-0.02em" }}>{money(total)}</span>
               </div>
             )}
           </R>
@@ -365,6 +374,22 @@ export default function PaqueteDetalleClient({
                     {t}
                   </span>
                 ))}
+              </div>
+            </R>
+          )}
+
+          {total > 0 && (
+            <R delay={120} className="mt-12">
+              <div className="rounded-2xl p-6 sm:p-7 flex flex-wrap items-center justify-between gap-4"
+                style={{ border: `1px solid ${GOLD}33`, background: "linear-gradient(120deg, rgba(179,152,91,0.08), rgba(179,152,91,0.02))" }}>
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.16em] mb-1.5" style={{ color: GOLD }}>Todo esto incluido</p>
+                  <p className="text-white/55 text-sm leading-relaxed max-w-md">Equipo, servicios y operación técnica del paquete, en un solo total.</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[11px] uppercase tracking-[0.14em] text-white/40 mb-1">Total del paquete</p>
+                  <p className="font-bold leading-none" style={{ fontSize: "clamp(1.9rem, 4vw, 2.6rem)", color: GOLD, letterSpacing: "-0.02em" }}>{money(total)}</p>
+                </div>
               </div>
             </R>
           )}

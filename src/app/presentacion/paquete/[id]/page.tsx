@@ -122,6 +122,7 @@ export default async function PaqueteDetallePage({ params }: { params: Promise<{
             descripcion: it.equipo.descripcion,
             marca: it.equipo.marca,
             modelo: it.equipo.modelo,
+            precioRenta: it.equipo.precioRenta ?? 0,
             imagenUrl: it.equipo.imagenUrl ?? null,
             categoria: it.equipo.categoria?.nombre ?? null,
             galeria: galeriaDe(it.equipo),
@@ -130,6 +131,7 @@ export default async function PaqueteDetallePage({ params }: { params: Promise<{
       producto: it.producto
         ? {
             nombre: it.producto.nombre,
+            precioFinal: it.producto.precioFinal ?? 0,
             imagenUrl: it.producto.imagenUrl ?? null,
             categoria: it.producto.categoria ?? null,
             // Equipos principales que componen el producto (sin accesorios: los
@@ -146,7 +148,13 @@ export default async function PaqueteDetallePage({ params }: { params: Promise<{
           }
         : null,
     })),
-    conceptos: p.conceptos.map((c) => ({ tipo: c.tipo, descripcion: c.descripcion })),
+    conceptos: p.conceptos.map((c) => ({
+      tipo: c.tipo,
+      descripcion: c.descripcion,
+      cantidad: c.cantidad,
+      dias: c.dias,
+      precioUnitario: c.precioUnitario,
+    })),
     adicionales,
   };
 

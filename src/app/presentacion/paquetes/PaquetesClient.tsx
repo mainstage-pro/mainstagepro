@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import PresentacionNav from "@/components/presentacion/PresentacionNav";
+import { calcularTotalPaquete } from "@/lib/paquete-precio";
 
 const GOLD = "#B3985B";
 const WA_BASE = "https://wa.me/524461432565?text=";
@@ -11,7 +12,7 @@ function wa(msg: string) { return WA_BASE + encodeURIComponent(msg); }
 type Equipo = { id: string; descripcion: string | null; marca: string | null; modelo: string | null; precioRenta: number | null; imagenUrl: string | null; categoria?: { nombre: string } | null };
 type ProductoLite = { id: string; nombre: string; categoria: string | null; imagenUrl: string | null; precioFinal: number };
 type Item = { id: string; tipo: string; cantidad: number; equipo: Equipo | null; producto: ProductoLite | null };
-type Concepto = { id: string; tipo: string; descripcion: string };
+type Concepto = { id: string; tipo: string; descripcion: string; cantidad?: number; dias?: number; precioUnitario?: number };
 type Imagen = { id: string; url: string; tipo?: string; orden: number };
 type Paquete = {
   id: string; nombre: string; tipoEvento: string; rangoPersonas: string | null;
@@ -74,6 +75,7 @@ function PaqueteCard({ p }: { p: Paquete }) {
     ...p.conceptos.map((c) => c.descripcion),
   ].filter(Boolean);
   const visibles = incluye.slice(0, 6);
+  const total = calcularTotalPaquete(p.items, p.conceptos);
 
   return (
     <Link href={`/presentacion/paquete/${p.id}`}
@@ -132,7 +134,14 @@ function PaqueteCard({ p }: { p: Paquete }) {
           </div>
         )}
 
-        <span className="mt-auto text-center text-sm font-semibold px-6 py-3.5 rounded-full transition-all group-hover:scale-[1.02]" style={{ background: GOLD, color: "#000" }}>
+        {total > 0 && (
+          <div className="mt-auto flex items-baseline justify-between gap-3 mb-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+            <span className="text-[11px] uppercase tracking-[0.14em] text-white/35">Total del paquete</span>
+            <span className="font-semibold" style={{ fontSize: "1.35rem", color: GOLD, letterSpacing: "-0.01em" }}>{money(total)}</span>
+          </div>
+        )}
+
+        <span className={`${total > 0 ? "" : "mt-auto "}text-center text-sm font-semibold px-6 py-3.5 rounded-full transition-all group-hover:scale-[1.02]`} style={{ background: GOLD, color: "#000" }}>
           Ver paquete
         </span>
       </div>
