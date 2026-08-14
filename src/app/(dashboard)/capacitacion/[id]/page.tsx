@@ -138,6 +138,49 @@ function SortablePoint({
   );
 }
 
+// ─── List field (editor de lista simple para la ficha) ───────────────────────
+
+function ListField({
+  items, onChange, placeholder, numbered = false,
+}: {
+  items: string[];
+  onChange: (next: string[]) => void;
+  placeholder: string;
+  numbered?: boolean;
+}) {
+  return (
+    <div className="space-y-1.5">
+      {items.map((it, i) => (
+        <div key={i} className="flex items-center gap-2">
+          <span className="text-[10px] font-mono shrink-0 w-5 text-right" style={{ color: "#c9a96a" }}>
+            {numbered ? padNum(i + 1) : "•"}
+          </span>
+          <input
+            value={it}
+            onChange={(e) => { const next = items.slice(); next[i] = e.target.value; onChange(next); }}
+            placeholder={placeholder}
+            className="flex-1 bg-[#0d0d0d] border rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-[#333] focus:outline-none focus:border-[#c9a96a]/50"
+            style={{ borderColor: "#1e1e1e" }}
+          />
+          <button
+            onClick={() => onChange(items.filter((_, j) => j !== i))}
+            className="text-[#444] hover:text-red-400 transition-colors text-lg leading-none shrink-0"
+          >
+            ×
+          </button>
+        </div>
+      ))}
+      <button
+        onClick={() => onChange([...items, ""])}
+        className="text-xs font-medium transition-colors hover:text-[#c9a96a] px-1"
+        style={{ color: "#6b7280" }}
+      >
+        + Agregar
+      </button>
+    </div>
+  );
+}
+
 // ─── Navigation fix ───────────────────────────────────────────────────────────
 // Claude's generated scripts can be broken (wrapped in DOMContentLoaded, wrong
 // scope, wrong order, etc.). We strip them all and inject our own bulletproof
@@ -341,8 +384,22 @@ export default function CapacitacionDetailPage() {
   const [estado, setEstado] = useState("pendiente");
   const [savingConfig, setSavingConfig] = useState(false);
 
+  // Ficha del tema
+  const [ficha, setFicha] = useState({
+    subArea: "",
+    publicoObjetivo: "",
+    prerrequisitos: [] as string[],
+    procedimiento: [] as string[],
+    erroresComunes: [] as string[],
+    checklistAplicacion: [] as string[],
+    recursos: [] as string[],
+  });
+  const [fichaSave, setFichaSave] = useState<SaveState>("idle");
+  const fichaTimer = useRef<NodeJS.Timeout | null>(null);
+
   // Accordions
   const [openPuntos, setOpenPuntos] = useState(true);
+  const [openFicha, setOpenFicha] = useState(false);
   const [openNotas, setOpenNotas] = useState(true);
   const [openObjetivo, setOpenObjetivo] = useState(false);
 
@@ -375,6 +432,15 @@ export default function CapacitacionDetailPage() {
         setDuracion(data.duracion);
         setImpartidor(data.impartidor);
         setEstado(data.estado);
+        setFicha({
+          subArea: data.subArea ?? "",
+          publicoObjetivo: data.publicoObjetivo ?? "",
+          prerrequisitos: data.prerrequisitos ?? [],
+          procedimiento: data.procedimiento ?? [],
+          erroresComunes: data.erroresComunes ?? [],
+          checklistAplicacion: data.checklistAplicacion ?? [],
+          recursos: data.recursos ?? [],
+        });
         setLoading(false);
       })
       .catch(() => { showToast("No se pudo cargar la sesión", "error"); router.push("/capacitacion"); });
@@ -398,6 +464,35 @@ export default function CapacitacionDetailPage() {
       if (estado === "pendiente") setEstado("en-preparacion");
       setTimeout(() => setNotasSave("idle"), 2000);
     }, 1500);
+  }
+
+  // ── Auto-save ficha del tema ──────────────────────────────────────────────────
+  function scheduleFichaSave(next: typeof ficha) {
+    setFichaSave("unsaved");
+    if (fichaTimer.current) clearTimeout(fichaTimer.current);
+    fichaTimer.current = setTimeout(async () => {
+      setFichaSave("saving");
+      const payload = {
+        subArea: next.subArea.trim() || null,
+        publicoObjetivo: next.publicoObjetivo.trim() || null,
+        prerrequisitos: next.prerrequisitos.map((s) => s.trim()).filter(Boolean),
+        procedimiento: next.procedimiento.map((s) => s.trim()).filter(Boolean),
+        erroresComunes: next.erroresComunes.map((s) => s.trim()).filter(Boolean),
+        checklistAplicacion: next.checklistAplicacion.map((s) => s.trim()).filter(Boolean),
+        recursos: next.recursos.map((s) => s.trim()).filter(Boolean),
+      };
+      await fetch(`/api/capacitacion/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      setSesion((prev) => prev ? { ...prev, ...payload } : prev);
+      setFichaSave("saved");
+      setTimeout(() => setFichaSave("idle"), 2000);
+    }, 1000);
+  }
+  function updateFicha(partial: Partial<typeof ficha>) {
+    setFicha((prev) => { const next = { ...prev, ...partial }; scheduleFichaSave(next); return next; });
   }
 
   // ── Auto-save puntos ────────────────────────────────────────────────────────
@@ -499,13 +594,13 @@ export default function CapacitacionDetailPage() {
             impartidor,
             puntos: puntos.map((p) => p.text),
             notas,
-            subArea: sesion.subArea,
-            publicoObjetivo: sesion.publicoObjetivo,
-            prerrequisitos: sesion.prerrequisitos,
-            procedimiento: sesion.procedimiento,
-            erroresComunes: sesion.erroresComunes,
-            checklistAplicacion: sesion.checklistAplicacion,
-            recursos: sesion.recursos,
+            subArea: ficha.subArea,
+            publicoObjetivo: ficha.publicoObjetivo,
+            prerrequisitos: ficha.prerrequisitos,
+            procedimiento: ficha.procedimiento,
+            erroresComunes: ficha.erroresComunes,
+            checklistAplicacion: ficha.checklistAplicacion,
+            recursos: ficha.recursos,
           },
         }),
       });
@@ -777,6 +872,86 @@ export default function CapacitacionDetailPage() {
                           ↩ Restaurar originales
                         </button>
                       )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* SECCIÓN 1.5: Ficha del tema */}
+              <div className="rounded-xl border overflow-hidden" style={{ background: "#111", borderColor: "#262626" }}>
+                <button
+                  onClick={() => setOpenFicha((p) => !p)}
+                  className="w-full flex items-center justify-between px-5 py-4 hover:bg-[#151515] transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-semibold text-white">Ficha del tema</span>
+                    <span
+                      className="w-2 h-2 rounded-full shrink-0"
+                      style={{ background: (ficha.publicoObjetivo.trim() || ficha.procedimiento.length || ficha.prerrequisitos.length) ? "#22c55e" : "#333" }}
+                    />
+                    <SaveIndicator state={fichaSave} />
+                  </div>
+                  <svg
+                    className={`w-4 h-4 transition-transform ${openFicha ? "rotate-180" : ""}`}
+                    style={{ color: "#6b7280" }}
+                    fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"
+                  >
+                    <path d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {openFicha && (
+                  <div className="px-5 pb-5 border-t space-y-5" style={{ borderColor: "#1a1a1a" }}>
+                    <p className="text-[11px] mt-3 leading-relaxed" style={{ color: "#4b5563" }}>
+                      La ficha da estructura al tema para que se sostenga en línea. La IA la integra al generar la presentación.
+                    </p>
+
+                    <div>
+                      <label className="block text-[11px] font-medium mb-1.5" style={{ color: "#9ca3af" }}>Sub-área</label>
+                      <input
+                        value={ficha.subArea}
+                        onChange={(e) => updateFicha({ subArea: e.target.value })}
+                        placeholder="Ej: Prácticas y Capacitaciones Técnicas"
+                        className="w-full bg-[#0d0d0d] border rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#333] focus:outline-none focus:border-[#c9a96a]/50"
+                        style={{ borderColor: "#1e1e1e" }}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-medium mb-1.5" style={{ color: "#9ca3af" }}>Público objetivo</label>
+                      <textarea
+                        value={ficha.publicoObjetivo}
+                        onChange={(e) => updateFicha({ publicoObjetivo: e.target.value })}
+                        placeholder="¿Para quién es este tema? Roles, nivel, prerrequisitos de contexto."
+                        className="w-full bg-[#0d0d0d] border rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#333] resize-none focus:outline-none focus:border-[#c9a96a]/50 leading-relaxed"
+                        style={{ borderColor: "#1e1e1e", minHeight: 64 }}
+                        rows={2}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-medium mb-1.5" style={{ color: "#9ca3af" }}>Prerrequisitos</label>
+                      <ListField items={ficha.prerrequisitos} onChange={(next) => updateFicha({ prerrequisitos: next })} placeholder="Conocimiento o tema previo requerido" />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-medium mb-1.5" style={{ color: "#9ca3af" }}>Procedimiento paso a paso</label>
+                      <ListField items={ficha.procedimiento} onChange={(next) => updateFicha({ procedimiento: next })} placeholder="Paso del procedimiento" numbered />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-medium mb-1.5" style={{ color: "#9ca3af" }}>Errores comunes</label>
+                      <ListField items={ficha.erroresComunes} onChange={(next) => updateFicha({ erroresComunes: next })} placeholder="Error frecuente a evitar" />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-medium mb-1.5" style={{ color: "#9ca3af" }}>Checklist de aplicación</label>
+                      <ListField items={ficha.checklistAplicacion} onChange={(next) => updateFicha({ checklistAplicacion: next })} placeholder="Punto verificable de aplicación" />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-medium mb-1.5" style={{ color: "#9ca3af" }}>Recursos y enlaces</label>
+                      <ListField items={ficha.recursos} onChange={(next) => updateFicha({ recursos: next })} placeholder="Recurso, módulo o enlace de apoyo" />
                     </div>
                   </div>
                 )}
