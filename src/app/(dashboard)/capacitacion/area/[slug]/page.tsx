@@ -12,6 +12,7 @@ interface Sesion {
   titulo: string;
   bloque: string;
   bloqueLetra: string;
+  subArea: string | null;
   descripcion: string;
   duracion: number;
   categoria: { id: string; nombre: string; slug: string; color: string } | null;
@@ -64,14 +65,15 @@ export default function AreaPage({ params }: { params: Promise<{ slug: string }>
 
   useEffect(() => { cargar(); }, [slug]);
 
-  const byBloque = useMemo(() => {
-    const map: { letra: string; nombre: string; sesiones: Sesion[] }[] = [];
+  // Agrupa por sub-área del plan de trabajo; si el tema no la tiene, cae en su bloque.
+  const bySubArea = useMemo(() => {
+    const map = new Map<string, { letra: string; nombre: string; sesiones: Sesion[] }>();
     for (const s of sesiones) {
-      const last = map[map.length - 1];
-      if (!last || last.letra !== s.bloqueLetra) map.push({ letra: s.bloqueLetra, nombre: s.bloque, sesiones: [s] });
-      else last.sesiones.push(s);
+      const nombre = s.subArea?.trim() || s.bloque;
+      if (!map.has(nombre)) map.set(nombre, { letra: s.bloqueLetra, nombre, sesiones: [] });
+      map.get(nombre)!.sesiones.push(s);
     }
-    return map;
+    return Array.from(map.values());
   }, [sesiones]);
 
   const color = areaInfo?.color ?? "#c9a96a";
@@ -115,10 +117,10 @@ export default function AreaPage({ params }: { params: Promise<{ slug: string }>
           </div>
         ) : (
           <div className="space-y-6">
-            {byBloque.map((g) => {
+            {bySubArea.map((g) => {
               const c = colorBloque(g.letra);
               return (
-                <div key={g.letra}>
+                <div key={g.nombre}>
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-2 h-2 rounded-full" style={{ background: c }} />
                     <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: c }}>{g.nombre}</p>

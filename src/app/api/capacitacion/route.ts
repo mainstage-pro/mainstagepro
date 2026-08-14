@@ -48,6 +48,7 @@ export async function GET(req: NextRequest) {
       titulo: s.titulo,
       bloque: s.bloque,
       bloqueLetra: s.bloqueLetra,
+      subArea: s.subArea,
       descripcion: s.descripcion,
       duracion: s.duracion,
       categoria: s.categoria,
