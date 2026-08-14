@@ -5,6 +5,9 @@ import { buildBriefTecnicoData } from "./brief-tecnico/build";
 import { renderServicio } from "./servicios/templates";
 import { serviciosBg, serviciosEditableFields, serviciosSlides, type ServiciosData } from "./servicios/data";
 import { buildServiciosData } from "./servicios/build";
+import { renderTipoEvento } from "./tipos-evento/templates";
+import { tiposEventoBg, tiposEventoEditableFields, tiposEventoSlides, type TiposEventoData } from "./tipos-evento/data";
+import { buildTiposEventoData } from "./tipos-evento/build";
 import type { EditableField } from "./overrides";
 import type { FormatoPerfil } from "./formatos";
 
@@ -42,6 +45,13 @@ export const RENDERERS: Record<string, TemplateRenderer> = {
     bgFor: (slide, data) => serviciosBg(data as ServiciosData, slide),
     editableFields: (data) => serviciosEditableFields(data as ServiciosData),
     render: (slide, data, assets, index, fmt) => renderServicio(slide, data as ServiciosData, assets, index, fmt),
+  },
+  "tipos-evento": {
+    buildData: async () => buildTiposEventoData(),
+    slides: (data) => tiposEventoSlides(data as TiposEventoData),
+    bgFor: (slide, data) => tiposEventoBg(data as TiposEventoData, slide),
+    editableFields: (data) => tiposEventoEditableFields(data as TiposEventoData),
+    render: (slide, data, assets, index, fmt) => renderTipoEvento(slide, data as TiposEventoData, assets, index, fmt),
   },
 };
 
