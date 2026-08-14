@@ -83,9 +83,13 @@ export const TEMPLATES: DesignTemplateMeta[] = [
     categoria: "Inventario",
     descripcion: "Fichas de equipo (audio, video, iluminación) directo del inventario.",
     formato: "Story · 1080×1920",
-    slides: [],
-    disponible: false,
-    fuente: "Inventario",
+    slides: [
+      { id: "portada", label: "Portada" },
+      { id: "equipos", label: "Una ficha por equipo (dinámico)" },
+      { id: "cierre", label: "Cierre / contacto" },
+    ],
+    disponible: true,
+    fuente: "Inventario · Equipos con foto",
   },
   {
     id: "contenido-informativo",

@@ -56,9 +56,11 @@ export async function localImage(origin: string, rel: string, maxWidth = CANVAS.
   const key = `${rel}@${maxWidth}`;
   const cached = imgCache.get(key);
   if (cached) return cached;
-  // Acepta rutas de /public (relativas) o URLs absolutas (fotos en Vercel Blob).
-  const src = /^https?:\/\//.test(rel) ? rel : `${origin}/${rel.replace(/^\//, "")}`;
-  const buf = await fetchBuffer(src);
+  // Acepta data URLs base64 (fotos de equipo en BD), rutas de /public (relativas)
+  // o URLs absolutas (fotos en Vercel Blob).
+  const buf = rel.startsWith("data:")
+    ? Buffer.from(rel.slice(rel.indexOf(",") + 1), "base64")
+    : await fetchBuffer(/^https?:\/\//.test(rel) ? rel : `${origin}/${rel.replace(/^\//, "")}`);
   const url = await encodeImage(buf, maxWidth);
   imgCache.set(key, url);
   return url;
