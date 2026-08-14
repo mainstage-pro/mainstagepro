@@ -60,7 +60,21 @@ function msBuildEnd(){
   if(rp)rp.onclick=function(){goTo(0);};
   var eg=document.getElementById('ms-eval-go');
   if(eg)eg.onclick=function(){
-    try{if(window.parent)window.parent.postMessage({type:'ms-finalizar'},'*');}catch(e){}
+    if(eg.disabled)return;
+    eg.disabled=true;eg.style.opacity='.6';
+    // Registra el cierre del curso (best-effort; el servidor conserva el mayor tiempo).
+    try{
+      fetch('/api/capacitacion/'+_sid+'/progreso',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({finalizar:true,completado:!_hasEval}),
+        keepalive:true,
+        credentials:'include'
+      }).catch(function(){});
+    }catch(e){}
+    // Navega la ventana de nivel superior (mismo origen). No depende del JS del padre.
+    var dest=_hasEval?('/capacitacion/'+_sid+'/evaluacion'):'/capacitacion';
+    try{(window.top||window).location.href=dest;}catch(e){window.location.href=dest;}
   };
 }
 
