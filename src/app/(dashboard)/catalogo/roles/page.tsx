@@ -7,6 +7,18 @@ import { useConfirm } from "@/components/Confirm";
 import { Modal } from "@/components/Modal";
 import { DISCIPLINAS, DISCIPLINA_LABELS, DISCIPLINA_COLORS } from "@/lib/disciplinaColors";
 
+// Orden de las secciones del tabulador. null = "Sin categoría" (p.ej. Production Manager).
+const SECCIONES: (string | null)[] = [...DISCIPLINAS, null];
+
+// Jerarquía dentro de cada sección: ingeniero > operador > técnico.
+function rangoJerarquia(nombre: string): number {
+  const n = nombre.toLowerCase();
+  if (n.includes("ingenier")) return 0;
+  if (n.includes("operador")) return 1;
+  if (n.includes("técnico") || n.includes("tecnico")) return 2;
+  return 1.5;
+}
+
 type Rol = {
   id: string;
   nombre: string;
@@ -163,6 +175,19 @@ export default function RolesPage() {
   const activos = roles.filter(r => r.activo);
   const inactivos = roles.filter(r => !r.activo);
 
+  const secciones = SECCIONES
+    .map(disc => ({
+      disc,
+      roles: activos
+        .filter(r => (r.disciplina ?? null) === disc)
+        .sort((a, b) =>
+          rangoJerarquia(a.nombre) - rangoJerarquia(b.nombre) ||
+          a.orden - b.orden ||
+          a.nombre.localeCompare(b.nombre)
+        ),
+    }))
+    .filter(s => s.roles.length > 0);
+
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-6">
@@ -318,11 +343,26 @@ export default function RolesPage() {
         </div>
       </Modal>
 
-      {/* Roles activos */}
-      <div className="space-y-2">
-        {activos.map(r => (
-          <RolCard key={r.id} r={r} onEdit={startEdit} onToggle={toggleActivo} onDelete={eliminar} />
-        ))}
+      {/* Roles activos agrupados por categoría */}
+      <div className="space-y-8">
+        {secciones.map(({ disc, roles: rs }) => {
+          const color = disc ? (DISCIPLINA_COLORS[disc] ?? "#9ca3af") : "#9ca3af";
+          const label = disc ? (DISCIPLINA_LABELS[disc] ?? disc) : "Sin categoría";
+          return (
+            <section key={disc ?? "__none__"}>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
+                <h2 className="text-xs uppercase tracking-widest font-semibold" style={{ color }}>{label}</h2>
+                <span className="text-[10px] text-gray-600">{rs.length}</span>
+              </div>
+              <div className="space-y-2">
+                {rs.map(r => (
+                  <RolCard key={r.id} r={r} onEdit={startEdit} onToggle={toggleActivo} onDelete={eliminar} />
+                ))}
+              </div>
+            </section>
+          );
+        })}
       </div>
 
       {/* Roles inactivos */}

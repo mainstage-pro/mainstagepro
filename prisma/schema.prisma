@@ -1168,7 +1168,7 @@ model PaqueteRango {
 model RolTecnico {
   id         String  @id @default(cuid())
   nombre     String
-  disciplina String? // AUDIO | ILUMINACION | VIDEO | RIGGING | STAGE | DJ | STAFF_GENERAL — categoría para ligar con la BD de técnicos
+  disciplina String? // AUDIO | ILUMINACION | VIDEO | STAGE | ELECTRICIDAD | RIGGING | DJ | STAFF_GENERAL — categoría para ligar con la BD de técnicos
   tipoPago   String  @default("POR_JORNADA") // POR_JORNADA | POR_PROYECTO | POR_HORA | TARIFA_PLANA
 
   tarifaAAACorta Float?
