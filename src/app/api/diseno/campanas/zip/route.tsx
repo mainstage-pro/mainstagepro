@@ -3,6 +3,9 @@ import { renderDesign } from "@/lib/diseno/og";
 import { FORMATOS, type FormatoId } from "@/lib/diseno/formatos";
 
 export const runtime = "nodejs";
+// Renderizar 3 creativos 1080x1920 (con fetch de fuentes/fondo cada uno) puede
+// pasarse del timeout por defecto de la función; damos margen holgado.
+export const maxDuration = 60;
 
 const FORMATOS_ZIP: FormatoId[] = ["story", "post", "cuadrado"];
 
@@ -28,11 +31,19 @@ export async function GET(req: Request) {
 
   if (!brief && !disenoId) return new Response("Falta brief o disenoId", { status: 400 });
 
+  // Los 3 formatos se renderizan en paralelo: en serie el fetch de fuentes/fondo
+  // de cada creativo se acumula y la función se pasa del timeout en producción.
+  const renders = await Promise.all(
+    FORMATOS_ZIP.map(async (formato) => {
+      const res = await renderDesign(url.origin, "contenido-campanas", "creativo", { brief, disenoId, formato });
+      if (!res.ok) return { formato, bytes: null as Uint8Array | null };
+      return { formato, bytes: new Uint8Array(await res.arrayBuffer()) };
+    }),
+  );
+
   const files: Record<string, Uint8Array> = {};
-  for (const formato of FORMATOS_ZIP) {
-    const res = await renderDesign(url.origin, "contenido-campanas", "creativo", { brief, disenoId, formato });
-    if (!res.ok) return new Response(`No se pudo generar el formato ${formato}`, { status: 502 });
-    const bytes = new Uint8Array(await res.arrayBuffer());
+  for (const { formato, bytes } of renders) {
+    if (!bytes) return new Response(`No se pudo generar el formato ${formato}`, { status: 502 });
     files[`${base}-${FORMATOS[formato].label.toLowerCase()}.png`] = bytes;
   }
 
