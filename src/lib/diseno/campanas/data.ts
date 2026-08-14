@@ -110,6 +110,24 @@ export function briefToData(b: CampanaBrief): CampanaData {
 
 export const CAMPANA_MUESTRA: CampanaData = briefToData(CAMPANA_MUESTRA_BRIEF);
 
+// Reconstruye el brief editable desde los datos congelados de una plantilla
+// guardada (snapshot). El badge es biyectivo con el objetivo, así que se invierte.
+const BADGE_OBJETIVO = Object.fromEntries(
+  (Object.entries(OBJETIVO_BADGE) as [CampanaObjetivo, string][]).map(([k, v]) => [v, k]),
+) as Record<string, CampanaObjetivo>;
+
+export function dataToBrief(d: CampanaData): CampanaBrief {
+  return {
+    objetivo: BADGE_OBJETIVO[d.badge] ?? "promocion",
+    tituloGold: d.tituloGold,
+    tituloWhite: d.tituloWhite,
+    mensaje: d.mensaje,
+    oferta: d.oferta,
+    cta: d.cta,
+    bg: d.bg,
+  };
+}
+
 // El brief completo va en un solo parámetro (base64url de JSON) para render en vivo.
 export function encodeBrief(b: CampanaBrief): string {
   return Buffer.from(JSON.stringify(b), "utf8").toString("base64url");

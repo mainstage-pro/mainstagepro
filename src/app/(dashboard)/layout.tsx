@@ -72,7 +72,9 @@ export default async function DashboardLayout({
           </main>
           <GlobalNewTaskPanel />
           <QuickAccessPanel />
-          <SolicitarCotizacionButton />
+          {["cmnrpg62h0000zmizxpydetsm", "cmo7ikcc00000oqfsqwzys8g4"].includes(session.id) && (
+            <SolicitarCotizacionButton />
+          )}
           <PwaRefreshButton />
         </div>
       </NavConfigProvider>

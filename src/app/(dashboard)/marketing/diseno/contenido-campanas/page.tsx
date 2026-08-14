@@ -15,8 +15,13 @@ import {
   type CampanaObjetivo,
 } from "@/lib/diseno/campanas/data";
 import FondoPicker from "./FondoPicker";
+import { getCampanaGuardada, listarCampanas } from "@/lib/diseno/campanas/guardados";
+import { guardarPlantillaAction, eliminarPlantillaAction } from "./actions";
 
 export const dynamic = "force-dynamic";
+
+const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+const fechaCorta = (d: Date) => `${d.getUTCDate()} ${MESES[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 
 const GOLD = "#B3985B";
 const CARD = "#141210";
@@ -52,6 +57,8 @@ type Raw = {
   cta?: string;
   fondo?: string;
   formato?: string;
+  abrir?: string; // id de una plantilla guardada a reabrir
+  guardada?: string; // "1" tras guardar (mensaje de éxito)
 };
 
 export default async function ContenidoCampanas({ searchParams }: { searchParams: Promise<Raw> }) {
@@ -62,6 +69,7 @@ export default async function ContenidoCampanas({ searchParams }: { searchParams
   // La primera vez (sin envío) mostramos la muestra; el select de objetivo siempre
   // viaja al enviar, así que su presencia = el usuario ya editó el brief.
   const enviado = raw.objetivo !== undefined;
+  const abierta = !enviado && raw.abrir ? await getCampanaGuardada(raw.abrir) : null;
   const brief: CampanaBrief = enviado
     ? {
         objetivo: (OBJETIVOS.includes(raw.objetivo as CampanaObjetivo) ? raw.objetivo : "promocion") as CampanaObjetivo,
@@ -72,7 +80,11 @@ export default async function ContenidoCampanas({ searchParams }: { searchParams
         cta: raw.cta ?? CAMPANA_MUESTRA_BRIEF.cta,
         bg: bgDeFondo(raw.fondo),
       }
-    : { ...CAMPANA_MUESTRA_BRIEF };
+    : abierta
+      ? { ...abierta.brief }
+      : { ...CAMPANA_MUESTRA_BRIEF };
+
+  const guardadas = await listarCampanas();
 
   const formato: FormatoId = (["story", "post", "cuadrado"] as const).includes(raw.formato as FormatoId)
     ? (raw.formato as FormatoId)
@@ -82,6 +94,8 @@ export default async function ContenidoCampanas({ searchParams }: { searchParams
   const fondoId = idDeFondo(brief.bg);
   const encoded = encodeBrief(brief);
   const src = `/api/diseno/render?template=contenido-campanas&slide=creativo&brief=${encoded}&formato=${formato}`;
+  const nombreBase = `campana-${brief.objetivo}`;
+  const zipHref = `/api/diseno/campanas/zip?brief=${encoded}&nombre=${nombreBase}`;
 
   // Links que preservan el brief y solo cambian el formato (recargan la página).
   const pageQS = (f: string) => {
@@ -206,10 +220,87 @@ export default async function ContenidoCampanas({ searchParams }: { searchParams
             />
 
             <a href={src} download={`campana-${brief.objetivo}-${formato}.png`} className="ms-btn-primary text-center">
-              Generar y descargar
+              Descargar {FORMATOS[formato].label} (PNG)
             </a>
+
+            <a href={zipHref} download={`${nombreBase}.zip`} className="ms-btn-secondary text-center">
+              Descargar los 3 formatos (ZIP)
+            </a>
+
+            {/* Guardar la plantilla para reusarla después */}
+            <form action={guardarPlantillaAction} className="flex flex-col gap-2.5 rounded-xl px-4 py-4 mt-1" style={{ background: CARD, border: `1px solid ${BORDE}` }}>
+              <input type="hidden" name="brief" value={encoded} />
+              <input type="hidden" name="formato" value={formato} />
+              <label style={labelStyle}>Guardar esta plantilla</label>
+              <input
+                name="nombre"
+                defaultValue={`${brief.tituloGold} ${brief.tituloWhite}`.trim()}
+                placeholder="Nombre de la plantilla"
+                style={inputStyle}
+              />
+              <button type="submit" className="ms-btn-primary">
+                Guardar plantilla
+              </button>
+              {raw.guardada === "1" && (
+                <span className="text-[12.5px] font-medium" style={{ color: "#7cc47c" }}>
+                  ✓ Plantilla guardada. La ves abajo en “Plantillas guardadas”.
+                </span>
+              )}
+            </form>
           </div>
         </div>
+
+        {/* ── Plantillas guardadas ── */}
+        <section className="mt-12">
+          <h2 className="ms-section-label mb-1">Plantillas guardadas</h2>
+          <p className="ms-subtitle mb-5" style={{ maxWidth: 720 }}>
+            {guardadas.length === 0
+              ? "Aún no guardas ninguna. Arma un creativo y usa “Guardar plantilla” para tenerlo aquí."
+              : "Ábrelas para editarlas, descarga los 3 formatos en ZIP o elimínalas."}
+          </p>
+
+          {guardadas.length > 0 && (
+            <div className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))" }}>
+              {guardadas.map((g) => {
+                const thumb = `/api/diseno/render?disenoId=${g.id}&slide=creativo&formato=cuadrado`;
+                const zip = `/api/diseno/campanas/zip?disenoId=${g.id}&nombre=${g.id}`;
+                return (
+                  <div key={g.id} className="flex flex-col gap-2.5">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={thumb}
+                      alt={g.titulo}
+                      className="w-full block rounded-xl"
+                      style={{ aspectRatio: "1 / 1", objectFit: "cover", border: `1px solid ${BORDE}`, background: CARD }}
+                    />
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-[13.5px] font-semibold leading-tight" style={{ color: "#e8e2d6" }}>
+                        {g.titulo || "Campaña"}
+                      </span>
+                      <span className="text-[11px] font-bold tracking-wide" style={{ color: "#8a8578" }}>
+                        {fechaCorta(g.createdAt)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <a href={`?abrir=${g.id}`} className="ms-btn-ghost">
+                        Abrir
+                      </a>
+                      <a href={zip} download={`campana-${g.id}.zip`} className="ms-btn-ghost">
+                        ZIP
+                      </a>
+                      <form action={eliminarPlantillaAction} className="m-0">
+                        <input type="hidden" name="id" value={g.id} />
+                        <button type="submit" className="ms-btn-ghost" style={{ color: "#e08a8a" }}>
+                          Eliminar
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );
