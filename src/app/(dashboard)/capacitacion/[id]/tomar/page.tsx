@@ -10,6 +10,16 @@ const IDLE_MS = 2 * 60 * 1000; // 2 minutos de inactividad → pausa
 interface SesionData {
   id: string;
   titulo: string;
+  descripcion?: string;
+  objetivos?: string[];
+  puntosBase?: string[];
+  puntosEditados?: string[];
+  publicoObjetivo?: string | null;
+  prerrequisitos?: string[];
+  procedimiento?: string[];
+  erroresComunes?: string[];
+  checklistAplicacion?: string[];
+  recursos?: string[];
   categoria: { slug: string; nombre: string; color: string } | null;
   evaluacion: { id: string } | null;
   versiones: { id: string; version: number }[];
@@ -122,6 +132,15 @@ export default function TomarPage({ params }: { params: Promise<{ id: string }> 
   }
 
   const vid = sesion?.versiones?.[0]?.id;
+  const puntos = (sesion?.puntosEditados?.length ? sesion.puntosEditados : sesion?.puntosBase) ?? [];
+  const hayEsqueleto = !!(
+    sesion &&
+    ((sesion.objetivos?.length ?? 0) > 0 ||
+      puntos.length > 0 ||
+      (sesion.descripcion?.trim() ?? "") !== "" ||
+      (sesion.procedimiento?.length ?? 0) > 0)
+  );
+  const hayContenido = !!vid || hayEsqueleto;
   const backHref = sesion?.categoria ? `/capacitacion/area/${sesion.categoria.slug}` : "/capacitacion";
 
   return (
@@ -136,7 +155,7 @@ export default function TomarPage({ params }: { params: Promise<{ id: string }> 
           <span className="flex items-center gap-1.5 text-xs font-mono px-2.5 py-1 rounded-lg" style={{ background: pausado ? "#1c1500" : "#111", color: pausado ? "#F59E0B" : "#c9a96a" }}>
             {pausado ? <Pause size={12} /> : <Clock size={12} />} {fmt(segundos)}
           </span>
-          <button onClick={finalizar} disabled={finalizando || loading || !vid}
+          <button onClick={finalizar} disabled={finalizando || loading || !hayContenido}
             className="flex items-center gap-1.5 text-xs font-semibold px-3.5 py-1.5 rounded-lg disabled:opacity-40" style={{ background: "#c9a96a", color: "#000" }}>
             <CheckCircle2 size={14} /> {finalizando ? "Guardando…" : "Finalizar"}
           </button>
@@ -147,14 +166,18 @@ export default function TomarPage({ params }: { params: Promise<{ id: string }> 
       <div className="flex-1 relative">
         {loading ? (
           <div className="absolute inset-0 flex items-center justify-center"><p className="text-sm" style={{ color: "#6b7280" }}>Cargando capacitación…</p></div>
-        ) : !vid ? (
+        ) : vid ? (
+          <iframe ref={iframeRef} onLoad={engancharIframe} src={`/api/capacitacion/${id}/versiones/${vid}/html`}
+            className="w-full h-full border-0" title={sesion?.titulo} />
+        ) : hayEsqueleto && sesion ? (
+          <div className="absolute inset-0 overflow-y-auto" onScroll={registrarActividad} onMouseMove={registrarActividad}>
+            <LeccionEsqueleto sesion={sesion} puntos={puntos} />
+          </div>
+        ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
             <p className="text-sm" style={{ color: "#9ca3af" }}>Esta capacitación todavía no tiene contenido publicado.</p>
             <Link href={backHref} className="text-xs px-3 py-1.5 rounded-lg border" style={{ borderColor: "#262626", color: "#c9a96a" }}>Volver</Link>
           </div>
-        ) : (
-          <iframe ref={iframeRef} onLoad={engancharIframe} src={`/api/capacitacion/${id}/versiones/${vid}/html`}
-            className="w-full h-full border-0" title={sesion?.titulo} />
         )}
       </div>
 
@@ -174,6 +197,116 @@ export default function TomarPage({ params }: { params: Promise<{ id: string }> 
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Lección legible armada con el esqueleto del tema (sin presentación generada) ──
+function LeccionEsqueleto({ sesion, puntos }: { sesion: SesionData; puntos: string[] }) {
+  const color = sesion.categoria?.color ?? "#c9a96a";
+  const has = (a?: unknown[]) => Array.isArray(a) && a.length > 0;
+
+  return (
+    <div className="max-w-2xl mx-auto px-6 py-10">
+      <div className="mb-8">
+        <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color }}>
+          {sesion.categoria?.nombre ?? "Capacitación"}
+        </span>
+        <h1 className="text-2xl font-bold text-white mt-1 leading-tight">{sesion.titulo}</h1>
+        {sesion.descripcion?.trim() && (
+          <p className="text-sm mt-3 leading-relaxed" style={{ color: "#9ca3af" }}>{sesion.descripcion}</p>
+        )}
+      </div>
+
+      {(sesion.publicoObjetivo?.trim() || has(sesion.prerrequisitos)) && (
+        <div className="rounded-xl border p-4 mb-6 space-y-2" style={{ background: "#0d0d0d", borderColor: "#1e1e1e" }}>
+          {sesion.publicoObjetivo?.trim() && (
+            <p className="text-xs" style={{ color: "#9ca3af" }}>
+              <span className="font-semibold" style={{ color: "#d1d5db" }}>Para quién: </span>{sesion.publicoObjetivo}
+            </p>
+          )}
+          {has(sesion.prerrequisitos) && (
+            <p className="text-xs" style={{ color: "#9ca3af" }}>
+              <span className="font-semibold" style={{ color: "#d1d5db" }}>Antes de empezar: </span>{sesion.prerrequisitos!.join(" · ")}
+            </p>
+          )}
+        </div>
+      )}
+
+      <Seccion titulo="Qué vas a aprender" color={color} show={has(sesion.objetivos)}>
+        <ul className="space-y-2">
+          {sesion.objetivos!.map((o, i) => (
+            <li key={i} className="flex items-start gap-2 text-sm" style={{ color: "#d1d5db" }}>
+              <span className="mt-1.5 w-1.5 h-1.5 rounded-full shrink-0" style={{ background: color }} />{o}
+            </li>
+          ))}
+        </ul>
+      </Seccion>
+
+      <Seccion titulo="Contenido" color={color} show={puntos.length > 0}>
+        <div className="space-y-3">
+          {puntos.map((p, i) => (
+            <div key={i} className="rounded-xl border p-4 text-sm leading-relaxed" style={{ background: "#111", borderColor: "#1e1e1e", color: "#d1d5db" }}>
+              {p}
+            </div>
+          ))}
+        </div>
+      </Seccion>
+
+      <Seccion titulo="Paso a paso" color={color} show={has(sesion.procedimiento)}>
+        <ol className="space-y-2">
+          {sesion.procedimiento!.map((p, i) => (
+            <li key={i} className="flex gap-3 text-sm" style={{ color: "#d1d5db" }}>
+              <span className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold" style={{ background: `${color}1a`, color }}>{i + 1}</span>
+              <span className="pt-0.5">{p}</span>
+            </li>
+          ))}
+        </ol>
+      </Seccion>
+
+      <Seccion titulo="Errores comunes" color="#EF4444" show={has(sesion.erroresComunes)}>
+        <ul className="space-y-2">
+          {sesion.erroresComunes!.map((e, i) => (
+            <li key={i} className="flex items-start gap-2 text-sm" style={{ color: "#d1d5db" }}>
+              <span className="mt-1.5 w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "#EF4444" }} />{e}
+            </li>
+          ))}
+        </ul>
+      </Seccion>
+
+      <Seccion titulo="Checklist de aplicación" color="#22c55e" show={has(sesion.checklistAplicacion)}>
+        <ul className="space-y-2">
+          {sesion.checklistAplicacion!.map((c, i) => (
+            <li key={i} className="flex items-start gap-2 text-sm" style={{ color: "#d1d5db" }}>
+              <CheckCircle2 size={15} className="shrink-0 mt-0.5" style={{ color: "#22c55e" }} />{c}
+            </li>
+          ))}
+        </ul>
+      </Seccion>
+
+      <Seccion titulo="Recursos" color={color} show={has(sesion.recursos)}>
+        <ul className="space-y-1.5">
+          {sesion.recursos!.map((r, i) => (
+            <li key={i} className="text-sm" style={{ color: "#9ca3af" }}>· {r}</li>
+          ))}
+        </ul>
+      </Seccion>
+
+      <div className="mt-10 rounded-xl border p-4 text-center" style={{ background: "#0d0d0d", borderColor: "#1e1e1e" }}>
+        <p className="text-xs" style={{ color: "#6b7280" }}>
+          Cuando termines de leer, pulsa <span style={{ color: "#c9a96a" }}>Finalizar</span> arriba para registrar tu avance.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function Seccion({ titulo, color, show, children }: { titulo: string; color: string; show: boolean; children: React.ReactNode }) {
+  if (!show) return null;
+  return (
+    <div className="mb-8">
+      <h2 className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color }}>{titulo}</h2>
+      {children}
     </div>
   );
 }

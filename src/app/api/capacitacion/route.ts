@@ -42,6 +42,11 @@ export async function GET(req: NextRequest) {
   const result = sesiones.map((s) => {
     const prog = s.progreso[0];
     const mejor = s.evaluacion ? mejorPorEval.get(s.evaluacion.id) : undefined;
+    const tieneVersion = (s.versiones[0]?.version ?? null) !== null;
+    // Un tema es "tomable" si tiene presentación generada O contenido base
+    // (objetivos / puntos): la lección se arma con el esqueleto si no hay versión.
+    const tieneEsqueleto =
+      (s.objetivos?.length ?? 0) + (s.puntosBase?.length ?? 0) + (s.puntosEditados?.length ?? 0) > 0;
     return {
       id: s.id,
       numero: s.numero,
@@ -53,7 +58,8 @@ export async function GET(req: NextRequest) {
       duracion: s.duracion,
       categoria: s.categoria,
       versionActual: s.versiones[0]?.version ?? null,
-      tieneContenido: (s.versiones[0]?.version ?? null) !== null,
+      tieneContenido: tieneVersion || tieneEsqueleto,
+      tienePresentacion: tieneVersion,
       tieneEvaluacion: !!s.evaluacion,
       estadoUsuario: prog?.estado ?? "no-iniciado", // no-iniciado | en-progreso | completado
       segundosUsuario: prog?.segundos ?? 0,
