@@ -478,6 +478,8 @@ export type EquipoInsumo = {
 };
 
 export const ID_EQUIPO_PREFIX = "equipo-inv-";
+export const ID_SERVICIO_PREFIX = "servicio-inv-";
+export const ID_TIPOEVENTO_PREFIX = "tipoevento-inv-";
 
 function partirTitulo(marca: string | null, modelo: string | null, descripcion: string): { gold: string; white: string } {
   if (marca && modelo) return { gold: marca.trim().toUpperCase(), white: modelo.trim().toUpperCase() };
@@ -487,25 +489,173 @@ function partirTitulo(marca: string | null, modelo: string | null, descripcion: 
   return { gold: partes[0], white: partes.slice(1).join(" ") };
 }
 
+// Parte un nombre en "primera palabra" (oro) + resto (blanco), en mayúsculas.
+function partirNombre(nombre: string): { gold: string; white: string } {
+  const partes = nombre.trim().toUpperCase().split(/\s+/).filter(Boolean);
+  if (partes.length <= 1) return { gold: partes[0] ?? "", white: "" };
+  return { gold: partes[0], white: partes.slice(1).join(" ") };
+}
+
+// Convierte una descripción real de la plataforma en frases cortas de APOYO
+// (no specs). Toma sólo las que caben como bullet; el dato sirve de contexto,
+// nunca de titular literal.
+function frasesDe(texto: string | null | undefined, max: number): string[] {
+  if (!texto) return [];
+  return texto
+    .split(/(?<=[.!?])\s+/)
+    .map((s) => s.replace(/\s+/g, " ").trim().replace(/[.·]+$/, "").trim())
+    .filter((s) => s.length >= 10 && s.length <= 88)
+    .slice(0, max);
+}
+
+// Une una lista con comas y "y" final ("A, B y C").
+function listaNatural(items: string[]): string {
+  const xs = items.filter(Boolean);
+  if (xs.length <= 1) return xs[0] ?? "";
+  return `${xs.slice(0, -1).join(", ")} y ${xs[xs.length - 1]}`;
+}
+
+// ── Beneficios "de apoyo" (no literales) por disciplina del equipo ────────────
+// El dato del inventario (categoría + descripción) es contexto; el mensaje que
+// se ve es un beneficio para el cliente, nunca una ficha técnica.
+type Disciplina = "audio" | "luz" | "video" | "estructura" | "generico";
+
+function disciplinaDe(categoria: string): Disciplina {
+  const c = categoria.toLowerCase();
+  if (/(audio|sonido|bocina|micro|consola|bafle|amplific|subwoofer|monitor)/.test(c)) return "audio";
+  if (/(ilum|luz|light|par\b|beam|wash|spot|cabeza|dimmer|robotic)/.test(c)) return "luz";
+  if (/(video|pantalla|led|proyec|cámara|camara|visual|switcher)/.test(c)) return "video";
+  if (/(estruct|truss|tarima|escenario|rigging|templete|backline|tablado)/.test(c)) return "estructura";
+  return "generico";
+}
+
+const GANCHO_EQUIPO: Record<Disciplina, string> = {
+  audio: "El sonido correcto hace que todo tu evento se sienta profesional.",
+  luz: "La luz adecuada transforma por completo cómo se ve tu evento.",
+  video: "La imagen correcta mantiene a todos conectados con tu mensaje.",
+  estructura: "Una buena base sostiene —literalmente— todo tu montaje.",
+  generico: "El equipo correcto es la diferencia entre un evento bien hecho y uno memorable.",
+};
+
+const BENEFICIOS_EQUIPO: Record<Disciplina, string[]> = {
+  audio: ["Sonido nítido y parejo en todo el lugar", "Potencia real para tu tipo de evento", "Lo instalamos y operamos por ti"],
+  luz: ["Ambiente y color a la medida del momento", "Mejores fotos y video para el recuerdo", "Diseño de luz pensado para tu evento"],
+  video: ["Imagen brillante que se ve desde cualquier punto", "Tu contenido con calidad profesional", "Lo montamos y operamos por ti"],
+  estructura: ["Montaje seguro y a la medida del espacio", "Base sólida para todo tu escenario", "Instalación y respaldo técnico incluidos"],
+  generico: ["Equipo profesional listo para tu evento", "Respaldo y operación técnica incluidos", "Disponible en renta y producción"],
+};
+
+const BENEFICIOS_SERVICIO = [
+  "Equipo profesional y técnicos especializados",
+  "Nos encargamos de que todo funcione",
+  "Respaldo técnico en todo momento",
+];
+
+const BENEFICIOS_EVENTO = [
+  "Audio, luz y video en un solo montaje",
+  "Técnicos especializados en sitio",
+  "Respaldo técnico de principio a fin",
+];
+
 // Convierte un equipo real del inventario en una idea del pilar "equipo".
+// La categoría y la descripción NO se muestran literales: sólo alimentan un
+// mensaje de beneficio; a lo sumo una frase de la descripción entra de apoyo.
 export function equipoToIdea(e: EquipoInsumo): IdeaContenido {
   const { gold, white } = partirTitulo(e.marca, e.modelo, e.descripcion);
-  const puntos: string[] = [`Categoría: ${e.categoria}`];
-  if (e.voltaje) puntos.push(e.voltaje === "AMBOS" ? "Opera a 110 / 220 V" : `Alimentación ${e.voltaje} V`);
-  if (e.amperaje && e.amperaje > 0) puntos.push(`Consumo aprox. ${e.amperaje} A`);
-  puntos.push("Disponible en renta y producción");
-  puntos.push("Instalación y respaldo técnico incluidos");
-  const desc = (e.descripcion ?? "").trim();
+  const disc = disciplinaDe(e.categoria);
+  const apoyo = frasesDe(e.descripcion, 1); // una frase de la ficha, de apoyo
+  const puntos = [...BENEFICIOS_EQUIPO[disc], ...apoyo].slice(0, 4);
   return {
     id: `${ID_EQUIPO_PREFIX}${e.id}`,
     pilar: "equipo",
     tituloGold: gold || "EQUIPO",
     tituloWhite: white,
-    gancho: desc && desc.length <= 120 ? desc : `Equipo profesional de ${e.categoria.toLowerCase()} listo para tu evento.`,
-    puntos: puntos.slice(0, 4),
-    remate: "¿Lo quieres en tu evento? Pregúntanos por disponibilidad.",
+    gancho: GANCHO_EQUIPO[disc],
+    puntos,
+    remate: "¿Lo quieres en tu evento? Escríbenos y lo apartamos.",
     bg: e.imagenUrl || "images/presentacion/equip-speaker.jpg",
     fuente: `Inventario · ${e.categoria}`,
+  };
+}
+
+// ── Ideas dinámicas del catálogo (pilares "servicio" y "tipoevento") ──────────
+// Mismo criterio: la info real de la plataforma alimenta el contenido, pero
+// como APOYO (frases de la descripción / subtítulo), no como volcado literal.
+export type ServicioInsumo = {
+  slug: string;
+  nombre: string;
+  subtitulo: string | null;
+  descripcion: string | null;
+  bg: string | null;
+};
+
+export function servicioToIdea(s: ServicioInsumo): IdeaContenido {
+  const { gold, white } = partirNombre(s.nombre);
+  const frases = frasesDe(s.descripcion, 5);
+  const sub = s.subtitulo?.trim();
+  let gancho: string;
+  let restantes: string[];
+  if (sub) {
+    gancho = sub;
+    restantes = frases;
+  } else if (frases.length) {
+    gancho = frases[0];
+    restantes = frases.slice(1);
+  } else {
+    gancho = `${s.nombre}: lo resolvemos por ti, de principio a fin.`;
+    restantes = [];
+  }
+  const puntos = [...restantes, ...BENEFICIOS_SERVICIO].slice(0, 4);
+  return {
+    id: `${ID_SERVICIO_PREFIX}${s.slug}`,
+    pilar: "servicio",
+    tituloGold: gold || "SERVICIO",
+    tituloWhite: white,
+    gancho,
+    puntos,
+    remate: "¿Te interesa este servicio? Cuéntanos de tu evento.",
+    bg: s.bg || "images/presentacion/empresariales/e-proyeccion-mural.jpg",
+    fuente: `Servicios · ${s.nombre}`,
+  };
+}
+
+export type TipoEventoInsumo = {
+  slug: string;
+  nombre: string;
+  subtitulo: string | null;
+  descripcion: string | null;
+  nichos: string[];
+  bg: string | null;
+};
+
+export function tipoEventoToIdea(t: TipoEventoInsumo): IdeaContenido {
+  const nombreLimpio = t.nombre.toUpperCase().replace(/^EVENTOS?\s+/, "").trim();
+  const frases = frasesDe(t.descripcion, 5);
+  const sub = t.subtitulo?.trim();
+  let gancho: string;
+  let restantes: string[];
+  if (sub) {
+    gancho = sub;
+    restantes = frases;
+  } else if (frases.length) {
+    gancho = frases[0];
+    restantes = frases.slice(1);
+  } else {
+    gancho = `Cada evento ${nombreLimpio.toLowerCase()} pide una producción a su medida.`;
+    restantes = [];
+  }
+  const nichoLine = t.nichos.length ? `Ideal para ${listaNatural(t.nichos.slice(0, 3).map((n) => n.toLowerCase()))}` : null;
+  const puntos = [...(nichoLine ? [nichoLine] : []), ...restantes, ...BENEFICIOS_EVENTO].slice(0, 4);
+  return {
+    id: `${ID_TIPOEVENTO_PREFIX}${t.slug}`,
+    pilar: "tipoevento",
+    tituloGold: "TU EVENTO",
+    tituloWhite: nombreLimpio,
+    gancho,
+    puntos,
+    remate: "Cuéntanos de tu evento y armamos la producción ideal.",
+    bg: t.bg || "images/presentacion/ev-m-hero.jpg",
+    fuente: `Tipos de evento · ${t.nombre}`,
   };
 }
 
