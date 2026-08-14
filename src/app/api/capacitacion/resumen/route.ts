@@ -37,6 +37,30 @@ export async function GET() {
     if (!mejor.has(k)) mejor.set(k, { calificacion: it.calificacion, aprobado: it.aprobado });
   }
 
+  // Historial completo de intentos de evaluación por usuario (todos los intentos).
+  const intentosFull = await prisma.intentoEvaluacion.findMany({
+    orderBy: { creadoEn: "desc" },
+    include: {
+      usuario: { select: { name: true, area: true } },
+      evaluacion: {
+        select: {
+          minAprobar: true,
+          sesion: { select: { titulo: true, numero: true, categoria: { select: { nombre: true, color: true } } } },
+        },
+      },
+    },
+  });
+  const historial = intentosFull.map((it) => ({
+    usuario: it.usuario.name,
+    area: it.usuario.area,
+    sesionTitulo: it.evaluacion.sesion.titulo,
+    categoria: it.evaluacion.sesion.categoria,
+    calificacion: it.calificacion,
+    aprobado: it.aprobado,
+    minAprobar: it.evaluacion.minAprobar,
+    creadoEn: it.creadoEn,
+  }));
+
   const registros = progresos.map((p) => {
     const evalId = p.sesion.evaluacion?.id;
     const m = evalId ? mejor.get(`${p.usuarioId}::${evalId}`) : undefined;
@@ -66,5 +90,5 @@ export async function GET() {
   }
   const porUsuario = Array.from(porUsuarioMap.values()).sort((a, b) => b.completadas - a.completadas);
 
-  return NextResponse.json({ registros, porUsuario });
+  return NextResponse.json({ registros, porUsuario, historial });
 }

@@ -1136,6 +1136,26 @@ export default function CapacitacionDetailPage() {
                 )}
               </div>
 
+              {/* Card: Evaluación */}
+              <div className="rounded-xl border p-5" style={{ background: "#111", borderColor: "#262626" }}>
+                <h3 className="text-sm font-semibold text-white mb-1">Evaluación</h3>
+                <p className="text-[11px] mb-3 leading-relaxed" style={{ color: "#4b5563" }}>
+                  {sesion.evaluacion
+                    ? "Este tema ya tiene examen. Revísalo, regéralo o consulta los intentos."
+                    : "Aún no hay examen. Genéralo con IA a partir del contenido del módulo."}
+                </p>
+                <a
+                  href={`/capacitacion/${id}/evaluacion`}
+                  className="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-colors"
+                  style={sesion.evaluacion
+                    ? { border: "1px solid #262626", color: "#9ca3af" }
+                    : { background: "#c9a96a", color: "#000" }}
+                >
+                  <span>{sesion.evaluacion ? "Ver evaluación e intentos" : "Generar examen con IA"}</span>
+                  <span>→</span>
+                </a>
+              </div>
+
               {/* Card: Historial de versiones */}
               <div className="rounded-xl border p-5" style={{ background: "#111", borderColor: "#262626" }}>
                 <h3 className="text-sm font-semibold text-white mb-4">Presentaciones generadas</h3>
