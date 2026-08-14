@@ -11,29 +11,18 @@ const GOLD = "#B3985B";
 function Card({ t }: { t: DesignTemplateMeta }) {
   const inner = (
     <div
+      className="flex flex-col gap-2.5 rounded-xl px-5 py-4 h-full transition-colors"
       style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 10,
-        padding: "20px 22px",
-        borderRadius: 16,
         background: t.disponible ? "rgba(179,152,91,0.06)" : "rgba(255,255,255,0.02)",
-        border: `1px solid ${t.disponible ? "rgba(179,152,91,0.28)" : "rgba(255,255,255,0.07)"}`,
+        border: `1px solid ${t.disponible ? "rgba(179,152,91,0.28)" : "#1e1e1e"}`,
         opacity: t.disponible ? 1 : 0.62,
-        height: "100%",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-        <span style={{ color: "#fff", fontSize: 17, fontWeight: 700, letterSpacing: -0.3 }}>{t.nombre}</span>
+      <div className="flex items-center justify-between gap-2.5">
+        <span className="text-[16px] font-bold text-white tracking-tight">{t.nombre}</span>
         <span
+          className="shrink-0 text-[11px] font-bold tracking-wide uppercase px-2 py-[3px] rounded-full"
           style={{
-            flexShrink: 0,
-            fontSize: 11,
-            fontWeight: 700,
-            letterSpacing: 0.4,
-            textTransform: "uppercase",
-            padding: "3px 9px",
-            borderRadius: 999,
             color: t.disponible ? "#0a0a0a" : "#9E9686",
             background: t.disponible ? GOLD : "rgba(255,255,255,0.06)",
           }}
@@ -41,8 +30,10 @@ function Card({ t }: { t: DesignTemplateMeta }) {
           {t.disponible ? "Activo" : "Próximamente"}
         </span>
       </div>
-      <p style={{ color: "#b8b0a0", fontSize: 13.5, lineHeight: 1.5, margin: 0 }}>{t.descripcion}</p>
-      <div style={{ display: "flex", gap: 14, marginTop: 4, color: "#8a8578", fontSize: 12 }}>
+      <p className="text-[13.5px] leading-relaxed m-0" style={{ color: "#b8b0a0" }}>
+        {t.descripcion}
+      </p>
+      <div className="flex gap-3.5 mt-1 text-[12px]" style={{ color: "#8a8578" }}>
         <span>{t.formato}</span>
         <span>·</span>
         <span>Datos: {t.fuente}</span>
@@ -52,7 +43,7 @@ function Card({ t }: { t: DesignTemplateMeta }) {
 
   if (t.disponible && t.href) {
     return (
-      <Link href={t.href} style={{ textDecoration: "none" }}>
+      <Link href={t.href} className="no-underline">
         {inner}
       </Link>
     );
@@ -67,65 +58,45 @@ export default async function DisenoHub() {
   if (!session || session.email !== OWNER_EMAIL) notFound();
 
   return (
-    <div style={{ minHeight: "100vh", background: "#0a0a0a", padding: "44px 36px" }}>
-      <div style={{ maxWidth: 1180, margin: "0 auto" }}>
-        <h1 style={{ color: "#fff", fontSize: 30, fontWeight: 800, letterSpacing: -0.6, margin: 0 }}>
-          Diseño
-        </h1>
-        <p style={{ color: "#8a8578", fontSize: 15, marginTop: 8, marginBottom: 20 }}>
-          Generador de diseños Mainstage. Cada plantilla jala datos reales de la plataforma y arma las piezas con la directriz de marca.
+    <div className="ms-page">
+      <div className="mb-5">
+        <h1 className="ms-h1">Diseño</h1>
+        <p className="ms-subtitle mt-1.5 max-w-3xl">
+          Generador de diseños Mainstage. Cada plantilla jala datos reales de la plataforma y arma las piezas con la
+          directriz de marca.
         </p>
-
-        <Link
-          href="/marketing/diseno/brandbook"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 16,
-            padding: "16px 22px",
-            borderRadius: 14,
-            marginBottom: 40,
-            background: "rgba(179,152,91,0.10)",
-            border: `1px solid ${GOLD}`,
-            textDecoration: "none",
-          }}
-        >
-          <span style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            <span style={{ color: "#fff", fontSize: 16, fontWeight: 700, letterSpacing: -0.3 }}>Directriz de marca</span>
-            <span style={{ color: "#b8b0a0", fontSize: 13 }}>
-              La base exacta de toda pieza: color, tipografía y reglas. Vive en tokens.ts y se descarga el brandbook.
-            </span>
-          </span>
-          <span style={{ flexShrink: 0, color: GOLD, fontSize: 22, fontWeight: 700 }}>→</span>
-        </Link>
-
-        {CATEGORIAS.map(({ key, label }) => {
-          const items = templatesPorCategoria(key);
-          if (items.length === 0) return null;
-          return (
-            <section key={key} style={{ marginBottom: 40 }}>
-              <h2
-                style={{
-                  color: GOLD,
-                  fontSize: 12,
-                  fontWeight: 700,
-                  letterSpacing: 1.2,
-                  textTransform: "uppercase",
-                  marginBottom: 16,
-                }}
-              >
-                {label}
-              </h2>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 18 }}>
-                {items.map((t) => (
-                  <Card key={t.id} t={t} />
-                ))}
-              </div>
-            </section>
-          );
-        })}
       </div>
+
+      <Link
+        href="/marketing/diseno/brandbook"
+        className="flex items-center justify-between gap-4 rounded-xl px-5 py-4 mb-9 no-underline"
+        style={{ background: "rgba(179,152,91,0.10)", border: `1px solid ${GOLD}` }}
+      >
+        <span className="flex flex-col gap-1">
+          <span className="text-[16px] font-bold text-white tracking-tight">Directriz de marca</span>
+          <span className="text-[13px]" style={{ color: "#b8b0a0" }}>
+            La base exacta de toda pieza: color, tipografía y reglas. Vive en tokens.ts y se descarga el brandbook.
+          </span>
+        </span>
+        <span className="shrink-0 text-[22px] font-bold" style={{ color: GOLD }}>
+          →
+        </span>
+      </Link>
+
+      {CATEGORIAS.map(({ key, label }) => {
+        const items = templatesPorCategoria(key);
+        if (items.length === 0) return null;
+        return (
+          <section key={key} className="mb-9">
+            <h2 className="ms-section-label mb-4">{label}</h2>
+            <div className="grid gap-4.5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 18 }}>
+              {items.map((t) => (
+                <Card key={t.id} t={t} />
+              ))}
+            </div>
+          </section>
+        );
+      })}
     </div>
   );
 }

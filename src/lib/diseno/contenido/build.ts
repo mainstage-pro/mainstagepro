@@ -1,9 +1,10 @@
-import { CONTENIDO_MUESTRA, getIdea, ideaToData, playlistOrdenada, type ContenidoData } from "./data";
+import { CONTENIDO_MUESTRA, ideaToData, playlistOrdenada, type ContenidoData } from "./data";
+import { ideaPorId, poolIdeas } from "./inventario";
 
 // Arma los datos de UNA pieza de contenido. Recibe el id de la idea (param
-// `pieza`). Si no llega o no existe, usa la primera del calendario. Es contenido
-// curado en repo: no toca BD, así que es instantáneo y determinista.
+// `pieza`). Resuelve primero las ideas curadas y luego el inventario real. Si no
+// llega o no existe, usa la primera del calendario (pool completo).
 export async function buildContenidoData(pieza?: string | null): Promise<ContenidoData> {
-  const idea = getIdea(pieza) ?? playlistOrdenada()[0] ?? null;
+  const idea = (await ideaPorId(pieza)) ?? playlistOrdenada(await poolIdeas())[0] ?? null;
   return idea ? ideaToData(idea) : CONTENIDO_MUESTRA;
 }

@@ -458,9 +458,55 @@ export function ideaToData(idea: IdeaContenido): ContenidoData {
   };
 }
 
-export function getIdea(id: string | null | undefined): IdeaContenido | null {
+export function getIdea(id: string | null | undefined, ideas: IdeaContenido[] = IDEAS): IdeaContenido | null {
   if (!id) return null;
-  return IDEAS.find((i) => i.id === id) ?? null;
+  return ideas.find((i) => i.id === id) ?? null;
+}
+
+// ── Ideas dinámicas del inventario (pilar "equipo") ──────────────────────────
+// Insumo mínimo desde el modelo Equipo para armar una pieza "CONOCE EL EQUIPO".
+// El mapeo es PURO (sin prisma); la carga vive en contenido/inventario.ts.
+export type EquipoInsumo = {
+  id: string;
+  marca: string | null;
+  modelo: string | null;
+  descripcion: string;
+  categoria: string;
+  voltaje: string | null; // "110" | "220" | "AMBOS" | null
+  amperaje: number | null;
+  imagenUrl: string | null;
+};
+
+export const ID_EQUIPO_PREFIX = "equipo-inv-";
+
+function partirTitulo(marca: string | null, modelo: string | null, descripcion: string): { gold: string; white: string } {
+  if (marca && modelo) return { gold: marca.trim().toUpperCase(), white: modelo.trim().toUpperCase() };
+  const fuente = (marca || modelo || descripcion).trim().toUpperCase();
+  const partes = fuente.split(/\s+/).filter(Boolean);
+  if (partes.length <= 1) return { gold: partes[0] ?? "EQUIPO", white: "" };
+  return { gold: partes[0], white: partes.slice(1).join(" ") };
+}
+
+// Convierte un equipo real del inventario en una idea del pilar "equipo".
+export function equipoToIdea(e: EquipoInsumo): IdeaContenido {
+  const { gold, white } = partirTitulo(e.marca, e.modelo, e.descripcion);
+  const puntos: string[] = [`Categoría: ${e.categoria}`];
+  if (e.voltaje) puntos.push(e.voltaje === "AMBOS" ? "Opera a 110 / 220 V" : `Alimentación ${e.voltaje} V`);
+  if (e.amperaje && e.amperaje > 0) puntos.push(`Consumo aprox. ${e.amperaje} A`);
+  puntos.push("Disponible en renta y producción");
+  puntos.push("Instalación y respaldo técnico incluidos");
+  const desc = (e.descripcion ?? "").trim();
+  return {
+    id: `${ID_EQUIPO_PREFIX}${e.id}`,
+    pilar: "equipo",
+    tituloGold: gold || "EQUIPO",
+    tituloWhite: white,
+    gancho: desc && desc.length <= 120 ? desc : `Equipo profesional de ${e.categoria.toLowerCase()} listo para tu evento.`,
+    puntos: puntos.slice(0, 4),
+    remate: "¿Lo quieres en tu evento? Pregúntanos por disponibilidad.",
+    bg: e.imagenUrl || "images/presentacion/equip-speaker.jpg",
+    fuente: `Inventario · ${e.categoria}`,
+  };
 }
 
 // Muestra por defecto = primera idea del calendario.
@@ -493,9 +539,9 @@ export function contenidoEditableFields(): EditableField[] {
 
 // ── Planificador semanal (ISO) ───────────────────────────────────────────────
 // Ordena las ideas intercalando pilares para que semanas seguidas no se parezcan.
-export function playlistOrdenada(): IdeaContenido[] {
+export function playlistOrdenada(ideas: IdeaContenido[] = IDEAS): IdeaContenido[] {
   const porPilar = new Map<Pilar, IdeaContenido[]>();
-  for (const idea of IDEAS) {
+  for (const idea of ideas) {
     const arr = porPilar.get(idea.pilar) ?? [];
     arr.push(idea);
     porPilar.set(idea.pilar, arr);
@@ -518,13 +564,14 @@ export function playlistOrdenada(): IdeaContenido[] {
 }
 
 // Otras ideas del mismo pilar (para "regenerar otra opción").
-export function alternativasEnPilar(pilar: Pilar, exceptoId?: string): IdeaContenido[] {
-  return IDEAS.filter((i) => i.pilar === pilar && i.id !== exceptoId);
+export function alternativasEnPilar(pilar: Pilar, exceptoId?: string, ideas: IdeaContenido[] = IDEAS): IdeaContenido[] {
+  return ideas.filter((i) => i.pilar === pilar && i.id !== exceptoId);
 }
 
 // Siguiente idea del MISMO pilar (cíclica) — motor del botón "regenerar".
-export function siguienteEnPilar(pilar: Pilar, actualId: string): IdeaContenido {
-  const grupo = IDEAS.filter((i) => i.pilar === pilar);
+export function siguienteEnPilar(pilar: Pilar, actualId: string, ideas: IdeaContenido[] = IDEAS): IdeaContenido {
+  const grupo = ideas.filter((i) => i.pilar === pilar);
+  if (grupo.length === 0) return getIdea(actualId, ideas) ?? IDEAS[0];
   const idx = grupo.findIndex((i) => i.id === actualId);
   return grupo[(idx + 1) % grupo.length] ?? grupo[0];
 }
@@ -557,8 +604,8 @@ export type SemanaPlan = {
 };
 
 // Calendario de una idea por semana entre dos fechas (inclusive).
-export function planSemanal(desde: Date, hasta: Date): SemanaPlan[] {
-  const lista = playlistOrdenada();
+export function planSemanal(desde: Date, hasta: Date, ideas: IdeaContenido[] = IDEAS): SemanaPlan[] {
+  const lista = playlistOrdenada(ideas);
   const out: SemanaPlan[] = [];
   let cur = lunesDe(desde);
   const fin = hasta.getTime();

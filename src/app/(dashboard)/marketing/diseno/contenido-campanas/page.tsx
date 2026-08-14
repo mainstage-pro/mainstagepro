@@ -98,15 +98,13 @@ export default async function ContenidoCampanas({ searchParams }: { searchParams
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#0a0a0a", padding: "40px 32px" }}>
-      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-        <a href="/marketing/diseno" style={{ color: "#8a8578", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
+    <div className="ms-page">
+      <div style={{ maxWidth: 1200 }}>
+        <a href="/marketing/diseno" className="ms-subtitle hover:text-white transition-colors">
           ← Diseño
         </a>
-        <h1 style={{ color: "#fff", fontSize: 28, fontWeight: 800, letterSpacing: -0.5, marginTop: 10 }}>
-          Contenido para campañas
-        </h1>
-        <p style={{ color: "#8a8578", fontSize: 15, marginTop: 8, marginBottom: 28, maxWidth: 720 }}>
+        <h1 className="ms-h1 mt-3">Contenido para campañas</h1>
+        <p className="ms-subtitle mt-1.5 mb-7" style={{ maxWidth: 720 }}>
           Llena el brief —breve y estándar— y arma el creativo del anuncio al instante. Edita lo que quieras y actualiza la
           vista previa; cuando esté listo, genera y descarga la pieza.
         </p>
@@ -169,10 +167,7 @@ export default async function ContenidoCampanas({ searchParams }: { searchParams
             </div>
 
             <input type="hidden" name="formato" value={formato} />
-            <button
-              type="submit"
-              style={{ color: "#0a0a0a", background: GOLD, border: "none", fontSize: 14, fontWeight: 800, padding: "12px 20px", borderRadius: 10, cursor: "pointer", marginTop: 4 }}
-            >
+            <button type="submit" className="ms-btn-primary mt-1">
               Actualizar vista previa
             </button>
           </form>
@@ -210,11 +205,7 @@ export default async function ContenidoCampanas({ searchParams }: { searchParams
               style={{ width: "100%", aspectRatio: aspect, objectFit: "cover", borderRadius: 14, border: `1px solid ${BORDE}`, display: "block", background: CARD }}
             />
 
-            <a
-              href={src}
-              download={`campana-${brief.objetivo}-${formato}.png`}
-              style={{ color: "#0a0a0a", background: GOLD, fontSize: 14, fontWeight: 800, padding: "12px 20px", borderRadius: 10, textDecoration: "none", textAlign: "center" }}
-            >
+            <a href={src} download={`campana-${brief.objetivo}-${formato}.png`} className="ms-btn-primary text-center">
               Generar y descargar
             </a>
           </div>

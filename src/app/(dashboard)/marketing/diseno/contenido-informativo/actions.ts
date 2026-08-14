@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
 import { OWNER_EMAIL } from "@/lib/nav";
-import { getIdea } from "@/lib/diseno/contenido/data";
+import { ideaPorId } from "@/lib/diseno/contenido/inventario";
 import { aprobarSemana } from "@/lib/diseno/contenido/seleccion";
 
 const RUTA = "/marketing/diseno/contenido-informativo";
@@ -16,7 +16,7 @@ export async function aprobarAction(formData: FormData): Promise<void> {
 
   const pieza = String(formData.get("pieza") ?? "");
   const semana = String(formData.get("semana") ?? "");
-  const idea = getIdea(pieza);
+  const idea = await ideaPorId(pieza);
   if (idea && semana) {
     await aprobarSemana(semana, idea);
     revalidatePath(RUTA);
