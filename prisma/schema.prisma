@@ -2344,11 +2344,13 @@ model DisenoGuardado {
   renders       Json     @default("[]") // assets generados: [{ slide, formato, url, mime, bytes }]
   estado        String   @default("BORRADOR") // BORRADOR | APROBADO | GENERADO | PUBLICADO
   publicacionId String? // si ya se calendarizó, la Publicacion creada
+  ancla         String? // ranura estable (ej. "contenido:2026-W34") para la elección por semana
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   @@index([template])
   @@index([proyectoId])
+  @@index([ancla])
   @@map("disenos_guardados")
 }
 

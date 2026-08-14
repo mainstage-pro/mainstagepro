@@ -522,6 +522,13 @@ export function alternativasEnPilar(pilar: Pilar, exceptoId?: string): IdeaConte
   return IDEAS.filter((i) => i.pilar === pilar && i.id !== exceptoId);
 }
 
+// Siguiente idea del MISMO pilar (cíclica) — motor del botón "regenerar".
+export function siguienteEnPilar(pilar: Pilar, actualId: string): IdeaContenido {
+  const grupo = IDEAS.filter((i) => i.pilar === pilar);
+  const idx = grupo.findIndex((i) => i.id === actualId);
+  return grupo[(idx + 1) % grupo.length] ?? grupo[0];
+}
+
 // Semana ISO de una fecha (año + número 1..53).
 export function semanaISO(d: Date): { year: number; week: number } {
   const fecha = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
