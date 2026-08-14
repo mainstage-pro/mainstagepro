@@ -5,7 +5,7 @@
 // conceptuales/recurrentes: se guardan por mes/día (no por fecha absoluta) para
 // que la vista anual se repita cada año, con `anio` opcional para fijarlas a uno.
 
-export type CalendarioKey = "ADMINISTRATIVO" | "COMERCIAL" | "FECHAS_ESPECIALES" | "FESTIVIDADES";
+export type CalendarioKey = "ADMINISTRATIVO" | "COMERCIAL" | "PRODUCCION" | "FECHAS_ESPECIALES" | "FESTIVIDADES";
 
 export interface TipoEntrada {
   key: string;
@@ -61,6 +61,22 @@ export const CALENDARIOS: Record<CalendarioKey, CalendarioDef> = {
       { key: "CAMPANA",      label: "Campaña",       color: "#8b5cf6" },
     ],
   },
+  PRODUCCION: {
+    key: "PRODUCCION",
+    slug: "produccion",
+    nombre: "Producción",
+    descripcion: "Preparación anual de equipos y equipo humano en temporada baja: capacitaciones fuertes, inventario, reordenamiento de bodega y limpieza profunda. Estos bloques nos dan la pauta para entregar lo mejor de nosotros y de nuestros equipos en temporada alta.",
+    tag: "Cal. Producción",
+    ideasLabel: "Plan / responsables / checklist",
+    tipos: [
+      { key: "CAPACITACION", label: "Capacitación fuerte",       color: "#8b5cf6", periodo: true },
+      { key: "INVENTARIO",   label: "Inventario de equipos",     color: "#3b82f6", periodo: true },
+      { key: "BODEGA",       label: "Reordenamiento de bodega",  color: "#f59e0b", periodo: true },
+      { key: "LIMPIEZA",     label: "Limpieza profunda",         color: "#10b981", periodo: true },
+      { key: "MANTENIMIENTO",label: "Mantenimiento",             color: "#06b6d4" },
+      { key: "HITO",         label: "Hito de producción",        color: "#94a3b8" },
+    ],
+  },
   FECHAS_ESPECIALES: {
     key: "FECHAS_ESPECIALES",
     slug: "fechas-especiales",
@@ -92,6 +108,20 @@ export const CALENDARIOS: Record<CalendarioKey, CalendarioDef> = {
 export const CALENDARIO_POR_SLUG: Record<string, CalendarioDef> = Object.fromEntries(
   Object.values(CALENDARIOS).map(c => [c.slug, c]),
 );
+
+// Notas que deben existir aunque el calendario ya estuviera sembrado. Se insertan
+// idempotentemente por (calendario, titulo) en ensureCalendariosTabla, así que también
+// aparecen en producción (donde SEEDS ya corrió). Si el usuario la borra (soft delete),
+// la fila sigue existiendo y no se vuelve a insertar.
+export const NOTAS_GARANTIZADAS: (SeedRow & { calendario: CalendarioKey })[] = [
+  {
+    calendario: "ADMINISTRATIVO", tipo: "HITO_FINANCIERO",
+    titulo: "Ajuste de sueldo por capacitación (temporada baja)",
+    mi: 6, di: 1, mf: 7, df: 28, icono: "💸",
+    descripcion: "Ajuste temporal de sueldo durante el bloque de preparación en temporada baja.",
+    ideas: "El equipo está en formación/preparación (ver Calendario Producción), no en operación de eventos. Evaluar % de ajuste temporal, base legal y comunicación con RRHH antes del bloque.",
+  },
+];
 
 // Etiqueta que lleva una tarea creada desde el calendario de eventos.
 export const TAG_EVENTOS = "Cal. Eventos";
@@ -224,6 +254,13 @@ export const SEEDS: Record<CalendarioKey, SeedRow[]> = {
     { tipo: "FECHA_CLAVE", titulo: "Halloween", mi: 10, di: 31, icono: "🎃", tipoEvento: "social", ideas: "Fiestas temáticas, iluminación de terror, DJ." },
     { tipo: "FECHA_CLAVE", titulo: "El Buen Fin", mi: 11, di: 15, mf: 11, df: 18, icono: "🛍️", tipoEvento: "empresarial", ideas: "Promos de renta y paquetes con descuento de temporada." },
     { tipo: "FECHA_CLAVE", titulo: "Fiestas de fin de año", mi: 12, di: 15, mf: 12, df: 31, icono: "🥂", tipoEvento: "empresarial", ideas: "Cenas de empresa, fin de año; paquetes llave en mano." },
+  ],
+  PRODUCCION: [
+    // Bloque de preparación en temporada baja (Jun–Jul): una actividad cada 2 semanas.
+    { tipo: "CAPACITACION", titulo: "Capacitación fuerte del equipo", mi: 6, di: 1, mf: 6, df: 14, icono: "🎓", descripcion: "Bloque intensivo de formación técnica del equipo en temporada baja.", ideas: "Temario por disciplina (audio/iluminación/video), instructores y evaluación al cierre. Durante este bloque aplica el ajuste temporal de sueldo (ver nota en Calendario Administrativo)." },
+    { tipo: "INVENTARIO", titulo: "Inventario anual de equipos", mi: 6, di: 15, mf: 6, df: 28, icono: "📦", descripcion: "Conteo físico total y cotejo contra el sistema.", ideas: "Altas/bajas, etiquetado, estado de cada equipo y detección de faltantes." },
+    { tipo: "BODEGA", titulo: "Reordenamiento de bodega", mi: 7, di: 1, mf: 7, df: 14, icono: "🏗️", descripcion: "Reacomodo de bodega por zonas.", ideas: "Optimizar flujo de carga/descarga, señalización y ubicaciones por tipo de equipo." },
+    { tipo: "LIMPIEZA", titulo: "Limpieza profunda de equipos", mi: 7, di: 15, mf: 7, df: 28, icono: "🧽", descripcion: "Limpieza y revisión detallada equipo por equipo.", ideas: "Detectar y reparar fallas antes de temporada alta; dejar todo listo para operar al 100%." },
   ],
   FECHAS_ESPECIALES: [
     { tipo: "FECHA", titulo: "Año nuevo", mi: 1, di: 1, icono: "🎉", ideas: "Post de propósitos y agradecimiento a clientes." },

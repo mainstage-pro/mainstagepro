@@ -4,6 +4,7 @@ const TABS: ModuleNavTab[] = [
   { href: "/calendarios/eventos", label: "Eventos", accessKey: "calendario" },
   { href: "/calendarios/administrativo", label: "Administrativo", accessKey: "calendario" },
   { href: "/calendarios/comercial", label: "Comercial", accessKey: "calendario" },
+  { href: "/calendarios/produccion", label: "Producción", accessKey: "calendario" },
   { href: "/calendarios/fechas-especiales", label: "Fechas especiales", accessKey: "calendario" },
   { href: "/calendarios/festividades", label: "Festividades MX", accessKey: "calendario" },
 ];

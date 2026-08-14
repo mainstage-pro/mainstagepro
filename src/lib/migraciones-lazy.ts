@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { SEEDS, type CalendarioKey } from "@/lib/calendarios";
+import { SEEDS, NOTAS_GARANTIZADAS, type CalendarioKey } from "@/lib/calendarios";
 
 /**
  * Helper: verifica si una columna ya existe en la tabla antes de hacer ALTER TABLE.
@@ -670,6 +670,22 @@ export async function ensureCalendariosTabla() {
           s.icono ?? null, s.ideas ?? null, s.tipoEvento ?? null, s.servicio ?? null, orden++,
         );
       }
+    }
+    // Notas garantizadas: se insertan aunque el calendario ya estuviera sembrado.
+    // Idempotente por (calendario, titulo); respeta el borrado (la fila persiste soft).
+    for (const n of NOTAS_GARANTIZADAS) {
+      const existe = await prisma.$queryRawUnsafe<{ n: bigint }[]>(
+        `SELECT COUNT(*)::int AS n FROM calendario_entradas WHERE calendario = $1 AND titulo = $2`,
+        n.calendario, n.titulo,
+      );
+      if (Number(existe[0]?.n ?? 0) > 0) continue;
+      await prisma.$executeRawUnsafe(
+        `INSERT INTO calendario_entradas
+           (id, calendario, tipo, titulo, descripcion, mes_inicio, dia_inicio, mes_fin, dia_fin, icono, ideas, tipo_evento_slug, servicio, orden)
+         VALUES (gen_random_uuid()::text, $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+        n.calendario, n.tipo, n.titulo, n.descripcion ?? null, n.mi, n.di ?? null, n.mf ?? null, n.df ?? null,
+        n.icono ?? null, n.ideas ?? null, n.tipoEvento ?? null, n.servicio ?? null, 99,
+      );
     }
   } catch { /* ya existe / ya sembrado */ }
   _calendariosReady = true;
