@@ -114,11 +114,12 @@ export const TEMPLATES: DesignTemplateMeta[] = [
     id: "contenido-campanas",
     nombre: "Contenido para campañas",
     categoria: "Contenido",
-    descripcion: "Piezas para campañas de publicidad y promociones puntuales.",
+    descripcion: "Creativo de anuncio a partir de un brief breve y estándar: titular, mensaje, oferta y llamado a la acción.",
     formato: "Story · 1080×1920",
-    slides: [],
-    disponible: false,
-    fuente: "Marketing · Publicidad",
+    slides: [{ id: "creativo", label: "Creativo" }],
+    disponible: true,
+    fuente: "Marketing · Publicidad (brief)",
+    href: "/marketing/diseno/contenido-campanas",
   },
 ];
 

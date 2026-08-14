@@ -13,7 +13,7 @@ export async function renderDesign(
   origin: string,
   templateId: string | null,
   slideParam: string | null,
-  params: { proyectoId?: string | null; disenoId?: string | null; formato?: string | null; pieza?: string | null },
+  params: { proyectoId?: string | null; disenoId?: string | null; formato?: string | null; pieza?: string | null; brief?: string | null },
 ): Promise<Response> {
   // Si viene un diseño guardado, él manda: define plantilla, proyecto, formato,
   // overrides y —si ya se generó— el snapshot congelado de datos.
@@ -43,7 +43,7 @@ export async function renderDesign(
   // equipos reales del evento), así que no se valida contra la metadata estática.
   // Si la pieza ya se generó, sus datos están congelados (snapshot); si no, se
   // arman en vivo desde la fuente. En ambos casos los overrides mandan encima.
-  const base = snapshot ?? (await renderer.buildData({ proyectoId, pieza: params.pieza }));
+  const base = snapshot ?? (await renderer.buildData({ proyectoId, pieza: params.pieza, brief: params.brief }));
   const data = applyOverrides(base, overrides);
   const slideList = renderer.slides(data);
   if (slideList.length === 0) {

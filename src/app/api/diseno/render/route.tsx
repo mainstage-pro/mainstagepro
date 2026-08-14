@@ -11,5 +11,6 @@ export async function GET(req: Request) {
     disenoId: url.searchParams.get("disenoId"),
     formato: url.searchParams.get("formato"),
     pieza: url.searchParams.get("pieza"),
+    brief: url.searchParams.get("brief"),
   });
 }

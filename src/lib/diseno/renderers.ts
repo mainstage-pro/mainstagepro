@@ -14,6 +14,9 @@ import { buildInventarioData } from "./inventario/build";
 import { renderContenido } from "./contenido/templates";
 import { contenidoBg, contenidoEditableFields, contenidoSlides, type ContenidoData } from "./contenido/data";
 import { buildContenidoData } from "./contenido/build";
+import { renderCampana } from "./campanas/templates";
+import { campanaBg, campanaEditableFields, campanaSlides, type CampanaData } from "./campanas/data";
+import { buildCampanaData } from "./campanas/build";
 import type { EditableField } from "./overrides";
 import type { FormatoPerfil } from "./formatos";
 
@@ -21,7 +24,7 @@ import type { FormatoPerfil } from "./formatos";
 // Aquí sí se importa lo pesado (prisma vía build, templates). Cada plantilla del
 // registro que esté "disponible" debe tener su entrada aquí.
 
-export type RenderParams = { proyectoId?: string | null; pieza?: string | null };
+export type RenderParams = { proyectoId?: string | null; pieza?: string | null; brief?: string | null };
 
 export type TemplateRenderer = {
   // Arma los datos de la pieza (deterministas + IA). Sin proyecto usa la muestra.
@@ -72,6 +75,13 @@ export const RENDERERS: Record<string, TemplateRenderer> = {
     bgFor: (_slide, data) => contenidoBg(data as ContenidoData),
     editableFields: () => contenidoEditableFields(),
     render: (slide, data, assets, index, fmt) => renderContenido(slide, data as ContenidoData, assets, index, fmt),
+  },
+  "contenido-campanas": {
+    buildData: async ({ brief }) => buildCampanaData(brief),
+    slides: () => campanaSlides(),
+    bgFor: (_slide, data) => campanaBg(data as CampanaData),
+    editableFields: () => campanaEditableFields(),
+    render: (slide, data, assets, index, fmt) => renderCampana(slide, data as CampanaData, assets, index, fmt),
   },
 };
 
