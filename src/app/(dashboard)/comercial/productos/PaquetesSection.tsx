@@ -5,7 +5,7 @@ import { upload } from "@vercel/blob/client";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Modal } from "@/components/Modal";
-import { SUBTIPOS_EVENTO, parseCoberturas, coberturaMatch, rangoBounds, type Cobertura } from "@/lib/constants";
+import { SUBTIPOS_EVENTO, parseCoberturas, coberturaMatch, rangoBounds, TEMPORADAS_PAQUETE, TEMPORADA_POR_KEY, type Cobertura } from "@/lib/constants";
 import { Music, Wine, Building2, Sparkles, ImageIcon, Package, Puzzle, Users, type LucideIcon } from "lucide-react";
 
 // ── Constantes ────────────────────────────────────────────────────────────────
@@ -100,6 +100,7 @@ type Paquete = {
   descripcion: string | null;
   propuestaValor: string | null;
   esBase: boolean;
+  temporada: string | null;
   items: PaqueteItem[];
   conceptos: PaqueteConcepto[];
   imagenes: { id: string; url: string; tipo: string; orden: number }[];
@@ -997,7 +998,8 @@ const ETIQUETA_TIPO: Record<string, string> = {
 };
 
 // ── Sección ──────────────────────────────────────────────────────────────────────
-export default function PaquetesSection() {
+export default function PaquetesSection({ modo = "tipo" }: { modo?: "tipo" | "temporada" }) {
+  const esTemporada = modo === "temporada";
   const toast = useToast();
   const confirm = useConfirm();
 
@@ -1011,7 +1013,11 @@ export default function PaquetesSection() {
   const [rangosModalOpen, setRangosModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [tipoTab, setTipoTab] = useState<string>("MUSICAL");
+  const [temporadaTab, setTemporadaTab] = useState<string>(TEMPORADAS_PAQUETE[0]?.key ?? "");
   const [baseTab, setBaseTab] = useState<"TODOS" | "BASE" | "MEDIDA">("TODOS");
+
+  // En modo temporada el tipoEvento (para editor y cobertura) lo fija la temporada activa.
+  const tipoEventoActivo = esTemporada ? (TEMPORADA_POR_KEY[temporadaTab]?.tipoEvento ?? "SOCIAL") : tipoTab;
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -1023,7 +1029,7 @@ export default function PaquetesSection() {
     setLoading(true);
     try {
       const [rp, re, rpr, rr, rg, rcat] = await Promise.all([
-        fetch("/api/paquetes").then((r) => r.json()),
+        fetch(esTemporada ? "/api/paquetes/temporadas" : "/api/paquetes").then((r) => r.json()),
         fetch("/api/equipos").then((r) => r.json()),
         fetch("/api/productos").then((r) => r.json()),
         fetch("/api/roles-tecnicos").then((r) => r.json()),
@@ -1055,7 +1061,8 @@ export default function PaquetesSection() {
   }
   function abrirEditar(p: Paquete) {
     setEditId(p.id);
-    setTipoTab(p.tipoEvento);
+    if (esTemporada) { if (p.temporada) setTemporadaTab(p.temporada); }
+    else setTipoTab(p.tipoEvento);
     setForm({
       nombre: p.nombre,
       rangoPersonas: p.rangoPersonas ?? "",
@@ -1092,7 +1099,7 @@ export default function PaquetesSection() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          nombre: form.nombre, tipoEvento: tipoTab, rangoPersonas: form.rangoPersonas,
+          nombre: form.nombre, tipoEvento: tipoEventoActivo, rangoPersonas: form.rangoPersonas,
           subtiposEvento: form.subtipos, equipos: equiposNombres, conceptos: conceptosNombres,
         }),
       });
@@ -1113,7 +1120,8 @@ export default function PaquetesSection() {
     try {
       const payload = {
         nombre: form.nombre.trim(),
-        tipoEvento: tipoTab,
+        tipoEvento: tipoEventoActivo,
+        temporada: esTemporada ? temporadaTab : null,
         rangoPersonas: form.rangoPersonas || null,
         subtiposEvento: form.subtipos,
         adicionalesSugeridos: form.adicionales,
@@ -1150,9 +1158,11 @@ export default function PaquetesSection() {
   }
 
   const visibles = useMemo(() => paquetes.filter((p) =>
-    p.tipoEvento === tipoTab &&
-    (baseTab === "TODOS" || (baseTab === "BASE" ? p.esBase : !p.esBase))
-  ), [paquetes, tipoTab, baseTab]);
+    esTemporada
+      ? p.temporada === temporadaTab
+      : (!p.temporada && p.tipoEvento === tipoTab &&
+         (baseTab === "TODOS" || (baseTab === "BASE" ? p.esBase : !p.esBase)))
+  ), [paquetes, esTemporada, temporadaTab, tipoTab, baseTab]);
 
   function precioPaquete(p: Paquete): number {
     const items = p.items.reduce((s, it) => {
@@ -1165,25 +1175,38 @@ export default function PaquetesSection() {
 
   return (
     <div>
-      {/* Sub-pestañas por tipo de evento */}
+      {/* Sub-pestañas: por temporada o por tipo de evento */}
       <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-        <div className="flex items-center gap-1.5 p-1 bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl">
-          {TIPOS_EVENTO.map((t) => (
-            <button key={t.key} onClick={() => setTipoTab(t.key)}
-              className={`px-4 py-2 rounded-lg text-sm transition-colors inline-flex items-center gap-1.5 ${tipoTab === t.key ? "bg-[#B3985B] text-black font-semibold" : "text-gray-400 hover:text-white"}`}>
-              <t.icon strokeWidth={1.75} className="w-3.5 h-3.5" /> {t.label}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 p-1 bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg">
-            {([["TODOS", "Todos"], ["BASE", "Base"], ["MEDIDA", "A medida"]] as const).map(([k, label]) => (
-              <button key={k} onClick={() => setBaseTab(k)}
-                className={`px-3 py-1.5 rounded-md text-xs transition-colors ${baseTab === k ? "bg-[#B3985B] text-black font-semibold" : "text-gray-400 hover:text-white"}`}>
-                {label}
+        {esTemporada ? (
+          <div className="flex items-center gap-1.5 p-1 bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl flex-wrap">
+            {TEMPORADAS_PAQUETE.map((t) => (
+              <button key={t.key} onClick={() => setTemporadaTab(t.key)}
+                className={`px-3 py-2 rounded-lg text-sm transition-colors inline-flex items-center gap-1.5 ${temporadaTab === t.key ? "bg-[#B3985B] text-black font-semibold" : "text-gray-400 hover:text-white"}`}>
+                <span>{t.emoji}</span> {t.label}
               </button>
             ))}
           </div>
+        ) : (
+          <div className="flex items-center gap-1.5 p-1 bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl">
+            {TIPOS_EVENTO.map((t) => (
+              <button key={t.key} onClick={() => setTipoTab(t.key)}
+                className={`px-4 py-2 rounded-lg text-sm transition-colors inline-flex items-center gap-1.5 ${tipoTab === t.key ? "bg-[#B3985B] text-black font-semibold" : "text-gray-400 hover:text-white"}`}>
+                <t.icon strokeWidth={1.75} className="w-3.5 h-3.5" /> {t.label}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          {!esTemporada && (
+            <div className="flex items-center gap-1 p-1 bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg">
+              {([["TODOS", "Todos"], ["BASE", "Base"], ["MEDIDA", "A medida"]] as const).map(([k, label]) => (
+                <button key={k} onClick={() => setBaseTab(k)}
+                  className={`px-3 py-1.5 rounded-md text-xs transition-colors ${baseTab === k ? "bg-[#B3985B] text-black font-semibold" : "text-gray-400 hover:text-white"}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
           <button onClick={() => setRangosModalOpen(true)}
             className="px-3 py-2 rounded-lg bg-[#1a1a1a] border border-[#333] text-gray-300 hover:text-white text-sm transition-colors inline-flex items-center gap-1.5">
             <Users strokeWidth={1.75} className="w-4 h-4" /> Rangos de personas
@@ -1201,7 +1224,11 @@ export default function PaquetesSection() {
         </div>
       ) : visibles.length === 0 ? (
         <div className="text-center py-16">
-          <p className="text-gray-500 mb-4">Aún no hay paquetes para eventos {TIPOS_EVENTO.find((t) => t.key === tipoTab)?.label.toLowerCase()}.</p>
+          <p className="text-gray-500 mb-4">
+            {esTemporada
+              ? `Aún no hay paquetes para ${TEMPORADA_POR_KEY[temporadaTab]?.label ?? "esta temporada"}.`
+              : `Aún no hay paquetes para eventos ${TIPOS_EVENTO.find((t) => t.key === tipoTab)?.label.toLowerCase()}.`}
+          </p>
           <button onClick={abrirNuevo} className="px-4 py-2 rounded-lg bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold">+ Crear el primero</button>
         </div>
       ) : (
@@ -1252,9 +1279,9 @@ export default function PaquetesSection() {
       )}
 
       <Modal open={modalOpen} onClose={() => setModalOpen(false)}
-        title={`${editId ? "Editar" : "Nuevo"} paquete · ${TIPOS_EVENTO.find((t) => t.key === tipoTab)?.label}`}
+        title={`${editId ? "Editar" : "Nuevo"} paquete · ${esTemporada ? `${TEMPORADA_POR_KEY[temporadaTab]?.emoji ?? ""} ${TEMPORADA_POR_KEY[temporadaTab]?.label ?? ""}` : TIPOS_EVENTO.find((t) => t.key === tipoTab)?.label}`}
         maxWidth="max-w-3xl">
-        <PaqueteEditor form={form} setForm={setForm} tipoEvento={tipoTab} equipos={equipos} productos={productos} roles={roles} rangos={rangos.map((r) => r.label)} nichosCat={nichosCat} adicionalesCat={adicionalesCat} generandoIA={generandoIA} onGenerarIA={generarIA} />
+        <PaqueteEditor form={form} setForm={setForm} tipoEvento={tipoEventoActivo} equipos={equipos} productos={productos} roles={roles} rangos={rangos.map((r) => r.label)} nichosCat={nichosCat} adicionalesCat={adicionalesCat} generandoIA={generandoIA} onGenerarIA={generarIA} />
         <div className="flex items-center justify-end gap-2 mt-6 pt-4 border-t border-[#1a1a1a]">
           <button onClick={() => setModalOpen(false)} className="px-4 py-2 rounded-lg bg-[#1a1a1a] text-gray-300 text-sm hover:text-white">Cancelar</button>
           <button onClick={guardar} disabled={saving}

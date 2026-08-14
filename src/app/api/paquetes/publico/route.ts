@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
   const tipoEvento = req.nextUrl.searchParams.get("tipoEvento");
 
   const paquetes = await prisma.paquete.findMany({
-    where: { activo: true, ...(tipoEvento ? { tipoEvento } : {}) },
+    where: { activo: true, temporada: null, ...(tipoEvento ? { tipoEvento } : {}) },
     include: PAQUETE_INCLUDE,
     orderBy: [{ tipoEvento: "asc" }, { orden: "asc" }, { nombre: "asc" }],
   });

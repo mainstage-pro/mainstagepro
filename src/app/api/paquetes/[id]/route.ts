@@ -62,7 +62,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params;
   const body = await req.json();
-  const { nombre, tipoEvento, rangoPersonas, subtiposEvento, adicionalesSugeridos, resumen, descripcion, propuestaValor, activo, esBase } = body;
+  const { nombre, tipoEvento, rangoPersonas, subtiposEvento, adicionalesSugeridos, resumen, descripcion, propuestaValor, activo, esBase, temporada } = body;
 
   const data: Record<string, unknown> = {};
   if (nombre !== undefined) data.nombre = nombre.trim();
@@ -79,6 +79,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (propuestaValor !== undefined) data.propuestaValor = propuestaValor?.trim() || null;
   if (activo !== undefined) data.activo = !!activo;
   if (esBase !== undefined) data.esBase = !!esBase;
+  if (temporada !== undefined) data.temporada = temporada || null;
 
   const reemplazaItems = Array.isArray(body.items);
   const reemplazaConceptos = Array.isArray(body.conceptos);

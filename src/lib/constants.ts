@@ -1,3 +1,5 @@
+import { SEEDS } from "./calendarios";
+
 // Tipos de evento
 export const TIPO_EVENTO_LABELS: Record<string, string> = {
   MUSICAL: "Musical",
@@ -16,6 +18,43 @@ export const SUBTIPOS_EVENTO: Record<string, string[]> = {
 };
 
 export const TIPOS_EVENTO_BASE = ["MUSICAL", "SOCIAL", "EMPRESARIAL"] as const;
+
+// ── Temporadas de paquetes ────────────────────────────────────────────────────
+// Derivadas del calendario COMERCIAL (fuente de referencia): cada temporalidad y
+// fecha clave del año se vuelve una "temporada" bajo la que viven paquetes.
+// Client-safe: SEEDS y este archivo son puros (sin prisma).
+const TIPO_EVENTO_POR_SLUG: Record<string, string> = {
+  musical: "MUSICAL",
+  social: "SOCIAL",
+  empresarial: "EMPRESARIAL",
+};
+
+export function slugTemporada(titulo: string): string {
+  return titulo
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+export type TemporadaPaquete = {
+  key: string;
+  label: string;
+  emoji: string;
+  tipoEvento: string;
+};
+
+export const TEMPORADAS_PAQUETE: TemporadaPaquete[] = SEEDS.COMERCIAL.map((s) => ({
+  key: slugTemporada(s.titulo),
+  label: s.titulo,
+  emoji: s.icono ?? "📅",
+  tipoEvento: TIPO_EVENTO_POR_SLUG[s.tipoEvento ?? "social"] ?? "SOCIAL",
+}));
+
+export const TEMPORADA_POR_KEY: Record<string, TemporadaPaquete> = Object.fromEntries(
+  TEMPORADAS_PAQUETE.map((t) => [t.key, t]),
+);
 
 // ── Cobertura de capacidad de productos ───────────────────────────────────────
 // Helpers PUROS (sin prisma) para poder importarse desde componentes cliente.

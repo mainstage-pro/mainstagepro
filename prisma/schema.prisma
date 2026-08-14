@@ -1093,6 +1093,7 @@ model Paquete {
   subtiposEvento       String? // JSON array de subtipos específicos (Boda, Concierto, etc.)
   adicionalesSugeridos String? // JSON array de adicionalIds del catálogo (Bloque 3)
   esBase               Boolean  @default(false) // true = Paquete Base (esqueleto sin nicho, seccionado por tipo de evento)
+  temporada            String? // key de temporada (calendario comercial): halloween, fiestas-de-fin-de-ano, etc. null = paquete estándar
   resumen              String? // resumen corto (generable con IA)
   descripcion          String?  @db.Text // descripción general (generable con IA)
   propuestaValor       String?  @db.Text // propuesta de valor (generable con IA)

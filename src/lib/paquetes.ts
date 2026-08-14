@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import { TEMPORADAS_PAQUETE } from "./constants";
 
 // Las tablas de paquetes se crean lazy (patrón Neon sin migración formal).
 // ensurePaquetesTables() se llama al inicio de cada endpoint de paquetes.
@@ -139,7 +140,36 @@ export async function ensurePaquetesTables() {
   await prisma.$executeRawUnsafe(`ALTER TABLE "paquetes" ADD COLUMN IF NOT EXISTS "adicionalesSugeridos" TEXT;`);
   // Paquetes Base: esqueletos sin nicho, seccionados por tipo de evento (columna aditiva idempotente).
   await prisma.$executeRawUnsafe(`ALTER TABLE "paquetes" ADD COLUMN IF NOT EXISTS "esBase" BOOLEAN NOT NULL DEFAULT false;`);
+  // Paquetes por temporada: key derivada del calendario comercial (columna aditiva idempotente).
+  await prisma.$executeRawUnsafe(`ALTER TABLE "paquetes" ADD COLUMN IF NOT EXISTS "temporada" TEXT;`);
   tablesEnsured = true;
+}
+
+// Deja una plantilla en blanco por cada temporada del calendario comercial.
+// Idempotente: solo crea la plantilla si NO existe ningún paquete (activo o no)
+// para esa temporada, así respeta las que el usuario haya borrado (soft delete).
+export async function ensurePlantillasTemporada() {
+  await ensurePaquetesTables();
+  const existentes = await prisma.paquete.findMany({
+    where: { temporada: { not: null } },
+    select: { temporada: true },
+  });
+  const conParte = new Set(existentes.map((p) => p.temporada));
+  const faltantes = TEMPORADAS_PAQUETE.filter((t) => !conParte.has(t.key));
+  if (!faltantes.length) return;
+  const maxOrden = await prisma.paquete.aggregate({ _max: { orden: true } });
+  let orden = (maxOrden._max.orden ?? 0) + 1;
+  for (const t of faltantes) {
+    await prisma.paquete.create({
+      data: {
+        nombre: `Paquete ${t.label}`,
+        tipoEvento: t.tipoEvento,
+        temporada: t.key,
+        esBase: false,
+        orden: orden++,
+      },
+    });
+  }
 }
 
 export const TIPOS_EVENTO_PAQUETE = ["MUSICAL", "SOCIAL", "EMPRESARIAL"] as const;
