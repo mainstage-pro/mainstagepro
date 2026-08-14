@@ -37,6 +37,15 @@ export async function GET() {
     if (!mejor.has(k)) mejor.set(k, { calificacion: it.calificacion, aprobado: it.aprobado });
   }
 
+  // Mejor calificación por usuario (promedio de la persona) y por evaluación (promedio del curso).
+  const califPorUsuario = new Map<string, number[]>();
+  const bestByEval = new Map<string, number[]>();
+  for (const [k, v] of mejor) {
+    const [uid, evalId] = k.split("::");
+    const cu = califPorUsuario.get(uid) ?? []; cu.push(v.calificacion); califPorUsuario.set(uid, cu);
+    const ce = bestByEval.get(evalId) ?? []; ce.push(v.calificacion); bestByEval.set(evalId, ce);
+  }
+
   // Historial completo de intentos de evaluación por usuario (todos los intentos).
   const intentosFull = await prisma.intentoEvaluacion.findMany({
     orderBy: { creadoEn: "desc" },
@@ -97,16 +106,93 @@ export async function GET() {
   });
 
   // Agregado por usuario
-  const porUsuarioMap = new Map<string, { nombre: string; area: string | null; completadas: number; enProgreso: number; segundos: number }>();
+  const porUsuarioMap = new Map<string, { id: string; nombre: string; area: string | null; completadas: number; enProgreso: number; segundos: number; promedio: number | null; evaluaciones: number }>();
   for (const r of registros) {
     const key = r.usuario.id;
-    const acc = porUsuarioMap.get(key) ?? { nombre: r.usuario.name, area: r.usuario.area, completadas: 0, enProgreso: 0, segundos: 0 };
+    const acc = porUsuarioMap.get(key) ?? { id: key, nombre: r.usuario.name, area: r.usuario.area, completadas: 0, enProgreso: 0, segundos: 0, promedio: null, evaluaciones: 0 };
     if (r.estado === "completado") acc.completadas++;
     else acc.enProgreso++;
     acc.segundos += r.segundos;
     porUsuarioMap.set(key, acc);
   }
+  for (const [uid, acc] of porUsuarioMap) {
+    const arr = califPorUsuario.get(uid);
+    acc.promedio = arr && arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : null;
+    acc.evaluaciones = arr?.length ?? 0;
+  }
   const porUsuario = Array.from(porUsuarioMap.values()).sort((a, b) => b.completadas - a.completadas);
 
-  return NextResponse.json({ registros, porUsuario, historial });
+  // Análisis de ítems: qué preguntas se fallan más (por evaluación + índice de pregunta).
+  const falloMap = new Map<string, { sesionTitulo: string; categoria: { nombre: string; color: string } | null; pregunta: string; fallos: number; total: number }>();
+  for (const it of intentosFull) {
+    const preguntas = (Array.isArray(it.evaluacion.preguntas) ? it.evaluacion.preguntas : []) as unknown as Pregunta[];
+    const respuestas = (Array.isArray(it.respuestas) ? it.respuestas : []) as unknown as number[];
+    preguntas.forEach((q, i) => {
+      const key = `${it.evaluacionId}::${i}`;
+      const agg = falloMap.get(key) ?? { sesionTitulo: it.evaluacion.sesion.titulo, categoria: it.evaluacion.sesion.categoria, pregunta: q.pregunta, fallos: 0, total: 0 };
+      agg.total++;
+      if (respuestas[i] !== q.correcta) agg.fallos++;
+      falloMap.set(key, agg);
+    });
+  }
+  const preguntasFalladas = Array.from(falloMap.values())
+    .filter((f) => f.total > 0 && f.fallos > 0)
+    .map((f) => ({ ...f, tasaFallo: Math.round((f.fallos / f.total) * 100) }))
+    .sort((a, b) => b.tasaFallo - a.tasaFallo || b.fallos - a.fallos)
+    .slice(0, 20);
+
+  // Catálogo de cursos con agregados de gestión.
+  const sesiones = await prisma.sesionCapacitacion.findMany({
+    orderBy: { numero: "asc" },
+    select: {
+      id: true, titulo: true, numero: true, subArea: true, bloque: true, duracion: true,
+      objetivos: true, puntosBase: true, puntosEditados: true,
+      categoria: { select: { nombre: true, slug: true, color: true } },
+      _count: { select: { versiones: true } },
+      evaluacion: { select: { id: true } },
+    },
+  });
+  const progresoPorSesion = new Map<string, { personas: Set<string>; completadas: number }>();
+  for (const p of progresos) {
+    const acc = progresoPorSesion.get(p.sesionId) ?? { personas: new Set<string>(), completadas: 0 };
+    acc.personas.add(p.usuarioId);
+    if (p.estado === "completado") acc.completadas++;
+    progresoPorSesion.set(p.sesionId, acc);
+  }
+  const porCurso = sesiones.map((s) => {
+    const prog = progresoPorSesion.get(s.id);
+    const evalId = s.evaluacion?.id;
+    const califs = evalId ? bestByEval.get(evalId) ?? [] : [];
+    const promedio = califs.length ? Math.round(califs.reduce((a, b) => a + b, 0) / califs.length) : null;
+    const tieneEsqueleto = s.objetivos.length + s.puntosBase.length + s.puntosEditados.length > 0;
+    const tienePresentacion = s._count.versiones > 0;
+    return {
+      id: s.id, titulo: s.titulo, numero: s.numero,
+      area: s.categoria?.nombre ?? null, areaColor: s.categoria?.color ?? "#6b7280",
+      subArea: s.subArea?.trim() || s.bloque,
+      duracion: s.duracion,
+      tienePresentacion,
+      tieneContenido: tienePresentacion || tieneEsqueleto,
+      tieneEvaluacion: !!evalId,
+      personas: prog?.personas.size ?? 0,
+      completadas: prog?.completadas ?? 0,
+      califPromedio: promedio,
+      intentos: califs.length,
+    };
+  });
+
+  // Agregado por área (para el panorama).
+  const areaMap = new Map<string, { nombre: string; slug: string; color: string; cursos: number; conContenido: number; conEval: number; completadas: number }>();
+  for (const c of porCurso) {
+    const slug = sesiones.find((s) => s.id === c.id)?.categoria?.slug ?? "sin-area";
+    const a = areaMap.get(slug) ?? { nombre: c.area ?? "Sin área", slug, color: c.areaColor, cursos: 0, conContenido: 0, conEval: 0, completadas: 0 };
+    a.cursos++;
+    if (c.tieneContenido) a.conContenido++;
+    if (c.tieneEvaluacion) a.conEval++;
+    a.completadas += c.completadas;
+    areaMap.set(slug, a);
+  }
+  const porArea = Array.from(areaMap.values()).sort((a, b) => b.cursos - a.cursos);
+
+  return NextResponse.json({ registros, porUsuario, historial, preguntasFalladas, porCurso, porArea });
 }
