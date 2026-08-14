@@ -14,6 +14,7 @@ import {
   type CampanaBrief,
   type CampanaObjetivo,
 } from "@/lib/diseno/campanas/data";
+import FondoPicker from "./FondoPicker";
 
 export const dynamic = "force-dynamic";
 
@@ -155,16 +156,15 @@ export default async function ContenidoCampanas({ searchParams }: { searchParams
               </select>
             </div>
 
-            <div>
-              <label style={labelStyle}>Fondo</label>
-              <select name="fondo" defaultValue={fondoId} style={inputStyle}>
-                {FONDOS_CAMPANA.map((f) => (
-                  <option key={f.id} value={f.id} style={{ background: CARD }}>
-                    {f.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <FondoPicker
+              fondos={FONDOS_CAMPANA}
+              value={fondoId}
+              inputStyle={inputStyle}
+              labelStyle={labelStyle}
+              card={CARD}
+              gold={GOLD}
+              borde={BORDE}
+            />
 
             <input type="hidden" name="formato" value={formato} />
             <button type="submit" className="ms-btn-primary mt-1">

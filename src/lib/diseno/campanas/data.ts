@@ -45,11 +45,20 @@ export const FONDOS_CAMPANA: { id: string; label: string; bg: string }[] = [
   { id: "audio", label: "Equipo de audio", bg: "images/presentacion/equip-speaker.jpg" },
 ];
 
-export const bgDeFondo = (id: string | null | undefined): string =>
-  FONDOS_CAMPANA.find((f) => f.id === id)?.bg ?? FONDOS_CAMPANA[0].bg;
+// Un fondo subido (Vercel Blob) o incrustado (data URL) se usa tal cual; los
+// curados se resuelven por id. El "id" de un fondo subido ES su propia URL.
+const esUrlFondo = (v: string | null | undefined): boolean =>
+  !!v && (/^https?:\/\//.test(v) || v.startsWith("data:"));
 
-export const idDeFondo = (bg: string): string =>
-  FONDOS_CAMPANA.find((f) => f.bg === bg)?.id ?? FONDOS_CAMPANA[0].id;
+export const bgDeFondo = (id: string | null | undefined): string => {
+  if (esUrlFondo(id)) return id as string;
+  return FONDOS_CAMPANA.find((f) => f.id === id)?.bg ?? FONDOS_CAMPANA[0].bg;
+};
+
+export const idDeFondo = (bg: string): string => {
+  if (esUrlFondo(bg)) return bg;
+  return FONDOS_CAMPANA.find((f) => f.bg === bg)?.id ?? FONDOS_CAMPANA[0].id;
+};
 
 // ── El BRIEF (lo que captura el usuario) ─────────────────────────────────────
 export type CampanaBrief = {
