@@ -5,10 +5,13 @@ import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Modal } from "@/components/Modal";
-import { DISCIPLINAS, DISCIPLINA_LABELS, DISCIPLINA_COLORS } from "@/lib/disciplinaColors";
+import { DISCIPLINA_LABELS, DISCIPLINA_COLORS, DISCIPLINAS } from "@/lib/disciplinaColors";
 
-// Orden de las secciones del tabulador. null = "Sin categoría" (p.ej. Production Manager).
-const SECCIONES: (string | null)[] = [...DISCIPLINAS, null];
+// Orden de las secciones del tabulador (Producción primero). null = "Sin categoría".
+const SECCIONES: (string | null)[] = [
+  "PRODUCCION", "AUDIO", "ILUMINACION", "VIDEO", "ELECTRICIDAD",
+  "STAGE", "RIGGING", "DJ", "STAFF_GENERAL", null,
+];
 
 // Jerarquía dentro de cada sección: ingeniero > operador > técnico.
 function rangoJerarquia(nombre: string): number {
@@ -349,13 +352,21 @@ export default function RolesPage() {
           const color = disc ? (DISCIPLINA_COLORS[disc] ?? "#9ca3af") : "#9ca3af";
           const label = disc ? (DISCIPLINA_LABELS[disc] ?? disc) : "Sin categoría";
           return (
-            <section key={disc ?? "__none__"}>
-              <div className="flex items-center gap-2 mb-3">
-                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
-                <h2 className="text-xs uppercase tracking-widest font-semibold" style={{ color }}>{label}</h2>
-                <span className="text-[10px] text-gray-600">{rs.length}</span>
+            <section key={disc ?? "__none__"} className="rounded-2xl overflow-hidden border" style={{ borderColor: `${color}33` }}>
+              <div
+                className="flex items-center gap-3 px-5 py-3 border-l-4"
+                style={{ borderLeftColor: color, backgroundColor: `${color}14` }}
+              >
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
+                <h2 className="text-sm uppercase tracking-widest font-bold" style={{ color }}>{label}</h2>
+                <span
+                  className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                  style={{ color, backgroundColor: `${color}1f` }}
+                >
+                  {rs.length}
+                </span>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 p-3">
                 {rs.map(r => (
                   <RolCard key={r.id} r={r} onEdit={startEdit} onToggle={toggleActivo} onDelete={eliminar} />
                 ))}
@@ -391,14 +402,6 @@ function RolCard({ r, onEdit, onToggle, onDelete }: {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2.5 mb-1.5">
           <span className="text-white text-sm font-medium">{r.nombre}</span>
-          {r.disciplina && (
-            <span
-              className="text-[9px] uppercase tracking-widest px-1.5 py-0.5 rounded font-semibold"
-              style={{ color: DISCIPLINA_COLORS[r.disciplina] ?? "#9ca3af", backgroundColor: `${DISCIPLINA_COLORS[r.disciplina] ?? "#9ca3af"}1a` }}
-            >
-              {DISCIPLINA_LABELS[r.disciplina] ?? r.disciplina}
-            </span>
-          )}
           <span className="text-[9px] uppercase tracking-widest text-[#B3985B]/70 bg-[#B3985B]/10 px-1.5 py-0.5 rounded">
             {TIPO_PAGO_LABELS[r.tipoPago] ?? r.tipoPago}
           </span>
