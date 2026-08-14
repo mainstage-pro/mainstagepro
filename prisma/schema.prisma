@@ -2323,8 +2323,11 @@ model DisenoGuardado {
   template      String // id de la plantilla en el registro (ej. "brief-tecnico")
   proyectoId    String? // evento fuente (null = muestra)
   titulo        String // etiqueta legible (normalmente el nombre del evento)
+  formato       String   @default("story") // formato objetivo: story | post | cuadrado
   overrides     Json     @default("{}")
-  estado        String   @default("BORRADOR") // BORRADOR | GUARDADO
+  snapshot      Json? // datos congelados al publicar (null = sigue en vivo con la fuente)
+  renders       Json     @default("[]") // assets generados: [{ slide, formato, url, mime, bytes }]
+  estado        String   @default("BORRADOR") // BORRADOR | APROBADO | GENERADO | PUBLICADO
   publicacionId String? // si ya se calendarizó, la Publicacion creada
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

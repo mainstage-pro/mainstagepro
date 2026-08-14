@@ -15,18 +15,23 @@ export async function renderDesign(
   slideParam: string | null,
   params: { proyectoId?: string | null; disenoId?: string | null; formato?: string | null },
 ): Promise<Response> {
-  const fmt = getFormato(params.formato);
-  // Si viene un diseño guardado, él manda: define plantilla, proyecto y overrides.
+  // Si viene un diseño guardado, él manda: define plantilla, proyecto, formato,
+  // overrides y —si ya se generó— el snapshot congelado de datos.
   let overrides: DesignOverrides | null = null;
   let proyectoId = params.proyectoId ?? null;
   let effTemplate = templateId;
+  let effFormato = params.formato ?? null;
+  let snapshot: unknown | null = null;
   if (params.disenoId) {
     const guardado = await getDiseno(params.disenoId);
     if (!guardado) return new Response("Diseño guardado no existe", { status: 404 });
     overrides = guardado.overrides;
     proyectoId = guardado.proyectoId;
     effTemplate = guardado.template;
+    effFormato = params.formato ?? guardado.formato; // el param explícito puede forzar otro formato
+    snapshot = guardado.snapshot;
   }
+  const fmt = getFormato(effFormato);
 
   const meta = effTemplate ? getTemplate(effTemplate) : null;
   const renderer = effTemplate ? getRenderer(effTemplate) : null;
@@ -36,7 +41,9 @@ export async function renderDesign(
 
   // Los datos se arman primero: la lista de slides es DINÁMICA (depende de los
   // equipos reales del evento), así que no se valida contra la metadata estática.
-  const base = await renderer.buildData({ proyectoId });
+  // Si la pieza ya se generó, sus datos están congelados (snapshot); si no, se
+  // arman en vivo desde la fuente. En ambos casos los overrides mandan encima.
+  const base = snapshot ?? (await renderer.buildData({ proyectoId }));
   const data = applyOverrides(base, overrides);
   const slideList = renderer.slides(data);
   if (slideList.length === 0) {
