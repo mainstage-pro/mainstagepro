@@ -28,8 +28,8 @@ function fotosExternas(raw: string | null): string[] {
 /**
  * GET /api/presentacion/categoria/[slug]
  * Endpoint público (sin auth) para las presentaciones por categoría de equipo.
- * Devuelve los equipos activos de la macro-categoría agrupados, con sus fotos
- * adicionales de uso EXTERNO (nunca la portada stock).
+ * Devuelve los equipos activos de la macro-categoría agrupados (propio y externo),
+ * con sus fotos adicionales de uso EXTERNO (nunca la portada stock).
  */
 export async function GET(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -42,7 +42,6 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
     where: {
       activo: true,
       estado: "ACTIVO",
-      tipo: "PROPIO",
       categoria: { nombre: { in: nombres } },
     },
     select: {
@@ -79,14 +78,14 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
     equipos: items.filter((it) => g.categorias.includes(it.categoria)),
   }));
 
-  // Pool de fotos EXTERNO para el hero/galería cinemática (dedup, tope 14).
-  const heroFotos = Array.from(
-    new Set(items.flatMap((it) => it.fotos))
-  ).slice(0, 14);
+  // Galería completa: todas las fotos EXTERNO de la categoría (dedup, orden estable
+  // por como aparecen los equipos). El hero usa solo las primeras 14.
+  const galeria = Array.from(new Set(items.flatMap((it) => it.fotos)));
+  const heroFotos = galeria.slice(0, 14);
 
   const totalEquipos = items.length;
   const totalUnidades = items.reduce((s, it) => s + (it.cantidad || 0), 0);
-  const totalFotos = new Set(items.flatMap((it) => it.fotos)).size;
+  const totalFotos = galeria.length;
   const marcas = new Set(items.map((it) => it.marca).filter(Boolean)).size;
 
   return NextResponse.json({
@@ -94,6 +93,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
     nombre: cfg.nombre,
     grupos,
     heroFotos,
+    galeria,
     stats: { totalEquipos, totalUnidades, totalFotos, marcas },
   });
 }

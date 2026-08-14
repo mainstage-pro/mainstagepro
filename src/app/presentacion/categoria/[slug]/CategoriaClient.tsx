@@ -27,6 +27,7 @@ type Data = {
   nombre: string;
   grupos: GrupoData[];
   heroFotos: string[];
+  galeria: string[];
   stats: { totalEquipos: number; totalUnidades: number; totalFotos: number; marcas: number };
 };
 
@@ -217,6 +218,7 @@ export default function CategoriaClient({ cfg }: { cfg: PresentacionCategoria })
   }, [lightbox]);
 
   const heroFotos = data?.heroFotos ?? [];
+  const galeria = data?.galeria ?? [];
   const principales = data?.grupos.filter((g) => g.rol === "principal" && g.equipos.length > 0) ?? [];
   const relacionados = data?.grupos.filter((g) => g.rol === "relacionado" && g.equipos.length > 0) ?? [];
   const relacionadas = useMemo(
@@ -382,6 +384,40 @@ export default function CategoriaClient({ cfg }: { cfg: PresentacionCategoria })
                 </div>
               );
             })}
+          </div>
+        </section>
+      )}
+
+      {/* GALERÍA COMPLETA (todas las fotos reales del equipo de la categoría) */}
+      {galeria.length > 0 && (
+        <section className="max-w-6xl mx-auto px-5 sm:px-8 py-16 sm:py-24">
+          <R>
+            <Eyebrow>En acción</Eyebrow>
+            <h2 className="mt-4 font-bold text-white" style={{ fontSize: "clamp(1.7rem, 4vw, 2.6rem)", letterSpacing: "-0.02em" }}>
+              Galería de {cfg.nombre.toLowerCase()}
+            </h2>
+            <p className="text-white/45 text-sm mt-3">Fotos reales de nuestro equipo montado en eventos. Da clic para ampliar.</p>
+          </R>
+          <div className="mt-10 columns-2 sm:columns-3 lg:columns-4 gap-3 [column-fill:_balance]">
+            {galeria.map((src, i) => (
+              <button
+                key={src}
+                type="button"
+                onClick={() => setLightbox({ fotos: galeria, index: i, titulo: cfg.nombre })}
+                className="group mb-3 block w-full overflow-hidden rounded-xl border border-white/[0.07] bg-[#050505] break-inside-avoid"
+                style={{ cursor: "zoom-in" }}
+                aria-label={`Ampliar foto ${i + 1} de ${cfg.nombre}`}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={src}
+                  alt={`${cfg.nombre} — foto ${i + 1}`}
+                  loading="lazy"
+                  draggable={false}
+                  className="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                />
+              </button>
+            ))}
           </div>
         </section>
       )}

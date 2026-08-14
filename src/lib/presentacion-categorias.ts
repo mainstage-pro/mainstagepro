@@ -4,11 +4,11 @@
 // ese equipo en la producción de un evento, qué servicios ofrecemos y cómo se
 // ordena el catálogo.
 //
-// Entre todas las macro-categorías se cubre el 100% del equipo PROPIO activo:
-// ningún equipo queda fuera de una presentación.
+// Entre todas las macro-categorías se cubre el 100% del equipo activo (propio y
+// externo/subrentado): ningún equipo queda fuera de una presentación.
 //
 // El endpoint /api/presentacion/categoria/[slug] usa `grupos[].categorias` para
-// leer los equipos reales del inventario (solo tipo PROPIO), su portada
+// leer los equipos reales del inventario (propio y externo), su portada
 // (imagenUrl) y sus fotos adicionales (uso EXTERNO).
 
 export type CategoriaGrupo = {
@@ -101,6 +101,7 @@ export const PRESENTACION_CATEGORIAS: PresentacionCategoria[] = [
     grupos: [
       { label: "Luminarias y efectos", rol: "principal", categorias: ["Equipo de Iluminación"], descripcion: "Cabezas robóticas, PARs, wash y efectos para diseñar cualquier escena." },
       { label: "Consolas de iluminación", rol: "relacionado", categorias: ["Consolas de Iluminación"], descripcion: "Control profesional para programar y operar el show de luces." },
+      { label: "Efectos especiales", rol: "relacionado", categorias: ["Efectos especiales"], descripcion: "Humo, haze, chispas frías y CO₂ para los momentos de mayor impacto." },
     ],
     cierre: "Diseñemos la iluminación que tu evento merece.",
   },
@@ -220,6 +221,35 @@ export const PRESENTACION_CATEGORIAS: PresentacionCategoria[] = [
       { label: "Transporte", rol: "relacionado", categorias: ["Vehículos"], descripcion: "Logística para mover el equipo a donde tiene que estar." },
     ],
     cierre: "Planeemos la energía y logística de tu evento.",
+  },
+  {
+    slug: "escenografia",
+    nombre: "Escenografía y Ambientación",
+    eyebrow: "Escenografía, ambientación y pistas",
+    heroTitulo: "El detalle que transforma el espacio",
+    heroSub:
+      "Escenografía, mamparas decorativas y pistas de baile. La ambientación que convierte un recinto en la escena que tu evento merece.",
+    importanciaTitulo: "La ambientación que le da carácter al evento",
+    importanciaParrafos: [
+      "La escenografía es lo que la gente ve y recuerda: define el fondo de cada foto, enmarca al presentador y le da identidad al espacio antes de que empiece el show.",
+      "En Mainstage Pro cuidamos la ambientación como parte de la producción integral. Escenografía, mamparas y pistas se integran al audio, la luz y el video para que todo hable el mismo lenguaje visual.",
+    ],
+    puntos: [
+      { titulo: "Espacio con identidad", texto: "Escenografía y mamparas que visten el recinto y refuerzan la marca del evento." },
+      { titulo: "Foto perfecta", texto: "Fondos y ambientación pensados para que cada imagen y transmisión luzca impecable." },
+      { titulo: "Pista protagonista", texto: "Pistas de baile que se vuelven el centro visual y energético de la fiesta." },
+      { titulo: "Todo integrado", texto: "La ambientación se coordina con luz, audio y video como una sola puesta en escena." },
+    ],
+    servicios: [
+      { titulo: "Renta de equipo", texto: "Escenografía, mamparas decorativas y pistas de baile para vestir tu evento." },
+      { titulo: "Producción técnica", texto: "Diseño, montaje y desmontaje de la ambientación a cargo de nuestro equipo." },
+      { titulo: "Dirección técnica", texto: "Coordinación de la escenografía dentro de una producción integral." },
+    ],
+    grupos: [
+      { label: "Escenografía y mamparas", rol: "principal", categorias: ["Escenografía", "Mamparas decorativas"], descripcion: "Fondos, paneles y estructuras decorativas que visten el escenario y el recinto." },
+      { label: "Pistas de baile", rol: "relacionado", categorias: ["Pistas de baile"], descripcion: "Pistas iluminadas y de diseño para convertir el baile en el centro de la fiesta." },
+    ],
+    cierre: "Vistamos tu evento con la escenografía perfecta.",
   },
 ];
 

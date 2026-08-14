@@ -16,6 +16,7 @@ import {
   Layers,
   Zap,
   Globe,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 import { PRESENTACION_CATEGORIAS } from "@/lib/presentacion-categorias";
@@ -260,6 +261,7 @@ const CATEGORIA_ICONS: Record<string, LucideIcon> = {
   dj: Disc3,
   escenarios: Layers,
   energia: Zap,
+  escenografia: Sparkles,
 };
 
 // Presentaciones por categoría de equipo (audio, iluminación, video, dj,
