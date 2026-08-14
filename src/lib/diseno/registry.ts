@@ -62,6 +62,7 @@ export const TEMPLATES: DesignTemplateMeta[] = [
     ],
     disponible: true,
     fuente: "Catálogo · Tipos de servicio",
+    href: "/marketing/diseno/servicios-mainstage",
   },
   {
     id: "tipos-evento",
@@ -76,6 +77,7 @@ export const TEMPLATES: DesignTemplateMeta[] = [
     ],
     disponible: true,
     fuente: "Catálogo · Tipos de evento y nichos",
+    href: "/marketing/diseno/tipos-evento",
   },
   {
     id: "inventario-equipos",
@@ -90,6 +92,7 @@ export const TEMPLATES: DesignTemplateMeta[] = [
     ],
     disponible: true,
     fuente: "Inventario · Equipos con foto",
+    href: "/marketing/diseno/inventario-equipos",
   },
   {
     id: "contenido-informativo",
