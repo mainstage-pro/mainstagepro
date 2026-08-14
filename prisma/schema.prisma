@@ -1797,7 +1797,8 @@ model Puesto {
   jornada           String?    @db.Text // JSON [{ dia, entrada, salida, ubicacion }] (§3.3)
   // Configuración de onboarding (Organización → Puesto → Onboarding)
   onboardingModulos       String? @map("onboarding_modulos") @db.Text // JSON string[] — moduloKeys de plataforma a revisar
-  onboardingCapacitaciones String? @map("onboarding_capacitaciones") @db.Text // JSON string[] — ids de CategoriaCapacitacion (áreas)
+  onboardingCapacitaciones String? @map("onboarding_capacitaciones") @db.Text // JSON string[] — LEGADO: ids de CategoriaCapacitacion (áreas). Superado por capacitacionAsignaciones.
+  capacitacionAsignaciones String? @map("capacitacion_asignaciones") @db.Text // JSON [{ categoriaId, subArea|null, nivel: "OBLIGATORIO"|"RECOMENDADO" }] — capacitación ligada al área/sub-área del puesto
   // Versionado del registro (§7/§9): se congela en acuerdos y evaluaciones
   version           Int        @default(1)
   legacyData        String?    @map("legacy_data") @db.Text // JSON snapshot de textos libres previos (§10)

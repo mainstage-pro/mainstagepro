@@ -16,6 +16,25 @@ interface Area {
   completadas: number;
 }
 
+type Nivel = "OBLIGATORIO" | "RECOMENDADO";
+interface MiPlan {
+  porAreaSlug: Record<string, Nivel>;
+  porSubArea: Record<string, Nivel>;
+}
+
+// Badge de nivel para el usuario logueado (obligatorio > recomendado).
+function NivelBadge({ nivel }: { nivel: Nivel }) {
+  const o = nivel === "OBLIGATORIO";
+  return (
+    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0"
+      style={o
+        ? { background: "#B3985B22", color: "#c9a96a", border: "1px solid #B3985B55" }
+        : { background: "#0ea5e922", color: "#7dd3fc", border: "1px solid #0ea5e955" }}>
+      {o ? "Obligatorio" : "Recomendado"}
+    </span>
+  );
+}
+
 export default function PortalCapacitacionPage() {
   const [areas, setAreas] = useState<Area[]>([]);
   const [puedeEditar, setPuedeEditar] = useState(false);
@@ -23,6 +42,20 @@ export default function PortalCapacitacionPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [creando, setCreando] = useState(false);
+  const [miPlan, setMiPlan] = useState<MiPlan | null>(null);
+
+  // Nivel del área para el usuario: el del área completa, o el más alto de sus sub-áreas.
+  function nivelDeArea(slug: string): Nivel | null {
+    if (!miPlan) return null;
+    if (miPlan.porAreaSlug[slug] === "OBLIGATORIO") return "OBLIGATORIO";
+    let sub: Nivel | null = miPlan.porAreaSlug[slug] ?? null;
+    for (const k of Object.keys(miPlan.porSubArea)) {
+      if (!k.startsWith(`${slug}::`)) continue;
+      if (miPlan.porSubArea[k] === "OBLIGATORIO") return "OBLIGATORIO";
+      sub = sub ?? "RECOMENDADO";
+    }
+    return sub;
+  }
 
   async function cargar() {
     setLoading(true);
@@ -41,6 +74,13 @@ export default function PortalCapacitacionPage() {
   }
 
   useEffect(() => { cargar(); }, []);
+
+  useEffect(() => {
+    fetch("/api/capacitacion/mi-plan", { cache: "no-store" })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (d) setMiPlan({ porAreaSlug: d.porAreaSlug ?? {}, porSubArea: d.porSubArea ?? {} }); })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetch("/api/me", { cache: "no-store" })
@@ -133,9 +173,12 @@ export default function PortalCapacitacionPage() {
                       <Icon size={20} style={{ color: a.color }} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-base font-semibold text-white group-hover:text-[#c9a96a] transition-colors truncate">
-                        {a.nombre}
-                      </h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-base font-semibold text-white group-hover:text-[#c9a96a] transition-colors truncate">
+                          {a.nombre}
+                        </h3>
+                        {(() => { const n = nivelDeArea(a.slug); return n ? <NivelBadge nivel={n} /> : null; })()}
+                      </div>
                       <span className="text-[11px]" style={{ color: "#6b7280" }}>
                         {a.total} {a.total === 1 ? "curso" : "cursos"}
                       </span>

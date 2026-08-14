@@ -8,6 +8,10 @@ import { useAreas } from "@/components/AreasProvider";
 import { MODULOS_POR_SECCION } from "@/lib/nav";
 import { parseIdList } from "@/lib/onboarding";
 import {
+  asignacionesEfectivas, derivarAsignacionesDefault, nivelMax,
+  type CapAsignacion, type NivelCapacitacion,
+} from "@/lib/capacitacion-plan";
+import {
   TIPOS_CONTRATO, MODALIDADES, DIAS_SEMANA, FRECUENCIAS_KPI, UNIDADES_KPI, FRECUENCIAS_ESTANDAR,
   FUENTES_KPI, KPI_PLAN_NOMBRE, KPI_PLAN_META_DEFAULT, jparse, jornadaToString, horasSemanales,
   textosMuySimilares, adverbioVago, generaCiclo,
@@ -28,7 +32,7 @@ interface Puesto {
   valores?: string | null; aptitudes?: string | null; conocimientos?: string | null;
   funciones?: string | null; prestaciones?: string | null; prestacionesOtro?: string | null;
   tipoContrato?: string | null; modalidad?: string | null; horario?: string | null; jornada?: string | null;
-  onboardingModulos?: string | null; onboardingCapacitaciones?: string | null;
+  onboardingModulos?: string | null; onboardingCapacitaciones?: string | null; capacitacionAsignaciones?: string | null;
   version?: number | null;
   color?: string | null; activo: boolean;
   ocupantes?: Ocupante[]; kpis?: KpiPuesto[];
@@ -96,7 +100,8 @@ export default function PuestosOperativosPage() {
   const [ocupantesIds, setOcupantesIds] = useState<string[]>([]);
   const [onbModulos, setOnbModulos] = useState<string[]>([]);
   const [onbCapacitaciones, setOnbCapacitaciones] = useState<string[]>([]);
-  const [categoriasCap, setCategoriasCap] = useState<{ id: string; nombre: string; slug: string }[]>([]);
+  const [capAsignaciones, setCapAsignaciones] = useState<CapAsignacion[]>([]);
+  const [categoriasCap, setCategoriasCap] = useState<{ id: string; nombre: string; slug: string; subAreas: string[] }[]>([]);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [selected, setSelected] = useState<Puesto | null>(null);
@@ -142,7 +147,8 @@ export default function PuestosOperativosPage() {
       .catch(() => {});
     fetch("/api/capacitacion/categorias", { cache: "no-store" })
       .then(r => r.json())
-      .then((d: { categorias?: { id: string; nombre: string; slug: string }[] }) => setCategoriasCap(d.categorias ?? []))
+      .then((d: { categorias?: { id: string; nombre: string; slug: string; subAreas?: string[] }[] }) =>
+        setCategoriasCap((d.categorias ?? []).map(c => ({ ...c, subAreas: c.subAreas ?? [] }))))
       .catch(() => {});
   }, []);
 
@@ -162,7 +168,39 @@ export default function PuestosOperativosPage() {
     setEstandares([]); setEstMinimos([]); setCoordina([]); setJornada([]);
     setPrestacionesSel([]); setValores([]); setAptitudes([]); setConocimientos([]);
     setKpis([kpiFijo()]); setOcupantesIds([]);
-    setOnbModulos([]); setOnbCapacitaciones([]);
+    setOnbModulos([]); setOnbCapacitaciones([]); setCapAsignaciones([]);
+  }
+
+  // Nivel actual de una asignación (área completa = subArea null) o undefined si no está.
+  function nivelDe(categoriaId: string, subArea: string | null): NivelCapacitacion | undefined {
+    return capAsignaciones.find(a => a.categoriaId === categoriaId && (a.subArea ?? null) === subArea)?.nivel;
+  }
+  // Fija/limpia el nivel de una asignación. Pasar undefined la elimina.
+  function fijarNivel(categoriaId: string, subArea: string | null, nivel: NivelCapacitacion | undefined) {
+    setCapAsignaciones(prev => {
+      const resto = prev.filter(a => !(a.categoriaId === categoriaId && (a.subArea ?? null) === subArea));
+      return nivel ? [...resto, { categoriaId, subArea, nivel }] : resto;
+    });
+  }
+  // Alterna: si ya está en ese nivel lo quita; si no, lo pone en ese nivel.
+  function alternarNivel(categoriaId: string, subArea: string | null, nivel: NivelCapacitacion) {
+    fijarNivel(categoriaId, subArea, nivelDe(categoriaId, subArea) === nivel ? undefined : nivel);
+  }
+  // "Sugerir según el puesto": deriva del área + sub-área del puesto y fusiona
+  // con lo existente (OBLIGATORIO gana). No pisa ajustes manuales previos.
+  function sugerirCapacitacion() {
+    const subNombre = subareasPorArea[form.area]?.find(s => s.id === form.subAreaId)?.nombre ?? null;
+    const derivadas = derivarAsignacionesDefault(form.area, subNombre, categoriasCap);
+    if (!derivadas.length) return;
+    setCapAsignaciones(prev => {
+      const merged = [...prev];
+      for (const d of derivadas) {
+        const i = merged.findIndex(a => a.categoriaId === d.categoriaId && (a.subArea ?? null) === (d.subArea ?? null));
+        if (i >= 0) merged[i] = { ...merged[i], nivel: nivelMax(merged[i].nivel, d.nivel) };
+        else merged.push(d);
+      }
+      return merged;
+    });
   }
 
   function openNew() {
@@ -205,6 +243,7 @@ export default function PuestosOperativosPage() {
     setOcupantesIds((full.ocupantes ?? []).map(o => o.id));
     setOnbModulos(parseIdList(full.onboardingModulos));
     setOnbCapacitaciones(parseIdList(full.onboardingCapacitaciones));
+    setCapAsignaciones(asignacionesEfectivas(full.capacitacionAsignaciones, full.onboardingCapacitaciones));
     setShowForm(true);
   }
 
@@ -271,6 +310,7 @@ export default function PuestosOperativosPage() {
         ocupantesIds,
         onboardingModulos: onbModulos,
         onboardingCapacitaciones: onbCapacitaciones,
+        capacitacionAsignaciones: capAsignaciones,
       };
       const url = editing ? `/api/rrhh/puestos-operativos/${editing.id}` : "/api/rrhh/puestos-operativos";
       const method = editing ? "PATCH" : "POST";
@@ -887,17 +927,43 @@ export default function PuestosOperativosPage() {
                   ))}
                 </div>
 
-                <label className={labelCls}>Áreas de capacitación asignadas</label>
-                <div className="flex flex-wrap gap-1.5">
-                  {categoriasCap.length === 0 && <span className="text-gray-700 text-xs">No hay áreas de capacitación registradas.</span>}
-                  {categoriasCap.map(c => {
-                    const on = onbCapacitaciones.includes(c.id);
-                    return (
-                      <button key={c.id} type="button" onClick={() => setOnbCapacitaciones(a => on ? a.filter(x => x !== c.id) : [...a, c.id])}
-                        className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${on ? "bg-[#B3985B]/15 text-[#B3985B] border-[#B3985B]/40" : "border-[#222] text-gray-500 hover:text-white"}`}>{c.nombre}</button>
-                    );
-                  })}
+                <div className="flex items-center justify-between mb-2">
+                  <label className={`${labelCls} !mb-0`}>Capacitación del puesto</label>
+                  <button type="button" onClick={sugerirCapacitacion}
+                    className="text-[11px] px-2.5 py-1 rounded-lg border border-[#B3985B]/40 text-[#B3985B] hover:bg-[#B3985B]/10 transition-colors">
+                    Sugerir según el puesto
+                  </button>
                 </div>
+                <p className="text-[11px] text-gray-500 mb-3 -mt-1">
+                  Marca cada área o sub-área como <span className="text-[#B3985B]">Obligatorio</span> o <span className="text-gray-400">Recomendado</span>. Si el puesto no tiene sub-área, marca el área completa. Esto define lo que cursa quien ocupe el puesto.
+                </p>
+
+                {categoriasCap.length === 0 ? (
+                  <span className="text-gray-700 text-xs">No hay áreas de capacitación registradas.</span>
+                ) : (
+                  <div className="space-y-2">
+                    {categoriasCap.map(c => (
+                      <div key={c.id} className="border border-[#222] rounded-lg bg-[#0d0d0d] overflow-hidden">
+                        <div className="flex items-center justify-between gap-2 px-3 py-2">
+                          <span className="text-sm text-gray-200 font-medium">{c.nombre}
+                            <span className="text-gray-600 text-xs font-normal"> · área completa</span>
+                          </span>
+                          <NivelSwitch nivel={nivelDe(c.id, null)} onPick={n => alternarNivel(c.id, null, n)} />
+                        </div>
+                        {c.subAreas.length > 0 && (
+                          <div className="border-t border-[#1a1a1a] divide-y divide-[#1a1a1a]">
+                            {c.subAreas.map(sa => (
+                              <div key={sa} className="flex items-center justify-between gap-2 pl-6 pr-3 py-1.5">
+                                <span className="text-[13px] text-gray-400">{sa}</span>
+                                <NivelSwitch nivel={nivelDe(c.id, sa)} onPick={n => alternarNivel(c.id, sa, n)} />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -911,6 +977,27 @@ export default function PuestosOperativosPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// Selector de nivel de capacitación: Obligatorio / Recomendado (toggle). Sin selección = no asignado.
+function NivelSwitch({ nivel, onPick }: { nivel?: NivelCapacitacion; onPick: (n: NivelCapacitacion) => void }) {
+  const opts: { n: NivelCapacitacion; label: string; on: string }[] = [
+    { n: "OBLIGATORIO", label: "Obligatorio", on: "bg-[#B3985B]/20 text-[#B3985B] border-[#B3985B]/50" },
+    { n: "RECOMENDADO", label: "Recomendado", on: "bg-sky-500/15 text-sky-300 border-sky-500/40" },
+  ];
+  return (
+    <div className="flex items-center gap-1 shrink-0">
+      {opts.map(o => {
+        const active = nivel === o.n;
+        return (
+          <button key={o.n} type="button" onClick={() => onPick(o.n)}
+            className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${active ? o.on : "border-[#222] text-gray-600 hover:text-gray-300"}`}>
+            {o.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

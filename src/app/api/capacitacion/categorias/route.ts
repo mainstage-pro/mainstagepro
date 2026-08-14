@@ -11,7 +11,7 @@ export async function GET() {
   const categorias = await prisma.categoriaCapacitacion.findMany({
     where: { activo: true },
     orderBy: { orden: "asc" },
-    include: { sesiones: { select: { id: true } } },
+    include: { sesiones: { select: { id: true, subArea: true } } },
   });
 
   const completados = await prisma.progresoCapacitacion.findMany({
@@ -23,6 +23,9 @@ export async function GET() {
   const result = categorias.map((c) => {
     const total = c.sesiones.length;
     const completadas = c.sesiones.filter((s) => completadosSet.has(s.id)).length;
+    const subAreas = Array.from(
+      new Set(c.sesiones.map((s) => s.subArea?.trim()).filter((x): x is string => !!x)),
+    ).sort((a, b) => a.localeCompare(b, "es"));
     return {
       id: c.id,
       nombre: c.nombre,
@@ -32,6 +35,7 @@ export async function GET() {
       orden: c.orden,
       total,
       completadas,
+      subAreas,
     };
   });
 

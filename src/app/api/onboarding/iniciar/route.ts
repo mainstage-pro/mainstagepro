@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { ONBOARDING_PASOS, parseIdList } from "@/lib/onboarding";
 import { MODULOS_POR_SECCION } from "@/lib/nav";
+import { asignacionesEfectivas, NIVEL_LABEL } from "@/lib/capacitacion-plan";
+import { subAreaSlug } from "@/lib/capacitacion-ui";
 
 // Migración lazy idempotente (patrón Neon): columnas puente del onboarding por persona.
 async function ensureOnboardingSchema() {
@@ -64,7 +66,10 @@ export async function POST(req: NextRequest) {
       select: {
         id: true, nombre: true, fechaIngreso: true,
         puestoRef: {
-          select: { id: true, nombre: true, area: true, onboardingModulos: true, onboardingCapacitaciones: true },
+          select: {
+            id: true, nombre: true, area: true,
+            onboardingModulos: true, onboardingCapacitaciones: true, capacitacionAsignaciones: true,
+          },
         },
       },
     });
@@ -85,14 +90,38 @@ export async function POST(req: NextRequest) {
 
     const puesto = persona.puestoRef;
     const moduloKeys = parseIdList(puesto.onboardingModulos);
-    const categoriaIds = parseIdList(puesto.onboardingCapacitaciones);
 
-    const categorias = categoriaIds.length
+    // Capacitación ligada al puesto: usa las asignaciones nuevas (área/sub-área con
+    // nivel) o cae al legado. Cada asignación se vuelve una tarea; OBLIGATORIO primero.
+    const asignaciones = asignacionesEfectivas(puesto.capacitacionAsignaciones, puesto.onboardingCapacitaciones);
+    const catIds = Array.from(new Set(asignaciones.map((a) => a.categoriaId)));
+    const catRows = catIds.length
       ? await prisma.categoriaCapacitacion.findMany({
-          where: { id: { in: categoriaIds }, activo: true },
+          where: { id: { in: catIds }, activo: true },
           select: { id: true, nombre: true, slug: true },
         })
       : [];
+    const catById = new Map(catRows.map((c) => [c.id, c]));
+
+    const capTareas = asignaciones
+      .filter((a) => catById.has(a.categoriaId))
+      .map((a) => {
+        const cat = catById.get(a.categoriaId)!;
+        const nivelTxt = NIVEL_LABEL[a.nivel];
+        if (a.subArea) {
+          return {
+            nivel: a.nivel,
+            titulo: `Capacitación ${nivelTxt.toLowerCase()}: ${cat.nombre} · ${a.subArea}`,
+            recurso: `/capacitacion/area/${cat.slug}/${subAreaSlug(a.subArea)}`,
+          };
+        }
+        return {
+          nivel: a.nivel,
+          titulo: `Capacitación ${nivelTxt.toLowerCase()} del área: ${cat.nombre}`,
+          recurso: `/capacitacion/area/${cat.slug}`,
+        };
+      })
+      .sort((x, y) => (x.nivel === y.nivel ? 0 : x.nivel === "OBLIGATORIO" ? -1 : 1));
 
     const modulos = ONBOARDING_PASOS.map((paso, i) => {
       let tareas: { titulo: string; descripcion: string | null; tipo: string; orden: number; recurso: string | null }[];
@@ -108,13 +137,13 @@ export async function POST(req: NextRequest) {
             }))
           : [{ titulo: "Sin módulos asignados a este puesto", descripcion: paso.descripcion, tipo: paso.tareaTipo, orden: 0, recurso: null }];
       } else if (paso.dynamic === "capacitaciones") {
-        tareas = categorias.length
-          ? categorias.map((c, j) => ({
-              titulo: `Capacitación del área: ${c.nombre}`,
+        tareas = capTareas.length
+          ? capTareas.map((t, j) => ({
+              titulo: t.titulo,
               descripcion: null,
               tipo: paso.tareaTipo,
               orden: j,
-              recurso: `/capacitacion/area/${c.slug}`,
+              recurso: t.recurso,
             }))
           : [{ titulo: "Sin áreas de capacitación asignadas a este puesto", descripcion: paso.descripcion, tipo: paso.tareaTipo, orden: 0, recurso: null }];
       } else {

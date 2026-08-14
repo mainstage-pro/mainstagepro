@@ -5,6 +5,20 @@ import Link from "next/link";
 import { colorBloque, iconoArea, subAreaSlug } from "@/lib/capacitacion-ui";
 import { ArrowLeft, Plus, X, CheckCircle2, ChevronRight } from "lucide-react";
 
+type Nivel = "OBLIGATORIO" | "RECOMENDADO";
+
+function NivelBadge({ nivel }: { nivel: Nivel }) {
+  const o = nivel === "OBLIGATORIO";
+  return (
+    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0"
+      style={o
+        ? { background: "#B3985B22", color: "#c9a96a", border: "1px solid #B3985B55" }
+        : { background: "#0ea5e922", color: "#7dd3fc", border: "1px solid #0ea5e955" }}>
+      {o ? "Obligatorio" : "Recomendado"}
+    </span>
+  );
+}
+
 interface Sesion {
   id: string;
   numero: number;
@@ -32,6 +46,16 @@ export default function AreaPage({ params }: { params: Promise<{ slug: string }>
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [creando, setCreando] = useState(false);
+  const [miPlan, setMiPlan] = useState<{ porAreaSlug: Record<string, Nivel>; porSubArea: Record<string, Nivel> } | null>(null);
+
+  // Nivel para una sub-área: el del área completa o el específico de la sub-área.
+  function nivelDeSub(subSlug: string): Nivel | null {
+    if (!miPlan) return null;
+    const area = miPlan.porAreaSlug[slug];
+    const sub = miPlan.porSubArea[`${slug}::${subSlug}`];
+    if (area === "OBLIGATORIO" || sub === "OBLIGATORIO") return "OBLIGATORIO";
+    return area ?? sub ?? null;
+  }
 
   async function cargar() {
     setLoading(true);
@@ -56,6 +80,13 @@ export default function AreaPage({ params }: { params: Promise<{ slug: string }>
   }
 
   useEffect(() => { cargar(); }, [slug]);
+
+  useEffect(() => {
+    fetch("/api/capacitacion/mi-plan", { cache: "no-store" })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (d) setMiPlan({ porAreaSlug: d.porAreaSlug ?? {}, porSubArea: d.porSubArea ?? {} }); })
+      .catch(() => {});
+  }, []);
 
   // Agrupa por sub-área del plan de trabajo; si el tema no la tiene, cae en su bloque.
   const bySubArea = useMemo(() => {
@@ -126,7 +157,10 @@ export default function AreaPage({ params }: { params: Promise<{ slug: string }>
                           style={{ background: `${c}1a`, border: `1px solid ${c}33`, color: c }}>
                           {g.nombre.trim().charAt(0).toUpperCase()}
                         </div>
-                        <ChevronRight size={18} className="mt-2 transition-transform group-hover:translate-x-0.5" style={{ color: "#4b5563" }} />
+                        <div className="flex items-center gap-2">
+                          {(() => { const n = nivelDeSub(g.slug); return n ? <NivelBadge nivel={n} /> : null; })()}
+                          <ChevronRight size={18} className="mt-0.5 transition-transform group-hover:translate-x-0.5" style={{ color: "#4b5563" }} />
+                        </div>
                       </div>
                       <h3 className="text-sm font-semibold text-white leading-snug mb-1 group-hover:text-[#c9a96a] transition-colors">
                         {g.nombre}
