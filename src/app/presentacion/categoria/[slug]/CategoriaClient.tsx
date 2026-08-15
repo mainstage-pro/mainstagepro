@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import PresentacionNav from "@/components/presentacion/PresentacionNav";
+import ServiciosCards from "@/components/presentacion/ServiciosCards";
 import { WA_URL, useDescubrimiento } from "@/components/presentacion/descubrimiento";
 import { R, GOLD, StatCount } from "@/components/presentacion/anim";
 import {
@@ -409,16 +410,8 @@ export default function CategoriaClient({ cfg }: { cfg: PresentacionCategoria })
             Tres formas de trabajar contigo
           </h2>
         </R>
-        <div className="mt-10 grid md:grid-cols-3 gap-4">
-          {cfg.servicios.map((s, i) => (
-            <R key={i} delay={i * 90}>
-              <div className="h-full rounded-2xl border border-white/[0.06] bg-white/[0.02] p-7">
-                <span className="text-[13px] font-semibold tabular-nums" style={{ color: GOLD }}>0{i + 1}</span>
-                <p className="text-white font-semibold text-[18px] mt-3">{s.titulo}</p>
-                <p className="text-white/50 text-[14px] mt-2 leading-relaxed">{s.texto}</p>
-              </div>
-            </R>
-          ))}
+        <div className="mt-10">
+          <ServiciosCards />
         </div>
       </section>
 

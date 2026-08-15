@@ -8,6 +8,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import PresentacionNav from "@/components/presentacion/PresentacionNav";
+import ServiciosCards from "@/components/presentacion/ServiciosCards";
 import { usePresentacionEdit, EditableImage } from "@/components/presentacion/editable";
 import { useTiposEventoMaterial } from "@/lib/tipos-evento-cliente";
 
@@ -46,26 +47,6 @@ const SERVICIOS = [
     incluye: ["Coordinación del rider", "Cues por escena", "Enlace directo con el artista", "Guion técnico del evento"],
   },
 ] as const;
-
-// Recordatorio breve de los servicios, con el lenguaje adaptado a cada audiencia.
-// El detalle técnico completo vive en la home y en /presentacion/servicio/*.
-const SERVICIOS_RESUMEN: Record<EventoTipo, { n: string; title: string; linea: string }[]> = {
-  musical: [
-    { n: "01", title: "Renta de equipo",     linea: "El equipo correcto para tu show, listo y respaldado." },
-    { n: "02", title: "Producción técnica",  linea: "Operadores que montan, prueban y operan tu show." },
-    { n: "03", title: "Dirección técnica",   linea: "Una sola cabeza que coordina audio, iluminación y video." },
-  ],
-  social: [
-    { n: "01", title: "Renta de equipo",     linea: "El equipo justo para tu celebración, listo y respaldado." },
-    { n: "02", title: "Producción técnica",  linea: "Un equipo que monta, prueba y cuida cada momento." },
-    { n: "03", title: "Dirección técnica",   linea: "Un solo responsable de que todo salga perfecto." },
-  ],
-  empresarial: [
-    { n: "01", title: "Renta de equipo",     linea: "El equipo indicado para tu evento, listo y respaldado." },
-    { n: "02", title: "Producción técnica",  linea: "Técnicos que montan, prueban y operan todo el evento." },
-    { n: "03", title: "Dirección técnica",   linea: "Un solo responsable de que todo funcione y llegue a tiempo." },
-  ],
-};
 
 const CONFIG = {
   musical: {
@@ -847,7 +828,7 @@ export default function EventoClient({ tipo, initialOverrides = {} }: { tipo: Ev
 
       {/* ── Recordatorio de servicios (compacto) ── */}
       <section id="servicios" className="py-20 px-6 bg-[#060606]">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <R>
             <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-4">Cómo trabajamos contigo</p>
             <h2 className="font-bold text-white leading-[1.05] mb-3" style={{ fontSize: "clamp(1.5rem, 3.2vw, 2.4rem)", letterSpacing: "-0.02em" }}>
@@ -858,18 +839,7 @@ export default function EventoClient({ tipo, initialOverrides = {} }: { tipo: Ev
             </p>
           </R>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {SERVICIOS_RESUMEN[tipo].map((s, i) => (
-              <R key={s.n} delay={i * 80}>
-                <div className="rounded-2xl p-6 h-full flex flex-col"
-                     style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <span className="font-mono mb-4" style={{ fontSize: "0.7rem", color: GOLD, letterSpacing: "0.12em" }}>{s.n}</span>
-                  <h3 className="font-bold text-white text-lg mb-2 leading-tight">{s.title}</h3>
-                  <p className="text-white/50 text-sm leading-relaxed">{s.linea}</p>
-                </div>
-              </R>
-            ))}
-          </div>
+          <ServiciosCards edit={edit} />
 
           <R delay={240}>
             <div className="mt-8">

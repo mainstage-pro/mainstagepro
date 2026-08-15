@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import PresentacionNav from "@/components/presentacion/PresentacionNav";
+import ServiciosCards from "@/components/presentacion/ServiciosCards";
 import { useTiposEventoMaterial } from "@/lib/tipos-evento-cliente";
 
 const GOLD = "#B3985B";
@@ -195,43 +196,7 @@ export default function ServiciosClient() {
             </h2>
           </R>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {[
-              {
-                num: "01",
-                title: "Renta de equipo",
-                body: "El equipo correcto para tu fecha, listo y respaldado.",
-                detail: "Audio · Iluminación · Video · DJ Gear",
-                delay: 0,
-              },
-              {
-                num: "02",
-                title: "Producción técnica",
-                body: "Equipo y operadores expertos. Sin coordinar piezas sueltas.",
-                detail: "Ingenieros especializados · Operación completa",
-                delay: 120,
-              },
-              {
-                num: "03",
-                title: "Dirección técnica",
-                body: "Un solo responsable de que todo llegue junto, de la planeación al cierre.",
-                detail: "Coordinación integral · Rider · Cues por escena",
-                delay: 240,
-              },
-            ].map(s => (
-              <R key={s.num} delay={s.delay}>
-                <div className="group relative rounded-2xl p-8 h-full flex flex-col cursor-default transition-all duration-300"
-                     style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}
-                     onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = `${GOLD}40`; (e.currentTarget as HTMLDivElement).style.background = "rgba(179,152,91,0.04)"; }}
-                     onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.06)"; (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.025)"; }}>
-                  <span className="text-[#B3985B]/40 text-xs font-mono tracking-widest mb-6">{s.num}</span>
-                  <h3 className="font-bold text-white text-2xl mb-3 leading-tight">{s.title}</h3>
-                  <p className="text-white/55 text-sm leading-relaxed flex-1">{s.body}</p>
-                  <p className="text-[#B3985B]/60 text-xs mt-6 leading-relaxed border-t border-white/[0.05] pt-5">{s.detail}</p>
-                </div>
-              </R>
-            ))}
-          </div>
+          <ServiciosCards />
         </div>
       </section>
 
