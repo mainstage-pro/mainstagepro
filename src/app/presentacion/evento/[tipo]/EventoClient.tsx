@@ -779,44 +779,6 @@ export default function EventoClient({ tipo, initialOverrides = {} }: { tipo: Ev
         </div>
       </section>
 
-      {/* ── Recordatorio de servicios (compacto) ── */}
-      <section id="servicios" className="py-20 px-6 bg-[#060606]">
-        <div className="max-w-5xl mx-auto">
-          <R>
-            <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-4">Cómo trabajamos contigo</p>
-            <h2 className="font-bold text-white leading-[1.05] mb-3" style={{ fontSize: "clamp(1.5rem, 3.2vw, 2.4rem)", letterSpacing: "-0.02em" }}>
-              Tres formas de sumarnos a tu evento.
-            </h2>
-            <p className="text-white/40 text-sm leading-relaxed max-w-2xl mb-10">
-              Desde solo el equipo hasta la coordinación completa. Elige el alcance que necesitas — o combínalos.
-            </p>
-          </R>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {SERVICIOS_RESUMEN[tipo].map((s, i) => (
-              <R key={s.n} delay={i * 80}>
-                <div className="rounded-2xl p-6 h-full flex flex-col"
-                     style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <span className="font-mono mb-4" style={{ fontSize: "0.7rem", color: GOLD, letterSpacing: "0.12em" }}>{s.n}</span>
-                  <h3 className="font-bold text-white text-lg mb-2 leading-tight">{s.title}</h3>
-                  <p className="text-white/50 text-sm leading-relaxed">{s.linea}</p>
-                </div>
-              </R>
-            ))}
-          </div>
-
-          <R delay={240}>
-            <div className="mt-8">
-              <button onClick={() => abrirDescubrimiento(null)}
-                      className="text-sm font-semibold tracking-wide px-7 py-3.5 rounded-full transition-all hover:scale-105"
-                      style={{ background: "rgba(179,152,91,0.12)", border: `1px solid ${GOLD}55`, color: GOLD }}>
-                Cotizar mi evento →
-              </button>
-            </div>
-          </R>
-        </div>
-      </section>
-
       {/* ── Clientes que atendemos ── */}
       <section className="py-24 px-6">
         <div className="max-w-5xl mx-auto">
@@ -880,41 +842,46 @@ export default function EventoClient({ tipo, initialOverrides = {} }: { tipo: Ev
         <CinematicGallery photos={fotos} />
       </section>
 
-      {/* ── Qué necesitamos para cotizar ── */}
-      <section className="py-32 px-6 bg-[#060606]">
-        <div className="max-w-5xl mx-auto grid md:grid-cols-[0.9fr_1.1fr] gap-12 items-start">
+      {/* ── Galería completa ── */}
+      <GaleriaCompleta slug={tipo} fotos={fotos} tipoId={tipoId} setTipoId={setTipoId} isAdmin={isAdmin} recargar={recargar} />
+
+      {/* ── Recordatorio de servicios (compacto) ── */}
+      <section id="servicios" className="py-20 px-6 bg-[#060606]">
+        <div className="max-w-5xl mx-auto">
           <R>
-            <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-5">Descubrimiento</p>
-            <h2 className="font-bold text-white leading-[1.05] mb-5" style={{ fontSize: "clamp(1.8rem, 4vw, 3rem)", letterSpacing: "-0.025em" }}>
-              El primer paso hacia tu cotización.
+            <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-4">Cómo trabajamos contigo</p>
+            <h2 className="font-bold text-white leading-[1.05] mb-3" style={{ fontSize: "clamp(1.5rem, 3.2vw, 2.4rem)", letterSpacing: "-0.02em" }}>
+              Tres formas de sumarnos a tu evento.
             </h2>
-            <p className="text-white/40 text-sm leading-relaxed mb-8">
-              Todo comienza conociendo tu evento. Con estos datos preparamos una propuesta a la medida; el resto del proceso —cotización, presentación y cierre— lo recorremos contigo paso a paso.
+            <p className="text-white/40 text-sm leading-relaxed max-w-2xl mb-10">
+              Desde solo el equipo hasta la coordinación completa. Elige el alcance que necesitas — o combínalos.
             </p>
-            <button onClick={() => abrirDescubrimiento(null)}
-                    className="px-8 py-4 rounded-full font-semibold text-black text-sm tracking-wide transition-all hover:scale-105"
-                    style={{ background: GOLD }}>
-              Iniciar descubrimiento
-            </button>
           </R>
-          <R delay={120}>
-            <ul className="space-y-3">
-              {c.cotizar.map((item, i) => (
-                <li key={i} className="flex items-start gap-4 p-4 rounded-xl" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <span className="shrink-0 mt-0.5 w-5 h-5 rounded-full flex items-center justify-center" style={{ background: "rgba(179,152,91,0.14)", border: `1px solid ${GOLD}55` }}>
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
-                  </span>
-                  <span className="text-white/70 text-sm">{item}</span>
-                </li>
-              ))}
-            </ul>
-            <p className="text-white/25 text-xs mt-5 text-center">Con esto te devolvemos propuesta técnica en menos de 24 horas.</p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {SERVICIOS_RESUMEN[tipo].map((s, i) => (
+              <R key={s.n} delay={i * 80}>
+                <div className="rounded-2xl p-6 h-full flex flex-col"
+                     style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <span className="font-mono mb-4" style={{ fontSize: "0.7rem", color: GOLD, letterSpacing: "0.12em" }}>{s.n}</span>
+                  <h3 className="font-bold text-white text-lg mb-2 leading-tight">{s.title}</h3>
+                  <p className="text-white/50 text-sm leading-relaxed">{s.linea}</p>
+                </div>
+              </R>
+            ))}
+          </div>
+
+          <R delay={240}>
+            <div className="mt-8">
+              <button onClick={() => abrirDescubrimiento(null)}
+                      className="text-sm font-semibold tracking-wide px-7 py-3.5 rounded-full transition-all hover:scale-105"
+                      style={{ background: "rgba(179,152,91,0.12)", border: `1px solid ${GOLD}55`, color: GOLD }}>
+                Cotizar mi evento →
+              </button>
+            </div>
           </R>
         </div>
       </section>
-
-      {/* ── Galería completa ── */}
-      <GaleriaCompleta slug={tipo} fotos={fotos} tipoId={tipoId} setTipoId={setTipoId} isAdmin={isAdmin} recargar={recargar} />
 
       {/* ── Inventario ── */}
       <section className="px-6 pb-8">
