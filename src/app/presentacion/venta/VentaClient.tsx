@@ -52,14 +52,14 @@ function ItemCard({ item, onFotos, delay }: { item: Item; onFotos: (item: Item, 
            onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
            style={{ background: hover ? "rgba(179,152,91,0.045)" : "rgba(255,255,255,0.025)", border: `1px solid ${hover ? GOLD + "45" : "rgba(255,255,255,0.07)"}`, boxShadow: hover ? "0 10px 44px rgba(0,0,0,0.45)" : "none" }}>
         {/* Foto */}
-        <div className="relative flex items-center justify-center overflow-hidden"
+        <div className="relative flex items-center justify-center p-5 overflow-hidden"
              style={{ height: "220px", background: "#050505", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
           {portada ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={portada} alt={item.nombre} draggable={false} loading="lazy"
                  onClick={() => onFotos(item, 0)}
-                 className="w-full h-full object-cover cursor-pointer transition-transform duration-700"
-                 style={{ transform: hover ? "scale(1.05)" : "scale(1)" }} />
+                 className="max-h-full max-w-full object-contain cursor-pointer transition-all duration-500"
+                 style={{ transform: hover ? "scale(1.07)" : "scale(1)", filter: hover ? "brightness(1.1)" : "brightness(0.9)" }} />
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
             <img src="/logo-icon.png" alt="Mainstage Pro" draggable={false} className="w-16 h-16 object-contain opacity-10" />

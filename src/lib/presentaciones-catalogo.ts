@@ -18,6 +18,7 @@ import {
   Zap,
   Globe,
   Sparkles,
+  Tag,
   type LucideIcon,
 } from "lucide-react";
 import { PRESENTACION_CATEGORIAS } from "@/lib/presentacion-categorias";
@@ -90,6 +91,14 @@ export const PRESENTACIONES_MODULO_GENERAL: PresentacionItem[] = [
     href: "/presentacion/inventario-propio",
     icon: PackageCheck,
     audience: "Clientes · Equipo",
+  },
+  {
+    key: "venta",
+    label: "Equipo en venta",
+    desc: "Equipo propio que Mainstage pone a la venta: precio, condición y galería de fotos.",
+    href: "/presentacion/venta",
+    icon: Tag,
+    audience: "Compradores · Colegas",
   },
 ];
 
