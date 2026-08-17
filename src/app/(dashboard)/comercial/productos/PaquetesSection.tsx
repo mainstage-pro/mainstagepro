@@ -189,21 +189,15 @@ function PaqueteEditor({
   const productoMap = useMemo(() => new Map(productos.map((p) => [p.id, p])), [productos]);
   const rolMap = useMemo(() => new Map(roles.map((r) => [r.id, r])), [roles]);
   const rolSeleccionado = rolMap.get(nuevoConcepto.rolTecnicoId);
-  // Nichos del catálogo por tipo de evento; fallback a los subtipos legacy.
-  // Un paquete base es un esqueleto reutilizable, así que abre el catálogo completo
-  // (musicales + sociales + empresariales) en vez de limitarse a la pestaña activa.
-  function nichosDe(tipo: string) {
-    const delTipo = nichosCat.filter((n) => n.activo && n.tipoEventoSlug === tipo).map((n) => n.nombre);
-    return delTipo.length > 0 ? delTipo : (SUBTIPOS_EVENTO[tipo] ?? []);
-  }
-  const gruposNicho = (form.esBase
-    ? TIPOS_EVENTO.map((t) => ({ label: t.label, nombres: nichosDe(t.key) }))
-    : [{ label: "", nombres: nichosDe(tipoEvento) }]
-  ).filter((g) => g.nombres.length > 0);
-  const subtiposDisponibles = gruposNicho.flatMap((g) => g.nombres);
+  // Nichos del catálogo para este tipo de evento; fallback a los subtipos legacy.
+  const nichosDelTipo = nichosCat.filter((n) => n.activo && n.tipoEventoSlug === tipoEvento);
+  const subtiposDisponibles = nichosDelTipo.length > 0
+    ? nichosDelTipo.map((n) => n.nombre)
+    : (SUBTIPOS_EVENTO[tipoEvento] ?? []);
+  // Adicionales del catálogo que aplican a este tipo de evento.
   const adicionalesDisponibles = adicionalesCat.filter((a) => {
     if (!a.activo) return false;
-    if (form.esBase || !a.tiposEvento) return true;
+    if (!a.tiposEvento) return true;
     try {
       const arr = JSON.parse(a.tiposEvento);
       return Array.isArray(arr) && (arr.length === 0 || arr.includes(tipoEvento));
@@ -439,23 +433,16 @@ function PaqueteEditor({
             </button>
           )}
         </div>
-        <div className="space-y-2">
-          {gruposNicho.map((g) => (
-            <div key={g.label}>
-              {g.label && <p className="text-[10px] text-gray-500 uppercase tracking-wide mb-1">{g.label}</p>}
-              <div className="flex flex-wrap gap-1.5">
-                {g.nombres.map((s) => {
-                  const on = form.subtipos.includes(s);
-                  return (
-                    <button key={s} type="button" onClick={() => toggleSubtipo(s)}
-                      className={`px-2.5 py-1.5 rounded-lg text-xs transition-colors ${on ? "bg-[#B3985B] text-black font-semibold" : "bg-[#1a1a1a] text-gray-400 hover:text-white"}`}>
-                      {s}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+        <div className="flex flex-wrap gap-1.5">
+          {subtiposDisponibles.map((s) => {
+            const on = form.subtipos.includes(s);
+            return (
+              <button key={s} type="button" onClick={() => toggleSubtipo(s)}
+                className={`px-2.5 py-1.5 rounded-lg text-xs transition-colors ${on ? "bg-[#B3985B] text-black font-semibold" : "bg-[#1a1a1a] text-gray-400 hover:text-white"}`}>
+                {s}
+              </button>
+            );
+          })}
         </div>
       </div>
 
