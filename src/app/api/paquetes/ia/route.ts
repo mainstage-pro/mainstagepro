@@ -1,19 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import Anthropic from "@anthropic-ai/sdk";
-
-const SYSTEM_PROMPT = `Eres un especialista en propuestas comerciales para Mainstage Pro, empresa de producción de audio, video e iluminación para eventos en Querétaro, México (musicales, sociales y empresariales). Director: Mauricio Hernández.
-
-Tu tarea es redactar el texto comercial de un PAQUETE base que se ofrecerá como cotización estándar según el tipo y tamaño del evento.
-
-Responde ÚNICAMENTE con un objeto JSON válido (sin markdown, sin explicaciones) con esta estructura exacta:
-{
-  "resumen": "1-2 oraciones que resuman de qué consta el paquete y para qué evento aplica",
-  "descripcion": "Párrafo descriptivo (3-5 oraciones) del paquete, su alcance técnico y experiencia que entrega",
-  "propuestaValor": "Párrafo (2-4 oraciones) enfocado en el valor y diferenciadores para el cliente"
-}
-
-Tono profesional, cálido y orientado a ventas. Español de México. No inventes precios ni marcas que no se te den.`;
+import { SYSTEM_PROMPT_PAQUETE } from "@/lib/paquetesTextoIA";
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -51,7 +39,7 @@ CONCEPTOS OPERATIVOS: ${conceptos?.length ? conceptos.join(", ") : "Ninguno"}`;
     const msg = await client.messages.create({
       model: "claude-opus-4-5",
       max_tokens: 1200,
-      system: SYSTEM_PROMPT,
+      system: SYSTEM_PROMPT_PAQUETE,
       messages: [{ role: "user", content: userPrompt }],
     });
 
