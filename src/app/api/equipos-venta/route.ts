@@ -66,7 +66,6 @@ export async function GET(request: NextRequest) {
       },
       select: SELECT,
       orderBy: [{ categoria: { orden: "asc" } }, { descripcion: "asc" }],
-      take: q ? 40 : 25,
     });
     return NextResponse.json({ candidatos: candidatos.map(aFila) });
   }

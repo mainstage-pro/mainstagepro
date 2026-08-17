@@ -173,6 +173,17 @@ export default function EquiposEnVentaPage() {
     await cargar();
   }
 
+  // Los candidatos llegan ordenados por categoría, así que basta agrupar en secuencia.
+  const candidatosPorCategoria = useMemo(() => {
+    const grupos: { nombre: string; items: EquipoVenta[] }[] = [];
+    for (const eq of candidatos) {
+      const ultimo = grupos[grupos.length - 1];
+      if (ultimo && ultimo.nombre === eq.categoria.nombre) ultimo.items.push(eq);
+      else grupos.push({ nombre: eq.categoria.nombre, items: [eq] });
+    }
+    return grupos;
+  }, [candidatos]);
+
   const kpis = useMemo(() => {
     const piezas = equipos.reduce((s, e) => s + (e.ventaCantidad ?? e.cantidadTotal), 0);
     const valor = equipos.reduce((s, e) => s + (e.precioVenta ?? 0) * (e.ventaCantidad ?? e.cantidadTotal), 0);
@@ -218,38 +229,52 @@ export default function EquiposEnVentaPage() {
       {/* Poner a la venta */}
       <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-5">
         <h2 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">Poner a la venta</h2>
-        <p className="text-[11px] text-[#555] mt-1 mb-3">Busca entre el equipo propio activo y elige qué ofertar.</p>
+        <p className="text-[11px] text-[#555] mt-1 mb-3">
+          Todo el equipo propio activo que aún no está a la venta, por categoría.
+          {candidatos.length > 0 && ` ${candidatos.length} equipo(s) en ${candidatosPorCategoria.length} categoría(s).`}
+        </p>
         <input
           value={buscar}
           onChange={(e) => setBuscar(e.target.value)}
           placeholder="Buscar por descripción, marca o modelo…"
           className={inputCls}
         />
-        <div className="mt-3 max-h-72 overflow-y-auto divide-y divide-[#161616]">
+        <div className="mt-3 max-h-[30rem] overflow-y-auto">
           {buscando && candidatos.length === 0 && <p className="text-[#555] text-xs py-4">Buscando…</p>}
           {!buscando && candidatos.length === 0 && <p className="text-[#555] text-xs py-4">Sin resultados.</p>}
-          {candidatos.map((eq) => (
-            <div key={eq.id} className="flex items-center gap-3 py-2.5">
-              <div className="w-10 h-10 rounded-lg bg-[#050505] border border-[#1a1a1a] shrink-0 overflow-hidden flex items-center justify-center">
-                {eq.imagenUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={eq.imagenUrl} alt="" className="w-full h-full object-contain" />
-                ) : (
-                  <span className="text-[9px] text-[#333]">sin foto</span>
-                )}
+          {candidatosPorCategoria.map((grupo) => (
+            <div key={grupo.nombre} className="mt-4 first:mt-0">
+              <div className="flex items-center gap-3 mb-1 sticky top-0 bg-[#0d0d0d] py-1.5">
+                <h3 className="text-[10px] text-[#6b7280] uppercase tracking-widest font-semibold">{grupo.nombre}</h3>
+                <span className="text-[#333] text-[10px]">({grupo.items.length})</span>
+                <div className="flex-1 h-px bg-[#1a1a1a]" />
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-white text-sm truncate">{nombreEq(eq)}</p>
-                <p className="text-[#6b7280] text-[11px] truncate">
-                  {eq.categoria.nombre} · {eq.cantidadTotal} unidad(es) · renta {fmx(eq.precioRenta)}
-                </p>
+              <div className="divide-y divide-[#161616]">
+                {grupo.items.map((eq) => (
+                  <div key={eq.id} className="flex items-center gap-3 py-2.5">
+                    <div className="w-10 h-10 rounded-lg bg-[#050505] border border-[#1a1a1a] shrink-0 overflow-hidden flex items-center justify-center">
+                      {eq.imagenUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={eq.imagenUrl} alt="" className="w-full h-full object-contain" />
+                      ) : (
+                        <span className="text-[9px] text-[#333]">sin foto</span>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-white text-sm truncate">{nombreEq(eq)}</p>
+                      <p className="text-[#6b7280] text-[11px] truncate">
+                        {eq.cantidadTotal} unidad(es) · renta {fmx(eq.precioRenta)}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => abrirAlta(eq)}
+                      className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#1a1a1a] hover:bg-[#B3985B] hover:text-black text-white transition-colors shrink-0"
+                    >
+                      Poner a la venta
+                    </button>
+                  </div>
+                ))}
               </div>
-              <button
-                onClick={() => abrirAlta(eq)}
-                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#1a1a1a] hover:bg-[#B3985B] hover:text-black text-white transition-colors shrink-0"
-              >
-                Poner a la venta
-              </button>
             </div>
           ))}
         </div>
