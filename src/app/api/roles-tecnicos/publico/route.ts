@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ensureOperacionTecnicaColumns } from "@/lib/migraciones-lazy";
+import { ordenarRolesTecnicos } from "@/lib/rolesTecnicos";
 
 /**
  * GET /api/roles-tecnicos/publico
@@ -22,5 +23,5 @@ export async function GET() {
     orderBy: [{ orden: "asc" }, { nombre: "asc" }],
   });
 
-  return NextResponse.json({ roles });
+  return NextResponse.json({ roles: ordenarRolesTecnicos(roles) });
 }

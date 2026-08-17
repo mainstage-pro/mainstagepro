@@ -6,6 +6,8 @@ import { createPortal } from "react-dom";
 export interface ComboboxOption {
   value: string;
   label: string;
+  // Encabezado de sección. Se pinta cuando cambia respecto a la opción anterior.
+  group?: string;
 }
 
 interface Props {
@@ -79,20 +81,26 @@ export function Combobox({
 
   const dropdown = open && !disabled && filtered.length > 0 && (
     <div style={dropStyle} className="bg-[#111] border border-[#333] rounded-lg shadow-xl overflow-hidden max-h-52 overflow-y-auto">
-      {filtered.map(opt => (
-        <button
-          key={opt.value}
-          type="button"
-          onMouseDown={(e) => {
-            e.preventDefault();
-            select(opt);
-          }}
-          className={`w-full text-left px-3 py-2 text-sm hover:bg-[#1a1a1a] transition-colors border-b border-[#1a1a1a] last:border-0 ${
-            opt.value === value ? "text-[#B3985B] font-medium" : "text-white"
-          }`}
-        >
-          {opt.label}
-        </button>
+      {filtered.map((opt, i) => (
+        <div key={opt.value}>
+          {opt.group && opt.group !== filtered[i - 1]?.group && (
+            <div className="px-3 py-1 text-[10px] uppercase tracking-wide text-gray-500 bg-[#0d0d0d] border-b border-[#1a1a1a]">
+              {opt.group}
+            </div>
+          )}
+          <button
+            type="button"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              select(opt);
+            }}
+            className={`w-full text-left px-3 py-2 text-sm hover:bg-[#1a1a1a] transition-colors border-b border-[#1a1a1a] last:border-0 ${
+              opt.value === value ? "text-[#B3985B] font-medium" : "text-white"
+            }`}
+          >
+            {opt.label}
+          </button>
+        </div>
       ))}
     </div>
   );

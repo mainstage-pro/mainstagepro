@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { ensureOperacionTecnicaColumns } from "@/lib/migraciones-lazy";
+import { ordenarRolesTecnicos } from "@/lib/rolesTecnicos";
 
 export async function GET() {
   const session = await getSession();
@@ -37,7 +38,7 @@ export async function GET() {
     orderBy: [{ orden: "asc" }, { nombre: "asc" }],
   });
 
-  return NextResponse.json({ roles });
+  return NextResponse.json({ roles: ordenarRolesTecnicos(roles) });
 }
 
 export async function POST(request: NextRequest) {

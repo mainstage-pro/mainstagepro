@@ -7,6 +7,7 @@ import { calcularDescuentoVolumen, calcularDescuentoMultidia, formatCurrency, fo
 import { DESCUENTO_B2B, IVA, VIABILIDAD, JORNADA_LABELS } from "@/lib/constants";
 import { getSugerenciasTecnicos } from "@/lib/sugerencias-tecnicos";
 import { DISCIPLINA_LABELS, DISCIPLINA_COLORS } from "@/lib/disciplinaColors";
+import { agruparRolesTecnicos } from "@/lib/rolesTecnicos";
 import { diasEvento } from "@/lib/fechas-evento";
 import VenuePicker from "@/components/ui/VenuePicker";
 import NumSelect from "@/components/ui/NumSelect";
@@ -3318,8 +3319,12 @@ function CotizadorForm() {
                         className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
                       >
                         <option value="">— Seleccionar rol —</option>
-                        {roles.filter(r => r.nombre !== "DJ").map(r => (
-                          <option key={r.id} value={r.id}>{r.nombre}</option>
+                        {agruparRolesTecnicos(roles.filter(r => r.nombre !== "DJ")).map(s => (
+                          <optgroup key={s.disciplina ?? "SIN"} label={s.label}>
+                            {s.roles.map(r => (
+                              <option key={r.id} value={r.id}>{r.nombre}</option>
+                            ))}
+                          </optgroup>
                         ))}
                       </select>
                     </div>

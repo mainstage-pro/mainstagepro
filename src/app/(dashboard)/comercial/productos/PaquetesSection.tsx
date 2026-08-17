@@ -6,6 +6,7 @@ import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Modal } from "@/components/Modal";
 import { SUBTIPOS_EVENTO, parseCoberturas, coberturaMatch, rangoBounds, TEMPORADAS_PAQUETE, type Cobertura, type TemporadaPaquete } from "@/lib/constants";
+import { agruparRolesTecnicos } from "@/lib/rolesTecnicos";
 import { Music, Wine, Building2, Sparkles, ImageIcon, Package, Puzzle, Users, type LucideIcon } from "lucide-react";
 
 // ── Constantes ────────────────────────────────────────────────────────────────
@@ -61,6 +62,8 @@ type ProductoLite = {
 type RolTecnico = {
   id: string;
   nombre: string;
+  disciplina?: string | null;
+  orden?: number;
   tipoPago: string;
   tarifaAAACorta: number | null; tarifaAAAMedia: number | null; tarifaAAALarga: number | null;
   tarifaAACorta: number | null; tarifaAAMedia: number | null; tarifaAALarga: number | null;
@@ -625,7 +628,11 @@ function PaqueteEditor({
                 }}
                 className={`${inputCls} col-span-2`}>
                 <option value="">— Rol técnico —</option>
-                {roles.map((r) => <option key={r.id} value={r.id}>{r.nombre}</option>)}
+                {agruparRolesTecnicos(roles).map((s) => (
+                  <optgroup key={s.disciplina ?? "SIN"} label={s.label}>
+                    {s.roles.map((r) => <option key={r.id} value={r.id}>{r.nombre}</option>)}
+                  </optgroup>
+                ))}
               </select>
               <select value={nuevoConcepto.nivel}
                 onChange={(e) => {

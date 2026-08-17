@@ -6,21 +6,7 @@ import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Modal } from "@/components/Modal";
 import { DISCIPLINA_LABELS, DISCIPLINA_COLORS, DISCIPLINAS } from "@/lib/disciplinaColors";
-
-// Orden de las secciones del tabulador (Producción primero). null = "Sin categoría".
-const SECCIONES: (string | null)[] = [
-  "PRODUCCION", "AUDIO", "ILUMINACION", "VIDEO", "ELECTRICIDAD",
-  "STAGE", "RIGGING", "DJ", "STAFF_GENERAL", null,
-];
-
-// Jerarquía dentro de cada sección: ingeniero > operador > técnico.
-function rangoJerarquia(nombre: string): number {
-  const n = nombre.toLowerCase();
-  if (n.includes("ingenier")) return 0;
-  if (n.includes("operador")) return 1;
-  if (n.includes("técnico") || n.includes("tecnico")) return 2;
-  return 1.5;
-}
+import { agruparRolesTecnicos } from "@/lib/rolesTecnicos";
 
 type Rol = {
   id: string;
@@ -201,18 +187,7 @@ export default function RolesPage() {
   const activos = roles.filter(r => r.activo);
   const inactivos = roles.filter(r => !r.activo);
 
-  const secciones = SECCIONES
-    .map(disc => ({
-      disc,
-      roles: activos
-        .filter(r => (r.disciplina ?? null) === disc)
-        .sort((a, b) =>
-          rangoJerarquia(a.nombre) - rangoJerarquia(b.nombre) ||
-          a.orden - b.orden ||
-          a.nombre.localeCompare(b.nombre)
-        ),
-    }))
-    .filter(s => s.roles.length > 0);
+  const secciones = agruparRolesTecnicos(activos).map(s => ({ disc: s.disciplina, roles: s.roles }));
 
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto">

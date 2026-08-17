@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useState, useRef, use } from "react";
+import React, { useEffect, useState, useRef, useMemo, use } from "react";
+import { agruparRolesTecnicos } from "@/lib/rolesTecnicos";
 import { PDFPreviewModal } from "@/components/PDFPreviewModal";
 import { upload } from "@vercel/blob/client";
 import { usePdfDownload } from "@/hooks/usePdfDownload";
@@ -1492,6 +1493,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [roles, setRoles] = useState<RolTecnico[]>([]);
   const [categorias, setCategorias] = useState<CatFinanciera[]>([]);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
+
+  // Roles en el mismo orden y secciones que el tabulador de personal.
+  const rolOptions = useMemo(
+    () => agruparRolesTecnicos(roles).flatMap(s =>
+      s.roles.map(r => ({ value: r.id, label: r.nombre, group: s.label }))
+    ),
+    [roles]
+  );
 
   // Estado de cronograma (tabla JSON)
   const [cronoRows, setCronoRows] = useState<CronoRow[]>([]);
@@ -5074,7 +5083,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                           <Combobox
                             value={selRol}
                             onChange={v => setSelRol(v)}
-                            options={[{ value: "", label: "— Rol —" }, ...roles.map(r => ({ value: r.id, label: r.nombre }))]}
+                            options={[{ value: "", label: "— Rol —" }, ...rolOptions]}
                             className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
                           />
                         </div>
@@ -5116,7 +5125,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                 className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
                               <div className="flex gap-2">
                                 <Combobox value={nuevoTecRolId} onChange={v => setNuevoTecRolId(v)}
-                                  options={[{ value: "", label: "— Rol (opcional) —" }, ...roles.map(r => ({ value: r.id, label: r.nombre }))]}
+                                  options={[{ value: "", label: "— Rol (opcional) —" }, ...rolOptions]}
                                   className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
                                 <Combobox value={nuevoTecNivel} onChange={v => setNuevoTecNivel(v)}
                                   options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]}
@@ -5407,7 +5416,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                   <input value={nuevoTecNombre} onChange={e => setNuevoTecNombre(e.target.value)} placeholder="Nombre completo *" autoFocus className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" />
                                   <input value={nuevoTecCelular} onChange={e => setNuevoTecCelular(e.target.value)} placeholder="Celular (WhatsApp)" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" />
                                   <div className="flex gap-2">
-                                    <Combobox value={nuevoTecRolId} onChange={v => setNuevoTecRolId(v)} options={[{ value: "", label: "— Rol (opcional) —" }, ...roles.map(r => ({ value: r.id, label: r.nombre }))]} className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
+                                    <Combobox value={nuevoTecRolId} onChange={v => setNuevoTecRolId(v)} options={[{ value: "", label: "— Rol (opcional) —" }, ...rolOptions]} className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
                                     <Combobox value={nuevoTecNivel} onChange={v => setNuevoTecNivel(v)} options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]} className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
                                   </div>
                                   <div className="flex gap-2 pt-1">
@@ -5451,7 +5460,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                   <input value={nuevoTecNombre} onChange={e => setNuevoTecNombre(e.target.value)} placeholder="Nombre completo *" autoFocus className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" />
                                   <input value={nuevoTecCelular} onChange={e => setNuevoTecCelular(e.target.value)} placeholder="Celular (WhatsApp)" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" />
                                   <div className="flex gap-2">
-                                    <Combobox value={nuevoTecRolId} onChange={v => setNuevoTecRolId(v)} options={[{ value: "", label: "— Rol (opcional) —" }, ...roles.map(r => ({ value: r.id, label: r.nombre }))]} className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
+                                    <Combobox value={nuevoTecRolId} onChange={v => setNuevoTecRolId(v)} options={[{ value: "", label: "— Rol (opcional) —" }, ...rolOptions]} className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
                                     <Combobox value={nuevoTecNivel} onChange={v => setNuevoTecNivel(v)} options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]} className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
                                   </div>
                                   <div className="flex gap-2 pt-1">
@@ -5495,7 +5504,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                           <div><label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Técnico</label>
                             <Combobox value={editPersonalForm.tecnicoId} onChange={v => { if (v === "__nuevo__") { setShowNuevoTecnico(true); } else setEditPersonalForm(prev => ({ ...prev, tecnicoId: v })); }} options={[{ value: "", label: "— Sin asignar —" }, { value: "__nuevo__", label: "＋ Nuevo técnico..." }, ...tecnicos.map(t => ({ value: t.id, label: `${t.nombre} · ${t.rol?.nombre ?? "Sin rol"}` }))]} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" /></div>
                           <div><label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Rol técnico</label>
-                            <Combobox value={editPersonalForm.rolTecnicoId} onChange={v => setEditPersonalForm(prev => ({ ...prev, rolTecnicoId: v }))} options={[{ value: "", label: "— Sin rol —" }, ...roles.map(r => ({ value: r.id, label: r.nombre }))]} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" /></div>
+                            <Combobox value={editPersonalForm.rolTecnicoId} onChange={v => setEditPersonalForm(prev => ({ ...prev, rolTecnicoId: v }))} options={[{ value: "", label: "— Sin rol —" }, ...rolOptions]} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" /></div>
                           <div><label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Participación</label>
                             <Combobox value={editPersonalForm.participacion} onChange={v => setEditPersonalForm(prev => ({ ...prev, participacion: v }))} options={[{ value: "OPERACION", label: "Operación" }, { value: "MONTAJE", label: "Montaje" }, { value: "DESMONTAJE", label: "Desmontaje" }, { value: "TRANSPORTE", label: "Transporte" }, { value: "OTRO", label: "Otro" }]} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" /></div>
                           <div><label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Jornada</label>
