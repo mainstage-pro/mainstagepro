@@ -4,7 +4,7 @@ import Link from "next/link";
 import { upload } from "@vercel/blob/client";
 import PresentacionNav from "@/components/presentacion/PresentacionNav";
 import { usePresentacionEdit, EditableText } from "@/components/presentacion/editable";
-import { calcularTotalPaquete, money } from "@/lib/paquete-precio";
+import { desglosePaquete, money, type GrupoDesglose } from "@/lib/paquete-precio";
 
 const GOLD = "#B3985B";
 const WA_BASE = "https://wa.me/524461432565?text=";
@@ -247,6 +247,73 @@ function AdicionalCard({ a, isAdmin }: { a: Adicional; isAdmin: boolean }) {
   );
 }
 
+// Desglose de precio del paquete, desplegable en la misma página. Va pegado al total
+// porque es ahí donde el cliente se pregunta qué está pagando; dejarlo cerrado por
+// defecto mantiene el precio como protagonista.
+function DesglosePrecio({ grupos, total }: { grupos: GrupoDesglose[]; total: number }) {
+  const [abierto, setAbierto] = useState(false);
+  const piezas = grupos.reduce((s, g) => s + g.lineas.length, 0);
+
+  return (
+    <div className="mt-4 rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.09)", background: "rgba(255,255,255,0.02)" }}>
+      <button
+        type="button"
+        onClick={() => setAbierto((v) => !v)}
+        aria-expanded={abierto}
+        className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-white/[0.03] active:bg-white/[0.05]"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 shrink-0" aria-hidden>
+          <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+        </svg>
+        <span className="flex-1 min-w-0">
+          <span className="block text-[13px] sm:text-sm font-semibold text-white/85">Lista de equipos y precios</span>
+          <span className="block text-[11px] text-white/40 mt-0.5">{piezas} conceptos · desglose completo</span>
+        </span>
+        <svg viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"
+          className="w-4 h-4 shrink-0 transition-transform duration-300" style={{ transform: abierto ? "rotate(180deg)" : "none" }} aria-hidden>
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+
+      <div className="grid transition-[grid-template-rows] duration-300 ease-out" style={{ gridTemplateRows: abierto ? "1fr" : "0fr" }}>
+        <div className="overflow-hidden">
+          <div className="px-4 pb-4" style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+            {grupos.map((g) => (
+              <div key={g.titulo} className="pt-3.5">
+                <div className="flex items-baseline justify-between gap-3 mb-1.5">
+                  <span className="text-[10px] uppercase tracking-[0.14em] font-semibold" style={{ color: GOLD }}>{g.titulo}</span>
+                  <span className="text-[11px] text-white/35 tabular-nums shrink-0">{money(g.subtotal)}</span>
+                </div>
+                <ul className="space-y-1.5">
+                  {g.lineas.map((l, i) => (
+                    <li key={`${l.descripcion}-${i}`} className="flex items-baseline justify-between gap-3">
+                      <span className="min-w-0 flex-1">
+                        <span className="text-[13px] text-white/70 leading-snug">
+                          <span className="font-semibold tabular-nums" style={{ color: GOLD }}>{l.cantidad}× </span>
+                          {l.descripcion}
+                        </span>
+                        <span className="block text-[10.5px] text-white/30 tabular-nums mt-0.5">
+                          {money(l.precioUnitario)} c/u{l.dias > 1 ? ` · ${l.dias} días` : ""}
+                        </span>
+                      </span>
+                      <span className="text-[13px] text-white/75 tabular-nums shrink-0">{money(l.subtotal)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+            <div className="flex items-baseline justify-between gap-3 mt-4 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,0.09)" }}>
+              <span className="text-[11px] uppercase tracking-[0.14em] text-white/50">Total</span>
+              <span className="text-[15px] font-bold tabular-nums" style={{ color: GOLD }}>{money(total)}</span>
+            </div>
+            <p className="text-[10.5px] text-white/25 leading-relaxed mt-2.5">Precios de lista antes de IVA. La logística y el montaje se ajustan a tu sede.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function PaqueteDetalleClient({
   paquete: p, galeria, descCategorias, overrides,
 }: {
@@ -282,7 +349,7 @@ export default function PaqueteDetalleClient({
   const gruposEquipo = agruparPorCategoria(p.items);
   // Ocultamos "1 comida por persona" (se confirma aparte, no es parte del show técnico).
   const servicios = p.conceptos.map((c) => c.descripcion).filter((d) => d && !/comida\s*por\s*persona/i.test(d));
-  const total = calcularTotalPaquete(p.items, p.conceptos);
+  const { grupos: gruposPrecio, total } = desglosePaquete(p.items, p.conceptos);
   const confirmarMsg = `Hola, quiero confirmar el paquete "${p.nombre}" para mi evento. ¿Cómo continuamos?`;
   const fraseFallback = FRASE_EMOCIONAL[p.tipoEvento] ?? FRASE_EMOCIONAL.SOCIAL;
 
@@ -372,9 +439,12 @@ export default function PaqueteDetalleClient({
             )}
 
             {total > 0 && (
-              <div className="mt-6 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <span className="text-[11px] uppercase tracking-[0.16em] text-white/40">Total del paquete</span>
-                <span className="font-bold leading-none" style={{ fontSize: "clamp(1.8rem, 3.6vw, 2.4rem)", color: GOLD, letterSpacing: "-0.02em" }}>{money(total)}</span>
+              <div className="mt-6">
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <span className="text-[11px] uppercase tracking-[0.16em] text-white/40">Total del paquete</span>
+                  <span className="font-bold leading-none" style={{ fontSize: "clamp(1.8rem, 3.6vw, 2.4rem)", color: GOLD, letterSpacing: "-0.02em" }}>{money(total)}</span>
+                </div>
+                <DesglosePrecio grupos={gruposPrecio} total={total} />
               </div>
             )}
           </R>
