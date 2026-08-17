@@ -7,7 +7,7 @@ import { calcularDescuentoVolumen, calcularDescuentoMultidia, formatCurrency, fo
 import { DESCUENTO_B2B, IVA, VIABILIDAD, JORNADA_LABELS } from "@/lib/constants";
 import { getSugerenciasTecnicos } from "@/lib/sugerencias-tecnicos";
 import { DISCIPLINA_LABELS, DISCIPLINA_COLORS } from "@/lib/disciplinaColors";
-import { agruparRolesTecnicos } from "@/lib/rolesTecnicos";
+import { agruparRolesTecnicos, tarifaRol, nivelEfectivo, rolUsaNivel, rolUsaJornada, JORNADAS_ROL, JORNADA_ROL_LABELS, NIVELES_ROL } from "@/lib/rolesTecnicos";
 import { diasEvento } from "@/lib/fechas-evento";
 import VenuePicker from "@/components/ui/VenuePicker";
 import NumSelect from "@/components/ui/NumSelect";
@@ -191,18 +191,7 @@ const CONCEPTOS_HOSPEDAJE = [
 function uid() { return Math.random().toString(36).slice(2); }
 
 function getRolTarifa(rol: RolTecnico, nivel: string, jornada: string): number {
-  if (rol.tipoPago === "TARIFA_PLANA" || rol.tipoPago === "POR_PROYECTO") {
-    const key = `tarifaPlana${nivel}` as keyof RolTecnico;
-    return (rol[key] as number | null) ?? 0;
-  }
-  if (rol.tipoPago === "POR_HORA") {
-    const key = `tarifaHora${nivel}` as keyof RolTecnico;
-    return (rol[key] as number | null) ?? 0;
-  }
-  // POR_JORNADA: tarifa por nivel + tipo de jornada
-  const j = jornada.charAt(0) + jornada.slice(1).toLowerCase();
-  const key = `tarifa${nivel}${j}` as keyof RolTecnico;
-  return (rol[key] as number | null) ?? 0;
+  return tarifaRol(rol, nivelEfectivo(rol.tipoPago, nivel), jornada);
 }
 
 const SEMAFORO_STYLE: Record<string, { border: string; text: string; bg: string; label: string }> = {
@@ -1444,8 +1433,7 @@ function CotizadorForm() {
   function agregarDJ() {
     const horas = parseFloat(selDJHoras) || 1;
     const djRol = roles.find(r => r.nombre === "DJ");
-    const tarifaKey = `tarifaHora${selDJNivel}` as keyof RolTecnico;
-    const tarifaDefault = djRol ? ((djRol[tarifaKey] as number | null) ?? 0) : 0;
+    const tarifaDefault = djRol ? tarifaRol(djRol, selDJNivel, "CORTA") : 0;
     const tarifa = parseFloat(selDJTarifa) || tarifaDefault;
     setLineasDJ(prev => [...prev, {
       id: uid(), nivel: selDJNivel, horas, tarifa, subtotal: tarifa * horas,
@@ -3225,7 +3213,7 @@ function CotizadorForm() {
             )}
             <p className="text-xs text-gray-500 mb-3">Define cada día de trabajo por fecha y tipo de operación (montaje, operación del evento, desmontaje). Puedes registrar desde un solo día hasta múltiples jornadas agregando días.</p>
             {jornadasPlan.map((jornada, ji) => {
-              const pending = pendingSlots[jornada.id] ?? { rolId: "", nivel: "AA", jornada: "CORTA", cantidad: "1" };
+              const pending = pendingSlots[jornada.id] ?? { rolId: "", nivel: "AAA", jornada: "CORTA", cantidad: "1" };
               const pendingRol = roles.find(r => r.id === pending.rolId);
               const pendingTarifa = pendingRol ? getRolTarifa(pendingRol, pending.nivel, pending.jornada) : 0;
               return (
@@ -3259,14 +3247,16 @@ function CotizadorForm() {
                   {/* Lista de técnicos ya agregados */}
                   {jornada.slots.length > 0 && (
                     <div className="mb-3 border border-[#1a1a1a] rounded-lg overflow-hidden">
-                      {jornada.slots.map((slot, si) => (
+                      {jornada.slots.map((slot, si) => {
+                        const slotRol = roles.find(r => r.id === slot.rolId);
+                        const porJornada = !slotRol || rolUsaJornada(slotRol.tipoPago);
+                        return (
                         <div key={slot.id} className="flex items-center gap-2 px-3 py-2 border-b border-[#111] last:border-0">
                           <div className="flex-1 min-w-0">
                             <p className="text-white text-sm truncate">{slot.rolNombre || "(sin rol)"}</p>
                           </div>
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#222] text-gray-400 shrink-0">{slot.nivel}</span>
                           <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#222] text-gray-400 shrink-0">
-                            {slot.jornada === "CORTA" ? "0–8h" : slot.jornada === "MEDIA" ? "8–12h" : "12+h"}
+                            {porJornada ? (JORNADA_ROL_LABELS[slot.jornada] ?? slot.jornada) : slot.nivel}
                           </span>
                           <div className="flex items-center gap-1 shrink-0">
                             <span className="text-[10px] text-gray-500">×</span>
@@ -3301,7 +3291,8 @@ function CotizadorForm() {
                             className="text-gray-600 hover:text-red-400 text-lg leading-none shrink-0"
                           >×</button>
                         </div>
-                      ))}
+                        );
+                      })}
                       <div className="flex justify-between px-3 py-2 bg-[#0a0a0a] border-t border-[#222]">
                         <span className="text-[10px] text-gray-500">Subtotal día</span>
                         <span className="text-xs font-semibold text-white">{formatCurrency(jornada.slots.reduce((s, sl) => s + sl.tarifa * sl.cantidad, 0))}</span>
@@ -3328,30 +3319,30 @@ function CotizadorForm() {
                         ))}
                       </select>
                     </div>
-                    <div>
-                      <p className="text-[10px] text-[#555] mb-1 text-center">Nivel</p>
-                      <select
-                        value={pending.nivel}
-                        onChange={e => setPendingSlots(p => ({ ...p, [jornada.id]: { ...pending, nivel: e.target.value } }))}
-                        className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                      >
-                        <option value="AAA">AAA</option>
-                        <option value="AA">AA</option>
-                        <option value="A">A</option>
-                      </select>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-[#555] mb-1 text-center">Jornada</p>
-                      <select
-                        value={pending.jornada}
-                        onChange={e => setPendingSlots(p => ({ ...p, [jornada.id]: { ...pending, jornada: e.target.value } }))}
-                        className="w-28 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                      >
-                        <option value="CORTA">0–8 hrs</option>
-                        <option value="MEDIA">8–12 hrs</option>
-                        <option value="LARGA">12+ hrs</option>
-                      </select>
-                    </div>
+                    {pendingRol && rolUsaNivel(pendingRol.tipoPago) && (
+                      <div>
+                        <p className="text-[10px] text-[#555] mb-1 text-center">Nivel</p>
+                        <select
+                          value={pending.nivel}
+                          onChange={e => setPendingSlots(p => ({ ...p, [jornada.id]: { ...pending, nivel: e.target.value } }))}
+                          className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                        >
+                          {NIVELES_ROL.map(n => <option key={n} value={n}>{n}</option>)}
+                        </select>
+                      </div>
+                    )}
+                    {pendingRol && rolUsaJornada(pendingRol.tipoPago) && (
+                      <div>
+                        <p className="text-[10px] text-[#555] mb-1 text-center">Jornada</p>
+                        <select
+                          value={pending.jornada}
+                          onChange={e => setPendingSlots(p => ({ ...p, [jornada.id]: { ...pending, jornada: e.target.value } }))}
+                          className="w-28 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                        >
+                          {JORNADAS_ROL.map(j => <option key={j} value={j}>{JORNADA_ROL_LABELS[j]}</option>)}
+                        </select>
+                      </div>
+                    )}
                     <div>
                       <p className="text-[10px] text-[#555] mb-1 text-center">Cant.</p>
                       <NumSelect value={pending.cantidad} onChange={v => setPendingSlots(p => ({ ...p, [jornada.id]: { ...pending, cantidad: v } }))} max={50} className="w-16 py-2" />
@@ -3371,10 +3362,10 @@ function CotizadorForm() {
                           slots: [...j.slots, {
                             id: uid(), rolId: pendingRol.id, rolNombre: pendingRol.nombre,
                             cantidad: parseInt(pending.cantidad) || 1,
-                            nivel: pending.nivel, jornada: pending.jornada, tarifa,
+                            nivel: nivelEfectivo(pendingRol.tipoPago, pending.nivel), jornada: pending.jornada, tarifa,
                           }],
                         }));
-                        setPendingSlots(prev => ({ ...prev, [jornada.id]: { rolId: "", nivel: "AA", jornada: "CORTA", cantidad: "1" } }));
+                        setPendingSlots(prev => ({ ...prev, [jornada.id]: { rolId: "", nivel: "AAA", jornada: "CORTA", cantidad: "1" } }));
                       }}
                       className="px-3 py-2 rounded-lg bg-[#333] text-white font-semibold text-sm disabled:opacity-40 hover:bg-[#444] self-end"
                     >+ Agregar</button>
@@ -3434,8 +3425,7 @@ function CotizadorForm() {
           <Seccion titulo="Servicio de DJ" hint="cobro por hora · sin descuento">
             {(() => {
               const djRol = roles.find(r => r.nombre === "DJ");
-              const djTarifaKey = `tarifaHora${selDJNivel}` as keyof RolTecnico;
-              const djTarifaDefault = djRol ? ((djRol[djTarifaKey] as number | null) ?? 0) : 0;
+              const djTarifaDefault = djRol ? tarifaRol(djRol, selDJNivel, "CORTA") : 0;
               const djTarifaDisplay = parseFloat(selDJTarifa) || djTarifaDefault;
               return (
                 <div className="flex gap-2 mb-3 flex-wrap">

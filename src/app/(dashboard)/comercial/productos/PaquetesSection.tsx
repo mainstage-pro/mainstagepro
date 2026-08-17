@@ -6,7 +6,7 @@ import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Modal } from "@/components/Modal";
 import { SUBTIPOS_EVENTO, parseCoberturas, coberturaMatch, rangoBounds, TEMPORADAS_PAQUETE, type Cobertura, type TemporadaPaquete } from "@/lib/constants";
-import { agruparRolesTecnicos } from "@/lib/rolesTecnicos";
+import { agruparRolesTecnicos, tarifaRol, nivelEfectivo, rolUsaNivel, rolUsaJornada, etiquetaTarifaRol, JORNADAS_ROL, JORNADA_ROL_LABELS, NIVELES_ROL } from "@/lib/rolesTecnicos";
 import { Music, Wine, Building2, Sparkles, ImageIcon, Package, Puzzle, Users, type LucideIcon } from "lucide-react";
 
 // ── Constantes ────────────────────────────────────────────────────────────────
@@ -34,9 +34,6 @@ const CONCEPTOS_HOSPEDAJE = [
   { label: "Habitación sencilla", precio: 1500 },
   { label: "Viáticos por elemento", precio: 500 },
 ];
-
-const NIVELES = ["AAA", "AA", "A"];
-const JORNADAS = ["CORTA", "MEDIA", "LARGA"];
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 type EquipoItem = {
@@ -132,14 +129,7 @@ function asistentesDeRango(label: string): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 function getRolTarifa(rol: RolTecnico, nivel: string, jornada: string): number {
-  if (rol.tipoPago === "TARIFA_PLANA" || rol.tipoPago === "POR_PROYECTO") {
-    return (rol[`tarifaPlana${nivel}` as keyof RolTecnico] as number | null) ?? 0;
-  }
-  if (rol.tipoPago === "POR_HORA") {
-    return (rol[`tarifaHora${nivel}` as keyof RolTecnico] as number | null) ?? 0;
-  }
-  const j = jornada.charAt(0) + jornada.slice(1).toLowerCase();
-  return (rol[`tarifa${nivel}${j}` as keyof RolTecnico] as number | null) ?? 0;
+  return tarifaRol(rol, nivelEfectivo(rol.tipoPago, nivel), jornada);
 }
 
 // ── Estado del formulario ───────────────────────────────────────────────────────
@@ -191,13 +181,14 @@ function PaqueteEditor({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [swapIdx, setSwapIdx] = useState<number | null>(null);
   const [nuevoConcepto, setNuevoConcepto] = useState<{ tipo: string; rolTecnicoId: string; nivel: string; jornada: string; concepto: string; descripcion: string; precio: string; cantidad: string; dias: string }>({
-    tipo: "OPERACION_TECNICA", rolTecnicoId: "", nivel: "AA", jornada: "MEDIA",
+    tipo: "OPERACION_TECNICA", rolTecnicoId: "", nivel: "AAA", jornada: "MEDIA",
     concepto: CONCEPTOS_COMIDA[0].label, descripcion: "", precio: "", cantidad: "1", dias: "1",
   });
 
   const equipoMap = useMemo(() => new Map(equipos.map((e) => [e.id, e])), [equipos]);
   const productoMap = useMemo(() => new Map(productos.map((p) => [p.id, p])), [productos]);
   const rolMap = useMemo(() => new Map(roles.map((r) => [r.id, r])), [roles]);
+  const rolSeleccionado = rolMap.get(nuevoConcepto.rolTecnicoId);
   // Nichos del catálogo para este tipo de evento; fallback a los subtipos legacy.
   const nichosDelTipo = nichosCat.filter((n) => n.activo && n.tipoEventoSlug === tipoEvento);
   const subtiposDisponibles = nichosDelTipo.length > 0
@@ -350,7 +341,7 @@ function PaqueteEditor({
       const tarifa = getRolTarifa(rol, nc.nivel, nc.jornada);
       concepto = {
         key: uid(), tipo: "OPERACION_TECNICA", descripcion: rol.nombre, rolTecnicoId: rol.id,
-        nivel: nc.nivel, jornada: nc.jornada, cantidad: Math.max(1, parseInt(nc.cantidad) || 1),
+        nivel: nivelEfectivo(rol.tipoPago, nc.nivel), jornada: nc.jornada, cantidad: Math.max(1, parseInt(nc.cantidad) || 1),
         dias: Math.max(1, parseInt(nc.dias) || 1), precioUnitario: parseFloat(nc.precio) || tarifa,
       };
     } else if (nc.tipo === "OTRO") {
@@ -587,17 +578,21 @@ function PaqueteEditor({
         <label className={labelCls}>Conceptos operativos ({form.conceptos.length})</label>
         {form.conceptos.length > 0 && (
           <div className="space-y-1.5 mb-2">
-            {form.conceptos.map((c) => (
+            {form.conceptos.map((c) => {
+              const rolC = c.rolTecnicoId ? rolMap.get(c.rolTecnicoId) : undefined;
+              const tarifaLabel = rolC ? etiquetaTarifaRol(rolC.tipoPago, c.nivel, c.jornada) : "";
+              return (
               <div key={c.key} className="flex items-center gap-2 rounded-lg border border-[#1e1e1e] bg-[#0d0d0d] px-2.5 py-1.5">
                 <span className="text-[10px] bg-[#1a1a1a] text-gray-400 rounded px-1.5 py-0.5 shrink-0">{ETIQUETA_TIPO[c.tipo] ?? c.tipo}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-white text-xs truncate">{c.descripcion}{c.nivel ? ` · ${c.nivel}/${c.jornada}` : ""}</p>
+                  <p className="text-white text-xs truncate">{c.descripcion}{tarifaLabel ? ` · ${tarifaLabel}` : ""}</p>
                   <p className="text-gray-500 text-[10px]">{c.cantidad} × {c.dias} día(s) × {fmx(c.precioUnitario)}</p>
                 </div>
                 <span className="text-[#B3985B] text-xs shrink-0">{fmx(c.precioUnitario * c.cantidad * c.dias)}</span>
                 <button type="button" onClick={() => removeConcepto(c.key)} className="w-6 h-6 rounded-md text-gray-500 hover:text-red-400 hover:bg-red-500/10 text-sm shrink-0">×</button>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
         {/* Alta de concepto */}
@@ -634,24 +629,26 @@ function PaqueteEditor({
                   </optgroup>
                 ))}
               </select>
-              <select value={nuevoConcepto.nivel}
-                onChange={(e) => {
-                  const rol = rolMap.get(nuevoConcepto.rolTecnicoId);
-                  const tarifa = rol ? getRolTarifa(rol, e.target.value, nuevoConcepto.jornada) : 0;
-                  setNuevoConcepto((p) => ({ ...p, nivel: e.target.value, precio: tarifa ? String(tarifa) : p.precio }));
-                }}
-                className={inputCls}>
-                {NIVELES.map((n) => <option key={n} value={n}>{n}</option>)}
-              </select>
-              <select value={nuevoConcepto.jornada}
-                onChange={(e) => {
-                  const rol = rolMap.get(nuevoConcepto.rolTecnicoId);
-                  const tarifa = rol ? getRolTarifa(rol, nuevoConcepto.nivel, e.target.value) : 0;
-                  setNuevoConcepto((p) => ({ ...p, jornada: e.target.value, precio: tarifa ? String(tarifa) : p.precio }));
-                }}
-                className={inputCls}>
-                {JORNADAS.map((j) => <option key={j} value={j}>{j}</option>)}
-              </select>
+              {rolSeleccionado && rolUsaNivel(rolSeleccionado.tipoPago) && (
+                <select value={nuevoConcepto.nivel}
+                  onChange={(e) => {
+                    const tarifa = getRolTarifa(rolSeleccionado, e.target.value, nuevoConcepto.jornada);
+                    setNuevoConcepto((p) => ({ ...p, nivel: e.target.value, precio: tarifa ? String(tarifa) : p.precio }));
+                  }}
+                  className={inputCls}>
+                  {NIVELES_ROL.map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+              )}
+              {rolSeleccionado && rolUsaJornada(rolSeleccionado.tipoPago) && (
+                <select value={nuevoConcepto.jornada}
+                  onChange={(e) => {
+                    const tarifa = getRolTarifa(rolSeleccionado, nuevoConcepto.nivel, e.target.value);
+                    setNuevoConcepto((p) => ({ ...p, jornada: e.target.value, precio: tarifa ? String(tarifa) : p.precio }));
+                  }}
+                  className={inputCls}>
+                  {JORNADAS_ROL.map((j) => <option key={j} value={j}>{JORNADA_ROL_LABELS[j]}</option>)}
+                </select>
+              )}
             </div>
           ) : nuevoConcepto.tipo === "OTRO" ? (
             <input value={nuevoConcepto.descripcion} onChange={(e) => setNuevoConcepto((p) => ({ ...p, descripcion: e.target.value }))}
