@@ -133,7 +133,6 @@ export default function EquiposEnVentaPage() {
     if (!r.ok) { toast.error((await r.json().catch(() => ({}))).error ?? "No se pudo guardar"); return; }
     toast.success(nuevo ? "Equipo puesto a la venta" : "Datos de venta actualizados");
     setEditando(null);
-    setBuscar((b) => b);
     await cargar();
     setCandidatos((c) => c.filter((x) => x.id !== equipo.id));
   }
@@ -182,7 +181,7 @@ export default function EquiposEnVentaPage() {
   }, [equipos]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24">
       {/* Encabezado */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>

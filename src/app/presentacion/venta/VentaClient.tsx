@@ -144,7 +144,7 @@ export default function VentaClient({ categorias, totalPiezas }: { categorias: C
       {/* Lightbox de la galería del equipo */}
       {lightbox && (
         <div onClick={cerrar} className="fixed inset-0 z-[9999] flex items-center justify-center"
-             style={{ background: "rgba(0,0,0,0.94)", backdropFilter: "blur(12px)", animation: "fadeIn 0.2s ease" }}>
+             style={{ background: "#050505", animation: "fadeIn 0.2s ease" }}>
           <button onClick={cerrar} aria-label="Cerrar"
                   className="absolute top-6 right-6 w-11 h-11 rounded-full flex items-center justify-center text-white text-xl"
                   style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.14)" }}>✕</button>
