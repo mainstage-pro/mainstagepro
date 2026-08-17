@@ -189,15 +189,21 @@ function PaqueteEditor({
   const productoMap = useMemo(() => new Map(productos.map((p) => [p.id, p])), [productos]);
   const rolMap = useMemo(() => new Map(roles.map((r) => [r.id, r])), [roles]);
   const rolSeleccionado = rolMap.get(nuevoConcepto.rolTecnicoId);
-  // Nichos del catálogo para este tipo de evento; fallback a los subtipos legacy.
-  const nichosDelTipo = nichosCat.filter((n) => n.activo && n.tipoEventoSlug === tipoEvento);
-  const subtiposDisponibles = nichosDelTipo.length > 0
-    ? nichosDelTipo.map((n) => n.nombre)
-    : (SUBTIPOS_EVENTO[tipoEvento] ?? []);
-  // Adicionales del catálogo que aplican a este tipo de evento.
-  const adicionalesDelTipo = adicionalesCat.filter((a) => {
+  // Nichos del catálogo por tipo de evento; fallback a los subtipos legacy.
+  // Un paquete base es un esqueleto reutilizable, así que abre el catálogo completo
+  // (musicales + sociales + empresariales) en vez de limitarse a la pestaña activa.
+  function nichosDe(tipo: string) {
+    const delTipo = nichosCat.filter((n) => n.activo && n.tipoEventoSlug === tipo).map((n) => n.nombre);
+    return delTipo.length > 0 ? delTipo : (SUBTIPOS_EVENTO[tipo] ?? []);
+  }
+  const gruposNicho = (form.esBase
+    ? TIPOS_EVENTO.map((t) => ({ label: t.label, nombres: nichosDe(t.key) }))
+    : [{ label: "", nombres: nichosDe(tipoEvento) }]
+  ).filter((g) => g.nombres.length > 0);
+  const subtiposDisponibles = gruposNicho.flatMap((g) => g.nombres);
+  const adicionalesDisponibles = adicionalesCat.filter((a) => {
     if (!a.activo) return false;
-    if (!a.tiposEvento) return true;
+    if (form.esBase || !a.tiposEvento) return true;
     try {
       const arr = JSON.parse(a.tiposEvento);
       return Array.isArray(arr) && (arr.length === 0 || arr.includes(tipoEvento));
@@ -205,8 +211,27 @@ function PaqueteEditor({
       return true;
     }
   });
+  const todosSubtipos = subtiposDisponibles.length > 0 && subtiposDisponibles.every((s) => form.subtipos.includes(s));
+  const todosAdicionales = adicionalesDisponibles.length > 0 && adicionalesDisponibles.every((a) => form.adicionales.includes(a.id));
   function toggleAdicional(id: string) {
     setForm({ ...form, adicionales: form.adicionales.includes(id) ? form.adicionales.filter((x) => x !== id) : [...form.adicionales, id] });
+  }
+  function toggleTodosSubtipos() {
+    setForm({
+      ...form,
+      subtipos: todosSubtipos
+        ? form.subtipos.filter((s) => !subtiposDisponibles.includes(s))
+        : [...form.subtipos, ...subtiposDisponibles.filter((s) => !form.subtipos.includes(s))],
+    });
+  }
+  function toggleTodosAdicionales() {
+    const ids = adicionalesDisponibles.map((a) => a.id);
+    setForm({
+      ...form,
+      adicionales: todosAdicionales
+        ? form.adicionales.filter((id) => !ids.includes(id))
+        : [...form.adicionales, ...ids.filter((id) => !form.adicionales.includes(id))],
+    });
   }
 
   // Búsqueda combinada equipos + productos
@@ -371,6 +396,7 @@ function PaqueteEditor({
 
   const inputCls = "w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]";
   const labelCls = "text-[11px] text-[#B3985B] font-medium block mb-1";
+  const selectorTodosCls = "text-[11px] text-gray-500 hover:text-white transition-colors mb-1 underline underline-offset-2";
 
   return (
     <div className="space-y-5">
@@ -405,26 +431,45 @@ function PaqueteEditor({
 
       {/* Subtipos / nichos del catálogo */}
       <div>
-        <label className={labelCls}>Nicho / tipo específico (recomendación)</label>
-        <div className="flex flex-wrap gap-1.5">
-          {subtiposDisponibles.map((s) => {
-            const on = form.subtipos.includes(s);
-            return (
-              <button key={s} type="button" onClick={() => toggleSubtipo(s)}
-                className={`px-2.5 py-1.5 rounded-lg text-xs transition-colors ${on ? "bg-[#B3985B] text-black font-semibold" : "bg-[#1a1a1a] text-gray-400 hover:text-white"}`}>
-                {s}
-              </button>
-            );
-          })}
+        <div className="flex items-center gap-2">
+          <label className={labelCls}>Nicho / tipo específico (recomendación)</label>
+          {subtiposDisponibles.length > 0 && (
+            <button type="button" onClick={toggleTodosSubtipos} className={selectorTodosCls}>
+              {todosSubtipos ? "Ninguno" : "Todos"}
+            </button>
+          )}
+        </div>
+        <div className="space-y-2">
+          {gruposNicho.map((g) => (
+            <div key={g.label}>
+              {g.label && <p className="text-[10px] text-gray-500 uppercase tracking-wide mb-1">{g.label}</p>}
+              <div className="flex flex-wrap gap-1.5">
+                {g.nombres.map((s) => {
+                  const on = form.subtipos.includes(s);
+                  return (
+                    <button key={s} type="button" onClick={() => toggleSubtipo(s)}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs transition-colors ${on ? "bg-[#B3985B] text-black font-semibold" : "bg-[#1a1a1a] text-gray-400 hover:text-white"}`}>
+                      {s}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
       {/* Adicionales sugeridos del catálogo */}
-      {adicionalesDelTipo.length > 0 && (
+      {adicionalesDisponibles.length > 0 && (
         <div>
-          <label className={labelCls}>Adicionales sugeridos (del catálogo)</label>
+          <div className="flex items-center gap-2">
+            <label className={labelCls}>Adicionales sugeridos (del catálogo)</label>
+            <button type="button" onClick={toggleTodosAdicionales} className={selectorTodosCls}>
+              {todosAdicionales ? "Ninguno" : "Todos"}
+            </button>
+          </div>
           <div className="flex flex-wrap gap-1.5">
-            {adicionalesDelTipo.map((a) => {
+            {adicionalesDisponibles.map((a) => {
               const on = form.adicionales.includes(a.id);
               return (
                 <button key={a.id} type="button" onClick={() => toggleAdicional(a.id)}
