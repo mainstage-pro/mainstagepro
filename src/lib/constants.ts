@@ -15,9 +15,10 @@ export const SUBTIPOS_EVENTO: Record<string, string[]> = {
   MUSICAL: ["Concierto", "Festival", "Música Electrónica", "Presentación Musical"],
   SOCIAL: ["Boda", "XV Años", "Bautizo", "Cumpleaños", "Fiesta Privada"],
   EMPRESARIAL: ["Congreso / Convención", "Lanzamiento de Marca", "Feria / Expo", "Taller / Capacitación"],
+  OTRO: ["Evento Deportivo", "Comedia / Stand-up", "Teatro y Artes Escénicas", "Rueda de Prensa", "Evento Cultural", "Evento Religioso", "Feria / Festival Patronal"],
 };
 
-export const TIPOS_EVENTO_BASE = ["MUSICAL", "SOCIAL", "EMPRESARIAL"] as const;
+export const TIPOS_EVENTO_BASE = ["MUSICAL", "SOCIAL", "EMPRESARIAL", "OTRO"] as const;
 
 // ── Temporadas de paquetes ────────────────────────────────────────────────────
 // Derivadas del calendario COMERCIAL (fuente de referencia): cada temporalidad y
@@ -27,6 +28,7 @@ const TIPO_EVENTO_POR_SLUG: Record<string, string> = {
   musical: "MUSICAL",
   social: "SOCIAL",
   empresarial: "EMPRESARIAL",
+  otro: "OTRO",
 };
 
 // Mapea un slug de tipo de evento (calendario) al enum de paquetes; default SOCIAL.

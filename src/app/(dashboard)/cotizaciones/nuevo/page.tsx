@@ -798,8 +798,8 @@ function CotizadorForm() {
 
   // Paquetes comerciales agrupados por tipo de evento para el selector en cascada.
   const paquetesPorTipo = useMemo<[string, CascadeItem[]][]>(() => {
-    const LABEL: Record<string, string> = { MUSICAL: "Musical", SOCIAL: "Social", EMPRESARIAL: "Empresarial" };
-    const ORDEN = ["MUSICAL", "SOCIAL", "EMPRESARIAL"];
+    const LABEL: Record<string, string> = { MUSICAL: "Musical", SOCIAL: "Social", EMPRESARIAL: "Empresarial", OTRO: "Otros eventos" };
+    const ORDEN = ["MUSICAL", "SOCIAL", "EMPRESARIAL", "OTRO"];
     const map = new Map<string, CascadeItem[]>();
     for (const paq of paquetesCatalogo) {
       // Precio estimado por 1 paquete: suma de equipos/productos + conceptos.

@@ -9,6 +9,7 @@ const TIPOS: Record<string, { label: string; desc: string }> = {
   social: { label: "Sociales", desc: "Paquetes de producción técnica para bodas, XV años y fiestas. Todo lo que incluye cada paquete, listo para cotizar." },
   musical: { label: "Musicales", desc: "Paquetes de producción técnica para conciertos, festivales y eventos con DJ. Todo lo que incluye cada paquete, listo para cotizar." },
   empresarial: { label: "Empresariales", desc: "Paquetes de producción técnica para congresos, lanzamientos y eventos corporativos. Todo lo que incluye cada paquete, listo para cotizar." },
+  otro: { label: "Otros Eventos", desc: "Paquetes de producción técnica para eventos deportivos, teatro, comedia y ruedas de prensa. Todo lo que incluye cada paquete, listo para cotizar." },
 };
 
 export async function generateMetadata({ params }: { params: Promise<{ tipo: string }> }): Promise<Metadata> {

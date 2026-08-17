@@ -25,6 +25,7 @@ const TABS = [
   { key: "SOCIAL", label: "Sociales", sub: "Bodas · XV años · Fiestas" },
   { key: "MUSICAL", label: "Musicales", sub: "Conciertos · Festivales · DJ" },
   { key: "EMPRESARIAL", label: "Empresariales", sub: "Congresos · Lanzamientos" },
+  { key: "OTRO", label: "Otros eventos", sub: "Deportivos · Teatro · Comedia" },
 ];
 
 function useReveal(threshold = 0.14) {
@@ -171,7 +172,7 @@ function ProductoCard({ p }: { p: Producto }) {
   );
 }
 
-const TIPOS_VALIDOS = ["SOCIAL", "MUSICAL", "EMPRESARIAL"];
+const TIPOS_VALIDOS = ["SOCIAL", "MUSICAL", "EMPRESARIAL", "OTRO"];
 
 export default function PaquetesClient({ defaultTab }: { defaultTab?: string } = {}) {
   const inicial = defaultTab && TIPOS_VALIDOS.includes(defaultTab) ? defaultTab : "SOCIAL";

@@ -220,8 +220,6 @@ export async function crearPlantillaTemporada(
   });
 }
 
-export const TIPOS_EVENTO_PAQUETE = ["MUSICAL", "SOCIAL", "EMPRESARIAL"] as const;
-
 // Lista base con la que se siembra el catálogo la primera vez.
 // Después es editable desde la UI (tabla paquete_rangos).
 export const RANGOS_PERSONAS_DEFAULT = [
@@ -245,13 +243,6 @@ export async function getRangosPersonas(): Promise<{ id: string; label: string; 
     select: { id: true, label: true, orden: true },
   });
 }
-
-// Subtipos específicos por tipo de evento — espejo del descubrimiento (DiscoveryForm).
-export const SUBTIPOS_EVENTO: Record<string, string[]> = {
-  MUSICAL: ["Concierto", "Festival", "Música Electrónica", "Presentación Musical"],
-  SOCIAL: ["Boda", "XV Años", "Bautizo", "Cumpleaños", "Fiesta Privada"],
-  EMPRESARIAL: ["Congreso / Convención", "Lanzamiento de Marca", "Feria / Expo", "Taller / Capacitación"],
-};
 
 export type PaqueteItemInput = {
   tipo: "EQUIPO" | "PRODUCTO";

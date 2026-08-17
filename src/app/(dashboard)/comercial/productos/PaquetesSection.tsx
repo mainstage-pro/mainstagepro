@@ -14,6 +14,7 @@ const TIPOS_EVENTO: { key: string; label: string; icon: LucideIcon }[] = [
   { key: "MUSICAL", label: "Musical", icon: Music },
   { key: "SOCIAL", label: "Social", icon: Wine },
   { key: "EMPRESARIAL", label: "Empresarial", icon: Building2 },
+  { key: "OTRO", label: "Otros eventos", icon: Sparkles },
 ];
 
 const CONCEPTOS_COMIDA = [

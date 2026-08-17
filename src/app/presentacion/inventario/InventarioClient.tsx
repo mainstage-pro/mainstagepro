@@ -163,7 +163,7 @@ function fmtPrice(n: number) { return "$" + n.toLocaleString("es-MX", { maximumF
 function eqDisplayName(eq: EquipoData) { return [eq.marca, eq.modelo].filter(Boolean).join(" ") || eq.descripcion; }
 
 // ─── Productos (sistemas armados) — helpers ──────────────────────────────────────
-const TIPO_EVENTO_LABEL: Record<string, string> = { MUSICAL: "Musical", SOCIAL: "Social", EMPRESARIAL: "Empresarial" };
+const TIPO_EVENTO_LABEL: Record<string, string> = { MUSICAL: "Musical", SOCIAL: "Social", EMPRESARIAL: "Empresarial", OTRO: "Otros eventos" };
 function parseTags(json: string | null): string[] {
   if (!json) return [];
   try { const v = JSON.parse(json); return Array.isArray(v) ? v : []; } catch { return []; }

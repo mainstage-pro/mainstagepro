@@ -113,13 +113,14 @@ export const TIPOS_EVENTO_SEED: { slug: string; nombre: string; emoji: string; s
   { slug: "musical", nombre: "Musical", emoji: "🎵", subtitulo: "Conciertos · Festivales · DJ", orden: 0 },
   { slug: "social", nombre: "Social", emoji: "🥂", subtitulo: "Bodas · XV · Fiestas privadas", orden: 1 },
   { slug: "empresarial", nombre: "Empresarial", emoji: "🏢", subtitulo: "Congresos · Lanzamientos · Expos", orden: 2 },
-  { slug: "otro", nombre: "Otro", emoji: "✨", subtitulo: "Cualquier otro tipo de evento", orden: 3 },
+  { slug: "otro", nombre: "Otros eventos", emoji: "✨", subtitulo: "Deportivos · Teatro · Comedia · Prensa", orden: 3 },
 ];
 
-const NICHOS_SEED: Record<string, string[]> = {
+export const NICHOS_SEED: Record<string, string[]> = {
   SOCIAL: ["Boda", "XV Años", "Bautizo", "Cumpleaños", "Fiesta Privada", "Graduación"],
   MUSICAL: ["Concierto", "Festival", "Música Electrónica", "Presentación Musical", "Tocada / Bar"],
   EMPRESARIAL: ["Congreso / Convención", "Lanzamiento de producto", "Junta anual", "Expo / Stand", "Capacitación"],
+  OTRO: ["Evento Deportivo", "Comedia / Stand-up", "Teatro y Artes Escénicas", "Rueda de Prensa", "Evento Cultural", "Evento Religioso", "Feria / Festival Patronal"],
 };
 
 // ── Metadatos de adicionales (descripción + frecuencia) ───────────────────────
@@ -158,6 +159,10 @@ const ADICIONALES_META: Record<string, { descripcion?: string; frecuencia?: "fre
   "CCTV": { descripcion: "Cámaras de circuito cerrado para monitoreo.", frecuencia: "ocasional" },
   "Energía redundante / UPS": { descripcion: "Respaldo de energía para equipos críticos.", frecuencia: "ocasional" },
   "Teleprompter": { descripcion: "Apuntador electrónico para el presentador.", frecuencia: "ocasional" },
+  "Splitter de prensa": { descripcion: "Caja de distribución de audio limpia para medios y cámaras.", frecuencia: "ocasional" },
+  "Diseño de iluminación escénica": { descripcion: "Diseño y programación de cues de luz escena por escena." },
+  "Backdrop / photo wall": { descripcion: "Fondo con branding para fotografía y entrevistas." },
+  "Audio para explanada o cancha": { descripcion: "Sonorización de área abierta con cobertura pareja en gradas y campo." },
 };
 
 // ── Pregunta de descubrimiento ────────────────────────────────────────────────
@@ -311,6 +316,76 @@ export const NICHO_CONTENIDO: Record<string, NichoContenido> = {
       { texto: "¿Las sesiones se van a grabar o transmitir?", categorias: ["Pantalla / Video"], enciende: ["Streaming y grabación"] },
       { texto: "¿El instructor y los participantes necesitan micrófonos?", categorias: ["Sistemas de Microfonía"], enciende: ["Microfonía", "Monitor de retorno para presentador"] },
       { texto: "¿Van a proyectar presentaciones o video?", categorias: ["Pantalla / Video"], enciende: ["Pantalla LED"] },
+    ],
+  },
+  // ── OTROS EVENTOS ───────────────────────────────────────────────────────────
+  "evento-deportivo": {
+    adicionales: ["Audio para explanada o cancha", "Torres de delay", "Microfonía", "Pantalla LED", "Templete / tarima", "Planta de luz", "Intercom de coordinación", "Streaming y grabación", "Ground support"],
+    preguntas: [
+      { texto: "¿El audio tiene que cubrir cancha y gradas por igual?", categorias: ["Equipo de Audio"], enciende: ["Audio para explanada o cancha", "Torres de delay"] },
+      { texto: "¿Habrá animador o narrador durante la competencia?", categorias: ["Sistemas de Microfonía"], enciende: ["Microfonía"] },
+      { texto: "¿Se necesita pantalla para repeticiones, marcador o patrocinadores?", categorias: ["Pantalla / Video"], enciende: ["Pantalla LED"] },
+      { texto: "¿Habrá premiación o ceremonia con templete?", categorias: ["Entarimado"], enciende: ["Templete / tarima"] },
+      { texto: "¿La sede es al aire libre sin instalación eléctrica suficiente?", categorias: ["Corriente Eléctrica"], enciende: ["Planta de luz"] },
+    ],
+  },
+  "comedia-stand-up": {
+    adicionales: ["Microfonía", "Iluminación funcional", "Templete / tarima", "Pantalla LED", "Streaming y grabación", "Monitoreo in-ear"],
+    preguntas: [
+      { texto: "¿El comediante trabaja con micrófono de mano, diadema o ambos?", categorias: ["Sistemas de Microfonía"], enciende: ["Microfonía"] },
+      { texto: "¿Necesitan que la voz se entienda perfecto hasta la última fila?", categorias: ["Equipo de Audio"], enciende: ["Microfonía"] },
+      { texto: "¿Habrá spot o luz frontal sobre el comediante?", categorias: ["Equipo de Iluminación"], enciende: ["Iluminación funcional"] },
+      { texto: "¿Se va a grabar la función para redes o para un especial?", categorias: ["Pantalla / Video"], enciende: ["Streaming y grabación"] },
+      { texto: "¿Hay teloneros o varios actos en la misma función?", categorias: ["Equipo de Audio"], enciende: ["Monitoreo in-ear"] },
+    ],
+  },
+  "teatro-y-artes-escenicas": {
+    adicionales: ["Diseño de iluminación escénica", "Microfonía", "Iluminación funcional", "Monitoreo in-ear", "Intercom de coordinación", "Bruma / hazer", "Templete / tarima", "Ground support"],
+    preguntas: [
+      { texto: "¿La obra necesita cambios de luz por escena (cues programados)?", categorias: ["Equipo de Iluminación"], enciende: ["Diseño de iluminación escénica", "Iluminación funcional"] },
+      { texto: "¿Los actores usan micrófonos de diadema o hay música en vivo?", categorias: ["Sistemas de Microfonía", "Equipo de Audio"], enciende: ["Microfonía", "Monitoreo in-ear"] },
+      { texto: "¿Se requiere comunicación entre cabina, tramoya y escenario?", enciende: ["Intercom de coordinación"] },
+      { texto: "¿Hay efectos de atmósfera (humo, neblina) en la puesta en escena?", categorias: ["Equipo de Iluminación"], enciende: ["Bruma / hazer"] },
+      { texto: "¿Hay que colgar luces o escenografía de una estructura?", categorias: ["Rigging y Estructuras"], enciende: ["Ground support"] },
+    ],
+  },
+  "rueda-de-prensa": {
+    adicionales: ["Microfonía", "Splitter de prensa", "Backdrop / photo wall", "Pantalla LED", "Streaming y grabación", "Teleprompter", "Templete / tarima"],
+    preguntas: [
+      { texto: "¿Habrá varios voceros en presídium con micrófono cada uno?", categorias: ["Sistemas de Microfonía"], enciende: ["Microfonía"] },
+      { texto: "¿Los medios necesitan tomar audio limpio para sus cámaras?", categorias: ["Equipo de Audio"], enciende: ["Splitter de prensa"] },
+      { texto: "¿Se requiere backdrop con branding para las fotos?", enciende: ["Backdrop / photo wall"] },
+      { texto: "¿Se transmite en vivo o se graba para difusión?", categorias: ["Pantalla / Video"], enciende: ["Streaming y grabación", "Pantalla LED"] },
+      { texto: "¿El vocero necesita apuntador para leer el comunicado?", enciende: ["Teleprompter"] },
+    ],
+  },
+  "evento-cultural": {
+    adicionales: ["Microfonía", "Diseño de iluminación escénica", "Iluminación funcional", "Templete / tarima", "Pantalla LED", "Backline", "Planta de luz", "Streaming y grabación"],
+    preguntas: [
+      { texto: "¿Habrá música en vivo, danza o presentación escénica?", categorias: ["Equipo de Audio", "Sistemas de Microfonía"], enciende: ["Microfonía", "Backline"] },
+      { texto: "¿La presentación necesita iluminación diseñada por escena?", categorias: ["Equipo de Iluminación"], enciende: ["Diseño de iluminación escénica", "Iluminación funcional"] },
+      { texto: "¿Hace falta escenario o templete para los participantes?", categorias: ["Entarimado"], enciende: ["Templete / tarima"] },
+      { texto: "¿Es en plaza pública o espacio abierto sin corriente?", categorias: ["Corriente Eléctrica"], enciende: ["Planta de luz"] },
+    ],
+  },
+  "evento-religioso": {
+    adicionales: ["Audio de ceremonia", "Microfonía", "Pantalla LED", "Templete / tarima", "Iluminación funcional", "Streaming y grabación", "Planta de luz", "Backline"],
+    preguntas: [
+      { texto: "¿La ceremonia o servicio necesita audio y micrófonos propios?", categorias: ["Sistemas de Microfonía", "Equipo de Audio"], enciende: ["Audio de ceremonia", "Microfonía"] },
+      { texto: "¿Habrá coro, ministerio de alabanza o música en vivo?", categorias: ["Equipo de Audio"], enciende: ["Backline", "Microfonía"] },
+      { texto: "¿Se proyectan letras, lecturas o video durante el servicio?", categorias: ["Pantalla / Video"], enciende: ["Pantalla LED"] },
+      { texto: "¿Se transmite el servicio en vivo?", enciende: ["Streaming y grabación"] },
+      { texto: "¿Es al aire libre o en atrio sin instalación eléctrica?", categorias: ["Corriente Eléctrica"], enciende: ["Planta de luz"] },
+    ],
+  },
+  "feria-festival-patronal": {
+    adicionales: ["Torres de delay", "Ground support", "Layher", "Backline", "Microfonía", "Monitoreo in-ear", "Riser de batería", "Iluminación funcional", "Pantalla LED", "Planta de luz", "Intercom de coordinación"],
+    preguntas: [
+      { texto: "¿Se presentan varios artistas o grupos a lo largo de los días?", categorias: ["Equipo de Audio", "Sistemas de Microfonía"], enciende: ["Backline", "Riser de batería", "Intercom FOH-monitores"] },
+      { texto: "¿El escenario necesita estructura techada o de gran formato?", categorias: ["Rigging y Estructuras"], enciende: ["Ground support", "Layher"] },
+      { texto: "¿El público se extiende a lo largo de la explanada?", categorias: ["Equipo de Audio"], enciende: ["Torres de delay"] },
+      { texto: "¿Hay corriente eléctrica confiable en la sede?", categorias: ["Corriente Eléctrica"], enciende: ["Planta de luz"] },
+      { texto: "¿El montaje se queda varios días en el lugar?", enciende: ["Intercom de coordinación"] },
     ],
   },
 };

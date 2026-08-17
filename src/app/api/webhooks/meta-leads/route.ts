@@ -19,6 +19,8 @@ function mapTipoEvento(respuesta: string | null): string {
   if (r.includes("boda") || r.includes("quinceañera") || r.includes("quince") || r.includes("graduaci")) return "SOCIAL";
   if (r.includes("empresarial") || r.includes("conferencia") || r.includes("corporativo"))              return "EMPRESARIAL";
   if (r.includes("concierto") || r.includes("festival") || r.includes("musical"))                       return "MUSICAL";
+  if (r.includes("deport") || r.includes("comedia") || r.includes("stand") || r.includes("teatro") ||
+      r.includes("prensa") || r.includes("cultural") || r.includes("religios"))                         return "OTRO";
   return "VARIOS";
 }
 

@@ -10,7 +10,7 @@ import { useToast } from "@/components/Toast";
 import { isLegacyString, parseLinks } from "@/utils/legacyText";
 import { parseFechasEvento } from "@/lib/fechas-evento";
 import { preguntasVisibles } from "@/lib/descubrimiento";
-import { parseCoberturas, coberturaMatch } from "@/lib/constants";
+import { parseCoberturas, coberturaMatch, SUBTIPOS_EVENTO } from "@/lib/constants";
 
 const PASOS_DISCOVERY: Array<{ id: number; label: string; icon: LucideIcon }> = [
   { id: 1, label: "Info Básica", icon: ClipboardList },
@@ -80,6 +80,10 @@ const EXTRAS_EVENTO: Record<string, any[]> = {
     { id: "STREAMING",    label: "Streaming en vivo",         grupo: "extra" },
   ],
   OTRO: [
+    { id: "STREAMING",          label: "Streaming en vivo",   grupo: "extra" },
+    { id: "GRABACION",          label: "Grabación del evento", grupo: "extra" },
+    { id: "ESCENOGRAFIA",       label: "Escenografía / Backdrop", grupo: "extra" },
+    { id: "AUDIO_CONF",         label: "Sistema para conferencia", grupo: "extra" },
     { id: "EFECTOS",            label: "Efectos especiales",  grupo: "extra" },
     { id: "PRODUCCION_GENERAL", label: "Producción completa", grupo: "extra" },
   ],
@@ -1443,15 +1447,13 @@ export default function DiscoveryForm({
                     <div className="flex flex-wrap gap-2">
                       {(() => {
                         // Subtipos = nichos del catálogo para este tipo de evento (fuente
-                        // única, editable por admin). Fallback a la lista hardcodeada si el
+                        // única, editable por admin). Fallback a SUBTIPOS_EVENTO si el
                         // catálogo aún no tiene nichos o no cargó (p. ej. modo cliente).
                         const nichosDelTipo = catNichos.filter(n => n.tipoEventoSlug === discForm.tipoEvento);
                         const slugPorLabel = new Map(nichosDelTipo.map(n => [n.nombre, n.slug]));
                         const opts = nichosDelTipo.length
                           ? nichosDelTipo.map(n => n.nombre)
-                          : (discForm.tipoEvento === "MUSICAL" ? ["Concierto", "Festival", "Música Electrónica", "Presentación Musical"] :
-                             discForm.tipoEvento === "SOCIAL" ? ["Boda", "XV Años", "Bautizo", "Cumpleaños", "Fiesta Privada"] :
-                             discForm.tipoEvento === "EMPRESARIAL" ? ["Congreso / Convención", "Lanzamiento de Marca", "Feria / Expo", "Taller / Capacitación"] : []);
+                          : (SUBTIPOS_EVENTO[discForm.tipoEvento] ?? []);
                         const actuales = discForm.subtipoEvento ? discForm.subtipoEvento.split(', ') : [];
                         return (
                           <>

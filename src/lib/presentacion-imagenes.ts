@@ -181,10 +181,22 @@ const GALLERY_CORP: GaleriaItem[] = [
   { src: "/images/presentacion/empresariales/e-proyeccion-mural.jpg", caption: "Creatividad sin límites" },
 ];
 
+// "Otros eventos" no tiene banco propio de fotos todavía: se arma con las tomas
+// de escenario y auditorio que mejor leen fuera de musical/social/empresarial.
+const GALLERY_OTROS: GaleriaItem[] = [
+  { src: "/images/presentacion/empresariales/e-auditorio.jpg",        caption: "Auditorio · Producción completa" },
+  { src: "/images/presentacion/musicales/Musicales-037.jpg",          caption: "Iluminación escénica" },
+  { src: "/images/presentacion/empresariales/e-carpa-led.jpg",        caption: "Exterior · Pantalla LED" },
+  { src: "/images/presentacion/musicales/DSC07491.jpg",               caption: "Operación técnica en vivo" },
+  { src: "/images/presentacion/empresariales/e-proyeccion-mural.jpg", caption: "Proyección de gran formato" },
+  { src: "/images/presentacion/musicales/Musicales-016.jpg",          caption: "Escenario montado y probado" },
+];
+
 function fallbackGaleria(tipoEvento: string): GaleriaItem[] {
   const t = (tipoEvento ?? "").toUpperCase().trim();
   if (t === "SOCIAL") return GALLERY_SOCIAL;
   if (t === "EMPRESARIAL") return GALLERY_CORP;
+  if (t === "OTRO") return GALLERY_OTROS;
   return GALLERY_MUSICAL;
 }
 

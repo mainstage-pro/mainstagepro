@@ -11,9 +11,9 @@ import {
   type GaleriaCategoria as Categoria,
 } from "@/lib/galeria-shared";
 
-type Familia = "musical" | "social" | "empresarial";
+type Familia = "musical" | "social" | "empresarial" | "otro";
 
-const TIPO_EVENTO_MAP: Record<Familia, string> = { musical: "MUSICAL", social: "SOCIAL", empresarial: "EMPRESARIAL" };
+const TIPO_EVENTO_MAP: Record<Familia, string> = { musical: "MUSICAL", social: "SOCIAL", empresarial: "EMPRESARIAL", otro: "OTRO" };
 
 // Copy por tipo de evento: kicker, encabezado y descripción que genera confianza,
 // más los tres puntos de valor que resumen cómo trabajamos.
@@ -51,6 +51,16 @@ const CONFIG: Record<Familia, {
       { title: "Probado antes del primer invitado", body: "Audio, video y presentaciones verificados con calma, sin ajustes sobre la marcha." },
       { title: "A la altura de tu marca", body: "Producción cuidada para que toda la atención esté en tu mensaje, no en la técnica." },
       { title: "Un solo responsable", body: "Nos integramos con tu equipo y coordinamos todo lo técnico desde un solo punto de contacto." },
+    ],
+  },
+  otro: {
+    kicker: "Otros eventos",
+    titulo: "Un poco de los eventos\nque no caben en una categoría.",
+    lead: "Deporte, teatro, comedia, ruedas de prensa, cultura y fiestas patronales. Si se escucha y se ve, lo producimos —cada foto es producción real, montada y operada por nuestro equipo.",
+    beneficios: [
+      { title: "Que se entienda, ante todo", body: "Diseñamos el sistema para que cada palabra llegue clara en la primera fila y en la última." },
+      { title: "Luz por escena, no genérica", body: "Programamos los cambios junto con la dirección y los operamos en vivo, en el momento exacto." },
+      { title: "Cobertura pareja en abierto", body: "Canchas, explanadas y plazas: calculamos la cobertura para que no queden zonas sordas." },
     ],
   },
 };

@@ -64,7 +64,9 @@ export function getSugerencias(tipoEvento: string, asistentes: number, servicios
     if (servicios?.includes("ILUM_ARQ"))   grupos.push(extraIlumArq());
     if (servicios?.includes("KARAOKE"))    grupos.push(extraKaraoke());
 
-  } else if (tipo === "EMPRESARIAL") {
+    // "Otros eventos" (deportivo, teatro, comedia, prensa…) escala con la curva
+    // empresarial: voz inteligible y el rango de capacidad más amplio del catálogo.
+  } else if (tipo === "EMPRESARIAL" || tipo === "OTRO") {
     if (asistentes <= 50)    grupos = empresarialMini();
     else if (asistentes <= 100)  grupos = empresarialPequeno();
     else if (asistentes <= 200)  grupos = empresarialMediano();

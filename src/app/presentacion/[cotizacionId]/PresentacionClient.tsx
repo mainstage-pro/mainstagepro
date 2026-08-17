@@ -91,6 +91,20 @@ const EVENTO_CONFIG: Record<string, EventoCfg> = {
     ],
     ctaLine: "Confirmemos los detalles técnicos con anticipación.",
   },
+  OTRO: {
+    stmt: "Si se escucha y se ve,\nlo producimos.",
+    audioHeadline: "Voz inteligible hasta la última fila — narración, discursos o escena, sin puntos muertos.",
+    ilumHeadline: "Luz diseñada por escena y operada en vivo, no un ambiente genérico encendido toda la noche.",
+    djHeadline: "Música y ambientación con equipo verificado y señal lista antes de abrir puertas.",
+    videoHeadline: "Pantallas visibles desde toda la sede y salida estable para transmitir o grabar.",
+    whyPoints: [
+      { icon: "star",   title: "Formatos distintos, mismo estándar", body: "Deportivos, teatro, comedia, ruedas de prensa, cultura y fiestas patronales. Cambia el guion, no el nivel de exigencia con el que montamos." },
+      { icon: "people", title: "Operadores que entienden el guion", body: "Alguien atento al audio y alguien a la luz durante todo el evento. Los cambios caen en el momento, no cuando ya pasó." },
+      { icon: "clock",  title: "Sedes abiertas, cobertura calculada", body: "Canchas, explanadas y plazas se comportan distinto a un salón. Diseñamos la cobertura para que el sonido llegue parejo a todos lados." },
+      { icon: "check",  title: "Un solo interlocutor, cero fricciones", body: "Audio, luz, video y operadores en un solo contrato. Tú hablas con nosotros — nosotros resolvemos todo lo demás." },
+    ],
+    ctaLine: "Confirmemos la fecha y dejamos lo técnico resuelto.",
+  },
 };
 const DEFAULT_EVENTO: EventoCfg = EVENTO_CONFIG.MUSICAL;
 

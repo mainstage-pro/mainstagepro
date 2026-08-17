@@ -67,6 +67,7 @@ const TIPOS_EVENTO = [
   { id: "MUSICAL", label: "Musical" },
   { id: "SOCIAL", label: "Social" },
   { id: "EMPRESARIAL", label: "Empresarial" },
+  { id: "OTRO", label: "Otros eventos" },
 ];
 
 async function comprimirImagen(file: File, maxW = 1200, quality = 0.75): Promise<string> {

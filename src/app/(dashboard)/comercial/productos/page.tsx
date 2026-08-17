@@ -7,7 +7,7 @@ import { Modal } from "@/components/Modal";
 import ModuleIndexRedirect from "@/components/ModuleIndexRedirect";
 import { comercialProductosTabs } from "./tabs";
 import { SUBTIPOS_EVENTO, parseCoberturas, type Cobertura } from "@/lib/constants";
-import { Guitar, PartyPopper, Briefcase, Package, type LucideIcon } from "lucide-react";
+import { Guitar, PartyPopper, Briefcase, Package, Sparkles, type LucideIcon } from "lucide-react";
 import { TipoEventoCell, type TipoEventoOpcion } from "@/components/TipoEventoCell";
 import { FAMILIAS, SUBFAMILIAS_ILUMINACION } from "@/lib/producto-familias";
 
@@ -75,6 +75,7 @@ const TIPOS_EVENTO: { key: string; label: string; icon: LucideIcon }[] = [
   { key: "MUSICAL", label: "Musical", icon: Guitar },
   { key: "SOCIAL", label: "Social", icon: PartyPopper },
   { key: "EMPRESARIAL", label: "Empresarial", icon: Briefcase },
+  { key: "OTRO", label: "Otros eventos", icon: Sparkles },
 ];
 
 function fmx(n: number) {

@@ -97,6 +97,10 @@ export async function POST(req: NextRequest) {
         r.includes('banda') || r.includes('artista'))                              return 'MUSICAL';
     if (r.includes('empresa') || r.includes('corporat') || r.includes('conferencia') ||
         r.includes('congreso') || r.includes('lanzamiento') || r.includes('convenci')) return 'EMPRESARIAL';
+    if (r.includes('deport') || r.includes('comedia') || r.includes('stand') ||
+        r.includes('teatro') || r.includes('escénic') || r.includes('escenic') ||
+        r.includes('prensa') || r.includes('cultural') || r.includes('religios') ||
+        r.includes('patronal'))                                                       return 'OTRO';
     return 'VARIOS';
   }
   const tipoEvento = mapTipoEvento(rawTipoEvento);

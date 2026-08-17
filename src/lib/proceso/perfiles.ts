@@ -6,23 +6,24 @@
 // lo lee de ahí para sugerir el mensaje inicial y el material principal.
 //
 // Cada perfil pertenece a una CATEGORÍA que coincide con el `tipoEvento` del trato
-// (MUSICAL | SOCIAL | EMPRESARIAL), de modo que al elegir perfil podemos alinear
+// (MUSICAL | SOCIAL | EMPRESARIAL | OTRO), de modo que al elegir perfil podemos alinear
 // la categoría del evento automáticamente.
 // ─────────────────────────────────────────────────────────────────────────────
 import { z } from "zod";
 
 // ── Categoría (coincide con tipoEvento) ──────────────────────────────────────
-export const PERFIL_CATEGORIAS = ["MUSICAL", "SOCIAL", "EMPRESARIAL"] as const;
+export const PERFIL_CATEGORIAS = ["MUSICAL", "SOCIAL", "EMPRESARIAL", "OTRO"] as const;
 export type PerfilCategoria = (typeof PERFIL_CATEGORIAS)[number];
 
 export const PERFIL_CATEGORIA_LABELS: Record<PerfilCategoria, string> = {
   MUSICAL: "Musicales",
   SOCIAL: "Sociales",
   EMPRESARIAL: "Empresariales",
+  OTRO: "Otros eventos",
 };
 
 // ── Ids de material (coinciden con MaterialCompartir en PlanContactos.tsx) ────
-export type MaterialId = "servicios" | "inventario" | "musical" | "social" | "empresarial" | "galeria";
+export type MaterialId = "servicios" | "inventario" | "musical" | "social" | "empresarial" | "otro" | "galeria";
 
 // ── Definición de un perfil ──────────────────────────────────────────────────
 export type Perfil = {
@@ -108,6 +109,43 @@ export const PERFILES: Perfil[] = [
     materiales: ["empresarial", "galeria", "servicios"],
     mensajeInicial: (n) => `Hola ${n}, seguimos tus conferencias y nos encanta el impacto que generas en el escenario.\n\nEn *Mainstage Pro* producimos audio, iluminación y video para que tus presentaciones se vivan al máximo. ¿Te comparto lo que hacemos?`,
   },
+
+  // ── Otros eventos ──────────────────────────────────────────────────────────
+  {
+    id: "PROMOTOR_DEPORTIVO", label: "Promotor deportivo", categoria: "OTRO",
+    materiales: ["otro", "galeria", "servicios"],
+    mensajeInicial: (n) => `Hola ${n}, hemos seguido los eventos deportivos que organizas y se nota el trabajo detrás de cada uno.\n\nEn *Mainstage Pro* hacemos audio, iluminación y video para eventos masivos y nos encantaría que la narración y el ambiente se escuchen parejo en toda la sede. ¿Te comparto información?`,
+  },
+  {
+    id: "CLUB_DEPORTIVO", label: "Club / equipo deportivo", categoria: "OTRO",
+    materiales: ["otro", "galeria", "servicios"],
+    mensajeInicial: (n, e) => `Hola ${n}, seguimos los partidos y eventos de ${emp(e)} y nos gusta mucho la experiencia que le dan a su afición.\n\nEn *Mainstage Pro* producimos audio, iluminación y video para eventos deportivos. ¿Les puedo enviar información de cómo podríamos apoyarlos?`,
+  },
+  {
+    id: "PRODUCTOR_TEATRAL", label: "Productor teatral", categoria: "OTRO",
+    materiales: ["otro", "galeria", "servicios"],
+    mensajeInicial: (n) => `Hola ${n}, vimos las puestas en escena que produces y se ven muy cuidadas.\n\nEn *Mainstage Pro* hacemos diseño de iluminación, audio y video para teatro y artes escénicas, con cues programados escena por escena. ¿Te comparto lo que hacemos?`,
+  },
+  {
+    id: "COMEDIANTE", label: "Comediante / Stand-up", categoria: "OTRO",
+    materiales: ["otro", "galeria", "servicios"],
+    mensajeInicial: (n) => `Hola ${n}, seguimos tus shows y nos encanta cómo conectas con el público.\n\nEn *Mainstage Pro* nos encargamos de que tu voz se entienda perfecto hasta la última fila, con la luz y el audio que el show necesita. ¿Te comparto información?`,
+  },
+  {
+    id: "AGENCIA_RP", label: "Agencia de RP / comunicación", categoria: "OTRO",
+    materiales: ["otro", "empresarial", "servicios"],
+    mensajeInicial: (n, e) => `Hola ${n}, hemos visto los eventos y ruedas de prensa que maneja ${emp(e)} y se nota el cuidado en el mensaje.\n\nEn *Mainstage Pro* damos el respaldo técnico: audio limpio para medios, backdrop, transmisión y grabación. ¿Les comparto información?`,
+  },
+  {
+    id: "INSTITUCION_CULTURAL", label: "Institución cultural / Gobierno", categoria: "OTRO",
+    materiales: ["otro", "galeria", "servicios"],
+    mensajeInicial: (n, e) => `Hola ${n}, seguimos la programación cultural de ${emp(e)} y nos parece muy valiosa.\n\nEn *Mainstage Pro* hacemos producción técnica para festivales, presentaciones escénicas y eventos en plaza pública. ¿Les puedo enviar información?`,
+  },
+  {
+    id: "ORGANIZACION_RELIGIOSA", label: "Organización religiosa", categoria: "OTRO",
+    materiales: ["otro", "galeria", "servicios"],
+    mensajeInicial: (n) => `Hola ${n}, vimos los servicios y encuentros que organizan y se nota la convocatoria que tienen.\n\nEn *Mainstage Pro* hacemos audio, iluminación, proyección y transmisión para eventos religiosos. ¿Les comparto información?`,
+  },
 ];
 
 // ── Índices y helpers ────────────────────────────────────────────────────────
@@ -150,6 +188,7 @@ export const MATERIALES_POR_CATEGORIA: Record<PerfilCategoria, MaterialId[]> = {
   MUSICAL: ["musical", "galeria", "servicios"],
   SOCIAL: ["social", "galeria", "servicios"],
   EMPRESARIAL: ["empresarial", "galeria", "servicios"],
+  OTRO: ["otro", "galeria", "servicios"],
 };
 
 // Mensaje de primer contacto genérico por categoría (fallback).
@@ -157,6 +196,7 @@ const MENSAJE_GENERICO: Record<PerfilCategoria, (nombre: string, empresa?: strin
   MUSICAL: (n) => `Hola ${n}, seguimos tu trabajo y nos encanta el nivel que logras con tu público.\n\nEn *Mainstage Pro* hacemos producción de audio, iluminación y video para shows en vivo y nos encantaría acompañarte en tus próximos eventos. ¿Te comparto información?`,
   SOCIAL: (n) => `Hola ${n}, nos encanta el cuidado y el ambiente de los eventos que realizas.\n\nEn *Mainstage Pro* hacemos audio, iluminación y video, y nos encantaría ser tu aliado técnico para que todo suene y se vea impecable. ¿Te comparto información?`,
   EMPRESARIAL: (n, e) => `Hola ${n}, hemos visto los eventos de ${emp(e)} y nos encanta cómo cuidan su imagen.\n\nEn *Mainstage Pro* producimos audio, iluminación y video para eventos corporativos y nos encantaría apoyarlos en su próximo evento. ¿Les comparto información?`,
+  OTRO: (n, e) => `Hola ${n}, hemos visto los eventos que realiza ${emp(e)} y nos parecen muy bien logrados.\n\nEn *Mainstage Pro* hacemos audio, iluminación y video para todo tipo de evento: deportivos, teatro, comedia, culturales y ruedas de prensa. ¿Les comparto información?`,
 };
 
 const aplicarPlantilla = (tpl: string, nombre: string, empresa?: string | null) =>

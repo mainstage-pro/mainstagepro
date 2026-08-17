@@ -29,6 +29,7 @@ const FRASE_EMOCIONAL: Record<string, string> = {
   SOCIAL: "Una boda ocurre una sola vez. Hacemos que cada momento se escuche y se sienta tal como lo soñaron.",
   MUSICAL: "El escenario se recuerda por lo que se siente. Cuidamos cada detalle para estar a la altura del show.",
   EMPRESARIAL: "Tu marca también se vive en vivo. Producimos cada detalle para que tu mensaje llegue con fuerza.",
+  OTRO: "Si se escucha y se ve, lo producimos. Cuidamos que cada palabra llegue clara y cada escena se vea como debe.",
 };
 type Paquete = {
   id: string; nombre: string; tipoEvento: string; rangoPersonas: string | null;
@@ -37,7 +38,7 @@ type Paquete = {
   adicionales: Adicional[];
 };
 
-const TIPO_LABEL: Record<string, string> = { SOCIAL: "Evento social", MUSICAL: "Evento musical", EMPRESARIAL: "Evento empresarial" };
+const TIPO_LABEL: Record<string, string> = { SOCIAL: "Evento social", MUSICAL: "Evento musical", EMPRESARIAL: "Evento empresarial", OTRO: "Otros eventos" };
 
 function parseJSON(s: string | null): string[] {
   if (!s) return [];

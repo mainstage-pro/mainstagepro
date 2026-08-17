@@ -87,6 +87,7 @@ const PERFIL_CAT_COLOR: Record<string, { text: string; bg: string; border: strin
   MUSICAL:     { text: "text-indigo-300", bg: "bg-indigo-950/50", border: "border-indigo-800/30" },
   SOCIAL:      { text: "text-rose-300",   bg: "bg-rose-950/50",   border: "border-rose-800/30"   },
   EMPRESARIAL: { text: "text-teal-300",   bg: "bg-teal-950/50",   border: "border-teal-800/30"   },
+  OTRO:        { text: "text-amber-300",  bg: "bg-amber-950/50",  border: "border-amber-800/30"  },
 };
 const PERFIL_OPTIONS = PERFILES_POR_CATEGORIA.flatMap((g) => g.perfiles.map((p) => ({ value: p.id, label: p.label })));
 const PERFIL_COLORS: Record<string, { text: string; bg: string; border: string }> = Object.fromEntries(
@@ -97,6 +98,7 @@ const PERFIL_CAT_HEX: Record<string, string> = {
   MUSICAL:     "#818CF8",
   SOCIAL:      "#FB7185",
   EMPRESARIAL: "#2DD4BF",
+  OTRO:        "#FCD34D",
 };
 // Categorías disponibles al crear un perfil nuevo desde el selector inline.
 const PERFIL_CREATE_CATEGORIAS = PERFIL_CATEGORIAS.map((c) => ({ key: c as string, label: PERFIL_CATEGORIA_LABELS[c] }));
@@ -105,6 +107,7 @@ const COLOR_HEX: Record<string, string> = {
   "text-indigo-300": "#818CF8",
   "text-rose-300":   "#FB7185",
   "text-teal-300":   "#2DD4BF",
+  "text-amber-300":  "#FCD34D",
 };
 
 const TIPO_COLORS: Record<string, { bg: string; text: string; border: string }> = {

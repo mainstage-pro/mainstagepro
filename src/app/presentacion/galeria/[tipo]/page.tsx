@@ -4,7 +4,7 @@ import { getPresentationMetadata } from "@/lib/metadata";
 import { getGaleriaData } from "@/lib/tipos-evento";
 import { Metadata } from "next";
 
-const TIPOS = ["musical", "social", "empresarial"] as const;
+const TIPOS = ["musical", "social", "empresarial", "otro"] as const;
 
 // Dinámica para sembrar las fotos elegidas en la primera pintura (SSR) y evitar el
 // parpadeo/cambio de portada al hidratar.
@@ -16,11 +16,13 @@ export async function generateMetadata({ params }: { params: Promise<{ tipo: str
     musical: "Galería de Eventos Musicales",
     social: "Galería de Eventos Sociales",
     empresarial: "Galería de Eventos Empresariales",
+    otro: "Galería de Otros Eventos",
   };
   const descMap: Record<string, string> = {
     musical: "Nuestro trabajo en conciertos, festivales y shows en vivo. Producción audiovisual profesional en Querétaro.",
     social: "Nuestro trabajo en bodas, XV años y celebraciones privadas. Producción audiovisual profesional en Querétaro.",
     empresarial: "Nuestro trabajo en conferencias, lanzamientos y eventos corporativos. Producción audiovisual profesional en Querétaro.",
+    otro: "Nuestro trabajo en eventos deportivos, teatro, comedia y ruedas de prensa. Producción audiovisual profesional en Querétaro.",
   };
 
   return getPresentationMetadata({

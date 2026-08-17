@@ -5,6 +5,7 @@ import {
   Ticket, Radio, Disc3, Guitar, MapPin, Truck,
   Heart, PartyPopper, Landmark, Crown, Church, GraduationCap,
   Building2, Megaphone, CalendarCheck, Building, School, Mic,
+  Trophy, Shield, Theater, Mic2, Newspaper,
   type LucideIcon,
 } from "lucide-react";
 import PresentacionNav from "@/components/presentacion/PresentacionNav";
@@ -14,10 +15,10 @@ import { useTiposEventoMaterial, type MaterialTipoEvento } from "@/lib/tipos-eve
 
 const GOLD = "#B3985B";
 
-type EventoTipo = "musical" | "social" | "empresarial";
+type EventoTipo = "musical" | "social" | "empresarial" | "otro";
 
-const TIPO_EVENTO_MAP: Record<EventoTipo, string> = { musical: "MUSICAL", social: "SOCIAL", empresarial: "EMPRESARIAL" };
-const TIPO_NOMBRE:     Record<EventoTipo, string> = { musical: "Eventos Musicales", social: "Eventos Sociales", empresarial: "Eventos Empresariales" };
+const TIPO_EVENTO_MAP: Record<EventoTipo, string> = { musical: "MUSICAL", social: "SOCIAL", empresarial: "EMPRESARIAL", otro: "OTRO" };
+const TIPO_NOMBRE:     Record<EventoTipo, string> = { musical: "Eventos Musicales", social: "Eventos Sociales", empresarial: "Eventos Empresariales", otro: "Otros eventos" };
 
 // Los 3 servicios que ofrecemos, en el orden y jerarquía de la marca.
 // La `key` liga cada servicio al formulario de descubrimiento (tipoServicio).
@@ -245,6 +246,72 @@ const CONFIG = {
     ],
     cta:    "Platícanos sobre el evento",
     ctaSub: "Espacio, número de presentadores y tipo de evento. Propuesta técnica a la medida en 24 horas.",
+  },
+
+  otro: {
+    label:    "Producción técnica para eventos deportivos, escénicos y culturales",
+    kicker:   "Otros eventos",
+    hero:     "/images/presentacion/empresariales/e-auditorio.jpg",
+    headline: "Si se escucha y se ve,\nlo producimos.",
+    sub:      "Voz clara hasta la última fila y luz diseñada para cada momento, sea cual sea el formato.",
+    problema: {
+      title: "Por qué importa la producción",
+      lead:  "No todos los eventos caben en una categoría.",
+      body:  "Un partido, una obra, un show de comedia o una rueda de prensa piden cosas distintas, pero comparten lo mismo: que se entienda lo que se dice y se vea lo que pasa. De eso nos encargamos.",
+    },
+    recomendaciones: [
+      "Descríbenos el evento en una frase: qué es y qué va a pasar ahí.",
+      "Dinos si la sede es abierta o cerrada — cambia por completo el sistema de audio.",
+      "Confirma qué sucede desde el escenario: narración, discursos, obra o música.",
+      "Avísanos si se transmite o se graba, para dejar la señal lista desde el montaje.",
+    ],
+    insights: [
+      {
+        title: "Lo primero es que se entienda",
+        body:  "En un partido, una rueda de prensa o una función, si la voz no llega clara el evento no funciona. Diseñamos el sistema para que cada palabra se escuche igual de nítida en la primera fila y en la última.",
+      },
+      {
+        title: "La luz se diseña escena por escena",
+        body:  "En teatro y artes escénicas la iluminación cuenta parte de la historia. Programamos los cues junto con la dirección y los operamos en vivo, para que cada entrada y cada cierre caigan en el momento exacto.",
+      },
+      {
+        title: "Espacios abiertos, cobertura pareja",
+        body:  "Canchas, explanadas y plazas públicas se comportan distinto a un salón. Calculamos la cobertura para que no queden zonas sordas ni rincones donde el sonido llegue tarde.",
+      },
+      {
+        title: "Si se transmite, la señal también es nuestra",
+        body:  "Ruedas de prensa, servicios religiosos y funciones que se graban necesitan audio limpio para medios y una salida estable para cámara. Lo dejamos resuelto desde el montaje, no a la hora del evento.",
+      },
+    ],
+    tipos: ["Eventos deportivos", "Comedia / Stand-up", "Teatro y artes escénicas", "Ruedas de prensa", "Eventos culturales", "Eventos religiosos", "Ferias y fiestas patronales"],
+    perfiles: [
+      { label: "Promotores deportivos", linea: "Narración, música y ambiente parejos en toda la sede, de principio a fin.", icon: Trophy },
+      { label: "Clubes y equipos", linea: "Tu afición vive el partido dentro y fuera de la cancha.", icon: Shield },
+      { label: "Productores teatrales", linea: "Cues de luz y audio programados escena por escena, operados en vivo.", icon: Theater },
+      { label: "Comediantes y stand-up", linea: "Tu voz se entiende perfecto hasta la última fila: el remate llega completo.", icon: Mic2 },
+      { label: "Agencias de RP y comunicación", linea: "Audio limpio para medios, backdrop y señal lista para transmitir.", icon: Newspaper },
+      { label: "Instituciones culturales y gobierno", linea: "Festivales y presentaciones en plaza pública, montados con orden y a tiempo.", icon: Landmark },
+      { label: "Organizaciones religiosas", linea: "Cada palabra clara para toda la asamblea, con proyección y transmisión.", icon: Church },
+    ],
+    cotizar: [
+      "Fecha del evento",
+      "Sede o lugar — cancha, teatro, foro, plaza o auditorio",
+      "Asistentes estimados",
+      "Qué pasa en escenario: narración, discursos, obra o show",
+      "Horarios: montaje, evento y desmontaje",
+      "Qué servicio buscas: renta, producción o dirección",
+      "¿Requiere transmisión o grabación?",
+    ],
+    gallery: [
+      { src: "/images/presentacion/empresariales/e-auditorio.jpg",        caption: "Auditorio · Producción completa" },
+      { src: "/images/presentacion/musicales/Musicales-037.jpg",          caption: "Iluminación escénica" },
+      { src: "/images/presentacion/empresariales/e-carpa-led.jpg",        caption: "Exterior · Pantalla LED" },
+      { src: "/images/presentacion/musicales/DSC07491.jpg",               caption: "Operación técnica en vivo" },
+      { src: "/images/presentacion/empresariales/e-proyeccion-mural.jpg", caption: "Proyección de gran formato" },
+      { src: "/images/presentacion/musicales/Musicales-016.jpg",          caption: "Escenario montado y probado" },
+    ],
+    cta:    "Cuéntanos qué evento tienes",
+    ctaSub: "Sea deportivo, escénico, cultural o una rueda de prensa: dinos la sede y la fecha. Propuesta técnica en menos de 24 horas.",
   },
 } satisfies Record<EventoTipo, {
   label: string; kicker: string; hero: string; headline: string; sub: string;
@@ -540,14 +607,14 @@ function DiscoveryModal({
   onConfirm: () => void; onClose: () => void;
 }) {
   const servLabel = SERVICIOS.find(s => s.key === servicio)?.title;
-  const eventoLabel = { musical: "musical", social: "social", empresarial: "corporativo" }[tipo];
+  const eventoLabel = { musical: "musical", social: "social", empresarial: "corporativo", otro: "" }[tipo];
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4" style={{ background: "rgba(4,4,4,0.9)", backdropFilter: "blur(8px)" }} onClick={onClose}>
       <div className="w-full max-w-md rounded-2xl p-8" onClick={e => e.stopPropagation()}
            style={{ background: "#0d0d0d", border: "1px solid rgba(255,255,255,0.08)" }}>
         <p className="text-[#B3985B] text-xs tracking-[0.24em] uppercase mb-4">Formulario de descubrimiento</p>
         <h3 className="text-white font-bold text-2xl leading-tight mb-3" style={{ letterSpacing: "-0.02em" }}>
-          Cuéntanos de tu evento {eventoLabel}
+          Cuéntanos de tu evento{eventoLabel ? ` ${eventoLabel}` : ""}
         </h3>
         <p className="text-white/45 text-sm leading-relaxed mb-2">
           Te haremos unas preguntas rápidas sobre tu evento{servLabel ? <> y tu interés en <span className="text-white/70">{servLabel.toLowerCase()}</span></> : null}. Toma unos 3 minutos y con eso preparamos tu propuesta técnica.
@@ -568,7 +635,12 @@ function DiscoveryModal({
 
 // ─── Contact Form (WhatsApp) ──────────────────────────────────────────────────
 function ContactForm({ tipo }: { tipo: EventoTipo }) {
-  const tipoLabel = { musical: "Musical", social: "Social", empresarial: "Empresarial" }[tipo];
+  const etiqueta = {
+    musical:     { campo: "Evento Musical",     frase: "un evento musical" },
+    social:      { campo: "Evento Social",      frase: "un evento social" },
+    empresarial: { campo: "Evento Empresarial", frase: "un evento empresarial" },
+    otro:        { campo: "Otros eventos",      frase: "mi evento" },
+  }[tipo];
   const [form, setForm] = useState({ nombre: "", fechaEstimada: "", presupuesto: "", mensaje: "" });
   const [sent, setSent] = useState(false);
 
@@ -577,7 +649,7 @@ function ContactForm({ tipo }: { tipo: EventoTipo }) {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const lines = [
-      `Hola, me interesa una cotización para un evento ${tipoLabel}.`,
+      `Hola, me interesa una cotización para ${etiqueta.frase}.`,
       ``,
       `*Nombre:* ${form.nombre}`,
       form.fechaEstimada ? `*Fecha estimada:* ${form.fechaEstimada}` : "",
@@ -608,7 +680,7 @@ function ContactForm({ tipo }: { tipo: EventoTipo }) {
         </div>
         <div>
           <label className="block text-white/35 text-xs mb-1.5 tracking-wide">Tipo de evento</label>
-          <input readOnly className={`${inp} opacity-40 cursor-default`} value={`Evento ${tipoLabel}`} />
+          <input readOnly className={`${inp} opacity-40 cursor-default`} value={etiqueta.campo} />
         </div>
         <div>
           <label className="block text-white/35 text-xs mb-1.5 tracking-wide">Fecha estimada</label>

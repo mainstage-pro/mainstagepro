@@ -8,7 +8,7 @@ import { prisma } from "./prisma";
 
 let tablesEnsured = false;
 
-export const TIPOS_EVENTO_PROYECTO = ["MUSICAL", "SOCIAL", "EMPRESARIAL"] as const;
+export const TIPOS_EVENTO_PROYECTO = ["MUSICAL", "SOCIAL", "EMPRESARIAL", "OTRO"] as const;
 export type TipoEventoProyecto = (typeof TIPOS_EVENTO_PROYECTO)[number];
 
 export type ProyectoImagen = { id: string; url: string; caption: string | null; orden: number };

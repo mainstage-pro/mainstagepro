@@ -59,10 +59,17 @@ const SEED = [
     slug: "otro",
     nombre: "Otros eventos",
     emoji: "✨",
-    subtitulo: "Producción técnica a la medida",
-    descripcion: "Cualquier evento que necesite audio, iluminación o video profesional.",
+    subtitulo: "Deportivos · Teatro · Comedia · Ruedas de prensa",
+    descripcion: "Producción técnica para todo lo demás: deporte, artes escénicas, comedia, cultura y medios.",
     orden: 3,
-    fotos: [],
+    fotos: [
+      { url: "/images/presentacion/empresariales/e-auditorio.jpg", caption: "Auditorio · Producción completa", destacada: true },
+      { url: "/images/presentacion/musicales/Musicales-037.jpg", caption: "Iluminación escénica", destacada: true },
+      { url: "/images/presentacion/empresariales/e-carpa-led.jpg", caption: "Exterior · Pantalla LED" },
+      { url: "/images/presentacion/musicales/DSC07491.jpg", caption: "Operación técnica en vivo" },
+      { url: "/images/presentacion/empresariales/e-proyeccion-mural.jpg", caption: "Proyección de gran formato" },
+      { url: "/images/presentacion/musicales/Musicales-016.jpg", caption: "Escenario montado y probado" },
+    ],
   },
 ];
 

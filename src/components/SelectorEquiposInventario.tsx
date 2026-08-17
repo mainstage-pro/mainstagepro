@@ -131,6 +131,7 @@ const ETIQUETA_TIPO_EVENTO: Record<string, string> = {
   MUSICAL: "🎵 Musical",
   SOCIAL: "🎉 Social",
   EMPRESARIAL: "💼 Empresarial",
+  OTRO: "✨ Otros eventos",
 };
 
 interface Props {

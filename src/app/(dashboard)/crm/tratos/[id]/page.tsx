@@ -243,6 +243,15 @@ const SUBTIPOS_EVENTO: Record<string, { value: string; label: string }[]> = {
     { value: "FERIA",       label: "Feria" },
     { value: "OTRO",        label: "Otro" },
   ],
+  OTRO: [
+    { value: "DEPORTIVO",   label: "Evento Deportivo" },
+    { value: "COMEDIA",     label: "Comedia / Stand-up" },
+    { value: "TEATRO",      label: "Teatro y Artes Escénicas" },
+    { value: "RUEDA_PRENSA",label: "Rueda de Prensa" },
+    { value: "CULTURAL",    label: "Evento Cultural" },
+    { value: "RELIGIOSO",   label: "Evento Religioso" },
+    { value: "PATRONAL",    label: "Feria / Festival Patronal" },
+  ],
 };
 
 // Contactos recomendados para la etapa de Prospección
@@ -301,6 +310,10 @@ const EXTRAS_EVENTO: Record<string, ServicioItem[]> = {
     { id: "STREAMING",    label: "Streaming en vivo",         grupo: "extra" },
   ],
   OTRO: [
+    { id: "STREAMING",          label: "Streaming en vivo",   grupo: "extra" },
+    { id: "GRABACION",          label: "Grabación del evento", grupo: "extra" },
+    { id: "ESCENOGRAFIA",       label: "Escenografía / Backdrop", grupo: "extra" },
+    { id: "AUDIO_CONF",         label: "Sistema para conferencia", grupo: "extra" },
     { id: "EFECTOS",            label: "Efectos especiales",  grupo: "extra" },
     { id: "PRODUCCION_GENERAL", label: "Producción completa", grupo: "extra" },
   ],

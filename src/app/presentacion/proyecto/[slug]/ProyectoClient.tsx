@@ -12,11 +12,13 @@ const TIPO_LABEL: Record<string, string> = {
   MUSICAL: "Evento musical",
   SOCIAL: "Evento social",
   EMPRESARIAL: "Evento empresarial",
+  OTRO: "Otros eventos",
 };
 const TIPO_HREF: Record<string, string> = {
   MUSICAL: "/presentacion/evento/musical",
   SOCIAL: "/presentacion/evento/social",
   EMPRESARIAL: "/presentacion/evento/empresarial",
+  OTRO: "/presentacion/evento/otro",
 };
 
 function useReveal(threshold = 0.12) {
@@ -56,6 +58,7 @@ const TIPOS = [
   { key: "MUSICAL", label: "Musical" },
   { key: "SOCIAL", label: "Social" },
   { key: "EMPRESARIAL", label: "Empresarial" },
+  { key: "OTRO", label: "Otros eventos" },
 ];
 
 // ─── Editor solo-admin ─────────────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Map, ClipboardList, Sliders, Guitar, PartyPopper, Building2, Camera, Pin, Search, type LucideIcon } from "lucide-react";
+import { Map, ClipboardList, Sliders, Guitar, PartyPopper, Building2, Sparkles, Camera, Pin, Search, type LucideIcon } from "lucide-react";
 import { useToast } from "@/components/Toast";
 
 // ─── Constantes compartidas ──────────────────────────────────────────────────
@@ -154,11 +154,12 @@ export function MaterialCompartir({
     { id: "musical",     icon: Guitar,        label: "Presentación Eventos Musicales",      url: `${origin}/presentacion/evento/musical` },
     { id: "social",      icon: PartyPopper,   label: "Presentación Eventos Sociales",       url: `${origin}/presentacion/evento/social` },
     { id: "empresarial", icon: Building2,     label: "Presentación Eventos Empresariales",  url: `${origin}/presentacion/evento/empresarial` },
+    { id: "otro",        icon: Sparkles,      label: "Presentación Otros Eventos",          url: `${origin}/presentacion/evento/otro` },
     { id: "galeria",     icon: Camera,        label: "Galería de Eventos",                  url: `${origin}/presentacion/galeria` },
   ];
 
   // Prioridad de material: primero el perfil de prospecto (si hay), si no el tipoEvento.
-  const eventoMapping: Record<string, string> = { MUSICAL: "musical", SOCIAL: "social", EMPRESARIAL: "empresarial" };
+  const eventoMapping: Record<string, string> = { MUSICAL: "musical", SOCIAL: "social", EMPRESARIAL: "empresarial", OTRO: "otro" };
   const prioridad = (materialesPrincipales && materialesPrincipales.length > 0)
     ? materialesPrincipales
     : (tipoEvento && eventoMapping[tipoEvento] ? [eventoMapping[tipoEvento]] : []);
