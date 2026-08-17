@@ -81,6 +81,17 @@ export default function RolesPage() {
   useEffect(() => { load(); }, []);
 
   async function toggleCategoriaLink(catId: string, disc: string, linked: boolean) {
+    const cat = categorias.find(c => c.id === catId);
+    // Una categoría solo puede pertenecer a una disciplina: marcarla aquí se la quita a la otra.
+    if (!linked && cat?.disciplina) {
+      const otra = DISCIPLINA_LABELS[cat.disciplina] ?? cat.disciplina;
+      const ok = await confirm({
+        message: `"${cat.nombre}" está ligada a ${otra}. Si la marcas aquí, ${otra} deja de sugerir técnicos para ese equipo. ¿Moverla a ${DISCIPLINA_LABELS[disc] ?? disc}?`,
+        danger: true,
+        confirmText: "Mover",
+      });
+      if (!ok) return;
+    }
     const nueva = linked ? null : disc;
     setCategorias(prev => prev.map(c => c.id === catId ? { ...c, disciplina: nueva } : c));
     try {
