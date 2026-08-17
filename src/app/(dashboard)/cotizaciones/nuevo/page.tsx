@@ -638,7 +638,7 @@ function CotizadorForm() {
         })));
         setLineasOp(lineas.filter((l: {tipo:string;notas?:string|null}) => l.tipo === "OPERACION_TECNICA" && l.notas !== "from:jornada" && l.notas !== "zona:bonus").map((l: {id:string;rolTecnicoId:string|null;descripcion:string;nivel:string|null;jornada:string|null;cantidad:number;dias:number;precioUnitario:number;subtotal:number}) => ({
           id: uid(), rolTecnicoId: l.rolTecnicoId ?? "",
-          descripcion: l.descripcion, nivel: l.nivel ?? "AA", jornada: l.jornada ?? "MEDIA",
+          descripcion: l.descripcion, nivel: l.nivel ?? "AA", jornada: l.jornada ?? "CORTA",
           cantidad: l.cantidad, dias: l.dias, precioUnitario: l.precioUnitario, subtotal: l.subtotal,
         })));
         setLineasDJ(lineas.filter((l: {tipo:string}) => l.tipo === "DJ").map((l: {nivel:string|null;cantidad:number;precioUnitario:number;subtotal:number}) => ({

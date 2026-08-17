@@ -181,7 +181,7 @@ function PaqueteEditor({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [swapIdx, setSwapIdx] = useState<number | null>(null);
   const [nuevoConcepto, setNuevoConcepto] = useState<{ tipo: string; rolTecnicoId: string; nivel: string; jornada: string; concepto: string; descripcion: string; precio: string; cantidad: string; dias: string }>({
-    tipo: "OPERACION_TECNICA", rolTecnicoId: "", nivel: "AAA", jornada: "MEDIA",
+    tipo: "OPERACION_TECNICA", rolTecnicoId: "", nivel: "AAA", jornada: "CORTA",
     concepto: CONCEPTOS_COMIDA[0].label, descripcion: "", precio: "", cantidad: "1", dias: "1",
   });
 

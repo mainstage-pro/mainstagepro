@@ -1560,7 +1560,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [selTecnico, setSelTecnico] = useState("");
   const [selRol, setSelRol] = useState("");
   const [selNivel, setSelNivel] = useState("AAA");
-  const [selJornada, setSelJornada] = useState("MEDIA");
+  const [selJornada, setSelJornada] = useState("CORTA");
   const [selTarifa, setSelTarifa] = useState("");
   const [selResp, setSelResp] = useState("");
   const [selParticipacion, setSelParticipacion] = useState("OPERACION");
@@ -1701,7 +1701,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [crearParaSlotId, setCrearParaSlotId] = useState<string | null>(null);
   // Estado para editar slot de personal completo
   const [editandoPersonalId, setEditandoPersonalId] = useState<string | null>(null);
-  const [editPersonalForm, setEditPersonalForm] = useState({ tecnicoId: "", rolTecnicoId: "", nivel: "A", jornada: "MEDIA", tarifa: "", participacion: "OPERACION", responsabilidad: "", rolEnEvento: "", fechaJornada: "" });
+  const [editPersonalForm, setEditPersonalForm] = useState({ tecnicoId: "", rolTecnicoId: "", nivel: "A", jornada: "CORTA", tarifa: "", participacion: "OPERACION", responsabilidad: "", rolEnEvento: "", fechaJornada: "" });
   const [savingPersonal, setSavingPersonal] = useState(false);
 
   // Estados para otros gastos
@@ -3072,7 +3072,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         participacion,
         fechaJornada,
         nivel: linea.nivel || tecnico.nivel || "A",
-        jornada: linea.jornada || "MEDIA",
+        jornada: linea.jornada || "CORTA",
         tarifaAcordada: linea.precioUnitario > 0 ? linea.precioUnitario : null,
         responsabilidad: linea.descripcion || null,
       }),
@@ -3109,7 +3109,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           participacion,
           fechaJornada,
           nivel: linea.nivel || "A",
-          jornada: linea.jornada || "MEDIA",
+          jornada: linea.jornada || "CORTA",
           tarifaAcordada: linea.precioUnitario > 0 ? linea.precioUnitario : null,
           responsabilidad: linea.descripcion || null,
         }),
@@ -3127,7 +3127,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       tecnicoId: p.tecnico?.id ?? "",
       rolTecnicoId: "", // se rellena abajo buscando por nombre en roles
       nivel: p.nivel ?? "A",
-      jornada: p.jornada ?? "MEDIA",
+      jornada: p.jornada ?? "CORTA",
       tarifa: p.tarifaAcordada != null ? String(p.tarifaAcordada) : "",
       participacion: p.participacion ?? "OPERACION",
       responsabilidad: p.responsabilidad ?? "",
