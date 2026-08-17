@@ -1279,7 +1279,9 @@ export default function InventarioClient({ data, soloPropio = false }: Props) {
         <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: `linear-gradient(rgba(179,152,91,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(179,152,91,0.03) 1px, transparent 1px)`, backgroundSize: "80px 80px", animation: "fadeIn 2s ease forwards 0.5s", opacity: 0 }} />
         <div className="relative z-10 px-6 max-w-5xl mx-auto">
           <div className="mb-10" style={{ animation: "fadeUp 0.7s ease forwards 0.1s", opacity: 0 }}>
-            <span className="text-xs tracking-[0.3em] uppercase px-4 py-2 rounded-full" style={{ background: `${GOLD}15`, color: GOLD, border: `1px solid ${GOLD}25` }}>
+            {/* inline-block: siendo inline, al partirse en dos líneas el fondo
+                redondeado se rompe y queda desalineado en móvil. */}
+            <span className="inline-block max-w-full text-balance text-[10px] sm:text-xs tracking-[0.18em] sm:tracking-[0.3em] uppercase leading-relaxed px-4 py-2 rounded-full" style={{ background: `${GOLD}15`, color: GOLD, border: `1px solid ${GOLD}25` }}>
               Mainstage Pro · Catálogo Técnico{soloPropio ? " · Equipo propio" : ""}
             </span>
           </div>

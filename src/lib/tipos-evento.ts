@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { mapTiposToCategorias, heroFromCategorias, type GaleriaFoto } from "@/lib/galeria-shared";
+import { mapTiposMaterial, type MaterialTipoEvento } from "@/lib/tipos-evento-material";
 
 // Fuente maestra del material por tipo de evento (galerías + presentaciones).
 // Las fotos marcadas como destacadas (estrella) SIEMPRE van primero, en todos
@@ -34,6 +35,12 @@ export async function getTiposEventoPublico() {
       fotos: { orderBy: ORDER_FOTOS_TIPO_EVENTO, select: SELECT_FOTO },
     },
   });
+}
+
+// Mismo material que consume el hook cliente, resuelto en el servidor para
+// sembrar la primera pintura de las presentaciones (héroes y tarjetas).
+export async function getTiposEventoMaterial(): Promise<MaterialTipoEvento[]> {
+  return mapTiposMaterial(await getTiposEventoPublico());
 }
 
 // Datos completos de la galería pública, listos para sembrar la primera pintura

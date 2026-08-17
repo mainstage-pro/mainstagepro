@@ -177,7 +177,7 @@ export default function VentaClient({ categorias, totalPiezas }: { categorias: C
         <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse 80% 60% at 50% 40%, rgba(179,152,91,0.07) 0%, transparent 70%), linear-gradient(to bottom, #050505 0%, #080808 50%, #050505 100%)" }} />
         <div className="relative z-10 px-6 max-w-4xl mx-auto">
           <div className="mb-9" style={{ animation: "fadeUp 0.7s ease forwards 0.1s", opacity: 0 }}>
-            <span className="text-xs tracking-[0.3em] uppercase px-4 py-2 rounded-full" style={{ background: `${GOLD}15`, color: GOLD, border: `1px solid ${GOLD}25` }}>
+            <span className="inline-block max-w-full text-balance text-[10px] sm:text-xs tracking-[0.18em] sm:tracking-[0.3em] uppercase leading-relaxed px-4 py-2 rounded-full" style={{ background: `${GOLD}15`, color: GOLD, border: `1px solid ${GOLD}25` }}>
               Mainstage Pro · Venta de equipo
             </span>
           </div>

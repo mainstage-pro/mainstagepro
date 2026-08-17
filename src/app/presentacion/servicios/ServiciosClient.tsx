@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import PresentacionNav from "@/components/presentacion/PresentacionNav";
 import ServiciosCards from "@/components/presentacion/ServiciosCards";
-import { useTiposEventoMaterial } from "@/lib/tipos-evento-cliente";
+import { useTiposEventoMaterial, type MaterialTipoEvento } from "@/lib/tipos-evento-cliente";
 
 const GOLD = "#B3985B";
 const WA   = "https://wa.me/524461432565?text=Hola%2C%20me%20gustar%C3%ADa%20obtener%20m%C3%A1s%20informaci%C3%B3n%20sobre%20los%20servicios%20de%20Mainstage%20Pro.";
@@ -78,9 +78,9 @@ function StatCount({ target, suffix = "", label }: { target: number; suffix?: st
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
-export default function ServiciosClient() {
+export default function ServiciosClient({ initialTipos = [] }: { initialTipos?: MaterialTipoEvento[] }) {
   const [heroIdx, setHeroIdx] = useState(0);
-  const { coverPorSlug } = useTiposEventoMaterial();
+  const { coverPorSlug } = useTiposEventoMaterial(initialTipos);
   const slides = HERO_SLIDES.map((s) => ({ ...s, src: coverPorSlug(s.slug, s.src) }));
 
   useEffect(() => {

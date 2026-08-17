@@ -5,7 +5,7 @@ import ServiciosCards from "@/components/presentacion/ServiciosCards";
 import { R, StatCount, GOLD } from "@/components/presentacion/anim";
 import { WA_URL, useDescubrimiento } from "@/components/presentacion/descubrimiento";
 import { usePresentacionEdit, EditableImage } from "@/components/presentacion/editable";
-import { useTiposEventoMaterial } from "@/lib/tipos-evento-cliente";
+import { useTiposEventoMaterial, type MaterialTipoEvento } from "@/lib/tipos-evento-cliente";
 
 // slug enlaza con el tipo de evento (fuente maestra); la ruta local es fallback.
 const HERO_SLIDES = [
@@ -20,11 +20,11 @@ const EVENTOS = [
   { slug: "empresarial", title: "Eventos empresariales", sub: "Conferencias · Lanzamientos · Corporativos", img: "/images/presentacion/empresariales/e-sala-pantallas.jpg", href: "/presentacion/evento/empresarial", para: "Empresas · Agencias" },
 ];
 
-export default function PresentacionHomeClient({ initialOverrides = {} }: { initialOverrides?: Record<string, string> }) {
+export default function PresentacionHomeClient({ initialOverrides = {}, initialTipos = [] }: { initialOverrides?: Record<string, string>; initialTipos?: MaterialTipoEvento[] }) {
   const [heroIdx, setHeroIdx] = useState(0);
   const { iniciar, loading } = useDescubrimiento();
   const edit = usePresentacionEdit(initialOverrides);
-  const { coverPorSlug } = useTiposEventoMaterial();
+  const { coverPorSlug } = useTiposEventoMaterial(initialTipos);
 
   useEffect(() => {
     const t = setInterval(() => setHeroIdx((i) => (i + 1) % HERO_SLIDES.length), 5000);

@@ -10,7 +10,7 @@ import {
 import PresentacionNav from "@/components/presentacion/PresentacionNav";
 import ServiciosCards from "@/components/presentacion/ServiciosCards";
 import { usePresentacionEdit, EditableImage } from "@/components/presentacion/editable";
-import { useTiposEventoMaterial } from "@/lib/tipos-evento-cliente";
+import { useTiposEventoMaterial, type MaterialTipoEvento } from "@/lib/tipos-evento-cliente";
 
 const GOLD = "#B3985B";
 
@@ -637,11 +637,11 @@ function ContactForm({ tipo }: { tipo: EventoTipo }) {
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
-export default function EventoClient({ tipo, initialOverrides = {} }: { tipo: EventoTipo; initialOverrides?: Record<string, string> }) {
+export default function EventoClient({ tipo, initialOverrides = {}, initialTipos = [] }: { tipo: EventoTipo; initialOverrides?: Record<string, string>; initialTipos?: MaterialTipoEvento[] }) {
   const c = CONFIG[tipo];
   const isAdmin  = useAdmin();
   const edit = usePresentacionEdit(initialOverrides);
-  const { coverPorSlug } = useTiposEventoMaterial();
+  const { coverPorSlug } = useTiposEventoMaterial(initialTipos);
   const { fotos, tipoId, setTipoId, recargar } = useGaleria(tipo, c.gallery);
 
   const [discOpen, setDiscOpen]       = useState(false);

@@ -1,6 +1,7 @@
 import PresentacionHomeClient from "./PresentacionHomeClient";
 import { getPresentationMetadata } from "@/lib/metadata";
 import { getOverrides } from "@/lib/presentacion-overrides";
+import { getTiposEventoMaterial } from "@/lib/tipos-evento";
 
 export const metadata = getPresentationMetadata({
   title: "Mainstage Pro · Producción técnica de eventos",
@@ -13,6 +14,9 @@ export const metadata = getPresentationMetadata({
 export const dynamic = "force-dynamic";
 
 export default async function PresentacionHomePage() {
-  const initialOverrides = await getOverrides().catch(() => ({}));
-  return <PresentacionHomeClient initialOverrides={initialOverrides} />;
+  const [initialOverrides, initialTipos] = await Promise.all([
+    getOverrides().catch(() => ({})),
+    getTiposEventoMaterial().catch(() => []),
+  ]);
+  return <PresentacionHomeClient initialOverrides={initialOverrides} initialTipos={initialTipos} />;
 }

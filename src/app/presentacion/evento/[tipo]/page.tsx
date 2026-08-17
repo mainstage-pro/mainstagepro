@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import EventoClient from "./EventoClient";
 import { getPresentationMetadata } from "@/lib/metadata";
 import { getOverrides } from "@/lib/presentacion-overrides";
+import { getTiposEventoMaterial } from "@/lib/tipos-evento";
 import { Metadata } from "next";
 
 // Dinámica para sembrar los overrides (imágenes/textos elegidos) en la primera
@@ -34,6 +35,9 @@ export async function generateMetadata({ params }: { params: Promise<{ tipo: str
 export default async function EventoPage({ params }: { params: Promise<{ tipo: string }> }) {
   const { tipo } = await params;
   if (!["musical", "social", "empresarial"].includes(tipo)) notFound();
-  const initialOverrides = await getOverrides().catch(() => ({}));
-  return <EventoClient tipo={tipo as "musical" | "social" | "empresarial"} initialOverrides={initialOverrides} />;
+  const [initialOverrides, initialTipos] = await Promise.all([
+    getOverrides().catch(() => ({})),
+    getTiposEventoMaterial().catch(() => []),
+  ]);
+  return <EventoClient tipo={tipo as "musical" | "social" | "empresarial"} initialOverrides={initialOverrides} initialTipos={initialTipos} />;
 }
