@@ -151,6 +151,7 @@ export const NAV: NavSection[] = [
         icon: Landmark,
         children: [
           { key: "inventario-activos-admin", label: "Inventario de activos", href: "/activos/valuacion", adminOnly: true },
+          { key: "equipos-venta", label: "Equipos en venta", href: "/activos/venta", adminOnly: true },
           { key: "inv-analisis", label: "Info de subrentas", href: "/activos/analisis" },
           { key: "socios-constitutivos", label: "Estructura societaria", href: "/activos/socios" },
         ],

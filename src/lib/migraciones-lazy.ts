@@ -800,3 +800,32 @@ export async function ensureGlosarioTabla() {
   _glosarioReady = true;
 }
 
+
+/**
+ * Venta de equipo (módulo Activos → "Equipos en venta"). Columnas aditivas en `equipos`:
+ * enVenta, precioVenta, ventaCantidad, ventaCondicion, ventaDescripcion, ventaDesde, fechaVenta.
+ * Están declaradas en schema.prisma → Prisma las pide en cualquier findMany de equipos sin
+ * select, por eso el DDL se aplica en prod ANTES del deploy (scripts/ddl-equipo-venta.ts);
+ * esto es red de seguridad idempotente para dev/local.
+ */
+let _equipoVentaReady = false;
+
+export async function ensureEquipoVentaColumns() {
+  if (_equipoVentaReady) return;
+  const columnas: [string, string][] = [
+    ["enVenta", "BOOLEAN NOT NULL DEFAULT false"],
+    ["precioVenta", "DOUBLE PRECISION"],
+    ["ventaCantidad", "INTEGER"],
+    ["ventaCondicion", "TEXT"],
+    ["ventaDescripcion", "TEXT"],
+    ["ventaDesde", "TIMESTAMP(3)"],
+    ["fechaVenta", "TIMESTAMP(3)"],
+  ];
+  for (const [col, tipo] of columnas) {
+    if (await columnExists("equipos", col)) continue;
+    try {
+      await prisma.$executeRawUnsafe(`ALTER TABLE equipos ADD COLUMN IF NOT EXISTS "${col}" ${tipo}`);
+    } catch { /* ya existe */ }
+  }
+  _equipoVentaReady = true;
+}

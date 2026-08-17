@@ -883,6 +883,16 @@ model Equipo {
   clasifOrigen           String? // manual | heredado (trazabilidad del sync producto↔equipo)
   estadoMigracion        String? // null | migrado_a_accesorio (equipo promovido a Accesorio)
   propietario            String          @default("MAINSTAGE") // MAINSTAGE | HERVAM
+  // Venta de equipo (módulo Activos → "Equipos en venta"). Mientras enVenta = true el
+  // equipo sigue disponible en inventario y cotizable como siempre; al registrar la venta
+  // se descuentan las unidades vendidas de cantidadTotal (o se da de baja si se vende todo).
+  enVenta                Boolean         @default(false)
+  precioVenta            Float? // Precio de venta por unidad
+  ventaCantidad          Int? // Unidades ofrecidas (null = todas)
+  ventaCondicion         String? // NUEVO | COMO_NUEVO | USADO
+  ventaDescripcion       String? // Copy de venta visible al comprador
+  ventaDesde             DateTime? // Cuándo se puso a la venta
+  fechaVenta             DateTime? // Cuándo se registró la venta (baja del inventario)
   activo                 Boolean         @default(true)
   fechaBaja              DateTime? // Fecha en que se dió de baja (estado = DADO_DE_BAJA)
   createdAt              DateTime        @default(now())
