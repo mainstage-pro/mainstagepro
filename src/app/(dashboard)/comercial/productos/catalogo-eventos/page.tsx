@@ -15,7 +15,9 @@ type Adicional = { id: string; nombre: string; descripcion: string | null; tipos
 type Pregunta = { id: string; texto: string; tipoRespuesta: string; opciones: string | null; nichos: string | null; alcance: string | null; tipoEventoSlug: string | null; bloque: string | null; obligatoria: boolean; preguntaPadreId: string | null; condicionValor: string | null; orden: number; activa: boolean; reglas: Regla[] };
 type Catalogo = { tipos: TipoEvento[]; nichos: Nicho[]; adicionales: Adicional[]; preguntas: Pregunta[] };
 // Item de inventario para el selector de composición (productos + equipos).
-type ItemInv = { id: string; tipo: "producto" | "equipo"; nombre: string; precio: number; imagenUrl: string | null; categoria: string | null };
+// `externo`/`proveedor` solo aplican a equipo: buena parte de lo que se ofrece como
+// adicional se subcontrata, y al armarlo hay que poder distinguirlo del inventario propio.
+type ItemInv = { id: string; tipo: "producto" | "equipo"; nombre: string; precio: number; imagenUrl: string | null; categoria: string | null; externo?: boolean; proveedor?: string | null };
 type LineaComp = { tipo: "producto" | "equipo"; referenciaId: string; cantidad: number; obligatorio: boolean };
 
 type Seccion = "tipos" | "nichos" | "adicionales" | "preguntas";
@@ -87,8 +89,8 @@ export default function CatalogoEventosPage() {
           inv.push({ id: p.id, tipo: "producto", nombre: p.nombre, precio: p.precioFinal ?? 0, imagenUrl: p.imagenUrl ?? null, categoria: p.categoria ?? null });
       }
       if (re.ok) {
-        for (const eq of (await re.json()).equipos as { id: string; descripcion?: string; marca?: string; modelo?: string; precioRenta?: number; imagenUrl?: string | null; categoria?: { nombre: string } | null }[])
-          inv.push({ id: eq.id, tipo: "equipo", nombre: [eq.descripcion, eq.marca, eq.modelo].filter(Boolean).join(" ").trim() || "Equipo", precio: eq.precioRenta ?? 0, imagenUrl: eq.imagenUrl ?? null, categoria: eq.categoria?.nombre ?? null });
+        for (const eq of (await re.json()).equipos as { id: string; descripcion?: string; marca?: string; modelo?: string; tipo?: string; precioRenta?: number; imagenUrl?: string | null; categoria?: { nombre: string } | null; proveedorDefault?: { nombre: string } | null }[])
+          inv.push({ id: eq.id, tipo: "equipo", nombre: [eq.descripcion, eq.marca, eq.modelo].filter(Boolean).join(" ").trim() || "Equipo", precio: eq.precioRenta ?? 0, imagenUrl: eq.imagenUrl ?? null, categoria: eq.categoria?.nombre ?? null, externo: eq.tipo === "EXTERNO", proveedor: eq.proveedorDefault?.nombre ?? null });
       }
       setInventario(inv);
     } finally {
@@ -597,6 +599,30 @@ function PreguntasSeccion({ preguntas, tipos, nichos, onNuevo, onEdit, onDelete,
   );
 }
 
+// La categoría y el proveedor entran a la búsqueda porque mucho equipo externo se
+// encuentra antes por ahí ("pistas de baile", "Pixel Dance") que por su descripción.
+function coincide(i: ItemInv, q: string) {
+  return (
+    i.nombre.toLowerCase().includes(q) ||
+    (i.categoria ?? "").toLowerCase().includes(q) ||
+    (i.proveedor ?? "").toLowerCase().includes(q)
+  );
+}
+
+// Distingue producto, equipo propio y equipo de proveedor externo. Sin esto, al armar
+// un adicional no se ve qué se subcontrata, que es justo lo que cambia el costo.
+function EtiquetaPieza({ tipo, externo }: { tipo: "producto" | "equipo"; externo?: boolean }) {
+  const cls =
+    tipo === "producto" ? "bg-violet-500/15 text-violet-400"
+      : externo ? "bg-amber-500/15 text-amber-400"
+        : "bg-sky-500/15 text-sky-400";
+  return (
+    <span className={`shrink-0 text-[9px] uppercase font-bold px-1.5 py-0.5 rounded ${cls}`}>
+      {tipo === "producto" ? "Prod" : externo ? "Externo" : "Propio"}
+    </span>
+  );
+}
+
 // Botón para sumar una o varias piezas (productos/equipos del inventario) a la
 // composición de un adicional, con buscador emergente y selección múltiple.
 // `existentes` evita repetir lo que ya está en la composición.
@@ -607,7 +633,7 @@ function QuickAddPieza({ inventario, existentes, onAgregar }: { inventario: Item
   const resultados = useMemo(() => {
     const q = busca.trim().toLowerCase();
     if (!q) return [] as ItemInv[];
-    return inventario.filter((i) => !existentes.has(`${i.tipo}:${i.id}`) && i.nombre.toLowerCase().includes(q)).slice(0, 12);
+    return inventario.filter((i) => !existentes.has(`${i.tipo}:${i.id}`) && coincide(i, q)).slice(0, 12);
   }, [busca, inventario, existentes]);
   function toggle(i: ItemInv) {
     const k = `${i.tipo}:${i.id}`;
@@ -636,8 +662,9 @@ function QuickAddPieza({ inventario, existentes, onAgregar }: { inventario: Item
                   return (
                     <button key={`${i.tipo}:${i.id}`} type="button" onClick={() => toggle(i)} className={`w-full flex items-center gap-2 px-2 py-1.5 text-left rounded-md ${on ? "bg-[#B3985B]/15" : "hover:bg-[#161616]"}`}>
                       <span className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center text-[10px] ${on ? "bg-[#B3985B] border-[#B3985B] text-black" : "border-[#333] text-transparent"}`}>✓</span>
-                      <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded ${i.tipo === "equipo" ? "bg-sky-500/15 text-sky-400" : "bg-violet-500/15 text-violet-400"}`}>{i.tipo === "equipo" ? "Equipo" : "Prod"}</span>
+                      <EtiquetaPieza tipo={i.tipo} externo={i.externo} />
                       <span className="flex-1 text-sm text-gray-200 truncate">{i.nombre}</span>
+                      {i.proveedor && <span className="text-[10px] text-gray-600 truncate max-w-[70px]">{i.proveedor}</span>}
                     </button>
                   );
                 })}
@@ -768,7 +795,7 @@ function AdicionalEditor({ value, tipos, nichos, inventario, onClose, onSaved, t
     const q = busca.trim().toLowerCase();
     if (!q) return [] as ItemInv[];
     const enComp = new Set(f.composicion.map(claveInv));
-    return inventario.filter((i) => !enComp.has(`${i.tipo}:${i.id}`) && i.nombre.toLowerCase().includes(q)).slice(0, 12);
+    return inventario.filter((i) => !enComp.has(`${i.tipo}:${i.id}`) && coincide(i, q)).slice(0, 12);
   }, [busca, inventario, f.composicion]);
   const total = useMemo(() => f.composicion.reduce((s, l) => s + l.cantidad * (invMap.get(claveInv(l))?.precio ?? 0), 0), [f.composicion, invMap]);
 
@@ -831,8 +858,9 @@ function AdicionalEditor({ value, tipos, nichos, inventario, onClose, onSaved, t
               const it = invMap.get(claveInv(l));
               return (
                 <div key={idx} className="flex items-center gap-2 rounded-lg bg-[#111] border border-[#1f1f1f] px-2.5 py-1.5">
-                  <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded ${l.tipo === "equipo" ? "bg-sky-500/15 text-sky-400" : "bg-violet-500/15 text-violet-400"}`}>{l.tipo === "equipo" ? "Equipo" : "Prod"}</span>
+                  <EtiquetaPieza tipo={l.tipo} externo={it?.externo} />
                   <span className="flex-1 text-sm text-gray-200 truncate">{it?.nombre || <span className="text-red-400">No encontrado</span>}</span>
+                  {it?.proveedor && <span className="shrink-0 text-[10px] text-gray-600 truncate max-w-[80px]">{it.proveedor}</span>}
                   <input type="number" min={1} value={l.cantidad} onChange={(e) => actualizar(idx, { cantidad: Math.max(1, Number(e.target.value) || 1) })} className="w-14 bg-[#0a0a0a] border border-[#222] rounded px-2 py-1 text-sm text-white text-center" />
                   <button type="button" onClick={() => actualizar(idx, { obligatorio: !l.obligatorio })} className={`text-[10px] px-2 py-1 rounded font-medium ${l.obligatorio ? "bg-[#B3985B]/20 text-[#B3985B]" : "bg-[#1a1a1a] text-gray-500"}`}>{l.obligatorio ? "Obligatorio" : "Opcional"}</button>
                   <button type="button" onClick={() => quitar(idx)} className="text-gray-600 hover:text-red-400"><Trash2 size={14} /></button>
@@ -850,7 +878,7 @@ function AdicionalEditor({ value, tipos, nichos, inventario, onClose, onSaved, t
                   return (
                     <button key={`${i.tipo}:${i.id}`} type="button" onClick={() => toggleBusq(i)} className={`w-full flex items-center gap-2 px-3 py-2 text-left ${on ? "bg-[#B3985B]/15" : "hover:bg-[#161616]"}`}>
                       <span className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center text-[10px] ${on ? "bg-[#B3985B] border-[#B3985B] text-black" : "border-[#333] text-transparent"}`}>✓</span>
-                      <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded ${i.tipo === "equipo" ? "bg-sky-500/15 text-sky-400" : "bg-violet-500/15 text-violet-400"}`}>{i.tipo === "equipo" ? "Equipo" : "Prod"}</span>
+                      <EtiquetaPieza tipo={i.tipo} externo={i.externo} />
                       <span className="flex-1 text-sm text-gray-200 truncate">{i.nombre}</span>
                       {i.categoria && <span className="text-[10px] text-gray-600 truncate max-w-[90px]">{i.categoria}</span>}
                     </button>

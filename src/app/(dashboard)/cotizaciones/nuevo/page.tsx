@@ -1104,32 +1104,54 @@ function CotizadorForm() {
   // Adicional del descubrimiento → baja su composición a la cotización. Las líneas
   // obligatorias van siempre; las opcionales solo si el vendedor las marcó. Equipos →
   // líneas de equipo; productos → líneas de paquete. Nunca obliga: es un botón manual.
+  // El equipo EXTERNO va a su propia sección: de lo contrario se guardaría como
+  // EQUIPO_PROPIO y la cotización perdería el costo del proveedor y a quién pedírselo.
   function agregarAdicionalDescubrimiento(ad: { id: string; nombre: string; composicion: { tipo: string; referenciaId: string; cantidad: number; obligatorio: boolean }[] }) {
     if (adicionalesAgregados.includes(ad.id)) return;
     const dias = parseInt(evento.diasEquipo) || 1;
     const opc = adicionalOpcSel[ad.id] || [];
     const nuevasEq: LineaEquipo[] = [];
+    const nuevasExt: LineaExterno[] = [];
     ad.composicion.forEach((c, idx) => {
       if (!c.obligatorio && !opc.includes(idx)) return;
       const veces = c.cantidad > 0 ? c.cantidad : 1;
       if (c.tipo === "producto") {
         const prod = productosCatalogo.find(p => p.id === c.referenciaId);
         if (prod) agregarLineaPaquete(prod, veces, dias);
-      } else {
-        const eq = equipos.find(e => e.id === c.referenciaId);
-        if (eq && !lineasEquipo.some(l => l.equipoId === eq.id) && !nuevasEq.some(n => n.equipoId === eq.id)) {
-          const precio = preciosCliente[eq.id] ?? eq.precioRenta;
-          nuevasEq.push({
-            id: uid(), equipoId: eq.id, descripcion: eq.descripcion,
-            marca: eq.marca ?? "", modelo: eq.modelo ?? "",
-            cantidad: veces, dias, precioUnitario: precio,
-            subtotal: precio * veces * dias,
-            categoria: eq.categoria?.nombre ?? "Equipos", notas: "",
-          });
-        }
+        return;
+      }
+      const eq = equipos.find(e => e.id === c.referenciaId);
+      if (!eq) return;
+      if (eq.tipo === "EXTERNO") {
+        if (lineasExterno.some(l => l.equipoId === eq.id) || nuevasExt.some(n => n.equipoId === eq.id)) return;
+        const mejorProveedor = (eq.proveedoresPrecios ?? [])[0] ?? null;
+        const costo = mejorProveedor ? mejorProveedor.precio : (eq.costoProveedor ?? 0);
+        nuevasExt.push({
+          id: uid(), equipoId: eq.id, descripcion: eq.descripcion,
+          marca: [eq.marca, eq.modelo].filter(Boolean).join(" "),
+          cantidad: veces, dias,
+          precioUnitario: eq.precioRenta,
+          costoProveedor: costo,
+          subtotal: eq.precioRenta * veces * dias,
+          costoTotal: costo * veces * dias,
+          proveedorId: mejorProveedor ? mejorProveedor.proveedor.id : (eq.proveedorDefaultId ?? null),
+          categoria: eq.categoria?.nombre ?? "",
+        });
+        return;
+      }
+      if (!lineasEquipo.some(l => l.equipoId === eq.id) && !nuevasEq.some(n => n.equipoId === eq.id)) {
+        const precio = preciosCliente[eq.id] ?? eq.precioRenta;
+        nuevasEq.push({
+          id: uid(), equipoId: eq.id, descripcion: eq.descripcion,
+          marca: eq.marca ?? "", modelo: eq.modelo ?? "",
+          cantidad: veces, dias, precioUnitario: precio,
+          subtotal: precio * veces * dias,
+          categoria: eq.categoria?.nombre ?? "Equipos", notas: "",
+        });
       }
     });
     if (nuevasEq.length) setLineasEquipo(prev => [...prev, ...nuevasEq.filter(n => !prev.some(l => l.equipoId === n.equipoId))]);
+    if (nuevasExt.length) setLineasExterno(prev => [...prev, ...nuevasExt.filter(n => !prev.some(l => l.equipoId === n.equipoId))]);
     setAdicionalesAgregados(prev => prev.includes(ad.id) ? prev : [...prev, ad.id]);
   }
 
