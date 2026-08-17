@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { upload } from "@vercel/blob/client";
 import PresentacionNav from "@/components/presentacion/PresentacionNav";
 import { usePresentacionEdit, EditableText } from "@/components/presentacion/editable";
 import { calcularTotalPaquete, money } from "@/lib/paquete-precio";
@@ -18,23 +19,9 @@ type Item = {
   producto: { nombre: string; precioFinal: number; imagenUrl: string | null; categoria: string | null; equipos: ProductoEquipo[] } | null;
 };
 type Concepto = { tipo: string; descripcion: string; cantidad: number; dias: number; precioUnitario: number };
-type Adicional = { id: string; nombre: string; descripcion: string | null; imagenUrl: string | null; composicion: string | null };
+type AdicionalElemento = { nombre: string; cantidad: number };
+type Adicional = { id: string; nombre: string; descripcion: string | null; imagenUrl: string | null; disciplina: string | null; elementos: AdicionalElemento[] };
 type ItemVista = { titulo: string; descripcion: string; cantidad: number; imagenUrl: string | null; galeria: Foto[] };
-
-// Cuenta cuántos equipos/productos componen un adicional (para el badge).
-function contarComposicion(composicion: string | null): { equipos: number; productos: number } {
-  if (!composicion) return { equipos: 0, productos: 0 };
-  try {
-    const arr = JSON.parse(composicion);
-    if (!Array.isArray(arr)) return { equipos: 0, productos: 0 };
-    let equipos = 0, productos = 0;
-    for (const c of arr) {
-      if (c?.tipo === "producto") productos += 1;
-      else if (c?.tipo === "equipo") equipos += 1;
-    }
-    return { equipos, productos };
-  } catch { return { equipos: 0, productos: 0 }; }
-}
 
 // Frase emocional por defecto según el tipo de evento (editable en vivo).
 // Se mantienen breves para que caigan en ~2 líneas centradas.
@@ -132,6 +119,130 @@ function R({ children, delay = 0, className = "" }: { children: React.ReactNode;
     <div ref={ref} className={className}
       style={{ opacity: vis ? 1 : 0, transform: vis ? "translateY(0)" : "translateY(24px)", transition: `opacity 0.7s ${delay}ms ease, transform 0.7s ${delay}ms ease` }}>
       {children}
+    </div>
+  );
+}
+
+// Trazo por familia técnica: cuando el adicional no tiene foto, un ícono de su
+// disciplina comunica más que la inicial del nombre.
+const ICONO_DISCIPLINA: Record<string, string> = {
+  AUDIO: "M4 10v4m4-7v10m4-13v16m4-13v10m4-7v4",
+  ILUMINACION: "M9 3h6l2 6H7l2-6Zm-2 6-3 12h16L17 9M12 13v4",
+  VIDEO: "M3 5.5h18v11H3v-11Zm5.5 15h7M12 16.5v4",
+  DJ: "M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16Zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z",
+  ESTRUCTURA: "M4 20V5m16 15V5M4 5h16M4 20h16M4 5l16 15M20 5 4 20",
+  GENERICO: "M12 4v16m-8-8h16",
+};
+
+function IconoDisciplina({ disciplina }: { disciplina: string | null }) {
+  const d = (disciplina && ICONO_DISCIPLINA[disciplina]) || ICONO_DISCIPLINA.GENERICO;
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth={1.2} strokeLinecap="round" strokeLinejoin="round"
+      className="w-7 h-7" style={{ opacity: 0.5 }} aria-hidden>
+      <path d={d} />
+    </svg>
+  );
+}
+
+// Tarjeta compacta de adicional: miniatura + nombre y, al abrir, el contenido real
+// desplegado en la misma página. Los admins pueden subir la foto desde aquí.
+function AdicionalCard({ a, isAdmin }: { a: Adicional; isAdmin: boolean }) {
+  const [abierto, setAbierto] = useState(false);
+  const [imagen, setImagen] = useState(a.imagenUrl);
+  const [subiendo, setSubiendo] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const n = a.elementos.length;
+
+  async function subir(files: FileList | null) {
+    if (!files || !files.length) return;
+    setSubiendo(true);
+    try {
+      // Ruta única: /api/upload/token no agrega sufijo aleatorio y dos fotos con el
+      // mismo nombre chocarían.
+      const path = `adicionales/${a.id}-${Date.now()}-${files[0].name}`;
+      const blob = await upload(path, files[0], { access: "public", handleUploadUrl: "/api/upload/token" });
+      const res = await fetch(`/api/catalogo/adicionales/${a.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imagenUrl: blob.url }),
+      });
+      if (!res.ok) throw new Error(`error ${res.status}`);
+      setImagen(blob.url);
+    } catch (err) {
+      alert("No se pudo guardar la imagen: " + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setSubiendo(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  return (
+    <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)" }}>
+      <button
+        type="button"
+        onClick={() => n > 0 && setAbierto((v) => !v)}
+        aria-expanded={n > 0 ? abierto : undefined}
+        className="w-full flex items-center gap-4 p-3.5 text-left"
+        style={{ cursor: n > 0 ? "pointer" : "default" }}
+      >
+        <div className="relative w-[72px] h-[72px] rounded-xl overflow-hidden shrink-0">
+          {imagen ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img src={imagen} alt={a.nombre} loading="lazy" draggable={false} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center"
+              style={{ background: "radial-gradient(circle at 35% 25%, rgba(179,152,91,0.14), #0c0c0c 75%)" }}>
+              <IconoDisciplina disciplina={a.disciplina} />
+            </div>
+          )}
+          {isAdmin && (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); fileRef.current?.click(); }}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); fileRef.current?.click(); } }}
+              className="absolute inset-0 flex items-center justify-center text-[10px] font-semibold opacity-0 hover:opacity-100 transition-opacity"
+              style={{ background: "rgba(0,0,0,0.6)", color: GOLD }}
+            >
+              {subiendo ? "…" : "⤢ Foto"}
+            </span>
+          )}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <p className="text-[15px] font-semibold text-white/90 leading-snug">{a.nombre}</p>
+          {a.descripcion && <p className="text-[13px] text-white/45 leading-relaxed mt-1 line-clamp-2">{a.descripcion}</p>}
+          {n > 0 && (
+            <span className="inline-flex items-center gap-1.5 mt-2 text-[11px] font-medium" style={{ color: GOLD }}>
+              {abierto ? "Ocultar opciones" : n === 1 ? "Ver la opción" : `Ver las ${n} opciones`}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
+                className="w-3.5 h-3.5 transition-transform" style={{ transform: abierto ? "rotate(180deg)" : "none" }} aria-hidden>
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </span>
+          )}
+        </div>
+      </button>
+
+      {n > 0 && (
+        <div className="grid transition-[grid-template-rows] duration-300 ease-out" style={{ gridTemplateRows: abierto ? "1fr" : "0fr" }}>
+          <div className="overflow-hidden">
+            <ul className="px-3.5 pb-3.5 pt-1 space-y-1.5" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+              {a.elementos.map((e, i) => (
+                <li key={`${e.nombre}-${i}`} className="flex items-baseline gap-2.5 text-[13px] pt-1.5">
+                  <span className="w-1 h-1 rounded-full shrink-0 translate-y-[-2px]" style={{ background: GOLD }} />
+                  <span className="text-white/65 leading-snug">
+                    {e.cantidad > 1 && <span className="font-semibold tabular-nums" style={{ color: GOLD }}>{e.cantidad}× </span>}
+                    {e.nombre}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {isAdmin && <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => subir(e.target.files)} />}
     </div>
   );
 }
@@ -408,37 +519,12 @@ export default function PaqueteDetalleClient({
               Complementos opcionales que elevan la producción. Agrégalos al confirmar tu paquete.
             </p>
           </R>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-            {p.adicionales.map((a, i) => {
-              const comp = contarComposicion(a.composicion);
-              const total = comp.equipos + comp.productos;
-              return (
-                <R key={a.id} delay={(i % 3) * 60}>
-                  <div className="rounded-2xl overflow-hidden h-full flex flex-col" style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)" }}>
-                    <div className="relative aspect-[16/10] overflow-hidden shrink-0">
-                      {a.imagenUrl ? (
-                        /* eslint-disable-next-line @next/next/no-img-element */
-                        <img src={a.imagenUrl} alt={a.nombre} loading="lazy" draggable={false} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center" style={{ background: "radial-gradient(circle at 35% 25%, rgba(179,152,91,0.18), #0c0c0c 70%)" }}>
-                          <span className="text-3xl font-bold text-white/15">{a.nombre.charAt(0).toUpperCase()}</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-4 flex-1 flex flex-col">
-                      <p className="text-[15px] font-semibold text-white/90 leading-snug">{a.nombre}</p>
-                      {a.descripcion && <p className="text-[13px] text-white/50 leading-relaxed mt-1.5 flex-1">{a.descripcion}</p>}
-                      {total > 0 && (
-                        <span className="inline-flex items-center gap-1.5 self-start mt-3 text-[11px] font-medium px-2.5 py-1 rounded-full" style={{ background: "rgba(179,152,91,0.1)", border: `1px solid ${GOLD}33`, color: GOLD }}>
-                          <span className="w-1.5 h-1.5 rounded-full" style={{ background: GOLD }} />
-                          Incluye {total} {total === 1 ? "elemento" : "elementos"}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </R>
-              );
-            })}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            {p.adicionales.map((a, i) => (
+              <R key={a.id} delay={(i % 2) * 60}>
+                <AdicionalCard a={a} isAdmin={edit.isAdmin} />
+              </R>
+            ))}
           </div>
         </section>
       )}
