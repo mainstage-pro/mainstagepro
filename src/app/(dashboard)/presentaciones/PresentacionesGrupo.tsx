@@ -12,6 +12,7 @@ const GALERIAS_EVENTO = [
   { label: "Musical", href: "/presentacion/evento/musical" },
   { label: "Social", href: "/presentacion/evento/social" },
   { label: "Empresarial", href: "/presentacion/evento/empresarial" },
+  { label: "Otros eventos", href: "/presentacion/evento/otro" },
 ];
 
 function buildWAMessage(label: string, url: string): string {

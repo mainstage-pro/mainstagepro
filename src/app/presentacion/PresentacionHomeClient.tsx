@@ -18,6 +18,7 @@ const EVENTOS = [
   { slug: "musical",     title: "Eventos musicales", sub: "Conciertos · Festivales · DJ Sets · Showcases", img: "/images/presentacion/musicales/Musicales-016.jpg", href: "/presentacion/evento/musical", para: "Promotores · Artistas" },
   { slug: "social",      title: "Eventos sociales", sub: "Bodas · XV Años · Fiestas privadas", img: "/images/presentacion/sociales/s-hacienda-iluminada.jpg", href: "/presentacion/evento/social", para: "Parejas · Familias" },
   { slug: "empresarial", title: "Eventos empresariales", sub: "Conferencias · Lanzamientos · Corporativos", img: "/images/presentacion/empresariales/e-sala-pantallas.jpg", href: "/presentacion/evento/empresarial", para: "Empresas · Agencias" },
+  { slug: "otro",        title: "Otros eventos", sub: "Deportivos · Teatro · Comedia · Prensa", img: "/images/presentacion/empresariales/e-auditorio.jpg", href: "/presentacion/evento/otro", para: "Instituciones · Productores" },
 ];
 
 export default function PresentacionHomeClient({ initialOverrides = {}, initialTipos = [] }: { initialOverrides?: Record<string, string>; initialTipos?: MaterialTipoEvento[] }) {
@@ -156,7 +157,7 @@ export default function PresentacionHomeClient({ initialOverrides = {}, initialT
               Cada evento, con la producción<br />que merece
             </h2>
           </R>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
             {EVENTOS.map((ev, i) => (
               <R key={ev.title} delay={i * 120}>
                 <a href={ev.href} className="group block relative rounded-2xl overflow-hidden h-full" style={{ minHeight: "440px", background: "#060606", border: "1px solid rgba(255,255,255,0.06)" }}>

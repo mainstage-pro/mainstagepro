@@ -11,7 +11,7 @@ import { CopyButton } from "@/components/CopyButton";
 import VersionHistorial from "@/components/VersionHistorial";
 import { BackButton } from "@/components/BackButton";
 import { CerrarVentaModal } from "@/components/crm/CerrarVentaModal";
-import { Handshake, Smartphone, PartyPopper, ClipboardList, SlidersHorizontal, Guitar, Building2, Camera, type LucideIcon } from "lucide-react";
+import { Handshake, Smartphone, PartyPopper, ClipboardList, SlidersHorizontal, Guitar, Building2, Camera, Sparkles, type LucideIcon } from "lucide-react";
 
 interface Linea {
   id: string;
@@ -2195,10 +2195,11 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                 { id: 'musical', icon: Guitar, label: "Presentación Eventos Musicales", url: `${origin}/presentacion/evento/musical` },
                 { id: 'social', icon: PartyPopper, label: "Presentación Eventos Sociales", url: `${origin}/presentacion/evento/social` },
                 { id: 'empresarial', icon: Building2, label: "Presentación Eventos Empresariales", url: `${origin}/presentacion/evento/empresarial` },
+                { id: 'otro', icon: Sparkles, label: "Presentación Otros Eventos", url: `${origin}/presentacion/evento/otro` },
                 { id: 'galeria', icon: Camera, label: "Galería de Eventos", url: `${origin}/presentacion/galeria` },
               ];
               // Priorizar el tipo de evento actual
-              const eventoMapping: Record<string, string> = { MUSICAL: 'musical', SOCIAL: 'social', EMPRESARIAL: 'empresarial' };
+              const eventoMapping: Record<string, string> = { MUSICAL: 'musical', SOCIAL: 'social', EMPRESARIAL: 'empresarial', OTRO: 'otro' };
               const tipoId = eventoMapping[cot.tipoEvento ?? ""];
               if (tipoId) {
                 const idx = MATERIALES_COMPARTIR.findIndex(m => m.id === tipoId);

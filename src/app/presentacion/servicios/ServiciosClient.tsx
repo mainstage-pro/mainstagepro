@@ -211,11 +211,12 @@ export default function ServiciosClient({ initialTipos = [] }: { initialTipos?: 
             </h2>
           </R>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
             {[
               { title: "Musicales",     sub: "Conciertos · Festivales · DJ Sets",   img: "/images/presentacion/musicales/Musicales-016.jpg",        href: "/presentacion/evento/musical",     delay: 0 },
               { title: "Sociales",      sub: "Bodas · XV Años · Fiestas privadas",  img: "/images/presentacion/sociales/s-hacienda-iluminada.jpg",  href: "/presentacion/evento/social",      delay: 120 },
               { title: "Empresariales", sub: "Conferencias · Lanzamientos · Ferias",img: "/images/presentacion/empresariales/e-sala-pantallas.jpg", href: "/presentacion/evento/empresarial", delay: 240 },
+              { title: "Otros eventos", sub: "Deportivos · Teatro · Comedia · Prensa", img: "/images/presentacion/empresariales/e-auditorio.jpg",  href: "/presentacion/evento/otro",        delay: 360 },
             ].map(ev => (
               <R key={ev.title} delay={ev.delay}>
                 <a href={ev.href}

@@ -156,6 +156,14 @@ export const PRESENTACIONES_EVENTOS: PresentacionItem[] = [
     icon: Building2,
     audience: "Empresas · Agencias",
   },
+  {
+    key: "otro",
+    label: "Otros eventos",
+    desc: "Deportivos, teatro, comedia, ruedas de prensa. Producción técnica para todo lo que no cabe en una sola caja.",
+    href: "/presentacion/evento/otro",
+    icon: Sparkles,
+    audience: "Instituciones · Productores",
+  },
 ];
 
 // Presentaciones por tipo de servicio (Mainstage). Cada una liga a su página
