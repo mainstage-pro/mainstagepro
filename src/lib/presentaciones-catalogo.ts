@@ -8,6 +8,7 @@ import {
   Camera,
   Handshake,
   Package,
+  PackageCheck,
   Gift,
   Speaker,
   Lightbulb,
@@ -80,6 +81,14 @@ export const PRESENTACIONES_MODULO_GENERAL: PresentacionItem[] = [
     desc: "Catálogo completo del inventario audiovisual, lista de precios y cotizador.",
     href: "/presentacion/inventario",
     icon: Package,
+    audience: "Clientes · Equipo",
+  },
+  {
+    key: "inventario-propio",
+    label: "Inventario de equipo propio",
+    desc: "El mismo catálogo, solo con el equipo propio de Mainstage: sin lo que se subcontrata.",
+    href: "/presentacion/inventario-propio",
+    icon: PackageCheck,
     audience: "Clientes · Equipo",
   },
 ];

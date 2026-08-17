@@ -16,7 +16,12 @@ interface EquipoData {
   imagenUrl?: string | null; precioRenta: number;
 }
 interface CategoriaData { nombre: string; orden: number; equipos: EquipoData[]; }
-interface Props { data: { categorias: CategoriaData[]; totalEquipos: number; totalUnidades: number; categoriaOrden?: string[] } }
+interface Props {
+  data: { categorias: CategoriaData[]; totalEquipos: number; totalUnidades: number; categoriaOrden?: string[] };
+  // Variante /presentacion/inventario-propio: el mismo catálogo, pero solo con
+  // equipo tipo PROPIO. Únicamente cambia el copy del hero.
+  soloPropio?: boolean;
+}
 // Productos = "sistemas armados a partir del inventario" (cargados en cliente vía /api/productos/publico)
 interface ProductoItemData { cantidad: number; equipo: { id: string; descripcion: string; marca: string | null; modelo: string | null } }
 interface ProductoCoberturaData { tipoEvento: string; rangos: string | null; subtipos: string | null }
@@ -1105,7 +1110,7 @@ function CotizadorTab({ categorias, quoteItems, onAddItem, onUpdateQty, onRemove
 
 
 // ─── Main ─────────────────────────────────────────────────────────────────────────
-export default function InventarioClient({ data }: Props) {
+export default function InventarioClient({ data, soloPropio = false }: Props) {
   const [activeTab, setActiveTab]         = useState<Tab>("catalogo");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [lightbox, setLightbox]           = useState<{ images: string[]; index: number; alt: string } | null>(null);
@@ -1275,13 +1280,15 @@ export default function InventarioClient({ data }: Props) {
         <div className="relative z-10 px-6 max-w-5xl mx-auto">
           <div className="mb-10" style={{ animation: "fadeUp 0.7s ease forwards 0.1s", opacity: 0 }}>
             <span className="text-xs tracking-[0.3em] uppercase px-4 py-2 rounded-full" style={{ background: `${GOLD}15`, color: GOLD, border: `1px solid ${GOLD}25` }}>
-              Mainstage Pro · Catálogo Técnico
+              Mainstage Pro · Catálogo Técnico{soloPropio ? " · Equipo propio" : ""}
             </span>
           </div>
           <h1 className="font-bold leading-[0.95]" style={{ fontSize: "clamp(3.5rem,12vw,10rem)", letterSpacing: "-0.04em", animation: "fadeUp 0.9s ease forwards 0.3s", opacity: 0 }}>El equipo.</h1>
           <h1 className="font-bold leading-[0.95]" style={{ fontSize: "clamp(3.5rem,12vw,10rem)", letterSpacing: "-0.04em", color: GOLD, animation: "fadeUp 0.9s ease forwards 0.5s", opacity: 0 }}>Disponible.</h1>
           <p className="text-white/40 mt-10 max-w-xl mx-auto leading-relaxed" style={{ fontSize: "clamp(1rem,1.8vw,1.2rem)", animation: "fadeUp 0.9s ease forwards 0.75s", opacity: 0 }}>
-            Audio, iluminación y video de nivel profesional. Todo listo para operar en tu evento.
+            {soloPropio
+              ? "Audio, iluminación y video de nivel profesional. Equipo propio de Mainstage, listo para operar en tu evento."
+              : "Audio, iluminación y video de nivel profesional. Todo listo para operar en tu evento."}
           </p>
         </div>
         <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3" style={{ animation: "fadeUp 1s ease forwards 1.1s", opacity: 0 }}>
