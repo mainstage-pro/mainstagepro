@@ -120,6 +120,18 @@ export default function PresentacionHomeClient({ initialOverrides = {}, initialT
         </div>
       </section>
 
+      {/* ── Quiénes somos ── */}
+      <section className="py-24 px-6 bg-[#060606] border-y border-white/[0.04]">
+        <div className="max-w-3xl mx-auto text-center">
+          <R>
+            <p className="text-[#B3985B] text-sm tracking-[0.2em] uppercase mb-6">Quiénes somos</p>
+            <h2 className="font-bold text-white leading-[1.2]" style={{ fontSize: "clamp(1.5rem,3.4vw,2.4rem)", letterSpacing: "-0.02em" }}>
+              Somos una empresa de <span style={{ color: GOLD }}>producción técnica de eventos.</span> Ponemos el audio, la iluminación, el video y al equipo que lo opera para que tu evento suene y se vea impecable.
+            </h2>
+          </R>
+        </div>
+      </section>
+
       {/* ── Problema / solución ── */}
       <section className="py-24 px-6">
         <div className="max-w-5xl mx-auto">
@@ -132,18 +144,6 @@ export default function PresentacionHomeClient({ initialOverrides = {}, initialT
             <p className="text-white/45 text-base leading-relaxed max-w-2xl">
               Audio nítido y balanceado, iluminación que da forma a cada momento, video en alta definición y un equipo que lo opera con criterio. En lugar de coordinar proveedores sueltos, cuentas con un solo responsable de que todo llegue junto y a tiempo.
             </p>
-          </R>
-        </div>
-      </section>
-
-      {/* ── Quiénes somos ── */}
-      <section className="py-24 px-6 bg-[#060606] border-y border-white/[0.04]">
-        <div className="max-w-3xl mx-auto text-center">
-          <R>
-            <p className="text-[#B3985B] text-sm tracking-[0.2em] uppercase mb-6">Quiénes somos</p>
-            <h2 className="font-bold text-white leading-[1.2]" style={{ fontSize: "clamp(1.5rem,3.4vw,2.4rem)", letterSpacing: "-0.02em" }}>
-              Somos una empresa de <span style={{ color: GOLD }}>producción técnica de eventos.</span> Ponemos el audio, la iluminación, el video y al equipo que lo opera para que tu evento suene y se vea impecable.
-            </h2>
           </R>
         </div>
       </section>
