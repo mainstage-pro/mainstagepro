@@ -20,6 +20,15 @@ type EventoTipo = "musical" | "social" | "empresarial" | "otro";
 const TIPO_EVENTO_MAP: Record<EventoTipo, string> = { musical: "MUSICAL", social: "SOCIAL", empresarial: "EMPRESARIAL", otro: "OTRO" };
 const TIPO_NOMBRE:     Record<EventoTipo, string> = { musical: "Eventos Musicales", social: "Eventos Sociales", empresarial: "Eventos Empresariales", otro: "Otros eventos" };
 
+// Descripción del banner de paquetes por tipo de evento (enlaza al catálogo
+// filtrado, en modo "general" para no mostrar precios).
+const PAQUETES_DESC: Record<EventoTipo, string> = {
+  musical:     "Paquetes armados para conciertos, festivales y DJ sets — todo lo que incluye cada uno, listo para cotizar.",
+  social:      "Paquetes armados para bodas, XV años y fiestas — todo lo que incluye cada uno, listo para cotizar.",
+  empresarial: "Paquetes armados para congresos, lanzamientos y corporativos — todo lo que incluye cada uno, listo para cotizar.",
+  otro:        "Paquetes armados para eventos deportivos, teatro, comedia y ruedas de prensa — todo lo que incluye cada uno, listo para cotizar.",
+};
+
 // Los 3 servicios que ofrecemos, en el orden y jerarquía de la marca.
 // La `key` liga cada servicio al formulario de descubrimiento (tipoServicio).
 const SERVICIOS = [
@@ -925,8 +934,36 @@ export default function EventoClient({ tipo, initialOverrides = {}, initialTipos
         </div>
       </section>
 
+      {/* ── Paquetes ── */}
+      <section className="px-6 pt-8">
+        <div className="max-w-5xl mx-auto">
+          <R>
+            <a href={`/presentacion/paquetes/${tipo}?vista=general`}
+               className="group block rounded-3xl overflow-hidden relative"
+               style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
+              <div className="p-10 sm:p-14 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6"
+                   style={{ background: "linear-gradient(120deg, rgba(179,152,91,0.08), rgba(255,255,255,0.02))" }}>
+                <div>
+                  <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-4">Paquetes armados</p>
+                  <h3 className="font-bold text-white mb-3" style={{ fontSize: "clamp(1.5rem, 3vw, 2.25rem)", letterSpacing: "-0.02em" }}>
+                    Combinaciones ya listas para tu evento.
+                  </h3>
+                  <p className="text-white/45 text-sm max-w-lg leading-relaxed">
+                    {PAQUETES_DESC[tipo]}
+                  </p>
+                </div>
+                <span className="shrink-0 text-sm font-semibold px-6 py-3.5 rounded-full transition-all group-hover:scale-105"
+                      style={{ background: GOLD, color: "#000" }}>
+                  Ver paquetes →
+                </span>
+              </div>
+            </a>
+          </R>
+        </div>
+      </section>
+
       {/* ── Inventario ── */}
-      <section className="px-6 pb-8">
+      <section className="px-6 pb-8 pt-8">
         <div className="max-w-5xl mx-auto">
           <R>
             <a href="/presentacion/inventario"
