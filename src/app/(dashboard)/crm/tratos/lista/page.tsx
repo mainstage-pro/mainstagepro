@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ETAPA_LABELS, ORIGEN_LEAD_LABELS, MOMENTO_LABELS, MOMENTO_COLORS } from "@/lib/constants";
 import { formatCurrency } from "@/lib/cotizador";
-import { waUrlContacto } from "@/lib/whatsapp-mensajes";
+import { waUrlContacto, useWhatsappPlantillas } from "@/lib/whatsapp-mensajes";
 import { useToast } from "@/components/Toast";
 import { Combobox } from "@/components/Combobox";
 import { useConfirm } from "@/components/Confirm";
@@ -1173,6 +1173,7 @@ function LeadsView({ leads, activeSeguimientoPopover, seguimientoPendiente, segu
 
 export default function TratosPage() {
   const router = useRouter();
+  useWhatsappPlantillas();
   const [tratos, setTratos] = useState<Trato[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);

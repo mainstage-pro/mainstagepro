@@ -6,7 +6,7 @@ import { TIPO_CLIENTE_LABELS, CLASIFICACION_LABELS, ORIGEN_LEAD_OPTIONS, ORIGEN_
 import { PerfilMultiSelect, usePerfilesCustom } from "@/components/crm/PerfilSelect";
 import { PERFILES_POR_CATEGORIA, parsePerfiles, perfilesPorCategoriaCon, PERFIL_CATEGORIAS, PERFIL_CATEGORIA_LABELS, type CustomPerfil } from "@/lib/proceso/perfiles";
 import { CopyButton } from "@/components/CopyButton";
-import { waUrlContacto } from "@/lib/whatsapp-mensajes";
+import { waUrlContacto, useWhatsappPlantillas } from "@/lib/whatsapp-mensajes";
 import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
 import NuevaTareaModal from "../../operaciones/components/NuevaTareaModal";
@@ -1168,6 +1168,7 @@ function PhoneIcon() {
 export default function BaseDeDatosClient({ clientes: initClientes, prospectos: initProspectos, sinClasificar: initSin, usuarios, actividadMap }: Props) {
   const confirm = useConfirm();
   const toast = useToast();
+  useWhatsappPlantillas();
 
   const [tab, setTab] = useState<Tab>("clientes");
   const [clientes, setClientes]         = useState<Contacto[]>(initClientes);
