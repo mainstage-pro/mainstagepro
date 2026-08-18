@@ -1,6 +1,7 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import PresentacionNav from "@/components/presentacion/PresentacionNav";
 import { calcularTotalPaquete } from "@/lib/paquete-precio";
 
@@ -66,7 +67,7 @@ function itemLabel(it: Item): string {
   return "Equipo";
 }
 
-function PaqueteCard({ p }: { p: Paquete }) {
+function PaqueteCard({ p, ocultarPrecio = false }: { p: Paquete; ocultarPrecio?: boolean }) {
   const refs = p.imagenes.filter((im) => im.tipo !== "RENDER");
   const portada = (refs[0] ?? p.imagenes[0])?.url ?? null;
   const tieneRender = p.imagenes.some((im) => im.tipo === "RENDER");
@@ -79,7 +80,7 @@ function PaqueteCard({ p }: { p: Paquete }) {
   const total = calcularTotalPaquete(p.items, p.conceptos);
 
   return (
-    <Link href={`/presentacion/paquete/${p.id}`}
+    <Link href={`/presentacion/paquete/${p.id}${ocultarPrecio ? "?vista=general" : ""}`}
       className="group flex flex-col rounded-3xl overflow-hidden h-full transition-all hover:-translate-y-1"
       style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)" }}>
       <div className="relative aspect-[16/10] overflow-hidden">
@@ -138,7 +139,13 @@ function PaqueteCard({ p }: { p: Paquete }) {
         {total > 0 && (
           <div className="mt-auto flex items-baseline justify-between gap-3 mb-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}>
             <span className="text-[11px] uppercase tracking-[0.14em] text-white/35">Total del paquete</span>
-            <span className="font-semibold" style={{ fontSize: "1.35rem", color: GOLD, letterSpacing: "-0.01em" }}>{money(total)}</span>
+            {ocultarPrecio ? (
+              <span className="font-semibold select-none" style={{ fontSize: "1.35rem", color: GOLD, letterSpacing: "-0.01em", filter: "blur(6px)" }} aria-hidden>
+                {money(total)}
+              </span>
+            ) : (
+              <span className="font-semibold" style={{ fontSize: "1.35rem", color: GOLD, letterSpacing: "-0.01em" }}>{money(total)}</span>
+            )}
           </div>
         )}
 
@@ -150,7 +157,7 @@ function PaqueteCard({ p }: { p: Paquete }) {
   );
 }
 
-function ProductoCard({ p }: { p: Producto }) {
+function ProductoCard({ p, ocultarPrecio = false }: { p: Producto; ocultarPrecio?: boolean }) {
   return (
     <div className="rounded-2xl overflow-hidden h-full flex flex-col" style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)" }}>
       <div className="relative aspect-[4/3] overflow-hidden">
@@ -165,7 +172,11 @@ function ProductoCard({ p }: { p: Producto }) {
         {p.categoria && <p className="text-[10px] uppercase tracking-[0.14em] text-white/30 mb-1.5">{p.categoria}</p>}
         <h4 className="font-medium text-white leading-snug text-sm mb-2">{p.nombre}</h4>
         {p.precioFinal > 0 && (
-          <p className="mt-auto text-sm font-semibold" style={{ color: GOLD }}>{money(p.precioFinal)} <span className="text-white/30 font-normal text-xs">/ renta</span></p>
+          ocultarPrecio ? (
+            <p className="mt-auto text-sm font-semibold select-none" style={{ color: GOLD, filter: "blur(6px)" }} aria-hidden>{money(p.precioFinal)} <span className="text-white/30 font-normal text-xs">/ renta</span></p>
+          ) : (
+            <p className="mt-auto text-sm font-semibold" style={{ color: GOLD }}>{money(p.precioFinal)} <span className="text-white/30 font-normal text-xs">/ renta</span></p>
+          )
         )}
       </div>
     </div>
@@ -174,7 +185,17 @@ function ProductoCard({ p }: { p: Producto }) {
 
 const TIPOS_VALIDOS = ["SOCIAL", "MUSICAL", "EMPRESARIAL", "OTRO"];
 
-export default function PaquetesClient({ defaultTab }: { defaultTab?: string } = {}) {
+export default function PaquetesClient(props: { defaultTab?: string } = {}) {
+  return (
+    <Suspense fallback={null}>
+      <PaquetesClientInner {...props} />
+    </Suspense>
+  );
+}
+
+function PaquetesClientInner({ defaultTab }: { defaultTab?: string } = {}) {
+  const searchParams = useSearchParams();
+  const ocultarPrecio = searchParams.get("vista") === "general";
   const inicial = defaultTab && TIPOS_VALIDOS.includes(defaultTab) ? defaultTab : "SOCIAL";
   const [tab, setTab] = useState(inicial);
   const [paquetes, setPaquetes] = useState<Paquete[]>([]);
@@ -261,7 +282,7 @@ export default function PaquetesClient({ defaultTab }: { defaultTab?: string } =
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {paquetes.map((p, i) => (
-              <R key={p.id} delay={i * 60}><PaqueteCard p={p} /></R>
+              <R key={p.id} delay={i * 60}><PaqueteCard p={p} ocultarPrecio={ocultarPrecio} /></R>
             ))}
           </div>
         )}
@@ -281,7 +302,7 @@ export default function PaquetesClient({ defaultTab }: { defaultTab?: string } =
           </R>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {productosTab.map((p, i) => (
-              <R key={p.id} delay={i * 50}><ProductoCard p={p} /></R>
+              <R key={p.id} delay={i * 50}><ProductoCard p={p} ocultarPrecio={ocultarPrecio} /></R>
             ))}
           </div>
           <div className="mt-10">

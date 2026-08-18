@@ -1,6 +1,7 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { upload } from "@vercel/blob/client";
 import PresentacionNav from "@/components/presentacion/PresentacionNav";
 import { usePresentacionEdit, EditableText } from "@/components/presentacion/editable";
@@ -315,11 +316,23 @@ function DesglosePrecio({ grupos, total }: { grupos: GrupoDesglose[]; total: num
   );
 }
 
-export default function PaqueteDetalleClient({
+export default function PaqueteDetalleClient(props: {
+  paquete: Paquete; galeria: Foto[]; descCategorias: Record<string, string>; overrides: Record<string, string>;
+}) {
+  return (
+    <Suspense fallback={null}>
+      <PaqueteDetalleInner {...props} />
+    </Suspense>
+  );
+}
+
+function PaqueteDetalleInner({
   paquete: p, galeria, descCategorias, overrides,
 }: {
   paquete: Paquete; galeria: Foto[]; descCategorias: Record<string, string>; overrides: Record<string, string>;
 }) {
+  const searchParams = useSearchParams();
+  const ocultarPrecio = searchParams.get("vista") === "general";
   const edit = usePresentacionEdit(overrides);
   const renders = p.imagenes.filter((im) => im.tipo === "RENDER");
   const refs = p.imagenes.filter((im) => im.tipo !== "RENDER");
@@ -367,7 +380,7 @@ export default function PaqueteDetalleClient({
 
       {/* Hero + media */}
       <section className="mx-auto max-w-6xl px-6 pt-28 pb-12 sm:pt-36">
-        <Link href="/presentacion/paquetes" className="inline-flex items-center gap-1.5 text-sm text-white/45 hover:text-white transition-colors mb-8">
+        <Link href={ocultarPrecio ? "/presentacion/paquetes?vista=general" : "/presentacion/paquetes"} className="inline-flex items-center gap-1.5 text-sm text-white/45 hover:text-white transition-colors mb-8">
           ← Paquetes
         </Link>
 
@@ -443,9 +456,19 @@ export default function PaqueteDetalleClient({
               <div className="mt-6">
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                   <span className="text-[11px] uppercase tracking-[0.16em] text-white/40">Total del paquete</span>
-                  <span className="font-bold leading-none" style={{ fontSize: "clamp(1.8rem, 3.6vw, 2.4rem)", color: GOLD, letterSpacing: "-0.02em" }}>{money(total)}</span>
+                  {ocultarPrecio ? (
+                    <span className="font-bold leading-none select-none" style={{ fontSize: "clamp(1.8rem, 3.6vw, 2.4rem)", color: GOLD, letterSpacing: "-0.02em", filter: "blur(8px)" }} aria-hidden>
+                      {money(total)}
+                    </span>
+                  ) : (
+                    <span className="font-bold leading-none" style={{ fontSize: "clamp(1.8rem, 3.6vw, 2.4rem)", color: GOLD, letterSpacing: "-0.02em" }}>{money(total)}</span>
+                  )}
                 </div>
-                <DesglosePrecio grupos={gruposPrecio} total={total} />
+                {ocultarPrecio ? (
+                  <p className="text-white/35 text-xs leading-relaxed mt-3">Precio disponible al platicar los detalles de tu evento.</p>
+                ) : (
+                  <DesglosePrecio grupos={gruposPrecio} total={total} />
+                )}
               </div>
             )}
           </R>
@@ -570,7 +593,11 @@ export default function PaqueteDetalleClient({
                 </div>
                 <div className="text-right">
                   <p className="text-[11px] uppercase tracking-[0.14em] text-white/40 mb-1">Total del paquete</p>
-                  <p className="font-bold leading-none" style={{ fontSize: "clamp(1.9rem, 4vw, 2.6rem)", color: GOLD, letterSpacing: "-0.02em" }}>{money(total)}</p>
+                  {ocultarPrecio ? (
+                    <p className="font-bold leading-none select-none" style={{ fontSize: "clamp(1.9rem, 4vw, 2.6rem)", color: GOLD, letterSpacing: "-0.02em", filter: "blur(8px)" }} aria-hidden>{money(total)}</p>
+                  ) : (
+                    <p className="font-bold leading-none" style={{ fontSize: "clamp(1.9rem, 4vw, 2.6rem)", color: GOLD, letterSpacing: "-0.02em" }}>{money(total)}</p>
+                  )}
                 </div>
               </div>
             </R>

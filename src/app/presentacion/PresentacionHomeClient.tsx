@@ -186,6 +186,38 @@ export default function PresentacionHomeClient({ initialOverrides = {}, initialT
         </div>
       </section>
 
+      {/* ── Paquetes teaser ── */}
+      <section className="py-24 px-6">
+        <div className="max-w-6xl mx-auto">
+          <R>
+            <div className="rounded-3xl overflow-hidden relative" style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
+              <EditableImage
+                edit={edit}
+                okey="home.paquetes.img"
+                fallback="/images/presentacion/sociales/s-hacienda-iluminada.jpg"
+                alt="Paquetes Mainstage Pro"
+                wrapClassName="absolute inset-0"
+                imgClassName="w-full h-full object-cover opacity-30"
+              />
+              <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(to left, #060606 10%, rgba(6,6,6,0.7) 60%, rgba(6,6,6,0.4) 100%)" }} />
+              <div className="relative p-10 sm:p-14 max-w-xl ml-auto text-left sm:text-right">
+                <p className="text-[#B3985B] text-sm tracking-[0.2em] uppercase mb-4">Paquetes armados</p>
+                <h2 className="font-bold text-white leading-tight mb-4" style={{ fontSize: "clamp(1.6rem,3.5vw,2.6rem)", letterSpacing: "-0.02em" }}>
+                  Combinaciones ya listas para tu tipo de evento.
+                </h2>
+                <p className="text-white/50 text-sm leading-relaxed mb-8">
+                  Bodas, XV años, conciertos y corporativos: sabes exactamente qué incluye cada paquete antes de cotizar.
+                </p>
+                <a href="/presentacion/paquetes?vista=general" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full font-semibold text-black text-sm tracking-wide transition-all duration-300 hover:scale-105" style={{ background: GOLD }}>
+                  Ver paquetes
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                </a>
+              </div>
+            </div>
+          </R>
+        </div>
+      </section>
+
       {/* ── Servicios ── */}
       <section id="servicios" className="py-24 px-6 bg-[#060606]">
         <div className="max-w-6xl mx-auto">
