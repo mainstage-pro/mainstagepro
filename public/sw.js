@@ -58,6 +58,11 @@ self.addEventListener("fetch", (event) => {
   if (url.pathname.startsWith("/monitoring")) return;
   if (url.pathname.startsWith("/api/auth")) return;
 
+  // La página de rescate y el propio SW nunca deben pasar por esta lógica: si el SW
+  // está atorado, /clear.html es la única salida y no puede depender de que la red
+  // responda a tiempo dentro de este mismo worker.
+  if (url.pathname === "/clear.html" || url.pathname === "/sw.js") return;
+
   // Estáticos inmutables (bundles hasheados, fuentes, imágenes) → cache-first.
   if (
     url.pathname.startsWith("/_next/static") ||
