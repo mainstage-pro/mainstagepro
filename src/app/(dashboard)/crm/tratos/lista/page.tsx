@@ -1232,9 +1232,9 @@ export default function TratosPage() {
   }
 
   useEffect(() => {
-    // Sync fechaProximaAccion primero (limpia seguimientos vencidos borrados) → luego carga datos frescos
+    // Sync fechaProximaAccion en segundo plano (no bloquea la carga de la lista).
+    fetch("/api/admin/sync-fechas", { method: "POST" }).catch(() => {});
     const load = async () => {
-      try { await fetch("/api/admin/sync-fechas", { method: "POST" }); } catch { /* ignore */ }
       const data = await fetch("/api/tratos").then(r => r.json());
       setTratos(data.tratos ?? []);
       setLoading(false);
