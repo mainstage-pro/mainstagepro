@@ -1,98 +1,14 @@
 import { prisma } from "./prisma";
 
-// Catálogo de eventos: fuente única de tipos, nichos, adicionales y preguntas de
-// descubrimiento. Tablas creadas lazy (patrón Neon sin migración formal).
-// ensureCatalogoTables() se llama al inicio de cada endpoint del catálogo.
-
-let tablesEnsured = false;
-
-export async function ensureCatalogoTables() {
-  if (tablesEnsured) return;
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "nichos" (
-      "id" TEXT NOT NULL,
-      "tipoEventoSlug" TEXT NOT NULL,
-      "nombre" TEXT NOT NULL,
-      "slug" TEXT NOT NULL,
-      "descripcion" TEXT,
-      "notasComerciales" TEXT,
-      "orden" INTEGER NOT NULL DEFAULT 0,
-      "activo" BOOLEAN NOT NULL DEFAULT true,
-      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      CONSTRAINT "nichos_pkey" PRIMARY KEY ("id")
-    );
-  `);
-  await prisma.$executeRawUnsafe(
-    `CREATE UNIQUE INDEX IF NOT EXISTS "nichos_tipoEventoSlug_slug_key" ON "nichos"("tipoEventoSlug", "slug");`
-  );
-  await prisma.$executeRawUnsafe(
-    `CREATE INDEX IF NOT EXISTS "nichos_tipoEventoSlug_idx" ON "nichos"("tipoEventoSlug");`
-  );
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "adicionales" (
-      "id" TEXT NOT NULL,
-      "nombre" TEXT NOT NULL,
-      "descripcion" TEXT,
-      "tiposEvento" TEXT NOT NULL,
-      "nichos" TEXT,
-      "frecuencia" TEXT NOT NULL DEFAULT 'frecuente',
-      "productoId" TEXT,
-      "imagenUrl" TEXT,
-      "orden" INTEGER NOT NULL DEFAULT 0,
-      "activo" BOOLEAN NOT NULL DEFAULT true,
-      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      CONSTRAINT "adicionales_pkey" PRIMARY KEY ("id"),
-      CONSTRAINT "adicionales_productoId_fkey"
-        FOREIGN KEY ("productoId") REFERENCES "productos"("id") ON DELETE SET NULL
-    );
-  `);
-  await prisma.$executeRawUnsafe(
-    `CREATE INDEX IF NOT EXISTS "adicionales_productoId_idx" ON "adicionales"("productoId");`
-  );
-  await prisma.$executeRawUnsafe(
-    `ALTER TABLE "adicionales" ADD COLUMN IF NOT EXISTS "composicion" TEXT;`
-  );
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "preguntas_descubrimiento" (
-      "id" TEXT NOT NULL,
-      "texto" TEXT NOT NULL,
-      "tipoRespuesta" TEXT NOT NULL DEFAULT 'SI_NO',
-      "opciones" TEXT,
-      "nichos" TEXT,
-      "orden" INTEGER NOT NULL DEFAULT 0,
-      "activa" BOOLEAN NOT NULL DEFAULT true,
-      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      CONSTRAINT "preguntas_descubrimiento_pkey" PRIMARY KEY ("id")
-    );
-  `);
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "reglas_pregunta" (
-      "id" TEXT NOT NULL,
-      "preguntaId" TEXT NOT NULL,
-      "condicion" TEXT NOT NULL,
-      "categoriasEquipo" TEXT,
-      "adicionalIds" TEXT,
-      CONSTRAINT "reglas_pregunta_pkey" PRIMARY KEY ("id"),
-      CONSTRAINT "reglas_pregunta_preguntaId_fkey"
-        FOREIGN KEY ("preguntaId") REFERENCES "preguntas_descubrimiento"("id") ON DELETE CASCADE
-    );
-  `);
-  await prisma.$executeRawUnsafe(
-    `CREATE INDEX IF NOT EXISTS "reglas_pregunta_preguntaId_idx" ON "reglas_pregunta"("preguntaId");`
-  );
-  // Jerarquía de descubrimiento (aditivo e idempotente).
-  await prisma.$executeRawUnsafe(`ALTER TABLE "preguntas_descubrimiento" ADD COLUMN IF NOT EXISTS "alcance" TEXT NOT NULL DEFAULT 'nicho';`);
-  await prisma.$executeRawUnsafe(`ALTER TABLE "preguntas_descubrimiento" ADD COLUMN IF NOT EXISTS "tipoEventoSlug" TEXT;`);
-  await prisma.$executeRawUnsafe(`ALTER TABLE "preguntas_descubrimiento" ADD COLUMN IF NOT EXISTS "bloque" TEXT;`);
-  await prisma.$executeRawUnsafe(`ALTER TABLE "preguntas_descubrimiento" ADD COLUMN IF NOT EXISTS "obligatoria" BOOLEAN NOT NULL DEFAULT false;`);
-  await prisma.$executeRawUnsafe(`ALTER TABLE "preguntas_descubrimiento" ADD COLUMN IF NOT EXISTS "preguntaPadreId" TEXT;`);
-  await prisma.$executeRawUnsafe(`ALTER TABLE "preguntas_descubrimiento" ADD COLUMN IF NOT EXISTS "condicionValor" TEXT;`);
-  // tipos_evento ya existe como modelo Prisma (migración formal); no se crea aquí.
-  tablesEnsured = true;
-}
+// Las tablas del catálogo (nichos, adicionales, preguntas_descubrimiento,
+// reglas_pregunta) y sus columnas aditivas ya están confirmadas en prod desde hace
+// tiempo. La migración lazy que las creaba/alteraba en cada cold start corría hasta
+// 20 DDL secuenciales (varios ALTER TABLE con lock ACCESS EXCLUSIVE) antes de poder
+// responder cualquier endpoint de /api/catalogo/* — contribuía a que el módulo de
+// Equipos (que depende de /api/catalogo) tardara o no cargara. Se retira; si algún
+// día se necesita provisión lazy real, usar el patrón columnExists() de
+// src/lib/migraciones-lazy.ts.
+export async function ensureCatalogoTables() {}
 
 // ── Linkage con el sistema legacy ─────────────────────────────────────────────
 // Trato.tipoEvento / Paquete.tipoEvento / Producto.tiposEvento usan estos tokens.

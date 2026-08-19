@@ -862,19 +862,27 @@ export default function InventarioMaestroPage() {
     if (filtroCategoria) qs.set("categoriaId", filtroCategoria);
     if (filtroInactivos) qs.set("inactivos", "true");
 
-    const [mRes, provRes, catRes] = await Promise.all([
-      fetch(`/api/inventario/maestro?${qs}`),
-      fetch("/api/proveedores"),
-      fetch("/api/catalogo").catch(() => null),
-    ]);
-    const [mData, provData] = await Promise.all([mRes.json(), provRes.json()]);
-    setEquipos(mData.equipos ?? []);
-    setCategorias(mData.categorias ?? []);
-    setKpis(mData.kpis ?? null);
-    setProveedores(provData.proveedores ?? []);
-    if (catRes?.ok) { const c = await catRes.json(); setCatalogoTipos(c.tipos ?? []); }
-    setLoading(false);
-    fetch("/api/accesorios").then(r => r.ok ? r.json() : null).then(d => { if (d) setAccesoriosCount(d.total ?? d.accesorios?.length ?? 0); }).catch(() => {});
+    try {
+      const [mRes, provRes, catRes] = await Promise.all([
+        fetch(`/api/inventario/maestro?${qs}`),
+        fetch("/api/proveedores"),
+        fetch("/api/catalogo").catch(() => null),
+      ]);
+      if (!mRes.ok) throw new Error(`/api/inventario/maestro respondió ${mRes.status}`);
+      if (!provRes.ok) throw new Error(`/api/proveedores respondió ${provRes.status}`);
+      const [mData, provData] = await Promise.all([mRes.json(), provRes.json()]);
+      setEquipos(mData.equipos ?? []);
+      setCategorias(mData.categorias ?? []);
+      setKpis(mData.kpis ?? null);
+      setProveedores(provData.proveedores ?? []);
+      if (catRes?.ok) { const c = await catRes.json(); setCatalogoTipos(c.tipos ?? []); }
+      fetch("/api/accesorios").then(r => r.ok ? r.json() : null).then(d => { if (d) setAccesoriosCount(d.total ?? d.accesorios?.length ?? 0); }).catch(() => {});
+    } catch (e) {
+      console.error("Error cargando inventario de equipos:", e);
+      toast.error("No se pudo cargar el inventario. Intenta de nuevo.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => { load(); }, [filtroTipo, filtroEstado, filtroCategoria, filtroInactivos]); // eslint-disable-line react-hooks/exhaustive-deps
