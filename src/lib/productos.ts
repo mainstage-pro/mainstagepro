@@ -1,95 +1,13 @@
 import { prisma } from "./prisma";
 
-// Las tablas de productos se crean lazy (patrón Neon sin migración formal).
-// ensureProductosTables() se llama al inicio de cada endpoint de productos.
-let tablesEnsured = false;
-
-export async function ensureProductosTables() {
-  if (tablesEnsured) return;
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "productos" (
-      "id" TEXT NOT NULL,
-      "nombre" TEXT NOT NULL,
-      "descripcion" TEXT,
-      "categoria" TEXT,
-      "tiposEvento" TEXT,
-      "imagenUrl" TEXT,
-      "equipoDominanteId" TEXT,
-      "precioManual" DOUBLE PRECISION,
-      "precioFinal" DOUBLE PRECISION NOT NULL DEFAULT 0,
-      "activo" BOOLEAN NOT NULL DEFAULT true,
-      "orden" INTEGER NOT NULL DEFAULT 0,
-      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      CONSTRAINT "productos_pkey" PRIMARY KEY ("id"),
-      CONSTRAINT "productos_equipoDominanteId_fkey"
-        FOREIGN KEY ("equipoDominanteId") REFERENCES "equipos"("id") ON DELETE SET NULL
-    );
-  `);
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "producto_equipos" (
-      "id" TEXT NOT NULL,
-      "productoId" TEXT NOT NULL,
-      "equipoId" TEXT NOT NULL,
-      "cantidad" INTEGER NOT NULL DEFAULT 1,
-      "orden" INTEGER NOT NULL DEFAULT 0,
-      CONSTRAINT "producto_equipos_pkey" PRIMARY KEY ("id"),
-      CONSTRAINT "producto_equipos_productoId_fkey"
-        FOREIGN KEY ("productoId") REFERENCES "productos"("id") ON DELETE CASCADE,
-      CONSTRAINT "producto_equipos_equipoId_fkey"
-        FOREIGN KEY ("equipoId") REFERENCES "equipos"("id") ON DELETE CASCADE
-    );
-  `);
-  await prisma.$executeRawUnsafe(
-    `CREATE INDEX IF NOT EXISTS "producto_equipos_productoId_idx" ON "producto_equipos"("productoId");`
-  );
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "producto_coberturas" (
-      "id" TEXT NOT NULL,
-      "productoId" TEXT NOT NULL,
-      "tipoEvento" TEXT NOT NULL,
-      "rangos" TEXT,
-      "subtipos" TEXT,
-      CONSTRAINT "producto_coberturas_pkey" PRIMARY KEY ("id"),
-      CONSTRAINT "producto_coberturas_productoId_fkey"
-        FOREIGN KEY ("productoId") REFERENCES "productos"("id") ON DELETE CASCADE
-    );
-  `);
-  await prisma.$executeRawUnsafe(
-    `CREATE UNIQUE INDEX IF NOT EXISTS "producto_coberturas_productoId_tipoEvento_key" ON "producto_coberturas"("productoId", "tipoEvento");`
-  );
-  await prisma.$executeRawUnsafe(
-    `CREATE INDEX IF NOT EXISTS "producto_coberturas_productoId_idx" ON "producto_coberturas"("productoId");`
-  );
-  // Accesorios que componen un producto (paralelo a producto_equipos).
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "producto_accesorios" (
-      "id" TEXT NOT NULL,
-      "productoId" TEXT NOT NULL,
-      "accesorioId" TEXT NOT NULL,
-      "cantidad" INTEGER NOT NULL DEFAULT 1,
-      "orden" INTEGER NOT NULL DEFAULT 0,
-      CONSTRAINT "producto_accesorios_pkey" PRIMARY KEY ("id")
-    );
-  `);
-  await prisma.$executeRawUnsafe(
-    `CREATE INDEX IF NOT EXISTS "producto_accesorios_productoId_idx" ON "producto_accesorios"("productoId");`
-  );
-  await prisma.$executeRawUnsafe(
-    `CREATE INDEX IF NOT EXISTS "producto_accesorios_accesorioId_idx" ON "producto_accesorios"("accesorioId");`
-  );
-  // Bloque 2: clasificación de productos (columnas aditivas, idempotentes).
-  await prisma.$executeRawUnsafe(`ALTER TABLE "productos" ADD COLUMN IF NOT EXISTS "nichos" TEXT;`);
-  await prisma.$executeRawUnsafe(`ALTER TABLE "productos" ADD COLUMN IF NOT EXISTS "rol" TEXT NOT NULL DEFAULT 'base';`);
-  await prisma.$executeRawUnsafe(`ALTER TABLE "productos" ADD COLUMN IF NOT EXISTS "disponibilidad" TEXT NOT NULL DEFAULT 'propio';`);
-  await prisma.$executeRawUnsafe(`ALTER TABLE "productos" ADD COLUMN IF NOT EXISTS "proveedorRef" TEXT;`);
-  await prisma.$executeRawUnsafe(`ALTER TABLE "productos" ADD COLUMN IF NOT EXISTS "costoRef" DOUBLE PRECISION;`);
-  await prisma.$executeRawUnsafe(`ALTER TABLE "productos" ADD COLUMN IF NOT EXISTS "capacidadUniversal" BOOLEAN NOT NULL DEFAULT false;`);
-  // Clasificación fina para el intercambio de conceptos (botón ⇄).
-  await prisma.$executeRawUnsafe(`ALTER TABLE "productos" ADD COLUMN IF NOT EXISTS "familia" TEXT;`);
-  await prisma.$executeRawUnsafe(`ALTER TABLE "productos" ADD COLUMN IF NOT EXISTS "subfamilia" TEXT;`);
-  tablesEnsured = true;
-}
+// Las tablas y columnas de productos (productos, producto_equipos, producto_coberturas,
+// producto_accesorios + columnas de clasificación) ya están confirmadas en prod desde hace
+// tiempo. La migración lazy que las creaba/alteraba en cada cold start quedaba, causaba
+// hasta 18 DDL secuenciales (varios ALTER TABLE con lock ACCESS EXCLUSIVE) antes de poder
+// responder cualquier request a /api/productos — eso hacía que el módulo Comercial no
+// cargara. Se retira; si algún día se necesita provisión lazy real, usar el patrón
+// columnExists() de src/lib/migraciones-lazy.ts.
+export async function ensureProductosTables() {}
 
 export type ItemInput = { equipoId: string; cantidad: number };
 

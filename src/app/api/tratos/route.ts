@@ -13,29 +13,10 @@ const MOMENTO_ETAPA: Record<string, string> = {
   URGENTE: "OPORTUNIDAD",
 };
 
-// Add columns lazily on first request (safe to run multiple times)
-let _colsReady = false;
-async function ensureColumns() {
-  if (_colsReady) return;
-  try {
-    await prisma.$executeRawUnsafe(
-      `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "vendedorId" TEXT REFERENCES users(id) ON DELETE SET NULL`
-    );
-    await prisma.$executeRawUnsafe(
-      `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "momentoContratacion" TEXT`
-    );
-    await prisma.$executeRawUnsafe(
-      `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "posibleDuplicado" BOOLEAN NOT NULL DEFAULT false`
-    );
-  } catch { /* columns already exist */ }
-  _colsReady = true;
-}
-
 export async function GET(request: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  await ensureColumns();
   await ensureProcesoVentaColumns();
 
   const { searchParams } = new URL(request.url);
@@ -89,8 +70,6 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-
-  await ensureColumns();
 
   try {
     const body = await request.json();
