@@ -84,12 +84,23 @@ self.addEventListener("fetch", (event) => {
 });
 
 // ── Estrategias de caché ──────────────────────────────────────────────────────
+// Sin timeout, un fetch que se queda "colgado" (no falla, solo no responde —
+// típico en cold-start de la BD bajo carga) bloquea la navegación para siempre
+// en vez de caer al caché. Abortamos y tratamos como fallo de red tras NETWORK_TIMEOUT_MS.
+const NETWORK_TIMEOUT_MS = 10000;
+
+function fetchWithTimeout(req, ms) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  return fetch(req, { signal: controller.signal }).finally(() => clearTimeout(timer));
+}
+
 async function cacheFirst(req, cacheName) {
   const cache  = await caches.open(cacheName);
   const cached = await cache.match(req);
   if (cached) return cached;
   try {
-    const res = await fetch(req);
+    const res = await fetchWithTimeout(req, NETWORK_TIMEOUT_MS);
     if (res && res.status === 200) cache.put(req, res.clone());
     return res;
   } catch {
@@ -100,7 +111,7 @@ async function cacheFirst(req, cacheName) {
 async function networkFirst(req, cacheName) {
   const cache = await caches.open(cacheName);
   try {
-    const res = await fetch(req);
+    const res = await fetchWithTimeout(req, NETWORK_TIMEOUT_MS);
     // Guardamos copia solo de respuestas completas y exitosas.
     if (res && res.status === 200 && res.type === "basic") {
       cache.put(req, res.clone());
