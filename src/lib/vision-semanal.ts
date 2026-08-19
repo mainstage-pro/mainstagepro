@@ -137,33 +137,12 @@ export function semanaKey(ref: Date = new Date()): string {
 
 // ─── Migración lazy (Neon no corre migraciones formales) ─────────────────────
 
-let _tablaLista = false;
-export async function ensureVisionSemanalTable(): Promise<void> {
-  if (_tablaLista) return;
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS vision_semanal (
-      id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-      area TEXT NOT NULL,
-      semana TEXT NOT NULL,
-      enfoque TEXT NOT NULL DEFAULT '',
-      "entregaInfo" JSONB NOT NULL DEFAULT '[]'::jsonb,
-      desbloqueo TEXT NOT NULL DEFAULT '',
-      comentarios TEXT NOT NULL DEFAULT '',
-      extra JSONB NOT NULL DEFAULT '{}'::jsonb,
-      "autorId" TEXT REFERENCES users(id) ON DELETE SET NULL,
-      "responsableId" TEXT REFERENCES users(id) ON DELETE SET NULL,
-      "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
-      "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
-    );
-  `);
-  await prisma.$executeRawUnsafe(
-    `ALTER TABLE vision_semanal ADD COLUMN IF NOT EXISTS "responsableId" TEXT REFERENCES users(id) ON DELETE SET NULL;`
-  );
-  await prisma.$executeRawUnsafe(
-    `CREATE UNIQUE INDEX IF NOT EXISTS vision_semanal_area_semana_key ON vision_semanal (area, semana);`
-  );
-  _tablaLista = true;
-}
+// Migración lazy YA APLICADA en prod (verificado 2026-08-19: la tabla
+// vision_semanal, su columna responsableId y el índice único ya existen). No-op:
+// antes corría CREATE TABLE + ALTER TABLE incondicional en cada cold start, y
+// ALTER TABLE ... ADD COLUMN IF NOT EXISTS toma un lock ACCESS EXCLUSIVE aunque
+// la columna ya exista, bloqueando lecturas concurrentes de la tabla.
+export async function ensureVisionSemanalTable(): Promise<void> {}
 
 // ─── Puntos de entrega por defecto ───────────────────────────────────────────
 

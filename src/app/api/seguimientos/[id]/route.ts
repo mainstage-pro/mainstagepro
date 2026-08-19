@@ -4,16 +4,10 @@ import { getSession } from "@/lib/auth";
 import { syncFechaProximaAccion } from "@/app/api/seguimientos/route";
 import { ensureSeguimientoEtapaCol } from "@/lib/etapaSeguimientos";
 
-let _revColReady = false;
-async function ensureRequiereRevision() {
-  if (_revColReady) return;
-  try {
-    await prisma.$executeRawUnsafe(
-      `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "requiereRevision" BOOLEAN NOT NULL DEFAULT false`
-    );
-  } catch { /* column already exists */ }
-  _revColReady = true;
-}
+// Migración lazy YA APLICADA en prod (verificado 2026-08-19: tratos.requiereRevision
+// ya existe). No-op: ver nota en src/app/api/tratos/[id]/route.ts sobre por qué el
+// ALTER TABLE incondicional es peligroso.
+async function ensureRequiereRevision() {}
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();

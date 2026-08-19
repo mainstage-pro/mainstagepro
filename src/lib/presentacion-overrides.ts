@@ -13,20 +13,10 @@ import { prisma } from "./prisma";
 //   evento.musical.hero          → URL de imagen
 // El valor SIEMPRE es string. Para imágenes guardamos la URL del blob.
 
-let tableEnsured = false;
-
-export async function ensureOverridesTable() {
-  if (tableEnsured) return;
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "presentacion_overrides" (
-      "key" TEXT NOT NULL,
-      "value" TEXT NOT NULL,
-      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      CONSTRAINT "presentacion_overrides_pkey" PRIMARY KEY ("key")
-    );
-  `);
-  tableEnsured = true;
-}
+// Migración lazy YA APLICADA en prod (verificado 2026-08-19: la tabla
+// presentacion_overrides ya existe). No-op: esta función se llama en cada carga
+// de las páginas públicas de presentación (sin auth, alto tráfico potencial).
+export async function ensureOverridesTable() {}
 
 export type OverridesMap = Record<string, string>;
 

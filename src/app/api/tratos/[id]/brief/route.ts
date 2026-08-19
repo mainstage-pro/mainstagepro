@@ -3,16 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { randomBytes } from "crypto";
 
-// Lazy migration for new columns
-let _briefColsReady = false;
-async function ensureBriefCols() {
-  if (_briefColsReady) return;
-  try {
-    await prisma.$executeRawUnsafe(`ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "briefToken" TEXT UNIQUE`);
-    await prisma.$executeRawUnsafe(`ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "briefRecibidoEn" TIMESTAMP`);
-  } catch { /* columns already exist */ }
-  _briefColsReady = true;
-}
+// Migración lazy YA APLICADA en prod (verificado 2026-08-19: tratos.briefToken y
+// briefRecibidoEn ya existen). No-op: ver nota en src/app/api/tratos/[id]/route.ts
+// sobre por qué el ALTER TABLE incondicional es peligroso.
+async function ensureBriefCols() {}
 
 // POST — genera o regenera el token del brief
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

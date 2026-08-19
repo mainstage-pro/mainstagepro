@@ -1,50 +1,15 @@
-import { neon } from "@neondatabase/serverless";
-
-// Migración lazy idempotente para columnas del hub de tareas que pueden no
-// existir todavía en la BD de producción (Neon). Se ejecuta una vez por instancia.
+// Migración lazy YA APLICADA en prod (verificado 2026-08-19: todas las columnas
+// e índices de "tareas" listados abajo ya existen). No-op: aunque el DDL se
+// aplicaba con el driver HTTP de Neon (no el pooler de Prisma), el lock
+// ACCESS EXCLUSIVE que toma ALTER TABLE ... ADD COLUMN IF NOT EXISTS es una
+// propiedad del servidor de Postgres, no del driver — corría en CADA request
+// de ~10 endpoints del hub de Tareas (uno de los módulos más visitados de
+// Operaciones), bloqueando lecturas concurrentes de la tabla aunque las
+// columnas ya existieran.
 //
-// IMPORTANTE: el DDL se aplica con el driver HTTP de Neon (`neon()`), NO con el
-// pooler de Prisma (`prisma.$executeRawUnsafe`). El pooler de transacciones de
-// Neon no aplica DDL de forma fiable ni desde local ni desde el runtime de
-// Vercel; agregar una columna al schema y confiar en el pooler dejó columnas sin
-// crear y tumbó rutas de lectura en prod. El endpoint HTTP de Neon sí funciona.
-let ensured = false;
-
-const DDL = [
-  `ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "proyectoEventoId" TEXT`,
-  `ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "evidenciaEnviadaAt" TIMESTAMP(3)`,
-  `ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "evidenciaEnviadaPorId" TEXT`,
-  `ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "evidenciaEnviadaCanal" TEXT`,
-  `ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "tratoId" TEXT`,
-  `ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "clienteId" TEXT`,
-  `ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "enBandeja" BOOLEAN NOT NULL DEFAULT false`,
-  `ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "noRealizada" BOOLEAN NOT NULL DEFAULT false`,
-  `ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "motivoNoRealizada" TEXT`,
-  `ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "justificacionNoRealizada" TEXT`,
-  `ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "evidenciasHistorial" TEXT`,
-  `CREATE INDEX IF NOT EXISTS "tareas_proyectoEventoId_idx" ON "tareas"("proyectoEventoId")`,
-  `CREATE INDEX IF NOT EXISTS "tareas_tratoId_idx" ON "tareas"("tratoId")`,
-  `CREATE INDEX IF NOT EXISTS "tareas_clienteId_idx" ON "tareas"("clienteId")`,
-  `CREATE INDEX IF NOT EXISTS "tareas_enBandeja_idx" ON "tareas"("enBandeja")`,
-];
-
-export async function ensureTareaColumns(): Promise<void> {
-  if (ensured) return;
-  const raw = process.env.DATABASE_URL;
-  if (!raw) return;
-  // El driver HTTP de Neon no acepta los parámetros del pooler.
-  const url = raw
-    .replace(/[?&](pgbouncer|connection_limit)=[^&]*/g, "")
-    .replace(/\?&/, "?")
-    .replace(/\?$/, "");
-  try {
-    const sql = neon(url);
-    for (const stmt of DDL) {
-      await sql.query(stmt);
-    }
-    ensured = true;
-  } catch {
-    // Silencioso: si falla (permisos, red, etc.) las rutas siguen operando sobre
-    // las columnas ya existentes. No debe tumbar el request.
-  }
-}
+// Columnas que ya están en prod: proyectoEventoId, evidenciaEnviadaAt,
+// evidenciaEnviadaPorId, evidenciaEnviadaCanal, tratoId, clienteId, enBandeja,
+// noRealizada, motivoNoRealizada, justificacionNoRealizada, evidenciasHistorial
+// + índices tareas_proyectoEventoId_idx, tareas_tratoId_idx, tareas_clienteId_idx,
+// tareas_enBandeja_idx.
+export async function ensureTareaColumns(): Promise<void> {}

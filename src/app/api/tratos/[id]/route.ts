@@ -6,29 +6,14 @@ import { ensureProcesoVentaColumns, ensureMultidiaColumns, ensureNavegacionColum
 import { defaultEtapaInterna, esEtapaInternaValida } from "@/lib/etapasInternas";
 import { parsePerfiles, serializePerfiles, MAX_PERFILES } from "@/lib/proceso/perfiles";
 
-let _vendedorColReady = false;
-async function ensureVendedorId() {
-  if (_vendedorColReady) return;
-  try {
-    await prisma.$executeRawUnsafe(
-      `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "vendedorId" TEXT REFERENCES users(id) ON DELETE SET NULL`
-    );
-  } catch { /* already exists */ }
-  _vendedorColReady = true;
-}
-
-let _briefColsReady = false;
-async function ensureBriefCols() {
-  if (_briefColsReady) return;
-  try {
-    await prisma.$executeRawUnsafe(`ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "briefToken" TEXT UNIQUE`);
-    await prisma.$executeRawUnsafe(`ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "briefRecibidoEn" TIMESTAMP`);
-    await prisma.$executeRawUnsafe(`ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "requiereRevision" BOOLEAN NOT NULL DEFAULT false`);
-    await prisma.$executeRawUnsafe(`ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "momentoContratacion" TEXT`);
-    await prisma.$executeRawUnsafe(`ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "posibleDuplicado" BOOLEAN NOT NULL DEFAULT false`);
-  } catch { /* already exists */ }
-  _briefColsReady = true;
-}
+// Migración lazy YA APLICADA en prod (verificado 2026-08-19: tratos.vendedorId,
+// briefToken, briefRecibidoEn, requiereRevision, momentoContratacion y
+// posibleDuplicado ya existen). No-op: antes corría ALTER TABLE incondicional en
+// cada GET/PATCH de esta ruta (la más visitada del CRM), y ALTER TABLE ...
+// ADD COLUMN IF NOT EXISTS toma un lock ACCESS EXCLUSIVE aunque la columna ya
+// exista, bloqueando lecturas concurrentes de "tratos".
+async function ensureVendedorId() {}
+async function ensureBriefCols() {}
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();

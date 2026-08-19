@@ -15,7 +15,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if ("orden" in body) data.orden = body.orden;
   if ("descripcion" in body) data.descripcion = body.descripcion?.trim() || null;
 
-  await prisma.$executeRawUnsafe(`ALTER TABLE categorias_financieras ADD COLUMN IF NOT EXISTS "descripcion" TEXT`);
+  // Migración lazy YA APLICADA en prod (verificado 2026-08-19:
+  // categorias_financieras.descripcion ya existe). Se quitó el ALTER TABLE
+  // incondicional que corría en cada PATCH (ver categorias-financieras/route.ts).
   const categoria = await prisma.categoriaFinanciera.update({ where: { id }, data });
   return NextResponse.json({ categoria });
 }

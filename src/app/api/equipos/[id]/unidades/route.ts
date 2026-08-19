@@ -2,14 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
-let voltajeColumnEnsured = false;
-async function ensureVoltajeColumn() {
-  if (voltajeColumnEnsured) return;
-  await prisma.$executeRawUnsafe(
-    'ALTER TABLE "equipo_unidades" ADD COLUMN IF NOT EXISTS "voltaje" TEXT'
-  );
-  voltajeColumnEnsured = true;
-}
+// Migración lazy YA APLICADA en prod (verificado 2026-08-19: equipo_unidades.voltaje
+// ya existe). No-op: antes corría ALTER TABLE incondicional en cada GET/POST de
+// esta ruta (detalle de equipo, muy visitada en Inventario), y ALTER TABLE ...
+// ADD COLUMN IF NOT EXISTS toma un lock ACCESS EXCLUSIVE aunque la columna ya
+// exista, bloqueando lecturas concurrentes de la tabla.
+async function ensureVoltajeColumn() {}
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();

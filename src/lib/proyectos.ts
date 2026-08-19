@@ -35,54 +35,13 @@ export type Proyecto = {
   imagenes: ProyectoImagen[];
 };
 
+// Migración lazy YA APLICADA en prod (verificado 2026-08-19: las tablas
+// proyectos_presentacion y proyecto_imagenes, con sus índices, ya existen).
+// El bloque de CREATE TABLE/INDEX se quitó: esta función se llama en cada
+// carga de las páginas públicas de portafolio (sin auth, alto tráfico
+// potencial). Se conserva el seed de borradores, que es lógica de datos.
 export async function ensureProyectosTables() {
   if (tablesEnsured) return;
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "proyectos_presentacion" (
-      "id" TEXT NOT NULL,
-      "slug" TEXT NOT NULL,
-      "tipoEvento" TEXT NOT NULL,
-      "titulo" TEXT NOT NULL,
-      "cliente" TEXT,
-      "ubicacion" TEXT,
-      "fecha" TEXT,
-      "resumen" TEXT,
-      "reto" TEXT,
-      "solucion" TEXT,
-      "resultado" TEXT,
-      "asistentes" INTEGER,
-      "servicios" TEXT,
-      "portada" TEXT,
-      "esBorrador" BOOLEAN NOT NULL DEFAULT true,
-      "destacado" BOOLEAN NOT NULL DEFAULT false,
-      "activo" BOOLEAN NOT NULL DEFAULT true,
-      "orden" INTEGER NOT NULL DEFAULT 0,
-      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      CONSTRAINT "proyectos_presentacion_pkey" PRIMARY KEY ("id")
-    );
-  `);
-  await prisma.$executeRawUnsafe(
-    `CREATE UNIQUE INDEX IF NOT EXISTS "proyectos_presentacion_slug_key" ON "proyectos_presentacion"("slug");`
-  );
-  await prisma.$executeRawUnsafe(
-    `CREATE INDEX IF NOT EXISTS "proyectos_presentacion_tipoEvento_idx" ON "proyectos_presentacion"("tipoEvento");`
-  );
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "proyecto_imagenes" (
-      "id" TEXT NOT NULL,
-      "proyectoId" TEXT NOT NULL,
-      "url" TEXT NOT NULL,
-      "caption" TEXT,
-      "orden" INTEGER NOT NULL DEFAULT 0,
-      CONSTRAINT "proyecto_imagenes_pkey" PRIMARY KEY ("id"),
-      CONSTRAINT "proyecto_imagenes_proyectoId_fkey"
-        FOREIGN KEY ("proyectoId") REFERENCES "proyectos_presentacion"("id") ON DELETE CASCADE
-    );
-  `);
-  await prisma.$executeRawUnsafe(
-    `CREATE INDEX IF NOT EXISTS "proyecto_imagenes_proyectoId_idx" ON "proyecto_imagenes"("proyectoId");`
-  );
   tablesEnsured = true;
 
   await seedBorradores();

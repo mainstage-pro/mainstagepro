@@ -11,26 +11,14 @@ function proximoMiercolesTraEvento(fecha: Date): Date {
   return d;
 }
 
-async function ensureTable() {
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS gastos_operativos (
-      id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-      "proyectoId" TEXT NOT NULL REFERENCES proyectos(id) ON DELETE CASCADE,
-      tipo TEXT NOT NULL,
-      concepto TEXT NOT NULL,
-      monto DOUBLE PRECISION NOT NULL,
-      cantidad INTEGER NOT NULL DEFAULT 1,
-      entregado BOOLEAN NOT NULL DEFAULT false,
-      "fechaEntrega" TIMESTAMP,
-      notas TEXT,
-      "cxpId" TEXT,
-      "createdAt" TIMESTAMP NOT NULL DEFAULT NOW()
-    );
-  `);
-  await prisma.$executeRawUnsafe(
-    `ALTER TABLE gastos_operativos ADD COLUMN IF NOT EXISTS "cxpId" TEXT;`
-  );
-}
+// Migración lazy YA APLICADA en prod (verificado 2026-08-19: la tabla
+// gastos_operativos y su columna cxpId ya existen). No-op: antes corría
+// CREATE TABLE + ALTER TABLE incondicional en CADA request (sin ningún
+// flag/chequeo), y ALTER TABLE ... ADD COLUMN IF NOT EXISTS toma un lock
+// ACCESS EXCLUSIVE aunque la columna ya exista, bloqueando lecturas
+// concurrentes de la tabla (esta ruta se llama en cada carga del detalle de
+// proyecto).
+async function ensureTable() {}
 
 export async function GET(req: NextRequest) {
   const session = await getSession();

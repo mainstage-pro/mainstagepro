@@ -2,9 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
-async function ensureDescripcion() {
-  await prisma.$executeRawUnsafe(`ALTER TABLE categorias_financieras ADD COLUMN IF NOT EXISTS "descripcion" TEXT`);
-}
+// Migración lazy YA APLICADA en prod (verificado 2026-08-19:
+// categorias_financieras.descripcion ya existe). No-op: antes corría ALTER TABLE
+// incondicional en CADA request (sin flag de cold-start), y ALTER TABLE ...
+// ADD COLUMN IF NOT EXISTS toma un lock ACCESS EXCLUSIVE aunque la columna ya
+// exista, bloqueando lecturas concurrentes de la tabla.
+async function ensureDescripcion() {}
 
 export async function GET() {
   const session = await getSession();

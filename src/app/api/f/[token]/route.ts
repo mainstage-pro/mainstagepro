@@ -6,23 +6,11 @@ import { ensureProcesoVentaColumns, ensureMultidiaColumns, ensureProcesoTablas, 
 import { completarDescubrimiento } from "@/lib/proceso/motor";
 import { ensurePaquetesTables } from "@/lib/paquetes";
 
-// ─── Ensure formRecibidoEn column exists ─────────────────────────────────────
-let _colReady = false;
-async function ensureFormRecibidoEn() {
-  if (_colReady) return;
-  try {
-    await prisma.$executeRawUnsafe(
-      `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "formRecibidoEn" TIMESTAMP`
-    );
-    await prisma.$executeRawUnsafe(
-      `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "momentoContratacion" TEXT`
-    );
-    await prisma.$executeRawUnsafe(
-      `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "posibleDuplicado" BOOLEAN NOT NULL DEFAULT false`
-    );
-  } catch { /* already exists */ }
-  _colReady = true;
-}
+// Migración lazy YA APLICADA en prod (verificado 2026-08-19: tratos.formRecibidoEn,
+// momentoContratacion y posibleDuplicado ya existen). No-op: ver nota en
+// src/app/api/tratos/[id]/route.ts sobre por qué el ALTER TABLE incondicional es
+// peligroso (esta ruta pública de formularios recibe tráfico de leads).
+async function ensureFormRecibidoEn() {}
 
 // ─── Mapeo de los campos del descubrimiento (idéntico al PATCH del vendedor) ──
 // Toma SOLO las claves presentes en el body y las convierte al tipo correcto.

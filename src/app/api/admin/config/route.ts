@@ -3,18 +3,12 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { invalidateConfigCache } from "@/lib/config";
 
-// Lazy migration: add new columns to app_config if they don't exist
-let _migrated = false;
-async function ensureColumns() {
-  if (_migrated) return;
-  await prisma.$executeRawUnsafe(`ALTER TABLE app_config ADD COLUMN IF NOT EXISTS "section" TEXT NOT NULL DEFAULT 'general'`);
-  await prisma.$executeRawUnsafe(`ALTER TABLE app_config ADD COLUMN IF NOT EXISTS "label" TEXT NOT NULL DEFAULT ''`);
-  await prisma.$executeRawUnsafe(`ALTER TABLE app_config ADD COLUMN IF NOT EXISTS "description" TEXT`);
-  await prisma.$executeRawUnsafe(`ALTER TABLE app_config ADD COLUMN IF NOT EXISTS "type" TEXT NOT NULL DEFAULT 'text'`);
-  await prisma.$executeRawUnsafe(`ALTER TABLE app_config ADD COLUMN IF NOT EXISTS "defaultValue" TEXT`);
-  await prisma.$executeRawUnsafe(`ALTER TABLE app_config ADD COLUMN IF NOT EXISTS "orden" INTEGER NOT NULL DEFAULT 0`);
-  _migrated = true;
-}
+// Migración lazy YA APLICADA en prod (verificado 2026-08-19: section, label,
+// description, type, defaultValue y orden ya existen en app_config). No-op:
+// antes corría ALTER TABLE incondicional en cada GET/PATCH/PUT, y ALTER TABLE
+// ... ADD COLUMN IF NOT EXISTS toma un lock ACCESS EXCLUSIVE aunque la columna
+// ya exista, bloqueando lecturas concurrentes de la tabla.
+async function ensureColumns() {}
 
 // GET — devuelve todas las entradas agrupadas por sección
 export async function GET() {

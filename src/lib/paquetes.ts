@@ -6,100 +6,17 @@ import { ensureCalendariosTabla } from "./migraciones-lazy";
 // ensurePaquetesTables() se llama al inicio de cada endpoint de paquetes.
 let tablesEnsured = false;
 
+// NOTA (verificado 2026-08-19): las tablas paquetes, paquete_items,
+// paquete_conceptos, paquete_imagenes, paquete_rangos (con sus índices) y las
+// columnas paquete_imagenes.tipo, paquetes.adicionalesSugeridos, paquetes.esBase
+// y paquetes.temporada YA EXISTEN en producción. El bloque de CREATE TABLE/INDEX
+// y ALTER TABLE que corría aquí en cada cold start de los endpoints de paquetes
+// se quitó: ALTER TABLE ... ADD COLUMN IF NOT EXISTS toma un lock ACCESS
+// EXCLUSIVE aunque la columna ya exista, y "paquetes" se lee en presentaciones
+// públicas de alto tráfico. Se conserva la lógica de reconciliación de datos
+// (rangos, temporadas) que sigue abajo, que no es DDL de schema.
 export async function ensurePaquetesTables() {
   if (tablesEnsured) return;
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "paquetes" (
-      "id" TEXT NOT NULL,
-      "nombre" TEXT NOT NULL,
-      "tipoEvento" TEXT NOT NULL,
-      "rangoPersonas" TEXT,
-      "subtiposEvento" TEXT,
-      "resumen" TEXT,
-      "descripcion" TEXT,
-      "propuestaValor" TEXT,
-      "activo" BOOLEAN NOT NULL DEFAULT true,
-      "orden" INTEGER NOT NULL DEFAULT 0,
-      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      CONSTRAINT "paquetes_pkey" PRIMARY KEY ("id")
-    );
-  `);
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "paquete_items" (
-      "id" TEXT NOT NULL,
-      "paqueteId" TEXT NOT NULL,
-      "tipo" TEXT NOT NULL DEFAULT 'EQUIPO',
-      "equipoId" TEXT,
-      "productoId" TEXT,
-      "cantidad" INTEGER NOT NULL DEFAULT 1,
-      "orden" INTEGER NOT NULL DEFAULT 0,
-      CONSTRAINT "paquete_items_pkey" PRIMARY KEY ("id"),
-      CONSTRAINT "paquete_items_paqueteId_fkey"
-        FOREIGN KEY ("paqueteId") REFERENCES "paquetes"("id") ON DELETE CASCADE,
-      CONSTRAINT "paquete_items_equipoId_fkey"
-        FOREIGN KEY ("equipoId") REFERENCES "equipos"("id") ON DELETE CASCADE,
-      CONSTRAINT "paquete_items_productoId_fkey"
-        FOREIGN KEY ("productoId") REFERENCES "productos"("id") ON DELETE CASCADE
-    );
-  `);
-  await prisma.$executeRawUnsafe(
-    `CREATE INDEX IF NOT EXISTS "paquete_items_paqueteId_idx" ON "paquete_items"("paqueteId");`
-  );
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "paquete_conceptos" (
-      "id" TEXT NOT NULL,
-      "paqueteId" TEXT NOT NULL,
-      "tipo" TEXT NOT NULL,
-      "descripcion" TEXT NOT NULL,
-      "rolTecnicoId" TEXT,
-      "nivel" TEXT,
-      "jornada" TEXT,
-      "cantidad" DOUBLE PRECISION NOT NULL DEFAULT 1,
-      "dias" INTEGER NOT NULL DEFAULT 1,
-      "precioUnitario" DOUBLE PRECISION NOT NULL DEFAULT 0,
-      "orden" INTEGER NOT NULL DEFAULT 0,
-      CONSTRAINT "paquete_conceptos_pkey" PRIMARY KEY ("id"),
-      CONSTRAINT "paquete_conceptos_paqueteId_fkey"
-        FOREIGN KEY ("paqueteId") REFERENCES "paquetes"("id") ON DELETE CASCADE,
-      CONSTRAINT "paquete_conceptos_rolTecnicoId_fkey"
-        FOREIGN KEY ("rolTecnicoId") REFERENCES "roles_tecnicos"("id") ON DELETE SET NULL
-    );
-  `);
-  await prisma.$executeRawUnsafe(
-    `CREATE INDEX IF NOT EXISTS "paquete_conceptos_paqueteId_idx" ON "paquete_conceptos"("paqueteId");`
-  );
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "paquete_imagenes" (
-      "id" TEXT NOT NULL,
-      "paqueteId" TEXT NOT NULL,
-      "url" TEXT NOT NULL,
-      "orden" INTEGER NOT NULL DEFAULT 0,
-      CONSTRAINT "paquete_imagenes_pkey" PRIMARY KEY ("id"),
-      CONSTRAINT "paquete_imagenes_paqueteId_fkey"
-        FOREIGN KEY ("paqueteId") REFERENCES "paquetes"("id") ON DELETE CASCADE
-    );
-  `);
-  await prisma.$executeRawUnsafe(
-    `CREATE INDEX IF NOT EXISTS "paquete_imagenes_paqueteId_idx" ON "paquete_imagenes"("paqueteId");`
-  );
-  // Distingue renders de fotos de referencia (columna aditiva idempotente).
-  await prisma.$executeRawUnsafe(
-    `ALTER TABLE "paquete_imagenes" ADD COLUMN IF NOT EXISTS "tipo" TEXT NOT NULL DEFAULT 'REFERENCIA';`
-  );
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "paquete_rangos" (
-      "id" TEXT NOT NULL,
-      "label" TEXT NOT NULL,
-      "orden" INTEGER NOT NULL DEFAULT 0,
-      "activo" BOOLEAN NOT NULL DEFAULT true,
-      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      CONSTRAINT "paquete_rangos_pkey" PRIMARY KEY ("id")
-    );
-  `);
-  await prisma.$executeRawUnsafe(
-    `CREATE UNIQUE INDEX IF NOT EXISTS "paquete_rangos_label_key" ON "paquete_rangos"("label");`
-  );
   // Seed inicial de rangos (solo la primera vez, si la tabla está vacía).
   const total = await prisma.paqueteRango.count();
   if (total === 0) {
@@ -137,12 +54,6 @@ export async function ensurePaquetesTables() {
     update: {},
     create: { label: "2500-3000", orden: 9 },
   });
-  // Bloque 3: adicionales sugeridos del catálogo (columna aditiva idempotente).
-  await prisma.$executeRawUnsafe(`ALTER TABLE "paquetes" ADD COLUMN IF NOT EXISTS "adicionalesSugeridos" TEXT;`);
-  // Paquetes Base: esqueletos sin nicho, seccionados por tipo de evento (columna aditiva idempotente).
-  await prisma.$executeRawUnsafe(`ALTER TABLE "paquetes" ADD COLUMN IF NOT EXISTS "esBase" BOOLEAN NOT NULL DEFAULT false;`);
-  // Paquetes por temporada: key derivada del calendario comercial (columna aditiva idempotente).
-  await prisma.$executeRawUnsafe(`ALTER TABLE "paquetes" ADD COLUMN IF NOT EXISTS "temporada" TEXT;`);
   tablesEnsured = true;
 }
 

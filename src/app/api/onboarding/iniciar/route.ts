@@ -6,13 +6,12 @@ import { MODULOS_POR_SECCION } from "@/lib/nav";
 import { asignacionesEfectivas, NIVEL_LABEL } from "@/lib/capacitacion-plan";
 import { subAreaSlug } from "@/lib/capacitacion-ui";
 
-// Migración lazy idempotente (patrón Neon): columnas puente del onboarding por persona.
-async function ensureOnboardingSchema() {
-  await prisma.$executeRawUnsafe(`ALTER TABLE onboarding_planes ADD COLUMN IF NOT EXISTS personal_id TEXT`);
-  await prisma.$executeRawUnsafe(`ALTER TABLE onboarding_planes ADD COLUMN IF NOT EXISTS puesto_id TEXT`);
-  await prisma.$executeRawUnsafe(`ALTER TABLE onboarding_planes ADD COLUMN IF NOT EXISTS origen TEXT NOT NULL DEFAULT 'PUESTO'`);
-  await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS onboarding_planes_personal_id_key ON onboarding_planes(personal_id)`);
-}
+// Migración lazy YA APLICADA en prod (verificado 2026-08-19: onboarding_planes.
+// personal_id, puesto_id, origen y el índice único ya existen). No-op: antes
+// corría ALTER TABLE incondicional en CADA request (sin ningún flag/chequeo),
+// y ALTER TABLE ... ADD COLUMN IF NOT EXISTS toma un lock ACCESS EXCLUSIVE
+// aunque la columna ya exista, bloqueando lecturas concurrentes de la tabla.
+async function ensureOnboardingSchema() {}
 
 // Mapa moduloKey → label legible (derivado del NAV, misma fuente que permisos).
 const MODULO_LABELS: Record<string, string> = Object.fromEntries(
