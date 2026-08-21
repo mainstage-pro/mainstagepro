@@ -73,6 +73,8 @@ interface CxCItem {
   cotizacion: { id: string; numeroCotizacion: string } | null;
   cuentaDestino: { id: string; nombre: string; banco: string | null } | null;
   abonos: AbonoItem[];
+  serieRecurrenteId?: string | null;
+  numeroPeriodo?: number | null;
 }
 
 interface CxPItem {
@@ -90,6 +92,8 @@ interface CxPItem {
   proyecto: { id: string; nombre: string; numeroProyecto: string; fechaEvento: string | null } | null;
   cuentaOrigen: { id: string; nombre: string; banco: string | null } | null;
   abonos: AbonoItem[];
+  serieRecurrenteId?: string | null;
+  numeroPeriodo?: number | null;
 }
 
 interface MovDirecto {
@@ -254,6 +258,11 @@ interface NuevoRegistroForm {
   notas: string;
   // Ambos
   proyectoId: string;
+  // Recurrencia
+  esRecurrente: boolean;
+  frecuencia: string;
+  fechaFin: string;
+  diaVencimiento: string;
 }
 
 const NUEVO_REGISTRO_EMPTY: NuevoRegistroForm = {
@@ -269,6 +278,10 @@ const NUEVO_REGISTRO_EMPTY: NuevoRegistroForm = {
   acreedorNombre: "",
   notas: "",
   proyectoId: "",
+  esRecurrente: false,
+  frecuencia: "MENSUAL",
+  fechaFin: "",
+  diaVencimiento: "",
 };
 
 // ── Helpers programación semanal ─────────────────────────────────────────────
@@ -388,7 +401,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
   const [guardandoTecnico, setGuardandoTecnico] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState<"cxc" | "cxp_emp" | "cxp_tec" | null>(null);
   // Editar CxC / CxP
-  const [editModal, setEditModal] = useState<{ id: string; tipo: "cxc" | "cxp"; concepto: string; monto: number; fechaCompromiso: string } | null>(null);
+  const [editModal, setEditModal] = useState<{ id: string; tipo: "cxc" | "cxp"; concepto: string; monto: number; fechaCompromiso: string; esRecurrente?: boolean } | null>(null);
   const [editMonto, setEditMonto] = useState("");
   const [editConcepto, setEditConcepto] = useState("");
   const [editFecha, setEditFecha] = useState("");
@@ -397,6 +410,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
   const [editCuentaId, setEditCuentaId] = useState("");
   const [editProveedorId, setEditProveedorId] = useState("");
   const [editTecnicoId, setEditTecnicoId] = useState("");
+  const [editSiguientes, setEditSiguientes] = useState(false);
   const [guardandoEdit, setGuardandoEdit] = useState(false);
   // Recibos de técnicos
   const [showReciboModal, setShowReciboModal] = useState(false);
@@ -577,6 +591,9 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
             fechaCompromiso: nuevoForm.fechaCompromiso,
             tipoPago: nuevoForm.tipoPago,
             notas: nuevoForm.notas || null,
+            esRecurrente: nuevoForm.esRecurrente,
+            frecuencia: nuevoForm.frecuencia,
+            fechaFin: nuevoForm.fechaFin || null,
           }),
         });
         if (!r.ok) { const d = await r.json().catch(() => ({})); toast.error(d.error ?? "Error al crear CxC"); return; }
@@ -595,6 +612,9 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
             fechaCompromiso: nuevoForm.fechaCompromiso,
             notas: nuevoForm.notas || null,
             proyectoId: nuevoForm.proyectoId || null,
+            esRecurrente: nuevoForm.esRecurrente,
+            frecuencia: nuevoForm.frecuencia,
+            fechaFin: nuevoForm.fechaFin || null,
           }),
         });
         if (!r.ok) { const d = await r.json().catch(() => ({})); toast.error(d.error ?? "Error al crear CxP"); return; }
@@ -688,11 +708,15 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
   }
 
   function openEdit(item: CxCItem | CxPItem, tipo: "cxc" | "cxp") {
-    setEditModal({ id: item.id, tipo, concepto: item.concepto, monto: item.monto, fechaCompromiso: item.fechaCompromiso.slice(0, 10) });
+    setEditModal({ 
+      id: item.id, tipo, concepto: item.concepto, monto: item.monto, fechaCompromiso: item.fechaCompromiso.slice(0, 10),
+      esRecurrente: !!item.serieRecurrenteId
+    });
     setEditMonto(String(item.monto));
     setEditConcepto(item.concepto);
     setEditFecha(item.fechaCompromiso.slice(0, 10));
     setEditMotivo("");
+    setEditSiguientes(false);
     if (tipo === "cxc") {
       const cxcItem = item as CxCItem;
       setEditClienteId(cxcItem.cliente?.id ?? "");
@@ -717,7 +741,9 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
       return;
     }
     setGuardandoEdit(true);
-    const body: Record<string, unknown> = {};
+    const body: Record<string, unknown> = {
+      editarSiguientes: editSiguientes
+    };
     if (editConcepto !== editModal.concepto) body.concepto = editConcepto;
     if (editFecha !== editModal.fechaCompromiso) body.fechaCompromiso = editFecha;
     if (montoChanged) { body.monto = nuevoMonto; body.motivo = editMotivo.trim(); }
@@ -2033,6 +2059,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
               </div>
             </div>
 
+
             <div className="flex gap-3">
               <button onClick={confirmar} disabled={confirmando}
                 className="flex-1 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black text-sm font-semibold py-2.5 rounded-xl transition-colors">
@@ -2123,6 +2150,17 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
                 </div>
               )}
             </div>
+            {editModal.esRecurrente && (
+              <div className="mb-5 p-3 border border-[#333] rounded-lg bg-[#1a1a1a]/50">
+                <p className="text-xs text-gray-400 mb-2">Esta es una cuenta recurrente. ¿Deseas aplicar los cambios de cliente y monto a los siguientes periodos?</p>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={editSiguientes} onChange={e => setEditSiguientes(e.target.checked)}
+                    className="w-4 h-4 accent-[#B3985B] cursor-pointer" />
+                  <span className="text-sm text-white">Editar esta y las siguientes</span>
+                </label>
+              </div>
+            )}
+
             <div className="flex gap-3">
               <button onClick={guardarEdit} disabled={guardandoEdit}
                 className="flex-1 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black text-sm font-semibold py-2.5 rounded-xl transition-colors">
@@ -2468,6 +2506,36 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
                   </div>
                 </>
               )}
+
+              {/* Recurrencia */}
+              <div className="border border-[#333] rounded-lg p-3 space-y-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={nuevoForm.esRecurrente} onChange={e => setNuevoForm(p => ({ ...p, esRecurrente: e.target.checked }))}
+                    className="w-4 h-4 accent-[#B3985B] cursor-pointer" />
+                  <span className="text-sm font-medium text-white">¿Es cuenta recurrente?</span>
+                </label>
+                {nuevoForm.esRecurrente && (
+                  <div className="grid grid-cols-2 gap-3 pt-2 border-t border-[#333]">
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Frecuencia</label>
+                      <select value={nuevoForm.frecuencia} onChange={e => setNuevoForm(p => ({ ...p, frecuencia: e.target.value }))}
+                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                        <option value="SEMANAL">Semanal</option>
+                        <option value="QUINCENAL">Quincenal</option>
+                        <option value="MENSUAL">Mensual</option>
+                        <option value="TRIMESTRAL">Trimestral</option>
+                        <option value="SEMESTRAL">Semestral</option>
+                        <option value="ANUAL">Anual</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Fecha límite (opcional)</label>
+                      <input type="date" value={nuevoForm.fechaFin} onChange={e => setNuevoForm(p => ({ ...p, fechaFin: e.target.value }))}
+                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Proyecto — para ambos tipos */}
               <div>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { generarFechasRecurrentes, FrecuenciaRecurrencia } from "@/lib/recurrencia-finanzas";
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -18,6 +19,7 @@ export async function POST(req: NextRequest) {
     empresaId,
     socioId,
     proyectoId,
+    esRecurrente, frecuencia, fechaFin, diaVencimiento
   } = body;
 
   if (!concepto || !monto || !fechaCompromiso) {
@@ -25,12 +27,77 @@ export async function POST(req: NextRequest) {
   }
 
   const resolvedTipo = empresaId ? "EMPRESA" : socioId ? "SOCIO" : tipoAcreedor;
+  const montoFloat = parseFloat(monto);
+  const fechaInicio = new Date(fechaCompromiso);
+
+  if (esRecurrente && frecuencia) {
+    // Generate dates for the recurrence
+    const fechas = generarFechasRecurrentes({
+      frecuencia: frecuencia as FrecuenciaRecurrencia,
+      fechaInicio,
+      fechaFin: fechaFin ? new Date(fechaFin) : null,
+      diaVencimiento: diaVencimiento ? parseInt(diaVencimiento, 10) : null
+    }, 24); // generate up to 24 months (2 years)
+
+    if (fechas.length === 0) {
+      return NextResponse.json({ error: "La configuración de recurrencia no genera ninguna fecha" }, { status: 400 });
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Create the template (SerieRecurrente)
+      const serie = await tx.serieRecurrente.create({
+        data: {
+          tipo: "CXP",
+          frecuencia,
+          intervalo: 1,
+          fechaInicio,
+          fechaFin: fechaFin ? new Date(fechaFin) : null,
+          diaVencimiento: diaVencimiento ? parseInt(diaVencimiento, 10) : null,
+          concepto,
+          monto: montoFloat,
+          empresaId: empresaId || null,
+          proveedorId: proveedorId || null,
+          socioId: socioId || null,
+          tecnicoId: tecnicoId || null,
+          proyectoId: proyectoId || null,
+          ultimaGeneracion: new Date(),
+        }
+      });
+
+      // 2. Create the child accounts
+      const cuentas = await Promise.all(fechas.map((fecha, idx) => 
+        tx.cuentaPagar.create({
+          data: {
+            tipoAcreedor: resolvedTipo,
+            concepto: `${concepto} (${idx + 1})`,
+            monto: montoFloat,
+            fechaCompromiso: fecha,
+            estado: "PENDIENTE",
+            notas: notas || null,
+            proveedorId: proveedorId || null,
+            tecnicoId: tecnicoId || null,
+            empresaId: empresaId || null,
+            socioId: socioId || null,
+            proyectoId: proyectoId || null,
+            serieRecurrenteId: serie.id,
+            numeroPeriodo: idx + 1,
+          }
+        })
+      ));
+
+      return cuentas[0]; // return the first one as response
+    });
+
+    return NextResponse.json({ cxp: result });
+  }
+
+  // Normal creation (non-recurrent)
   const cxp = await prisma.cuentaPagar.create({
     data: {
       tipoAcreedor: resolvedTipo,
       concepto,
-      monto: parseFloat(monto),
-      fechaCompromiso: new Date(fechaCompromiso),
+      monto: montoFloat,
+      fechaCompromiso: fechaInicio,
       estado: "PENDIENTE",
       notas: notas || null,
       proveedorId: proveedorId || null,

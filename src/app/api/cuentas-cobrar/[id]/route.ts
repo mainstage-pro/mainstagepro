@@ -8,7 +8,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params;
   const body = await req.json();
-  const { monto, motivo, concepto, fechaCompromiso, clienteId, cuentaDestinoId } = body;
+  const { monto, motivo, concepto, fechaCompromiso, clienteId, cuentaDestinoId, editarSiguientes } = body;
 
   if (monto !== undefined && (typeof monto !== "number" || monto < 0))
     return NextResponse.json({ error: "Monto inválido" }, { status: 400 });
@@ -20,7 +20,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (cxc.estado === "LIQUIDADO")
     return NextResponse.json({ error: "No se puede ajustar una cuenta ya liquidada" }, { status: 400 });
 
-  // Marcar como liquidado manualmente (cuando el movimiento ya se registró por otra vía)
+  // Marcar como liquidado manualmente
   if (body.marcarLiquidado === true) {
     const montoCobradoFinal = typeof body.montoCobrado === "number" ? body.montoCobrado : cxc.monto;
     const updated = await prisma.cuentaCobrar.update({
@@ -37,10 +37,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const updateData: Record<string, unknown> = {};
 
   if (monto !== undefined) {
-    // Set montoOriginal only on first adjustment
     if (!cxc.montoOriginal) updateData.montoOriginal = cxc.monto;
-
-    // Append to ajustesLog
     const log: Array<{ fecha: string; de: number; a: number; motivo: string; usuario: string }> =
       cxc.ajustesLog ? JSON.parse(cxc.ajustesLog) : [];
     log.push({ fecha: new Date().toISOString(), de: cxc.monto, a: monto, motivo: String(motivo).trim(), usuario: session.name ?? session.email ?? "usuario" });
@@ -53,8 +50,50 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (clienteId !== undefined) updateData.clienteId = clienteId || null;
   if (cuentaDestinoId !== undefined) updateData.cuentaDestinoId = cuentaDestinoId || null;
 
-  const updated = await prisma.cuentaCobrar.update({ where: { id }, data: updateData });
+  // Actualización masiva si es serie y se seleccionó 'editarSiguientes'
+  if (editarSiguientes && cxc.serieRecurrenteId && cxc.numeroPeriodo) {
+    await prisma.$transaction(async (tx) => {
+      // 1. Actualizar esta cuenta
+      await tx.cuentaCobrar.update({ where: { id }, data: updateData });
 
+      // 2. Preparar update masivo para las siguientes (no tocamos fecha ni concepto porque el concepto tiene el numero de periodo)
+      // Solo actualizamos monto y clienteId
+      const massUpdate: any = {};
+      if (monto !== undefined) massUpdate.monto = monto;
+      if (clienteId !== undefined) massUpdate.clienteId = clienteId || null;
+      if (cuentaDestinoId !== undefined) massUpdate.cuentaDestinoId = cuentaDestinoId || null;
+      
+      if (Object.keys(massUpdate).length > 0) {
+        await tx.cuentaCobrar.updateMany({
+          where: {
+            serieRecurrenteId: cxc.serieRecurrenteId,
+            numeroPeriodo: { gt: cxc.numeroPeriodo as number },
+            estado: "PENDIENTE" // Solo afectamos las no pagadas
+          },
+          data: massUpdate
+        });
+      }
+
+      // 3. Actualizar la serie base
+      if (monto !== undefined || concepto !== undefined || clienteId !== undefined) {
+        const serieUpdate: any = {};
+        if (monto !== undefined) serieUpdate.monto = monto;
+        if (concepto !== undefined) serieUpdate.concepto = concepto; // guardamos el concepto base modificado
+        if (clienteId !== undefined) serieUpdate.clienteId = clienteId || null;
+        
+        await tx.serieRecurrente.update({
+          where: { id: cxc.serieRecurrenteId as string },
+          data: serieUpdate
+        });
+      }
+    });
+
+    const finalUpdated = await prisma.cuentaCobrar.findUnique({ where: { id } });
+    return NextResponse.json({ ok: true, cxc: finalUpdated });
+  }
+
+  // Update normal
+  const updated = await prisma.cuentaCobrar.update({ where: { id }, data: updateData });
   return NextResponse.json({ ok: true, cxc: updated });
 }
 

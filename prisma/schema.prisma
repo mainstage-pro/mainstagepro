@@ -144,13 +144,13 @@ model Empresa {
 // ─── CLIENTE ─────────────────────────────────────────────────────────────────
 
 model Cliente {
-  id                String   @id @default(cuid())
+  id                String    @id @default(cuid())
   nombre            String
   empresa           String?
   empresaId         String?
-  compania          Empresa? @relation("ClienteEmpresa", fields: [empresaId], references: [id])
-  tipoCliente       String   @default("POR_DESCUBRIR") // B2B | B2C | POR_DESCUBRIR
-  clasificacion     String   @default("NUEVO") // NUEVO | BASIC | REGULAR | PRIORITY
+  compania          Empresa?  @relation("ClienteEmpresa", fields: [empresaId], references: [id])
+  tipoCliente       String    @default("POR_DESCUBRIR") // B2B | B2C | POR_DESCUBRIR
+  clasificacion     String    @default("NUEVO") // NUEVO | BASIC | REGULAR | PRIORITY
   perfilProspecto   String? // (legacy, single) reemplazado por perfilesProspecto
   perfilesProspecto String? // JSON array de hasta 3 perfiles (built-in id o custom id)
   servicioUsual     String? // RENTA | PRODUCCION_TECNICA | DIRECCION_TECNICA | MULTISERVICIO
@@ -158,17 +158,17 @@ model Cliente {
   telefono          String?
   correo            String?
   notas             String?
-  categoriaKARE     String?  @default("SIN_CATEGORIZAR") // KEEP | ATTAIN | RECOVER | EXPAND | SIN_CATEGORIZAR
-  esProspecto       Boolean  @default(false) // true mientras no haya tenido VENTA_CERRADA
-  porContactar      Boolean  @default(false) // marcado manual: "lo tengo que contactar"
+  categoriaKARE     String?   @default("SIN_CATEGORIZAR") // KEEP | ATTAIN | RECOVER | EXPAND | SIN_CATEGORIZAR
+  esProspecto       Boolean   @default(false) // true mientras no haya tenido VENTA_CERRADA
+  porContactar      Boolean   @default(false) // marcado manual: "lo tengo que contactar"
   contactarDesde    DateTime? // cuándo se marcó para contactar
   // ── Origen del prospecto (se llena al capturar el lead, sin necesitar un Trato) ──
   origenLead        String? // META_ADS | GOOGLE_ADS | ORGANICO | REFERIDO | RECOMPRA | PROSPECCION | OTRO
   campana           String? // nombre de la campaña de origen (Meta Ads, Google Ads, etc.)
   vendedorId        String?
-  vendedor          User?    @relation("ClientesVendedor", fields: [vendedorId], references: [id])
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  vendedor          User?     @relation("ClientesVendedor", fields: [vendedorId], references: [id])
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   tratos                Trato[]
   cotizaciones          Cotizacion[]
@@ -1035,28 +1035,28 @@ model GlosarioTermino {
 // concepto vendible ("Sistema EV EKX12P — 2 medios + 2 bajos"). El precio y la
 // disponibilidad siempre se derivan del inventario (Equipo), nunca se duplican.
 model Producto {
-  id                String   @id @default(cuid())
-  nombre            String
-  descripcion       String?
-  categoria         String? // AUDIO | ILUMINACION | VIDEO | DJ | ESTRUCTURA | OTRO — agrupa en la UI
-  familia           String? // slug de familia comercial (sistema-audio, microfonia, ...) — agrupa alternativas para el botón ⇄
-  subfamilia        String? // segundo nivel para set-iluminacion (beam / spot / wash / par-led / flasher / blinder / laser / kaleidos / pinspot)
-  tiposEvento       String? // JSON array: ["MUSICAL","SOCIAL","EMPRESARIAL"] — sugerencia por tipo de evento
-  nichos            String? // JSON array de slugs de nicho donde aplica (Bloque 2)
-  rol               String   @default("base") // base | adicional
-  disponibilidad    String   @default("propio") // propio | subrenta | bajo_pedido
-  proveedorRef      String? // proveedor de referencia si subrenta/bajo_pedido
-  costoRef          Float? // costo de referencia si subrenta/bajo_pedido
-  imagenUrl         String? // imagen del producto (por default la del equipo dominante; editable)
-  equipoDominanteId String? // equipo cuya imagen se usa por default
-  equipoDominante   Equipo?  @relation("ProductoEquipoDominante", fields: [equipoDominanteId], references: [id])
-  precioManual      Float? // override opcional; si es null el precio = suma de rentas de los items
-  precioFinal       Float    @default(0) // cache: precioManual ?? Σ(cantidad × equipo.precioRenta)
-  capacidadUniversal Boolean @default(false) // true = sirve para cualquier tamaño de evento; no depende de rangos de cobertura
-  activo            Boolean  @default(true)
-  orden             Int      @default(0)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  nombre             String
+  descripcion        String?
+  categoria          String? // AUDIO | ILUMINACION | VIDEO | DJ | ESTRUCTURA | OTRO — agrupa en la UI
+  familia            String? // slug de familia comercial (sistema-audio, microfonia, ...) — agrupa alternativas para el botón ⇄
+  subfamilia         String? // segundo nivel para set-iluminacion (beam / spot / wash / par-led / flasher / blinder / laser / kaleidos / pinspot)
+  tiposEvento        String? // JSON array: ["MUSICAL","SOCIAL","EMPRESARIAL"] — sugerencia por tipo de evento
+  nichos             String? // JSON array de slugs de nicho donde aplica (Bloque 2)
+  rol                String   @default("base") // base | adicional
+  disponibilidad     String   @default("propio") // propio | subrenta | bajo_pedido
+  proveedorRef       String? // proveedor de referencia si subrenta/bajo_pedido
+  costoRef           Float? // costo de referencia si subrenta/bajo_pedido
+  imagenUrl          String? // imagen del producto (por default la del equipo dominante; editable)
+  equipoDominanteId  String? // equipo cuya imagen se usa por default
+  equipoDominante    Equipo?  @relation("ProductoEquipoDominante", fields: [equipoDominanteId], references: [id])
+  precioManual       Float? // override opcional; si es null el precio = suma de rentas de los items
+  precioFinal        Float    @default(0) // cache: precioManual ?? Σ(cantidad × equipo.precioRenta)
+  capacidadUniversal Boolean  @default(false) // true = sirve para cualquier tamaño de evento; no depende de rangos de cobertura
+  activo             Boolean  @default(true)
+  orden              Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   items        ProductoEquipo[]
   accesorios   ProductoAccesorio[]
@@ -1476,16 +1476,56 @@ model MovimientoFinanciero {
   @@map("movimientos_financieros")
 }
 
+// ─── RECURRENCIAS FINANCIERAS ──────────────────────────────────────────────
+
+model SerieRecurrente {
+  id   String @id @default(cuid())
+  tipo String // "CXP" | "CXC"
+
+  frecuencia     String // SEMANAL | QUINCENAL | MENSUAL | TRIMESTRAL | SEMESTRAL | ANUAL | PERSONALIZADA
+  intervalo      Int       @default(1)
+  fechaInicio    DateTime
+  fechaFin       DateTime?
+  diaVencimiento Int?
+
+  estado String @default("ACTIVO") // ACTIVO | PAUSADO | FINALIZADO
+
+  concepto String
+  monto    Float
+
+  clienteId   String?
+  proveedorId String?
+  empresaId   String?
+  socioId     String?
+  tecnicoId   String?
+  proyectoId  String?
+  categoriaId String?
+
+  ultimaGeneracion DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cuentasCobrar CuentaCobrar[]
+  cuentasPagar  CuentaPagar[]
+
+  @@map("series_recurrentes")
+}
+
 model CuentaCobrar {
-  id              String          @id @default(cuid())
-  clienteId       String?
-  cliente         Cliente?        @relation(fields: [clienteId], references: [id])
-  empresaId       String?
-  empresa         Empresa?        @relation(fields: [empresaId], references: [id])
-  proyectoId      String?
-  proyecto        Proyecto?       @relation(fields: [proyectoId], references: [id])
-  cotizacionId    String?
-  cotizacion      Cotizacion?     @relation(fields: [cotizacionId], references: [id])
+  id                String           @id @default(cuid())
+  clienteId         String?
+  cliente           Cliente?         @relation(fields: [clienteId], references: [id])
+  empresaId         String?
+  empresa           Empresa?         @relation(fields: [empresaId], references: [id])
+  proyectoId        String?
+  proyecto          Proyecto?        @relation(fields: [proyectoId], references: [id])
+  cotizacionId      String?
+  cotizacion        Cotizacion?      @relation(fields: [cotizacionId], references: [id])
+  serieRecurrenteId String?
+  serieRecurrente   SerieRecurrente? @relation(fields: [serieRecurrenteId], references: [id])
+  numeroPeriodo     Int?
+
   concepto        String
   tipoPago        String          @default("TOTAL") // TOTAL | ANTICIPO | LIQUIDACION | OTRO
   monto           Float
@@ -1528,18 +1568,22 @@ model Abono {
 }
 
 model CuentaPagar {
-  id              String                @id @default(cuid())
-  tipoAcreedor    String // PROVEEDOR | TECNICO | PERSONAL_INTERNO | OTRO | EMPRESA | SOCIO
-  tecnicoId       String?
-  tecnico         Tecnico?              @relation(fields: [tecnicoId], references: [id])
-  proveedorId     String?
-  proveedor       Proveedor?            @relation(fields: [proveedorId], references: [id])
-  empresaId       String?
-  empresa         Empresa?              @relation(fields: [empresaId], references: [id])
-  socioId         String?
-  socio           Socio?                @relation(fields: [socioId], references: [id])
-  proyectoId      String?
-  proyecto        Proyecto?             @relation(fields: [proyectoId], references: [id])
+  id                String           @id @default(cuid())
+  tipoAcreedor      String // PROVEEDOR | TECNICO | PERSONAL_INTERNO | OTRO | EMPRESA | SOCIO
+  tecnicoId         String?
+  tecnico           Tecnico?         @relation(fields: [tecnicoId], references: [id])
+  proveedorId       String?
+  proveedor         Proveedor?       @relation(fields: [proveedorId], references: [id])
+  empresaId         String?
+  empresa           Empresa?         @relation(fields: [empresaId], references: [id])
+  socioId           String?
+  socio             Socio?           @relation(fields: [socioId], references: [id])
+  proyectoId        String?
+  proyecto          Proyecto?        @relation(fields: [proyectoId], references: [id])
+  serieRecurrenteId String?
+  serieRecurrente   SerieRecurrente? @relation(fields: [serieRecurrenteId], references: [id])
+  numeroPeriodo     Int?
+
   concepto        String
   monto           Float
   montoPagado     Float                 @default(0)
@@ -1771,54 +1815,54 @@ model MantenimientoEquipo {
 // permanentes, estructura de reporte y estándares). Espeja el Acuerdo de Alineación.
 // El plan de trabajo (variable) cuelga de estas responsabilidades, no al revés.
 model Puesto {
-  id                String     @id @default(cuid())
-  nombre            String
-  area              String     @default("GENERAL") // DIRECCION | ADMINISTRACION | MARKETING | VENTAS | PRODUCCION | RRHH | GENERAL
-  objetivoArea      String?    @map("objetivo_area") @db.Text // solo lectura: se jala de PTArea.objetivo (§1)
-  descripcionPuesto String?    @map("descripcion_puesto") @db.Text // qué hace en el día a día (§1)
-  objetivoPuesto    String?    @map("objetivo_puesto") @db.Text // resultado único por el que existe el puesto (§1)
-  misionPuesto      String?    @map("mision_puesto") @db.Text // contribución del puesto a la operación
-  responsabilidades String?    @db.Text // JSON string[] — responsabilidades permanentes (§4.2)
+  id                       String     @id @default(cuid())
+  nombre                   String
+  area                     String     @default("GENERAL") // DIRECCION | ADMINISTRACION | MARKETING | VENTAS | PRODUCCION | RRHH | GENERAL
+  objetivoArea             String?    @map("objetivo_area") @db.Text // solo lectura: se jala de PTArea.objetivo (§1)
+  descripcionPuesto        String?    @map("descripcion_puesto") @db.Text // qué hace en el día a día (§1)
+  objetivoPuesto           String?    @map("objetivo_puesto") @db.Text // resultado único por el que existe el puesto (§1)
+  misionPuesto             String?    @map("mision_puesto") @db.Text // contribución del puesto a la operación
+  responsabilidades        String?    @db.Text // JSON string[] — responsabilidades permanentes (§4.2)
   // Estructura de reporte (§2)
-  reportaAId        String?    @map("reporta_a_id")
-  reportaA          Puesto?    @relation("PuestoJerarquia", fields: [reportaAId], references: [id], onDelete: SetNull)
-  subordinados      Puesto[]   @relation("PuestoJerarquia")
-  coordinaCon       String?    @map("coordina_con") @db.Text // JSON string[] (legado; ver coordinaConData)
-  supervisaA        String?    @map("supervisa_a") @db.Text // JSON string[] (legado; ahora derivado de subordinados)
-  coordinaConData   String?    @map("coordina_con_data") @db.Text // JSON [{ puestoId, nota }] (§2)
+  reportaAId               String?    @map("reporta_a_id")
+  reportaA                 Puesto?    @relation("PuestoJerarquia", fields: [reportaAId], references: [id], onDelete: SetNull)
+  subordinados             Puesto[]   @relation("PuestoJerarquia")
+  coordinaCon              String?    @map("coordina_con") @db.Text // JSON string[] (legado; ver coordinaConData)
+  supervisaA               String?    @map("supervisa_a") @db.Text // JSON string[] (legado; ahora derivado de subordinados)
+  coordinaConData          String?    @map("coordina_con_data") @db.Text // JSON [{ puestoId, nota }] (§2)
   // Subárea del maestro (Áreas y organización). Ubica el puesto dentro de su área.
-  subAreaId         String?    @map("sub_area_id")
-  subArea           PTSubArea? @relation("PuestoSubArea", fields: [subAreaId], references: [id], onDelete: SetNull)
+  subAreaId                String?    @map("sub_area_id")
+  subArea                  PTSubArea? @relation("PuestoSubArea", fields: [subAreaId], references: [id], onDelete: SetNull)
   // Criterios de calidad (narrativos) — JSON: [{ subarea, responsabilidad, estandar }] (§6)
-  estandares        String?    @db.Text
+  estandares               String?    @db.Text
   // Estándares mínimos no negociables (binarios) — JSON: [{ enunciado, frecuencia, evidencia, verificaPuestoId }] (§6)
-  estandaresMinimos String?    @map("estandares_minimos") @db.Text
+  estandaresMinimos        String?    @map("estandares_minimos") @db.Text
   // Perfil requerido (§5)
-  valores           String?    @db.Text // JSON [{ valorId, nombre, comoSeVe }]
-  aptitudes         String?    @db.Text // JSON [{ nombre, nivel }]  nivel: basico|intermedio|avanzado
-  conocimientos     String?    @db.Text // JSON [{ nombre, nivel, indispensable }]
+  valores                  String?    @db.Text // JSON [{ valorId, nombre, comoSeVe }]
+  aptitudes                String?    @db.Text // JSON [{ nombre, nivel }]  nivel: basico|intermedio|avanzado
+  conocimientos            String?    @db.Text // JSON [{ nombre, nivel, indispensable }]
   // Condiciones laborales — fuente para el acuerdo laboral
-  funciones         String?    @db.Text // JSON string[] — funciones/actividades del puesto
-  prestaciones      String?    @db.Text // JSON string[] — prestaciones seleccionadas (nombres del catálogo + otros)
-  prestacionesOtro  String?    @map("prestaciones_otro") @db.Text // texto libre cuando se elige "Otro" (§3.4)
-  tipoContrato      String?    @map("tipo_contrato") // Contratación | Honorarios (§3.1)
-  modalidad         String? // Presencial | Remoto | Híbrido (§3.2)
-  horario           String? // legado texto libre (§3.3)
-  jornada           String?    @db.Text // JSON [{ dia, entrada, salida, ubicacion }] (§3.3)
+  funciones                String?    @db.Text // JSON string[] — funciones/actividades del puesto
+  prestaciones             String?    @db.Text // JSON string[] — prestaciones seleccionadas (nombres del catálogo + otros)
+  prestacionesOtro         String?    @map("prestaciones_otro") @db.Text // texto libre cuando se elige "Otro" (§3.4)
+  tipoContrato             String?    @map("tipo_contrato") // Contratación | Honorarios (§3.1)
+  modalidad                String? // Presencial | Remoto | Híbrido (§3.2)
+  horario                  String? // legado texto libre (§3.3)
+  jornada                  String?    @db.Text // JSON [{ dia, entrada, salida, ubicacion }] (§3.3)
   // Configuración de onboarding (Organización → Puesto → Onboarding)
-  onboardingModulos       String? @map("onboarding_modulos") @db.Text // JSON string[] — moduloKeys de plataforma a revisar
-  onboardingCapacitaciones String? @map("onboarding_capacitaciones") @db.Text // JSON string[] — LEGADO: ids de CategoriaCapacitacion (áreas). Superado por capacitacionAsignaciones.
-  capacitacionAsignaciones String? @map("capacitacion_asignaciones") @db.Text // JSON [{ categoriaId, subArea|null, nivel: "OBLIGATORIO"|"RECOMENDADO" }] — capacitación ligada al área/sub-área del puesto
+  onboardingModulos        String?    @map("onboarding_modulos") @db.Text // JSON string[] — moduloKeys de plataforma a revisar
+  onboardingCapacitaciones String?    @map("onboarding_capacitaciones") @db.Text // JSON string[] — LEGADO: ids de CategoriaCapacitacion (áreas). Superado por capacitacionAsignaciones.
+  capacitacionAsignaciones String?    @map("capacitacion_asignaciones") @db.Text // JSON [{ categoriaId, subArea|null, nivel: "OBLIGATORIO"|"RECOMENDADO" }] — capacitación ligada al área/sub-área del puesto
   // Versionado del registro (§7/§9): se congela en acuerdos y evaluaciones
-  version           Int        @default(1)
-  legacyData        String?    @map("legacy_data") @db.Text // JSON snapshot de textos libres previos (§10)
+  version                  Int        @default(1)
+  legacyData               String?    @map("legacy_data") @db.Text // JSON snapshot de textos libres previos (§10)
   // Presentación / organigrama
-  color             String?
-  posX              Float?     @map("pos_x") // posición X en el lienzo del organigrama
-  posY              Float?     @map("pos_y") // posición Y en el lienzo del organigrama
-  activo            Boolean    @default(true)
-  createdAt         DateTime   @default(now()) @map("created_at")
-  updatedAt         DateTime   @updatedAt @map("updated_at")
+  color                    String?
+  posX                     Float?     @map("pos_x") // posición X en el lienzo del organigrama
+  posY                     Float?     @map("pos_y") // posición Y en el lienzo del organigrama
+  activo                   Boolean    @default(true)
+  createdAt                DateTime   @default(now()) @map("created_at")
+  updatedAt                DateTime   @updatedAt @map("updated_at")
 
   ocupantes     PersonalInterno[] @relation("PuestoTitular")
   postulaciones Postulacion[]
@@ -1889,7 +1933,7 @@ model PersonalInterno {
   vacaciones            SolicitudVacaciones[]
   encuestasSatisfaccion EncuestaSatisfaccionEquipo[]
   capacitaciones        CapacitacionParticipante[]
-  onboarding            OnboardingPlan?             @relation("PersonalOnboarding")
+  onboarding            OnboardingPlan?              @relation("PersonalOnboarding")
 
   @@map("personal_interno")
 }
@@ -4267,15 +4311,15 @@ model KeyResult {
 // ─── CAPACITACIÓN CON IA ─────────────────────────────────────────────────────
 
 model SesionCapacitacion {
-  id              String                  @id @default(cuid())
-  numero          Int
-  titulo          String
-  bloque          String
-  bloqueLetra     String
-  descripcion     String
-  objetivos       String[]
-  puntosBase      String[]
-  puntosEditados  String[]
+  id                  String                  @id @default(cuid())
+  numero              Int
+  titulo              String
+  bloque              String
+  bloqueLetra         String
+  descripcion         String
+  objetivos           String[]
+  puntosBase          String[]
+  puntosEditados      String[]
   subArea             String?
   publicoObjetivo     String?
   prerrequisitos      String[]
@@ -4283,19 +4327,19 @@ model SesionCapacitacion {
   erroresComunes      String[]
   checklistAplicacion String[]
   recursos            String[]
-  semana          Int                     @default(1)
-  fechaProgramada DateTime?
-  duracion        Int                     @default(60)
-  impartidor      String                  @default("Mauricio Hernández")
-  estado          String                  @default("pendiente")
-  notas           String?
-  categoriaId     String?
-  categoria       CategoriaCapacitacion?  @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
-  createdAt       DateTime                @default(now())
-  updatedAt       DateTime                @updatedAt
-  versiones       VersionPresentacion[]
-  progreso        ProgresoCapacitacion[]
-  evaluacion      EvaluacionCapacitacion?
+  semana              Int                     @default(1)
+  fechaProgramada     DateTime?
+  duracion            Int                     @default(60)
+  impartidor          String                  @default("Mauricio Hernández")
+  estado              String                  @default("pendiente")
+  notas               String?
+  categoriaId         String?
+  categoria           CategoriaCapacitacion?  @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  versiones           VersionPresentacion[]
+  progreso            ProgresoCapacitacion[]
+  evaluacion          EvaluacionCapacitacion?
 
   @@map("sesiones_capacitacion")
 }

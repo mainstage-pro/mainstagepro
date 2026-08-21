@@ -8,7 +8,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params;
   const body = await req.json();
-  const { monto, motivo, concepto, fechaCompromiso, cuentaOrigenId, proveedorId, tecnicoId, notas } = body;
+  const { monto, motivo, concepto, fechaCompromiso, cuentaOrigenId, proveedorId, tecnicoId, notas, editarSiguientes } = body;
 
   if (monto !== undefined && (typeof monto !== "number" || monto < 0))
     return NextResponse.json({ error: "Monto inválido" }, { status: 400 });
@@ -39,8 +39,51 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (tecnicoId !== undefined) updateData.tecnicoId = tecnicoId || null;
   if (notas !== undefined) updateData.notas = notas || null;
 
-  const updated = await prisma.cuentaPagar.update({ where: { id }, data: updateData });
+  // Actualización masiva si es serie y se seleccionó 'editarSiguientes'
+  if (editarSiguientes && cxp.serieRecurrenteId && cxp.numeroPeriodo) {
+    await prisma.$transaction(async (tx) => {
+      // 1. Actualizar esta cuenta
+      await tx.cuentaPagar.update({ where: { id }, data: updateData });
 
+      // 2. Preparar update masivo para las siguientes
+      const massUpdate: any = {};
+      if (monto !== undefined) massUpdate.monto = monto;
+      if (proveedorId !== undefined) massUpdate.proveedorId = proveedorId || null;
+      if (tecnicoId !== undefined) massUpdate.tecnicoId = tecnicoId || null;
+      if (cuentaOrigenId !== undefined) massUpdate.cuentaOrigenId = cuentaOrigenId || null;
+      
+      if (Object.keys(massUpdate).length > 0) {
+        await tx.cuentaPagar.updateMany({
+          where: {
+            serieRecurrenteId: cxp.serieRecurrenteId,
+            numeroPeriodo: { gt: cxp.numeroPeriodo as number },
+            estado: "PENDIENTE" // Solo afectamos las no pagadas
+          },
+          data: massUpdate
+        });
+      }
+
+      // 3. Actualizar la serie base
+      if (monto !== undefined || concepto !== undefined || proveedorId !== undefined || tecnicoId !== undefined) {
+        const serieUpdate: any = {};
+        if (monto !== undefined) serieUpdate.monto = monto;
+        if (concepto !== undefined) serieUpdate.concepto = concepto;
+        if (proveedorId !== undefined) serieUpdate.proveedorId = proveedorId || null;
+        if (tecnicoId !== undefined) serieUpdate.tecnicoId = tecnicoId || null;
+        
+        await tx.serieRecurrente.update({
+          where: { id: cxp.serieRecurrenteId as string },
+          data: serieUpdate
+        });
+      }
+    });
+
+    const finalUpdated = await prisma.cuentaPagar.findUnique({ where: { id } });
+    return NextResponse.json({ ok: true, cxp: finalUpdated });
+  }
+
+  // Update normal
+  const updated = await prisma.cuentaPagar.update({ where: { id }, data: updateData });
   return NextResponse.json({ ok: true, cxp: updated });
 }
 
