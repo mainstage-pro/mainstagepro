@@ -2,6 +2,7 @@ import type { ModuleNavTab } from "@/components/ModuleTabsLayout";
 
 export const finanzasTabs: ModuleNavTab[] = [
   { href: "/finanzas/cobros-pagos", label: "Cobros y pagos", accessKey: "finanzas-cobros" },
+  { href: "/finanzas/flujo-cuentas", label: "Flujo de cuentas", accessKey: "finanzas-flujo" },
   { href: "/finanzas/programacion", label: "Programación semanal", accessKey: "finanzas-cobros" },
   { href: "/finanzas/pagos-personal", label: "Pagos a personal", accessKey: "finanzas-pagos-personal" },
   { href: "/finanzas/movimientos", label: "Movimientos", accessKey: "finanzas-movimientos" },
