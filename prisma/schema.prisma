@@ -898,20 +898,21 @@ model Equipo {
   createdAt              DateTime        @default(now())
   updatedAt              DateTime        @updatedAt
 
-  cotizacionLineas     CotizacionLinea[]
-  proyectoEquipos      ProyectoEquipo[]
-  mantenimientos       MantenimientoEquipo[]
-  plantillaItems       PlantillaEquipoItem[]
-  preciosClientes      PrecioClienteEquipo[]
-  checklistBodegaItems ChecklistBodegaItem[]
-  unidades             EquipoUnidad[]
-  accesorios           EquipoAccesorio[]
-  notasEquipo          EquipoNota[]
-  proveedoresPrecios   EquipoProveedorPrecio[] @relation("EquipoProveedores")
-  productoItems        ProductoEquipo[]
-  productosDominante   Producto[]              @relation("ProductoEquipoDominante")
-  paqueteItems         PaqueteItem[]
-  accesoriosMigrados   Accesorio[]             @relation("AccesorioEquipoOrigen")
+  cotizacionLineas             CotizacionLinea[]
+  proyectoEquipos              ProyectoEquipo[]
+  mantenimientos               MantenimientoEquipo[]
+  plantillaItems               PlantillaEquipoItem[]
+  preciosClientes              PrecioClienteEquipo[]
+  checklistBodegaItems         ChecklistBodegaItem[]
+  unidades                     EquipoUnidad[]
+  accesorios                   EquipoAccesorio[]
+  notasEquipo                  EquipoNota[]
+  proveedoresPrecios           EquipoProveedorPrecio[]        @relation("EquipoProveedores")
+  productoItems                ProductoEquipo[]
+  productosDominante           Producto[]                     @relation("ProductoEquipoDominante")
+  paqueteItems                 PaqueteItem[]
+  accesoriosMigrados           Accesorio[]                    @relation("AccesorioEquipoOrigen")
+  plantillas_cotizacion_lineas plantillas_cotizacion_lineas[]
 
   @@map("equipos")
 }
@@ -4912,4 +4913,119 @@ model PlantillaTareaSubetapa {
 
   @@index([etapaInterna, activo])
   @@map("plantillas_tareas_subetapa")
+}
+
+model calendario_entradas {
+  id               String   @id
+  calendario       String
+  tipo             String   @default("HITO")
+  titulo           String
+  descripcion      String?
+  anio             Int?
+  mes_inicio       Int
+  dia_inicio       Int?
+  mes_fin          Int?
+  dia_fin          Int?
+  color            String?
+  icono            String?
+  ideas            String?
+  tipo_evento_slug String?
+  servicio         String?
+  orden            Int      @default(0)
+  activo           Boolean  @default(true)
+  created_at       DateTime @default(now())
+  updated_at       DateTime @default(now())
+
+  @@index([calendario])
+}
+
+model plantillas_cotizacion {
+  id                           String                         @id
+  nombre                       String
+  descripcion                  String?
+  tipoEvento                   String?
+  tipoServicio                 String?
+  activo                       Boolean                        @default(true)
+  creadaPorId                  String?
+  horasOperacion               Float?
+  tipoJornada                  String?
+  diasEquipo                   Int                            @default(1)
+  diasOperacion                Int                            @default(1)
+  diasTransporte               Int                            @default(1)
+  diasHospedaje                Int                            @default(1)
+  diasComidas                  Int                            @default(1)
+  observaciones                String?
+  terminosComerciales          String?
+  vigenciaDias                 Int                            @default(30)
+  aplicaIva                    Boolean                        @default(false)
+  createdAt                    DateTime                       @default(now())
+  updatedAt                    DateTime
+  plantillas_cotizacion_lineas plantillas_cotizacion_lineas[]
+}
+
+model plantillas_cotizacion_lineas {
+  id                    String                @id
+  plantillaId           String
+  tipo                  String
+  equipoId              String?
+  rolTecnicoId          String?
+  descripcion           String
+  marca                 String?
+  modelo                String?
+  nivel                 String?
+  jornada               String?
+  esExterno             Boolean               @default(false)
+  cantidad              Float                 @default(1)
+  dias                  Int                   @default(1)
+  precioUnitario        Float                 @default(0)
+  costoUnitario         Float                 @default(0)
+  subtotal              Float                 @default(0)
+  esIncluido            Boolean               @default(false)
+  notas                 String?
+  orden                 Int                   @default(0)
+  equipos               Equipo?               @relation(fields: [equipoId], references: [id])
+  plantillas_cotizacion plantillas_cotizacion @relation(fields: [plantillaId], references: [id], onDelete: Cascade)
+}
+
+model presentacion_overrides {
+  key       String   @id
+  value     String
+  updatedAt DateTime @default(now())
+}
+
+model proyecto_imagenes {
+  id                     String                 @id
+  proyectoId             String
+  url                    String
+  caption                String?
+  orden                  Int                    @default(0)
+  proyectos_presentacion proyectos_presentacion @relation(fields: [proyectoId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([proyectoId])
+}
+
+model proyectos_presentacion {
+  id                String              @id
+  slug              String              @unique
+  tipoEvento        String
+  titulo            String
+  cliente           String?
+  ubicacion         String?
+  fecha             String?
+  resumen           String?
+  reto              String?
+  solucion          String?
+  resultado         String?
+  asistentes        Int?
+  servicios         String?
+  portada           String?
+  esBorrador        Boolean             @default(true)
+  destacado         Boolean             @default(false)
+  activo            Boolean             @default(true)
+  orden             Int                 @default(0)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @default(now())
+  proyecto_imagenes proyecto_imagenes[]
+
+  @@index([tipoEvento])
 }
