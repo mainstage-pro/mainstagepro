@@ -28,7 +28,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       },
       equipos: {
         include: {
-          equipo: { select: { descripcion: true, marca: true } },
+          equipo: { select: { descripcion: true, marca: true, modelo: true } },
         },
         orderBy: { id: "asc" },
       },
@@ -77,6 +77,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     equipos: (proyecto.equipos ?? []).map((e: any) => ({
       descripcion: e.equipo?.descripcion ?? "",
       marca: e.equipo?.marca ?? null,
+      modelo: e.equipo?.modelo ?? null,
       cantidad: e.cantidad,
       tipo: e.tipo,
     })),

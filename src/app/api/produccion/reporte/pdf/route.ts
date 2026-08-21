@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     const checklists = await prisma.checklistBodega.findMany({
       where: { fechaInicio: { gte: inicio, lte: fin } },
       include: {
-        items: { include: { equipo: { select: { id: true, descripcion: true, marca: true } } } },
+        items: { include: { equipo: { select: { id: true, descripcion: true, marca: true, modelo: true } } } },
       },
       orderBy: { fechaInicio: "asc" },
     });
@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
           alertas: alertas.map(a => ({
             descripcion: a.descripcion,
             estado: a.estado,
-            equipo: a.equipo ? { descripcion: a.equipo.descripcion, marca: a.equipo.marca } : null,
+            equipo: a.equipo ? { descripcion: a.equipo.descripcion, marca: a.equipo.marca, modelo: a.equipo.modelo } : null,
           })),
         };
       }),
@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
     const equiposPorEquipo = Array.from(porEquipo.entries()).map(([, revs]) => {
       const eq = revs[0].equipo;
       return {
-        equipo: { descripcion: eq.descripcion, marca: eq.marca, categoria: eq.categoria },
+        equipo: { descripcion: eq.descripcion, marca: eq.marca, modelo: eq.modelo, categoria: eq.categoria },
         revisiones: revs.map(r => ({
           fecha:            r.fecha.toISOString(),
           tipo:             r.tipo,
@@ -151,8 +151,8 @@ export async function GET(request: NextRequest) {
 
     pdfData.inventario = {
       kpis: { altas: altas.length, bajas: bajas.length, delta: altas.length - bajas.length },
-      altas: altas.map(e => ({ descripcion: e.descripcion, marca: e.marca, tipo: e.tipo, categoria: e.categoria, createdAt: e.createdAt.toISOString() })),
-      bajas: bajas.map(e => ({ descripcion: e.descripcion, marca: e.marca, tipo: e.tipo, categoria: e.categoria, fechaBaja: e.fechaBaja?.toISOString() ?? null })),
+      altas: altas.map(e => ({ descripcion: e.descripcion, marca: e.marca, modelo: e.modelo, tipo: e.tipo, categoria: e.categoria, createdAt: e.createdAt.toISOString() })),
+      bajas: bajas.map(e => ({ descripcion: e.descripcion, marca: e.marca, modelo: e.modelo, tipo: e.tipo, categoria: e.categoria, fechaBaja: e.fechaBaja?.toISOString() ?? null })),
       estadoActual,
       analisis:    nota("rp-inv-analisis"),
       propuesta:   nota("rp-inv-propuesta"),

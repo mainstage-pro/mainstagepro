@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { ReporteAnalisisSection } from '@/components/ui/ReporteAnalisisSection';
 import Link from "next/link";
+import { getEquipoDisplayName } from "@/lib/equipoNombre";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Cell, PieChart, Pie,
@@ -257,7 +258,7 @@ function SeccionChecklist({ data, mes }: { data: ReporteData["checklistSemanal"]
           <div className="space-y-2">
             {selectedCl.alertas.map(a => (
               <div key={a.id} className="flex items-start justify-between gap-3 py-2 border-b border-[#1a1a1a] last:border-0">
-                <span className="text-gray-300 text-xs">{a.equipo ? `${a.equipo.marca ?? ""} ${a.equipo.descripcion}`.trim() : a.descripcion}</span>
+                <span className="text-gray-300 text-xs">{a.equipo ? getEquipoDisplayName(a.equipo) : a.descripcion}</span>
                 <div className="flex items-center gap-2 shrink-0">
                   <Badge color={a.estado === "PERDIDO" ? "red" : "amber"}>{a.estado}</Badge>
                   {a.notas && <span className="text-[#555] text-[10px]">{a.notas}</span>}
@@ -277,7 +278,7 @@ function SeccionChecklist({ data, mes }: { data: ReporteData["checklistSemanal"]
               <div key={a.id} className="flex items-center justify-between gap-3 py-1.5 border-b border-[#1a1a1a] last:border-0">
                 <div className="flex items-center gap-3">
                   <span className="text-[#555] text-[10px] w-24 shrink-0">{a.semana}</span>
-                  <span className="text-gray-300 text-xs">{a.equipo ? `${a.equipo.marca ?? ""} ${a.equipo.descripcion}`.trim() : a.descripcion}</span>
+                  <span className="text-gray-300 text-xs">{a.equipo ? getEquipoDisplayName(a.equipo) : a.descripcion}</span>
                 </div>
                 <Badge color={a.estado === "PERDIDO" ? "red" : "amber"}>{a.estado}</Badge>
               </div>
@@ -381,8 +382,8 @@ function SeccionMantenimiento({ data, mes, onActualizar }: { data: ReporteData["
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <div className={`w-2 h-2 rounded-full shrink-0 ${tuvoBajaFalla ? "bg-[#f87171]" : "bg-[#4ade80]"}`} />
-                    <span className="text-gray-200 text-xs font-medium truncate">{equipo.descripcion}</span>
-                    {equipo.marca && <span className="text-[#555] text-[10px] hidden md:block">{equipo.marca} {equipo.modelo}</span>}
+                    <span className="text-gray-200 text-xs font-medium truncate">{getEquipoDisplayName(equipo)}</span>
+                    {(equipo.marca || equipo.modelo) && <span className="text-[#555] text-[10px] hidden md:block">{equipo.descripcion}</span>}
                     {equipo.categoria && <Badge color="gray">{equipo.categoria.nombre}</Badge>}
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
@@ -430,7 +431,7 @@ function SeccionMantenimiento({ data, mes, onActualizar }: { data: ReporteData["
                 <div key={eq.id} className="flex items-start justify-between gap-4 pb-3 border-b border-[#1a1a1a] last:border-0 flex-wrap">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-white text-xs font-medium">{eq.descripcion}</span>
+                      <span className="text-white text-xs font-medium">{getEquipoDisplayName(eq)}</span>
                       {eq.categoria && <Badge color="gray">{eq.categoria.nombre}</Badge>}
                       {eq.unidades.length > 0 && <span className="text-[#555] text-[10px]">[{eq.unidades.map(u => u.codigo).join(", ")}]</span>}
                     </div>
@@ -576,8 +577,8 @@ function SeccionInventario({ data, mes }: { data: ReporteData["inventario"]; mes
               <div key={e.id} className="pb-2 border-b border-[#1a1a1a] last:border-0">
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="text-gray-200 text-xs font-medium">{e.descripcion}</p>
-                    {e.marca && <p className="text-[#555] text-[10px]">{e.marca} {e.modelo}</p>}
+                    <p className="text-gray-200 text-xs font-medium">{getEquipoDisplayName(e)}</p>
+                    {(e.marca || e.modelo) && <p className="text-[#555] text-[10px]">{e.descripcion}</p>}
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     <Badge color={e.tipo === "PROPIO" ? "green" : "blue"}>{e.tipo}</Badge>
@@ -598,8 +599,8 @@ function SeccionInventario({ data, mes }: { data: ReporteData["inventario"]; mes
               <div key={e.id} className="pb-2 border-b border-[#1a1a1a] last:border-0">
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="text-gray-200 text-xs font-medium">{e.descripcion}</p>
-                    {e.marca && <p className="text-[#555] text-[10px]">{e.marca} {e.modelo}</p>}
+                    <p className="text-gray-200 text-xs font-medium">{getEquipoDisplayName(e)}</p>
+                    {(e.marca || e.modelo) && <p className="text-[#555] text-[10px]">{e.descripcion}</p>}
                     {(e.fechaBaja || e.updatedAt) && <p className="text-[#444] text-[9px]">{fmtFecha(e.fechaBaja ?? e.updatedAt!)}</p>}
                   </div>
                   <Badge color={e.tipo === "PROPIO" ? "green" : "blue"}>{e.tipo}</Badge>

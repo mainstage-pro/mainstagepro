@@ -2,6 +2,7 @@ import React from "react";
 import {
   Document, Page, Text, View, StyleSheet, Image,
 } from "@react-pdf/renderer";
+import { getEquipoDisplayName } from "@/lib/equipoNombre";
 
 const C = {
   black: "#0a0a0a",
@@ -30,6 +31,7 @@ const styles = StyleSheet.create({
   equipoItem: { flexDirection: "row", alignItems: "flex-start", marginBottom: 4 },
   equipoBullet: { fontSize: 9, color: C.gold, marginRight: 6, marginTop: 1 },
   equipoText: { fontSize: 9, color: C.black, flex: 1 },
+  equipoSubText: { fontSize: 7.5, color: C.gray, flex: 1, marginTop: 1 },
   indicaciones: { fontSize: 9, color: C.black, lineHeight: 1.6, backgroundColor: C.lightGray, padding: 10, borderRadius: 4, marginTop: 4 },
   footer: { position: "absolute", bottom: 30, left: 48, right: 48, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   footerText: { fontSize: 8, color: C.gray },
@@ -50,7 +52,7 @@ export interface FichaClienteData {
   encargadoNombre: string | null;      // encargado interno
   encargadoCelular: string | null;
   cliente: { nombre: string; empresa: string | null };
-  equipos: { descripcion: string; marca: string | null; cantidad: number }[];
+  equipos: { descripcion: string; marca: string | null; modelo: string | null; cantidad: number }[];
   logoSrc: string | null;
 }
 
@@ -138,10 +140,15 @@ export function FichaClientePDF({ data }: { data: FichaClienteData }) {
             {equipos.map((eq, i) => (
               <View key={i} style={styles.equipoItem}>
                 <Text style={styles.equipoBullet}>·</Text>
-                <Text style={styles.equipoText}>
-                  {eq.cantidad > 1 ? `${eq.cantidad}x ` : ""}
-                  {eq.marca ? `${eq.marca} ` : ""}{eq.descripcion}
-                </Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.equipoText}>
+                    {eq.cantidad > 1 ? `${eq.cantidad}x ` : ""}
+                    {getEquipoDisplayName(eq)}
+                  </Text>
+                  {(eq.marca || eq.modelo) && (
+                    <Text style={styles.equipoSubText}>{eq.descripcion}</Text>
+                  )}
+                </View>
               </View>
             ))}
           </View>

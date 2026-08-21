@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { getEquipoDisplayName } from "@/lib/equipoNombre";
 
 interface EquipoData {
   id: string;
@@ -11,6 +12,7 @@ interface EquipoData {
   equipo: {
     descripcion: string;
     marca: string | null;
+    modelo: string | null;
     categoria: { nombre: string } | null;
   } | null;
   proyecto: {
@@ -144,14 +146,11 @@ export default function ConfirmarProveedorPage() {
           <p className="text-[#B3985B] text-[10px] font-semibold uppercase tracking-widest">Equipo solicitado</p>
           {equipo?.equipo?.descripcion && (
             <div>
-              <p className="text-[#B3985B] text-[10px] font-semibold uppercase tracking-widest mb-1">Descripción</p>
-              <p className="text-white/85 font-semibold">{equipo.equipo.descripcion}</p>
-            </div>
-          )}
-          {equipo?.equipo?.marca && (
-            <div>
-              <p className="text-[#B3985B] text-[10px] font-semibold uppercase tracking-widest mb-1">Marca</p>
-              <p className="text-white/70 text-sm">{equipo.equipo.marca}</p>
+              <p className="text-[#B3985B] text-[10px] font-semibold uppercase tracking-widest mb-1">Equipo</p>
+              <p className="text-white/85 font-semibold">{getEquipoDisplayName(equipo.equipo)}</p>
+              {(equipo.equipo.marca || equipo.equipo.modelo) && (
+                <p className="text-white/50 text-xs mt-0.5">{equipo.equipo.descripcion}</p>
+              )}
             </div>
           )}
           {equipo?.equipo?.categoria?.nombre && (

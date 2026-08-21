@@ -58,7 +58,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
             subtotalHospedaje: true, subtotalEquiposNeto: true, subtotalTerceros: true,
             notasSecciones: true, observaciones: true,
             lineas: {
-              select: { id: true, tipo: true, descripcion: true, cantidad: true, dias: true, nivel: true, jornada: true, precioUnitario: true, notas: true, marca: true, rolTecnicoId: true, rolTecnico: { select: { id: true, nombre: true, disciplina: true } } },
+              select: { id: true, tipo: true, descripcion: true, cantidad: true, dias: true, nivel: true, jornada: true, precioUnitario: true, notas: true, marca: true, modelo: true, rolTecnicoId: true, rolTecnico: { select: { id: true, nombre: true, disciplina: true } } },
               orderBy: { id: "asc" },
             },
           },
@@ -114,7 +114,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
             subtotalHospedaje: true, subtotalEquiposNeto: true, subtotalTerceros: true,
             notasSecciones: true, observaciones: true,
             lineas: {
-              select: { id: true, tipo: true, descripcion: true, cantidad: true, dias: true, nivel: true, jornada: true, precioUnitario: true, notas: true, marca: true, rolTecnicoId: true, rolTecnico: { select: { id: true, nombre: true, disciplina: true } } },
+              select: { id: true, tipo: true, descripcion: true, cantidad: true, dias: true, nivel: true, jornada: true, precioUnitario: true, notas: true, marca: true, modelo: true, rolTecnicoId: true, rolTecnico: { select: { id: true, nombre: true, disciplina: true } } },
               orderBy: { id: "asc" },
             },
           },
@@ -128,7 +128,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         },
         equipos: {
           include: {
-            equipo: { select: { descripcion: true, marca: true, categoria: { select: { nombre: true } } } },
+            equipo: { select: { descripcion: true, marca: true, modelo: true, categoria: { select: { nombre: true } } } },
             proveedor: { select: { nombre: true, empresa: true, telefono: true } },
           },
           orderBy: { id: "asc" },

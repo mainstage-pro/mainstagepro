@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { Package, AlertTriangle } from "lucide-react";
+import { getEquipoDisplayName } from "@/lib/equipoNombre";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 interface EquipoDisp {
@@ -261,9 +262,9 @@ export default function DisponibilidadPage() {
                               } ${esConflicto ? "bg-red-950/10" : ""}`}
                             >
                               <td className="px-5 py-3">
-                                <p className="text-white font-medium leading-tight">{eq.descripcion}</p>
+                                <p className="text-white font-medium leading-tight">{getEquipoDisplayName(eq)}</p>
                                 {(eq.marca || eq.modelo) && (
-                                  <p className="text-gray-600 text-xs">{[eq.marca, eq.modelo].filter(Boolean).join(" ")}</p>
+                                  <p className="text-gray-600 text-xs">{eq.descripcion}</p>
                                 )}
                               </td>
                               <td className="px-3 py-3 text-center text-gray-300">{eq.cantidadTotal}</td>

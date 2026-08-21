@@ -2,6 +2,7 @@ import React from "react";
 import {
   Document, Page, Text, View, StyleSheet,
 } from "@react-pdf/renderer";
+import { getEquipoDisplayName } from "@/lib/equipoNombre";
 
 // ─── Paleta ───────────────────────────────────────────────────────────────────
 const GOLD  = "#B3985B";
@@ -101,6 +102,7 @@ const s = StyleSheet.create({
   tableCell:    { fontSize: 7.5, color: GRAY, flex: 1 },
   tableCellB:   { fontSize: 7.5, color: DARK, fontFamily: "Helvetica-Bold", flex: 1 },
   tableCellSm:  { fontSize: 7, color: GRAY, flex: 0.7 },
+  tableCellSub: { fontSize: 6.5, color: LIGHT, marginTop: 1 },
 
   // Pills (updated for light bg)
   pillGreen:  { backgroundColor: "#dcfce7", borderRadius: 8, paddingHorizontal: 5, paddingVertical: 1 },
@@ -208,7 +210,7 @@ export interface ReporteProduccionPDFData {
     checklists: Array<{
       semana: string; estado: string;
       stats: { total: number; enBodega: number; enRenta: number; cumplimiento: number; extraviados: number; perdidos: number };
-      alertas: Array<{ descripcion: string; estado: string; equipo: { descripcion: string; marca?: string | null } | null }>;
+      alertas: Array<{ descripcion: string; estado: string; equipo: { descripcion: string; marca?: string | null; modelo?: string | null } | null }>;
       notas: string | null;
     }>;
     analisis?: string; propuesta?: string; comentarios?: string;
@@ -216,7 +218,7 @@ export interface ReporteProduccionPDFData {
   equipos?: {
     kpis: { totalRevisiones: number; equiposRevisados: number; equiposConFalla: number; equiposEnMantenimiento: number; totalCostoReparaciones: number };
     equiposPorEquipo: Array<{
-      equipo: { descripcion: string; marca?: string | null; categoria?: { nombre: string } | null };
+      equipo: { descripcion: string; marca?: string | null; modelo?: string | null; categoria?: { nombre: string } | null };
       revisiones: Array<{ fecha: string; tipo: string; accionRealizada: string; costoReparacion?: number | null; comentarios?: string | null }>;
       costoTotal: number; tuvoBajaFalla: boolean;
     }>;
@@ -224,8 +226,8 @@ export interface ReporteProduccionPDFData {
   };
   inventario?: {
     kpis: { altas: number; bajas: number; delta: number };
-    altas: Array<{ descripcion: string; marca?: string | null; tipo: string; categoria?: { nombre: string } | null; createdAt?: string }>;
-    bajas: Array<{ descripcion: string; marca?: string | null; tipo: string; categoria?: { nombre: string } | null; fechaBaja?: string | null }>;
+    altas: Array<{ descripcion: string; marca?: string | null; modelo?: string | null; tipo: string; categoria?: { nombre: string } | null; createdAt?: string }>;
+    bajas: Array<{ descripcion: string; marca?: string | null; modelo?: string | null; tipo: string; categoria?: { nombre: string } | null; fechaBaja?: string | null }>;
     estadoActual: Record<string, number>;
     analisis?: string; propuesta?: string; comentarios?: string;
   };
@@ -308,9 +310,12 @@ function SeccionChecklistPDF({ data }: { data: NonNullable<ReporteProduccionPDFD
               cl.alertas.map((a, i) => (
                 <View key={`${cl.semana}-${i}`} style={s.tableRow}>
                   <Text style={[s.tableCell, { flex: 1.5 }]}>{cl.semana}</Text>
-                  <Text style={[s.tableCell, { flex: 2 }]}>
-                    {a.equipo ? `${a.equipo.marca ?? ""} ${a.equipo.descripcion}`.trim() : a.descripcion}
-                  </Text>
+                  <View style={{ flex: 2 }}>
+                    <Text style={s.tableCell}>{a.equipo ? getEquipoDisplayName(a.equipo) : a.descripcion}</Text>
+                    {a.equipo && (a.equipo.marca || a.equipo.modelo) && (
+                      <Text style={s.tableCellSub}>{a.equipo.descripcion}</Text>
+                    )}
+                  </View>
                   <Text style={s.tableCell}>{a.estado}</Text>
                 </View>
               ))
@@ -374,10 +379,15 @@ function SeccionEquiposPDF({ data }: { data: NonNullable<ReporteProduccionPDFDat
         data.equiposPorEquipo.map(({ equipo, revisiones, costoTotal, tuvoBajaFalla }) => (
           <View key={equipo.descripcion} style={{ marginBottom: 10 }}>
             <View style={{ flexDirection: "row", justifyContent: "space-between", backgroundColor: "#f9fafb", padding: 6, borderRadius: 3, marginBottom: 2 }}>
-              <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: tuvoBajaFalla ? RED : BLACK }}>
-                {equipo.marca ? `${equipo.marca} · ` : ""}{equipo.descripcion}
-                {equipo.categoria ? `  [${equipo.categoria.nombre}]` : ""}
-              </Text>
+              <View>
+                <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: tuvoBajaFalla ? RED : BLACK }}>
+                  {getEquipoDisplayName(equipo)}
+                  {equipo.categoria ? `  [${equipo.categoria.nombre}]` : ""}
+                </Text>
+                {(equipo.marca || equipo.modelo) && (
+                  <Text style={{ fontSize: 6.5, color: LIGHT, marginTop: 1 }}>{equipo.descripcion}</Text>
+                )}
+              </View>
               <Text style={{ fontSize: 7.5, color: costoTotal > 0 ? "#ea580c" : LIGHT }}>
                 {revisiones.length} rev.{costoTotal > 0 ? `  ·  ${fmtPeso(costoTotal)}` : ""}
               </Text>
@@ -452,7 +462,10 @@ function SeccionInventarioPDF({ data }: { data: NonNullable<ReporteProduccionPDF
             </View>
             {data.altas.map((e, i) => (
               <View key={i} style={s.tableRow}>
-                <Text style={[s.tableCell, { flex: 2 }]}>{e.marca ? `${e.marca} · ` : ""}{e.descripcion}</Text>
+                <View style={{ flex: 2 }}>
+                  <Text style={s.tableCell}>{getEquipoDisplayName(e)}</Text>
+                  {(e.marca || e.modelo) && <Text style={s.tableCellSub}>{e.descripcion}</Text>}
+                </View>
                 <Text style={s.tableCell}>{e.tipo}</Text>
                 <Text style={s.tableCell}>{e.categoria?.nombre ?? "—"}</Text>
                 <Text style={s.tableCell}>{e.createdAt ? fmtFecha(e.createdAt) : "—"}</Text>
@@ -474,7 +487,10 @@ function SeccionInventarioPDF({ data }: { data: NonNullable<ReporteProduccionPDF
             </View>
             {data.bajas.map((e, i) => (
               <View key={i} style={s.tableRow}>
-                <Text style={[s.tableCell, { flex: 2 }]}>{e.marca ? `${e.marca} · ` : ""}{e.descripcion}</Text>
+                <View style={{ flex: 2 }}>
+                  <Text style={s.tableCell}>{getEquipoDisplayName(e)}</Text>
+                  {(e.marca || e.modelo) && <Text style={s.tableCellSub}>{e.descripcion}</Text>}
+                </View>
                 <Text style={s.tableCell}>{e.tipo}</Text>
                 <Text style={s.tableCell}>{e.categoria?.nombre ?? "—"}</Text>
                 <Text style={s.tableCell}>{e.fechaBaja ? fmtFecha(e.fechaBaja) : "—"}</Text>

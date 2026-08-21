@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import { Package, AlertTriangle, ClipboardList } from "lucide-react";
+import { getEquipoDisplayName } from "@/lib/equipoNombre";
 
 interface Equipo {
   id: string; tipo: string; cantidad: number;
-  equipo: { descripcion: string; marca: string | null; categoria: { nombre: string } };
+  equipo: { descripcion: string; marca: string | null; modelo: string | null; categoria: { nombre: string } };
 }
 interface Proyecto {
   id: string; numeroProyecto: string; nombre: string; estado: string;
@@ -332,7 +333,7 @@ export default function RecoleccionesPage() {
                       {p.equipos.map(eq => (
                         <div key={eq.id} className="flex items-center gap-2">
                           <span className="text-[#B3985B] text-xs font-bold w-5 text-center">×{eq.cantidad}</span>
-                          <span className="text-gray-300 text-xs truncate">{eq.equipo.descripcion}</span>
+                          <span className="text-gray-300 text-xs truncate">{getEquipoDisplayName(eq.equipo)}</span>
                         </div>
                       ))}
                       {p.equipos.length === 0 && <p className="text-gray-600 text-xs italic">Sin equipos</p>}
@@ -496,7 +497,7 @@ export default function RecoleccionesPage() {
                         className="w-4 h-4 rounded accent-[#B3985B]" />
                       <span className="text-xs text-gray-300 group-hover:text-white transition-colors">
                         <span className="text-[#B3985B] font-bold mr-1">×{eq.cantidad}</span>
-                        {eq.equipo.descripcion}
+                        {getEquipoDisplayName(eq.equipo)}
                       </span>
                     </label>
                   ))}
@@ -617,7 +618,7 @@ function ProtocoloViewer({ data, equipos, label, color }: {
                   {checked ? "✓" : "✗"}
                 </span>
                 <span className={`text-xs ${checked ? "text-gray-300" : "text-gray-500 line-through"}`}>
-                  ×{eq.cantidad} {eq.equipo.descripcion}
+                  ×{eq.cantidad} {getEquipoDisplayName(eq.equipo)}
                 </span>
               </div>
             );

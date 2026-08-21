@@ -15,6 +15,7 @@ import SearchableSelect from "@/components/ui/SearchableSelect";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
 import { Sparkles, Package, SlidersHorizontal, AlertTriangle, Ban, Utensils, Bus, BedDouble, File, FileText, BarChart3, Paperclip, type LucideIcon } from "lucide-react";
+import { getEquipoDisplayName } from "@/lib/equipoNombre";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Equipo {
@@ -2295,8 +2296,8 @@ function CotizadorForm() {
                           return (
                             <div key={eq.id} className="flex items-start gap-2 text-sm">
                               <span className="flex-1 leading-snug text-gray-300">
-                                {eq.descripcion}
-                                {(eq.marca || eq.modelo) && <span className="ml-1 text-[10px] text-gray-500">{[eq.marca, eq.modelo].filter(Boolean).join(" ")}</span>}
+                                {getEquipoDisplayName(eq)}
+                                {(eq.marca || eq.modelo) && <span className="ml-1 text-[10px] text-gray-500">{eq.descripcion}</span>}
                                 {cant ? (
                                   <span className="ml-1.5 text-[10px] text-[#B3985B] font-semibold bg-[#B3985B]/10 rounded px-1.5 py-0.5">{cant} pz</span>
                                 ) : (
@@ -3014,7 +3015,7 @@ function CotizadorForm() {
                 <SearchableSelect
                   options={equiposExternos.map(eq => ({
                     value: eq.id,
-                    label: `${eq.descripcion}${eq.marca ? ` · ${eq.marca}` : ""}${eq.modelo ? ` ${eq.modelo}` : ""} — cliente: ${formatCurrency(eq.precioRenta)} / costo: ${formatCurrency(eq.costoProveedor ?? 0)}`,
+                    label: `${getEquipoDisplayName(eq)}${(eq.marca || eq.modelo) ? ` — ${eq.descripcion}` : ""} — cliente: ${formatCurrency(eq.precioRenta)} / costo: ${formatCurrency(eq.costoProveedor ?? 0)}`,
                   }))}
                   value={selExt}
                   onChange={setSelExt}
@@ -4254,9 +4255,9 @@ function CascadeEquipoSelect({
                           )}
                           <span className="flex-1 min-w-0">
                             <span className="block font-medium truncate">
-                              {[eq.marca, eq.modelo].filter(Boolean).join(' ') || eq.descripcion}
+                              {getEquipoDisplayName(eq)}
                             </span>
-                            {([eq.marca, eq.modelo].filter(Boolean).join(' ') !== eq.descripcion) && (
+                            {(eq.marca || eq.modelo) && (
                               <span className="block text-[10px] text-gray-500 truncate">{eq.descripcion}</span>
                             )}
                           </span>

@@ -1,6 +1,7 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
 import { construirCronologia } from "@/lib/cronologia-evento";
+import { getEquipoDisplayName } from "@/lib/equipoNombre";
 
 const GOLD  = "#B3985B";
 const BLACK = "#0a0a0a";
@@ -137,7 +138,7 @@ const s = StyleSheet.create({
   // ── Equipos ──────────────────────────────────────────────────────────────────
   equipoRow: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     paddingVertical: 5,
     borderBottomWidth: 1,
     borderBottomColor: "#1e1e1e",
@@ -152,6 +153,12 @@ const s = StyleSheet.create({
     flex: 1,
     fontSize: 10,
     color: WHITE,
+  },
+  equipoSub: {
+    flex: 1,
+    fontSize: 8,
+    color: GRAY,
+    marginTop: 1,
   },
   // ── Cronología ───────────────────────────────────────────────────────────────
   cronoBloque: { marginBottom: 10 },
@@ -399,11 +406,12 @@ export function BriefPDF({
                       : s.equipoRow}
                   >
                     <Text style={s.equipoCant}>x{e.cantidad}</Text>
-                    <Text style={s.equipoName}>
-                      {e.equipo.descripcion}
-                      {e.equipo.marca ? `  ${e.equipo.marca}` : ""}
-                      {e.equipo.modelo ? ` ${e.equipo.modelo}` : ""}
-                    </Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.equipoName}>{getEquipoDisplayName(e.equipo)}</Text>
+                      {(e.equipo.marca || e.equipo.modelo) && (
+                        <Text style={s.equipoSub}>{e.equipo.descripcion}</Text>
+                      )}
+                    </View>
                   </View>
                 ))}
               </View>

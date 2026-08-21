@@ -2,6 +2,7 @@ import React from "react";
 import {
   Document, Page, Text, View, StyleSheet, Image,
 } from "@react-pdf/renderer";
+import { getEquipoDisplayName } from "@/lib/equipoNombre";
 
 const C = {
   black: "#0a0a0a",
@@ -38,6 +39,7 @@ const styles = StyleSheet.create({
   tableHeaderCell: { fontSize: 7.5, fontFamily: "Helvetica-Bold", color: C.gray, textTransform: "uppercase", letterSpacing: 0.5 },
   tableRow: { flexDirection: "row", paddingVertical: 4, paddingHorizontal: 8, borderBottomWidth: 0.5, borderBottomColor: C.border },
   tableCell: { fontSize: 8.5, color: C.black },
+  tableCellSub: { fontSize: 7, color: C.gray, marginTop: 1 },
   // List
   listItem: { flexDirection: "row", marginBottom: 3.5 },
   listBullet: { color: C.gold, marginRight: 5, marginTop: 1 },
@@ -78,7 +80,7 @@ export interface FichaCoordinadorData {
   encargadoNombre: string | null;
   encargadoCelular: string | null;
   // Equipos
-  equipos: { descripcion: string; marca: string | null; cantidad: number; tipo: string }[];
+  equipos: { descripcion: string; marca: string | null; modelo: string | null; cantidad: number; tipo: string }[];
   // Personal
   personal: { nombre: string; rolEnEvento: string | null; rolTecnico: string | null; celular: string | null }[];
   // Proveedores
@@ -256,9 +258,12 @@ export function FichaCoordinadorPDF({ data }: { data: FichaCoordinadorData }) {
               {equiposPropios.map((eq, i) => (
                 <View key={i} style={styles.tableRow} wrap={false}>
                   <Text style={[styles.tableCell, { width: 30, fontFamily: "Helvetica-Bold" }]}>{eq.cantidad}</Text>
-                  <Text style={[styles.tableCell, { flex: 1 }]}>
-                    {eq.marca ? `${eq.marca} ` : ""}{eq.descripcion}
-                  </Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.tableCell}>{getEquipoDisplayName(eq)}</Text>
+                    {(eq.marca || eq.modelo) && (
+                      <Text style={styles.tableCellSub}>{eq.descripcion}</Text>
+                    )}
+                  </View>
                 </View>
               ))}
             </View>

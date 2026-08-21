@@ -18,6 +18,7 @@ export async function GET(
         select: {
           descripcion: true,
           marca: true,
+          modelo: true,
           categoria: { select: { nombre: true } },
         },
       },

@@ -4,6 +4,7 @@ import {
 } from "@react-pdf/renderer";
 import { JORNADA_LABELS } from "@/lib/constants";
 import { diasEvento, agruparPorDia, horarioDeDia } from "@/lib/fechas-evento";
+import { getEquipoDisplayName } from "@/lib/equipoNombre";
 
 
 // ─── Paleta ──────────────────────────────────────────────────────────────────
@@ -313,6 +314,7 @@ interface EquipoItem {
   equipo: {
     descripcion: string;
     marca: string | null;
+    modelo: string | null;
     categoria: { nombre: string };
   };
 }
@@ -690,12 +692,12 @@ export function FichaTecnicaPDF({ proyecto, logoSrc }: { proyecto: FichaTecnicaD
                   {items.map((e, i) => (
                     <View key={e.id} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
                       <View style={{ width: "55%" }}>
-                        {/* Modelo / marca primero (prominente) */}
-                        {e.equipo.marca && (
-                          <Text style={s.tdBold}>{e.equipo.marca}</Text>
-                        )}
+                        {/* Marca · Modelo primero (prominente) */}
+                        <Text style={s.tdBold}>{getEquipoDisplayName(e.equipo)}</Text>
                         {/* Descripción abajo, más pequeña */}
-                        <Text style={[s.tdText, { fontSize: 7.5, color: LIGHT_GRAY }]}>{e.equipo.descripcion}</Text>
+                        {(e.equipo.marca || e.equipo.modelo) && (
+                          <Text style={[s.tdText, { fontSize: 7.5, color: LIGHT_GRAY }]}>{e.equipo.descripcion}</Text>
+                        )}
                       </View>
                       <Text style={[s.tdText, { width: "15%", textAlign: "center" }]}>{e.cantidad}</Text>
                       <Text style={[s.tdText, { width: "15%", textAlign: "center" }]}>{e.dias}</Text>

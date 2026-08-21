@@ -25,7 +25,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
           notasSecciones: true,
           lineas: {
             where: { tipo: { in: ["EQUIPO_PROPIO", "EQUIPO_EXTERNO", "PAQUETE", "OTRO"] } },
-            select: { id: true, tipo: true, descripcion: true, marca: true, cantidad: true, notas: true },
+            select: { id: true, tipo: true, descripcion: true, marca: true, modelo: true, cantidad: true, notas: true },
             orderBy: { orden: "asc" },
           },
         },
@@ -36,6 +36,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             select: {
               descripcion: true,
               marca: true,
+              modelo: true,
               imagenUrl: true,
               categoria: { select: { nombre: true } },
             },

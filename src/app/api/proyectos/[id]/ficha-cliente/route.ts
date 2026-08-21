@@ -24,7 +24,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
           lineas: {
             where: { tipo: "PROPIO" },
             include: {
-              equipo: { select: { descripcion: true, marca: true } },
+              equipo: { select: { descripcion: true, marca: true, modelo: true } },
             },
           },
         },
@@ -43,6 +43,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const equipos = (proyecto.cotizacion?.lineas ?? []).map((l: any) => ({
     descripcion: l.equipo?.descripcion ?? "",
     marca: l.equipo?.marca ?? null,
+    modelo: l.equipo?.modelo ?? null,
     cantidad: l.cantidad,
   }));
 

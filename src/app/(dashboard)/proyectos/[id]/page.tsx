@@ -26,6 +26,7 @@ import { getDireccionConfig, promedioDireccion, type EvaluacionDireccionData } f
 import { diasEvento, parseHorariosEvento, horarioDeDia, parseFechasEvento } from "@/lib/fechas-evento";
 import { construirCronologia } from "@/lib/cronologia-evento";
 import { checksAvanceProduccion } from "@/lib/proyecto-avance";
+import { getEquipoDisplayName } from "@/lib/equipoNombre";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Tecnico { id: string; nombre: string; nivel: string; rol: { nombre: string } | null }
@@ -97,7 +98,7 @@ interface Proyecto {
   encargado: { id: string; name: string } | null;
   tratoId: string | null;
   trato: { tipoEvento: string; tipoServicio: string | null; ideasReferencias: string | null; notas: string | null; familyAndFriends: boolean; tradeCalificado: boolean; ventanaMontajeInicio: string | null; ventanaMontajeFin: string | null; responsable: { name: string } | null } | null;
-  cotizacion: { id: string; numeroCotizacion: string; granTotal: number; diasComidas: number; subtotalComidas: number; subtotalOperacion: number; subtotalTransporte: number; subtotalHospedaje: number; subtotalEquiposNeto: number; subtotalTerceros: number; notasSecciones: string | null; observaciones: string | null; lineas: { id: string; tipo: string; descripcion: string; cantidad: number; nivel: string | null; jornada: string | null; precioUnitario: number; notas: string | null; marca: string | null; rolTecnicoId: string | null; rolTecnico: { id: string; nombre: string; disciplina: string | null } | null }[] } | null;
+  cotizacion: { id: string; numeroCotizacion: string; granTotal: number; diasComidas: number; subtotalComidas: number; subtotalOperacion: number; subtotalTransporte: number; subtotalHospedaje: number; subtotalEquiposNeto: number; subtotalTerceros: number; notasSecciones: string | null; observaciones: string | null; lineas: { id: string; tipo: string; descripcion: string; cantidad: number; nivel: string | null; jornada: string | null; precioUnitario: number; notas: string | null; marca: string | null; modelo: string | null; rolTecnicoId: string | null; rolTecnico: { id: string; nombre: string; disciplina: string | null } | null }[] } | null;
   logisticaRenta: string | null;
   docsTecnicos: string | null;
   evaluacionPostEvento: EvalPostEventoData | null;
@@ -583,10 +584,10 @@ function EquipoRow({ eq, proyectoId, fichaCompleta, fichaTooltip, onToggleConfir
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <p className="text-white text-sm font-medium truncate">{eq.equipo.descripcion}</p>
+          <p className="text-white text-sm font-medium truncate">{getEquipoDisplayName(eq.equipo)}</p>
           {eq.necesitaRevision && <span className="shrink-0 px-1.5 py-0.5 rounded border border-amber-700/50 bg-amber-900/20 text-amber-300 text-[10px] font-medium" title="Este equipo se quitó o cambió en la cotización — revísalo (no se borró automáticamente)">Revisar</span>}
         </div>
-        <p className="text-gray-500 text-xs">{eq.equipo.categoria.nombre}{eq.equipo.marca ? ` · ${eq.equipo.marca}` : ""}</p>
+        <p className="text-gray-500 text-xs">{eq.equipo.categoria.nombre}{(eq.equipo.marca || eq.equipo.modelo) ? ` · ${eq.equipo.descripcion}` : ""}</p>
         {eq.proveedor && <p className="text-[#B3985B] text-xs">{eq.proveedor.empresa || eq.proveedor.nombre}</p>}
       </div>
       <div className="text-center shrink-0">
@@ -1544,7 +1545,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
   // Estados para equipos
   const [showAddEquipo, setShowAddEquipo] = useState(false);
-  const [equipoCatalogo, setEquipoCatalogo] = useState<{ id: string; descripcion: string; marca: string | null; categoria: { nombre: string } }[]>([]);
+  const [equipoCatalogo, setEquipoCatalogo] = useState<{ id: string; descripcion: string; marca: string | null; modelo: string | null; categoria: { nombre: string } }[]>([]);
   const [selEquipoId, setSelEquipoId] = useState("");
   const [selEquipoTipo, setSelEquipoTipo] = useState("PROPIO");
   const [selEquipoCantidad, setSelEquipoCantidad] = useState("1");
@@ -4719,10 +4720,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                           {TIPO_LABELS[l.tipo] ?? l.tipo}
                         </span>
                         <div className="flex-1 min-w-0">
-                          <p className="text-white text-xs">
-                            {l.marca ? <span className="text-gray-400">{l.marca} </span> : null}
-                            {l.descripcion}
-                          </p>
+                          <p className="text-white text-xs">{getEquipoDisplayName(l)}</p>
+                          {(l.marca || l.modelo) && <p className="text-gray-500 text-[10px]">{l.descripcion}</p>}
                           {l.notas && <p className="text-gray-600 text-[10px] italic mt-0.5">{l.notas}</p>}
                         </div>
                         <span className="text-gray-400 text-xs font-mono shrink-0">x{l.cantidad}</span>
@@ -5985,7 +5984,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     <Combobox
                       value={selEquipoId}
                       onChange={v => setSelEquipoId(v)}
-                      options={[{ value: "", label: "Seleccionar equipo..." }, ...equipoCatalogo.map(eq => ({ value: eq.id, label: `${eq.categoria.nombre} — ${eq.descripcion}${eq.marca ? ` (${eq.marca})` : ""}` }))]}
+                      options={[{ value: "", label: "Seleccionar equipo..." }, ...equipoCatalogo.map(eq => ({ value: eq.id, label: `${eq.categoria.nombre} — ${getEquipoDisplayName(eq)}` }))]}
                       className={`w-full bg-[#0d0d0d] border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] ${dispEquipo && !dispEquipo.disponible ? "border-red-500/60" : "border-[#2a2a2a]"}`}
                     />
                     {dispEquipo && selEquipoTipo === "PROPIO" && selEquipoId && (
@@ -6729,7 +6728,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                         <Combobox
                           value={newExtraEquipoId}
                           onChange={v => setNewExtraEquipoId(v)}
-                          options={[{ value: "", label: "Buscar en inventario…" }, ...equipoCatalogo.map(eq => ({ value: eq.id, label: `${eq.categoria.nombre} — ${eq.marca ? `${eq.marca} — ${eq.descripcion}` : eq.descripcion}` }))]}
+                          options={[{ value: "", label: "Buscar en inventario…" }, ...equipoCatalogo.map(eq => ({ value: eq.id, label: `${eq.categoria.nombre} — ${getEquipoDisplayName(eq)}` }))]}
                           className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/50"
                         />
                       </div>

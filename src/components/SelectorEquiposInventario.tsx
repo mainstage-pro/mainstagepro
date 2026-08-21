@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAccess } from "@/components/AccessProvider";
 import { parseCoberturas, coberturaMatch, type MatchCapacidad } from "@/lib/constants";
 import { Sparkles, Package, Plus, SlidersHorizontal, Handshake, Users, Settings, Mic, Headphones, Volume2, Disc3, Lightbulb, Monitor, Construction, Layers, Guitar, Music, Tent, Zap, Sofa, Cable, Video, Wrench, ExternalLink, type LucideIcon } from "lucide-react";
+import { getEquipoDisplayName } from "@/lib/equipoNombre";
 
 // ── Tipos ──────────────────────────────────────────────────────────────────────
 
@@ -186,9 +187,7 @@ function CatIcon({ nombre, className }: { nombre: string; className?: string }) 
 }
 
 function nombreEquipo(eq: EquipoPublico): string {
-  return eq.marca && eq.modelo
-    ? `${eq.marca} ${eq.modelo}`
-    : eq.marca || eq.modelo || eq.descripcion;
+  return getEquipoDisplayName(eq);
 }
 
 /** Marcas principales de la categoría, derivadas del inventario real (máx. 3). */

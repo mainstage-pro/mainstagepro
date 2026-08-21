@@ -8,6 +8,7 @@ import { Modal } from "@/components/Modal";
 import { EquipoGaleria } from "@/components/EquipoGaleria";
 import { CostoMantenimientoModal, type CostoMantenimiento } from "@/components/CostoMantenimientoModal";
 import { ESTADO_EQUIPO_LABEL, esRetornoAServicio } from "@/lib/equipo-estado";
+import { getEquipoDisplayName } from "@/lib/equipoNombre";
 import { TipoEventoCell, type TipoEventoOpcion } from "@/components/TipoEventoCell";
 import { AccesoriosTab } from "@/components/AccesoriosTab";
 
@@ -192,7 +193,7 @@ function FormPanel({ panel, equipos, form, setForm, imagen, saving, categorias, 
           >
             <option value="">Crear desde cero</option>
             {equipos.filter(eq => eq.tipo === "PROPIO").map(eq => (
-              <option key={eq.id} value={eq.id}>{eq.descripcion} {eq.marca} {eq.modelo}</option>
+              <option key={eq.id} value={eq.id}>{getEquipoDisplayName(eq)}{(eq.marca || eq.modelo) ? ` — ${eq.descripcion}` : ""}</option>
             ))}
           </select>
           <p className="text-[10px] text-gray-600 mt-1.5">Solo copia marca y modelo. No afecta tu inventario propio.</p>
@@ -1382,7 +1383,7 @@ export default function InventarioMaestroPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-white text-xs font-medium leading-snug group-hover:text-[#B3985B] transition-colors line-clamp-2">
-                        {(e.marca || e.modelo) ? [e.marca, e.modelo].filter(Boolean).join(" · ") : e.descripcion}
+                        {getEquipoDisplayName(e)}
                       </p>
                       {(e.marca || e.modelo) && (
                         <p className="text-[#555] text-[10px] truncate mt-0.5">{e.descripcion}</p>
@@ -1459,7 +1460,7 @@ export default function InventarioMaestroPage() {
                                 <div className="w-8 h-8 rounded bg-[#1a1a1a] shrink-0" />
                               )}
                               <div className="min-w-0">
-                                <p className="text-white font-medium truncate">{(e.marca || e.modelo) ? [e.marca, e.modelo].filter(Boolean).join(" · ") : e.descripcion}</p>
+                                <p className="text-white font-medium truncate">{getEquipoDisplayName(e)}</p>
                                 {(e.marca || e.modelo) && <p className="text-[#555] text-xs truncate">{e.descripcion}</p>}
                               </div>
                             </div>

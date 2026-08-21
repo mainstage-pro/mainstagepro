@@ -32,6 +32,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             select: {
               descripcion: true,
               marca: true,
+              modelo: true,
               categoria: { select: { nombre: true } },
             },
           },

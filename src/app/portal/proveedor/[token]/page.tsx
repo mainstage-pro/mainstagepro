@@ -2,6 +2,7 @@
 
 import { useEffect, useState, use } from "react";
 import { Link2, Briefcase, Camera, File } from "lucide-react";
+import { getEquipoDisplayName } from "@/lib/equipoNombre";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 interface EquipoProveedor {
@@ -308,7 +309,7 @@ function EquipoCard({ equipo, token, onUpdated, onDeleted }: {
     return (
       <div className="bg-white/[0.025] border border-[#B3985B]/40 rounded-2xl p-5">
         <div className="flex items-center justify-between mb-5">
-          <p className="text-white font-semibold text-sm">Editando — {equipo.descripcion}</p>
+          <p className="text-white font-semibold text-sm">Editando — {getEquipoDisplayName(equipo)}</p>
           <button onClick={() => setEditing(false)} className="text-white/30 hover:text-white text-xl">×</button>
         </div>
         <EquipoForm initial={toForm()} onSave={handleSave} onCancel={() => setEditing(false)} saving={saving} />
@@ -333,10 +334,10 @@ function EquipoCard({ equipo, token, onUpdated, onDeleted }: {
               </span>
             )}
           </div>
-          <p className="text-white font-semibold text-base leading-tight">{equipo.descripcion}</p>
+          <p className="text-white font-semibold text-base leading-tight">{getEquipoDisplayName(equipo)}</p>
           {(equipo.marca || equipo.modelo) && (
             <p className="text-white/40 text-sm mt-0.5">
-              {[equipo.marca, equipo.modelo].filter(Boolean).join(" · ")}
+              {equipo.descripcion}
             </p>
           )}
         </div>

@@ -1,5 +1,6 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
+import { getEquipoDisplayName } from "@/lib/equipoNombre";
 
 const GOLD   = "#B3985B";
 const BLACK  = "#0a0a0a";
@@ -403,6 +404,7 @@ const s = StyleSheet.create({
 interface EquipoItem {
   descripcion: string;
   marca: string | null;
+  modelo: string | null;
   imagenUrl?: string | null;
   categoria: { nombre: string } | null;
 }
@@ -422,6 +424,7 @@ interface CotizacionLinea {
   tipo: string;
   descripcion: string;
   marca: string | null;
+  modelo: string | null;
   cantidad: number;
   notas: string | null;
 }
@@ -653,7 +656,7 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
                   </View>
                   {items.map((eq, i) => {
                     const nombre = eq.equipo
-                      ? `${eq.equipo.marca ? eq.equipo.marca + " " : ""}${eq.equipo.descripcion}`
+                      ? getEquipoDisplayName(eq.equipo)
                       : (eq.descripcionManual ?? "");
                     const hasAcc = (eq.riderAccesorios?.length ?? 0) > 0;
                     return (
@@ -719,7 +722,7 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
                   <View style={[s.colSerie, { borderRightWidth: 0 }]}><Text style={s.colHeaderText}>NÚMERO DE SERIE / ID INVENTARIO</Text></View>
                 </View>
                 {cotExtras.map((l, i) => {
-                  const nombre = `${l.marca ? l.marca + " " : ""}${l.descripcion}`;
+                  const nombre = getEquipoDisplayName(l);
                   return (
                     <View key={l.id} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt} wrap={false}>
                       <View style={s.colModelo}>
@@ -759,7 +762,7 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
               </View>
               <View style={[s.tableWrapper, { marginBottom: 8 }]}>
                 {cotExtras.map((l, i) => {
-                  const nombre = `${l.marca ? l.marca + " " : ""}${l.descripcion}`;
+                  const nombre = getEquipoDisplayName(l);
                   return (
                     <View key={l.id} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt} wrap={false}>
                       <View style={s.colModelo}>
