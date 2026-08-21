@@ -127,6 +127,7 @@ export async function GET(req: NextRequest) {
       socio: { select: { id: true, nombre: true, email: true } },
       proyecto: { select: { id: true, nombre: true, numeroProyecto: true, fechaEvento: true } },
       cuentaOrigen: { select: { id: true, nombre: true, banco: true } },
+      categoria: { select: { id: true, nombre: true } },
       pagoNomina: { select: { id: true, personal: { select: { id: true, nombre: true } } } },
       abonos: { orderBy: { fecha: "asc" } },
     },

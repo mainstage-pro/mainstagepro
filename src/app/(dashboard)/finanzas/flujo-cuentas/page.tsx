@@ -24,6 +24,8 @@ interface CuentaCobrar extends CuentaBase {
 
 interface CuentaPagar extends CuentaBase {
   montoPagado: number;
+  tipoAcreedor: string;
+  categoria?: { id: string; nombre: string } | null;
   proveedor: { id: string; nombre: string } | null;
   tecnico: { id: string; nombre: string } | null;
   empresa: { id: string; nombre: string } | null;
@@ -38,6 +40,7 @@ interface FlujoItem {
   concepto: string;
   entidad: string;
   proyectoNombre: string | null;
+  categoriaClasificada: string;
   estado: string;
   originalPath: string;
 }
@@ -60,6 +63,7 @@ export default function FlujoCuentasPage() {
   const [saldoInicial, setSaldoInicial] = useState<number>(0);
   const [periodo, setPeriodo] = useState<string>("30d");
   const [agrupacion, setAgrupacion] = useState<string>("dia");
+  const [filtroCategoria, setFiltroCategoria] = useState<string>("Todas");
 
   useEffect(() => {
     async function load() {
@@ -84,6 +88,15 @@ export default function FlujoCuentasPage() {
   const items = useMemo(() => {
     const list: FlujoItem[] = [];
     
+    function clasificarCxP(c: CuentaPagar): string {
+      if (c.categoria?.nombre) return c.categoria.nombre;
+      if (c.tipoAcreedor === "TECNICO") return "Freelance";
+      if (c.tipoAcreedor === "PROVEEDOR") return "Proveedores";
+      if (c.tipoAcreedor === "PERSONAL_INTERNO") return "Nómina";
+      if (c.tipoAcreedor === "SOCIO") return "Socios";
+      return "Sin categoría";
+    }
+
     // Entradas
     for (const c of cxc) {
       if (c.estado === "LIQUIDADO" || c.estado === "CANCELADO") continue;
@@ -99,6 +112,7 @@ export default function FlujoCuentasPage() {
         concepto: c.concepto,
         entidad,
         proyectoNombre: c.proyecto?.nombre || null,
+        categoriaClasificada: "Cobros",
         estado: c.estado,
         originalPath: `/finanzas/cobros-pagos?cxc=${c.id}`
       });
@@ -119,6 +133,7 @@ export default function FlujoCuentasPage() {
         concepto: c.concepto,
         entidad,
         proyectoNombre: c.proyecto?.nombre || null,
+        categoriaClasificada: clasificarCxP(c),
         estado: c.estado,
         originalPath: `/finanzas/cobros-pagos?cxp=${c.id}`
       });
@@ -160,11 +175,30 @@ export default function FlujoCuentasPage() {
     });
   }, [conFecha, periodo, hoy]);
 
+  const categoriasDisponibles = useMemo(() => {
+    const cats = new Set(itemsPeriodo.filter(i => i.tipo === "SALIDA").map(i => i.categoriaClasificada));
+    return ["Todas", ...Array.from(cats).sort()];
+  }, [itemsPeriodo]);
+
+  const itemsFiltrados = useMemo(() => {
+    if (filtroCategoria === "Todas") return itemsPeriodo;
+    return itemsPeriodo.filter(i => i.tipo === "ENTRADA" || i.categoriaClasificada === filtroCategoria);
+  }, [itemsPeriodo, filtroCategoria]);
+
+  const distribucionPagos = useMemo(() => {
+    const salidas = itemsFiltrados.filter(i => i.tipo === "SALIDA");
+    const dist: Record<string, number> = {};
+    for (const s of salidas) {
+      dist[s.categoriaClasificada] = (dist[s.categoriaClasificada] || 0) + s.montoPendiente;
+    }
+    return Object.entries(dist).sort((a,b) => b[1] - a[1]);
+  }, [itemsFiltrados]);
+
   // -- Agrupación y acumulado --
   const grupos = useMemo(() => {
     const map = new Map<string, GrupoFlujo>();
     
-    for (const item of itemsPeriodo) {
+    for (const item of itemsFiltrados) {
       let key = item.fecha!;
       let etiqueta = item.fecha!;
       const d = new Date(item.fecha! + "T12:00:00Z");
@@ -198,11 +232,11 @@ export default function FlujoCuentasPage() {
       g.saldoAcumulado = saldo;
     }
     return arr;
-  }, [itemsPeriodo, agrupacion, saldoInicial]);
+  }, [itemsFiltrados, agrupacion, saldoInicial]);
 
   // -- Totales KPI --
-  const totalEntradas = itemsPeriodo.reduce((acc, i) => acc + (i.tipo === "ENTRADA" ? i.montoPendiente : 0), 0);
-  const totalSalidas = itemsPeriodo.reduce((acc, i) => acc + (i.tipo === "SALIDA" ? i.montoPendiente : 0), 0);
+  const totalEntradas = itemsFiltrados.reduce((acc, i) => acc + (i.tipo === "ENTRADA" ? i.montoPendiente : 0), 0);
+  const totalSalidas = itemsFiltrados.reduce((acc, i) => acc + (i.tipo === "SALIDA" ? i.montoPendiente : 0), 0);
   const flujoNeto = totalEntradas - totalSalidas;
   const saldoProyectado = saldoInicial + flujoNeto;
 
@@ -273,6 +307,19 @@ export default function FlujoCuentasPage() {
             <option value="mes">Por Mes</option>
           </select>
         </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Tipo de cuenta (pagos)</label>
+          <select 
+            value={filtroCategoria} 
+            onChange={e => setFiltroCategoria(e.target.value)}
+            className="bg-[#202020] border border-gray-800 text-white px-4 py-2 rounded-lg focus:outline-none focus:border-[#B3985B] min-w-[160px]"
+          >
+            {categoriasDisponibles.map(c => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Alertas */}
@@ -280,36 +327,42 @@ export default function FlujoCuentasPage() {
         <div className="mb-6 p-4 bg-red-900/30 border border-red-800/50 rounded-xl flex gap-3 text-red-200 items-center">
           <Info className="w-5 h-5 text-red-400 shrink-0" />
           <p><strong>Riesgo de Liquidez:</strong> El saldo proyectado al final del periodo seleccionado es negativo ({formatCurrency(saldoProyectado)}).</p>
-        </div>
+            </div>
       )}
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
-        <div className="bg-[#151515] border border-gray-800 rounded-xl p-5">
-          <p className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-1">Saldo Inicial</p>
-          <p className="text-2xl font-bold text-white">{formatCurrency(saldoInicial)}</p>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="bg-gradient-to-br from-[#B3985B]/20 to-transparent border border-[#B3985B]/30 rounded-xl p-6 md:col-span-2 flex flex-col justify-center">
+          <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wider mb-1">Disponible para mover (Saldo Proyectado)</p>
+          <p className="text-4xl font-bold text-white">{formatCurrency(saldoProyectado)}</p>
+          <p className="text-gray-400 text-xs mt-2">Saldo inicial ({formatCurrency(saldoInicial)}) + Flujo neto ({formatCurrency(flujoNeto)})</p>
         </div>
-        <div className="bg-[#151515] border border-gray-800 rounded-xl p-5">
+        <div className="bg-[#151515] border border-gray-800 rounded-xl p-5 flex flex-col justify-center">
           <p className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-1">Cobros Proyectados</p>
-          <p className="text-2xl font-bold text-green-400">{formatCurrency(totalEntradas)}</p>
+          <p className="text-2xl font-bold text-green-400">+{formatCurrency(totalEntradas)}</p>
         </div>
-        <div className="bg-[#151515] border border-gray-800 rounded-xl p-5">
+        <div className="bg-[#151515] border border-gray-800 rounded-xl p-5 flex flex-col justify-center">
           <p className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-1">Pagos Proyectados</p>
-          <p className="text-2xl font-bold text-red-400">{formatCurrency(totalSalidas)}</p>
-        </div>
-        <div className="bg-[#151515] border border-gray-800 rounded-xl p-5">
-          <p className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-1">Flujo Neto</p>
-          <p className={`text-2xl font-bold ${flujoNeto >= 0 ? "text-green-400" : "text-red-400"}`}>
-            {flujoNeto > 0 ? "+" : ""}{formatCurrency(flujoNeto)}
-          </p>
-        </div>
-        <div className="bg-gradient-to-br from-[#B3985B]/20 to-transparent border border-[#B3985B]/30 rounded-xl p-5">
-          <p className="text-[#B3985B] text-xs font-medium uppercase tracking-wider mb-1">Saldo Proyectado</p>
-          <p className="text-2xl font-bold text-white">{formatCurrency(saldoProyectado)}</p>
+          <p className="text-2xl font-bold text-red-400">-{formatCurrency(totalSalidas)}</p>
         </div>
       </div>
 
-      {/* Gráfica */}
+      {/* Distribución de Pagos */}
+      {distribucionPagos.length > 0 && (
+        <div className="bg-[#151515] border border-gray-800 rounded-xl p-6 mb-8">
+          <h2 className="text-sm font-semibold text-white uppercase tracking-wider mb-4">Distribución de Pagos</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {distribucionPagos.map(([cat, amount]) => (
+              <div key={cat} className="bg-[#1a1a1a] rounded-lg p-3 border border-gray-800/80">
+                <p className="text-gray-400 text-[11px] uppercase truncate">{cat}</p>
+                <p className="text-white font-medium text-lg mt-0.5">{formatCurrency(amount)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Gráfico */} {/* Gráfica */}
       {grupos.length > 0 && (
         <div className="bg-[#151515] border border-gray-800 rounded-xl p-6 mb-8 h-80">
           <h2 className="text-lg font-medium text-white mb-6">Evolución de Saldo</h2>
