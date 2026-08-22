@@ -258,6 +258,7 @@ interface NuevoRegistroForm {
   notas: string;
   // Ambos
   proyectoId: string;
+  categoriaId: string;
   // Recurrencia
   esRecurrente: boolean;
   frecuencia: string;
@@ -278,6 +279,7 @@ const NUEVO_REGISTRO_EMPTY: NuevoRegistroForm = {
   acreedorNombre: "",
   notas: "",
   proyectoId: "",
+  categoriaId: "",
   esRecurrente: false,
   frecuencia: "MENSUAL",
   fechaFin: "",
@@ -385,6 +387,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
   const [sortBy, setSortBy] = useState<"fecha_asc" | "fecha_desc" | "monto_desc" | "monto_asc" | "nombre_asc">("fecha_asc");
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [cuentas, setCuentas] = useState<Array<{ id: string; nombre: string; banco: string | null }>>([]);
+  const [categorias, setCategorias] = useState<Array<{ id: string; nombre: string }>>([]);
   // Nuevo registro
   const [showNuevo, setShowNuevo] = useState(false);
   const [nuevoForm, setNuevoForm] = useState<NuevoRegistroForm>({ ...NUEVO_REGISTRO_EMPTY });
@@ -567,6 +570,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
   useEffect(() => {
     fetch("/api/clientes", { cache: "no-store" }).then(r => r.json()).then(d => setClientes(d.clientes ?? [])).catch(() => {});
     fetch("/api/cuentas", { cache: "no-store" }).then(r => r.json()).then(d => setCuentas(d.cuentas ?? [])).catch(() => {});
+    fetch("/api/categorias-financieras", { cache: "no-store" }).then(r => r.json()).then(d => setCategorias(d.categorias ?? [])).catch(() => {});
     fetch("/api/proveedores", { cache: "no-store" }).then(r => r.json()).then(d => setProveedores(d.proveedores ?? [])).catch(() => {});
     fetch("/api/empresas", { cache: "no-store" }).then(r => r.json()).then(d => setEmpresas(d.empresas ?? [])).catch(() => {});
     fetch("/api/tecnicos", { cache: "no-store" }).then(r => r.json()).then(d => setTecnicos(d.tecnicos ?? [])).catch(() => {});
@@ -586,6 +590,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
             empresaId: nuevoForm.empresaId || null,
             clienteId: nuevoForm.clienteId || null,
             proyectoId: nuevoForm.proyectoId || null,
+            categoriaId: nuevoForm.categoriaId || null,
             concepto: nuevoForm.concepto,
             monto: nuevoForm.monto,
             fechaCompromiso: nuevoForm.fechaCompromiso,
@@ -612,6 +617,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
             fechaCompromiso: nuevoForm.fechaCompromiso,
             notas: nuevoForm.notas || null,
             proyectoId: nuevoForm.proyectoId || null,
+            categoriaId: nuevoForm.categoriaId || null,
             esRecurrente: nuevoForm.esRecurrente,
             frecuencia: nuevoForm.frecuencia,
             fechaFin: nuevoForm.fechaFin || null,
@@ -2547,6 +2553,19 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
                   className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
                 />
               </div>
+
+              {/* Categoría — solo para CxP */}
+              {nuevoForm.tipo === "cxp" && (
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Tipo de cuenta</label>
+                  <Combobox
+                    value={nuevoForm.categoriaId}
+                    onChange={v => setNuevoForm(p => ({ ...p, categoriaId: v }))}
+                    options={[{ value: "", label: "— Sin categoría —" }, ...categorias.map(c => ({ value: c.id, label: c.nombre }))]}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="flex gap-3 pt-1">

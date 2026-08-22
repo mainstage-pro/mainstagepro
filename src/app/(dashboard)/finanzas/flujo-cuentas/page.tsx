@@ -64,6 +64,8 @@ export default function FlujoCuentasPage() {
   const [periodo, setPeriodo] = useState<string>("30d");
   const [agrupacion, setAgrupacion] = useState<string>("dia");
   const [filtroCategoria, setFiltroCategoria] = useState<string>("Todas");
+  const [fechaInicio, setFechaInicio] = useState<string>("");
+  const [fechaFin, setFechaFin] = useState<string>("");
 
   useEffect(() => {
     async function load() {
@@ -90,10 +92,6 @@ export default function FlujoCuentasPage() {
     
     function clasificarCxP(c: CuentaPagar): string {
       if (c.categoria?.nombre) return c.categoria.nombre;
-      if (c.tipoAcreedor === "TECNICO") return "Freelance";
-      if (c.tipoAcreedor === "PROVEEDOR") return "Proveedores";
-      if (c.tipoAcreedor === "PERSONAL_INTERNO") return "Nómina";
-      if (c.tipoAcreedor === "SOCIO") return "Socios";
       return "Sin categoría";
     }
 
@@ -150,6 +148,14 @@ export default function FlujoCuentasPage() {
   hoy.setHours(0,0,0,0);
   
   const itemsPeriodo = useMemo(() => {
+    if (periodo === "custom") {
+      return conFecha.filter(i => {
+        const afterStart = fechaInicio ? i.fecha! >= fechaInicio : true;
+        const beforeEnd = fechaFin ? i.fecha! <= fechaFin : true;
+        return afterStart && beforeEnd;
+      });
+    }
+
     let endDate = new Date(hoy);
     
     if (periodo === "7d") endDate.setDate(hoy.getDate() + 7);
@@ -167,13 +173,12 @@ export default function FlujoCuentasPage() {
     }
     
     const endIso = endDate.toISOString().substring(0,10);
-    const startIso = hoy.toISOString().substring(0,10);
     
     // Si queremos incluir vencidos, su fecha es menor a startIso. Los incluiremos siempre.
     return conFecha.filter(i => {
       return i.fecha! <= endIso;
     });
-  }, [conFecha, periodo, hoy]);
+  }, [conFecha, periodo, hoy, fechaInicio, fechaFin]);
 
   const categoriasDisponibles = useMemo(() => {
     const cats = new Set(itemsPeriodo.filter(i => i.tipo === "SALIDA").map(i => i.categoriaClasificada));
@@ -292,8 +297,32 @@ export default function FlujoCuentasPage() {
             <option value="mes">Mes actual</option>
             <option value="mes_sig">Mes siguiente</option>
             <option value="todo">Todo programado</option>
+            <option value="custom">Rango personalizado...</option>
           </select>
         </div>
+
+        {periodo === "custom" && (
+          <div className="flex gap-2">
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Desde</label>
+              <input 
+                type="date"
+                value={fechaInicio}
+                onChange={e => setFechaInicio(e.target.value)}
+                className="bg-[#202020] border border-gray-800 text-white px-4 py-2 rounded-lg focus:outline-none focus:border-[#B3985B] w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Hasta</label>
+              <input 
+                type="date"
+                value={fechaFin}
+                onChange={e => setFechaFin(e.target.value)}
+                className="bg-[#202020] border border-gray-800 text-white px-4 py-2 rounded-lg focus:outline-none focus:border-[#B3985B] w-full"
+              />
+            </div>
+          </div>
+        )}
 
         <div>
           <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Agrupación</label>

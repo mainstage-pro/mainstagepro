@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
     empresaId,
     socioId,
     proyectoId,
+    categoriaId,
     esRecurrente, frecuencia, fechaFin, diaVencimiento
   } = body;
 
@@ -60,6 +61,7 @@ export async function POST(req: NextRequest) {
           socioId: socioId || null,
           tecnicoId: tecnicoId || null,
           proyectoId: proyectoId || null,
+          categoriaId: categoriaId || null,
           ultimaGeneracion: new Date(),
         }
       });
@@ -79,6 +81,7 @@ export async function POST(req: NextRequest) {
             empresaId: empresaId || null,
             socioId: socioId || null,
             proyectoId: proyectoId || null,
+          categoriaId: categoriaId || null,
             serieRecurrenteId: serie.id,
             numeroPeriodo: idx + 1,
           }
@@ -105,6 +108,7 @@ export async function POST(req: NextRequest) {
       empresaId: empresaId || null,
       socioId: socioId || null,
       proyectoId: proyectoId || null,
+          categoriaId: categoriaId || null,
     },
   });
 
