@@ -43,14 +43,14 @@ export async function GET(
   // Nombre del beneficiario
   let contraparte = "Beneficiario";
   let empresaContraparte: string | null = null;
-  if (cxp.tipoAcreedor === "PROVEEDOR" && cxp.proveedor) {
-    contraparte = cxp.proveedor.empresa || cxp.proveedor.nombre;
-    empresaContraparte = cxp.proveedor.empresa ? cxp.proveedor.nombre : null;
-  } else if (cxp.tipoAcreedor === "TECNICO" && cxp.tecnico) {
+  if (cxp.proveedor) {
+    contraparte = cxp.proveedor.nombre;
+    empresaContraparte = cxp.proveedor.empresa || null;
+  } else if (cxp.tecnico) {
     contraparte = cxp.tecnico.nombre;
-  } else if (cxp.tipoAcreedor === "EMPRESA" && cxp.empresa) {
+  } else if (cxp.empresa) {
     contraparte = cxp.empresa.nombre;
-  } else if (cxp.tipoAcreedor === "SOCIO" && cxp.socio) {
+  } else if (cxp.socio) {
     contraparte = cxp.socio.nombre;
   }
 

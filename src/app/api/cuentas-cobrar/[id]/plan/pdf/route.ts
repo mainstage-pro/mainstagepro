@@ -44,8 +44,8 @@ export async function GET(
   if (cxc.empresa) {
     contraparte = cxc.empresa.nombre;
   } else if (cxc.cliente) {
-    contraparte = cxc.cliente.empresa || cxc.cliente.nombre;
-    empresaContraparte = cxc.cliente.empresa ? cxc.cliente.nombre : null;
+    contraparte = cxc.cliente.nombre;
+    empresaContraparte = cxc.cliente.empresa || null;
   }
 
   // Logo

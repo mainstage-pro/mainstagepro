@@ -30,16 +30,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   let beneficiario = "Beneficiario";
   let empresaBeneficiario: string | null = null;
 
-  if (cxp.tipoAcreedor === "PROVEEDOR" && cxp.proveedor) {
-    // El "nombre real" (titular de la cuenta) se guarda en 'empresa'.
-    // Usamos 'empresa' como beneficiario principal, y 'nombre' (el alias) como empresaBeneficiario para que siga saliendo en el PDF.
-    beneficiario = cxp.proveedor.empresa || cxp.proveedor.nombre;
-    empresaBeneficiario = cxp.proveedor.empresa ? cxp.proveedor.nombre : null;
-  } else if (cxp.tipoAcreedor === "TECNICO" && cxp.tecnico) {
+  if (cxp.proveedor) {
+    beneficiario = cxp.proveedor.nombre;
+    empresaBeneficiario = cxp.proveedor.empresa || null;
+  } else if (cxp.tecnico) {
     beneficiario = cxp.tecnico.nombre;
-  } else if (cxp.tipoAcreedor === "EMPRESA" && cxp.empresa) {
+  } else if (cxp.empresa) {
     beneficiario = cxp.empresa.nombre;
-  } else if (cxp.tipoAcreedor === "SOCIO" && cxp.socio) {
+  } else if (cxp.socio) {
     beneficiario = cxp.socio.nombre;
   }
 
@@ -56,13 +54,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   let noTarjeta: string | null = null;
   let rfc: string | null = null;
 
-  if (cxp.tipoAcreedor === "PROVEEDOR" && cxp.proveedor) {
+  if (cxp.proveedor) {
     banco          = cxp.proveedor.banco          ?? null;
     cuentaBancaria = cxp.proveedor.cuentaBancaria ?? null;
     clabe          = cxp.proveedor.clabe          ?? null;
     noTarjeta      = cxp.proveedor.noTarjeta      ?? null;
     rfc            = cxp.proveedor.rfc            ?? null;
-  } else if (cxp.tipoAcreedor === "TECNICO" && cxp.tecnico) {
+  } else if (cxp.tecnico) {
     cuentaBancaria = cxp.tecnico.cuentaBancaria ?? null;
   }
 
