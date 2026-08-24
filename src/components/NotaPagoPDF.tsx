@@ -215,35 +215,7 @@ export function NotaPagoPDF({ nota }: { nota: NotaPagoData }) {
             </View>
           </View>
 
-          {/* Datos bancarios del acreedor */}
-          {(nota.banco || nota.cuentaBancaria || nota.clabe) && (
-            <>
-              <Text style={s.sectionLabel}>DATOS BANCARIOS PARA PAGO</Text>
-              <View style={s.bancosWrap}>
-                <View style={s.bancoCard}>
-                  <Text style={s.bancoTitulo}>CUENTA DE {nota.beneficiario.toUpperCase()}</Text>
-                  {nota.empresaBeneficiario && (
-                    <View style={s.bancoFila}><Text style={s.bancoLabel}>Empresa</Text><Text style={s.bancoValor}>{nota.empresaBeneficiario}</Text></View>
-                  )}
-                  {nota.rfc && (
-                    <View style={s.bancoFila}><Text style={s.bancoLabel}>RFC</Text><Text style={s.bancoValor}>{nota.rfc}</Text></View>
-                  )}
-                  {nota.banco && (
-                    <View style={s.bancoFila}><Text style={s.bancoLabel}>Banco</Text><Text style={s.bancoValor}>{nota.banco}</Text></View>
-                  )}
-                  {nota.cuentaBancaria && (
-                    <View style={s.bancoFila}><Text style={s.bancoLabel}>No. Cuenta</Text><Text style={s.bancoValor}>{nota.cuentaBancaria}</Text></View>
-                  )}
-                  {nota.clabe && (
-                    <View style={s.bancoFila}><Text style={s.bancoLabel}>CLABE</Text><Text style={s.bancoValor}>{nota.clabe}</Text></View>
-                  )}
-                  {nota.noTarjeta && (
-                    <View style={[s.bancoFila, { marginBottom: 0 }]}><Text style={s.bancoLabel}>Tarjeta</Text><Text style={s.bancoValor}>{nota.noTarjeta}</Text></View>
-                  )}
-                </View>
-              </View>
-            </>
-          )}
+
 
           <Text style={s.nota}>
             Documento interno sin valor fiscal. Para factura oficial, solicítela por separado.{"\n"}
