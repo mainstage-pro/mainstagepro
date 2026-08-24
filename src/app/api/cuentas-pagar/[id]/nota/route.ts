@@ -31,8 +31,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   let empresaBeneficiario: string | null = null;
 
   if (cxp.tipoAcreedor === "PROVEEDOR" && cxp.proveedor) {
-    beneficiario = cxp.proveedor.nombre;
-    empresaBeneficiario = cxp.proveedor.empresa ?? null;
+    // El "nombre real" (titular de la cuenta) se guarda en 'empresa'.
+    // Usamos 'empresa' como beneficiario principal, y 'nombre' (el alias) como empresaBeneficiario para que siga saliendo en el PDF.
+    beneficiario = cxp.proveedor.empresa || cxp.proveedor.nombre;
+    empresaBeneficiario = cxp.proveedor.empresa ? cxp.proveedor.nombre : null;
   } else if (cxp.tipoAcreedor === "TECNICO" && cxp.tecnico) {
     beneficiario = cxp.tecnico.nombre;
   } else if (cxp.tipoAcreedor === "EMPRESA" && cxp.empresa) {

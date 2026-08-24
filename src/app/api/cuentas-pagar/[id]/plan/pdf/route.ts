@@ -44,8 +44,8 @@ export async function GET(
   let contraparte = "Beneficiario";
   let empresaContraparte: string | null = null;
   if (cxp.tipoAcreedor === "PROVEEDOR" && cxp.proveedor) {
-    contraparte = cxp.proveedor.nombre;
-    empresaContraparte = (cxp.proveedor as unknown as Record<string, unknown>).empresa as string | null ?? null;
+    contraparte = cxp.proveedor.empresa || cxp.proveedor.nombre;
+    empresaContraparte = cxp.proveedor.empresa ? cxp.proveedor.nombre : null;
   } else if (cxp.tipoAcreedor === "TECNICO" && cxp.tecnico) {
     contraparte = cxp.tecnico.nombre;
   } else if (cxp.tipoAcreedor === "EMPRESA" && cxp.empresa) {

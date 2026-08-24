@@ -79,7 +79,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     montoAnticipo,
     montoCobrado:    cxc.montoCobrado,
     cliente:         cxc.cliente
-      ? { nombre: cxc.cliente.nombre, empresa: cxc.cliente.empresa ?? null, telefono: cxc.cliente.telefono ?? null }
+      ? { 
+          nombre: cxc.cliente.empresa || cxc.cliente.nombre, 
+          empresa: cxc.cliente.empresa ? cxc.cliente.nombre : null, 
+          telefono: cxc.cliente.telefono ?? null 
+        }
       : null,
     proyecto:        cxc.proyecto
       ? { nombre: cxc.proyecto.nombre, numeroProyecto: cxc.proyecto.numeroProyecto, fechaEvento: cxc.proyecto.fechaEvento?.toISOString() ?? null }

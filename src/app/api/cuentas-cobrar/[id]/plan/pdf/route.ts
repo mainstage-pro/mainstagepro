@@ -44,8 +44,8 @@ export async function GET(
   if (cxc.empresa) {
     contraparte = cxc.empresa.nombre;
   } else if (cxc.cliente) {
-    contraparte = cxc.cliente.nombre;
-    empresaContraparte = (cxc.cliente as unknown as Record<string, unknown>).empresa as string | null ?? null;
+    contraparte = cxc.cliente.empresa || cxc.cliente.nombre;
+    empresaContraparte = cxc.cliente.empresa ? cxc.cliente.nombre : null;
   }
 
   // Logo
