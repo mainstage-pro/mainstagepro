@@ -188,10 +188,13 @@ function Tabla({ titulo, lineas, tipo }: { titulo: string; lineas: EstadoCuentaL
 }
 
 export function EstadoCuentaPDF({ data }: { data: EstadoCuentaData }) {
-  const saldoCobrar = data.porCobrar.reduce((sum, l) => sum + Math.max(0, l.monto - l.pagado), 0);
-  const saldoPagar  = data.porPagar.reduce((sum, l) => sum + Math.max(0, l.monto - l.pagado), 0);
+  const porCobrar = data.porCobrar.filter(l => l.estado !== "LIQUIDADO");
+  const porPagar  = data.porPagar.filter(l => l.estado !== "LIQUIDADO");
+
+  const saldoCobrar = porCobrar.reduce((sum, l) => sum + Math.max(0, l.monto - l.pagado), 0);
+  const saldoPagar  = porPagar.reduce((sum, l) => sum + Math.max(0, l.monto - l.pagado), 0);
   const neto = saldoCobrar - saldoPagar;
-  const tieneProveedor = data.porPagar.length > 0;
+  const tieneProveedor = porPagar.length > 0;
   const logoSrc = data.logoSrc ?? null;
 
   return (
@@ -223,15 +226,15 @@ export function EstadoCuentaPDF({ data }: { data: EstadoCuentaData }) {
           {/* Resumen de saldos */}
           <View style={s.resumenRow}>
             <View style={s.resumenCard}>
-              <Text style={s.resumenLabel}>NOS DEBEN (POR COBRAR)</Text>
+              <Text style={s.resumenLabel}>POR COBRAR</Text>
               <Text style={[s.resumenValue, { color: saldoCobrar > 0 ? GOLD : GREEN }]}>{fmt(saldoCobrar)}</Text>
-              <Text style={s.resumenSub}>{data.porCobrar.length} concepto{data.porCobrar.length !== 1 ? "s" : ""}</Text>
+              <Text style={s.resumenSub}>{porCobrar.length} concepto{porCobrar.length !== 1 ? "s" : ""}</Text>
             </View>
             {tieneProveedor && (
               <View style={s.resumenCard}>
-                <Text style={s.resumenLabel}>LES DEBEMOS (POR PAGAR)</Text>
+                <Text style={s.resumenLabel}>POR PAGAR</Text>
                 <Text style={[s.resumenValue, { color: saldoPagar > 0 ? RED : GREEN }]}>{fmt(saldoPagar)}</Text>
-                <Text style={s.resumenSub}>{data.porPagar.length} concepto{data.porPagar.length !== 1 ? "s" : ""}</Text>
+                <Text style={s.resumenSub}>{porPagar.length} concepto{porPagar.length !== 1 ? "s" : ""}</Text>
               </View>
             )}
           </View>
@@ -241,18 +244,18 @@ export function EstadoCuentaPDF({ data }: { data: EstadoCuentaData }) {
             <View style={s.netoBox}>
               <View>
                 <Text style={s.netoLabel}>{neto >= 0 ? "BALANCE NETO A NUESTRO FAVOR" : "BALANCE NETO A SU FAVOR"}</Text>
-                <Text style={s.netoSub}>Diferencia entre lo que nos deben y lo que les debemos</Text>
+                <Text style={s.netoSub}>Diferencia entre las cuentas por cobrar y por pagar</Text>
               </View>
               <Text style={s.netoValue}>{fmt(Math.abs(neto))}</Text>
             </View>
           )}
 
           {/* Detalle por cobrar */}
-          <Tabla titulo="CUENTAS POR COBRAR" lineas={data.porCobrar} tipo="cobrar" />
+          <Tabla titulo="CUENTAS POR COBRAR" lineas={porCobrar} tipo="cobrar" />
 
           {/* Detalle por pagar */}
           {tieneProveedor && (
-            <Tabla titulo="CUENTAS POR PAGAR" lineas={data.porPagar} tipo="pagar" />
+            <Tabla titulo="CUENTAS POR PAGAR" lineas={porPagar} tipo="pagar" />
           )}
 
           {/* Cuentas bancarias */}
