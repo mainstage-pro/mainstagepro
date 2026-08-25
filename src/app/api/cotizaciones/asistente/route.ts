@@ -466,7 +466,8 @@ export async function POST(req: NextRequest) {
     tipoCliente: cliente?.tipoCliente ?? "POR_DESCUBRIR",
     diasEquipo: dias,
     descuentoPatrocinioPct: 0,
-    descuentoEspecialPct,
+    descuentoEspecialPct: 0,
+    descuentoFamilyFriendsPct: descuentoEspecialPct,
     aplicaIva: false,
   });
 
@@ -525,8 +526,11 @@ export async function POST(req: NextRequest) {
       tratoId,
       clienteId: cliente.id,
       creadaPorId: session.id,
-      descuentoEspecialPct,
-      descuentoEspecialNota: extra.descuentoEquiposPct ? `Asistente IA: ${extra.descuentoEquiposPct}% sobre equipos` : null,
+      descuentoFamilyFriendsPct: descuentoEspecialPct,
+      descuentoManualRazon: extra.descuentoEquiposPct ? "Descuento especial" : null,
+      descuentoManualEsMonto: false,
+      descuentoEspecialPct: 0,
+      descuentoEspecialNota: null,
       aplicaIva: false,
       nombreEvento: extra.nombreEvento,
       tipoEvento: extra.tipoEvento,
