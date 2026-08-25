@@ -236,7 +236,7 @@ export default function AsistenteCotizacion({ onClose }: { onClose: () => void }
 
   // Edición en la previa de campos extraídos (servicio / tipo de evento).
   // Persisten al crear porque la ruta reusa body.extraido en modo crear.
-  function setExtraidoCampo(campo: "servicio" | "tipoEvento", valor: string) {
+  function setExtraidoCampo(campo: "servicio" | "tipoEvento" | "fechaEvento" | "lugar", valor: string) {
     setBorrador((prev) =>
       prev ? { ...prev, extraido: { ...prev.extraido, [campo]: valor || null } } : prev
     );
@@ -376,8 +376,8 @@ export default function AsistenteCotizacion({ onClose }: { onClose: () => void }
                   { value: "OTRO", label: "Otro" },
                 ]}
               />
-              <Dato label="Fecha" valor={borrador.extraido.fechaEvento ?? "—"} />
-              <Dato label="Lugar" valor={borrador.extraido.lugar ?? "—"} />
+              <DatoInput label="Fecha" type="date" value={borrador.extraido.fechaEvento ?? ""} onChange={(v) => setExtraidoCampo("fechaEvento", v)} />
+              <DatoInput label="Lugar" placeholder="—" value={borrador.extraido.lugar ?? ""} onChange={(v) => setExtraidoCampo("lugar", v)} />
               <Dato label="Jornada" valor={`${borrador.jornada} (${borrador.horas}h)`} />
               <Dato label="Descuento equipos" valor={borrador.descuentoEspecialPct ? `${Math.round(borrador.descuentoEspecialPct * 100)}%` : "—"} />
             </div>
@@ -677,6 +677,33 @@ function Dato({ label, valor, nota }: { label: string; valor: string; nota?: str
         {valor}
         {nota && <span className="ml-1 text-[#B3985B]">· {nota}</span>}
       </div>
+    </div>
+  );
+}
+
+function DatoInput({
+  label,
+  type = "text",
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  type?: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <div className="bg-[#111] border border-[#1a1a1a] rounded-lg px-3 py-2">
+      <div className="text-[#666] text-[10px] uppercase tracking-wide">{label}</div>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full bg-transparent text-white text-xs mt-0.5 focus:outline-none placeholder-[#555]"
+      />
     </div>
   );
 }

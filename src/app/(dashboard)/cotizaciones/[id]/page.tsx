@@ -286,8 +286,10 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   const [savingMeta, setSavingMeta] = useState(false);
   // Fecha del evento editable inline (independiente del trato)
   const [savingFecha, setSavingFecha] = useState(false);
+  const [savingLugar, setSavingLugar] = useState(false);
   // Estado local del input de fecha — se resetea con key={cot.id}
   const [fechaInputVal, setFechaInputVal] = useState<string>("");
+  const [lugarInputVal, setLugarInputVal] = useState<string>("");
   const [noteEdit, setNoteEdit] = useState<NoteEditState | null>(null);
 
   useEffect(() => {
@@ -296,6 +298,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
     // anterior mientras el fetch carga la nueva.
     setCot(null);
     setFechaInputVal("");
+    setLugarInputVal("");
     setLoading(true);
     // ─────────────────────────────────────────────────────────────────────
     fetch(`/api/cotizaciones/${id}`, { cache: "no-store" })
@@ -306,6 +309,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
         setPresentacionToken(d.presentacionToken ?? null);
         setLoading(false);
         setFechaInputVal(d.cotizacion?.fechaEvento ? d.cotizacion.fechaEvento.split("T")[0] : "");
+        setLugarInputVal(d.cotizacion?.lugarEvento || "");
       });
   }, [id]);
 
@@ -381,6 +385,28 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
       }
     } finally {
       setSavingFecha(false);
+    }
+  }
+
+  // Guardar lugar del evento inline
+  async function saveLugarEvento(lugar: string) {
+    if (!cot || cot.id !== id) return;
+    setSavingLugar(true);
+    try {
+      const res = await fetch(`/api/cotizaciones/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lugarEvento: lugar || null }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        if (d.cotizacion) setCot(prev => prev ? { ...prev, lugarEvento: d.cotizacion.lugarEvento } : prev);
+        toast.success("Lugar actualizado");
+      } else {
+        toast.error("Error al guardar el lugar");
+      }
+    } finally {
+      setSavingLugar(false);
     }
   }
 
@@ -1268,7 +1294,22 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
               />
             </div>
             <div><p className="text-gray-500 text-xs mb-0.5">Tipo</p><p className="text-white">{cot.tipoEvento || "—"}</p></div>
-            <div className="col-span-2"><p className="text-gray-500 text-xs mb-0.5">Lugar</p><p className="text-white">{cot.lugarEvento || "—"}</p></div>
+            <div className="col-span-2">
+              <p className="text-gray-500 text-xs mb-0.5">Lugar</p>
+              <input
+                type="text"
+                value={lugarInputVal}
+                onChange={e => setLugarInputVal(e.target.value)}
+                onBlur={e => {
+                  const val = e.target.value;
+                  if (!cot || cot.id !== id) return;
+                  const prev = cot.lugarEvento || "";
+                  if (val !== prev) saveLugarEvento(val);
+                }}
+                className="bg-transparent text-white text-sm w-full focus:outline-none focus:text-[#B3985B] placeholder-[#555] disabled:opacity-50"
+                placeholder="—"
+              />
+            </div>
           </div>
 
           {/* Equipos propios — subsecciones por categoría */}
