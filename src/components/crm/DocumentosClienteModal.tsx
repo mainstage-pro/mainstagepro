@@ -129,7 +129,7 @@ export default function DocumentosClienteModal({ trato }: { trato: TratoLite }) 
       icon: CreditCard,
       enabled: !!anticipoCxcId,
       hint: !proyecto ? "Requiere proyecto" : !anticipoCxcId && !cargandoAnticipo ? "Sin anticipo" : undefined,
-      onClick: () => anticipoCxcId && abrir(`/api/cuentas-cobrar/${anticipoCxcId}/nota`),
+      onClick: () => anticipoCxcId && abrir(`/api/cuentas-cobrar/${anticipoCxcId}/nota?t=${Date.now()}`),
     },
   ];
 
