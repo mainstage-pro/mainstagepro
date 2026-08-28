@@ -23,6 +23,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if ("categoriaId" in body) data.categoriaId = body.categoriaId || null;
   if ("cuentaOrigenId" in body) data.cuentaOrigenId = body.cuentaOrigenId || null;
   if ("cuentaDestinoId" in body) data.cuentaDestinoId = body.cuentaDestinoId || null;
+  if ("proyectoId" in body) data.proyectoId = body.proyectoId || null;
 
   // Cambio de tipo: recalcula la naturaleza y reasigna cuenta origen/destino
   // igual que al crear (ver api/movimientos/route.ts POST).
