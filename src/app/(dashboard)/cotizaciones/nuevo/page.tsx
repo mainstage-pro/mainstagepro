@@ -1227,19 +1227,33 @@ function CotizadorForm() {
 
   // ── Guardar precio especial del cliente para un equipo ──
   async function guardarPrecioCliente(linea: LineaEquipo) {
-    const cId = resolvedClienteId || clienteId;
-    if (!cId || !linea.equipoId) return;
+    const cId = resolvedClienteId || clienteId || manualClienteId;
+    if (!cId || !linea.equipoId) {
+      toast.error("Selecciona un cliente antes de guardar el precio especial.");
+      return;
+    }
     setGuardandoPrecio(linea.id);
     // precioOriginal = precio de lista del catálogo (se guarda para comparación futura)
     const precioOriginal = equipos.find(e => e.id === linea.equipoId)?.precioRenta ?? null;
-    await fetch(`/api/clientes/${cId}/precios-equipos`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ equipoId: linea.equipoId, precio: linea.precioUnitario, precioOriginal }),
-    });
-    setPreciosCliente(prev => ({ ...prev, [linea.equipoId]: linea.precioUnitario }));
-    setPreciosClienteOriginal(prev => ({ ...prev, [linea.equipoId]: precioOriginal }));
-    setGuardandoPrecio(null);
+    try {
+      const res = await fetch(`/api/clientes/${cId}/precios-equipos`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ equipoId: linea.equipoId, precio: linea.precioUnitario, precioOriginal }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        toast.error(err?.error ? `No se pudo guardar el precio: ${err.error}` : "No se pudo guardar el precio especial. Intenta de nuevo.");
+        return;
+      }
+      setPreciosCliente(prev => ({ ...prev, [linea.equipoId]: linea.precioUnitario }));
+      setPreciosClienteOriginal(prev => ({ ...prev, [linea.equipoId]: precioOriginal }));
+      toast.success("Precio especial guardado ✓");
+    } catch {
+      toast.error("No se pudo guardar el precio especial. Revisa tu conexión.");
+    } finally {
+      setGuardandoPrecio(null);
+    }
   }
 
   // ── Agregar equipo externo (tercero) ──
@@ -2742,7 +2756,7 @@ function CotizadorForm() {
                             </div>
                             <span className="w-24 text-right text-white text-sm font-medium shrink-0">{formatCurrency(l.subtotal)}</span>
                             {/* Botón guardar precio especial */}
-                            {precioDifiere && (resolvedClienteId || clienteId) && (
+                            {precioDifiere && (resolvedClienteId || clienteId || manualClienteId) && (
                               <button
                                 onClick={() => guardarPrecioCliente(l)}
                                 disabled={guardandoPrecio === l.id}
