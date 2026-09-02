@@ -75,6 +75,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     concepto:        cxc.concepto,
     tipoPago:        cxc.tipoPago,
     monto:           cxc.monto,
+    montoOriginal:   cxc.montoOriginal,
     fechaCompromiso: cxc.fechaCompromiso.toISOString(),
     granTotal,
     montoAnticipo,

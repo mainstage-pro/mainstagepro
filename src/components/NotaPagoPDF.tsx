@@ -104,6 +104,7 @@ export interface NotaPagoData {
   logoSrc?: string | null;
   concepto: string;
   monto: number;
+  montoOriginal?: number | null;
   fechaCompromiso: string;
   fechaPagoReal?: string | null;
   estado: string;
@@ -126,6 +127,8 @@ const ESTADO_LABEL: Record<string, string> = {
 
 export function NotaPagoPDF({ nota }: { nota: NotaPagoData }) {
   const logoSrc = nota.logoSrc ?? null;
+  const baseGt = nota.montoOriginal ?? nota.monto;
+  const ajuste = (nota.montoOriginal != null) ? nota.monto - nota.montoOriginal : 0;
 
   return (
     <Document>
@@ -182,8 +185,14 @@ export function NotaPagoPDF({ nota }: { nota: NotaPagoData }) {
             </View>
             <View style={s.conceptoRow}>
               <Text style={s.conceptoText}>{nota.concepto}</Text>
-              <Text style={s.conceptoMonto}>{fmt(nota.monto)}</Text>
+              <Text style={s.conceptoMonto}>{fmt(baseGt)}</Text>
             </View>
+            {ajuste !== 0 && (
+              <View style={[s.conceptoRow, { borderTopWidth: 1, borderTopColor: MID, paddingTop: 8, paddingBottom: 8 }]}>
+                <Text style={[s.conceptoText, { color: GRAY }]}>{ajuste > 0 ? "Cargo adicional (ajuste manual)" : "Descuento (ajuste manual)"}</Text>
+                <Text style={s.conceptoMonto}>{fmt(ajuste)}</Text>
+              </View>
+            )}
           </View>
 
           {/* Total a pagar */}

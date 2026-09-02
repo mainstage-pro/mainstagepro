@@ -118,6 +118,7 @@ export interface NotaCobroData {
   concepto: string;
   tipoPago: string;
   monto: number;
+  montoOriginal?: number | null;
   fechaCompromiso: string;
   granTotal: number | null;
   montoAnticipo: number | null;
@@ -128,7 +129,9 @@ export interface NotaCobroData {
 }
 
 export function NotaCobroPDF({ nota }: { nota: NotaCobroData }) {
-  const gt       = nota.granTotal ?? nota.monto;
+  const baseGt   = nota.granTotal ?? (nota.montoOriginal ?? nota.monto);
+  const ajuste   = (nota.montoOriginal != null) ? nota.monto - nota.montoOriginal : 0;
+  const gt       = baseGt + ajuste;
   const anticipo = nota.montoAnticipo ?? 0;
   const saldo    = Math.max(0, gt - anticipo);
 
@@ -209,8 +212,14 @@ export function NotaCobroPDF({ nota }: { nota: NotaCobroData }) {
             <View style={s.balanceTable}>
               <View style={s.balanceRow}>
                 <Text style={s.balanceLabel}>Total del servicio</Text>
-                <Text style={s.balanceValue}>{fmt(gt)}</Text>
+                <Text style={s.balanceValue}>{fmt(baseGt)}</Text>
               </View>
+              {ajuste !== 0 && (
+                <View style={s.balanceRow}>
+                  <Text style={s.balanceLabel}>{ajuste > 0 ? "Cargo adicional (ajuste)" : "Descuento (ajuste)"}</Text>
+                  <Text style={s.balanceValue}>{fmt(ajuste)}</Text>
+                </View>
+              )}
               <View style={[s.balanceRow, { borderBottomWidth: 0 }]}>
                 <Text style={s.balanceLabel}>Anticipo recibido</Text>
                 <Text style={anticipo > 0 ? s.balancePaid : s.balanceValue}>

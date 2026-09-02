@@ -69,6 +69,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     logoSrc,
     concepto:         cxp.concepto,
     monto:            cxp.monto,
+    montoOriginal:    cxp.montoOriginal,
     fechaCompromiso:  cxp.fechaCompromiso.toISOString(),
     fechaPagoReal:    cxp.fechaPagoReal?.toISOString() ?? null,
     estado:           cxp.estado,
