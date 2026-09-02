@@ -292,18 +292,28 @@ export default function PagosPersonalPage() {
           <h1 className="ms-h1">Pagos a Personal</h1>
           <p className="ms-subtitle mt-0.5">Ciclo semanal · miércoles de pago</p>
         </div>
-        <div className="flex items-center gap-2 ms-card px-3 py-2">
-          <button onClick={() => setCiclo(prevCiclo(ciclo))} className="text-gray-400 hover:text-white px-1 transition-colors">‹</button>
-          <div className="text-center">
-            <p className="text-xs text-gray-500">Ciclo de pago</p>
-            <input
-              type="date"
-              value={ciclo}
-              onChange={e => setCiclo(e.target.value)}
-              className="bg-transparent text-white text-sm font-semibold focus:outline-none text-center"
-            />
+        <div className="flex items-center gap-3">
+          <a
+            href={`/api/pagos-personal/pdf?ciclo=${ciclo}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 ms-card px-4 py-2 hover:bg-[#222] transition-colors text-sm font-medium text-[#B3985B] border border-[#B3985B]/30"
+          >
+            <FileText className="w-4 h-4" /> PDF
+          </a>
+          <div className="flex items-center gap-2 ms-card px-3 py-2">
+            <button onClick={() => setCiclo(prevCiclo(ciclo))} className="text-gray-400 hover:text-white px-1 transition-colors">‹</button>
+            <div className="text-center">
+              <p className="text-xs text-gray-500">Ciclo de pago</p>
+              <input
+                type="date"
+                value={ciclo}
+                onChange={e => setCiclo(e.target.value)}
+                className="bg-transparent text-white text-sm font-semibold focus:outline-none text-center"
+              />
+            </div>
+            <button onClick={() => setCiclo(nextCiclo(ciclo))} className="text-gray-400 hover:text-white px-1 transition-colors">›</button>
           </div>
-          <button onClick={() => setCiclo(nextCiclo(ciclo))} className="text-gray-400 hover:text-white px-1 transition-colors">›</button>
         </div>
       </div>
 
