@@ -482,9 +482,19 @@ export default function PagosPersonalPage() {
                     <div className="px-5 py-3">
                       <div className="flex items-center justify-between mb-2">
                         <p className="text-white text-sm font-medium">{row.tecnicoNombre}</p>
-                        <p className={`text-base font-bold ${row.todosPagados ? "text-green-400" : "text-[#B3985B]"}`}>
-                          {fmt(row.total)}
-                        </p>
+                        <div className="flex items-center gap-3">
+                          <a
+                            href={`/api/pagos-personal/recibo?ciclo=${ciclo}&tecnico=${row.tecnicoId}`}
+                            target="_blank"
+                            title="Descargar recibo desglosado"
+                            className="text-[#B3985B] hover:text-white transition-colors flex items-center justify-center p-1 rounded-md hover:bg-[#B3985B]/20"
+                          >
+                            <FileText className="w-4 h-4" />
+                          </a>
+                          <p className={`text-base font-bold ${row.todosPagados ? "text-green-400" : "text-[#B3985B]"}`}>
+                            {fmt(row.total)}
+                          </p>
+                        </div>
                       </div>
 
                       <div className="space-y-0.5 mb-3">
