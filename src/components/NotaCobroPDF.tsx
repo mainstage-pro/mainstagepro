@@ -206,20 +206,14 @@ export function NotaCobroPDF({ nota }: { nota: NotaCobroData }) {
             </View>
           </View>
 
-          {/* Resumen de cobros — siempre muestra las 3 filas */}
+          {/* Resumen de cobros */}
           <Text style={s.sectionLabel}>RESUMEN DE COBROS</Text>
           <View style={s.balanceBox}>
             <View style={s.balanceTable}>
               <View style={s.balanceRow}>
                 <Text style={s.balanceLabel}>Total del servicio</Text>
-                <Text style={s.balanceValue}>{fmt(baseGt)}</Text>
+                <Text style={s.balanceValue}>{fmt(gt)}</Text>
               </View>
-              {ajuste !== 0 && (
-                <View style={s.balanceRow}>
-                  <Text style={s.balanceLabel}>{ajuste > 0 ? "Cargo adicional (ajuste)" : "Descuento (ajuste)"}</Text>
-                  <Text style={s.balanceValue}>{fmt(ajuste)}</Text>
-                </View>
-              )}
               <View style={[s.balanceRow, { borderBottomWidth: 0 }]}>
                 <Text style={s.balanceLabel}>Anticipo recibido</Text>
                 <Text style={anticipo > 0 ? s.balancePaid : s.balanceValue}>
