@@ -20,6 +20,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       cliente:    { select: { nombre: true, empresa: true, telefono: true } },
       proyecto:   { select: { nombre: true, numeroProyecto: true, fechaEvento: true } },
       cotizacion: { select: { numeroCotizacion: true, granTotal: true } },
+      cuentaDestino: { select: { nombre: true, banco: true } },
     },
   });
 
@@ -57,7 +58,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     if (total > 0) montoAnticipo = total;
   }
 
-  // Fallback: si no hay CxC de tipo ANTICIPO pero sí hay cobros parciales, usarlos
   if (montoAnticipo === null && cxc.montoCobrado > 0) {
     montoAnticipo = cxc.montoCobrado;
   }
@@ -80,6 +80,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     granTotal,
     montoAnticipo,
     montoCobrado:    cxc.montoCobrado,
+    estado:          cxc.estado,
+    fechaCobroReal:  cxc.fechaCobroReal?.toISOString() ?? null,
+    cuentaDestino:   cxc.cuentaDestino ? { nombre: cxc.cuentaDestino.nombre, banco: cxc.cuentaDestino.banco } : null,
     cliente:         cxc.cliente
       ? { nombre: cxc.cliente.nombre, empresa: cxc.cliente.empresa ?? null, telefono: cxc.cliente.telefono ?? null }
       : null,
@@ -96,11 +99,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     );
 
     const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    pdfStream.on("data", (chunk: any) => chunks.push(Buffer.from(chunk)));
-    pdfStream.on("error", reject);
-    pdfStream.on("end", () => resolve(Buffer.concat(chunks)));
-  });
+      const chunks: Buffer[] = [];
+      pdfStream.on("data", (chunk: any) => chunks.push(Buffer.from(chunk)));
+      pdfStream.on("error", reject);
+      pdfStream.on("end", () => resolve(Buffer.concat(chunks)));
+    });
 
     return new NextResponse(pdfBuffer as any, {
       status: 200,

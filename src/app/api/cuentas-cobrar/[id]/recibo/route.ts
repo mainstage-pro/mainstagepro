@@ -17,6 +17,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       cliente: { select: { nombre: true, empresa: true } },
       proyecto: { select: { nombre: true, numeroProyecto: true, fechaEvento: true } },
       cotizacion: { select: { numeroCotizacion: true, granTotal: true } },
+      cuentaDestino: { select: { nombre: true, banco: true } },
     },
   });
 
@@ -28,7 +29,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   let montoAnticipo: number | null = null;
 
   if (cxc.proyectoId) {
-    // Buscar cotización del proyecto si no está en la CxC
     if (!granTotal) {
       const proyecto = await prisma.proyecto.findUnique({
         where: { id: cxc.proyectoId },
@@ -36,7 +36,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       });
       granTotal = proyecto?.cotizacion?.granTotal ?? null;
     }
-    // Buscar anticipo del mismo proyecto
     const cxcAnticipo = await prisma.cuentaCobrar.findFirst({
       where: { proyectoId: cxc.proyectoId, tipoPago: "ANTICIPO" },
       select: { monto: true },
@@ -50,9 +49,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     tipoPago: cxc.tipoPago,
     monto: cxc.monto,
     fechaCompromiso: cxc.fechaCompromiso.toISOString(),
+    fechaCobroReal: cxc.fechaCobroReal?.toISOString() ?? null,
     estado: cxc.estado,
     granTotal,
     montoAnticipo,
+    cuentaDestino: cxc.cuentaDestino ? { nombre: cxc.cuentaDestino.nombre, banco: cxc.cuentaDestino.banco } : null,
     cliente: cxc.cliente ? { nombre: cxc.cliente.nombre, empresa: cxc.cliente.empresa ?? null } : null,
     proyecto: cxc.proyecto
       ? {

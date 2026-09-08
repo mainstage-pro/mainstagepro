@@ -1,20 +1,19 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 
-const GOLD = "#B3985B";
-const BLACK = "#0a0a0a";
-const DARK = "#111111";
-const WHITE = "#FFFFFF";
-const GRAY = "#4a4a4a";
-const LIGHT = "#F7F5F0";
-const MID = "#E8E5DF";
+const GOLD   = "#B3985B";
+const BLACK  = "#0a0a0a";
+const WHITE  = "#FFFFFF";
+const GRAY   = "#4a4a4a";
+const LIGHT  = "#F7F5F0";
+const MID    = "#E8E5DF";
 
 const s = StyleSheet.create({
   page: {
     fontFamily: "Helvetica",
     backgroundColor: WHITE,
     paddingTop: 36,
-    paddingBottom: 50,
+    paddingBottom: 52,
     paddingHorizontal: 0,
     fontSize: 9,
     color: BLACK,
@@ -23,52 +22,43 @@ const s = StyleSheet.create({
     backgroundColor: BLACK,
     paddingHorizontal: 40,
     paddingTop: 28,
-    paddingBottom: 22,
+    paddingBottom: 24,
     marginTop: -36,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
   },
-  brand: { fontSize: 17, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2, marginBottom: 2 },
-  tagline: { fontSize: 7, color: "#777777", letterSpacing: 1 },
+  brand: { fontSize: 16, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2, marginBottom: 3 },
+  tagline: { fontSize: 7, color: "#666666", letterSpacing: 1 },
   headerRight: { alignItems: "flex-end" },
-  docTitle: { fontSize: 12, fontFamily: "Helvetica-Bold", color: WHITE, marginBottom: 2 },
-  docNum: { fontSize: 8, color: "#999999" },
-  body: { paddingHorizontal: 40, paddingTop: 24 },
+  docTitle: { fontSize: 13, fontFamily: "Helvetica-Bold", color: WHITE, marginBottom: 2, letterSpacing: 0.5 },
+  docNum: { fontSize: 8, color: "#888888" },
+  
+  body: { paddingHorizontal: 40, paddingTop: 26 },
 
-  // Badge tipo pago
-  badge: {
-    borderRadius: 3,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    alignSelf: "flex-start",
-    marginBottom: 14,
-  },
-  badgeAnticipo: { backgroundColor: GOLD },
-  badgeLiquidacion: { backgroundColor: "#2d6a4f" },
-  badgeText: { fontSize: 8, fontFamily: "Helvetica-Bold", color: WHITE, letterSpacing: 1.5 },
+  badge: { alignSelf: "flex-start", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 3, marginBottom: 16 },
+  badgeAnticipo: { backgroundColor: "#dbeafe" },
+  badgeLiquidacion: { backgroundColor: "#dcfce7" },
+  badgeText: { fontSize: 7, fontFamily: "Helvetica-Bold", letterSpacing: 1, color: BLACK },
 
-  // Monto grande
   amountSection: { marginBottom: 18 },
-  amountLabel: { fontSize: 8, color: "#999999", letterSpacing: 1, marginBottom: 4 },
-  amount: { fontSize: 30, fontFamily: "Helvetica-Bold", color: BLACK, marginBottom: 2 },
-  amountSub: { fontSize: 8, color: GRAY },
+  amountLabel: { fontSize: 7, color: "#888888", letterSpacing: 1.5, marginBottom: 4 },
+  amount: { fontSize: 28, fontFamily: "Helvetica-Bold", color: BLACK, letterSpacing: -0.5 },
+  amountSub: { fontSize: 8, color: "#4ade80", fontFamily: "Helvetica-Bold", marginTop: 4, letterSpacing: 1 },
+  amountSubPend: { color: GOLD },
 
-  divider: { borderBottomWidth: 1, borderBottomColor: MID, marginVertical: 14 },
+  divider: { borderBottomWidth: 1, borderBottomColor: MID, marginVertical: 16 },
 
-  // Info box
-  infoBox: { backgroundColor: LIGHT, borderRadius: 4, padding: 14, marginBottom: 14 },
-  infoRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 5 },
+  infoBox: { backgroundColor: LIGHT, borderRadius: 4, padding: 12, marginBottom: 20 },
+  infoRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 6 },
   infoLabel: { fontSize: 7.5, color: "#888888" },
-  infoValue: { fontSize: 7.5, fontFamily: "Helvetica-Bold", color: BLACK, maxWidth: "65%", textAlign: "right" },
+  infoValue: { fontSize: 8, fontFamily: "Helvetica-Bold", color: BLACK, maxWidth: "65%", textAlign: "right" },
 
-  // Balance table
-  balanceBox: { borderRadius: 4, overflow: "hidden", marginBottom: 14 },
-  balanceTitle: { fontSize: 7.5, fontFamily: "Helvetica-Bold", color: "#888888", letterSpacing: 1, marginBottom: 8 },
-  balanceRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 6, paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: MID },
-  balanceRowLast: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 7, paddingHorizontal: 12 },
+  balanceBox: { marginBottom: 18 },
+  balanceTitle: { fontSize: 7, fontFamily: "Helvetica-Bold", color: "#888888", letterSpacing: 1.5, marginBottom: 8 },
+  balanceRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 8, paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: MID },
   balanceLabel: { fontSize: 8, color: GRAY },
-  balanceValue: { fontSize: 8, color: BLACK },
+  balanceValue: { fontSize: 8, fontFamily: "Helvetica-Bold" },
   balanceTotalRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 8, paddingHorizontal: 12, backgroundColor: BLACK, borderRadius: 3 },
   balanceTotalLabel: { fontSize: 8, fontFamily: "Helvetica-Bold", color: WHITE },
   balanceTotalValue: { fontSize: 8, fontFamily: "Helvetica-Bold" },
@@ -116,9 +106,11 @@ export interface ReciboData {
   tipoPago: string;
   monto: number;
   fechaCompromiso: string;
+  fechaCobroReal?: string | null;
   estado: string;
   granTotal?: number | null;
   montoAnticipo?: number | null;
+  cuentaDestino?: { nombre: string; banco?: string | null } | null;
   proyecto?: { nombre: string; numeroProyecto: string | number; fechaEvento?: string | null } | null;
   cliente?: { nombre: string; empresa?: string | null } | null;
   cotizacion?: { numeroCotizacion: string } | null;
@@ -130,10 +122,17 @@ export function ReciboPagoPDF({ recibo }: { recibo: ReciboData }) {
   const granTotal = recibo.granTotal ?? 0;
   const saldoRestante = granTotal > 0 ? Math.max(0, granTotal - recibo.monto) : null;
 
+  const isLiquidado = recibo.estado === "LIQUIDADO" || recibo.estado === "PARCIAL";
   const estadoLabel =
     recibo.estado === "LIQUIDADO" ? "PAGADO" :
     recibo.estado === "PARCIAL" ? "PAGO PARCIAL" :
     "PENDIENTE DE COBRO";
+    
+  let paymentMethod = "";
+  if (isLiquidado && recibo.cuentaDestino) {
+    const isEfectivo = recibo.cuentaDestino.banco?.toLowerCase().includes("efectivo") || recibo.cuentaDestino.banco?.toLowerCase().includes("caja") || recibo.cuentaDestino.nombre.toLowerCase().includes("caja");
+    paymentMethod = isEfectivo ? "Efectivo" : `Transferencia (${recibo.cuentaDestino.banco || recibo.cuentaDestino.nombre})`;
+  }
 
   return (
     <Document>
@@ -166,7 +165,7 @@ export function ReciboPagoPDF({ recibo }: { recibo: ReciboData }) {
               {isAnticipo ? "MONTO DEL ANTICIPO" : isLiquidacion ? "MONTO DE LIQUIDACIÓN" : "MONTO"}
             </Text>
             <Text style={s.amount}>{fmt(recibo.monto)}</Text>
-            <Text style={s.amountSub}>{estadoLabel}</Text>
+            <Text style={[s.amountSub, recibo.estado === 'PENDIENTE' ? s.amountSubPend : null]}>{estadoLabel}</Text>
           </View>
 
           <View style={s.divider} />
@@ -193,8 +192,20 @@ export function ReciboPagoPDF({ recibo }: { recibo: ReciboData }) {
                 <Text style={s.infoValue}>{recibo.cotizacion.numeroCotizacion}</Text>
               </View>
             )}
+            {recibo.fechaCobroReal && (
+              <View style={s.infoRow}>
+                <Text style={s.infoLabel}>Fecha de pago</Text>
+                <Text style={s.infoValue}>{fmtDate(recibo.fechaCobroReal)}</Text>
+              </View>
+            )}
+            {paymentMethod && (
+              <View style={s.infoRow}>
+                <Text style={s.infoLabel}>Método de pago</Text>
+                <Text style={s.infoValue}>{paymentMethod}</Text>
+              </View>
+            )}
             <View style={[s.infoRow, { marginBottom: 0 }]}>
-              <Text style={s.infoLabel}>Fecha compromiso</Text>
+              <Text style={s.infoLabel}>{recibo.fechaCobroReal ? "Fecha compromiso orig." : "Fecha compromiso"}</Text>
               <Text style={s.infoValue}>{fmtDate(recibo.fechaCompromiso)}</Text>
             </View>
           </View>
