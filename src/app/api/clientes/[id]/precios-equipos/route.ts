@@ -10,14 +10,39 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   const { id } = await params;
 
+  // Find the client to check if they have an empresaId
+  const cliente = await prisma.cliente.findUnique({
+    where: { id },
+    select: { empresaId: true }
+  });
+
+  if (!cliente) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+
+  let whereClause: any = { clienteId: id };
+
+  if (cliente.empresaId) {
+    // If the client is tied to an empresa, find all contacts of that empresa
+    const contactos = await prisma.cliente.findMany({
+      where: { empresaId: cliente.empresaId },
+      select: { id: true }
+    });
+    const contactoIds = contactos.map(c => c.id);
+    // Include the original id just in case
+    if (!contactoIds.includes(id)) contactoIds.push(id);
+    
+    whereClause = { clienteId: { in: contactoIds } };
+  }
+
   const precios = await prisma.precioClienteEquipo.findMany({
-    where: { clienteId: id },
+    where: whereClause,
     select: { equipoId: true, precio: true, precioOriginal: true, nota: true, updatedAt: true },
   });
 
   // Convertir a mapa { equipoId → { precio, precioOriginal, nota } }
   const mapa: Record<string, { precio: number; precioOriginal: number | null; nota: string | null; updatedAt: string }> = {};
   for (const p of precios) {
+    // If there are duplicates (multiple contacts have special price for same item), the last one wins
+    // We could sort by updatedAt if we wanted the newest one
     mapa[p.equipoId] = { precio: p.precio, precioOriginal: p.precioOriginal, nota: p.nota, updatedAt: p.updatedAt.toISOString() };
   }
 
