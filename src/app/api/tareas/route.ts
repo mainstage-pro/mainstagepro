@@ -115,13 +115,18 @@ export async function GET(req: NextRequest) {
   };
 
   // Las tareas derivadas de una fuente (trato / proyecto de evento / proyecto
-  // interno) solo entran a gestión operativa cuando ya tienen fecha Y responsable.
-  // Sin agendar generan ruido; se gestionan en su vista de origen (Tratos /
-  // Proyectos), no en las listas operativas (búsqueda, hoy, próximas, equipo, área).
+  // interno / cliente) solo entran a gestión operativa cuando ya tienen fecha Y
+  // responsable. Sin agendar generan ruido; se gestionan en su vista de origen
+  // (Tratos / Proyectos / Clientes), no en las listas operativas (búsqueda, hoy,
+  // próximas, equipo, área).
+  // Se filtra por tipoOrigen y NO por la FK (tratoId/proyectoEventoId/...) porque
+  // esas FKs son onDelete:SetNull — si se borra el trato/proyecto/cliente de origen,
+  // la tarea queda huérfana (FK null) pero tipoOrigen sigue marcándola como derivada;
+  // filtrar por FK dejaba pasar esas huérfanas sin fecha directo a bandeja/hoy.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const soloDerivadasAgendadas: Record<string, any> = {
     OR: [
-      { tratoId: null, proyectoEventoId: null, proyectoInternoId: null },
+      { tipoOrigen: { notIn: ["TRATO", "EVENTO", "PROYECTO", "CLIENTE"] } },
       { AND: [{ fecha: { not: null } }, { asignadoAId: { not: null } }] },
     ],
   };
@@ -254,14 +259,13 @@ export async function GET(req: NextRequest) {
     }
   } else if (vista === "bandeja") {
     // Bandeja de entrada = tareas SUELTAS sin origen alguno. Se excluyen las
-    // derivadas de tratos / proyectos-evento / proyectos-internos: esas no entran
-    // a gestión operativa hasta que se les asigna una fecha (se ven en Hoy/Próximas).
-    where.proyectoTareaId   = null;
-    where.iniciativaId      = null;
-    where.tratoId           = null;
-    where.proyectoEventoId  = null;
-    where.proyectoInternoId = null;
-    where.parentId          = null;
+    // derivadas de tratos / proyectos-evento / proyectos-internos / clientes: esas
+    // no entran a gestión operativa hasta que se les asigna una fecha (se ven en
+    // Hoy/Próximas). Filtro por tipoOrigen, no por FK (ver soloDerivadasAgendadas).
+    where.proyectoTareaId = null;
+    where.iniciativaId    = null;
+    where.tipoOrigen      = { notIn: ["TRATO", "EVENTO", "PROYECTO", "CLIENTE"] };
+    where.parentId        = null;
     where.OR = misTareasOR;
   } else if (vista === "equipo") {
     if (session.role !== "ADMIN") return NextResponse.json({ error: "No autorizado" }, { status: 403 });
