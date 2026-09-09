@@ -927,16 +927,92 @@ const PAGO_COLORS: Record<string, string> = {
   DIFERIDO: "text-gray-400 bg-gray-800/20 border-gray-700/40",
 };
 
-function TabCapital({ config, valorEfectivo, montoFijoMensual, pisoAbsolutoPeso }: {
-  config: HervamConfig; valorEfectivo: number; montoFijoMensual: number; pisoAbsolutoPeso: number;
+function TabCapital({ config, valorEfectivo, montoFijoMensual, pisoAbsolutoPeso, onReload }: {
+  config: HervamConfig; valorEfectivo: number; montoFijoMensual: number; pisoAbsolutoPeso: number; onReload: () => void;
 }) {
+  const [showEdit, setShowEdit] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const toast = useToast();
+
+  const [form, setForm] = useState({
+    valorTotalActivos: config.valorTotalActivos,
+    tasaAnualRendimiento: config.tasaAnualRendimiento,
+    modoActivo: config.modoActivo,
+    porcentajeVariable: config.porcentajeVariable,
+    pisoMinimoFijo: config.pisoMinimoFijo,
+  });
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+      const res = await fetch("/api/finanzas/hervam/config", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form)
+      });
+      if (!res.ok) throw new Error("Error al guardar");
+      toast({ title: "Configuración actualizada", type: "success" });
+      setShowEdit(false);
+      onReload();
+    } catch (error) {
+      toast({ title: "Error", text: String(error), type: "error" });
+    } finally {
+      setIsSaving(false);
+    }
+  }
   const creditoPct = config.creditoSaldoInicial > 0
     ? ((config.creditoSaldoInicial - config.creditoSaldoActual) / config.creditoSaldoInicial) * 100
     : 0;
 
   return (
     <div className="space-y-6">
-      <p className="ms-section-label">Estructura de Capital · HERVAM</p>
+      <div className="flex justify-between items-center">
+        <p className="ms-section-label mb-0">Estructura de Capital · HERVAM</p>
+        <button onClick={() => setShowEdit(true)} className="text-xs text-[#B3985B] border border-[#B3985B]/30 hover:bg-[#B3985B]/10 px-3 py-1.5 rounded-lg transition-colors">
+          Editar Configuración
+        </button>
+      </div>
+
+      <Modal open={showEdit} onClose={() => setShowEdit(false)} title="Editar Configuración HERVAM">
+        <form onSubmit={handleSave} className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-xs text-[#555]">Valor de activos declarado</label>
+            <input type="number" step="0.01" className="ms-input" value={form.valorTotalActivos} onChange={e => setForm({...form, valorTotalActivos: Number(e.target.value)})} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-xs text-[#555]">Tasa Anual de Rendimiento (%)</label>
+              <input type="number" step="0.01" className="ms-input" value={form.tasaAnualRendimiento} onChange={e => setForm({...form, tasaAnualRendimiento: Number(e.target.value)})} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs text-[#555]">Modo de Cálculo</label>
+              <select className="ms-input" value={form.modoActivo} onChange={e => setForm({...form, modoActivo: e.target.value})}>
+                <option value="FIJO">Fijo</option>
+                <option value="HIBRIDO">Híbrido</option>
+                <option value="VARIABLE">Variable</option>
+              </select>
+            </div>
+          </div>
+          {form.modoActivo !== "FIJO" && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-xs text-[#555]">% Variable sobre utilidad</label>
+                <input type="number" step="0.01" className="ms-input" value={form.porcentajeVariable} onChange={e => setForm({...form, porcentajeVariable: Number(e.target.value)})} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs text-[#555]">Piso Mínimo del Fijo (%)</label>
+                <input type="number" step="0.01" className="ms-input" value={form.pisoMinimoFijo} onChange={e => setForm({...form, pisoMinimoFijo: Number(e.target.value)})} />
+              </div>
+            </div>
+          )}
+          <div className="flex justify-end pt-2">
+            <button type="submit" disabled={isSaving} className="ms-btn-primary">
+              {isSaving ? "Guardando..." : "Guardar cambios"}
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
@@ -1317,9 +1393,9 @@ export default function SocioDetallePage() {
     setSocio(s || null);
     if (s?.esFundador) {
       const [cfg, act, pag, cxpData] = await Promise.all([
-        fetch("/api/admin/valuacion/config").then(r => r.json()),
-        fetch("/api/admin/valuacion/activos").then(r => r.json()),
-        fetch("/api/admin/valuacion/pagos").then(r => r.json()),
+        fetch("/api/finanzas/hervam/config").then(r => r.json()),
+        fetch("/api/finanzas/hervam/activos").then(r => r.json()),
+        fetch("/api/finanzas/hervam/pagos").then(r => r.json()),
         fetch(`/api/cuentas-pagar?socioId=${s.id}`, { cache: "no-store" }).then(r => r.json()),
       ]);
       setHervamConfig(cfg);
@@ -1453,7 +1529,7 @@ export default function SocioDetallePage() {
         {/* Tabs fundador (HERVAM) */}
         {isFundador && tab === "capital" && hervamConfig && (
           <TabCapital config={hervamConfig.config} valorEfectivo={hervamConfig.valorEfectivo}
-            montoFijoMensual={hervamConfig.montoFijoMensual} pisoAbsolutoPeso={hervamConfig.pisoAbsolutoPeso} />
+            montoFijoMensual={hervamConfig.montoFijoMensual} pisoAbsolutoPeso={hervamConfig.pisoAbsolutoPeso} onReload={cargar} />
         )}
         {isFundador && tab === "activos_hervam" && <TabActivosHervam activos={hervamActivos} />}
         {isFundador && tab === "pagos_hervam" && <TabPagosHervam pagos={hervamPagos} />}
