@@ -165,7 +165,7 @@ export function ReciboPagoPDF({ recibo }: { recibo: ReciboData }) {
               {isAnticipo ? "MONTO DEL ANTICIPO" : isLiquidacion ? "MONTO DE LIQUIDACIÓN" : "MONTO"}
             </Text>
             <Text style={s.amount}>{fmt(recibo.monto)}</Text>
-            <Text style={[s.amountSub, recibo.estado === 'PENDIENTE' ? s.amountSubPend : null]}>{estadoLabel}</Text>
+            <Text style={[s.amountSub, recibo.estado === 'PENDIENTE' ? s.amountSubPend : {}]}>{estadoLabel}</Text>
           </View>
 
           <View style={s.divider} />
