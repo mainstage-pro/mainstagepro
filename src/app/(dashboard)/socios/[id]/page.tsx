@@ -952,11 +952,11 @@ function TabCapital({ config, valorEfectivo, montoFijoMensual, pisoAbsolutoPeso,
         body: JSON.stringify(form)
       });
       if (!res.ok) throw new Error("Error al guardar");
-      toast({ title: "Configuración actualizada", type: "success" });
+      toast.success("Configuración actualizada");
       setShowEdit(false);
       onReload();
     } catch (error) {
-      toast({ title: "Error", text: String(error), type: "error" });
+      toast.error(String(error));
     } finally {
       setIsSaving(false);
     }
