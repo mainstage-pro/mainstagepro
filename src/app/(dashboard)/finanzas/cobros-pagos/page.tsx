@@ -429,6 +429,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
   const [payCuotaCuenta, setPayCuotaCuenta] = useState('');
   const [payCuotaNotas, setPayCuotaNotas] = useState('');
   const [payCuotaFecha, setPayCuotaFecha] = useState(new Date().toISOString().split('T')[0]);
+  const [payCuotaMonto, setPayCuotaMonto] = useState("");
 
   // ── Plan de pagos / cobros ────────────────────────────────────────────────
   async function openPlan(id: string, tipo: 'cxc' | 'cxp', monto: number, montoPagado: number, concepto: string) {
@@ -486,7 +487,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ metodoPago: payCuotaMetodo, cuentaDestinoId: payCuotaCuenta || null, cuentaOrigenId: payCuotaCuenta || null, notas: payCuotaNotas || null, fecha: payCuotaFecha || null }),
+      body: JSON.stringify({ metodoPago: payCuotaMetodo, cuentaDestinoId: payCuotaCuenta || null, cuentaOrigenId: payCuotaCuenta || null, notas: payCuotaNotas || null, fecha: payCuotaFecha || null, monto: payCuotaMonto ? parseFloat(payCuotaMonto) : undefined }),
     });
     const data = await res.json();
     if (!res.ok) { toast.error(data.error ?? 'Error al registrar pago'); setPayingCuota(null); return; }
@@ -1891,7 +1892,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
                           </span>
                         ) : (
                           <button
-                            onClick={() => { setPayCuotaId(prev => prev === cuota.id ? null : cuota.id); setPayCuotaFecha(new Date().toISOString().split('T')[0]); }}
+                            onClick={() => { setPayCuotaId(prev => prev === cuota.id ? null : cuota.id); setPayCuotaFecha(new Date().toISOString().split('T')[0]); setPayCuotaMonto(cuota.monto.toString()); }}
                             className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${payCuotaId === cuota.id ? 'border-purple-600/60 text-purple-300 bg-purple-900/10' : 'border-[#333] text-gray-400 hover:border-purple-700/60 hover:text-purple-400'}`}
                           >
                             {plan.tipo === 'cxc' ? 'Cobrar ▸' : 'Pagar ▸'}
@@ -1902,7 +1903,11 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
                     {/* Mini-form to pay this cuota */}
                     {payCuotaId === cuota.id && cuota.estado === 'PENDIENTE' && (
                       <div className="mt-3 pt-3 border-t border-[#2a2a2a] space-y-2">
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <label className="text-[10px] text-gray-600 uppercase tracking-wide block mb-1">Monto a registrar</label>
+                            <input type="number" step="0.01" value={payCuotaMonto} onChange={e => setPayCuotaMonto(e.target.value)} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-purple-700" />
+                          </div>
                           <div>
                             <label className="text-[10px] text-gray-600 uppercase tracking-wide block mb-1">Método</label>
                             <select value={payCuotaMetodo} onChange={e => setPayCuotaMetodo(e.target.value)} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-purple-700">

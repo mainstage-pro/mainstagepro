@@ -10,7 +10,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const { id, cuotaId } = await params;
 
   const body = await req.json();
-  const { metodoPago = "TRANSFERENCIA", cuentaOrigenId, notas, fecha } = body;
+  const { metodoPago = "TRANSFERENCIA", cuentaOrigenId, notas, fecha, monto } = body;
 
   const cuota = await prisma.cuotaPago.findFirst({
     where: { id: cuotaId, cuentaPagarId: id, estado: "PENDIENTE" },
@@ -20,6 +20,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const cuenta = await prisma.cuentaPagar.findUnique({ where: { id } });
   if (!cuenta) return NextResponse.json({ error: "Cuenta no encontrada" }, { status: 404 });
 
+  const montoAbono = monto && monto > 0 ? parseFloat(monto) : cuota.monto;
   const fechaPago = fecha ? new Date(fecha) : new Date();
 
   const result = await prisma.$transaction(async (tx) => {
@@ -27,8 +28,8 @@ export async function POST(req: NextRequest, { params }: Params) {
     const movimiento = await tx.movimientoFinanciero.create({
       data: {
         tipo: "EGRESO",
-        concepto: `Cuota ${cuota.numeroCuota} — ${cuenta.concepto}`,
-        monto: cuota.monto,
+        concepto: `Pago cuota ${cuota.numeroCuota} — ${cuenta.concepto}`,
+        monto: montoAbono,
         fecha: fechaPago,
         metodoPago,
         cuentaOrigenId: cuentaOrigenId || cuenta.cuentaOrigenId || null,
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     const abonoPago = await tx.abonoPago.create({
       data: {
         cuentaPagarId: id,
-        monto: cuota.monto,
+        monto: montoAbono,
         fecha: fechaPago,
         metodoPago,
         cuentaOrigenId: cuentaOrigenId || cuenta.cuentaOrigenId || null,
@@ -51,14 +52,15 @@ export async function POST(req: NextRequest, { params }: Params) {
       },
     });
 
-    // 3. Marcar cuota como pagada y vincular al abono
+    // 3. Marcar cuota como pagada
     await tx.cuotaPago.update({
       where: { id: cuotaId },
-      data: { estado: "PAGADO", abonoPagoId: abonoPago.id },
+      data: { estado: "PAGADO", abonoPagoId: abonoPago.id, monto: montoAbono },
     });
 
     // 4. Actualizar montoPagado y estado de la CuentaPagar
-    const nuevoPagado = cuenta.montoPagado + cuota.monto;
+    const nuevoPagado = cuenta.montoPagado + montoAbono;
+    const saldoRestante = cuenta.monto - nuevoPagado;
     const nuevoEstado =
       nuevoPagado >= cuenta.monto - 0.01
         ? "LIQUIDADO"
@@ -74,6 +76,31 @@ export async function POST(req: NextRequest, { params }: Params) {
         ...(nuevoEstado === "LIQUIDADO" ? { fechaPagoReal: fechaPago } : {}),
       },
     });
+
+    // 5. Redistribuir el saldo restante
+    if (nuevoEstado === "LIQUIDADO") {
+      await tx.cuotaPago.deleteMany({
+        where: { cuentaPagarId: id, estado: "PENDIENTE" },
+      });
+    } else if (saldoRestante > 0) {
+      const pending = await tx.cuotaPago.findMany({
+        where: { cuentaPagarId: id, estado: "PENDIENTE" },
+        orderBy: { numeroCuota: 'asc' }
+      });
+      if (pending.length > 0) {
+        const avg = saldoRestante / pending.length;
+        const precision = avg > 10000 ? 1000 : avg > 1000 ? 500 : avg > 100 ? 100 : 10;
+        const base = Math.floor(saldoRestante / pending.length / precision) * precision;
+        
+        for (let i = 0; i < pending.length; i++) {
+          const montoRedistribuido = i < pending.length - 1 ? base : Math.round((saldoRestante - base * (pending.length - 1)) * 100) / 100;
+          await tx.cuotaPago.update({
+            where: { id: pending[i].id },
+            data: { monto: montoRedistribuido }
+          });
+        }
+      }
+    }
 
     return { abonoPago, movimiento, cuenta: cuentaActualizada };
   });
