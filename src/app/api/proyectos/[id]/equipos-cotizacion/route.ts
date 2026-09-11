@@ -85,7 +85,7 @@ export async function GET(
     ? await prisma.cotizacion.findMany({
         where: {
           id: { not: proyecto.cotizacion.id },
-          estado: { notIn: ["RECHAZADA", "VENCIDA"] },
+          estado: "APROBADA",
           proyecto: { is: null },
           OR: [
             { fechaEvento: { gte: fechaInicio, lte: fechaFin } },
@@ -159,6 +159,18 @@ export async function GET(
         fecha: proy.fechaEvento ? proy.fechaEvento.toISOString().split("T")[0] : null,
       });
     }
+  }
+
+  // Una misma cotización/proyecto puede tener varias líneas del mismo equipo
+  // (p. ej. dos renglones separados de la misma pantalla): deduplicar por ref
+  // para no listar la misma referencia varias veces en "comprometido en".
+  for (const info of Object.values(comprometidoMap)) {
+    const vistos = new Set<string>();
+    info.refs = info.refs.filter((r) => {
+      if (vistos.has(r.ref)) return false;
+      vistos.add(r.ref);
+      return true;
+    });
   }
 
   // ── CxPs existentes para este proyecto ────────────────────────────────────

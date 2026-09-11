@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
         { fechaEvento: { gte: inicio, lte: fin } },
         { fechaEvento: null, trato: { fechaEventoEstimada: { gte: inicio, lte: fin } } },
       ],
-      estado: { notIn: ["RECHAZADA", "VENCIDA"] },
+      estado: "APROBADA",
       proyecto: { is: null },
       ...(excludeCotizacionId ? { id: { not: excludeCotizacionId } } : {}),
     },
@@ -123,6 +123,17 @@ export async function GET(req: NextRequest) {
         estado: proy.estado,
       });
     }
+  }
+
+  // Una misma cotización/proyecto puede tener varias líneas del mismo equipo:
+  // deduplicar por ref para no listar la misma referencia varias veces.
+  for (const info of Object.values(comprometido)) {
+    const vistos = new Set<string>();
+    info.eventos = info.eventos.filter((e) => {
+      if (vistos.has(e.ref)) return false;
+      vistos.add(e.ref);
+      return true;
+    });
   }
 
   // 5. Resultado
