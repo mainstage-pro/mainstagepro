@@ -86,6 +86,20 @@ function sumarHoras(hhmm: string | null | undefined, horas: number | null | unde
   return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
 }
 
+/** Convierte "HH:MM" a 12 hrs con a.m./p.m. (mismo estilo que horaDeDateTime). Deja intactos valores no numéricos (p.ej. "Por definir" o ya formateados). */
+function horaAmPm(hhmm: string | null): string | null {
+  if (!hhmm) return hhmm;
+  const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm.trim());
+  if (!m) return hhmm;
+  const hh = Number(m[1]);
+  const mm = Number(m[2]);
+  return new Date(Date.UTC(2000, 0, 1, hh, mm)).toLocaleTimeString("es-MX", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "UTC",
+  });
+}
+
 /** "lun 5 jul" desde "YYYY-MM-DD" | Date | ISO. */
 function fechaCorta(fecha: string | Date | null | undefined): string | null {
   if (!fecha) return null;
@@ -221,6 +235,8 @@ export function construirCronologia(
     const desmontajeFecha = p.fechaDesmontaje ? fechaISOaDia(p.fechaDesmontaje) : null;
     bloques.push({ titulo: "Desmontaje", subtitulo: fechaCorta(desmontajeFecha), items: itemsDesmontaje });
   }
+
+  bloques.forEach((b) => b.items.forEach((it) => { it.hora = horaAmPm(it.hora) ?? it.hora; }));
 
   return bloques;
 }
