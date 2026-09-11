@@ -1,6 +1,9 @@
 "use client";
 
 import React, { useEffect, useState, useRef, useMemo, use } from "react";
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { agruparRolesTecnicos } from "@/lib/rolesTecnicos";
 import { PDFPreviewModal } from "@/components/PDFPreviewModal";
 import { upload } from "@vercel/blob/client";
@@ -74,6 +77,21 @@ interface CronoRow { horaInicio: string; horaFin: string; actividad: string; res
 let cronoIdSeq = 0;
 function nuevoCronoId() { return `cr_${Date.now().toString(36)}_${(cronoIdSeq++).toString(36)}`; }
 function conCronoId(r: CronoRow): CronoRow { return r._id ? r : { ...r, _id: nuevoCronoId() }; }
+
+// Fila arrastrable de la tabla de cronograma. El handle (⠿) es lo único que dispara el
+// drag, para no interferir con el click/escritura en los inputs de la fila.
+function SortableCronoRow({ id, className, children }: {
+  id: string; className?: string;
+  children: (drag: { attributes: ReturnType<typeof useSortable>["attributes"]; listeners: ReturnType<typeof useSortable>["listeners"] }) => React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  return (
+    <tr ref={setNodeRef} className={className}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, position: "relative", zIndex: isDragging ? 1 : undefined }}>
+      {children({ attributes, listeners })}
+    </tr>
+  );
+}
 interface TransporteSlot { vehiculoId: string; choferId: string; horaSalida: string; comentarios: string }
 interface Proyecto {
   id: string; numeroProyecto: string; nombre: string; estado: string;
@@ -1508,6 +1526,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [savingCrono, setSavingCrono] = useState(false);
   const cronoLoaded = useRef(false);
   const cronoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cronoSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   // Plantillas por fase. La operación es adaptativa: si el montaje/desmontaje viven en su
   // propia fase (día aparte), no se duplican esos ítems dentro de la operación.
@@ -2571,69 +2593,119 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     guardarCronograma(next);
   }
 
-  function moverCronoRow(iActual: number, iVecino: number) {
+  // Reordena un subconjunto de filas (las de un mismo bloque: operación, montaje,
+  // desmontaje o un día específico) sin tocar la posición de las filas de otros bloques.
+  function moverCronoSubset(subsetIndices: number[], oldPos: number, newPos: number) {
     setCronoRows(prev => {
+      const subset = subsetIndices.map(idx => prev[idx]);
+      const reordenado = arrayMove(subset, oldPos, newPos);
       const next = [...prev];
-      [next[iActual], next[iVecino]] = [next[iVecino], next[iActual]];
+      subsetIndices.forEach((idx, k) => { next[idx] = reordenado[k]; });
+      return next;
+    });
+  }
+
+  function handleCronoDragEnd(entries: { row: CronoRow; i: number }[], event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const ids = entries.map(({ row, i }) => row._id ?? String(i));
+    const oldPos = ids.indexOf(String(active.id));
+    const newPos = ids.indexOf(String(over.id));
+    if (oldPos === -1 || newPos === -1) return;
+    moverCronoSubset(entries.map(({ i }) => i), oldPos, newPos);
+  }
+
+  // Orden por hora bajo demanda (no automático): deja intacto lo que el usuario haya
+  // arrastrado manualmente hasta que él mismo pida reordenar de nuevo.
+  function ordenarCronoPorHora(entries: { row: CronoRow; i: number }[]) {
+    setCronoRows(prev => {
+      const subsetIndices = entries.map(({ i }) => i);
+      const subset = subsetIndices.map(idx => prev[idx]);
+      const ordenado = [...subset].sort((a, b) => {
+        if (!a.horaInicio && !b.horaInicio) return 0;
+        if (!a.horaInicio) return 1;
+        if (!b.horaInicio) return -1;
+        return a.horaInicio.localeCompare(b.horaInicio);
+      });
+      const next = [...prev];
+      subsetIndices.forEach((idx, k) => { next[idx] = ordenado[k]; });
       return next;
     });
   }
 
   // Tabla de cronograma reutilizable: recibe las filas ya emparejadas con su índice real
   // en `cronoRows` para que editar/eliminar funcione igual en modo un-día y por-día.
+  // Las filas se arrastran con el handle ⠿; "Ordenar por hora" es una acción explícita
+  // (no automática) para no pisar un orden armado a mano al recargar la página.
   function renderCronoTabla(entries: { row: CronoRow; i: number }[]) {
+    const ids = entries.map(({ row, i }) => row._id ?? String(i));
     return (
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[600px] text-xs">
-          <thead>
-            <tr className="text-gray-500 uppercase tracking-wider border-b border-[#222]">
-              <th className="text-left py-2 pr-2 font-medium w-24">Inicio</th>
-              <th className="text-left py-2 pr-2 font-medium w-24">Fin</th>
-              <th className="text-left py-2 pr-2 font-medium">Actividad</th>
-              <th className="text-left py-2 pr-2 font-medium w-28">Responsable</th>
-              <th className="text-left py-2 pr-2 font-medium w-32">Involucrados</th>
-              <th className="w-12" />
-              <th className="w-6" />
-            </tr>
-          </thead>
-          <tbody>
-            {entries.map(({ row, i }, pos) => (
-              <tr key={row._id ?? i} className={`border-b border-[#1a1a1a] last:border-0 ${pos % 2 === 1 ? "bg-[#0d0d0d]" : ""}`}>
-                <td className="py-1 pr-2 w-[84px]">
-                  <InlinePicker value={row.horaInicio} onChange={v => updateCronoRow(i, "horaInicio", v)} />
-                </td>
-                <td className="py-1 pr-2 w-[84px]">
-                  <InlinePicker value={row.horaFin} onChange={v => updateCronoRow(i, "horaFin", v)} />
-                </td>
-                <td className="py-1 pr-2">
-                  <CeldaTexto value={row.actividad} onChange={v => updateCronoRow(i, "actividad", v)}
-                    placeholder="Actividad"
-                    className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white focus:outline-none focus:border-[#B3985B]" />
-                </td>
-                <td className="py-1 pr-2">
-                  <CeldaTexto value={row.responsable} onChange={v => updateCronoRow(i, "responsable", v)}
-                    placeholder="Responsable"
-                    className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white focus:outline-none focus:border-[#B3985B]" />
-                </td>
-                <td className="py-1 pr-2">
-                  <CeldaTexto value={row.involucrados} onChange={v => updateCronoRow(i, "involucrados", v)}
-                    placeholder="Involucrados"
-                    className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white focus:outline-none focus:border-[#B3985B]" />
-                </td>
-                <td className="py-1 text-center whitespace-nowrap">
-                  <button onClick={() => moverCronoRow(i, entries[pos - 1].i)} disabled={pos === 0}
-                    className="text-gray-600 hover:text-white disabled:opacity-20 disabled:hover:text-gray-600 text-xs leading-none px-1 transition-colors">▲</button>
-                  <button onClick={() => moverCronoRow(i, entries[pos + 1].i)} disabled={pos === entries.length - 1}
-                    className="text-gray-600 hover:text-white disabled:opacity-20 disabled:hover:text-gray-600 text-xs leading-none px-1 transition-colors">▼</button>
-                </td>
-                <td className="py-1 text-center">
-                  <button onClick={() => removeCronoRow(i)}
-                    className="text-gray-600 hover:text-red-400 text-base leading-none transition-colors">×</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div>
+        <div className="flex justify-end mb-1">
+          <button onClick={() => ordenarCronoPorHora(entries)}
+            className="text-[11px] text-gray-500 hover:text-[#B3985B] transition-colors">
+            Ordenar por hora
+          </button>
+        </div>
+        <div className="overflow-x-auto">
+          <DndContext sensors={cronoSensors} collisionDetection={closestCenter} onDragEnd={e => handleCronoDragEnd(entries, e)}>
+            <table className="w-full min-w-[600px] text-xs">
+              <thead>
+                <tr className="text-gray-500 uppercase tracking-wider border-b border-[#222]">
+                  <th className="w-6" />
+                  <th className="text-left py-2 pr-2 font-medium w-24">Inicio</th>
+                  <th className="text-left py-2 pr-2 font-medium w-24">Fin</th>
+                  <th className="text-left py-2 pr-2 font-medium">Actividad</th>
+                  <th className="text-left py-2 pr-2 font-medium w-28">Responsable</th>
+                  <th className="text-left py-2 pr-2 font-medium w-32">Involucrados</th>
+                  <th className="w-6" />
+                </tr>
+              </thead>
+              <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+                <tbody>
+                  {entries.map(({ row, i }, pos) => (
+                    <SortableCronoRow key={ids[pos]} id={ids[pos]}
+                      className={`border-b border-[#1a1a1a] last:border-0 bg-[#0a0a0a] ${pos % 2 === 1 ? "bg-[#0d0d0d]" : ""}`}>
+                      {({ attributes, listeners }) => (
+                        <>
+                          <td className="py-1 text-center">
+                            <button {...attributes} {...listeners} tabIndex={-1}
+                              className="text-gray-600 hover:text-white cursor-grab active:cursor-grabbing touch-none px-1">⠿</button>
+                          </td>
+                          <td className="py-1 pr-2 w-[84px]">
+                            <InlinePicker value={row.horaInicio} onChange={v => updateCronoRow(i, "horaInicio", v)} />
+                          </td>
+                          <td className="py-1 pr-2 w-[84px]">
+                            <InlinePicker value={row.horaFin} onChange={v => updateCronoRow(i, "horaFin", v)} />
+                          </td>
+                          <td className="py-1 pr-2">
+                            <CeldaTexto value={row.actividad} onChange={v => updateCronoRow(i, "actividad", v)}
+                              placeholder="Actividad"
+                              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white focus:outline-none focus:border-[#B3985B]" />
+                          </td>
+                          <td className="py-1 pr-2">
+                            <CeldaTexto value={row.responsable} onChange={v => updateCronoRow(i, "responsable", v)}
+                              placeholder="Responsable"
+                              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white focus:outline-none focus:border-[#B3985B]" />
+                          </td>
+                          <td className="py-1 pr-2">
+                            <CeldaTexto value={row.involucrados} onChange={v => updateCronoRow(i, "involucrados", v)}
+                              placeholder="Involucrados"
+                              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white focus:outline-none focus:border-[#B3985B]" />
+                          </td>
+                          <td className="py-1 text-center">
+                            <button onClick={() => removeCronoRow(i)}
+                              className="text-gray-600 hover:text-red-400 text-base leading-none transition-colors">×</button>
+                          </td>
+                        </>
+                      )}
+                    </SortableCronoRow>
+                  ))}
+                </tbody>
+              </SortableContext>
+            </table>
+          </DndContext>
+        </div>
       </div>
     );
   }
