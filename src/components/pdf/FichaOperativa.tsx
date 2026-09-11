@@ -76,6 +76,7 @@ const s = StyleSheet.create({
   riderEquipCard:  { backgroundColor: "#ffffff", borderWidth: 1, borderColor: "#e0e0e0", borderRadius: 5, marginBottom: 6, overflow: "hidden" },
   riderEquipHead:  { flexDirection: "row", alignItems: "center", paddingHorizontal: 10, paddingVertical: 7 },
   riderCheckBox:   { width: 12, height: 12, borderWidth: 1.5, borderColor: "#555555", borderRadius: 2, marginRight: 8, flexShrink: 0 },
+  riderEquipImg:   { width: 24, height: 24, marginRight: 8, objectFit: "contain", flexShrink: 0 },
   riderEquipName:  { fontSize: 10, color: "#111111", flex: 1, fontFamily: "Helvetica-Bold" },
   riderEquipMeta:  { fontSize: 8, color: "#888888" },
   riderBadge:      { backgroundColor: "#f8f8f8", borderWidth: 1, borderColor: "#9A7A3F", borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2 },
@@ -222,10 +223,10 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
 
   return (
     <Document title={`Ficha Operativa ${data.numeroProyecto}`} author="Mainstage Pro">
-      <Page size="LETTER" style={base.page}>
+      <Page size="LETTER" style={[base.page, { paddingTop: 26 }]}>
 
-        {/* HERO HEADER NEGRO */}
-        <View style={base.hero}>
+        {/* HERO HEADER NEGRO — marginTop negativo para que llegue al borde solo en la página 1; en páginas siguientes el paddingTop del Page da aire al contenido que continúa. */}
+        <View style={[base.hero, { marginTop: -26 }]}>
           <View style={base.heroLeft}>
             <Text style={base.heroTag}>
               Ficha Operativa · {data.numeroProyecto} · {MAPS.ESTADO_MAP[data.estado] ?? data.estado}
@@ -359,13 +360,13 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
 
           {/* 4. CRONOGRAMA */}
           {cronConDatos.length > 0 && (
-            <View style={base.section}>
+            <View style={base.section} minPresenceAhead={110}>
               <SecNum num={sec("crono")} titulo="Cronograma" />
               {esMultidiaCrono ? (
                 agruparPorDia(cronConDatos, diasCrono)
                   .filter(g => g.rows.length > 0)
                   .map(g => (
-                    <View key={g.fecha} style={{ marginBottom: 8 }}>
+                    <View key={g.fecha} style={{ marginBottom: 8 }} minPresenceAhead={90}>
                       <Text style={[s.diaLabel, { textTransform: "capitalize" }]}>Día {g.numero} · {fmtDiaCrono(g.fecha)}</Text>
                       <View style={base.table}>
                         <View style={base.tableHd}>
@@ -379,7 +380,7 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                     </View>
                   ))
               ) : (
-                <View style={base.table}>
+                <View style={base.table} minPresenceAhead={90}>
                   <View style={base.tableHd}>
                     <Text style={[base.thTxt, { width: 46 }]}>Inicio</Text>
                     <Text style={[base.thTxt, { width: 40 }]}>Fin</Text>
@@ -439,6 +440,9 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                           (accs.length > 0 || nota) ? { borderBottomWidth: 1, borderBottomColor: "#e0e0e0" } : {},
                         ]}>
                           <View style={s.riderCheckBox} />
+                          {e.imagenUrl && (
+                            <Image src={e.imagenUrl} style={s.riderEquipImg} />
+                          )}
                           <Text style={s.riderEquipName}>{displayName}</Text>
                           {showDesc && (
                             <Text style={[s.riderEquipMeta, { flex: 1, marginRight: 8 }]}>{e.descripcion}</Text>
