@@ -2220,17 +2220,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     if (!proyecto) return;
     try {
       const parsed = proyecto.cronograma ? JSON.parse(proyecto.cronograma) : [];
+      // El orden que se muestra es el orden guardado (el usuario lo controla con las
+      // flechas ↑↓ de cada fila); no se reordena por hora porque eso rompe eventos que
+      // cruzan medianoche (ej. un DJ de 00:00 a 2:00 am debe quedar al final, no al inicio).
       const rows: CronoRow[] = Array.isArray(parsed) ? parsed.map(conCronoId) : [];
-      // Ordenar SOLO al cargar (por día y hora). Durante la edición nunca se reordena,
-      // para no mover las filas debajo del dedo mientras se teclea en el celular.
-      rows.sort((a, b) => {
-        const da = a.dia || "", db = b.dia || "";
-        if (da !== db) { if (!da) return 1; if (!db) return -1; return da.localeCompare(db); }
-        if (!a.horaInicio && !b.horaInicio) return 0;
-        if (!a.horaInicio) return 1;
-        if (!b.horaInicio) return -1;
-        return a.horaInicio.localeCompare(b.horaInicio);
-      });
       setCronoRows(rows);
     } catch { setCronoRows([]); }
     try {
@@ -2578,6 +2571,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     guardarCronograma(next);
   }
 
+  function moverCronoRow(iActual: number, iVecino: number) {
+    setCronoRows(prev => {
+      const next = [...prev];
+      [next[iActual], next[iVecino]] = [next[iVecino], next[iActual]];
+      return next;
+    });
+  }
+
   // Tabla de cronograma reutilizable: recibe las filas ya emparejadas con su índice real
   // en `cronoRows` para que editar/eliminar funcione igual en modo un-día y por-día.
   function renderCronoTabla(entries: { row: CronoRow; i: number }[]) {
@@ -2591,6 +2592,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               <th className="text-left py-2 pr-2 font-medium">Actividad</th>
               <th className="text-left py-2 pr-2 font-medium w-28">Responsable</th>
               <th className="text-left py-2 pr-2 font-medium w-32">Involucrados</th>
+              <th className="w-12" />
               <th className="w-6" />
             </tr>
           </thead>
@@ -2617,6 +2619,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <CeldaTexto value={row.involucrados} onChange={v => updateCronoRow(i, "involucrados", v)}
                     placeholder="Involucrados"
                     className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white focus:outline-none focus:border-[#B3985B]" />
+                </td>
+                <td className="py-1 text-center whitespace-nowrap">
+                  <button onClick={() => moverCronoRow(i, entries[pos - 1].i)} disabled={pos === 0}
+                    className="text-gray-600 hover:text-white disabled:opacity-20 disabled:hover:text-gray-600 text-xs leading-none px-1 transition-colors">▲</button>
+                  <button onClick={() => moverCronoRow(i, entries[pos + 1].i)} disabled={pos === entries.length - 1}
+                    className="text-gray-600 hover:text-white disabled:opacity-20 disabled:hover:text-gray-600 text-xs leading-none px-1 transition-colors">▼</button>
                 </td>
                 <td className="py-1 text-center">
                   <button onClick={() => removeCronoRow(i)}
