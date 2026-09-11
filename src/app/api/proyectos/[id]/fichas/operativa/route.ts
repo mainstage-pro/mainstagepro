@@ -36,7 +36,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       },
       equipos: {
         include: {
-          equipo: { select: { descripcion: true, marca: true, modelo: true, categoria: { select: { nombre: true } } } },
+          equipo: { select: { descripcion: true, marca: true, modelo: true, imagenUrl: true, categoria: { select: { nombre: true } } } },
           proveedor: { select: { nombre: true, telefono: true } },
           riderAccesorios: { orderBy: { orden: "asc" } },
         },
@@ -102,6 +102,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     tipo: e.tipo,
     confirmado: e.confirmado,
     proveedor: e.proveedor?.nombre ?? null,
+    imagenUrl: e.equipo?.imagenUrl ?? null,
     notas: e.notas ?? null,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     accesorios: (e.riderAccesorios ?? []).map((a: any) => ({
