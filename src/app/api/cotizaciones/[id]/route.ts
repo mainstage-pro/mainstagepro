@@ -7,7 +7,7 @@ import { generarTokenPresentacion } from "@/lib/presentacion-token";
 import { syncFechaProximaAccion } from "@/app/api/seguimientos/route";
 import { defaultEtapaInterna } from "@/lib/etapasInternas";
 import { sincronizarProyectoDesdeCotizacion } from "@/lib/sync-cotizacion-proyecto";
-import { ensureCotizacionEventoConfirmadoColumn, ensureCotizacionPaqueteColumn } from "@/lib/migraciones-lazy";
+import { ensureCotizacionEventoConfirmadoColumn, ensureCotizacionPaqueteColumn, ensureCotizacionIdiomaColumn, ensureCotizacionHorarioColumns } from "@/lib/migraciones-lazy";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -15,11 +15,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   const { id } = await params;
 
+  await ensureCotizacionIdiomaColumn();
+  await ensureCotizacionHorarioColumns();
+
   const cotizacion = await prisma.cotizacion.findUnique({
     where: { id },
     include: {
       cliente: true,
-      trato: { select: { id: true, tipoEvento: true, etapa: true, tradeCalificado: true, familyAndFriends: true, realizarRender: true, ideasReferencias: true, notas: true, lugarEstimado: true, equiposInteres: true } },
+      trato: { select: { id: true, tipoEvento: true, etapa: true, tradeCalificado: true, familyAndFriends: true, realizarRender: true, ideasReferencias: true, notas: true, lugarEstimado: true, equiposInteres: true, horaInicioEvento: true, horaFinEvento: true } },
       creadaPor: { select: { name: true } },
       lineas: {
         orderBy: { orden: "asc" },
@@ -63,6 +66,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   await ensureCotizacionEventoConfirmadoColumn();
   await ensureCotizacionPaqueteColumn();
+  await ensureCotizacionIdiomaColumn();
+  await ensureCotizacionHorarioColumns();
 
   // Si viene "lineas" en el body, es una re-edición completa desde BORRADOR
   if (body.lineas !== undefined) {
@@ -71,6 +76,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       paqueteId,
       notasSecciones,
       nombreEvento, tipoEvento, tipoServicio, fechaEvento, lugarEvento,
+      horaInicioEvento, horaFinEvento,
       horasOperacion, diasEquipo, diasOperacion,
       descuentoVolumenPct, descuentoB2bPct, descuentoMultidiaPct,
       descuentoPatrocinioPct, descuentoPatrocinioNota,
@@ -161,6 +167,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
             tipoServicio: tipoServicio ?? null,
             fechaEvento: fechaEvento ? new Date(fechaEvento) : null,
             lugarEvento: lugarEvento ?? null,
+            horaInicioEvento: horaInicioEvento ?? null,
+            horaFinEvento: horaFinEvento ?? null,
             horasOperacion: horasOperacion ? parseFloat(horasOperacion) : null,
             diasEquipo: diasEquipo ? parseInt(diasEquipo) : 1,
             diasOperacion: diasOperacion ? parseInt(diasOperacion) : 1,
@@ -306,7 +314,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   // Actualización parcial normal (estado, observaciones, etc.)
   try {
-    const allowed = ["estado", "observaciones", "terminosComerciales", "fechaEnvio", "fechaVencimiento", "notasSecciones", "planPagos", "mainstageTradeData", "tradeToken", "descuentoFamilyFriendsPct", "nombreCotizacion", "descripcionCotizacion", "gastosProduccionActivo", "gastosProduccionEsMonto", "gastosProduccionPct", "gastosProduccionMonto", "fechaEvento", "lugarEvento", "eventoConfirmado"];
+    const allowed = ["estado", "observaciones", "terminosComerciales", "fechaEnvio", "fechaVencimiento", "notasSecciones", "planPagos", "mainstageTradeData", "tradeToken", "descuentoFamilyFriendsPct", "nombreCotizacion", "descripcionCotizacion", "gastosProduccionActivo", "gastosProduccionEsMonto", "gastosProduccionPct", "gastosProduccionMonto", "fechaEvento", "lugarEvento", "horaInicioEvento", "horaFinEvento", "eventoConfirmado", "idioma"];
     const data: Record<string, unknown> = {};
     for (const key of allowed) {
       if (key in body) {
@@ -331,6 +339,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const proyectoData: Record<string, unknown> = {};
     if ("fechaEvento" in data) proyectoData.fechaEvento = data.fechaEvento;
     if ("lugarEvento" in data) proyectoData.lugarEvento = data.lugarEvento;
+    if ("horaInicioEvento" in data) proyectoData.horaInicioEvento = data.horaInicioEvento;
+    if ("horaFinEvento" in data) proyectoData.horaFinEvento = data.horaFinEvento;
     if (Object.keys(proyectoData).length > 0) {
       // fechaEvento es obligatoria en Proyecto; no propagues null (evita romper la fila).
       if ("fechaEvento" in proyectoData && !proyectoData.fechaEvento) {

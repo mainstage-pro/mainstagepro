@@ -8,13 +8,18 @@ import fs from "fs";
 import path from "path";
 
 import { validarTokenPresentacion } from "@/lib/presentacion-token";
+import { ensureCotizacionIdiomaColumn, ensureCotizacionHorarioColumns } from "@/lib/migraciones-lazy";
+import { traducirTextosCotizacion, extraerNotaLibre, conNotaTraducida } from "@/lib/traduccion-cotizacion";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   
   const token = req.nextUrl.searchParams.get("token");
   const session = await getSession();
-  
+
+  await ensureCotizacionIdiomaColumn();
+  await ensureCotizacionHorarioColumns();
+
   if (!session && !validarTokenPresentacion(id, token ?? undefined)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
@@ -23,7 +28,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     where: { id },
     include: {
       cliente: { select: { id: true, nombre: true, empresa: true, telefono: true, correo: true, tipoCliente: true } },
-      trato: { select: { tradeCalificado: true, tipoEvento: true } },
+      trato: { select: { tradeCalificado: true, tipoEvento: true, horaInicioEvento: true, horaFinEvento: true } },
       paquete: { select: { nombre: true, resumen: true } },
       creadaPor: { select: { name: true } },
       lineas: {
@@ -100,6 +105,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     ...cotizacion,
     tradeCalificado: cotizacion.trato?.tradeCalificado ?? false,
     mainstageTradeData: cotizacion.mainstageTradeData ?? null,
+    horaInicioEvento: cotizacion.horaInicioEvento ?? cotizacion.trato?.horaInicioEvento ?? null,
+    horaFinEvento: cotizacion.horaFinEvento ?? cotizacion.trato?.horaFinEvento ?? null,
     paqueteNombre: cotizacion.paquete?.nombre ?? null,
     paqueteResumen: cotizacion.paquete?.resumen ?? null,
     lineas: await Promise.all(cotizacion.lineas.map(async l => {
@@ -133,8 +140,74 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     if (txt) descCategorias[cat.nombre] = txt;
   }
 
+  // ── Traducción a inglés (solo si la cotización está marcada como idioma "en") ──
+  // Los textos fijos de UI se traducen vía diccionario dentro de CotizacionPDF; aquí
+  // solo se traducen los textos LIBRES (escritos a mano) que vienen de la base de datos.
+  let cotizacionFinal = cotizacionWithImgs;
+  let descCategoriasFinal = descCategorias;
+  let catLabels: Record<string, string> = {};
+  if (cotizacion.idioma === "en") {
+    const notasSecciones: Record<string, string> = cotizacion.notasSecciones ? JSON.parse(cotizacion.notasSecciones) : {};
+    const textos: Record<string, string> = {};
+    if (cotizacion.observaciones) textos["observaciones"] = cotizacion.observaciones;
+    if (cotizacion.pagoAnticipadoTexto) textos["pagoAnticipadoTexto"] = cotizacion.pagoAnticipadoTexto;
+    if (cotizacion.descuentoManualRazon) textos["descuentoManualRazon"] = cotizacion.descuentoManualRazon;
+    if (cotizacion.descuentoPatrocinioNota) textos["descuentoPatrocinioNota"] = cotizacion.descuentoPatrocinioNota;
+    if (cotizacion.descuentoEspecialNota) textos["descuentoEspecialNota"] = cotizacion.descuentoEspecialNota;
+    if (cotizacion.paquete?.resumen) textos["paqueteResumen"] = cotizacion.paquete.resumen;
+    for (const [cat, nota] of Object.entries(notasSecciones)) {
+      textos[`catLabel:${cat}`] = cat;
+      if (nota) textos[`notaSeccion:${cat}`] = nota;
+    }
+    for (const [cat, desc] of Object.entries(descCategorias)) {
+      textos[`catLabel:${cat}`] = cat;
+      textos[`catDesc:${cat}`] = desc;
+    }
+    for (const l of cotizacion.lineas) {
+      if (l.descripcion) textos[`lineaDesc:${l.id}`] = l.descripcion;
+      const nota = extraerNotaLibre(l.notas);
+      if (nota) textos[`lineaNota:${l.id}`] = nota;
+    }
+
+    const traducciones = await traducirTextosCotizacion(cotizacion.id, textos, cotizacion.traduccionEn);
+
+    const notasSeccionesEn: Record<string, string> = {};
+    for (const cat of Object.keys(notasSecciones)) {
+      notasSeccionesEn[cat] = traducciones[`notaSeccion:${cat}`] ?? notasSecciones[cat];
+      catLabels[cat] = traducciones[`catLabel:${cat}`] ?? cat;
+    }
+    const descCategoriasEn: Record<string, string> = {};
+    for (const cat of Object.keys(descCategorias)) {
+      descCategoriasEn[cat] = traducciones[`catDesc:${cat}`] ?? descCategorias[cat];
+      catLabels[cat] = traducciones[`catLabel:${cat}`] ?? cat;
+    }
+    descCategoriasFinal = descCategoriasEn;
+
+    cotizacionFinal = {
+      ...cotizacionWithImgs,
+      observaciones: traducciones["observaciones"] ?? cotizacionWithImgs.observaciones,
+      pagoAnticipadoTexto: traducciones["pagoAnticipadoTexto"] ?? cotizacionWithImgs.pagoAnticipadoTexto,
+      descuentoManualRazon: traducciones["descuentoManualRazon"] ?? cotizacionWithImgs.descuentoManualRazon,
+      descuentoPatrocinioNota: traducciones["descuentoPatrocinioNota"] ?? cotizacionWithImgs.descuentoPatrocinioNota,
+      descuentoEspecialNota: traducciones["descuentoEspecialNota"] ?? cotizacionWithImgs.descuentoEspecialNota,
+      paqueteResumen: traducciones["paqueteResumen"] ?? cotizacionWithImgs.paqueteResumen,
+      notasSecciones: JSON.stringify(notasSeccionesEn),
+      lineas: cotizacionWithImgs.lineas.map(l => ({
+        ...l,
+        descripcion: traducciones[`lineaDesc:${l.id}`] ?? l.descripcion,
+        notas: traducciones[`lineaNota:${l.id}`] ? conNotaTraducida(l.notas, traducciones[`lineaNota:${l.id}`]) : l.notas,
+      })),
+    };
+  }
+
   const pdfStream = await ReactPDF.renderToStream(
-    React.createElement(CotizacionPDF, { cotizacion: cotizacionWithImgs, logoSrc, descCategorias }) as React.ReactElement<React.ComponentProps<typeof Document>>
+    React.createElement(CotizacionPDF, {
+      cotizacion: cotizacionFinal,
+      logoSrc,
+      descCategorias: descCategoriasFinal,
+      catLabels,
+      idioma: cotizacion.idioma === "en" ? "en" : "es",
+    }) as React.ReactElement<React.ComponentProps<typeof Document>>
   );
 
   const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {

@@ -96,6 +96,7 @@ interface Cotizacion {
   aprobacionToken: string | null;
   aprobacionFecha: string | null;
   aprobacionNombre: string | null;
+  idioma: string;
   cliente: { id: string; nombre: string; empresa: string | null; tipoCliente: string; telefono: string | null };
   trato: { id: string; tipoEvento: string; etapa: string; tradeCalificado: boolean; familyAndFriends: boolean; realizarRender: boolean; ideasReferencias: string | null; notas: string | null; lugarEstimado: string | null };
   tratoId: string | null;
@@ -276,6 +277,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   const [savingTrade, setSavingTrade] = useState(false);
   const [duplicando, setDuplicando] = useState(false);
   const [sendingWA, setSendingWA] = useState(false);
+  const [savingIdioma, setSavingIdioma] = useState(false);
   const [opciones, setOpciones] = useState<OpcionHermana[]>([]);
   const [creandoOpcion, setCreandoOpcion] = useState(false);
   const [modalOpcion, setModalOpcion] = useState(false);
@@ -650,6 +652,22 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
     }
   }
 
+  async function toggleIdioma() {
+    if (!cot || savingIdioma) return;
+    const nuevo = cot.idioma === "en" ? "es" : "en";
+    setSavingIdioma(true);
+    try {
+      const res = await fetch(`/api/cotizaciones/${cot.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idioma: nuevo }),
+      });
+      if (res.ok) setCot(prev => prev ? { ...prev, idioma: nuevo } : prev);
+    } finally {
+      setSavingIdioma(false);
+    }
+  }
+
   async function handleWhatsAppConCotizacion() {
     if (!cot || !cot.cliente.telefono) return;
     setSendingWA(true);
@@ -936,6 +954,19 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
               </svg>
             )}
             {sharingPdf ? "Descargando..." : "Descargar PDF"}
+          </button>
+          {/* Idioma del PDF — toggle discreto */}
+          <button
+            onClick={toggleIdioma}
+            disabled={savingIdioma}
+            title={cot.idioma === "en" ? "PDF en inglés — clic para cambiar a español" : "PDF en español — clic para cambiar a inglés"}
+            className="flex items-center gap-1 text-[11px] text-gray-500 hover:text-gray-300 disabled:opacity-50 px-2 py-1.5 rounded-lg transition-colors"
+          >
+            {savingIdioma ? (
+              <span className="w-3 h-3 border-2 border-gray-500/30 border-t-gray-400 rounded-full animate-spin" />
+            ) : (
+              <span className="uppercase tracking-wide">{cot.idioma === "en" ? "EN" : "ES"}</span>
+            )}
           </button>
           {/* WhatsApp */}
           {cot.cliente.telefono && (

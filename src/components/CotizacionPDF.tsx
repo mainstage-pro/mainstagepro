@@ -487,16 +487,181 @@ const s = StyleSheet.create({
 
 });
 
+// ─── Idioma ──────────────────────────────────────────────────────────────────
+export type Idioma = "es" | "en";
+
+// Textos fijos de la UI del documento. Los textos LIBRES (notas, observaciones,
+// descripciones de equipo) NO viven aquí — se traducen vía IA en la ruta del PDF
+// y llegan ya traducidos en los datos de la cotización.
+const TXT = {
+  es: {
+    tagline: "AUDIO · ILUMINACIÓN · VIDEO · PRODUCCIÓN TÉCNICA",
+    elaboradaEl: (f: string) => `Elaborada el ${f}`,
+    gracias: "¡Agradecemos la oportunidad de presentarte esta propuesta de nuestros servicios!",
+    cliente: "Cliente",
+    empresa: "Empresa",
+    vendedor: "Vendedor",
+    evento: "Evento",
+    fechaEvento: "Fecha del evento",
+    lugar: "Lugar",
+    tipoEvento: "Tipo de evento",
+    paquete: "Paquete",
+    seccionEquipo: "Equipo de Audio, Iluminación, Video y más",
+    colMarcaModelo: "MARCA / MODELO",
+    colDescripcion: "DESCRIPCIÓN",
+    colCant: "CANT",
+    colDias: "DÍAS",
+    colPU: "P/U",
+    colSubtotal: "SUBTOTAL",
+    colHoras: "HORAS",
+    colTarifaHr: "TARIFA/HR",
+    incluye: "INCLUYE",
+    operacionTecnica: "Operación técnica",
+    servicioDJ: "Servicio de DJ",
+    totalDJ: "Total DJ: ",
+    conceptosAdicionales: "Conceptos adicionales",
+    subtotalAdicionales: "Subtotal adicionales",
+    transporteViaticos: "Transporte y viáticos",
+    equipoAudioIlumVideo: "Equipo de audio, iluminación y video",
+    totalSinIva: "TOTAL SIN IVA",
+    iva16: "IVA 16%",
+    totalConIva: "TOTAL CON IVA",
+    granTotal: "GRAN TOTAL",
+    notaIvaAplica: "* El IVA aplica únicamente en caso de requerir comprobante fiscal (factura). En pagos sin factura, el total a cubrir corresponde al subtotal sin IVA indicado arriba.",
+    notaIvaNoAplica: "* En caso de requerir comprobante fiscal (factura), se añadirá el IVA correspondiente (16%) al total indicado. Cotizar con su vendedor.",
+    anticipo: (p: number) => `ANTICIPO (${p}%)`,
+    saldoLiquidar: (p: number) => `SALDO A LIQUIDAR (${p}%)`,
+    observaciones: "OBSERVACIONES",
+    pagoFiscal: "TRANSFERENCIA CUENTA FISCAL",
+    pagoNoFiscal: "TRANSFERENCIA CUENTA NO FISCAL",
+    razonSocial: "Razón Social",
+    rfc: "RFC",
+    banco: "Banco",
+    noCuenta: "No. Cuenta",
+    clabe: "CLABE",
+    tarjeta: "Tarjeta",
+    beneficiario: "Beneficiario",
+    correo: "Correo",
+    opcionPagoAnticipado: "Opción de pago anticipado",
+    pagoAnticipadoDefault: (pct: number, fecha: string | null) =>
+      `Si realizas el pago total del servicio${fecha ? ` antes del ${fecha}` : " antes de la fecha límite"}, aplicamos un descuento adicional del ${pct}% sobre equipos Mainstage.`,
+    ahorroPagoAnticipado: (p: number) => `Ahorro por pago anticipado (${p}%)`,
+    totalPagoAnticipado: "Total con pago anticipado",
+    infoImportante: "INFORMACIÓN IMPORTANTE",
+    firmaCargo: "Director General · Mainstage Pro",
+    vigencia: (d: number) => `Vigencia: ${d} días`,
+    confidencial: "Cotización confidencial y exclusiva para el destinatario. Prohibida su difusión sin autorización de Mainstage Producciones.",
+    terminos: (a: number, aM: string, l: number, lM: string, vig: number, vigFecha: string) => [
+      `Se solicita un anticipo del ${a}% (${aM}) para reservar la fecha.`,
+      `El saldo restante (${lM}) se debe liquidar como máximo 1 día antes del evento.`,
+      `Esta cotización tiene una vigencia de ${vig} días (vence el ${vigFecha}).`,
+      "El pago puede realizarse por transferencia o efectivo (coordinar entrega vía WhatsApp con el vendedor).",
+      "En caso de no requerir factura y pago en efectivo, podemos aplicar el descuento del IVA.",
+      "Cotización confidencial y exclusiva para el destinatario. Prohibida su difusión sin autorización de Mainstage Producciones.",
+      "Cualquier duda, cambio o sugerencia hacerla por medio de WhatsApp: (446) 143 2565.",
+    ],
+    tipoEventoMap: { MUSICAL: "MUSICAL", SOCIAL: "SOCIAL", EMPRESARIAL: "EMPRESARIAL", OTRO: "OTRO" } as Record<string, string>,
+    nivelTrade: { 1: "Base", 2: "Estratégico", 3: "Premium" } as Record<number, string>,
+    descVolumen: (p: number) => `Descuento por volumen (${p}%)`,
+    descB2b: (p: number) => `Descuento B2B (${p}%)`,
+    descEspecialPct: (p: number) => `Descuento especial (${p}%)`,
+    descEspecial: "Descuento especial",
+    descMultidia: (p: number) => `Descuento multi-día (${p}%)`,
+    descEspecialLegacy: (p: number, nota?: string | null) => `Descuento especial (${p}%)${nota ? ` · ${nota}` : ""}`,
+    patrocinio: (p: number, nota?: string | null) => `Patrocinio (${p}%)${nota ? ` · ${nota}` : ""}`,
+    descFijo: "Descuento fijo",
+    descGenerico: "Descuento",
+  },
+  en: {
+    tagline: "AUDIO · LIGHTING · VIDEO · TECHNICAL PRODUCTION",
+    elaboradaEl: (f: string) => `Prepared on ${f}`,
+    gracias: "Thank you for the opportunity to present this proposal for our services!",
+    cliente: "Client",
+    empresa: "Company",
+    vendedor: "Sales Rep",
+    evento: "Event",
+    fechaEvento: "Event Date",
+    lugar: "Venue",
+    tipoEvento: "Event Type",
+    paquete: "Package",
+    seccionEquipo: "Audio, Lighting, Video Equipment & More",
+    colMarcaModelo: "BRAND / MODEL",
+    colDescripcion: "DESCRIPTION",
+    colCant: "QTY",
+    colDias: "DAYS",
+    colPU: "UNIT PRICE",
+    colSubtotal: "SUBTOTAL",
+    colHoras: "HOURS",
+    colTarifaHr: "RATE/HR",
+    incluye: "INCLUDED",
+    operacionTecnica: "Technical Operations",
+    servicioDJ: "DJ Service",
+    totalDJ: "DJ Total: ",
+    conceptosAdicionales: "Additional Items",
+    subtotalAdicionales: "Additional items subtotal",
+    transporteViaticos: "Transportation & Travel Expenses",
+    equipoAudioIlumVideo: "Audio, lighting and video equipment",
+    totalSinIva: "TOTAL EXCL. VAT",
+    iva16: "VAT 16%",
+    totalConIva: "TOTAL INCL. VAT",
+    granTotal: "GRAND TOTAL",
+    notaIvaAplica: "* VAT applies only if a tax invoice (factura) is required. For payments without an invoice, the amount due is the VAT-excluded subtotal shown above.",
+    notaIvaNoAplica: "* If a tax invoice (factura) is required, the corresponding VAT (16%) will be added to the total shown. Please confirm with your sales rep.",
+    anticipo: (p: number) => `DEPOSIT (${p}%)`,
+    saldoLiquidar: (p: number) => `BALANCE DUE (${p}%)`,
+    observaciones: "NOTES",
+    pagoFiscal: "BANK TRANSFER — TAX ACCOUNT",
+    pagoNoFiscal: "BANK TRANSFER — NON-TAX ACCOUNT",
+    razonSocial: "Legal Name",
+    rfc: "Tax ID (RFC)",
+    banco: "Bank",
+    noCuenta: "Account No.",
+    clabe: "CLABE",
+    tarjeta: "Card",
+    beneficiario: "Beneficiary",
+    correo: "Email",
+    opcionPagoAnticipado: "Early Payment Option",
+    pagoAnticipadoDefault: (pct: number, fecha: string | null) =>
+      `If you pay for the service in full${fecha ? ` before ${fecha}` : " before the deadline"}, we apply an additional ${pct}% discount on Mainstage equipment.`,
+    ahorroPagoAnticipado: (p: number) => `Early payment savings (${p}%)`,
+    totalPagoAnticipado: "Total with early payment",
+    infoImportante: "IMPORTANT INFORMATION",
+    firmaCargo: "General Director · Mainstage Pro",
+    vigencia: (d: number) => `Valid for: ${d} days`,
+    confidencial: "This quote is confidential and exclusively for the recipient. Unauthorized distribution is prohibited.",
+    terminos: (a: number, aM: string, l: number, lM: string, vig: number, vigFecha: string) => [
+      `A ${a}% deposit (${aM}) is required to reserve the date.`,
+      `The remaining balance (${lM}) must be paid no later than 1 day before the event.`,
+      `This quote is valid for ${vig} days (expires on ${vigFecha}).`,
+      "Payment can be made by bank transfer or cash (coordinate delivery via WhatsApp with your sales rep).",
+      "If you do not require an invoice and pay in cash, we can apply the VAT discount.",
+      "This quote is confidential and exclusively for the recipient. Unauthorized distribution is prohibited.",
+      "For any questions, changes or suggestions, reach us via WhatsApp: (446) 143 2565.",
+    ],
+    tipoEventoMap: { MUSICAL: "MUSICAL", SOCIAL: "SOCIAL", EMPRESARIAL: "CORPORATE", OTRO: "OTHER" } as Record<string, string>,
+    nivelTrade: { 1: "Base", 2: "Strategic", 3: "Premium" } as Record<number, string>,
+    descVolumen: (p: number) => `Volume discount (${p}%)`,
+    descB2b: (p: number) => `B2B discount (${p}%)`,
+    descEspecialPct: (p: number) => `Special discount (${p}%)`,
+    descEspecial: "Special discount",
+    descMultidia: (p: number) => `Multi-day discount (${p}%)`,
+    descEspecialLegacy: (p: number, nota?: string | null) => `Special discount (${p}%)${nota ? ` · ${nota}` : ""}`,
+    patrocinio: (p: number, nota?: string | null) => `Sponsorship (${p}%)${nota ? ` · ${nota}` : ""}`,
+    descFijo: "Fixed discount",
+    descGenerico: "Discount",
+  },
+} as const;
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function fmtMXN(n: number) {
   return `$${n.toLocaleString("es-MX", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
-function fmtDate(s: string | Date | null) {
+function fmtDate(s: string | Date | null, idioma: Idioma = "es") {
   if (!s) return "—";
   const iso = s instanceof Date ? s.toISOString() : s;
   const [y, m, d] = iso.substring(0, 10).split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" });
+  return new Date(y, m - 1, d).toLocaleDateString(idioma === "en" ? "en-US" : "es-MX", { day: "2-digit", month: "long", year: "numeric" });
 }
 
 function pct(n: number) {
@@ -629,7 +794,8 @@ function FilaEquipo({ l, i }: { l: Linea; i: number }) {
   );
 }
 
-function TablaEquipos({ lineas, notasSecciones, descCategorias }: { lineas: Linea[]; notasSecciones: Record<string, string>; descCategorias: Record<string, string> }) {
+function TablaEquipos({ lineas, notasSecciones, descCategorias, catLabels, idioma }: { lineas: Linea[]; notasSecciones: Record<string, string>; descCategorias: Record<string, string>; catLabels: Record<string, string>; idioma: Idioma }) {
+  const t = TXT[idioma];
   // Parse category from notas field (format: "cat:CategoryName" or "cat:CategoryName|rest")
   function getCat(l: Linea): string {
     if (!l.notas) return "General";
@@ -657,17 +823,17 @@ function TablaEquipos({ lineas, notasSecciones, descCategorias }: { lineas: Line
     <View>
       <View style={s.seccionTitulo}>
         <View style={s.seccionLinea} />
-        <Text style={s.seccionNombre}>Equipo de Audio, Iluminación, Video y más</Text>
+        <Text style={s.seccionNombre}>{t.seccionEquipo}</Text>
       </View>
       {/* Header tabla */}
       <View style={s.tablaHeader}>
         <View style={s.colImg} />
-        <Text style={[s.tablaHeaderTexto, s.colMarca]}>MARCA / MODELO</Text>
-        <Text style={[s.tablaHeaderTexto, s.colDesc]}>DESCRIPCIÓN</Text>
-        <Text style={[s.tablaHeaderTexto, s.colCant, { textAlign: "center" }]}>CANT</Text>
-        <Text style={[s.tablaHeaderTexto, s.colDias, { textAlign: "center" }]}>DÍAS</Text>
-        <Text style={[s.tablaHeaderTexto, s.colPrecio, { textAlign: "right" }]}>P/U</Text>
-        <Text style={[s.tablaHeaderTexto, s.colSubtotal, { textAlign: "right" }]}>SUBTOTAL</Text>
+        <Text style={[s.tablaHeaderTexto, s.colMarca]}>{t.colMarcaModelo}</Text>
+        <Text style={[s.tablaHeaderTexto, s.colDesc]}>{t.colDescripcion}</Text>
+        <Text style={[s.tablaHeaderTexto, s.colCant, { textAlign: "center" }]}>{t.colCant}</Text>
+        <Text style={[s.tablaHeaderTexto, s.colDias, { textAlign: "center" }]}>{t.colDias}</Text>
+        <Text style={[s.tablaHeaderTexto, s.colPrecio, { textAlign: "right" }]}>{t.colPU}</Text>
+        <Text style={[s.tablaHeaderTexto, s.colSubtotal, { textAlign: "right" }]}>{t.colSubtotal}</Text>
       </View>
 
       {hasCats ? (
@@ -681,7 +847,7 @@ function TablaEquipos({ lineas, notasSecciones, descCategorias }: { lineas: Line
             <View key={cat}>
               {/* Category subheader */}
               <View style={{ flexDirection: "row", justifyContent: "space-between", backgroundColor: "#F0EDE8", paddingVertical: 4, paddingHorizontal: 40, borderBottom: "1 solid #ddd9d4" }}>
-                <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 1, textTransform: "uppercase" }}>{cat}</Text>
+                <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 1, textTransform: "uppercase" }}>{catLabels[cat] ?? cat}</Text>
                 <Text style={{ fontSize: 7.5, color: GRAY, fontFamily: "Helvetica-Bold" }}>{fmtMXN(catSubtotal)}</Text>
               </View>
               {nota ? (
@@ -699,7 +865,7 @@ function TablaEquipos({ lineas, notasSecciones, descCategorias }: { lineas: Line
                   <Text style={[s.cellIncluido, s.colDesc]}>✓ {l.descripcion}</Text>
                   <Text style={[s.cellIncluido, s.colCant, { textAlign: "center" }]}>{l.cantidad}</Text>
                   <Text style={[s.cellIncluido, s.colDias, { textAlign: "center" }]}>—</Text>
-                  <Text style={[s.cellIncluido, s.colPrecio, { textAlign: "right" }]}>INCLUYE</Text>
+                  <Text style={[s.cellIncluido, s.colPrecio, { textAlign: "right" }]}>{t.incluye}</Text>
                   <Text style={[s.cellIncluido, s.colSubtotal, { textAlign: "right" }]}>—</Text>
                 </View>
               ))}
@@ -717,7 +883,7 @@ function TablaEquipos({ lineas, notasSecciones, descCategorias }: { lineas: Line
               <Text style={[s.cellIncluido, s.colDesc]}>✓ {l.descripcion}</Text>
               <Text style={[s.cellIncluido, s.colCant, { textAlign: "center" }]}>{l.cantidad}</Text>
               <Text style={[s.cellIncluido, s.colDias, { textAlign: "center" }]}>—</Text>
-              <Text style={[s.cellIncluido, s.colPrecio, { textAlign: "right" }]}>INCLUYE</Text>
+              <Text style={[s.cellIncluido, s.colPrecio, { textAlign: "right" }]}>{t.incluye}</Text>
               <Text style={[s.cellIncluido, s.colSubtotal, { textAlign: "right" }]}>—</Text>
             </View>
           ))}
@@ -729,7 +895,8 @@ function TablaEquipos({ lineas, notasSecciones, descCategorias }: { lineas: Line
 }
 
 // Operación técnica: solo subtotal global (sin detallar quiénes ni cuántos técnicos)
-function SubtotalOperacion({ lineas, incluirChofer }: { lineas: Linea[]; incluirChofer?: boolean }) {
+function SubtotalOperacion({ lineas, incluirChofer, idioma }: { lineas: Linea[]; incluirChofer?: boolean; idioma: Idioma }) {
+  const t = TXT[idioma];
   const opLineas = lineas.filter(l => l.tipo === "OPERACION_TECNICA");
   const subtotal = opLineas.reduce((s, l) => s + l.subtotal, 0) + (incluirChofer ? 500 : 0);
   if (subtotal === 0) return null;
@@ -737,7 +904,7 @@ function SubtotalOperacion({ lineas, incluirChofer }: { lineas: Linea[]; incluir
   return (
     <View style={{ marginHorizontal: 40, marginTop: 8 }}>
       <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 8, borderTop: "1 solid #e0ddd8", borderBottom: "1 solid #e0ddd8" }}>
-        <Text style={{ fontSize: 9, color: GRAY, fontFamily: "Helvetica-Bold" }}>Operación técnica</Text>
+        <Text style={{ fontSize: 9, color: GRAY, fontFamily: "Helvetica-Bold" }}>{t.operacionTecnica}</Text>
         <Text style={{ fontSize: 9, color: BLACK, fontFamily: "Helvetica-Bold" }}>{fmtMXN(subtotal)}</Text>
       </View>
     </View>
@@ -745,7 +912,8 @@ function SubtotalOperacion({ lineas, incluirChofer }: { lineas: Linea[]; incluir
 }
 
 // Servicio de DJ: sección separada con detalle de horas y tarifa
-function SubtotalDJ({ lineas }: { lineas: Linea[] }) {
+function SubtotalDJ({ lineas, idioma }: { lineas: Linea[]; idioma: Idioma }) {
+  const t = TXT[idioma];
   const djLineas = lineas.filter(l => l.tipo === "DJ");
   if (djLineas.length === 0) return null;
   const subtotal = djLineas.reduce((s, l) => s + l.subtotal, 0);
@@ -754,13 +922,13 @@ function SubtotalDJ({ lineas }: { lineas: Linea[] }) {
     <View>
       <View style={s.seccionTitulo}>
         <View style={s.seccionLinea} />
-        <Text style={s.seccionNombre}>Servicio de DJ</Text>
+        <Text style={s.seccionNombre}>{t.servicioDJ}</Text>
       </View>
       <View style={s.tablaHeader}>
-        <Text style={[s.tablaHeaderTexto, { flex: 3 }]}>DESCRIPCIÓN</Text>
-        <Text style={[s.tablaHeaderTexto, { flex: 1, textAlign: "center" }]}>HORAS</Text>
-        <Text style={[s.tablaHeaderTexto, { flex: 1.5, textAlign: "right" }]}>TARIFA/HR</Text>
-        <Text style={[s.tablaHeaderTexto, { flex: 1.5, textAlign: "right" }]}>SUBTOTAL</Text>
+        <Text style={[s.tablaHeaderTexto, { flex: 3 }]}>{t.colDescripcion}</Text>
+        <Text style={[s.tablaHeaderTexto, { flex: 1, textAlign: "center" }]}>{t.colHoras}</Text>
+        <Text style={[s.tablaHeaderTexto, { flex: 1.5, textAlign: "right" }]}>{t.colTarifaHr}</Text>
+        <Text style={[s.tablaHeaderTexto, { flex: 1.5, textAlign: "right" }]}>{t.colSubtotal}</Text>
       </View>
       {djLineas.map((l, i) => (
         <View key={l.id} style={[s.tablaFila, i % 2 === 1 ? s.tablaFilaAlt : {}]}>
@@ -778,7 +946,7 @@ function SubtotalDJ({ lineas }: { lineas: Linea[] }) {
         </View>
       ))}
       <View style={{ flexDirection: "row", justifyContent: "flex-end", paddingHorizontal: 40, paddingVertical: 5, borderTop: "1 solid #e0ddd8" }}>
-        <Text style={{ fontSize: 8.5, color: GRAY, fontFamily: "Helvetica-Bold" }}>Total DJ: </Text>
+        <Text style={{ fontSize: 8.5, color: GRAY, fontFamily: "Helvetica-Bold" }}>{t.totalDJ}</Text>
         <Text style={{ fontSize: 8.5, color: BLACK, fontFamily: "Helvetica-Bold" }}>{fmtMXN(subtotal)}</Text>
       </View>
     </View>
@@ -786,7 +954,8 @@ function SubtotalDJ({ lineas }: { lineas: Linea[] }) {
 }
 
 // Conceptos adicionales (OTRO): misma estética que las demás secciones
-function TablaAdicionales({ lineas }: { lineas: Linea[] }) {
+function TablaAdicionales({ lineas, idioma }: { lineas: Linea[]; idioma: Idioma }) {
+  const t = TXT[idioma];
   const otros = lineas.filter(l => l.tipo === "OTRO");
   if (otros.length === 0) return null;
   const subtotal = otros.reduce((s, l) => s + l.subtotal, 0);
@@ -795,15 +964,15 @@ function TablaAdicionales({ lineas }: { lineas: Linea[] }) {
       {/* Título de sección — mismo estilo dorado */}
       <View style={s.seccionTitulo}>
         <View style={s.seccionLinea} />
-        <Text style={s.seccionNombre}>Conceptos adicionales</Text>
+        <Text style={s.seccionNombre}>{t.conceptosAdicionales}</Text>
       </View>
       {/* Header tabla */}
       <View style={s.tablaHeader}>
-        <Text style={[s.tablaHeaderTexto, { flex: 3 }]}>DESCRIPCIÓN</Text>
-        <Text style={[s.tablaHeaderTexto, { flex: 1, textAlign: "center" }]}>CANT</Text>
-        <Text style={[s.tablaHeaderTexto, { flex: 1, textAlign: "center" }]}>DÍAS</Text>
-        <Text style={[s.tablaHeaderTexto, { flex: 1.2, textAlign: "right" }]}>P/U</Text>
-        <Text style={[s.tablaHeaderTexto, { flex: 1.2, textAlign: "right" }]}>SUBTOTAL</Text>
+        <Text style={[s.tablaHeaderTexto, { flex: 3 }]}>{t.colDescripcion}</Text>
+        <Text style={[s.tablaHeaderTexto, { flex: 1, textAlign: "center" }]}>{t.colCant}</Text>
+        <Text style={[s.tablaHeaderTexto, { flex: 1, textAlign: "center" }]}>{t.colDias}</Text>
+        <Text style={[s.tablaHeaderTexto, { flex: 1.2, textAlign: "right" }]}>{t.colPU}</Text>
+        <Text style={[s.tablaHeaderTexto, { flex: 1.2, textAlign: "right" }]}>{t.colSubtotal}</Text>
       </View>
       {otros.map((l, i) => (
         <View key={l.id} style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 5, paddingHorizontal: 40, borderBottom: "1 solid #eeebe6", backgroundColor: i % 2 === 0 ? "#FDFCFA" : "#FFFFFF" }}>
@@ -823,7 +992,7 @@ function TablaAdicionales({ lineas }: { lineas: Linea[] }) {
       ))}
       {/* Subtotal fila */}
       <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 5, paddingHorizontal: 40, backgroundColor: "#F5F2ED" }}>
-        <Text style={{ fontSize: 8, color: GRAY, fontFamily: "Helvetica-Bold", textTransform: "uppercase", letterSpacing: 0.5 }}>Subtotal adicionales</Text>
+        <Text style={{ fontSize: 8, color: GRAY, fontFamily: "Helvetica-Bold", textTransform: "uppercase", letterSpacing: 0.5 }}>{t.subtotalAdicionales}</Text>
         <Text style={{ fontSize: 9, color: BLACK, fontFamily: "Helvetica-Bold" }}>{fmtMXN(subtotal)}</Text>
       </View>
     </View>
@@ -831,7 +1000,8 @@ function TablaAdicionales({ lineas }: { lineas: Linea[] }) {
 }
 
 // Logística: solo subtotal global (sin detallar comidas, gasolina, etc.)
-function SubtotalLogistica({ lineas }: { lineas: Linea[] }) {
+function SubtotalLogistica({ lineas, idioma }: { lineas: Linea[]; idioma: Idioma }) {
+  const t = TXT[idioma];
   const logLineas = lineas.filter(l => ["TRANSPORTE", "COMIDA", "HOSPEDAJE"].includes(l.tipo));
   if (logLineas.length === 0) return null;
   const subtotal = logLineas.reduce((s, l) => s + l.subtotal, 0);
@@ -839,7 +1009,7 @@ function SubtotalLogistica({ lineas }: { lineas: Linea[] }) {
   return (
     <View style={{ marginHorizontal: 40, marginTop: 4 }}>
       <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 8, borderBottom: "1 solid #e0ddd8" }}>
-        <Text style={{ fontSize: 9, color: GRAY, fontFamily: "Helvetica-Bold" }}>Transporte y viáticos</Text>
+        <Text style={{ fontSize: 9, color: GRAY, fontFamily: "Helvetica-Bold" }}>{t.transporteViaticos}</Text>
         <Text style={{ fontSize: 9, color: BLACK, fontFamily: "Helvetica-Bold" }}>{fmtMXN(subtotal)}</Text>
       </View>
     </View>
@@ -847,7 +1017,8 @@ function SubtotalLogistica({ lineas }: { lineas: Linea[] }) {
 }
 
 // ─── Documento principal ─────────────────────────────────────────────────────
-export function CotizacionPDF({ cotizacion: c, logoSrc, descCategorias = {} }: { cotizacion: CotizacionData; logoSrc?: string | null; descCategorias?: Record<string, string> }) {
+export function CotizacionPDF({ cotizacion: c, logoSrc, descCategorias = {}, catLabels = {}, idioma = "es" }: { cotizacion: CotizacionData; logoSrc?: string | null; descCategorias?: Record<string, string>; catLabels?: Record<string, string>; idioma?: Idioma }) {
+  const t = TXT[idioma];
   // Leer plan de pagos configurado; si no hay, usar 50/50 por defecto
   type PagoPlanItem = { concepto: string; porcentaje: number; monto?: number; tipoPago: string };
   let parsedPlan: { pagos?: PagoPlanItem[] } | null = null;
@@ -882,9 +1053,9 @@ export function CotizacionPDF({ cotizacion: c, logoSrc, descCategorias = {} }: {
   const basePostB = basePostV - montoB2bPdf;
 
   if (montoVolumenPdf > 0)
-    discRows.push({ label: `Descuento por volumen (${Math.round(c.descuentoVolumenPct * 100)}%)`, monto: montoVolumenPdf });
+    discRows.push({ label: t.descVolumen(Math.round(c.descuentoVolumenPct * 100)), monto: montoVolumenPdf });
   if (montoB2bPdf > 0)
-    discRows.push({ label: `Descuento B2B (${Math.round(c.descuentoB2bPct * 100)}%)`, monto: montoB2bPdf });
+    discRows.push({ label: t.descB2b(Math.round(c.descuentoB2bPct * 100)), monto: montoB2bPdf });
 
   // Manual (FamilyFriends = %, FijoMonto = $)
   const esManualMonto = c.descuentoManualEsMonto ?? false;
@@ -892,51 +1063,49 @@ export function CotizacionPDF({ cotizacion: c, logoSrc, descCategorias = {} }: {
   const montoFijo = c.descuentoFijoMonto ?? 0;
   if (!esManualMonto && pctFF > 0) {
     const montoM = basePostB * pctFF;
-    discRows.push({ label: `Descuento especial (${Math.round(pctFF * 100)}%)`, monto: montoM });
+    discRows.push({ label: t.descEspecialPct(Math.round(pctFF * 100)), monto: montoM });
   }
   if (esManualMonto && montoFijo > 0) {
-    discRows.push({ label: "Descuento especial", monto: montoFijo });
+    discRows.push({ label: t.descEspecial, monto: montoFijo });
   }
   // Legacy
   if ((c.descuentoMultidiaPct ?? 0) > 0)
-    discRows.push({ label: `Descuento multi-día (${Math.round(c.descuentoMultidiaPct * 100)}%)`, monto: sb * c.descuentoMultidiaPct });
+    discRows.push({ label: t.descMultidia(Math.round(c.descuentoMultidiaPct * 100)), monto: sb * c.descuentoMultidiaPct });
   if ((c.descuentoEspecialPct ?? 0) > 0)
-    discRows.push({ label: `Descuento especial (${Math.round(c.descuentoEspecialPct * 100)}%)${c.descuentoEspecialNota ? ` · ${c.descuentoEspecialNota}` : ""}`, monto: sb * c.descuentoEspecialPct });
+    discRows.push({ label: t.descEspecialLegacy(Math.round(c.descuentoEspecialPct * 100), c.descuentoEspecialNota), monto: sb * c.descuentoEspecialPct });
   if ((c.descuentoPatrocinioPct ?? 0) > 0)
-    discRows.push({ label: `Patrocinio (${Math.round(c.descuentoPatrocinioPct * 100)}%)${c.descuentoPatrocinioNota ? ` · ${c.descuentoPatrocinioNota}` : ""}`, monto: sb * c.descuentoPatrocinioPct });
+    discRows.push({ label: t.patrocinio(Math.round(c.descuentoPatrocinioPct * 100), c.descuentoPatrocinioNota), monto: sb * c.descuentoPatrocinioPct });
   // Desc fijo legacy (sin flag ManualEsMonto)
   if (!esManualMonto && montoFijo > 0 && pctFF === 0)
-    discRows.push({ label: "Descuento fijo", monto: montoFijo });
+    discRows.push({ label: t.descFijo, monto: montoFijo });
   // Trade
   try {
     const td = c.mainstageTradeData ? JSON.parse(c.mainstageTradeData) : {};
     if (td.nivelSeleccionado && td.pct && td.activo) {
-      const NLBL: Record<number, string> = { 1: "Base", 2: "Estratégico", 3: "Premium" };
-      discRows.push({ label: `Mainstage Trade · ${NLBL[td.nivelSeleccionado] ?? ""} (${td.pct}%)`, monto: Math.round(sb * (td.pct / 100) * 100) / 100, gold: true });
+      discRows.push({ label: `Mainstage Trade · ${t.nivelTrade[td.nivelSeleccionado] ?? ""} (${td.pct}%)`, monto: Math.round(sb * (td.pct / 100) * 100) / 100, gold: true });
     }
   } catch { /* noop */ }
   // Fallback if no individual rows resolved
   if (discRows.length === 0 && tieneDescuento)
-    discRows.push({ label: "Descuento", monto: c.montoDescuento });
+    discRows.push({ label: t.descGenerico, monto: c.montoDescuento });
 
   const vigenciaDate = new Date(c.createdAt);
   vigenciaDate.setDate(vigenciaDate.getDate() + c.vigenciaDias);
 
-  const TERMINOS = [
-    `Se solicita un anticipo del ${anticipoPct}% ($${anticipo.toLocaleString("es-MX", { maximumFractionDigits: 0 })}) para reservar la fecha.`,
-    `El saldo restante ($${liquidacion.toLocaleString("es-MX", { maximumFractionDigits: 0 })}) se debe liquidar como máximo 1 día antes del evento.`,
-    `Esta cotización tiene una vigencia de ${c.vigenciaDias} días (vence el ${fmtDate(vigenciaDate)}).`,
-    "El pago puede realizarse por transferencia o efectivo (coordinar entrega vía WhatsApp con el vendedor).",
-    "En caso de no requerir factura y pago en efectivo, podemos aplicar el descuento del IVA.",
-    "Cotización confidencial y exclusiva para el destinatario. Prohibida su difusión sin autorización de Mainstage Producciones.",
-    "Cualquier duda, cambio o sugerencia hacerla por medio de WhatsApp: (446) 143 2565.",
-  ];
+  const TERMINOS = t.terminos(
+    anticipoPct,
+    `$${anticipo.toLocaleString("es-MX", { maximumFractionDigits: 0 })}`,
+    liquidacionPct,
+    `$${liquidacion.toLocaleString("es-MX", { maximumFractionDigits: 0 })}`,
+    c.vigenciaDias,
+    fmtDate(vigenciaDate, idioma)
+  );
 
   return (
     <Document
-      title={`Cotización ${c.numeroCotizacion} — ${c.nombreEvento || c.cliente.nombre}`}
+      title={`${idioma === "en" ? "Quote" : "Cotización"} ${c.numeroCotizacion} — ${c.nombreEvento || c.cliente.nombre}`}
       author="Mainstage Producciones"
-      subject="Propuesta de Servicios"
+      subject={idioma === "en" ? "Service Proposal" : "Propuesta de Servicios"}
     >
       <Page size="LETTER" style={s.page}>
 
@@ -947,42 +1116,42 @@ export function CotizacionPDF({ cotizacion: c, logoSrc, descCategorias = {} }: {
               ? <Image src={logoSrc} style={{ width: 150, alignSelf: "flex-start" }} />
               : <Text style={s.brand}>MAINSTAGE PRODUCCIONES</Text>
             }
-            <Text style={s.tagline}>AUDIO · ILUMINACIÓN · VIDEO · PRODUCCIÓN TÉCNICA</Text>
+            <Text style={s.tagline}>{t.tagline}</Text>
           </View>
           <View style={s.headerRight}>
             <Text style={s.numCotizacion}>{c.numeroCotizacion}{c.version > 1 ? ` v${c.version}` : ""}</Text>
-            <Text style={s.fechaHeader}>Elaborada el {fmtDate(c.createdAt)}</Text>
+            <Text style={s.fechaHeader}>{t.elaboradaEl(fmtDate(c.createdAt, idioma))}</Text>
           </View>
         </View>
         <View style={s.goldBar} />
 
         {/* ── Agradecimiento ── */}
         <Text style={s.gracias}>
-          ¡Agradecemos la oportunidad de presentarte esta propuesta de nuestros servicios!
+          {t.gracias}
         </Text>
 
         {/* ── Info cliente / evento ── */}
         <View style={s.infoBloque}>
           <View style={s.infoCol}>
-            <Text style={s.infoLabel}>Cliente</Text>
+            <Text style={s.infoLabel}>{t.cliente}</Text>
             <Text style={s.infoValue}>{c.cliente.nombre}</Text>
             {c.cliente.empresa && <>
-              <Text style={s.infoLabel}>Empresa</Text>
+              <Text style={s.infoLabel}>{t.empresa}</Text>
               <Text style={s.infoValue}>{c.cliente.empresa}</Text>
             </>}
-            <Text style={s.infoLabel}>Vendedor</Text>
+            <Text style={s.infoLabel}>{t.vendedor}</Text>
             <Text style={s.infoValueLight}>{c.creadaPor?.name || "Mauricio Hernández"}</Text>
           </View>
           <View style={s.infoColRight}>
-            <Text style={s.infoLabel}>Evento</Text>
+            <Text style={s.infoLabel}>{t.evento}</Text>
             <Text style={s.infoValue}>{c.nombreEvento || "—"}</Text>
-            <Text style={s.infoLabel}>Fecha del evento</Text>
-            <Text style={s.infoValue}>{fmtDate(c.fechaEvento)}</Text>
-            <Text style={s.infoLabel}>Lugar</Text>
+            <Text style={s.infoLabel}>{t.fechaEvento}</Text>
+            <Text style={s.infoValue}>{fmtDate(c.fechaEvento, idioma)}</Text>
+            <Text style={s.infoLabel}>{t.lugar}</Text>
             <Text style={s.infoValueLight}>{c.lugarEvento || "—"}</Text>
             {c.tipoEvento && <>
-              <Text style={s.infoLabel}>Tipo de evento</Text>
-              <Text style={s.infoValueLight}>{c.tipoEvento}</Text>
+              <Text style={s.infoLabel}>{t.tipoEvento}</Text>
+              <Text style={s.infoValueLight}>{t.tipoEventoMap[c.tipoEvento] ?? c.tipoEvento}</Text>
             </>}
           </View>
         </View>
@@ -992,33 +1161,33 @@ export function CotizacionPDF({ cotizacion: c, logoSrc, descCategorias = {} }: {
         {/* ── PAQUETE (solo si la cotización se desglosó de un paquete comercial) ── */}
         {c.paqueteNombre ? (
           <View style={s.paqueteBloque}>
-            <Text style={s.paqueteLabel}>Paquete</Text>
+            <Text style={s.paqueteLabel}>{t.paquete}</Text>
             <Text style={s.paqueteNombre}>{c.paqueteNombre}</Text>
             {c.paqueteResumen ? <Text style={s.paqueteResumen}>{c.paqueteResumen}</Text> : null}
           </View>
         ) : null}
 
         {/* ── EQUIPOS ── */}
-        <TablaEquipos lineas={c.lineas} notasSecciones={c.notasSecciones ? JSON.parse(c.notasSecciones) : {}} descCategorias={descCategorias} />
+        <TablaEquipos lineas={c.lineas} notasSecciones={c.notasSecciones ? JSON.parse(c.notasSecciones) : {}} descCategorias={descCategorias} catLabels={catLabels} idioma={idioma} />
 
         {/* ── CONCEPTOS ADICIONALES (OTRO) ── */}
-        <TablaAdicionales lineas={c.lineas} />
+        <TablaAdicionales lineas={c.lineas} idioma={idioma} />
 
         {/* ── OPERACIÓN TÉCNICA (subtotal global, sin desglose) ── */}
-        <SubtotalOperacion lineas={c.lineas} incluirChofer={c.incluirChofer} />
+        <SubtotalOperacion lineas={c.lineas} incluirChofer={c.incluirChofer} idioma={idioma} />
 
         {/* ── SERVICIO DE DJ (sección propia con detalle de horas) ── */}
-        <SubtotalDJ lineas={c.lineas} />
+        <SubtotalDJ lineas={c.lineas} idioma={idioma} />
 
         {/* ── LOGÍSTICA (subtotal global, sin desglose) ── */}
-        <SubtotalLogistica lineas={c.lineas} />
+        <SubtotalLogistica lineas={c.lineas} idioma={idioma} />
 
         {/* ── TOTALES ── */}
         <View style={s.totalesBloque}>
           <View style={s.totalesTabla}>
             {(c.subtotalEquiposBruto + subtotalExternos + subtotalPaquetes) > 0 && (
               <View style={s.totalFila}>
-                <Text style={s.totalFilaDes}>Equipo de audio, iluminación y video</Text>
+                <Text style={s.totalFilaDes}>{t.equipoAudioIlumVideo}</Text>
                 <Text style={s.totalFilaMonto}>{fmtMXN(c.subtotalEquiposBruto + subtotalExternos + subtotalPaquetes)}</Text>
               </View>
             )}
@@ -1030,7 +1199,7 @@ export function CotizacionPDF({ cotizacion: c, logoSrc, descCategorias = {} }: {
             ))}
             {c.lineas.filter(l => l.tipo === "OTRO").reduce((s, l) => s + l.subtotal, 0) > 0 && (
               <View style={s.totalFila}>
-                <Text style={s.totalFilaDes}>Conceptos adicionales</Text>
+                <Text style={s.totalFilaDes}>{t.conceptosAdicionales}</Text>
                 <Text style={s.totalFilaMonto}>{fmtMXN(c.lineas.filter(l => l.tipo === "OTRO").reduce((s, l) => s + l.subtotal, 0))}</Text>
               </View>
             )}
@@ -1042,13 +1211,13 @@ export function CotizacionPDF({ cotizacion: c, logoSrc, descCategorias = {} }: {
                 <>
                   {opSinDJ > 0 && (
                     <View style={s.totalFila}>
-                      <Text style={s.totalFilaDes}>Operación técnica</Text>
+                      <Text style={s.totalFilaDes}>{t.operacionTecnica}</Text>
                       <Text style={s.totalFilaMonto}>{fmtMXN(opSinDJ)}</Text>
                     </View>
                   )}
                   {djSubtotal > 0 && (
                     <View style={s.totalFila}>
-                      <Text style={s.totalFilaDes}>Servicio de DJ</Text>
+                      <Text style={s.totalFilaDes}>{t.servicioDJ}</Text>
                       <Text style={s.totalFilaMonto}>{fmtMXN(djSubtotal)}</Text>
                     </View>
                   )}
@@ -1057,32 +1226,30 @@ export function CotizacionPDF({ cotizacion: c, logoSrc, descCategorias = {} }: {
             })()}
             {(c.subtotalTransporte + c.subtotalComidas + c.subtotalHospedaje) > 0 && (
               <View style={s.totalFila}>
-                <Text style={s.totalFilaDes}>Transporte y viáticos</Text>
+                <Text style={s.totalFilaDes}>{t.transporteViaticos}</Text>
                 <Text style={s.totalFilaMonto}>{fmtMXN(c.subtotalTransporte + c.subtotalComidas + c.subtotalHospedaje)}</Text>
               </View>
             )}
             {/* Total sin IVA — recuadro destacado */}
             <View style={{ borderTop: "1.5 solid " + GOLD, borderBottom: "1 solid #e0ddd8", flexDirection: "row", justifyContent: "space-between", paddingVertical: 7, paddingHorizontal: 8, backgroundColor: "#FFFDF7" }}>
-              <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: BLACK }}>TOTAL SIN IVA</Text>
+              <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: BLACK }}>{t.totalSinIva}</Text>
               <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: BLACK }}>{fmtMXN(c.total)}</Text>
             </View>
             {c.aplicaIva && (
               <View style={s.totalFila}>
-                <Text style={s.totalFilaDes}>IVA 16%</Text>
+                <Text style={s.totalFilaDes}>{t.iva16}</Text>
                 <Text style={s.totalFilaMonto}>{fmtMXN(c.montoIva)}</Text>
               </View>
             )}
             {/* Gran Total */}
             <View style={s.totalGranTotal}>
-              <Text style={s.totalGranLabel}>{c.aplicaIva ? "TOTAL CON IVA" : "GRAN TOTAL"}</Text>
+              <Text style={s.totalGranLabel}>{c.aplicaIva ? t.totalConIva : t.granTotal}</Text>
               <Text style={s.totalGranMonto}>{fmtMXN(c.granTotal)}</Text>
             </View>
             {/* Nota IVA */}
             <View style={{ paddingHorizontal: 8, paddingTop: 6, paddingBottom: 2 }}>
               <Text style={{ fontSize: 7, color: LIGHT_GRAY, lineHeight: 1.5, fontFamily: "Helvetica-Oblique" }}>
-                {c.aplicaIva
-                  ? "* El IVA aplica únicamente en caso de requerir comprobante fiscal (factura). En pagos sin factura, el total a cubrir corresponde al subtotal sin IVA indicado arriba."
-                  : "* En caso de requerir comprobante fiscal (factura), se añadirá el IVA correspondiente (16%) al total indicado. Cotizar con su vendedor."}
+                {c.aplicaIva ? t.notaIvaAplica : t.notaIvaNoAplica}
               </Text>
             </View>
           </View>
@@ -1091,11 +1258,11 @@ export function CotizacionPDF({ cotizacion: c, logoSrc, descCategorias = {} }: {
         {/* ── ANTICIPOS ── */}
         <View style={s.anticipo}>
           <View style={s.anticipoItem}>
-            <Text style={s.anticipoLabel}>ANTICIPO ({anticipoPct}%)</Text>
+            <Text style={s.anticipoLabel}>{t.anticipo(anticipoPct)}</Text>
             <Text style={s.anticipoMonto}>{fmtMXN(anticipo)}</Text>
           </View>
           <View style={s.anticipoItem}>
-            <Text style={s.anticipoLabel}>SALDO A LIQUIDAR ({liquidacionPct}%)</Text>
+            <Text style={s.anticipoLabel}>{t.saldoLiquidar(liquidacionPct)}</Text>
             <Text style={s.anticipoMonto}>{fmtMXN(liquidacion)}</Text>
           </View>
         </View>
@@ -1103,7 +1270,7 @@ export function CotizacionPDF({ cotizacion: c, logoSrc, descCategorias = {} }: {
         {/* ── OBSERVACIONES ── */}
         {c.observaciones && (
           <View style={[s.beneficioBloque, { borderColor: "#ddd", backgroundColor: BG_SECTION }]}>
-            <Text style={[s.beneficioTitulo, { color: GRAY }]}>OBSERVACIONES</Text>
+            <Text style={[s.beneficioTitulo, { color: GRAY }]}>{t.observaciones}</Text>
             <Text style={s.beneficioTexto}>{c.observaciones}</Text>
           </View>
         )}
@@ -1111,22 +1278,22 @@ export function CotizacionPDF({ cotizacion: c, logoSrc, descCategorias = {} }: {
         {/* ── DATOS DE PAGO ── */}
         <View style={s.pagoBloque}>
           <View style={s.pagoCard}>
-            <Text style={s.pagoTitulo}>TRANSFERENCIA CUENTA FISCAL</Text>
-            <View style={s.pagoFila}><Text style={s.pagoLabel}>Razón Social</Text><Text style={s.pagoValor}>Escenario Principal Producciones</Text></View>
-            <View style={s.pagoFila}><Text style={s.pagoLabel}>RFC</Text><Text style={s.pagoValor}>EPP2502068Q8</Text></View>
-            <View style={s.pagoFila}><Text style={s.pagoLabel}>Banco</Text><Text style={s.pagoValor}>Banorte</Text></View>
-            <View style={s.pagoFila}><Text style={s.pagoLabel}>No. Cuenta</Text><Text style={s.pagoValor}>1313102977</Text></View>
-            <View style={s.pagoFila}><Text style={s.pagoLabel}>CLABE</Text><Text style={s.pagoValor}>072 680 013131029777</Text></View>
-            <View style={s.pagoFila}><Text style={s.pagoLabel}>Tarjeta</Text><Text style={s.pagoValor}>4189 2810 0070 3307</Text></View>
+            <Text style={s.pagoTitulo}>{t.pagoFiscal}</Text>
+            <View style={s.pagoFila}><Text style={s.pagoLabel}>{t.razonSocial}</Text><Text style={s.pagoValor}>Escenario Principal Producciones</Text></View>
+            <View style={s.pagoFila}><Text style={s.pagoLabel}>{t.rfc}</Text><Text style={s.pagoValor}>EPP2502068Q8</Text></View>
+            <View style={s.pagoFila}><Text style={s.pagoLabel}>{t.banco}</Text><Text style={s.pagoValor}>Banorte</Text></View>
+            <View style={s.pagoFila}><Text style={s.pagoLabel}>{t.noCuenta}</Text><Text style={s.pagoValor}>1313102977</Text></View>
+            <View style={s.pagoFila}><Text style={s.pagoLabel}>{t.clabe}</Text><Text style={s.pagoValor}>072 680 013131029777</Text></View>
+            <View style={s.pagoFila}><Text style={s.pagoLabel}>{t.tarjeta}</Text><Text style={s.pagoValor}>4189 2810 0070 3307</Text></View>
           </View>
           <View style={s.pagoCard}>
-            <Text style={s.pagoTitulo}>TRANSFERENCIA CUENTA NO FISCAL</Text>
-            <View style={s.pagoFila}><Text style={s.pagoLabel}>Beneficiario</Text><Text style={s.pagoValor}>Jose Mauricio A. Hernández V.M.</Text></View>
-            <View style={s.pagoFila}><Text style={s.pagoLabel}>RFC</Text><Text style={s.pagoValor}>HEVM9611179YA</Text></View>
-            <View style={s.pagoFila}><Text style={s.pagoLabel}>Banco</Text><Text style={s.pagoValor}>Banorte</Text></View>
-            <View style={s.pagoFila}><Text style={s.pagoLabel}>No. Cuenta</Text><Text style={s.pagoValor}>1314637038</Text></View>
-            <View style={s.pagoFila}><Text style={s.pagoLabel}>CLABE</Text><Text style={s.pagoValor}>072 680 013146370385</Text></View>
-            <View style={s.pagoFila}><Text style={s.pagoLabel}>Correo</Text><Text style={s.pagoValor}>mainstageqro@gmail.com</Text></View>
+            <Text style={s.pagoTitulo}>{t.pagoNoFiscal}</Text>
+            <View style={s.pagoFila}><Text style={s.pagoLabel}>{t.beneficiario}</Text><Text style={s.pagoValor}>Jose Mauricio A. Hernández V.M.</Text></View>
+            <View style={s.pagoFila}><Text style={s.pagoLabel}>{t.rfc}</Text><Text style={s.pagoValor}>HEVM9611179YA</Text></View>
+            <View style={s.pagoFila}><Text style={s.pagoLabel}>{t.banco}</Text><Text style={s.pagoValor}>Banorte</Text></View>
+            <View style={s.pagoFila}><Text style={s.pagoLabel}>{t.noCuenta}</Text><Text style={s.pagoValor}>1314637038</Text></View>
+            <View style={s.pagoFila}><Text style={s.pagoLabel}>{t.clabe}</Text><Text style={s.pagoValor}>072 680 013146370385</Text></View>
+            <View style={s.pagoFila}><Text style={s.pagoLabel}>{t.correo}</Text><Text style={s.pagoValor}>mainstageqro@gmail.com</Text></View>
           </View>
         </View>
 
@@ -1136,24 +1303,24 @@ export function CotizacionPDF({ cotizacion: c, logoSrc, descCategorias = {} }: {
           const ahorroPA = Math.round(c.subtotalEquiposNeto * pctPA / 100 * 100) / 100;
           const totalPA = c.granTotal - ahorroPA;
           const fechaLimite = c.pagoAnticipadoFecha
-            ? new Date(c.pagoAnticipadoFecha + "T12:00:00").toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" })
+            ? new Date(c.pagoAnticipadoFecha + "T12:00:00").toLocaleDateString(idioma === "en" ? "en-US" : "es-MX", { day: "numeric", month: "long", year: "numeric" })
             : null;
-          const textoPA = c.pagoAnticipadoTexto || `Si realizas el pago total del servicio${fechaLimite ? ` antes del ${fechaLimite}` : " antes de la fecha límite"}, aplicamos un descuento adicional del ${pctPA}% sobre equipos Mainstage.`;
+          const textoPA = c.pagoAnticipadoTexto || t.pagoAnticipadoDefault(pctPA, fechaLimite);
           return (
             <View style={{ marginTop: 16, paddingTop: 12, borderTopWidth: 1.5, borderTopColor: "#B3985B", borderTopStyle: "solid" }}>
               <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: "#B3985B", letterSpacing: 0.5, marginBottom: 6, textTransform: "uppercase" }}>
-                Opción de pago anticipado
+                {t.opcionPagoAnticipado}
               </Text>
               <Text style={{ fontSize: 8.5, color: "#444", lineHeight: 1.5, marginBottom: 8 }}>
                 {textoPA}
               </Text>
               <View style={{ backgroundColor: "#f9f5ee", borderRadius: 6, padding: 8, gap: 4 }}>
                 <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                  <Text style={{ fontSize: 8.5, color: "#666" }}>Ahorro por pago anticipado ({pctPA}%)</Text>
+                  <Text style={{ fontSize: 8.5, color: "#666" }}>{t.ahorroPagoAnticipado(pctPA)}</Text>
                   <Text style={{ fontSize: 8.5, color: "#B3985B", fontFamily: "Helvetica-Bold" }}>-{fmtMXN(ahorroPA)}</Text>
                 </View>
                 <View style={{ flexDirection: "row", justifyContent: "space-between", borderTopWidth: 0.5, borderTopColor: "#ddd", borderTopStyle: "solid", paddingTop: 4 }}>
-                  <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: "#222" }}>Total con pago anticipado</Text>
+                  <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: "#222" }}>{t.totalPagoAnticipado}</Text>
                   <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: "#222" }}>{fmtMXN(totalPA)}</Text>
                 </View>
               </View>
@@ -1163,11 +1330,11 @@ export function CotizacionPDF({ cotizacion: c, logoSrc, descCategorias = {} }: {
 
         {/* ── TÉRMINOS ── */}
         <View style={s.terminosBloque}>
-          <Text style={s.terminosTitulo}>INFORMACIÓN IMPORTANTE</Text>
-          {TERMINOS.map((t, i) => (
+          <Text style={s.terminosTitulo}>{t.infoImportante}</Text>
+          {TERMINOS.map((term, i) => (
             <View key={i} style={s.terminoItem}>
               <Text style={s.terminoBullet}>•</Text>
-              <Text style={s.terminoTexto}>{t}</Text>
+              <Text style={s.terminoTexto}>{term}</Text>
             </View>
           ))}
         </View>
@@ -1180,7 +1347,7 @@ export function CotizacionPDF({ cotizacion: c, logoSrc, descCategorias = {} }: {
             {/* Línea dorada */}
             <View style={s.firmaLinea} />
             <Text style={s.firmaNombre}>Jose Mauricio Alejandro Hernández Vázquez Mellado</Text>
-            <Text style={s.firmaCargo}>Director General · Mainstage Pro</Text>
+            <Text style={s.firmaCargo}>{t.firmaCargo}</Text>
           </View>
         </View>
 
@@ -1188,10 +1355,10 @@ export function CotizacionPDF({ cotizacion: c, logoSrc, descCategorias = {} }: {
         <View style={s.footer}>
           <Text style={s.footerBrand}>MAINSTAGE PRODUCCIONES</Text>
           <Text style={s.footerContacto}>WhatsApp: (446) 143 2565  |  mainstageqro@gmail.com</Text>
-          <Text style={s.footerVigencia}>Vigencia: {c.vigenciaDias} días</Text>
+          <Text style={s.footerVigencia}>{t.vigencia(c.vigenciaDias)}</Text>
         </View>
         <Text style={s.confidencial}>
-          Cotización confidencial y exclusiva para el destinatario. Prohibida su difusión sin autorización de Mainstage Producciones.
+          {t.confidencial}
         </Text>
 
       </Page>

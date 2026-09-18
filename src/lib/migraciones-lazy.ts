@@ -439,6 +439,59 @@ export async function ensureCotizacionPaqueteColumn() {
 }
 
 /**
+ * cotizaciones.idioma / cotizaciones.traduccionEn: idioma del documento visible
+ * al cliente (es|en) y caché JSON de la traducción IA de los campos libres
+ * (notas, observaciones, descripciones). DDL aditivo ya aplicado en prod
+ * (scripts/ddl-cotizacion-idioma.ts); esto es respaldo idempotente.
+ */
+let _cotizacionIdiomaReady = false;
+
+export async function ensureCotizacionIdiomaColumn() {
+  if (_cotizacionIdiomaReady) return;
+  if (!await columnExists('cotizaciones', 'idioma')) {
+    try {
+      await prisma.$executeRawUnsafe(
+        `ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS "idioma" TEXT NOT NULL DEFAULT 'es'`
+      );
+    } catch { /* ya existe */ }
+  }
+  if (!await columnExists('cotizaciones', 'traduccionEn')) {
+    try {
+      await prisma.$executeRawUnsafe(
+        `ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS "traduccionEn" TEXT`
+      );
+    } catch { /* ya existe */ }
+  }
+  _cotizacionIdiomaReady = true;
+}
+
+/**
+ * cotizaciones.horaInicioEvento / cotizaciones.horaFinEvento: horario del evento
+ * copiado del descubrimiento (Trato) al crear la cotización, visible en pantalla y PDF.
+ * DDL aditivo aplicado en prod (scripts/ddl-cotizacion-horario.ts); esto es respaldo idempotente.
+ */
+let _cotizacionHorarioReady = false;
+
+export async function ensureCotizacionHorarioColumns() {
+  if (_cotizacionHorarioReady) return;
+  if (!await columnExists('cotizaciones', 'horaInicioEvento')) {
+    try {
+      await prisma.$executeRawUnsafe(
+        `ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS "horaInicioEvento" TEXT`
+      );
+    } catch { /* ya existe */ }
+  }
+  if (!await columnExists('cotizaciones', 'horaFinEvento')) {
+    try {
+      await prisma.$executeRawUnsafe(
+        `ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS "horaFinEvento" TEXT`
+      );
+    } catch { /* ya existe */ }
+  }
+  _cotizacionHorarioReady = true;
+}
+
+/**
  * Migraciones lazy del pipeline de seguimientos (patrón Neon: ADD COLUMN IF NOT EXISTS).
  * - seguimientos.etapa: etapa del pipeline en que se agendó el seguimiento.
  * - presentaciones_venta.tratoId: liga la presentación con su trato (sin FK a propósito).

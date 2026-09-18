@@ -490,6 +490,8 @@ model Cotizacion {
   tipoServicio          String?
   fechaEvento           DateTime?
   lugarEvento           String?
+  horaInicioEvento      String? // ej: "18:00" — copiado del descubrimiento (Trato) al crear la cotización
+  horaFinEvento         String? // ej: "23:00"
   horasOperacion        Float?
   tipoJornada           String? // CORTA | MEDIA | LARGA
   notasSecciones        String? // JSON: { "Audio": "nota", "Iluminación": "nota", ... }
@@ -557,6 +559,8 @@ model Cotizacion {
   aprobacionToken     String?   @unique @map("aprobacion_token")
   aprobacionFecha     DateTime? @map("aprobacion_fecha")
   aprobacionNombre    String?   @map("aprobacion_nombre")
+  idioma              String    @default("es") // es | en — idioma del PDF/documento visible al cliente
+  traduccionEn        String?   @db.Text // JSON cache: { hash, ...campos libres traducidos a inglés por IA }
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
