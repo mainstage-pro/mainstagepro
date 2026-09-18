@@ -60,7 +60,7 @@ interface CheckItem { id: string; item: string; completado: boolean; orden: numb
 interface Archivo { id: string; tipo: string; nombre: string; url: string; createdAt: string }
 interface AjusteEntry { fecha: string; de: number; a: number; motivo: string; usuario: string }
 interface CxC { id: string; concepto: string; tipoPago: string; monto: number; montoCobrado: number; estado: string; fechaCompromiso: string; montoOriginal: number | null; ajustesLog: string | null }
-interface CxP { id: string; concepto: string; monto: number; estado: string; fechaCompromiso: string; tipoAcreedor: string; montoOriginal: number | null; ajustesLog: string | null }
+interface CxP { id: string; concepto: string; monto: number; estado: string; fechaCompromiso: string; tipoAcreedor: string; montoOriginal: number | null; ajustesLog: string | null; notas: string | null }
 interface Bitacora { id: string; tipo: string; contenido: string; createdAt: string; usuario: { name: string } | null }
 interface GastoOp { id: string; tipo: string; concepto: string; monto: number; cantidad: number; entregado: boolean; fechaEntrega: string | null; notas: string | null; cxpId: string | null }
 interface Gasto { id: string; fecha: string; concepto: string; monto: number; metodoPago: string; notas: string | null; referencia: string | null; categoriaId?: string | null; categoria: { id?: string; nombre: string } | null; proveedorId?: string | null; proveedor: { id?: string; nombre: string; empresa?: string | null } | null; cuentaOrigenId?: string | null; cuentaOrigen: { id: string; nombre: string; banco: string | null } | null }
@@ -3437,7 +3437,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         if (res.ok && d.cxp) {
           setProyecto(prev => prev ? {
             ...prev,
-            cuentasPagar: [...prev.cuentasPagar, { id: d.cxp.id, concepto: d.cxp.concepto, monto: d.cxp.monto, estado: d.cxp.estado, fechaCompromiso: d.cxp.fechaCompromiso, tipoAcreedor: d.cxp.tipoAcreedor, montoOriginal: null, ajustesLog: null }],
+            cuentasPagar: [...prev.cuentasPagar, { id: d.cxp.id, concepto: d.cxp.concepto, monto: d.cxp.monto, estado: d.cxp.estado, fechaCompromiso: d.cxp.fechaCompromiso, tipoAcreedor: d.cxp.tipoAcreedor, montoOriginal: null, ajustesLog: null, notas: d.cxp.notas ?? null }],
           } : prev);
           toast.success("Gasto registrado");
         } else {
@@ -3513,15 +3513,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   }
 
   // ── Editar CxP (pendiente) ──
-  function abrirEditarCxP(c: { id: string; concepto: string; monto: number; fechaCompromiso: string | null; tipoAcreedor: string }) {
+  function abrirEditarCxP(c: { id: string; concepto: string; monto: number; fechaCompromiso: string | null; tipoAcreedor: string; notas: string | null }) {
     setEditGastoEstado("PENDIENTE");
     setEditingCxPId(c.id);
-    setEditGasto({ id: c.id, concepto: c.concepto, monto: c.monto, fecha: c.fechaCompromiso ?? new Date().toISOString().split("T")[0], notas: null, referencia: null, metodoPago: "TRANSFERENCIA", categoriaId: null, categoria: null, proveedorId: null, proveedor: null, cuentaOrigenId: null, cuentaOrigen: null });
+    setEditGasto({ id: c.id, concepto: c.concepto, monto: c.monto, fecha: c.fechaCompromiso ?? new Date().toISOString().split("T")[0], notas: c.notas, referencia: null, metodoPago: "TRANSFERENCIA", categoriaId: null, categoria: null, proveedorId: null, proveedor: null, cuentaOrigenId: null, cuentaOrigen: null });
     setEditGastoForm({
       concepto: c.concepto,
       monto: String(c.monto),
       fecha: c.fechaCompromiso ? c.fechaCompromiso.slice(0, 10) : new Date().toISOString().split("T")[0],
-      notas: "",
+      notas: c.notas ?? "",
       referencia: "",
       metodoPago: "TRANSFERENCIA",
       categoriaId: "",
@@ -3558,6 +3558,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               concepto: editGastoForm.concepto,
               monto: parseFloat(editGastoForm.monto),
               fechaCompromiso: editGastoForm.fecha,
+              notas: editGastoForm.notas || null,
             }),
           } : prev);
         }
@@ -3582,7 +3583,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             setProyecto(prev => prev ? {
               ...prev,
               movimientos: prev.movimientos.filter(m => m.id !== editGasto.id),
-              cuentasPagar: [...prev.cuentasPagar, { id: d.cxp.id, concepto: d.cxp.concepto, monto: d.cxp.monto, estado: d.cxp.estado, fechaCompromiso: d.cxp.fechaCompromiso, tipoAcreedor: d.cxp.tipoAcreedor, montoOriginal: null, ajustesLog: null }],
+              cuentasPagar: [...prev.cuentasPagar, { id: d.cxp.id, concepto: d.cxp.concepto, monto: d.cxp.monto, estado: d.cxp.estado, fechaCompromiso: d.cxp.fechaCompromiso, tipoAcreedor: d.cxp.tipoAcreedor, montoOriginal: null, ajustesLog: null, notas: d.cxp.notas ?? null }],
             } : prev);
           }
         }
@@ -3838,7 +3839,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     if (res.ok && d.cxp) {
       setProyecto(prev => prev ? {
         ...prev,
-        cuentasPagar: [...prev.cuentasPagar, { id: d.cxp.id, concepto: d.cxp.concepto, monto: d.cxp.monto, estado: d.cxp.estado, fechaCompromiso: d.cxp.fechaCompromiso, tipoAcreedor: d.cxp.tipoAcreedor, montoOriginal: null, ajustesLog: null }],
+        cuentasPagar: [...prev.cuentasPagar, { id: d.cxp.id, concepto: d.cxp.concepto, monto: d.cxp.monto, estado: d.cxp.estado, fechaCompromiso: d.cxp.fechaCompromiso, tipoAcreedor: d.cxp.tipoAcreedor, montoOriginal: null, ajustesLog: null, notas: d.cxp.notas ?? null }],
       } : prev);
       toast.success("CxP registrada");
       setNuevaCxPConcepto(""); setNuevaCxPMonto(""); setNuevaCxPFecha(new Date().toISOString().split("T")[0]);
@@ -7776,6 +7777,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             {c.fechaCompromiso && (
                               <p className="text-xs text-gray-600 mt-0.5">Fecha estimada: {fmtDate(c.fechaCompromiso)}</p>
                             )}
+                            {c.notas && (
+                              <p className="text-gray-400 text-[11px] italic mt-0.5 whitespace-pre-wrap">{c.notas}</p>
+                            )}
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             <span className="text-sm text-yellow-400 font-semibold">{fmt(c.monto)}</span>
@@ -7823,6 +7827,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             {g.proveedor && <span className="text-xs px-1.5 py-0.5 bg-blue-900/30 text-blue-400 rounded">{g.proveedor.empresa || g.proveedor.nombre}</span>}
                           </div>
                           <p className="text-gray-600 text-xs">Pagó {fmtDate(g.fecha)} · {g.metodoPago}{g.cuentaOrigen ? ` · ${g.cuentaOrigen.nombre}` : ""}{g.referencia ? ` · Ref: ${g.referencia}` : ""}</p>
+                          {g.notas && <p className="text-gray-400 text-[11px] italic mt-0.5 whitespace-pre-wrap">{g.notas}</p>}
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <button onClick={() => abrirEditarGasto(g)}
