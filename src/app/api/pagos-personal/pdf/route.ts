@@ -9,7 +9,7 @@ function cicloDesde(cicloDate: Date): { desde: Date; hasta: Date } {
   const ciclo = new Date(cicloDate);
   ciclo.setHours(12, 0, 0, 0);
   const desde = new Date(ciclo);
-  desde.setDate(desde.getDate() - 6);
+  desde.setDate(desde.getDate() - 7);
   desde.setHours(0, 0, 0, 0);
   const hasta = new Date(ciclo);
   hasta.setDate(hasta.getDate() - 1);
