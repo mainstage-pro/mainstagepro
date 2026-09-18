@@ -7512,8 +7512,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           <div className="ms-table-wrapper">
             <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
               <h3 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Pagos a personal</h3>
-              {proyecto.personal.some(p => !p.tarifaAcordada) && proyecto.cotizacion && (
+              <div className="flex items-center gap-2">
                 <button
+                  onClick={() => setActiveTab('operacion')}
+                  className="text-xs px-3 py-1 rounded-md border border-[#333] text-gray-300 hover:text-white hover:border-[#555] transition-colors flex items-center gap-1"
+                >
+                  <span className="text-gray-500">+</span> Asignar personal
+                </button>
+                {proyecto.personal.some(p => !p.tarifaAcordada) && proyecto.cotizacion && (
+                  <button
                   onClick={async () => {
                     const res = await fetch(`/api/proyectos/${id}/sincronizar-tarifas`, { method: "POST" });
                     const d = await res.json();
@@ -7531,6 +7538,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   Sincronizar tarifas
                 </button>
               )}
+              </div>
             </div>
 
             {/* Tabla de personal — estilo pagos a personal */}
