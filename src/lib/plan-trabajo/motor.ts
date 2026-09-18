@@ -154,8 +154,16 @@ function normalizeArea(nombre: string | null | undefined): string {
   return "GENERAL";
 }
 
-// Prefiere el código estable de PTArea; cae al matching por nombre para datos legados.
-function areaCodeDe(area: { codigo?: string | null; nombre?: string | null } | null | undefined, fallback: string | null | undefined): string {
+// Si el template asigna por área ("Junta de área — Marketing", etc.), esa área
+// destino (areaAsignada) manda sobre el área propia del template (normalmente
+// "Operaciones Generales" para juntas transversales). Si no, usa el código
+// estable de PTArea del template; cae al matching por nombre para datos legados.
+function areaCodeDe(
+  area: { codigo?: string | null; nombre?: string | null } | null | undefined,
+  fallback: string | null | undefined,
+  tipoAsignacion?: string
+): string {
+  if (tipoAsignacion === "area" && fallback) return normalizeArea(fallback);
   if (area?.codigo) return area.codigo;
   return normalizeArea(area?.nombre ?? fallback);
 }
@@ -225,7 +233,7 @@ export async function generarTareasDelDia(fecha: Date = new Date()): Promise<{
     try {
       if (!debeGenerarse(template, fecha)) continue;
 
-      const areaCode = areaCodeDe(template.area, template.areaAsignada);
+      const areaCode = areaCodeDe(template.area, template.areaAsignada, template.tipoAsignacion);
       const asignados = await resolverAsignados(template, areaCode);
       const { inicio, fin } = periodoWindow(template.frecuencia, fecha);
       const fechaVencimiento = calcularVencimiento(template, fecha);

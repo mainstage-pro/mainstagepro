@@ -36,6 +36,19 @@ export async function GET(req: NextRequest) {
       fechaVencimiento: true,
       fechaCompletada: true,
       asignadoA: { select: { id: true, name: true } },
+      // ── Campos propios: fallback cuando la tarea no viene de un PTTareaTemplate
+      // (ej. se convirtió a "Plan de trabajo" a mano desde TaskModal) ──
+      titulo: true,
+      descripcion: true,
+      area: true,
+      cuando: true,
+      estandarMinimo: true,
+      porqueSeHace: true,
+      siNoSeHace: true,
+      moduloTexto: true,
+      moduloDestino: true,
+      moduloDisponible: true,
+      esAccionCampo: true,
       ptTemplate: {
         select: {
           id: true,
@@ -67,10 +80,15 @@ export async function GET(req: NextRequest) {
     orderBy: { fechaVencimiento: "asc" },
   });
 
-  const instancias = tareas
-    .filter((t) => t.ptTemplate)
-    .map((t) => {
-      const tpl = t.ptTemplate!;
+  // Tareas convertidas a "PLAN" a mano (sin ptTemplateId) no tienen PTArea: se
+  // resuelve por el código de texto guardado en Tarea.area contra pt_areas.
+  const areasDb = await prisma.pTArea.findMany({ select: { id: true, nombre: true, codigo: true, color: true, icono: true } });
+  const areaPorCodigo = new Map(areasDb.map((a) => [a.codigo, a]));
+  const AREA_FALLBACK = { id: "generic", nombre: "General", color: "#6B7280", icono: "" };
+
+  const instancias = tareas.map((t) => {
+    if (t.ptTemplate) {
+      const tpl = t.ptTemplate;
       return {
         id: t.id,
         estado: t.estado,
@@ -105,7 +123,46 @@ export async function GET(req: NextRequest) {
           subArea: tpl.subArea,
         },
       };
-    });
+    }
+
+    // Tarea de plan sin plantilla (convertida a mano): construye el template
+    // a partir de los campos propios de la Tarea, que el motor también copia.
+    const area = areaPorCodigo.get(t.area) ?? AREA_FALLBACK;
+    return {
+      id: t.id,
+      estado: t.estado,
+      notas: t.notas,
+      razonNoRealizado: null,
+      fechaVencimiento: t.fechaVencimiento?.toISOString() ?? "",
+      completadaAt: t.fechaCompletada?.toISOString() ?? null,
+      responsable: t.asignadoA,
+      template: {
+        id: t.id,
+        nombre: t.titulo,
+        tipo: "CHECK",
+        impacto: "estandar",
+        contexto: "independiente",
+        frecuencia: "POR_EVENTO",
+        diasSemana: [] as number[],
+        cuando: t.cuando,
+        descripcion: t.descripcion,
+        estandarMinimo: t.estandarMinimo,
+        porqueSeHace: t.porqueSeHace,
+        relacionCon: null,
+        siNoSeHace: t.siNoSeHace,
+        afectaA: [] as string[],
+        kpiNombre: null,
+        moduloTexto: t.moduloTexto,
+        moduloDestino: t.moduloDestino,
+        moduloDisponible: t.moduloDisponible,
+        esAccionCampo: t.esAccionCampo,
+        puestoDefault: null,
+        horaLimite: null,
+        area: { id: area.id, nombre: area.nombre, color: area.color, icono: area.icono ?? "" },
+        subArea: { id: "generic", nombre: "General" },
+      },
+    };
+  });
 
   return NextResponse.json({ instancias, fecha: fechaStr });
 }
