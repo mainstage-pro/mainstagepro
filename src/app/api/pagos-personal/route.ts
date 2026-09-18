@@ -108,7 +108,7 @@ export async function GET(req: NextRequest) {
   const nomina = Array.from(tecMap.values())
     .map((t) => ({
       ...t,
-      total: t.pagos.reduce((s, x) => s + x.monto, 0),
+      total: t.pagos.reduce((s, x) => s + (x.estadoPago === "PENDIENTE" ? x.monto : 0), 0),
       todosPagados: t.pagos.every((x) => x.estadoPago === "PAGADO"),
     }))
     .sort((a, b) => a.tecnicoNombre.localeCompare(b.tecnicoNombre));

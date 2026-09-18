@@ -337,6 +337,7 @@ export default function PagosPersonalPage() {
 
   // Shared modal state
   const [pagoTarget, setPagoTarget] = useState<NominaRow[] | null>(null);
+  const [selectedEventos, setSelectedEventos] = useState<Set<string>>(new Set());
   const [pagoFecha, setPagoFecha] = useState(new Date().toISOString().split("T")[0]);
   const [pagoNotas, setPagoNotas] = useState("");
   const [guardando, setGuardando] = useState(false);
@@ -425,11 +426,21 @@ export default function PagosPersonalPage() {
   useEffect(() => { load(); }, [load]);
 
   function abrirModalPago(rows: NominaRow[]) {
-    setPagoTarget(rows);
+    const pendingRows = rows.map(r => {
+      const pendingPagos = r.pagos.filter(p => p.estadoPago === "PENDIENTE");
+      return { ...r, pagos: pendingPagos, total: pendingPagos.reduce((s, p) => s + p.monto, 0) };
+    }).filter(r => r.pagos.length > 0);
+
+    const initialSelected = new Set<string>();
+    pendingRows.forEach(r => r.pagos.forEach(p => initialSelected.add(`${r.tecnicoId}-${p.proyectoId}`)));
+    
+    setPagoTarget(pendingRows);
+    setSelectedEventos(initialSelected);
     setPagoFecha(new Date().toISOString().split("T")[0]);
     setPagoNotas("");
-    if (rows.length === 1) {
-      setPagoEntradas([{ ...DEFAULT_ENTRADA, monto: String(rows[0].total) }]);
+    
+    if (pendingRows.length === 1) {
+      setPagoEntradas([{ ...DEFAULT_ENTRADA, monto: String(pendingRows[0].total) }]);
     } else {
       setPagoMetodo("TRANSFERENCIA");
       setPagoCuenta("");
@@ -445,12 +456,18 @@ export default function PagosPersonalPage() {
     if (!pagoTarget) return;
     setGuardando(true);
     try {
-      if (pagoTarget.length === 1) {
+      const isSingle = pagoTarget.length === 1;
+
+      if (isSingle) {
         const row = pagoTarget[0];
+        const selectedIds = row.pagos.filter(p => selectedEventos.has(`${row.tecnicoId}-${p.proyectoId}`)).map(p => p.proyectoId);
+        if (selectedIds.length === 0) return;
+        const checkedTotal = row.pagos.reduce((s, p) => selectedEventos.has(`${row.tecnicoId}-${p.proyectoId}`) ? s + p.monto : s, 0);
+
         const validEntradas = pagoEntradas
           .map((e) => ({
+            ...e,
             monto: parseFloat(e.monto) || 0,
-            metodoPago: e.metodoPago,
             cuentaOrigenId: e.cuentaOrigenId || null,
             referencia: e.referencia || null,
           }))
@@ -461,26 +478,30 @@ export default function PagosPersonalPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             tecnicoId: row.tecnicoId,
-            proyectoIds: row.pagos.map((p) => p.proyectoId),
+            proyectoIds: selectedIds,
             fecha: pagoFecha,
             notas: pagoNotas || null,
-            totalOwed: row.total,
+            totalOwed: checkedTotal,
             entradas: validEntradas,
           }),
         });
       } else {
         for (const row of pagoTarget) {
+          const selectedIds = row.pagos.filter(p => selectedEventos.has(`${row.tecnicoId}-${p.proyectoId}`)).map(p => p.proyectoId);
+          if (selectedIds.length === 0) continue;
+          const checkedTotal = row.pagos.reduce((s, p) => selectedEventos.has(`${row.tecnicoId}-${p.proyectoId}`) ? s + p.monto : s, 0);
+
           await fetch("/api/pagos-personal", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               tecnicoId: row.tecnicoId,
-              proyectoIds: row.pagos.map((p) => p.proyectoId),
+              proyectoIds: selectedIds,
               fecha: pagoFecha,
               notas: pagoNotas || null,
-              totalOwed: row.total,
+              totalOwed: checkedTotal,
               entradas: [{
-                monto: row.total,
+                monto: checkedTotal,
                 metodoPago: pagoMetodo,
                 cuentaOrigenId: pagoCuenta || null,
                 referencia: pagoReferencia || null,
@@ -540,7 +561,8 @@ export default function PagosPersonalPage() {
   // Computed values for single-tech modal
   const totalEntradas = pagoEntradas.reduce((s, e) => s + (parseFloat(e.monto) || 0), 0);
   const singleRow = pagoTarget?.length === 1 ? pagoTarget[0] : null;
-  const restante = singleRow ? singleRow.total - totalEntradas : 0;
+  const singleCheckedTotal = singleRow ? singleRow.pagos.reduce((s, p) => selectedEventos.has(`${singleRow.tecnicoId}-${p.proyectoId}`) ? s + p.monto : s, 0) : 0;
+  const restante = singleRow ? singleCheckedTotal - totalEntradas : 0;
   const isFull = singleRow ? Math.abs(restante) <= 0.01 : false;
 
   return (
@@ -865,20 +887,38 @@ export default function PagosPersonalPage() {
 
             {/* Resumen de a quién se paga */}
             <div className="bg-[#0d0d0d] rounded-xl p-3 mb-4 space-y-1.5 max-h-36 overflow-y-auto">
-              {pagoTarget.map(row => (
+              {pagoTarget.map(row => {
+                const checkedTotal = row.pagos.reduce((s, p) => selectedEventos.has(`${row.tecnicoId}-${p.proyectoId}`) ? s + p.monto : s, 0);
+                return (
                 <div key={row.tecnicoId}>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-white font-medium">{row.tecnicoNombre}</span>
-                    <span className="text-sm text-[#B3985B] font-semibold">{fmt(row.total)}</span>
+                    <span className="text-sm text-[#B3985B] font-semibold">{fmt(checkedTotal)}</span>
                   </div>
-                  {row.pagos.map(p => (
-                    <div key={p.proyectoId} className="flex items-center justify-between pl-3">
-                      <span className="text-xs text-gray-600 truncate max-w-[200px]">{p.proyectoNombre}</span>
-                      <span className="text-xs text-gray-500">{fmt(p.monto)}</span>
+                  {row.pagos.map(p => {
+                    const key = `${row.tecnicoId}-${p.proyectoId}`;
+                    const isChecked = selectedEventos.has(key);
+                    return (
+                    <div key={p.proyectoId} className="flex items-center justify-between pl-3 mt-1.5">
+                      <label className="flex items-center gap-2 cursor-pointer group">
+                        <input type="checkbox" checked={isChecked} onChange={() => {
+                          const next = new Set(selectedEventos);
+                          if (isChecked) next.delete(key);
+                          else next.add(key);
+                          setSelectedEventos(next);
+                          // Si es 1 solo row, actualizar el pagoEntradas a sugerir el nuevo total si no han escrito mucho o hay una sola entrada
+                          if (pagoTarget.length === 1 && pagoEntradas.length === 1) {
+                            const newTotal = row.pagos.reduce((s, p2) => next.has(`${row.tecnicoId}-${p2.proyectoId}`) ? s + p2.monto : s, 0);
+                            setPagoEntradas([{ ...pagoEntradas[0], monto: String(newTotal) }]);
+                          }
+                        }} className="accent-[#B3985B] cursor-pointer w-3.5 h-3.5" />
+                        <span className={`text-xs truncate max-w-[180px] transition-colors ${isChecked ? "text-gray-400 group-hover:text-gray-300" : "text-gray-600 line-through"}`}>{p.proyectoNombre}</span>
+                      </label>
+                      <span className={`text-xs transition-colors ${isChecked ? "text-gray-500" : "text-gray-700 line-through"}`}>{fmt(p.monto)}</span>
                     </div>
-                  ))}
+                  )})}
                 </div>
-              ))}
+              )})}
             </div>
 
             {/* Fecha (shared) */}
@@ -966,11 +1006,11 @@ export default function PagosPersonalPage() {
                 <div className="bg-[#0d0d0d] rounded-xl p-3 mb-4 space-y-1">
                   <div className="flex justify-between text-xs">
                     <span className="text-gray-500">Total adeudo</span>
-                    <span className="text-white font-semibold">{fmt(singleRow.total)}</span>
+                    <span className="text-white font-semibold">{fmt(singleCheckedTotal)}</span>
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="text-gray-500">Registrando</span>
-                    <span className={`font-semibold ${totalEntradas > singleRow.total ? "text-red-400" : "text-[#B3985B]"}`}>
+                    <span className={`font-semibold ${totalEntradas > singleCheckedTotal ? "text-red-400" : "text-[#B3985B]"}`}>
                       {fmt(totalEntradas)}
                     </span>
                   </div>
@@ -985,7 +1025,7 @@ export default function PagosPersonalPage() {
                       <span className="text-yellow-400">{fmt(restante)}</span>
                     </div>
                   )}
-                  {totalEntradas > singleRow.total + 0.01 && (
+                  {totalEntradas > singleCheckedTotal + 0.01 && (
                     <div className="flex justify-between text-xs pt-0.5">
                       <span className="text-red-400">Excede el adeudo</span>
                       <span className="text-red-400">{fmt(Math.abs(restante))}</span>
@@ -1049,7 +1089,7 @@ export default function PagosPersonalPage() {
                     ? isFull
                       ? `Confirmar pago · ${fmt(totalEntradas)}`
                       : `Registrar pago parcial · ${fmt(totalEntradas)}`
-                    : `Confirmar pago · ${fmt(pagoTarget.reduce((s, r) => s + r.total, 0))}`}
+                    : `Confirmar pago · ${fmt(pagoTarget.reduce((s, r) => s + r.pagos.reduce((s2, p) => selectedEventos.has(`${r.tecnicoId}-${p.proyectoId}`) ? s2 + p.monto : s2, 0), 0))}`}
               </button>
             </div>
 
