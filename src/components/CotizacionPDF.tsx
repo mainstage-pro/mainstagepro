@@ -115,6 +115,16 @@ const s = StyleSheet.create({
     color: GRAY,
     marginBottom: 8,
   },
+  // Función/momento interno del evento (ej. Haldi, Sangeet, Ceremony) — destacado
+  // para distinguir a simple vista cotizaciones de un mismo trato multi-evento.
+  subEventoValor: {
+    fontSize: 11,
+    color: GOLD,
+    fontFamily: "Helvetica-Bold",
+    marginBottom: 8,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
   // Divisor
   divisor: {
     height: 1,
@@ -502,6 +512,7 @@ const TXT = {
     empresa: "Empresa",
     vendedor: "Vendedor",
     evento: "Evento",
+    funcionEvento: "Función del evento",
     fechaEvento: "Fecha del evento",
     lugar: "Lugar",
     horario: "Horario",
@@ -581,6 +592,7 @@ const TXT = {
     empresa: "Company",
     vendedor: "Sales Rep",
     evento: "Event",
+    funcionEvento: "Event Function",
     fechaEvento: "Event Date",
     lugar: "Venue",
     horario: "Schedule",
@@ -720,6 +732,7 @@ interface CotizacionData {
   numeroCotizacion: string;
   version: number;
   nombreEvento: string | null;
+  nombreCotizacion?: string | null;
   tipoEvento: string | null;
   tipoServicio: string | null;
   fechaEvento: Date | null;
@@ -1164,6 +1177,10 @@ export function CotizacionPDF({ cotizacion: c, logoSrc, descCategorias = {}, cat
             <Text style={s.infoValueLight}>{c.creadaPor?.name || "Mauricio Hernández"}</Text>
           </View>
           <View style={s.infoColRight}>
+            {c.nombreCotizacion && <>
+              <Text style={s.infoLabel}>{t.funcionEvento}</Text>
+              <Text style={s.subEventoValor}>{c.nombreCotizacion}</Text>
+            </>}
             <Text style={s.infoLabel}>{t.evento}</Text>
             <Text style={s.infoValue}>{c.nombreEvento || "—"}</Text>
             <Text style={s.infoLabel}>{t.fechaEvento}</Text>
