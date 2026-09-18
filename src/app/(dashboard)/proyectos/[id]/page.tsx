@@ -5063,8 +5063,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             );
           })()}
 
-          {/* ── Personal del evento (sección unificada) — solo producción técnica; en renta se usa "Quién entrega/recibe" ── */}
-          {!esRenta && (
+          {/* ── Personal del evento (sección unificada) ── */}
           <div className="ms-table-wrapper">
             {/* ── Cabecera ── */}
             <div className="p-4">
@@ -5736,7 +5735,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               );
             })()}
           </div>
-          )}
+
 
           {/* ── Proveedores y Subrentas ── */}
           <div className="space-y-3">
