@@ -60,6 +60,7 @@ export async function GET(req: NextRequest) {
       id: pp.id,
       tecnicoId: pp.tecnicoId,
       tecnicoNombre: pp.tecnico?.nombre ?? null,
+      rolTecnicoId: pp.rolTecnicoId,
       rolNombre: pp.rolTecnico?.nombre ?? null,
       participacion: pp.participacion,
       fechaJornada: pp.fechaJornada,
@@ -67,6 +68,7 @@ export async function GET(req: NextRequest) {
       jornada: pp.jornada,
       tarifaAcordada: pp.tarifaAcordada,
       estadoPago: pp.estadoPago,
+      notas: pp.notas,
     })),
   }));
 
@@ -112,6 +114,10 @@ export async function GET(req: NextRequest) {
     .sort((a, b) => a.tecnicoNombre.localeCompare(b.tecnicoNombre));
 
   // Cuentas bancarias para el modal
+  const roles = await prisma.rolTecnico.findMany({ select: { id: true, nombre: true }, orderBy: { nombre: "asc" } });
+
+  const tecnicos = await prisma.tecnico.findMany({ select: { id: true, nombre: true }, orderBy: { nombre: "asc" } });
+
   const cuentas = await prisma.cuentaBancaria.findMany({
     select: { id: true, nombre: true, banco: true },
     orderBy: { nombre: "asc" },
@@ -124,6 +130,8 @@ export async function GET(req: NextRequest) {
     proyectos: proyectosData,
     nomina,
     cuentas,
+    roles,
+    tecnicos,
   });
 }
 
