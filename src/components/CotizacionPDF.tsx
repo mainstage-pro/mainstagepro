@@ -504,6 +504,7 @@ const TXT = {
     evento: "Evento",
     fechaEvento: "Fecha del evento",
     lugar: "Lugar",
+    horario: "Horario",
     tipoEvento: "Tipo de evento",
     paquete: "Paquete",
     seccionEquipo: "Equipo de Audio, Iluminación, Video y más",
@@ -582,6 +583,7 @@ const TXT = {
     evento: "Event",
     fechaEvento: "Event Date",
     lugar: "Venue",
+    horario: "Schedule",
     tipoEvento: "Event Type",
     paquete: "Package",
     seccionEquipo: "Audio, Lighting, Video Equipment & More",
@@ -668,6 +670,23 @@ function pct(n: number) {
   return `${(n * 100).toFixed(0)}%`;
 }
 
+// Convierte "HH:MM" (24h, como se guarda en Trato/Cotización) a "h:mm AM/PM".
+function fmtHora(h: string | null | undefined) {
+  if (!h) return null;
+  const [hh, mm] = h.split(":").map(Number);
+  if (Number.isNaN(hh) || Number.isNaN(mm)) return h;
+  const period = hh >= 12 ? "PM" : "AM";
+  const h12 = hh % 12 === 0 ? 12 : hh % 12;
+  return `${h12}:${String(mm).padStart(2, "0")} ${period}`;
+}
+
+function fmtHorario(inicio: string | null | undefined, fin: string | null | undefined) {
+  const i = fmtHora(inicio);
+  const f = fmtHora(fin);
+  if (i && f) return `${i} – ${f}`;
+  return i || f || null;
+}
+
 const TIPO_LINEA_SECTION: Record<string, string> = {
   EQUIPO_PROPIO: "equipo",
   EQUIPO_EXTERNO: "equipo",
@@ -705,6 +724,8 @@ interface CotizacionData {
   tipoServicio: string | null;
   fechaEvento: Date | null;
   lugarEvento: string | null;
+  horaInicioEvento?: string | null;
+  horaFinEvento?: string | null;
   diasEquipo: number;
   diasOperacion: number;
   observaciones: string | null;
@@ -1149,6 +1170,10 @@ export function CotizacionPDF({ cotizacion: c, logoSrc, descCategorias = {}, cat
             <Text style={s.infoValue}>{fmtDate(c.fechaEvento, idioma)}</Text>
             <Text style={s.infoLabel}>{t.lugar}</Text>
             <Text style={s.infoValueLight}>{c.lugarEvento || "—"}</Text>
+            {fmtHorario(c.horaInicioEvento, c.horaFinEvento) && <>
+              <Text style={s.infoLabel}>{t.horario}</Text>
+              <Text style={s.infoValueLight}>{fmtHorario(c.horaInicioEvento, c.horaFinEvento)}</Text>
+            </>}
             {c.tipoEvento && <>
               <Text style={s.infoLabel}>{t.tipoEvento}</Text>
               <Text style={s.infoValueLight}>{t.tipoEventoMap[c.tipoEvento] ?? c.tipoEvento}</Text>

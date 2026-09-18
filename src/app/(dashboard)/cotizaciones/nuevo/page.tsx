@@ -58,7 +58,8 @@ interface LineaEquipo {
   id: string; equipoId: string; descripcion: string; marca: string; modelo: string;
   cantidad: number; dias: number; precioUnitario: number; subtotal: number;
   categoria: string; // nombre de la categoría para subsecciones
-  notas: string;     // nota libre por concepto
+  notas: string;     // nota libre por concepto (SIEMPRE editable por el usuario, nunca se autollena)
+  deficit?: { cantidadPropia: number; cantidadExterna: number; proveedorRentaId: string | null; notasInternas: string | null } | null;
 }
 
 // Paquete/producto armado agregado como UN concepto (no expandido en equipos sueltos).
@@ -327,6 +328,8 @@ function CotizadorForm() {
     tipoServicio: "",
     fechaEvento: "",
     lugarEvento: "",
+    horaInicioEvento: "",
+    horaFinEvento: "",
     horasOperacion: "8",
     diasEquipo: "1",
     diasOperacion: "1",
@@ -548,6 +551,8 @@ function CotizadorForm() {
           tipoServicio: cot.tipoServicio ?? "",
           fechaEvento: cot.fechaEvento ? cot.fechaEvento.split("T")[0] : "",
           lugarEvento: cot.lugarEvento ?? "",
+          horaInicioEvento: cot.horaInicioEvento ?? "",
+          horaFinEvento: cot.horaFinEvento ?? "",
           horasOperacion: String(cot.horasOperacion ?? 8),
           diasEquipo: String(cot.diasEquipo ?? 1),
           diasOperacion: String(cot.diasOperacion ?? 1),
@@ -698,6 +703,8 @@ function CotizadorForm() {
           tipoServicio: t.tipoServicio || prev.tipoServicio,
           fechaEvento: t.fechaEventoEstimada ? t.fechaEventoEstimada.split("T")[0] : prev.fechaEvento,
           lugarEvento: t.lugarEstimado || prev.lugarEvento,
+          horaInicioEvento: t.horaInicioEvento || prev.horaInicioEvento,
+          horaFinEvento: t.horaFinEvento || prev.horaFinEvento,
           diasEquipo: t.diasServicio ? String(t.diasServicio) : prev.diasEquipo,
           diasOperacion: t.diasServicio ? String(t.diasServicio) : prev.diasOperacion,
         }));
@@ -1615,24 +1622,14 @@ function CotizadorForm() {
       setAutoSaving(true);
       try {
         const todasLineasAuto = [
-          ...lineasEquipo.map(l => {
-            const notasRaw = l.notas ?? '';
-            const deficitMatch = notasRaw.match(/\|?deficit:(\{.*\})$/);
-            let deficitFields = {};
-            let notasLimpia = notasRaw;
-            if (deficitMatch) {
-              try { deficitFields = JSON.parse(deficitMatch[1]); } catch { /* ignore */ }
-              notasLimpia = notasRaw.replace(/\|?deficit:\{.*\}$/, '');
-            }
-            return {
-              tipo: "EQUIPO_PROPIO", descripcion: l.descripcion, marca: l.marca, modelo: l.modelo,
-              cantidad: l.cantidad, dias: l.dias, precioUnitario: l.precioUnitario,
-              costoUnitario: 0, subtotal: l.subtotal,
-              esExterno: false, esIncluido: false, equipoId: l.equipoId,
-              notas: buildNotasValue(l.categoria, notasLimpia),
-              ...deficitFields,
-            };
-          }),
+          ...lineasEquipo.map(l => ({
+            tipo: "EQUIPO_PROPIO", descripcion: l.descripcion, marca: l.marca, modelo: l.modelo,
+            cantidad: l.cantidad, dias: l.dias, precioUnitario: l.precioUnitario,
+            costoUnitario: 0, subtotal: l.subtotal,
+            esExterno: false, esIncluido: false, equipoId: l.equipoId,
+            notas: buildNotasValue(l.categoria, l.notas ?? ''),
+            ...(l.deficit ?? {}),
+          })),
           ...lineasPaquete.map(l => ({
             tipo: "PAQUETE", descripcion: l.nombre,
             cantidad: l.cantidad, dias: l.dias, precioUnitario: l.precioUnitario,
@@ -1790,24 +1787,14 @@ function CotizadorForm() {
     setSaving(true); setError("");
 
     const todasLineas = [
-      ...lineasEquipo.map(l => {
-        const notasRaw = l.notas ?? '';
-        const deficitMatch = notasRaw.match(/\|?deficit:(\{.*\})$/);
-        let deficitFields = {};
-        let notasLimpia = notasRaw;
-        if (deficitMatch) {
-          try { deficitFields = JSON.parse(deficitMatch[1]); } catch { /* ignore */ }
-          notasLimpia = notasRaw.replace(/\|?deficit:\{.*\}$/, '');
-        }
-        return {
-          tipo: "EQUIPO_PROPIO", descripcion: l.descripcion, marca: l.marca, modelo: l.modelo,
-          cantidad: l.cantidad, dias: l.dias, precioUnitario: l.precioUnitario,
-          costoUnitario: 0, subtotal: l.subtotal,
-          esExterno: false, esIncluido: false, equipoId: l.equipoId,
-          notas: buildNotasValue(l.categoria, notasLimpia),
-          ...deficitFields,
-        };
-      }),
+      ...lineasEquipo.map(l => ({
+        tipo: "EQUIPO_PROPIO", descripcion: l.descripcion, marca: l.marca, modelo: l.modelo,
+        cantidad: l.cantidad, dias: l.dias, precioUnitario: l.precioUnitario,
+        costoUnitario: 0, subtotal: l.subtotal,
+        esExterno: false, esIncluido: false, equipoId: l.equipoId,
+        notas: buildNotasValue(l.categoria, l.notas ?? ''),
+        ...(l.deficit ?? {}),
+      })),
       ...lineasPaquete.map(l => ({
         tipo: "PAQUETE", descripcion: l.nombre,
         cantidad: l.cantidad, dias: l.dias, precioUnitario: l.precioUnitario,
@@ -2177,6 +2164,10 @@ function CotizadorForm() {
                 <VenuePicker label="Lugar del evento" value={evento.lugarEvento} onChange={(v) => setEvento(p => ({ ...p, lugarEvento: v }))} placeholder="Venue, ciudad..." />
               </div>
               <Input label="Asistentes estimados" type="number" min="1" value={asistentesEstimados ?? ""} onChange={e => setAsistentesEstimados(e.target.value ? parseInt(e.target.value) : null)} placeholder="Número de invitados" />
+              <div className="grid grid-cols-2 gap-2 col-span-1">
+                <Input label="Hora inicio evento" type="time" value={evento.horaInicioEvento} onChange={e => setEvento(p => ({ ...p, horaInicioEvento: e.target.value }))} />
+                <Input label="Hora fin evento" type="time" value={evento.horaFinEvento} onChange={e => setEvento(p => ({ ...p, horaFinEvento: e.target.value }))} />
+              </div>
               <Input label="Horas de operación" type="number" min="1" value={evento.horasOperacion} onChange={e => setEvento(p => ({ ...p, horasOperacion: e.target.value }))} />
               <div className="grid grid-cols-2 gap-2 col-span-1">
                 <Input label="Días equipo" type="number" min="1" value={evento.diasEquipo} onChange={e => setEvento(p => ({ ...p, diasEquipo: e.target.value }))} />
@@ -3970,20 +3961,17 @@ function CotizadorForm() {
               <button type="button"
                 onClick={() => {
                   if (deficitInfo) {
-                    const deficitData = JSON.stringify({
+                    const deficit = {
                       cantidadPropia: deficitInfo.stockPropio,
                       cantidadExterna: deficitInfo.deficit,
                       proveedorRentaId: deficitProveedorId || null,
                       notasInternas: deficitProveedorTexto || null,
-                    });
+                    };
                     setLineasEquipo(prev => {
                       const idx = [...prev].reverse().findIndex(l => l.equipoId === deficitInfo.equipoId);
                       if (idx === -1) return prev;
                       const realIdx = prev.length - 1 - idx;
-                      return prev.map((l, i) => i === realIdx
-                        ? { ...l, notas: l.notas ? `${l.notas}|deficit:${deficitData}` : `deficit:${deficitData}` }
-                        : l
-                      );
+                      return prev.map((l, i) => i === realIdx ? { ...l, deficit } : l);
                     });
                   }
                   setDeficitInfo(null);

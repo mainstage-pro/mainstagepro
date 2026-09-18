@@ -2,12 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { crearProyectoDesdeCotizacion, ensureTratoIndiceSoltado } from "@/lib/crear-proyecto";
+import { ensureCotizacionHorarioColumns } from "@/lib/migraciones-lazy";
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
+
+  await ensureCotizacionHorarioColumns();
 
   // Cargar cotización (solo para validaciones e idempotencia)
   const cot = await prisma.cotizacion.findUnique({

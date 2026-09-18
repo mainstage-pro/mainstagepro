@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { validarTokenPresentacion } from "@/lib/presentacion-token";
+import { ensureCotizacionHorarioColumns } from "@/lib/migraciones-lazy";
 import { getConfigJSON } from "@/lib/config";
 import PresentacionClient from "./PresentacionClient";
 import PresentacionRentaClient from "./PresentacionRentaClient";
@@ -61,6 +62,8 @@ export default async function PresentacionPage({
   const { token } = await searchParams;
 
   if (!validarTokenPresentacion(cotizacionId, token)) notFound();
+
+  await ensureCotizacionHorarioColumns();
 
   const cotizacion = await prisma.cotizacion.findUnique({
     where: { id: cotizacionId },

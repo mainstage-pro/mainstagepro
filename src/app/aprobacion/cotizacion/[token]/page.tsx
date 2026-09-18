@@ -10,6 +10,7 @@ interface Linea {
 interface Cotizacion {
   id: string; numeroCotizacion: string; version: number; estado: string;
   nombreEvento: string | null; tipoEvento: string | null; lugarEvento: string | null;
+  horaInicioEvento: string | null; horaFinEvento: string | null;
   fechaEvento: string | null; granTotal: number; total: number; montoIva: number;
   aplicaIva: boolean; subtotalEquiposBruto: number; montoDescuento: number;
   subtotalOperacion: number; subtotalTransporte: number; subtotalComidas: number;
@@ -23,6 +24,20 @@ interface Cotizacion {
 
 function fmt(n: number) {
   return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n);
+}
+function fmtHora(h: string | null | undefined) {
+  if (!h) return null;
+  const [hh, mm] = h.split(":").map(Number);
+  if (Number.isNaN(hh) || Number.isNaN(mm)) return h;
+  const period = hh >= 12 ? "PM" : "AM";
+  const h12 = hh % 12 === 0 ? 12 : hh % 12;
+  return `${h12}:${String(mm).padStart(2, "0")} ${period}`;
+}
+function fmtHorario(inicio: string | null | undefined, fin: string | null | undefined) {
+  const i = fmtHora(inicio);
+  const f = fmtHora(fin);
+  if (i && f) return `${i} – ${f}`;
+  return i || f || null;
 }
 function fmtDate(s: string | null) {
   if (!s) return "—";
@@ -174,6 +189,12 @@ export default function AprobacionCotizacionPage({ params }: { params: Promise<{
             <span className="flex items-center gap-1.5 border border-white/8 rounded-full px-3.5 py-1.5 backdrop-blur-sm bg-white/[0.03]">
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
               {cot.lugarEvento}
+            </span>
+          )}
+          {fmtHorario(cot.horaInicioEvento, cot.horaFinEvento) && (
+            <span className="flex items-center gap-1.5 border border-white/8 rounded-full px-3.5 py-1.5 backdrop-blur-sm bg-white/[0.03]">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+              {fmtHorario(cot.horaInicioEvento, cot.horaFinEvento)}
             </span>
           )}
           {cot.fechaVencimiento && (

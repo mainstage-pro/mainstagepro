@@ -22,6 +22,7 @@ interface Linea {
 interface Cotizacion {
   id: string; numeroCotizacion: string; nombreEvento: string | null; tipoEvento: string | null;
   tipoServicio: string | null; fechaEvento: string | null; lugarEvento: string | null;
+  horaInicioEvento: string | null; horaFinEvento: string | null;
   horasOperacion: number | null; granTotal: number; total: number; aplicaIva: boolean;
   montoIva: number; montoDescuento: number; subtotalEquiposBruto: number;
   descuentoB2bPct: number; descuentoVolumenPct: number; descuentoMultidiaPct: number;
@@ -122,6 +123,20 @@ function fmtDate(s: string | null) {
   if (!s) return null;
   const [y, m, d] = s.substring(0, 10).split("-").map(Number);
   return new Date(y, m - 1, d).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+}
+function fmtHora(h: string | null | undefined) {
+  if (!h) return null;
+  const [hh, mm] = h.split(":").map(Number);
+  if (Number.isNaN(hh) || Number.isNaN(mm)) return h;
+  const period = hh >= 12 ? "PM" : "AM";
+  const h12 = hh % 12 === 0 ? 12 : hh % 12;
+  return `${h12}:${String(mm).padStart(2, "0")} ${period}`;
+}
+function fmtHorario(inicio: string | null | undefined, fin: string | null | undefined) {
+  const i = fmtHora(inicio);
+  const f = fmtHora(fin);
+  if (i && f) return `${i} – ${f}`;
+  return i || f || null;
 }
 function groupLineas(lineas: Linea[]) {
   const isEquipo = (l: Linea) => l.tipo === "EQUIPO_PROPIO" || l.tipo === "EQUIPO_EXTERNO";
@@ -553,6 +568,12 @@ export default function PresentacionClient({ cotizacion, tradeNiveles , token, g
               <span className="flex items-center gap-2 text-white/40 text-sm border border-white/10 rounded-full px-4 py-1.5 bg-white/[0.04] backdrop-blur-sm">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
                 {cotizacion.lugarEvento}
+              </span>
+            )}
+            {fmtHorario(cotizacion.horaInicioEvento, cotizacion.horaFinEvento) && (
+              <span className="flex items-center gap-2 text-white/40 text-sm border border-white/10 rounded-full px-4 py-1.5 bg-white/[0.04] backdrop-blur-sm">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+                {fmtHorario(cotizacion.horaInicioEvento, cotizacion.horaFinEvento)}
               </span>
             )}
             <span className="text-white/40 text-sm border border-white/10 rounded-full px-4 py-1.5 bg-white/[0.04] backdrop-blur-sm">

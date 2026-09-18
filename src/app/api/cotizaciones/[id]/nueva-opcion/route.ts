@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { ensureCotizacionHorarioColumns } from "@/lib/migraciones-lazy";
 
 // Genera letras: A, B, C, ..., Z, AA, AB, ..., AZ, BA, ... (hasta 50+)
 function generarLetra(index: number): string {
@@ -22,6 +23,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // modo: "completa" = copia todo | "vacia" = sin equipos (solo operación, logística, etc.)
   const body = await req.json().catch(() => ({}));
   const modo: "completa" | "vacia" = body.modo === "vacia" ? "vacia" : "completa";
+
+  await ensureCotizacionHorarioColumns();
 
   const original = await prisma.cotizacion.findUnique({
     where: { id },
@@ -117,6 +120,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       tipoServicio: original.tipoServicio,
       fechaEvento: original.fechaEvento,
       lugarEvento: original.lugarEvento,
+      horaInicioEvento: original.horaInicioEvento,
+      horaFinEvento: original.horaFinEvento,
       horasOperacion: original.horasOperacion,
       tipoJornada: original.tipoJornada,
       diasEquipo: original.diasEquipo,

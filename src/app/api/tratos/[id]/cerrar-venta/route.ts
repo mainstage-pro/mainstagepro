@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { crearProyectoDesdeCotizacion, ensureTratoIndiceSoltado } from "@/lib/crear-proyecto";
+import { ensureCotizacionHorarioColumns } from "@/lib/migraciones-lazy";
 
 const ESTADOS_ACTIVOS = ["BORRADOR", "ENVIADA", "EN_REVISION", "AJUSTE_SOLICITADO", "REENVIADA"];
 
@@ -48,6 +49,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const montoFinal = trato.montoFinal ?? (sumaAprobadas > 0 ? sumaAprobadas : trato.presupuestoEstimado ?? null);
 
   await ensureTratoIndiceSoltado();
+  await ensureCotizacionHorarioColumns();
 
   let proyectos: { id: string; numeroProyecto: string }[] = [];
   try {

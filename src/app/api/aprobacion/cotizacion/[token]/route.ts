@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { isTokenExpired } from "@/lib/tokens";
+import { ensureCotizacionHorarioColumns } from "@/lib/migraciones-lazy";
 
 // GET: datos de la cotización para mostrar en la página pública
 export async function GET(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
@@ -12,6 +13,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
 
   const { token } = await params;
   if (isTokenExpired(token)) return NextResponse.json({ error: "Link no válido o expirado" }, { status: 410 });
+
+  await ensureCotizacionHorarioColumns();
 
   const cot = await prisma.cotizacion.findUnique({
     where: { aprobacionToken: token },

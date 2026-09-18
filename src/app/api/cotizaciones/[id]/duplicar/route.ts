@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { ensureCotizacionHorarioColumns } from "@/lib/migraciones-lazy";
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
+
+  await ensureCotizacionHorarioColumns();
 
   const original = await prisma.cotizacion.findUnique({
     where: { id },
@@ -42,6 +45,8 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       tipoServicio: original.tipoServicio,
       fechaEvento: original.fechaEvento,
       lugarEvento: original.lugarEvento,
+      horaInicioEvento: original.horaInicioEvento,
+      horaFinEvento: original.horaFinEvento,
       diasEquipo: original.diasEquipo,
       diasOperacion: original.diasOperacion,
       // Descuentos

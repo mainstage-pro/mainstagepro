@@ -54,6 +54,8 @@ interface Cotizacion {
   tipoServicio: string | null;
   fechaEvento: string | null;
   lugarEvento: string | null;
+  horaInicioEvento: string | null;
+  horaFinEvento: string | null;
   diasEquipo: number;
   diasOperacion: number;
   notasSecciones: string | null;
@@ -98,7 +100,7 @@ interface Cotizacion {
   aprobacionNombre: string | null;
   idioma: string;
   cliente: { id: string; nombre: string; empresa: string | null; tipoCliente: string; telefono: string | null };
-  trato: { id: string; tipoEvento: string; etapa: string; tradeCalificado: boolean; familyAndFriends: boolean; realizarRender: boolean; ideasReferencias: string | null; notas: string | null; lugarEstimado: string | null };
+  trato: { id: string; tipoEvento: string; etapa: string; tradeCalificado: boolean; familyAndFriends: boolean; realizarRender: boolean; ideasReferencias: string | null; notas: string | null; lugarEstimado: string | null; horaInicioEvento: string | null; horaFinEvento: string | null };
   tratoId: string | null;
   creadaPor: { name: string } | null;
   lineas: Linea[];
@@ -289,9 +291,12 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   // Fecha del evento editable inline (independiente del trato)
   const [savingFecha, setSavingFecha] = useState(false);
   const [savingLugar, setSavingLugar] = useState(false);
+  const [savingHorario, setSavingHorario] = useState(false);
   // Estado local del input de fecha — se resetea con key={cot.id}
   const [fechaInputVal, setFechaInputVal] = useState<string>("");
   const [lugarInputVal, setLugarInputVal] = useState<string>("");
+  const [horaInicioInputVal, setHoraInicioInputVal] = useState<string>("");
+  const [horaFinInputVal, setHoraFinInputVal] = useState<string>("");
   const [noteEdit, setNoteEdit] = useState<NoteEditState | null>(null);
 
   useEffect(() => {
@@ -301,6 +306,8 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
     setCot(null);
     setFechaInputVal("");
     setLugarInputVal("");
+    setHoraInicioInputVal("");
+    setHoraFinInputVal("");
     setLoading(true);
     // ─────────────────────────────────────────────────────────────────────
     fetch(`/api/cotizaciones/${id}`, { cache: "no-store" })
@@ -312,6 +319,8 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
         setLoading(false);
         setFechaInputVal(d.cotizacion?.fechaEvento ? d.cotizacion.fechaEvento.split("T")[0] : "");
         setLugarInputVal(d.cotizacion?.lugarEvento || "");
+        setHoraInicioInputVal(d.cotizacion?.horaInicioEvento || d.cotizacion?.trato?.horaInicioEvento || "");
+        setHoraFinInputVal(d.cotizacion?.horaFinEvento || d.cotizacion?.trato?.horaFinEvento || "");
       });
   }, [id]);
 
@@ -409,6 +418,28 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
       }
     } finally {
       setSavingLugar(false);
+    }
+  }
+
+  // Guardar horario del evento inline (inicio/fin, ambos en un solo PATCH)
+  async function saveHorarioEvento(horaInicioEvento: string, horaFinEvento: string) {
+    if (!cot || cot.id !== id) return;
+    setSavingHorario(true);
+    try {
+      const res = await fetch(`/api/cotizaciones/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ horaInicioEvento: horaInicioEvento || null, horaFinEvento: horaFinEvento || null }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        if (d.cotizacion) setCot(prev => prev ? { ...prev, horaInicioEvento: d.cotizacion.horaInicioEvento, horaFinEvento: d.cotizacion.horaFinEvento } : prev);
+        toast.success("Horario actualizado");
+      } else {
+        toast.error("Error al guardar el horario");
+      }
+    } finally {
+      setSavingHorario(false);
     }
   }
 
@@ -1339,6 +1370,40 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                 }}
                 className="bg-transparent text-white text-sm w-full focus:outline-none focus:text-[#B3985B] placeholder-[#555] disabled:opacity-50"
                 placeholder="—"
+              />
+            </div>
+            <div>
+              <p className="text-gray-500 text-xs mb-0.5">Hora inicio</p>
+              <input
+                key={`${cot.id}-hi`}
+                type="time"
+                value={horaInicioInputVal}
+                disabled={savingHorario}
+                onChange={e => setHoraInicioInputVal(e.target.value)}
+                onBlur={e => {
+                  const val = e.target.value;
+                  if (!cot || cot.id !== id) return;
+                  const prev = cot.horaInicioEvento || "";
+                  if (val !== prev) saveHorarioEvento(val, horaFinInputVal);
+                }}
+                className="bg-transparent text-white text-sm w-full focus:outline-none focus:text-[#B3985B] disabled:opacity-50 cursor-pointer"
+              />
+            </div>
+            <div>
+              <p className="text-gray-500 text-xs mb-0.5">Hora fin</p>
+              <input
+                key={`${cot.id}-hf`}
+                type="time"
+                value={horaFinInputVal}
+                disabled={savingHorario}
+                onChange={e => setHoraFinInputVal(e.target.value)}
+                onBlur={e => {
+                  const val = e.target.value;
+                  if (!cot || cot.id !== id) return;
+                  const prev = cot.horaFinEvento || "";
+                  if (val !== prev) saveHorarioEvento(horaInicioInputVal, val);
+                }}
+                className="bg-transparent text-white text-sm w-full focus:outline-none focus:text-[#B3985B] disabled:opacity-50 cursor-pointer"
               />
             </div>
           </div>

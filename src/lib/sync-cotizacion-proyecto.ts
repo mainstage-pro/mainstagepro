@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { ensureSyncColumns } from "@/lib/migraciones-lazy";
+import { ensureSyncColumns, ensureCotizacionHorarioColumns } from "@/lib/migraciones-lazy";
 import { sembrarNotasEquiposProyecto } from "@/lib/notas-equipos";
 
 /**
@@ -68,6 +68,7 @@ export async function sincronizarProyectoDesdeCotizacion(
 ): Promise<{ sincronizado: boolean; motivo?: string }> {
   try {
     await ensureSyncColumns();
+    await ensureCotizacionHorarioColumns();
 
     const cot = await prisma.cotizacion.findUnique({
       where: { id: cotizacionId },

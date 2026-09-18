@@ -26,6 +26,8 @@ interface Cotizacion {
   tipoServicio: string | null;
   fechaEvento: string | null;
   lugarEvento: string | null;
+  horaInicioEvento: string | null;
+  horaFinEvento: string | null;
   granTotal: number;
   total: number;
   aplicaIva: boolean;
@@ -91,6 +93,20 @@ function fmtDateShort(s: string | null | undefined) {
   if (!s) return null;
   const [y, m, d] = s.substring(0, 10).split("-").map(Number);
   return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
+}
+function fmtHora(h: string | null | undefined) {
+  if (!h) return null;
+  const [hh, mm] = h.split(":").map(Number);
+  if (Number.isNaN(hh) || Number.isNaN(mm)) return h;
+  const period = hh >= 12 ? "PM" : "AM";
+  const h12 = hh % 12 === 0 ? 12 : hh % 12;
+  return `${h12}:${String(mm).padStart(2, "0")} ${period}`;
+}
+function fmtHorario(inicio: string | null | undefined, fin: string | null | undefined) {
+  const i = fmtHora(inicio);
+  const f = fmtHora(fin);
+  if (i && f) return `${i} – ${f}`;
+  return i || f || null;
 }
 
 function groupByCategory(lineas: Linea[]) {
@@ -457,6 +473,14 @@ Mainstage Pro puede proveer soporte técnico básico vía WhatsApp durante el us
                   <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
                 </svg>
                 <span className="text-white/60 text-sm">{cotizacion.lugarEvento}</span>
+              </div>
+            )}
+            {fmtHorario(cotizacion.horaInicioEvento, cotizacion.horaFinEvento) && (
+              <div className="flex items-center gap-2">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ color: GOLD }}>
+                  <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>
+                </svg>
+                <span className="text-white/60 text-sm">{fmtHorario(cotizacion.horaInicioEvento, cotizacion.horaFinEvento)}</span>
               </div>
             )}
             <div className="flex items-center gap-2">
