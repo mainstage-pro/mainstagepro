@@ -3054,7 +3054,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       body: JSON.stringify({
         nombre: nuevoTecNombre.trim(),
         celular: nuevoTecCelular.trim() || null,
-        rolId: nuevoTecRolId || null,
+        roles: nuevoTecRolId ? [nuevoTecRolId] : [],
         nivel: nuevoTecNivel,
       }),
     });
@@ -3370,7 +3370,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       body: JSON.stringify({
         nombre: nuevoTecNombre.trim(),
         celular: nuevoTecCelular.trim() || null,
-        rolId: nuevoTecRolId || null,
+        roles: nuevoTecRolId ? [nuevoTecRolId] : [],
         nivel: nuevoTecNivel,
       }),
     });
