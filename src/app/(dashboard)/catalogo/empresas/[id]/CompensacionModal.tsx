@@ -5,6 +5,9 @@ import { useState } from "react";
 function fmt(monto: number) {
   return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 2 }).format(monto);
 }
+function fmtDate(d: string) {
+  return new Date(d).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
+}
 
 export default function CompensacionModal({
   empresaId, cxcPendientes, cxpPendientes, onClose, onSuccess
@@ -14,7 +17,11 @@ export default function CompensacionModal({
   const [aplicacionesCxc, setAplicacionesCxc] = useState<Record<string, number>>({});
   const [aplicacionesCxp, setAplicacionesCxp] = useState<Record<string, number>>({});
   const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
+  const [fechaLimite, setFechaLimite] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const cxcMostradas = cxcPendientes.filter(c => !fechaLimite || new Date(c.fechaCompromiso) <= new Date(fechaLimite + "T23:59:59"));
+  const cxpMostradas = cxpPendientes.filter(c => !fechaLimite || new Date(c.fechaCompromiso) <= new Date(fechaLimite + "T23:59:59"));
 
   const totalCxc = Object.values(aplicacionesCxc).reduce((a, b) => a + (b || 0), 0);
   const totalCxp = Object.values(aplicacionesCxp).reduce((a, b) => a + (b || 0), 0);
@@ -77,27 +84,51 @@ export default function CompensacionModal({
       <div className="bg-[#111] border border-[#2a2a2a] w-full max-w-4xl p-6 rounded-xl space-y-6">
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-bold text-white">Nueva Compensación</h2>
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-400">Fecha de aplicación:</label>
-            <input 
-              type="date" 
-              value={fecha} 
-              onChange={e => setFecha(e.target.value)} 
-              className="ms-input text-sm px-2 py-1" 
-            />
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <label className="text-[10px] text-gray-400 uppercase">Documentos hasta:</label>
+              <input 
+                type="date" 
+                value={fechaLimite} 
+                onChange={e => setFechaLimite(e.target.value)} 
+                className="ms-input text-sm px-2 py-1" 
+              />
+            </div>
+            <div className="flex items-center gap-2 border-l border-[#333] pl-4">
+              <label className="text-[10px] text-[#B3985B] uppercase">Fecha de corte (cruce):</label>
+              <input 
+                type="date" 
+                value={fecha} 
+                onChange={e => setFecha(e.target.value)} 
+                className="ms-input text-sm px-2 py-1 border-[#B3985B]/50" 
+              />
+            </div>
           </div>
         </div>
         
         <div className="grid md:grid-cols-2 gap-6">
           {/* LADO CxC */}
           <div>
-            <h3 className="text-sm text-gray-400 font-semibold mb-2">Cuentas por Cobrar (A favor)</h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm text-gray-400 font-semibold">Cuentas por Cobrar (A favor)</h3>
+              <button 
+                onClick={() => {
+                  const obj: any = {};
+                  cxcMostradas.forEach(c => obj[c.id] = c.saldoPendiente);
+                  setAplicacionesCxc(obj);
+                }}
+                className="text-xs text-[#B3985B] hover:underline"
+              >
+                Seleccionar todo
+              </button>
+            </div>
             <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-              {cxcPendientes.map(c => (
+              {cxcMostradas.length === 0 && <p className="text-xs text-gray-500">No hay documentos en este rango</p>}
+              {cxcMostradas.map((c: any) => (
                 <div key={c.id} className="ms-card p-3 flex justify-between items-center text-sm gap-2">
                   <div className="min-w-0">
                     <p className="text-xs truncate">{c.concepto}</p>
-                    <p className="text-[10px] text-gray-500">{fmt(c.saldoPendiente)} disp.</p>
+                    <p className="text-[10px] text-gray-500">{fmt(c.saldoPendiente)} disp. (Vence {fmtDate(c.fechaCompromiso)})</p>
                   </div>
                   <input type="number" 
                     className="w-24 ms-input text-right"
@@ -118,13 +149,26 @@ export default function CompensacionModal({
 
           {/* LADO CxP */}
           <div>
-            <h3 className="text-sm text-gray-400 font-semibold mb-2">Cuentas por Pagar (En contra)</h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm text-gray-400 font-semibold">Cuentas por Pagar (En contra)</h3>
+              <button 
+                onClick={() => {
+                  const obj: any = {};
+                  cxpMostradas.forEach(c => obj[c.id] = c.saldoPendiente);
+                  setAplicacionesCxp(obj);
+                }}
+                className="text-xs text-[#B3985B] hover:underline"
+              >
+                Seleccionar todo
+              </button>
+            </div>
             <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-              {cxpPendientes.map(c => (
+              {cxpMostradas.length === 0 && <p className="text-xs text-gray-500">No hay documentos en este rango</p>}
+              {cxpMostradas.map((c: any) => (
                 <div key={c.id} className="ms-card p-3 flex justify-between items-center text-sm gap-2">
                   <div className="min-w-0">
                     <p className="text-xs truncate">{c.concepto}</p>
-                    <p className="text-[10px] text-gray-500">{fmt(c.saldoPendiente)} disp.</p>
+                    <p className="text-[10px] text-gray-500">{fmt(c.saldoPendiente)} disp. (Vence {fmtDate(c.fechaCompromiso)})</p>
                   </div>
                   <input type="number" 
                     className="w-24 ms-input text-right"
