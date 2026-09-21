@@ -5,12 +5,12 @@ import { Decimal } from "@prisma/client/runtime/library";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { empresaId: string } }
+  { params }: { params: Promise<{ empresaId: string }> }
 ) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  const { empresaId } = params;
+  const { empresaId } = await params;
 
   // 1. Obtener CxC de la empresa
   const cuentasCobrar = await prisma.cuentaCobrar.findMany({

@@ -5,12 +5,12 @@ import { Prisma } from "@prisma/client";
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  const { id } = params;
+  const { id } = await params;
 
   try {
     const result = await prisma.$transaction(async (tx) => {
