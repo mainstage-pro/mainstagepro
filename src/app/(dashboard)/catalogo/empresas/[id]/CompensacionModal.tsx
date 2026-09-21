@@ -13,6 +13,7 @@ export default function CompensacionModal({
 }) {
   const [aplicacionesCxc, setAplicacionesCxc] = useState<Record<string, number>>({});
   const [aplicacionesCxp, setAplicacionesCxp] = useState<Record<string, number>>({});
+  const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
   const [loading, setLoading] = useState(false);
 
   const totalCxc = Object.values(aplicacionesCxc).reduce((a, b) => a + (b || 0), 0);
@@ -56,6 +57,7 @@ export default function CompensacionModal({
         body: JSON.stringify({
           empresaId,
           importeCompensado: totalCxc,
+          fecha,
           aplicaciones
         })
       });
@@ -73,7 +75,18 @@ export default function CompensacionModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 overflow-y-auto">
       <div className="bg-[#111] border border-[#2a2a2a] w-full max-w-4xl p-6 rounded-xl space-y-6">
-        <h2 className="text-xl font-bold text-white">Nueva Compensación</h2>
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-bold text-white">Nueva Compensación</h2>
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-400">Fecha de aplicación:</label>
+            <input 
+              type="date" 
+              value={fecha} 
+              onChange={e => setFecha(e.target.value)} 
+              className="ms-input text-sm px-2 py-1" 
+            />
+          </div>
+        </div>
         
         <div className="grid md:grid-cols-2 gap-6">
           {/* LADO CxC */}

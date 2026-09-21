@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { empresaId, corteId, importeCompensado, aplicaciones, notas } = body;
+    const { empresaId, corteId, importeCompensado, aplicaciones, notas, fecha } = body;
 
     // aplicaciones es un arreglo de: { cuentaCobrarId, cuentaPagarId, montoAplicado }
     // En la UI, el usuario asocia cuánto de X CxC se mata con Y CxP.
@@ -79,6 +79,7 @@ export async function POST(req: NextRequest) {
           notas,
           creadoPor: session.id,
           estado: "ACTIVA",
+          fecha: fecha ? new Date(fecha) : new Date(),
           aplicaciones: {
             create: aplicaciones.map((ap: any) => ({
               cuentaCobrarId: ap.cuentaCobrarId,
