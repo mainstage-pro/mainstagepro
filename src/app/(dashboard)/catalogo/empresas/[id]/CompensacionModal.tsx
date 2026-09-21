@@ -20,8 +20,8 @@ export default function CompensacionModal({
   const [fechaLimite, setFechaLimite] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const cxcMostradas = cxcPendientes.filter(c => !fechaLimite || new Date(c.fechaCompromiso) <= new Date(fechaLimite + "T23:59:59"));
-  const cxpMostradas = cxpPendientes.filter(c => !fechaLimite || new Date(c.fechaCompromiso) <= new Date(fechaLimite + "T23:59:59"));
+  const cxcMostradas = cxcPendientes.filter(c => !fechaLimite || new Date(c.fechaFiltro) <= new Date(fechaLimite + "T23:59:59"));
+  const cxpMostradas = cxpPendientes.filter(c => !fechaLimite || new Date(c.fechaFiltro) <= new Date(fechaLimite + "T23:59:59"));
 
   const totalCxc = Object.values(aplicacionesCxc).reduce((a, b) => a + (b || 0), 0);
   const totalCxp = Object.values(aplicacionesCxp).reduce((a, b) => a + (b || 0), 0);
@@ -128,7 +128,7 @@ export default function CompensacionModal({
                 <div key={c.id} className="ms-card p-3 flex justify-between items-center text-sm gap-2">
                   <div className="min-w-0">
                     <p className="text-xs truncate">{c.concepto}</p>
-                    <p className="text-[10px] text-gray-500">{fmt(c.saldoPendiente)} disp. (Vence {fmtDate(c.fechaCompromiso)})</p>
+                    <p className="text-[10px] text-gray-500">{fmt(c.saldoPendiente)} disp. (Generado: {fmtDate(c.fechaFiltro)})</p>
                   </div>
                   <input type="number" 
                     className="w-24 ms-input text-right"
@@ -168,7 +168,7 @@ export default function CompensacionModal({
                 <div key={c.id} className="ms-card p-3 flex justify-between items-center text-sm gap-2">
                   <div className="min-w-0">
                     <p className="text-xs truncate">{c.concepto}</p>
-                    <p className="text-[10px] text-gray-500">{fmt(c.saldoPendiente)} disp. (Vence {fmtDate(c.fechaCompromiso)})</p>
+                    <p className="text-[10px] text-gray-500">{fmt(c.saldoPendiente)} disp. (Generado: {fmtDate(c.fechaFiltro)})</p>
                   </div>
                   <input type="number" 
                     className="w-24 ms-input text-right"

@@ -15,6 +15,7 @@ export interface CuentaCobrarDetalle {
   estado: string;
   fechaCompromiso: string;
   fechaCobroReal: string | null;
+  fechaFiltro: string;
   cotizacion: { numeroCotizacion: string } | null;
   proyecto: { numeroProyecto: string; nombre: string } | null;
   contacto: { id: string; nombre: string } | null;
@@ -29,6 +30,7 @@ export interface CuentaPagarDetalle {
   estado: string;
   fechaCompromiso: string;
   fechaPagoReal: string | null;
+  fechaFiltro: string;
   tipoAcreedor: string;
   proveedor: { nombre: string } | null;
   proyecto: { numeroProyecto: string; nombre: string } | null;
@@ -81,8 +83,9 @@ export async function getCuentasScope(opts: {
           estado: true,
           fechaCompromiso: true,
           fechaCobroReal: true,
+          createdAt: true,
           cotizacion: { select: { numeroCotizacion: true } },
-          proyecto: { select: { numeroProyecto: true, nombre: true } },
+          proyecto: { select: { numeroProyecto: true, nombre: true, fechaEvento: true } },
           cliente: { select: { id: true, nombre: true } },
         },
         orderBy: { fechaCompromiso: "asc" },
@@ -91,9 +94,9 @@ export async function getCuentasScope(opts: {
 
   let pagarRaw: Array<{
     id: string; concepto: string; monto: number; montoPagado: number; montoCompensado: any; estado: string;
-    fechaCompromiso: Date; fechaPagoReal: Date | null; tipoAcreedor: string;
+    fechaCompromiso: Date; fechaPagoReal: Date | null; tipoAcreedor: string; createdAt: Date;
     proveedor: { nombre: string } | null;
-    proyecto: { numeroProyecto: string; nombre: string } | null;
+    proyecto: { numeroProyecto: string; nombre: string, fechaEvento: Date | null } | null;
   }> = [];
   if (empresaId) {
     pagarRaw = await prisma.cuentaPagar.findMany({
@@ -107,9 +110,10 @@ export async function getCuentasScope(opts: {
         estado: true,
         fechaCompromiso: true,
         fechaPagoReal: true,
+        createdAt: true,
         tipoAcreedor: true,
         proveedor: { select: { nombre: true } },
-        proyecto: { select: { numeroProyecto: true, nombre: true } },
+        proyecto: { select: { numeroProyecto: true, nombre: true, fechaEvento: true } },
       },
       orderBy: { fechaCompromiso: "asc" },
     });
@@ -125,9 +129,10 @@ export async function getCuentasScope(opts: {
         estado: true,
         fechaCompromiso: true,
         fechaPagoReal: true,
+        createdAt: true,
         tipoAcreedor: true,
         proveedor: { select: { nombre: true } },
-        proyecto: { select: { numeroProyecto: true, nombre: true } },
+        proyecto: { select: { numeroProyecto: true, nombre: true, fechaEvento: true } },
       },
       orderBy: { fechaCompromiso: "asc" },
     });
@@ -144,6 +149,7 @@ export async function getCuentasScope(opts: {
       estado: c.estado,
       fechaCompromiso: c.fechaCompromiso.toISOString(),
       fechaCobroReal: c.fechaCobroReal?.toISOString() ?? null,
+      fechaFiltro: (c.proyecto?.fechaEvento || c.createdAt).toISOString(),
       cotizacion: c.cotizacion,
       proyecto: c.proyecto,
       contacto: c.cliente,
@@ -157,6 +163,7 @@ export async function getCuentasScope(opts: {
       estado: c.estado,
       fechaCompromiso: c.fechaCompromiso.toISOString(),
       fechaPagoReal: c.fechaPagoReal?.toISOString() ?? null,
+      fechaFiltro: (c.proyecto?.fechaEvento || c.createdAt).toISOString(),
       tipoAcreedor: c.tipoAcreedor,
       proveedor: c.proveedor,
       proyecto: c.proyecto,
