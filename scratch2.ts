@@ -1,30 +1,29 @@
 import { PrismaClient } from '@prisma/client';
-
 const prisma = new PrismaClient();
 
 async function main() {
-  const accounts = await prisma.cuentaCobrar.findMany({
+  const proys = await prisma.proyecto.findMany({
     where: {
-      OR: [
-        { concepto: { contains: 'conexion', mode: 'insensitive' } },
-        { cliente: { nombre: { contains: 'conexion', mode: 'insensitive' } } },
-        { empresa: { nombre: { contains: 'conexion', mode: 'insensitive' } } }
-      ]
+      nombre: { contains: 'expo supraterra', mode: 'insensitive' }
     },
-    include: {
-      cliente: true,
-      empresa: true
-    }
+    select: { id: true, nombre: true }
   });
+  console.log("Proyectos:", proys);
   
-  console.log("Found:", accounts.length);
-  for (const acc of accounts) {
-      console.log(`ID: ${acc.id} | Concepto: ${acc.concepto} | Monto: ${acc.monto} | Cobrado: ${acc.montoCobrado} | Cliente: ${acc.cliente?.nombre} | Empresa: ${acc.empresa?.nombre} | Estado: ${acc.estado}`);
+  if (proys.length > 0) {
+    const id = proys[0].id;
+    const movs = await prisma.movimientoFinanciero.findMany({
+      where: { proyectoId: id },
+      select: { id: true, concepto: true, monto: true }
+    });
+    console.log("Movimientos del proyecto:", movs);
+    
+    const cxps = await prisma.cuentaPagar.findMany({
+      where: { proyectoId: id },
+      select: { id: true, concepto: true, total: true }
+    });
+    console.log("CXP del proyecto:", cxps);
   }
 }
 
-main()
-  .catch(e => console.error(e))
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+main().catch(console.error).finally(() => prisma.$disconnect());

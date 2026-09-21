@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import CuentaCorrienteTab from "./CuentaCorrienteTab";
 
 interface Trato { id: string; nombreEvento: string | null; etapa: string; presupuestoEstimado: number | null; updatedAt: string; }
 interface Proyecto { id: string; nombre: string; fechaEvento: string | null; estado: string; }
@@ -74,12 +75,13 @@ function fmtDate(d: string) {
   return new Date(d).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
 }
 
-const TABS = ["clientes", "proveedores", "historial"] as const;
+const TABS = ["clientes", "proveedores", "historial", "cuenta-corriente"] as const;
 type Tab = typeof TABS[number];
 const TAB_LABELS: Record<Tab, string> = {
   clientes: "Contactos clientes",
   proveedores: "Contactos proveedores",
   historial: "Historial financiero",
+  "cuenta-corriente": "Cuenta corriente",
 };
 
 export default function EmpresaDetallePage() {
@@ -141,6 +143,7 @@ export default function EmpresaDetallePage() {
 
   const activeTabs: Tab[] = TABS.filter(t =>
     t === "historial" ||
+    t === "cuenta-corriente" ||
     (t === "clientes" && empresa.contactosCliente.length > 0) ||
     (t === "proveedores" && empresa.contactosProveedor.length > 0)
   );
@@ -423,6 +426,10 @@ export default function EmpresaDetallePage() {
             <div className="py-12 text-center ms-subtitle">Sin movimientos financieros registrados</div>
           )}
         </div>
+      )}
+
+      {currentTab === "cuenta-corriente" && (
+        <CuentaCorrienteTab empresaId={empresa.id} />
       )}
     </div>
   );

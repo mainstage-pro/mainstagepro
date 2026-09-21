@@ -137,6 +137,8 @@ model Empresa {
   contactosProveedor Proveedor[]    @relation("ProveedorEmpresa")
   cuentasCobrar      CuentaCobrar[]
   cuentasPagar       CuentaPagar[]
+  cortesCompensacion CorteCompensacion[]
+  compensaciones     Compensacion[]
 
   @@map("empresas")
 }
@@ -1538,6 +1540,7 @@ model CuentaCobrar {
   fechaCobroReal  DateTime?
   estado          String          @default("PENDIENTE") // PENDIENTE | PARCIAL | LIQUIDADO | VENCIDO
   montoCobrado    Float           @default(0)
+  montoCompensado Decimal         @default(0) @db.Decimal(14, 2)
   cuentaDestinoId String?
   cuentaDestino   CuentaBancaria? @relation(fields: [cuentaDestinoId], references: [id])
   notas           String?
@@ -1548,6 +1551,7 @@ model CuentaCobrar {
 
   abonos Abono[]
   cuotas CuotaCobro[]
+  aplicacionesCompensacion CompensacionAplicacion[]
 
   @@map("cuentas_cobrar")
 }
@@ -1592,6 +1596,7 @@ model CuentaPagar {
   concepto        String
   monto           Float
   montoPagado     Float                 @default(0)
+  montoCompensado Decimal               @default(0) @db.Decimal(14, 2)
   fechaCompromiso DateTime
   fechaPagoReal   DateTime?
   estado          String                @default("PENDIENTE") // PENDIENTE | PARCIAL | LIQUIDADO | VENCIDO
@@ -1612,6 +1617,7 @@ model CuentaPagar {
   cuotaDeuda   CuotaDeuda?   @relation("CuotaDeudaCxP")
   cuotaReparto CuotaReparto? @relation("CuotaRepatoCxP")
   pagoNomina   PagoNomina?   @relation("PagoNominaCxP")
+  aplicacionesCompensacion CompensacionAplicacion[]
   // tipo extra para identificar origen en cobros-pagos
   esDeuda      Boolean       @default(false) // true si viene de PasivoDeuda
   esReparto    Boolean       @default(false) // true si viene de RepartoUtilidad
@@ -5032,4 +5038,80 @@ model proyectos_presentacion {
   proyecto_imagenes proyecto_imagenes[]
 
   @@index([tipoEvento])
+}
+
+// ─── CORTES DE COMPENSACIÓN ──────────────────────────────────────────────────
+
+model CorteCompensacion {
+  id                    String   @id @default(cuid())
+  empresaId             String
+  empresa               Empresa  @relation(fields: [empresaId], references: [id])
+  fechaInicial          DateTime
+  fechaFinal            DateTime
+  
+  totalFavorMainstage   Decimal  @db.Decimal(14, 2)
+  totalFavorContraparte Decimal  @db.Decimal(14, 2)
+  montoCompensable      Decimal  @db.Decimal(14, 2)
+  saldoNeto             Decimal  @db.Decimal(14, 2)
+  
+  estado                String   @default("BORRADOR") // BORRADOR | CONCILIADO | PARCIALMENTE_LIQUIDADO | LIQUIDADO | CANCELADO
+  creadoPor             String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  compensaciones        Compensacion[]
+
+  @@index([empresaId])
+  @@index([estado])
+  @@map("cortes_compensacion")
+}
+
+// ─── COMPENSACIONES ──────────────────────────────────────────────────────────
+
+model Compensacion {
+  id                String   @id @default(cuid())
+  empresaId         String
+  empresa           Empresa  @relation(fields: [empresaId], references: [id])
+  corteId           String?
+  corte             CorteCompensacion? @relation(fields: [corteId], references: [id])
+  fecha             DateTime @default(now())
+  importeCompensado Decimal  @db.Decimal(14, 2)
+  notas             String?
+  
+  estado            String   @default("ACTIVA") // ACTIVA | REVERSADA
+  reversadaPorId    String?  @unique // Si esta compensación fue reversada, este es el ID de la compensación que la reversa
+  reversaDeId       String?  @unique // Si esta es una compensación de reversa, este es el ID de la original a la que anula
+  
+  creadoPor         String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  reversadaPor      Compensacion? @relation("CompensacionReversa", fields: [reversadaPorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  reversaDe         Compensacion? @relation("CompensacionReversa")
+
+  aplicaciones      CompensacionAplicacion[]
+
+  @@index([empresaId])
+  @@index([corteId])
+  @@index([estado])
+  @@map("compensaciones")
+}
+
+model CompensacionAplicacion {
+  id              String   @id @default(cuid())
+  compensacionId  String
+  compensacion    Compensacion @relation(fields: [compensacionId], references: [id], onDelete: Cascade)
+  
+  cuentaCobrarId  String
+  cuentaCobrar    CuentaCobrar @relation(fields: [cuentaCobrarId], references: [id])
+  
+  cuentaPagarId   String
+  cuentaPagar     CuentaPagar  @relation(fields: [cuentaPagarId], references: [id])
+  
+  montoAplicado   Decimal      @db.Decimal(14, 2)
+
+  @@index([compensacionId])
+  @@index([cuentaCobrarId])
+  @@index([cuentaPagarId])
+  @@map("compensaciones_aplicaciones")
 }

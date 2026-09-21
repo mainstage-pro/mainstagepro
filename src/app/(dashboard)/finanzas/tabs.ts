@@ -10,5 +10,6 @@ export const finanzasTabs: ModuleNavTab[] = [
   { href: "/finanzas/cuentas", label: "Cuentas bancarias", accessKey: "finanzas-movimientos" },
   { href: "/finanzas/pasivos", label: "Pasivos y deudas", accessKey: "finanzas-pasivos", adminOnly: true },
   { href: "/finanzas/repartos", label: "Reparto de utilidades", accessKey: "finanzas-repartos", adminOnly: true },
+  { href: "/finanzas/cuentas-corrientes", label: "Cuentas corrientes", accessKey: "finanzas-movimientos" },
   { href: "/finanzas/configuracion", label: "Configuración", accessKey: "finanzas-config", adminOnly: true },
 ];

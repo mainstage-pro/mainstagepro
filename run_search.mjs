@@ -12,7 +12,8 @@ async function main() {
     },
     select: { id: true, concepto: true, monto: true, fecha: true }
   });
-  console.log("Movimientos:", movs);
+  console.log("=== Movimientos Financieros ===");
+  console.log(JSON.stringify(movs, null, 2));
 
   const cxp = await prisma.cuentaPagar.findMany({
     where: {
@@ -22,9 +23,10 @@ async function main() {
         { concepto: { contains: 'pantalla', mode: 'insensitive' } }
       ]
     },
-    select: { id: true, concepto: true, total: true, fecha: true }
+    select: { id: true, concepto: true, total: true, fecha: true, estado: true }
   });
-  console.log("CXP:", cxp);
+  console.log("=== Cuentas por Pagar (CXP) ===");
+  console.log(JSON.stringify(cxp, null, 2));
 }
 
 main().catch(console.error).finally(() => prisma.$disconnect());
