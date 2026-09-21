@@ -11,6 +11,7 @@ export interface CuentaCobrarDetalle {
   concepto: string;
   monto: number;
   montoCobrado: number;
+  montoCompensado: any;
   estado: string;
   fechaCompromiso: string;
   fechaCobroReal: string | null;
@@ -24,6 +25,7 @@ export interface CuentaPagarDetalle {
   concepto: string;
   monto: number;
   montoPagado: number;
+  montoCompensado: any;
   estado: string;
   fechaCompromiso: string;
   fechaPagoReal: string | null;
@@ -75,6 +77,7 @@ export async function getCuentasScope(opts: {
           concepto: true,
           monto: true,
           montoCobrado: true,
+          montoCompensado: true,
           estado: true,
           fechaCompromiso: true,
           fechaCobroReal: true,
@@ -87,7 +90,7 @@ export async function getCuentasScope(opts: {
     : [];
 
   let pagarRaw: Array<{
-    id: string; concepto: string; monto: number; montoPagado: number; estado: string;
+    id: string; concepto: string; monto: number; montoPagado: number; montoCompensado: any; estado: string;
     fechaCompromiso: Date; fechaPagoReal: Date | null; tipoAcreedor: string;
     proveedor: { nombre: string } | null;
     proyecto: { numeroProyecto: string; nombre: string } | null;
@@ -100,6 +103,7 @@ export async function getCuentasScope(opts: {
         concepto: true,
         monto: true,
         montoPagado: true,
+        montoCompensado: true,
         estado: true,
         fechaCompromiso: true,
         fechaPagoReal: true,
@@ -117,6 +121,7 @@ export async function getCuentasScope(opts: {
         concepto: true,
         monto: true,
         montoPagado: true,
+        montoCompensado: true,
         estado: true,
         fechaCompromiso: true,
         fechaPagoReal: true,
@@ -130,11 +135,12 @@ export async function getCuentasScope(opts: {
 
   return {
     empresaId,
-    cuentasCobrar: cobrarRaw.map((c) => ({
+    cuentasCobrar: cobrarRaw.map((c: any) => ({
       id: c.id,
       concepto: c.concepto,
       monto: c.monto,
       montoCobrado: c.montoCobrado,
+      montoCompensado: c.montoCompensado,
       estado: c.estado,
       fechaCompromiso: c.fechaCompromiso.toISOString(),
       fechaCobroReal: c.fechaCobroReal?.toISOString() ?? null,
@@ -147,6 +153,7 @@ export async function getCuentasScope(opts: {
       concepto: c.concepto,
       monto: c.monto,
       montoPagado: c.montoPagado,
+      montoCompensado: c.montoCompensado,
       estado: c.estado,
       fechaCompromiso: c.fechaCompromiso.toISOString(),
       fechaPagoReal: c.fechaPagoReal?.toISOString() ?? null,

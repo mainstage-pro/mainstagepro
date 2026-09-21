@@ -1,53 +1,42 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { Decimal } from "@prisma/client/runtime/library";
+import { getCuentasScope } from "@/lib/estado-cuenta";
 
 export const dynamic = "force-dynamic";
 
 export default async function CuentasCorrientesPage() {
-  // Obtener todas las empresas con sus CxC y CxP no liquidadas
+  // Obtener todas las empresas base
   const empresas = await prisma.empresa.findMany({
-    where: {
-      OR: [
-        { cuentasCobrar: { some: { estado: { notIn: ["LIQUIDADO", "COMPENSADO"] } } } },
-        { cuentasPagar: { some: { estado: { notIn: ["LIQUIDADO", "COMPENSADO"] } } } },
-      ]
-    },
-    include: {
-      cuentasCobrar: {
-        where: { estado: { notIn: ["LIQUIDADO", "COMPENSADO"] } }
-      },
-      cuentasPagar: {
-        where: { estado: { notIn: ["LIQUIDADO", "COMPENSADO"] } }
-      }
-    },
     orderBy: { nombre: "asc" }
   });
 
-  const empresasProcesadas = empresas.map(empresa => {
+  const empresasProcesadas = [];
+  
+  for (const empresa of empresas) {
+    const scope = await getCuentasScope({ empresaId: empresa.id });
+    
     let totalFavorMS = 0;
-    empresa.cuentasCobrar.forEach(c => {
+    scope.cuentasCobrar.forEach(c => {
       const p = c.monto - c.montoCobrado - Number(c.montoCompensado || 0);
-      if (p > 0) totalFavorMS += p;
+      if (p > 0 && c.estado !== "LIQUIDADO" && c.estado !== "COMPENSADO") totalFavorMS += p;
     });
 
     let totalFavorContra = 0;
-    empresa.cuentasPagar.forEach(c => {
+    scope.cuentasPagar.forEach(c => {
       const p = c.monto - c.montoPagado - Number(c.montoCompensado || 0);
-      if (p > 0) totalFavorContra += p;
+      if (p > 0 && c.estado !== "LIQUIDADO" && c.estado !== "COMPENSADO") totalFavorContra += p;
     });
 
-    const compensable = Math.min(totalFavorMS, totalFavorContra);
-    const neto = totalFavorMS - totalFavorContra;
-
-    return {
-      ...empresa,
-      totalFavorMS,
-      totalFavorContra,
-      compensable,
-      neto
-    };
-  }).filter(e => e.totalFavorMS > 0 || e.totalFavorContra > 0);
+    if (totalFavorMS > 0 || totalFavorContra > 0) {
+      empresasProcesadas.push({
+        ...empresa,
+        totalFavorMS,
+        totalFavorContra,
+        compensable: Math.min(totalFavorMS, totalFavorContra),
+        neto: totalFavorMS - totalFavorContra
+      });
+    }
+  }
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">

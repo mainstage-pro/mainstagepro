@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { Decimal } from "@prisma/client/runtime/library";
+import { getCuentasScope } from "@/lib/estado-cuenta";
 
 export async function GET(
   req: NextRequest,
@@ -12,17 +13,8 @@ export async function GET(
 
   const { empresaId } = await params;
 
-  // 1. Obtener CxC de la empresa
-  const cuentasCobrar = await prisma.cuentaCobrar.findMany({
-    where: { empresaId },
-    orderBy: { fechaCompromiso: "asc" },
-  });
-
-  // 2. Obtener CxP de la empresa
-  const cuentasPagar = await prisma.cuentaPagar.findMany({
-    where: { empresaId },
-    orderBy: { fechaCompromiso: "asc" },
-  });
+  // 1 y 2. Obtener CxC y CxP consolidadas de la empresa y sus contactos/proveedores vinculados
+  const { cuentasCobrar, cuentasPagar } = await getCuentasScope({ empresaId });
 
   // 3. Obtener cortes y compensaciones históricas
   const cortes = await prisma.corteCompensacion.findMany({
@@ -46,16 +38,16 @@ export async function GET(
   let totalFavorMS = 0;
   const cxcPendientes = cuentasCobrar.map(c => {
     const pendiente = c.monto - c.montoCobrado - Number(c.montoCompensado || 0);
-    if (pendiente > 0) totalFavorMS += pendiente;
+    if (pendiente > 0 && c.estado !== "LIQUIDADO" && c.estado !== "COMPENSADO") totalFavorMS += pendiente;
     return { ...c, saldoPendiente: pendiente };
-  });
+  }).filter(c => c.saldoPendiente > 0 && c.estado !== "LIQUIDADO" && c.estado !== "COMPENSADO");
 
   let totalFavorContraparte = 0;
   const cxpPendientes = cuentasPagar.map(c => {
     const pendiente = c.monto - c.montoPagado - Number(c.montoCompensado || 0);
-    if (pendiente > 0) totalFavorContraparte += pendiente;
+    if (pendiente > 0 && c.estado !== "LIQUIDADO" && c.estado !== "COMPENSADO") totalFavorContraparte += pendiente;
     return { ...c, saldoPendiente: pendiente };
-  });
+  }).filter(c => c.saldoPendiente > 0 && c.estado !== "LIQUIDADO" && c.estado !== "COMPENSADO");
 
   const montoCompensable = Math.min(totalFavorMS, totalFavorContraparte);
   const saldoNeto = totalFavorMS - totalFavorContraparte;
@@ -67,8 +59,8 @@ export async function GET(
       montoCompensable,
       saldoNeto
     },
-    cxcPendientes: cxcPendientes.filter(c => c.saldoPendiente > 0),
-    cxpPendientes: cxpPendientes.filter(c => c.saldoPendiente > 0),
+    cxcPendientes,
+    cxpPendientes,
     historial: {
       cortes,
       compensaciones
