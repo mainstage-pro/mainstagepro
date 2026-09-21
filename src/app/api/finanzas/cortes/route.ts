@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
         montoCompensable,
         saldoNeto,
         estado: "BORRADOR",
-        creadoPor: session.user.id
+        creadoPor: session.id
       }
     });
 

@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
           corteId: corteId || null,
           importeCompensado,
           notas,
-          creadoPor: session.user.id,
+          creadoPor: session.id,
           estado: "ACTIVA",
           aplicaciones: {
             create: aplicaciones.map((ap: any) => ({

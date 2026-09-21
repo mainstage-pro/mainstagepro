@@ -32,7 +32,7 @@ export async function POST(
           notas: `Reversa de compensación original ${original.id}`,
           estado: "REVERSADA",
           reversaDeId: original.id,
-          creadoPor: session.user.id,
+          creadoPor: session.id,
           aplicaciones: {
             create: original.aplicaciones.map(ap => ({
               cuentaCobrarId: ap.cuentaCobrarId,
