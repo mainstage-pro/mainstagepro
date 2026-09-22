@@ -1265,6 +1265,7 @@ model Tecnico {
   roles            TecnicoRol[]
   proyectoPersonal ProyectoPersonal[]
   cuentasPagar     CuentaPagar[]
+  pagosNomina      PagoNomina[]
 
   @@map("tecnicos")
 }
@@ -2062,8 +2063,10 @@ model DocumentoPersonal {
 
 model PagoNomina {
   id             String                @id @default(cuid())
-  personalId     String
-  personal       PersonalInterno       @relation(fields: [personalId], references: [id])
+  personalId     String?
+  personal       PersonalInterno?      @relation(fields: [personalId], references: [id])
+  tecnicoId      String?
+  tecnico        Tecnico?              @relation(fields: [tecnicoId], references: [id])
   periodo        String // "2026-04" o "2026-WXX"
   tipoPeriodo    String                @default("MENSUAL") // MENSUAL | QUINCENAL | SEMANAL | EVENTO
   monto          Float

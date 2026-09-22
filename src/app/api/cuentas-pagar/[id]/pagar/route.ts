@@ -29,8 +29,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const esNomina = cxp.esNomina || cxp.tipoAcreedor === "PERSONAL_INTERNO" || !!cxp.pagoNomina;
     let isFreelance = false;
     if (cxp.pagoNomina) {
-      const p = await tx.pagoNomina.findUnique({ where: { id: cxp.pagoNomina.id }, include: { personal: true }});
-      if (p?.personal?.tipo === "FREELANCE_RECURRENTE") isFreelance = true;
+      const p = await tx.pagoNomina.findUnique({ where: { id: cxp.pagoNomina.id }, include: { personal: true, tecnico: true }});
+      if (p?.personal?.tipo === "FREELANCE_RECURRENTE" || p?.tecnico) isFreelance = true;
     }
     const finalCategoriaId = esNomina ? 
       (isFreelance ? await getCategoriaPersonalFreelance(tx) : await getCategoriaSueldosYSalarios(tx)) 

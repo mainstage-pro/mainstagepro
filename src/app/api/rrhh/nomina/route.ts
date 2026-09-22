@@ -7,15 +7,15 @@ export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  const [pendientes, historial, personal, cuentas] = await Promise.all([
+  const [pendientes, historial, personal, cuentas, tecnicos] = await Promise.all([
     prisma.pagoNomina.findMany({
       where: { estado: "PENDIENTE" },
-      include: { personal: { select: { id: true, nombre: true, puesto: true, departamento: true, cuentaBancaria: true } }, cuentaOrigen: { select: { id: true, nombre: true } } },
+      include: { personal: { select: { id: true, nombre: true, puesto: true, departamento: true, cuentaBancaria: true } }, tecnico: { select: { id: true, nombre: true } }, cuentaOrigen: { select: { id: true, nombre: true } } },
       orderBy: { createdAt: "desc" },
     }),
     prisma.pagoNomina.findMany({
       where: { estado: "PAGADO" },
-      include: { personal: { select: { id: true, nombre: true, puesto: true } }, cuentaOrigen: { select: { nombre: true } } },
+      include: { personal: { select: { id: true, nombre: true, puesto: true } }, tecnico: { select: { id: true, nombre: true } }, cuentaOrigen: { select: { nombre: true } } },
       orderBy: { fechaPago: "desc" },
       take: 40,
     }),
@@ -25,9 +25,10 @@ export async function GET() {
       orderBy: { nombre: "asc" },
     }),
     prisma.cuentaBancaria.findMany({ select: { id: true, nombre: true }, orderBy: { nombre: "asc" } }),
+    prisma.tecnico.findMany({ where: { activo: true }, select: { id: true, nombre: true }, orderBy: { nombre: "asc" } }),
   ]);
 
-  return NextResponse.json({ pendientes, historial, personal, cuentas });
+  return NextResponse.json({ pendientes, historial, personal, cuentas, tecnicos });
 }
 
 // POST — generar nómina para un período

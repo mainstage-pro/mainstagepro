@@ -98,6 +98,7 @@ export async function GET(req: NextRequest) {
     where: { periodo: mes },
     include: {
       personal: { select: { nombre: true, puesto: true, departamento: true } },
+      tecnico: { select: { nombre: true } },
     },
   });
 
@@ -105,7 +106,7 @@ export async function GET(req: NextRequest) {
 
   const nominaPorArea: Record<string, number> = {};
   for (const n of nominaItems) {
-    const area = n.personal.departamento ?? "Sin área";
+    const area = n.personal?.departamento ?? "Sin área";
     nominaPorArea[area] = (nominaPorArea[area] ?? 0) + n.monto;
   }
 
@@ -232,9 +233,9 @@ export async function GET(req: NextRequest) {
     // Nómina
     nominaItems: nominaItems.map((n) => ({
       id: n.id,
-      nombre: n.personal.nombre,
-      puesto: n.personal.puesto,
-      area: n.personal.departamento,
+      nombre: n.personal?.nombre || n.tecnico?.nombre || "Desconocido",
+      puesto: n.personal?.puesto || "Técnico",
+      area: n.personal?.departamento || "Sin área",
       monto: n.monto,
       periodo: n.periodo,
       estado: n.estado,

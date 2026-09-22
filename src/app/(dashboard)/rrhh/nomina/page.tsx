@@ -15,7 +15,8 @@ interface PagoNomina {
   fechaPago: string | null;
   metodoPago: string;
   notas: string | null;
-  personal: { id: string; nombre: string; puesto: string; departamento: string; cuentaBancaria: string | null };
+  personal?: { id: string; nombre: string; puesto: string; departamento: string; cuentaBancaria: string | null };
+  tecnico?: { id: string; nombre: string };
   cuentaOrigen: { id: string; nombre: string } | null;
 }
 
@@ -64,14 +65,14 @@ const DEPTO_COLORS: Record<string, string> = {
 };
 
 function NuevoPagoModal({
-  personal, onClose, onSaved
+  personal, tecnicos, onClose, onSaved
 }: {
-  personal: PersonalRow[]; onClose: () => void; onSaved: (pago: PagoNomina) => void;
+  personal: PersonalRow[]; tecnicos: { id: string; nombre: string }[]; onClose: () => void; onSaved: (pago: PagoNomina) => void;
 }) {
   const toast = useToast();
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    personalId: "",
+    targetId: "",
     dias: "1",
     montoOverride: "",
     concepto: "Pago variable/destajo",
@@ -83,26 +84,31 @@ function NuevoPagoModal({
     })()
   });
 
-  const selectedPersona = personal.find(p => p.id === form.personalId);
+  const selectedPersona = personal.find(p => p.id === form.targetId);
   const tarifaBase = selectedPersona?.salario || 0;
+  const selectedTecnico = tecnicos?.find(t => t.id === form.targetId);
   
-  // Si escribe un monto, usa ese. Si no, multiplica tarifa base por días.
+  const isPersonal = !!selectedPersona;
+  
   const calcMonto = form.montoOverride 
     ? parseFloat(form.montoOverride) 
     : tarifaBase * (parseFloat(form.dias) || 0);
 
   async function guardar() {
-    if (!form.personalId || calcMonto <= 0) { toast.error("Selecciona personal y verifica el monto"); return; }
+    if (!form.targetId || calcMonto <= 0) { toast.error("Selecciona a alguien y verifica el monto"); return; }
     setSaving(true);
+    
+    const body = {
+      monto: calcMonto,
+      concepto: form.concepto,
+      periodo: form.periodo,
+      ...(isPersonal ? { personalId: form.targetId } : { tecnicoId: form.targetId })
+    };
+    
     const res = await fetch("/api/rrhh/nomina/variable", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        personalId: form.personalId,
-        monto: calcMonto,
-        concepto: form.concepto,
-        periodo: form.periodo,
-      })
+      body: JSON.stringify(body)
     });
     setSaving(false);
     if (res.ok) {
@@ -124,13 +130,20 @@ function NuevoPagoModal({
         </div>
         <div className="p-5 space-y-4">
           <div>
-            <label className="text-gray-500 text-xs block mb-1">Personal</label>
-            <select value={form.personalId} onChange={e => setForm(p => ({ ...p, personalId: e.target.value }))}
+            <label className="text-gray-500 text-xs block mb-1">Personal o Técnico Freelance</label>
+            <select value={form.targetId} onChange={e => setForm(p => ({ ...p, targetId: e.target.value }))}
               className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#B3985B] outline-none">
               <option value="">Seleccionar persona...</option>
-              {personal.map(p => (
-                <option key={p.id} value={p.id}>{p.nombre} ({p.salario ? `$${p.salario} base` : "Sin tarifa base"})</option>
-              ))}
+              <optgroup label="Personal Interno (Staff)">
+                {personal.map(p => (
+                  <option key={p.id} value={p.id}>{p.nombre} ({p.salario ? `$${p.salario} base` : "Sin tarifa base"})</option>
+                ))}
+              </optgroup>
+              <optgroup label="Catálogo de Técnicos (Freelance)">
+                {tecnicos?.map(t => (
+                  <option key={t.id} value={t.id}>{t.nombre} (Directorio)</option>
+                ))}
+              </optgroup>
             </select>
           </div>
           
@@ -177,6 +190,7 @@ export default function NominaPage() {
   const [pendientes, setPendientes] = useState<PagoNomina[]>([]);
   const [historial, setHistorial] = useState<PagoNomina[]>([]);
   const [personal, setPersonal] = useState<PersonalRow[]>([]);
+  const [tecnicos, setTecnicos] = useState<{ id: string; nombre: string }[]>([]);
   const [cuentas, setCuentas] = useState<Cuenta[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNuevoPago, setShowNuevoPago] = useState(false);
@@ -194,6 +208,7 @@ export default function NominaPage() {
     setPendientes(d.pendientes ?? []);
     setHistorial(d.historial ?? []);
     setPersonal(d.personal ?? []);
+    setTecnicos(d.tecnicos ?? []);
     setCuentas(d.cuentas ?? []);
     setLoading(false);
   }
@@ -211,7 +226,7 @@ export default function NominaPage() {
   async function confirmarPago(pago: PagoNomina) {
     setConfirmando(pago.id);
     const data = getPagoData(pago.id);
-    const r = await fetch(`/api/rrhh/personal/${pago.personal.id}/pagos/${pago.id}`, {
+    const r = await fetch(`/api/rrhh/nomina/${pago.id}/pagar`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -318,14 +333,21 @@ export default function NominaPage() {
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-0.5">
-                            <p className="text-white text-sm font-medium">{pago.personal.nombre}</p>
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${DEPTO_COLORS[pago.personal.departamento] ?? DEPTO_COLORS.GENERAL}`}>
-                              {pago.personal.departamento}
-                            </span>
+                            <p className="text-white text-sm font-medium">{pago.personal?.nombre || pago.tecnico?.nombre}</p>
+                            {pago.personal && (
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${DEPTO_COLORS[pago.personal.departamento] ?? DEPTO_COLORS.GENERAL}`}>
+                                {pago.personal.departamento}
+                              </span>
+                            )}
+                            {pago.tecnico && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-gray-800 text-gray-400">
+                                FREELANCE
+                              </span>
+                            )}
                           </div>
-                          <p className="text-gray-500 text-xs">{pago.personal.puesto}</p>
+                          <p className="text-gray-500 text-xs">{pago.personal?.puesto || "Técnico (Directorio)"}</p>
                           <p className="text-gray-600 text-xs mt-0.5">{pago.concepto ?? `${TIPO_LABELS[pago.tipoPeriodo]} ${pago.periodo}`}</p>
-                          {pago.personal.cuentaBancaria && (
+                          {pago.personal?.cuentaBancaria && (
                             <p className="text-gray-700 text-xs mt-0.5">Cuenta: {pago.personal.cuentaBancaria}</p>
                           )}
                         </div>
@@ -430,8 +452,12 @@ export default function NominaPage() {
               {historial.map(p => (
                 <tr key={p.id} className="ms-tr">
                   <td className="ms-td">
-                    <Link href={`/rrhh/personal/${p.personal.id}`} className="text-white text-sm hover:text-[#B3985B]">{p.personal.nombre}</Link>
-                    <p className="text-gray-600 text-xs">{p.personal.puesto}</p>
+                    {p.personal ? (
+                      <Link href={`/rrhh/personal/${p.personal.id}`} className="text-white text-sm hover:text-[#B3985B]">{p.personal.nombre}</Link>
+                    ) : (
+                      <span className="text-white text-sm">{p.tecnico?.nombre}</span>
+                    )}
+                    <p className="text-gray-600 text-xs">{p.personal?.puesto || "FREELANCE"}</p>
                   </td>
                   <td className="ms-td text-xs text-gray-500">{p.periodo}</td>
                   <td className="ms-td text-xs text-gray-400 max-w-[200px] truncate">{p.concepto ?? "—"}</td>
@@ -450,6 +476,7 @@ export default function NominaPage() {
       {showNuevoPago && (
         <NuevoPagoModal
           personal={personal}
+          tecnicos={tecnicos}
           onClose={() => setShowNuevoPago(false)}
           onSaved={() => { load(); }}
         />

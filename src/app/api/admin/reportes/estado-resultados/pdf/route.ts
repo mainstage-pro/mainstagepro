@@ -61,12 +61,12 @@ export async function GET(req: NextRequest) {
   // ─── Nómina ─────────────────────────────────────────────────────────────────
   const nominaItems = await prisma.pagoNomina.findMany({
     where: { periodo: mes },
-    include: { personal: { select: { nombre: true, puesto: true, departamento: true } } },
+    include: { personal: { select: { nombre: true, puesto: true, departamento: true } }, tecnico: { select: { nombre: true } } },
   });
   const totalNomina = nominaItems.reduce((s, n) => s + n.monto, 0);
   const nominaPorArea: Record<string, number> = {};
   for (const n of nominaItems) {
-    const area = n.personal.departamento ?? "Sin área";
+    const area = n.personal?.departamento ?? "Sin área";
     nominaPorArea[area] = (nominaPorArea[area] ?? 0) + n.monto;
   }
 
@@ -141,8 +141,8 @@ export async function GET(req: NextRequest) {
     utilidadBruta, margenBrutoPct,
     gastosPorCategoria,
     totalGastosOperativos,
-    nominaItems: nominaItems.map((n) => ({ id: n.id, nombre: n.personal.nombre,
-      puesto: n.personal.puesto, area: n.personal.departamento, monto: n.monto })),
+    nominaItems: nominaItems.map((n) => ({ id: n.id, nombre: n.personal?.nombre || n.tecnico?.nombre || "Desconocido",
+      puesto: n.personal?.puesto || "Externo", area: n.personal?.departamento || "Sin área", monto: n.monto })),
     nominaPorArea, totalNomina,
     utilidadOperativa, margenOperativoPct,
     cuotasDeuda: cuotasDeuda.map((c) => ({
