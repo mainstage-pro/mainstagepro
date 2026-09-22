@@ -35,29 +35,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const monto = montoOverride || reparto.montoBase;
   const fechaVencimiento = fechaCompromiso ? new Date(fechaCompromiso) : new Date();
 
-  // Crear CXP en cobros-pagos con badge de reparto
-  const cxp = await prisma.cuentaPagar.create({
-    data: {
-      tipoAcreedor: "SOCIO",
-      socioId: reparto.socioId || null,
-      concepto: `Reparto de utilidades ${periodo} — ${reparto.beneficiario}`,
-      monto,
-      fechaCompromiso: fechaVencimiento,
-      cuentaOrigenId: cuentaOrigenId || null,
-      esReparto: true,
-      notas: `Reparto: ${reparto.nombre}`,
-    },
-  });
-
-  // Crear CuotaReparto vinculada a CXP
+  // Crear CuotaReparto sin CuentaPagar
   const cuota = await prisma.cuotaReparto.create({
     data: {
       repartoId: id,
       periodo,
       monto,
-      cuentaPagarId: cxp.id,
     },
   });
 
-  return NextResponse.json({ cuota, cxp }, { status: 201 });
+  return NextResponse.json({ cuota }, { status: 201 });
 }

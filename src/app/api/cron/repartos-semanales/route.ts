@@ -46,26 +46,12 @@ export async function GET(req: NextRequest) {
     }
 
     try {
-      // Crear CxP
-      const cxp = await prisma.cuentaPagar.create({
-        data: {
-          tipoAcreedor: "SOCIO",
-          socioId: reparto.socioId || null,
-          concepto: `Pago semanal ${reparto.beneficiario} — ${periodo}`,
-          monto: reparto.montoBase,
-          fechaCompromiso: proximoLunes,
-          esReparto: true,
-          notas: `Generado automáticamente por cron repartos-semanales. Reparto: ${reparto.nombre}`,
-        },
-      });
-
-      // Crear CuotaReparto vinculada
+      // Crear solo CuotaReparto (sin CuentaPagar)
       await prisma.cuotaReparto.create({
         data: {
           repartoId: reparto.id,
           periodo,
           monto: reparto.montoBase,
-          cuentaPagarId: cxp.id,
           fechaGenerada: ahora,
         },
       });

@@ -8,6 +8,7 @@ import { DollarSign } from "lucide-react";
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 interface Socio { id: string; nombre: string; pctParticipacion: number | null }
+interface CuentaBancaria { id: string; nombre: string; banco: string; moneda: string }
 
 interface CuotaReparto {
   id: string;
@@ -79,7 +80,7 @@ function GenerarCuotaModal({
       body: JSON.stringify({ periodo, montoOverride: parseFloat(monto), fechaCompromiso: fecha }),
     });
     setSaving(false);
-    if (r.ok) { toast.success("Cuota generada y CXP creada"); onSaved(); onClose(); }
+    if (r.ok) { toast.success("Cuota generada"); onSaved(); onClose(); }
     else { const d = await r.json(); toast.error(d.error || "Error al generar"); }
   }
 
@@ -107,9 +108,6 @@ function GenerarCuotaModal({
             <input type="date" value={fecha} onChange={e => setFecha(e.target.value)}
               className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#B3985B] outline-none" />
           </div>
-          <div className="bg-[#1a1a1a] border border-[#B3985B]/20 rounded-xl p-3 text-xs text-[#B3985B]">
-            ✓ Se creará automáticamente una Cuenta por Pagar en el módulo de cobros y pagos con badge "Reparto de Utilidades"
-          </div>
         </div>
         <div className="p-5 border-t border-[#1e1e1e] flex gap-3">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-[#2a2a2a] text-gray-400 text-sm hover:text-white transition-colors">Cancelar</button>
@@ -129,21 +127,25 @@ export default function RepartosPage() {
   const toast = useToast();
   const [repartos, setRepartos] = useState<RepartoUtilidad[]>([]);
   const [socios, setSocios] = useState<Socio[]>([]);
+  const [cuentas, setCuentas] = useState<CuentaBancaria[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [cuotaModal, setCuotaModal] = useState<RepartoUtilidad | null>(null);
+  const [pagarModal, setPagarModal] = useState<{ cuota: CuotaReparto; beneficiario: string } | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const cargar = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
-    const [rr, ss] = await Promise.all([
+    const [rr, ss, cc] = await Promise.all([
       fetch("/api/finanzas/repartos", { cache: "no-store" }).then(r => r.json()),
       fetch("/api/socios", { cache: "no-store" }).then(r => r.json()),
+      fetch("/api/finanzas/cuentas", { cache: "no-store" }).then(r => r.json()),
     ]);
     setRepartos(rr.repartos || []);
     setSocios(ss.socios || []);
+    setCuentas(cc.cuentas || cc || []);
     setLoading(false);
   }, []);
 
@@ -365,10 +367,17 @@ export default function RepartosPage() {
                         <div key={c.id} className="flex items-center justify-between text-xs">
                           <span className="text-gray-500">{c.periodo}</span>
                           <span className="text-white font-medium">{fmt(c.monto)}</span>
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] ${
-                            c.estado === "PAGADO" ? "bg-green-900/30 text-green-400" : "bg-yellow-900/30 text-yellow-400"
-                          }`}>{c.estado}</span>
-                          {c.cuentaPagarId && <span className="text-[#B3985B] text-[10px]">CXP ✓</span>}
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] ${
+                              c.estado === "PAGADO" ? "bg-green-900/30 text-green-400" : "bg-yellow-900/30 text-yellow-400"
+                            }`}>{c.estado}</span>
+                            {c.estado === "PENDIENTE" && (
+                              <button onClick={() => setPagarModal({ cuota: c, beneficiario: r.beneficiario })}
+                                className="px-2 py-1 rounded border border-[#B3985B]/40 text-[#B3985B] hover:bg-[#B3985B]/10 transition-colors">
+                                Pagar
+                              </button>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -387,6 +396,102 @@ export default function RepartosPage() {
           onSaved={cargar}
         />
       )}
+
+      {pagarModal && (
+        <PagarCuotaModal
+          cuota={pagarModal.cuota}
+          beneficiario={pagarModal.beneficiario}
+          cuentas={cuentas}
+          onClose={() => setPagarModal(null)}
+          onSaved={cargar}
+        />
+      )}
+    </div>
+  );
+}
+
+
+function PagarCuotaModal({
+  cuota, beneficiario, cuentas, onClose, onSaved
+}: {
+  cuota: CuotaReparto; beneficiario: string; cuentas: CuentaBancaria[]; onClose: () => void; onSaved: () => void;
+}) {
+  const toast = useToast();
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    cuentaId: "",
+    metodoPago: "TRANSFERENCIA",
+    fecha: new Date().toISOString().split("T")[0]
+  });
+
+  async function pagar() {
+    if (!form.cuentaId || !form.fecha) { toast.error("Completa la fecha y cuenta"); return; }
+    setSaving(true);
+    const res = await fetch(`/api/finanzas/repartos/cuotas/${cuota.id}/pagar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form)
+    });
+    setSaving(false);
+    if (res.ok) {
+      toast.success("Cuota pagada correctamente");
+      onSaved();
+      onClose();
+    } else {
+      const data = await res.json();
+      toast.error(data.error || "Error al pagar la cuota");
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="bg-[#0e0e0e] border border-[#2a2a2a] rounded-2xl w-full max-w-md mx-4 shadow-2xl">
+        <div className="p-5 border-b border-[#1e1e1e]">
+          <h2 className="text-white font-semibold text-base">Pagar Cuota</h2>
+          <p className="text-gray-500 text-xs mt-1">{beneficiario} · {cuota.periodo}</p>
+        </div>
+        <div className="p-5 space-y-4">
+          <div>
+            <label className="text-gray-500 text-xs block mb-1">Monto a pagar</label>
+            <div className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white font-semibold">
+              {new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(cuota.monto)}
+            </div>
+          </div>
+          <div>
+            <label className="text-gray-500 text-xs block mb-1">Cuenta de origen</label>
+            <select value={form.cuentaId} onChange={e => setForm(p => ({ ...p, cuentaId: e.target.value }))}
+              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#B3985B] outline-none">
+              <option value="">Seleccionar cuenta...</option>
+              {cuentas.map(c => (
+                <option key={c.id} value={c.id}>{c.nombre} ({c.banco} {c.moneda})</option>
+              ))}
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-gray-500 text-xs block mb-1">Método</label>
+              <select value={form.metodoPago} onChange={e => setForm(p => ({ ...p, metodoPago: e.target.value }))}
+                className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#B3985B] outline-none">
+                <option value="TRANSFERENCIA">Transferencia</option>
+                <option value="EFECTIVO">Efectivo</option>
+                <option value="CHEQUE">Cheque</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-gray-500 text-xs block mb-1">Fecha</label>
+              <input type="date" value={form.fecha} onChange={e => setForm(p => ({ ...p, fecha: e.target.value }))}
+                className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#B3985B] outline-none" />
+            </div>
+          </div>
+        </div>
+        <div className="p-5 border-t border-[#1e1e1e] flex gap-3">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-[#2a2a2a] text-gray-400 text-sm hover:text-white transition-colors">Cancelar</button>
+          <button onClick={pagar} disabled={saving}
+            className="flex-1 py-2.5 rounded-xl bg-green-500 text-black font-semibold text-sm hover:bg-green-400 transition-colors disabled:opacity-50">
+            {saving ? "Procesando..." : "Registrar Pago"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
