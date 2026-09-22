@@ -307,7 +307,7 @@ export default function SociosConstitutivosPage() {
                   <div className="flex items-center justify-between mb-3">
                     <div>
                       <p className="text-xs text-white/70 font-medium">Pago semanal automático</p>
-                      <p className="text-[10px] text-[#555] mt-0.5">Generado cada lunes · Ligado a Cuentas por Pagar</p>
+                      <p className="text-[10px] text-[#555] mt-0.5">Generado cada lunes · Ligado a Reparto de Utilidades</p>
                     </div>
                     <div className="text-right">
                       <div className="text-lg font-bold text-white">

@@ -141,7 +141,7 @@ export default function RepartosPage() {
     const [rr, ss, cc] = await Promise.all([
       fetch("/api/finanzas/repartos", { cache: "no-store" }).then(r => r.json()),
       fetch("/api/socios", { cache: "no-store" }).then(r => r.json()),
-      fetch("/api/finanzas/cuentas", { cache: "no-store" }).then(r => r.json()),
+      fetch("/api/cuentas", { cache: "no-store" }).then(r => r.json()),
     ]);
     setRepartos(rr.repartos || []);
     setSocios(ss.socios || []);
