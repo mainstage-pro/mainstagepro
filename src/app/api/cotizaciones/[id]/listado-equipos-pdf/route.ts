@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { renderToBuffer, Document } from "@react-pdf/renderer";
 import { RiderPDF, type RiderPDFData } from "@/components/RiderPDF";
+import { makePdfImageResolver } from "@/components/pdf/PdfShared";
 import React from "react";
 import fs from "fs";
 import path from "path";
@@ -42,23 +43,17 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     ? `data:image/png;base64,${fs.readFileSync(logoPath).toString("base64")}`
     : null;
 
-  function resolveImg(url: string | null | undefined): string | null {
-    if (!url) return null;
-    if (url.startsWith("data:")) return url;
-    if (url.startsWith("/")) {
-      const filePath = path.join(process.cwd(), "public", url);
-      if (fs.existsSync(filePath)) {
-        const ext = path.extname(filePath).slice(1).toLowerCase();
-        const mime = ext === "jpg" ? "image/jpeg" : `image/${ext}`;
-        return `data:${mime};base64,${fs.readFileSync(filePath).toString("base64")}`;
-      }
-    }
-    return null;
-  }
-
   // Filtrar solo las líneas que son equipo y mapear a la estructura de equipos del Rider
-  const lineasEquipos = cotizacion.lineas.filter(l => 
+  const lineasEquipos = cotizacion.lineas.filter(l =>
     ["EQUIPO_PROPIO", "EQUIPO_EXTERNO", "PAQUETE"].includes(l.tipo)
+  );
+
+  const resolveImg = makePdfImageResolver(path.join(process.cwd(), "public"));
+  const imagenPorLinea = new Map<string, string | null>();
+  await Promise.all(
+    lineasEquipos.map(async l => {
+      imagenPorLinea.set(l.id, await resolveImg(l.equipo?.imagenUrl));
+    })
   );
 
   const data: RiderPDFData = {
@@ -96,7 +91,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         descripcion: l.descripcion,
         marca: l.marca || null,
         modelo: l.modelo || null,
-        imagenUrl: resolveImg(l.equipo?.imagenUrl),
+        imagenUrl: imagenPorLinea.get(l.id) ?? null,
         categoria: l.equipo?.categoria || { nombre: "Sin categoría" },
       },
       riderAccesorios: [], // No aplica para cotizaciones

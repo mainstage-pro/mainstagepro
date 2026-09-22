@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import ReactPDF, { Document } from '@react-pdf/renderer'
 import { RiderPDF } from '@/components/RiderPDF'
+import { makePdfImageResolver } from '@/components/pdf/PdfShared'
 import { sembrarNotasEquiposProyecto } from '@/lib/notas-equipos'
 import React from 'react'
 import path from 'path'
@@ -93,20 +94,16 @@ export async function GET(req: NextRequest,
     ? `data:image/png;base64,${fs.readFileSync(iconPath).toString('base64')}`
     : null
 
-  // Resolve relative /public paths to base64 for @react-pdf/renderer (runs server-side, no browser context)
-  function resolveImg(url: string | null | undefined): string | null {
-    if (!url) return logoIconSrc  // fallback to Mainstage icon
-    if (url.startsWith('data:')) return url  // already base64
-    if (url.startsWith('/')) {
-      const filePath = path.join(process.cwd(), 'public', url)
-      if (fs.existsSync(filePath)) {
-        const ext = path.extname(filePath).slice(1).toLowerCase()
-        const mime = ext === 'jpg' ? 'image/jpeg' : `image/${ext}`
-        return `data:${mime};base64,${fs.readFileSync(filePath).toString('base64')}`
-      }
-    }
-    return logoIconSrc  // fallback if file not found
-  }
+  // Las imágenes de equipo viven en Vercel Blob o en /public; ambas se bajan a data URI
+  // antes de llegar a react-pdf. Si no hay imagen se cae al ícono de Mainstage.
+  const resolvePdfImg = makePdfImageResolver(path.join(process.cwd(), 'public'))
+  const imagenPorEquipo = new Map<string, string | null>()
+  await Promise.all(
+    proyecto.equipos.map(async eq => {
+      const src = (eq.equipo as unknown as Record<string, unknown>).imagenUrl as string | null
+      imagenPorEquipo.set(eq.id, (await resolvePdfImg(src)) ?? logoIconSrc)
+    })
+  )
 
   // Serialize dates
   const data = {
@@ -148,7 +145,7 @@ export async function GET(req: NextRequest,
         descripcion: eq.equipo.descripcion,
         marca: eq.equipo.marca,
         modelo: (eq.equipo as unknown as Record<string, unknown>).modelo as string | null ?? null,
-        imagenUrl: resolveImg((eq.equipo as unknown as Record<string, unknown>).imagenUrl as string | null),
+        imagenUrl: imagenPorEquipo.get(eq.id) ?? logoIconSrc,
         categoria: eq.equipo.categoria,
       },
       riderAccesorios: eq.riderAccesorios.map(a => ({

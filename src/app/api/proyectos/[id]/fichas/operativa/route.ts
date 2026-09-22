@@ -4,7 +4,7 @@ import { getSession } from "@/lib/auth";
 import ReactPDF, { Document } from "@react-pdf/renderer";
 import { FichaOperativa, FichaOperativaData } from "@/components/pdf/FichaOperativa";
 import {
-  logoBase64, logoBase64Dark, EquipoFlat, CronoRow, TransporteSlot,
+  logoBase64, logoBase64Dark, makePdfImageResolver, EquipoFlat, CronoRow, TransporteSlot,
   DocsData, EquipoRiderExtra, ProveedorRenta,
 } from "@/components/pdf/PdfShared";
 import { sembrarNotasEquiposProyecto } from "@/lib/notas-equipos";
@@ -50,8 +50,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   if (!proyecto) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
-  const logoSrc = logoBase64(path.join(process.cwd(), "public"));
-  const logoSrcDark = logoBase64Dark(path.join(process.cwd(), "public"));
+  const publicDir = path.join(process.cwd(), "public");
+  const logoSrc = logoBase64(publicDir);
+  const logoSrcDark = logoBase64Dark(publicDir);
+  const resolveImg = makePdfImageResolver(publicDir);
 
   // ── Parse JSON fields ──────────────────────────────────────────────────────
   let cronograma: CronoRow[] = [];
@@ -92,25 +94,27 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   try { proveedoresRenta = proyecto.proveedoresRenta ? JSON.parse(proyecto.proveedoresRenta) : []; } catch { /* ignore */ }
 
   // ── Map equipos incluyendo accesorios ──────────────────────────────────────
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const equipos: EquipoFlat[] = (proyecto.equipos ?? []).map((e: any) => ({
-    descripcion: e.equipo?.descripcion ?? "",
-    marca: e.equipo?.marca ?? null,
-    modelo: e.equipo?.modelo ?? null,
-    categoria: e.equipo?.categoria?.nombre ?? "General",
-    cantidad: e.cantidad,
-    tipo: e.tipo,
-    confirmado: e.confirmado,
-    proveedor: e.proveedor?.nombre ?? null,
-    imagenUrl: e.equipo?.imagenUrl ?? null,
-    notas: e.notas ?? null,
+  const equipos: EquipoFlat[] = await Promise.all(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    accesorios: (e.riderAccesorios ?? []).map((a: any) => ({
-      nombre: a.nombre,
-      cantidad: a.cantidad,
-      categoria: a.categoria ?? null,
-    })),
-  }));
+    (proyecto.equipos ?? []).map(async (e: any) => ({
+      descripcion: e.equipo?.descripcion ?? "",
+      marca: e.equipo?.marca ?? null,
+      modelo: e.equipo?.modelo ?? null,
+      categoria: e.equipo?.categoria?.nombre ?? "General",
+      cantidad: e.cantidad,
+      tipo: e.tipo,
+      confirmado: e.confirmado,
+      proveedor: e.proveedor?.nombre ?? null,
+      imagenUrl: await resolveImg(e.equipo?.imagenUrl),
+      notas: e.notas ?? null,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      accesorios: (e.riderAccesorios ?? []).map((a: any) => ({
+        nombre: a.nombre,
+        cantidad: a.cantidad,
+        categoria: a.categoria ?? null,
+      })),
+    }))
+  );
 
   const data: FichaOperativaData = {
     nombre: proyecto.nombre,

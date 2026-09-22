@@ -10,23 +10,42 @@ const LIGHT  = "#888888";
 const BG     = "#F7F5F0";
 const BORDER = "#CCCCCC";
 
+const GOLD_BAND_H = 3;
+const HEADER_H = 81; // 22 arriba + 38 del logo + 18 abajo + la franja dorada
+
+// Anchos fijos de las columnas de la tabla de equipos. No pueden ser `flex`: con
+// flex-basis 0 el padding entra en el reparto, así que las filas de accesorios
+// (que llevan sangría) terminaban con las columnas corridas respecto al encabezado.
+const COL_QTY_W = 34;
+const COL_SERIE_W = 200;
+
 const s = StyleSheet.create({
   page: {
     fontFamily: "Helvetica",
     backgroundColor: WHITE,
-    paddingTop: 0,
-    paddingBottom: 28,
+    // El encabezado y el pie van posicionados en absoluto (se repiten en cada página),
+    // así que el flujo del contenido tiene que reservarles el espacio a mano o las
+    // filas se montan encima de ellos al pasar de página.
+    paddingTop: HEADER_H + 7,
+    paddingBottom: 32,
     paddingHorizontal: 0,
     fontSize: 8,
     color: BLACK,
   },
 
   // ── Header ──────────────────────────────────────────────────────────────────
+  headerFixed: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+  },
   header: {
     backgroundColor: BLACK,
     paddingHorizontal: 36,
     paddingTop: 22,
     paddingBottom: 18,
+    height: HEADER_H - GOLD_BAND_H,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
@@ -63,14 +82,13 @@ const s = StyleSheet.create({
     fontFamily: "Helvetica-Bold",
   },
   goldBand: {
-    height: 3,
+    height: GOLD_BAND_H,
     backgroundColor: GOLD,
   },
 
   // ── Body ────────────────────────────────────────────────────────────────────
   body: {
     paddingHorizontal: 32,
-    paddingTop: 16,
   },
 
   // ── Info grid ───────────────────────────────────────────────────────────────
@@ -102,7 +120,7 @@ const s = StyleSheet.create({
     fontFamily: "Helvetica-Bold",
     fontSize: 6.5,
     color: GRAY,
-    width: 72,
+    width: 84, // "TIPO DE SERVICIO" no cabe en menos y se parte en dos renglones
     paddingVertical: 5,
     paddingHorizontal: 7,
     backgroundColor: BG,
@@ -198,14 +216,14 @@ const s = StyleSheet.create({
     backgroundColor: "#FAFAF8",
   },
   colModelo: {
-    flex: 4,
+    flex: 1,
     paddingVertical: 4,
     paddingHorizontal: 7,
     borderRightWidth: 1,
     borderRightColor: BORDER,
   },
   colQty: {
-    width: 32,
+    width: COL_QTY_W,
     paddingVertical: 4,
     paddingHorizontal: 5,
     borderRightWidth: 1,
@@ -213,7 +231,7 @@ const s = StyleSheet.create({
     textAlign: "center",
   },
   colSerie: {
-    flex: 3,
+    width: COL_SERIE_W,
     paddingVertical: 4,
     paddingHorizontal: 7,
     borderRightWidth: 1,
@@ -385,7 +403,10 @@ const s = StyleSheet.create({
 
   // ── Footer ──────────────────────────────────────────────────────────────────
   footer: {
-    marginTop: 8,
+    position: "absolute",
+    bottom: 10,
+    left: 0,
+    right: 0,
     paddingTop: 6,
     borderTopWidth: 1,
     borderTopColor: "#EEEEEE",
@@ -560,20 +581,22 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
       <Page size="LETTER" style={s.page} wrap>
 
         {/* ── Header ── */}
-        <View style={s.header} fixed>
-          <View style={{ justifyContent: "center" }}>
-            {logoSrc
-              ? <Image src={logoSrc} style={{ width: 110, height: 38, objectFit: "contain" }} />
-              : <><Text style={s.brand}>MAINSTAGE</Text><Text style={s.brandSub}>PRO · SOLUCIONES AUDIOVISUALES</Text></>
-            }
+        <View style={s.headerFixed} fixed>
+          <View style={s.header}>
+            <View style={{ justifyContent: "center" }}>
+              {logoSrc
+                ? <Image src={logoSrc} style={{ width: 110, height: 38, objectFit: "contain" }} />
+                : <><Text style={s.brand}>MAINSTAGE</Text><Text style={s.brandSub}>PRO · SOLUCIONES AUDIOVISUALES</Text></>
+              }
+            </View>
+            <View style={s.headerRight}>
+              <Text style={s.docTitle}>HOJA DE ENTREGA DE EQUIPOS (RENTA)</Text>
+              <Text style={s.docContact}>TEL/WHATSAPP (446) 143 2565  ·  MAINSTAGEQRO@GMAIL.COM</Text>
+              <Text style={s.docFolio}>{folio}</Text>
+            </View>
           </View>
-          <View style={s.headerRight}>
-            <Text style={s.docTitle}>HOJA DE ENTREGA DE EQUIPOS (RENTA)</Text>
-            <Text style={s.docContact}>TEL/WHATSAPP (446) 143 2565  ·  MAINSTAGEQRO@GMAIL.COM</Text>
-            <Text style={s.docFolio}>{folio}</Text>
-          </View>
+          <View style={s.goldBand} />
         </View>
-        <View style={s.goldBand} fixed />
 
         <View style={s.body}>
 
@@ -644,7 +667,7 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
             /* ── Inventory equipos grouped by category, accessories as sub-rows ── */
             Object.entries(groupedInv).map(([cat, items]) => (
               <View key={cat}>
-                <View style={s.subSectionHeader}>
+                <View style={s.subSectionHeader} minPresenceAhead={64}>
                   <Text style={s.subSectionHeaderText}>{cat.toUpperCase()}</Text>
                 </View>
                 <View style={s.tableWrapper}>
@@ -652,7 +675,7 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
                   <View style={s.tableHeader}>
                     <View style={s.colModelo}><Text style={s.colHeaderText}>MARCA / MODELO / DESCRIPCIÓN</Text></View>
                     <View style={s.colQty}><Text style={[s.colHeaderText, { textAlign: "center" }]}>QTY</Text></View>
-                    <View style={[s.colSerie, { borderRightWidth: 0 }]}><Text style={s.colHeaderText}>NÚMERO DE SERIE / ID  ·  ✓</Text></View>
+                    <View style={[s.colSerie, { borderRightWidth: 0 }]}><Text style={s.colHeaderText}>NÚMERO DE SERIE / ID</Text></View>
                   </View>
                   {items.map((eq, i) => {
                     const nombre = eq.equipo
@@ -660,7 +683,9 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
                       : (eq.descripcionManual ?? "");
                     const hasAcc = (eq.riderAccesorios?.length ?? 0) > 0;
                     return (
-                      <View key={i}>
+                      // El equipo y sus accesorios son una unidad: sin esto el salto de
+                      // página deja renglones de accesorio huérfanos pegados al encabezado.
+                      <View key={i} wrap={false}>
                         {/* Main equipment row */}
                         <View style={[
                           i % 2 === 0 ? s.tableRow : s.tableRowAlt,
@@ -668,7 +693,7 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
                         ]}>
                           <View style={[s.colModelo, { flexDirection: "row", alignItems: "center", gap: 4 }]}>
                             {eq.equipo?.imagenUrl ? (
-                              <Image src={eq.equipo.imagenUrl} style={{ width: 28, height: 28, marginRight: 4, objectFit: "contain" }} />
+                              <Image src={eq.equipo.imagenUrl} style={{ width: 28, height: 28, flexShrink: 0, objectFit: "contain" }} />
                             ) : null}
                             <Text style={[s.cellText, { fontFamily: "Helvetica-Bold", flex: 1 }]}>{nombre}</Text>
                           </View>
@@ -689,7 +714,7 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
                             backgroundColor: i % 2 === 0 ? "#FAFAF8" : "#F5F3EE",
                           }}>
                             <View style={[s.colModelo, { flexDirection: "row", gap: 5, paddingLeft: 16, alignItems: "center" }]}>
-                              <Text style={{ fontSize: 6, color: GOLD }}>↳</Text>
+                              <Text style={{ fontSize: 6, color: GOLD }}>•</Text>
                               <Text style={{ fontSize: 7, color: GRAY, flex: 1 }}>
                                 {acc.nombre}{acc.categoria ? ` · ${acc.categoria}` : ""}
                               </Text>
@@ -818,7 +843,7 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
           <View style={s.checklistWrapper}>
             <View style={[s.tableHeader, { borderBottomWidth: 1, borderBottomColor: BORDER }]}>
               <Text style={[s.checklistText, { fontFamily: "Helvetica-Bold", fontSize: 6.5, color: GRAY }]}>ÍTEM A VERIFICAR ANTES DE ENTREGAR</Text>
-              <Text style={s.checkHeaderLabel}>✓</Text>
+              <Text style={s.checkHeaderLabel}>OK</Text>
             </View>
             {[
               "Equipo completo según la lista — ningún ítem faltante",
@@ -848,14 +873,14 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
               "Mainstage Pro se reserva el derecho de documentar el estado del equipo con fotografías al momento de entrega y devolución.",
             ].map((cond, i) => (
               <View key={i} style={s.conditionItem}>
-                <Text style={s.conditionBullet}>▸</Text>
+                <Text style={s.conditionBullet}>•</Text>
                 <Text style={s.conditionText}><Text style={{ fontFamily: "Helvetica-Bold" }}>{i + 1}. </Text>{cond}</Text>
               </View>
             ))}
           </View>
 
           {/* ── Firma: RECIBO ── */}
-          <View style={s.signatureSection}>
+          <View style={s.signatureSection} wrap={false}>
             <View style={s.signatureSectionHeader}>
               <Text style={s.signatureSectionHeaderText}>RECIBO DE EQUIPOS — ENTREGA AL CLIENTE</Text>
             </View>
@@ -884,7 +909,7 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
           </View>
 
           {/* ── Firma: DEVOLUCIÓN ── */}
-          <View style={s.signatureSection}>
+          <View style={s.signatureSection} wrap={false}>
             <View style={[s.signatureSectionHeader, { backgroundColor: "#2a2a2a" }]}>
               <Text style={[s.signatureSectionHeaderText, { color: WHITE }]}>DEVOLUCIÓN DE EQUIPOS</Text>
             </View>

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import ReactPDF, { Document } from "@react-pdf/renderer";
 import { FichaTecnicos } from "@/components/pdf/FichaTecnicos";
-import { logoBase64, EquipoFlat, TransporteSlot } from "@/components/pdf/PdfShared";
+import { logoBase64, makePdfImageResolver, EquipoFlat, TransporteSlot } from "@/components/pdf/PdfShared";
 import { ProveedorEvento } from "@/components/pdf/FichaCoordinador";
 import React from "react";
 import path from "path";
@@ -64,17 +64,20 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     }
   } catch { /* ignore */ }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const equipos: EquipoFlat[] = (proyecto.equipos ?? []).map((e: any) => ({
-    descripcion: e.equipo?.descripcion ?? "",
-    marca: e.equipo?.marca ?? null,
-    categoria: e.equipo?.categoria?.nombre ?? "Sin categoría",
-    cantidad: e.cantidad,
-    tipo: e.tipo,
-    confirmado: e.confirmado,
-    proveedor: e.proveedor?.nombre ?? null,
-    imagenUrl: e.equipo?.imagenUrl ?? null,
-  }));
+  const resolveImg = makePdfImageResolver(path.join(process.cwd(), "public"));
+  const equipos: EquipoFlat[] = await Promise.all(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (proyecto.equipos ?? []).map(async (e: any) => ({
+      descripcion: e.equipo?.descripcion ?? "",
+      marca: e.equipo?.marca ?? null,
+      categoria: e.equipo?.categoria?.nombre ?? "Sin categoría",
+      cantidad: e.cantidad,
+      tipo: e.tipo,
+      confirmado: e.confirmado,
+      proveedor: e.proveedor?.nombre ?? null,
+      imagenUrl: await resolveImg(e.equipo?.imagenUrl),
+    }))
+  );
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const proveedoresEvento: ProveedorEvento[] = (proyecto.proveedoresEvento ?? []).map((p: any) => ({

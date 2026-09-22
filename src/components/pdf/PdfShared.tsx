@@ -234,6 +234,66 @@ export function logoBase64Dark(publicDir: string): string | null {
   } catch { return null; }
 }
 
+/**
+ * Normaliza cualquier imagen de equipo a un data URI listo para <Image> de react-pdf.
+ * Las imágenes viven en dos formas: URL absoluta de Vercel Blob y ruta relativa a
+ * /public. react-pdf sólo resuelve la primera, así que sin esto la mitad del catálogo
+ * sale sin miniatura.
+ */
+export async function resolvePdfImage(src: string | null | undefined, publicDir: string): Promise<string | null> {
+  if (!src) return null;
+  if (src.startsWith("data:")) return src;
+
+  let input: Buffer;
+  let mime: string;
+  try {
+    if (src.startsWith("http://") || src.startsWith("https://")) {
+      const res = await fetch(src);
+      if (!res.ok) return null;
+      input = Buffer.from(await res.arrayBuffer());
+      mime = res.headers.get("content-type")?.split(";")[0] ?? "image/png";
+    } else {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const fs = require("fs") as typeof import("fs");
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const path = require("path") as typeof import("path");
+      const filePath = path.join(publicDir, src.replace(/^\//, ""));
+      if (!fs.existsSync(filePath)) return null;
+      input = fs.readFileSync(filePath);
+      const ext = path.extname(filePath).slice(1).toLowerCase();
+      mime = ext === "jpg" ? "image/jpeg" : `image/${ext}`;
+    }
+  } catch { return null; }
+
+  // Se reescala para no inflar el PDF (las fotos de Blob son de resolución completa y
+  // se pintan a ~30pt). Se conserva el canal alfa: los recortes "nobg" quedarían con
+  // un cuadro blanco sobre las filas grises si se aplanaran a JPEG.
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sharp = (await import("sharp")).default as any;
+    const png = await sharp(input)
+      .rotate()
+      .resize(240, 240, { fit: "inside", withoutEnlargement: true })
+      .png({ compressionLevel: 9 })
+      .toBuffer();
+    return `data:image/png;base64,${png.toString("base64")}`;
+  } catch {
+    // sharp puede no estar disponible en runtime; los bytes originales (png/jpg) los
+    // decodifica react-pdf igual, sólo pesan más.
+    return `data:${mime};base64,${input.toString("base64")}`;
+  }
+}
+
+/** Cachea por src para no descargar ni reprocesar el mismo equipo varias veces en un documento. */
+export function makePdfImageResolver(publicDir: string) {
+  const cache = new Map<string, Promise<string | null>>();
+  return (src: string | null | undefined): Promise<string | null> => {
+    if (!src) return Promise.resolve(null);
+    if (!cache.has(src)) cache.set(src, resolvePdfImage(src, publicDir));
+    return cache.get(src)!;
+  };
+}
+
 // ─── Tipos compartidos ────────────────────────────────────────────────────────
 export type EquipoFlat = {
   descripcion: string; marca: string | null; modelo: string | null; categoria: string;

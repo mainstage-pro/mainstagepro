@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import ReactPDF, { Document } from "@react-pdf/renderer";
 import { CotizacionPDF } from "@/components/CotizacionPDF";
+import { makePdfImageResolver } from "@/components/pdf/PdfShared";
 import React from "react";
 import fs from "fs";
 import path from "path";
@@ -51,31 +52,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     ? `data:image/png;base64,${fs.readFileSync(logoPath).toString("base64")}`
     : null;
 
-  // Resolve equipment/product images to base64 for react-pdf.
-  // Local images (/public) are read from disk; remote images (Vercel Blob) are fetched.
-  async function resolveImg(url: string | null | undefined): Promise<string | null> {
-    if (!url) return null;
-    if (url.startsWith("data:")) return url; // already base64
-    if (url.startsWith("/")) {
-      const filePath = path.join(process.cwd(), "public", url);
-      if (fs.existsSync(filePath)) {
-        const ext = path.extname(filePath).slice(1).toLowerCase();
-        const mime = ext === "jpg" ? "image/jpeg" : `image/${ext}`;
-        return `data:${mime};base64,${fs.readFileSync(filePath).toString("base64")}`;
-      }
-      return null;
-    }
-    if (url.startsWith("http")) {
-      try {
-        const res = await fetch(url);
-        if (!res.ok) return null;
-        const buf = Buffer.from(await res.arrayBuffer());
-        const mime = res.headers.get("content-type") ?? "image/png";
-        return `data:${mime};base64,${buf.toString("base64")}`;
-      } catch { return null; }
-    }
-    return null;
-  }
+  const resolveImg = makePdfImageResolver(path.join(process.cwd(), "public"));
 
   // Las líneas PAQUETE no tienen equipo asociado; representan un producto
   // armado del catálogo. Su ícono es la imagen del producto, referenciado por

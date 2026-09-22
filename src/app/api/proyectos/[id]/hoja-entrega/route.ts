@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import ReactPDF, { Document } from "@react-pdf/renderer";
 import { HojaEntregaRentaPDF } from "@/components/HojaEntregaRentaPDF";
+import { makePdfImageResolver } from "@/components/pdf/PdfShared";
 import React from "react";
 import path from "path";
 import fs from "fs";
@@ -59,8 +60,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     ? `data:image/png;base64,${fs.readFileSync(logoPath).toString("base64")}`
     : null;
 
+  const resolveImg = makePdfImageResolver(path.join(process.cwd(), "public"));
+  const equipos = await Promise.all(
+    proyecto.equipos.map(async (pe) => ({
+      ...pe,
+      equipo: pe.equipo
+        ? { ...pe.equipo, imagenUrl: await resolveImg(pe.equipo.imagenUrl) }
+        : null,
+    }))
+  );
+
   const proyectoData = {
     ...proyecto,
+    equipos,
     fechaEvento: proyecto.fechaEvento?.toISOString() ?? null,
     tratoIdeasReferencias: proyecto.trato?.ideasReferencias ?? null,
   };
