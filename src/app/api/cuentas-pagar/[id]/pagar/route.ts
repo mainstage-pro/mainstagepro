@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { ensureCuentaPagarCategoria } from "@/lib/mantenimiento-costo";
-import { getCategoriaSueldosYSalarios } from "@/lib/nomina-pagos";
+import { getCategoriaSueldosYSalarios, getCategoriaPersonalFreelance } from "@/lib/nomina-pagos";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -27,7 +27,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   await prisma.$transaction(async (tx) => {
     const esNomina = cxp.esNomina || cxp.tipoAcreedor === "PERSONAL_INTERNO" || !!cxp.pagoNomina;
-    const finalCategoriaId = esNomina ? await getCategoriaSueldosYSalarios(tx) : (categoriaId || cxp.categoriaId || null);
+    let isFreelance = false;
+    if (cxp.pagoNomina) {
+      const p = await tx.pagoNomina.findUnique({ where: { id: cxp.pagoNomina.id }, include: { personal: true }});
+      if (p?.personal?.tipo === "FREELANCE_RECURRENTE") isFreelance = true;
+    }
+    const finalCategoriaId = esNomina ? 
+      (isFreelance ? await getCategoriaPersonalFreelance(tx) : await getCategoriaSueldosYSalarios(tx)) 
+      : (categoriaId || cxp.categoriaId || null);
 
     const movimiento = await tx.movimientoFinanciero.create({
       data: {
