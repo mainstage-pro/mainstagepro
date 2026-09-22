@@ -14,7 +14,22 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json({ pasivos });
+  const cuentasMauricio = await prisma.cuentaPagar.findMany({
+    where: {
+      OR: [
+        { tecnico: { nombre: { contains: "Mauricio Hernández" } } },
+        { proveedor: { nombre: { contains: "Mauricio Hernández" } } },
+        { socio: { nombre: { contains: "Mauricio Hernández" } } },
+        { empresa: { nombre: { contains: "Mauricio Hernández" } } },
+      ]
+    },
+    include: {
+      abonos: { orderBy: { fecha: "asc" } },
+    },
+    orderBy: { fechaCompromiso: "desc" },
+  });
+
+  return NextResponse.json({ pasivos, cuentasMauricio });
 }
 
 export async function POST(req: NextRequest) {

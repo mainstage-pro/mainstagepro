@@ -122,8 +122,17 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const socioId = searchParams.get("socioId");
 
+  const whereClause: any = socioId ? { socioId } : {
+    NOT: [
+      { socio: { nombre: { contains: "Mauricio Hernández" } } },
+      { proveedor: { nombre: { contains: "Mauricio Hernández" } } },
+      { tecnico: { nombre: { contains: "Mauricio Hernández" } } },
+      { empresa: { nombre: { contains: "Mauricio Hernández" } } },
+    ]
+  };
+
   const cuentas = await prisma.cuentaPagar.findMany({
-    where: socioId ? { socioId } : undefined,
+    where: whereClause,
     include: {
       tecnico: { select: { id: true, nombre: true, celular: true } },
       proveedor: { select: { id: true, nombre: true, telefono: true } },

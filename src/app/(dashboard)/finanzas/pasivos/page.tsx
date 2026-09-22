@@ -35,6 +35,24 @@ interface PasivoDeuda {
   cuotas: CuotaDeuda[];
 }
 
+interface AbonoPago {
+  id: string;
+  monto: number;
+  fecha: string;
+  metodoPago: string;
+}
+
+interface CuentaPagar {
+  id: string;
+  concepto: string;
+  monto: number;
+  montoPagado: number;
+  fechaCompromiso: string;
+  estado: string;
+  abonos: AbonoPago[];
+}
+
+
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 const fmt = (n: number) =>
@@ -195,6 +213,7 @@ export default function PasivosPage() {
   const toast = useToast();
   const confirm = useConfirm();
   const [pasivos, setPasivos] = useState<PasivoDeuda[]>([]);
+  const [cuentasMauricio, setCuentasMauricio] = useState<CuentaPagar[]>([]);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -202,6 +221,7 @@ export default function PasivosPage() {
   const [saving, setSaving] = useState(false);
   const [planModal, setPlanModal] = useState<PasivoDeuda | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [expandedMauricio, setExpandedMauricio] = useState(false);
 
   const cargar = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -210,6 +230,7 @@ export default function PasivosPage() {
       fetch("/api/proveedores", { cache: "no-store" }).then(r => r.json()),
     ]);
     setPasivos(pr.pasivos || []);
+    setCuentasMauricio(pr.cuentasMauricio || []);
     setProveedores(pv.proveedores || pv || []);
     setLoading(false);
   }, []);
@@ -352,7 +373,7 @@ export default function PasivosPage() {
       {/* Lista de deudas */}
       {loading ? (
         <div className="text-center py-16 text-gray-600">Cargando...</div>
-      ) : pasivos.length === 0 ? (
+      ) : pasivos.length === 0 && cuentasMauricio.length === 0 ? (
         <div className="text-center py-16 text-gray-600 border border-dashed border-[#222] rounded-2xl">
           <ClipboardList strokeWidth={1.5} className="w-9 h-9 mx-auto mb-3 text-gray-700" />
           <p className="text-sm">No hay deudas registradas</p>
@@ -360,6 +381,98 @@ export default function PasivosPage() {
         </div>
       ) : (
         <div className="space-y-3">
+          {/* Tarjeta de Mauricio Hernández */}
+          {cuentasMauricio.length > 0 && (() => {
+            const total = cuentasMauricio.reduce((a, b) => a + b.monto, 0);
+            const pagado = cuentasMauricio.reduce((a, b) => a + b.montoPagado, 0);
+            const pendiente = total - pagado;
+            const pct = total > 0 ? (pagado / total) * 100 : 0;
+            const isOpen = expandedMauricio;
+
+            return (
+              <div className="ms-card rounded-2xl overflow-hidden hover:border-[#2a2a2a] transition-colors border-[#B3985B]/20">
+                {/* Fila principal */}
+                <div className="p-4 flex flex-col md:flex-row md:items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-white font-medium text-sm">Cuentas por Pagar: Mauricio Hernández</span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full border border-[#B3985B] text-[#B3985B]`}>
+                        Socio / Especial
+                      </span>
+                    </div>
+                    <p className="text-gray-500 text-xs mt-0.5">
+                      {cuentasMauricio.length} cuentas registradas
+                    </p>
+                    {/* Barra de progreso */}
+                    <div className="mt-2 flex items-center gap-2">
+                      <div className="flex-1 bg-[#1e1e1e] rounded-full h-1.5">
+                        <div className="h-1.5 rounded-full bg-[#B3985B] transition-all" style={{ width: `${Math.min(pct, 100)}%` }} />
+                      </div>
+                      <span className="text-[10px] text-gray-500">{pct.toFixed(0)}%</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 text-right">
+                    <div>
+                      <p className="text-[10px] text-gray-600">Total</p>
+                      <p className="text-white text-sm font-semibold">{fmt(total)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-gray-600">Pagado</p>
+                      <p className="text-green-400 text-sm font-semibold">{fmt(pagado)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-gray-600">Pendiente</p>
+                      <p className="text-orange-400 text-sm font-semibold">{fmt(pendiente)}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => setExpandedMauricio(!isOpen)}
+                        className="px-3 py-1.5 rounded-lg border border-[#2a2a2a] text-gray-400 text-xs hover:text-white transition-colors">
+                        {isOpen ? "▲" : "▼"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Cuentas expandidas */}
+                {isOpen && (
+                  <div className="border-t border-[#1e1e1e] px-4 py-3 bg-[#111]">
+                    <div className="space-y-4">
+                      {cuentasMauricio.map(c => {
+                        const cPendiente = c.monto - c.montoPagado;
+                        return (
+                          <div key={c.id} className="border-b border-[#1e1e1e] pb-3 last:border-0 last:pb-0">
+                            <div className="flex items-start justify-between mb-2">
+                              <div>
+                                <p className="text-sm text-white">{c.concepto}</p>
+                                <p className="text-xs text-gray-500">{new Date(c.fechaCompromiso).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-xs text-orange-400">Pendiente: {fmt(cPendiente)}</p>
+                                <p className="text-[10px] text-gray-500">De: {fmt(c.monto)}</p>
+                              </div>
+                            </div>
+                            
+                            {/* Abonos */}
+                            {c.abonos.length > 0 && (
+                              <div className="pl-4 border-l border-[#2a2a2a] space-y-1">
+                                {c.abonos.map(abono => (
+                                  <div key={abono.id} className="flex justify-between text-[11px] text-gray-400">
+                                    <span>↳ Abono {new Date(abono.fecha).toLocaleDateString("es-MX", { day: "2-digit", month: "short" })}</span>
+                                    <span className="text-green-500/80">+{fmt(abono.monto)} ({abono.metodoPago})</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           {pasivos.map(p => {
             const pendiente = p.montoTotal - p.montoPagado;
             const pct = p.montoTotal > 0 ? (p.montoPagado / p.montoTotal) * 100 : 0;
