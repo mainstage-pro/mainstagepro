@@ -148,8 +148,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
           )
         : new Set<string>();
 
-      // Borrar lineas y actualizar cotización en una sola transacción
+      // Borrar lineas y actualizar cotización en una sola transacción.
+      // El SELECT ... FOR UPDATE serializa PATCHes concurrentes sobre la misma
+      // cotización (autoguardado + guardado manual, doble clic, dos pestañas):
+      // sin este lock, dos transacciones pueden borrar/reinsertar las líneas
+      // en paralelo y duplicar todo el set (visto en producción con COT-2177).
       const cotizacion = await prisma.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT id FROM cotizaciones WHERE id = ${id} FOR UPDATE`;
         await tx.cotizacionLinea.deleteMany({ where: { cotizacionId: id } });
         return tx.cotizacion.update({
           where: { id },

@@ -441,6 +441,11 @@ function CotizadorForm() {
   const [autoSaved, setAutoSaved] = useState(false);
   // Prevent saving on first render (before data is loaded from server)
   const isInitialized = useRef(false);
+  // Timer del debounce del autoguardado, para poder cancelarlo desde guardar() manual.
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Evita que el autoguardado y el guardado manual corran en paralelo contra el
+  // mismo PATCH (deleteMany + create de líneas) — la causa de líneas duplicadas.
+  const savingLockRef = useRef(false);
 
   // Disponibilidad de inventario para la fecha del evento
   const [dispMap, setDispMap] = useState<Record<string, { disponible: number; comprometido: number; total: number; eventos: Array<{ ref: string; nombre: string; estado: string }> }>>({});
@@ -1619,6 +1624,10 @@ function CotizadorForm() {
     const timer = setTimeout(async () => {
       const cId = resolvedClienteId || clienteId || manualClienteId;
       if (!cId) return; // sin cliente no se puede guardar
+      // No disparar si ya hay un guardado (manual o automático) en curso —
+      // evita la carrera que duplicaba líneas de la cotización.
+      if (savingLockRef.current) return;
+      savingLockRef.current = true;
       setAutoSaving(true);
       try {
         const todasLineasAuto = [
@@ -1749,8 +1758,10 @@ function CotizadorForm() {
         // Silencioso — no interrumpir al usuario con errores de red
       } finally {
         setAutoSaving(false);
+        savingLockRef.current = false;
       }
     }, 2000);
+    autoSaveTimerRef.current = timer;
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -1785,6 +1796,15 @@ function CotizadorForm() {
     }
     setClienteSelectorError(false);
     setSaving(true); setError("");
+
+    // Cancela el autoguardado pendiente y espera a que termine uno ya en vuelo,
+    // para que nunca coincidan dos PATCH reemplazando las líneas de la cotización
+    // al mismo tiempo (eso duplicaba equipos/personal/otros al guardar).
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    while (savingLockRef.current) {
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    savingLockRef.current = true;
 
     const todasLineas = [
       ...lineasEquipo.map(l => ({
@@ -1940,6 +1960,7 @@ function CotizadorForm() {
       const { cotizacion } = await res.json();
       router.push(`/cotizaciones/${cotizacion.id}`);
     } catch (e) { setError(`Error de conexión: ${e instanceof Error ? e.message : String(e)}`); setSaving(false); }
+    finally { savingLockRef.current = false; }
   }
 
   return (
