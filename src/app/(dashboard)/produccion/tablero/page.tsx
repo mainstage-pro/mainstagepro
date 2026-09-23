@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { Wrench, Package, AlertTriangle, MoreHorizontal } from "lucide-react";
 import { CambiarEstadoEquipoModal } from "@/components/CambiarEstadoEquipoModal";
@@ -111,10 +112,37 @@ function diasLabel(d: number | null) {
 // Fila del taller sobre la que se está actuando (cambio de estado o reporte de falla).
 type Objetivo = { equipoId: string; unidadId: string | null; label: string; estado: string };
 
+// Menú de fila en portal: las tablas viven dentro de contenedores con overflow
+// oculto que recortarían un menú posicionado en absoluto.
+function MenuFila({ rect, children }: { rect: DOMRect; children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [arriba, setArriba] = useState(false);
+
+  useLayoutEffect(() => {
+    const alto = ref.current?.offsetHeight ?? 0;
+    setArriba(rect.bottom + 8 + alto > window.innerHeight);
+  }, [rect]);
+
+  return createPortal(
+    <div
+      ref={ref}
+      style={{
+        top: arriba ? undefined : rect.bottom + 4,
+        bottom: arriba ? window.innerHeight - rect.top + 4 : undefined,
+        right: window.innerWidth - rect.right,
+      }}
+      className="fixed z-50 w-56 bg-[#161616] border border-[#2a2a2a] rounded-xl shadow-xl overflow-hidden"
+    >
+      {children}
+    </div>,
+    document.body,
+  );
+}
+
 export default function TableroProduccionPage() {
   const [data, setData] = useState<Data | null>(null);
   const [loading, setLoading] = useState(true);
-  const [menuAbierto, setMenuAbierto] = useState<string | null>(null);
+  const [menu, setMenu] = useState<{ id: string; rect: DOMRect } | null>(null);
   const [cambiarEstado, setCambiarEstado] = useState<Objetivo | null>(null);
   const [reportarFalla, setReportarFalla] = useState<Objetivo | null>(null);
 
@@ -128,11 +156,15 @@ export default function TableroProduccionPage() {
   useEffect(() => { cargar(); }, [cargar]);
 
   useEffect(() => {
-    if (!menuAbierto) return;
-    const cerrar = () => setMenuAbierto(null);
+    if (!menu) return;
+    const cerrar = () => setMenu(null);
     document.addEventListener("click", cerrar);
-    return () => document.removeEventListener("click", cerrar);
-  }, [menuAbierto]);
+    document.addEventListener("scroll", cerrar, true);
+    return () => {
+      document.removeEventListener("click", cerrar);
+      document.removeEventListener("scroll", cerrar, true);
+    };
+  }, [menu]);
 
   async function resolverFalla(id: string, estado: string) {
     const r = await fetch(`/api/fallas/${id}`, {
@@ -231,24 +263,28 @@ export default function TableroProduccionPage() {
                     {e.accion && <p className="text-gray-400 text-xs truncate">{e.accion}</p>}
                     {e.costo ? <p className="text-[#B3985B] text-xs">{fmtMoney(e.costo)}</p> : null}
                   </div>
-                  <div className="col-span-2 md:col-span-1 self-center flex justify-end relative">
+                  <div className="col-span-2 md:col-span-1 self-center flex justify-end">
                     <button
-                      onClick={(ev) => { ev.stopPropagation(); setMenuAbierto(menuAbierto === filaId ? null : filaId); }}
+                      onClick={(ev) => {
+                        ev.stopPropagation();
+                        const rect = ev.currentTarget.getBoundingClientRect();
+                        setMenu(menu?.id === filaId ? null : { id: filaId, rect });
+                      }}
                       className="p-1.5 rounded-lg text-gray-500 hover:text-white hover:bg-[#222] transition-colors"
                       title="Acciones"
                     >
                       <MoreHorizontal className="w-4 h-4" />
                     </button>
-                    {menuAbierto === filaId && (
-                      <div className="absolute right-0 top-8 z-20 w-56 bg-[#161616] border border-[#2a2a2a] rounded-xl shadow-xl overflow-hidden">
+                    {menu?.id === filaId && (
+                      <MenuFila rect={menu.rect}>
                         <button
-                          onClick={() => { setCambiarEstado(objetivo); setMenuAbierto(null); }}
+                          onClick={() => { setCambiarEstado(objetivo); setMenu(null); }}
                           className="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:bg-[#222] hover:text-white transition-colors"
                         >
                           Cambiar estado
                         </button>
                         <button
-                          onClick={() => { setReportarFalla(objetivo); setMenuAbierto(null); }}
+                          onClick={() => { setReportarFalla(objetivo); setMenu(null); }}
                           className="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:bg-[#222] hover:text-white transition-colors border-t border-[#1f1f1f]"
                         >
                           Reportar falla
@@ -265,7 +301,7 @@ export default function TableroProduccionPage() {
                         >
                           Ver ficha del equipo
                         </Link>
-                      </div>
+                      </MenuFila>
                     )}
                   </div>
                 </div>
