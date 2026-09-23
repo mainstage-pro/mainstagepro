@@ -412,6 +412,27 @@ export async function ensureCotizacionEventoConfirmadoColumn() {
 }
 
 /**
+ * tratos.fechaApartada: el cliente pidió apartar la fecha antes de que exista
+ * descubrimiento o cotización. Declarada en schema.prisma → Prisma la pide en
+ * cualquier findMany de tratos sin select, por eso el DDL aditivo se aplica a
+ * prod ANTES del deploy (scripts/ddl-trato-fecha-apartada.ts); esto es respaldo
+ * idempotente.
+ */
+let _fechaApartadaReady = false;
+
+export async function ensureTratoFechaApartadaColumn() {
+  if (_fechaApartadaReady) return;
+  if (!await columnExists('tratos', 'fechaApartada')) {
+    try {
+      await prisma.$executeRawUnsafe(
+        `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "fechaApartada" BOOLEAN NOT NULL DEFAULT false`
+      );
+    } catch { /* ya existe */ }
+  }
+  _fechaApartadaReady = true;
+}
+
+/**
  * cotizaciones.paqueteId: liga la cotización con el Paquete comercial base del que
  * se desglosó, para poder mostrar sus renders en la presentación al cliente.
  * Columna nullable declarada en schema.prisma. Idempotente (patrón Neon).

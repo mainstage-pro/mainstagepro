@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { ensureProcesoVentaColumns, ensureMultidiaColumns, ensureCotizacionEventoConfirmadoColumn } from "@/lib/migraciones-lazy";
+import { ensureProcesoVentaColumns, ensureMultidiaColumns, ensureCotizacionEventoConfirmadoColumn, ensureTratoFechaApartadaColumn } from "@/lib/migraciones-lazy";
 import { diasEvento } from "@/lib/fechas-evento";
 
-// El color del calendario deriva ÚNICAMENTE de la cotización, no del estado del proyecto:
+// El color del calendario deriva de la cotización, no del estado del proyecto:
 //   'confirmado'    → cotización APROBADA (auto-confirmada) o ya hay proyecto (verde)
 //   'por_confirmar' → evento apartado manualmente (eventoConfirmado) con cotización sin aprobar (ámbar)
-type Nivel = 'por_confirmar' | 'confirmado';
+//   'apartado'      → el trato aún no tiene cotización; solo se reservó la fecha (gris)
+type Nivel = 'apartado' | 'por_confirmar' | 'confirmado';
 
 // Expande un evento (posiblemente de varios días) en las celdas que caen dentro del
 // mes consultado. Devuelve el número de día del mes, el índice (0-based) y el total.
@@ -38,6 +39,7 @@ export async function GET(req: NextRequest) {
   await ensureProcesoVentaColumns();
   await ensureMultidiaColumns();
   await ensureCotizacionEventoConfirmadoColumn();
+  await ensureTratoFechaApartadaColumn();
 
   const sp = req.nextUrl.searchParams;
   const mes = sp.get("mes"); // "2026-04"
@@ -132,10 +134,49 @@ export async function GET(req: NextRequest) {
     }));
   });
 
+  // ── 3. Fechas apartadas (sin cotización todavía) ───────────────────────────
+  // El cliente pidió reservar el día antes del descubrimiento: no hay brief ni
+  // cotización, solo cliente + fecha. Se pinta gris para que nadie lo confunda
+  // con un evento vendido, pero bloquea visualmente la fecha.
+  const tratosApartados = await prisma.trato.findMany({
+    where: {
+      fechaApartada: true,
+      fechaEventoEstimada: { not: null },
+      proyectos: { none: {} },
+      etapa: { not: "VENTA_PERDIDA" },
+      cotizaciones: { none: { OR: [{ estado: "APROBADA" }, { eventoConfirmado: true }] } },
+    },
+    select: {
+      id: true, nombreEvento: true, fechaEventoEstimada: true, fechasEvento: true,
+      tipoEvento: true, lugarEstimado: true,
+      cliente: { select: { nombre: true } },
+    },
+  });
+
+  const eventosApartados = tratosApartados.flatMap(t => {
+    const titulo = t.nombreEvento || "Fecha apartada";
+    return celdasDelMes(t.fechaEventoEstimada, t.fechasEvento, year, month).map(({ dia, mes, idx, total }) => ({
+      id: `apartado-${t.id}-d${idx}`,
+      dia,
+      mes,
+      titulo: total > 1 ? `${titulo} · Día ${idx + 1}/${total}` : titulo,
+      subtitulo: t.cliente?.nombre || "",
+      estado: "APARTADO",
+      nivel: 'apartado' as Nivel,
+      sinProyecto: true,
+      url: `/crm/tratos/${t.id}`,
+      tipoEvento: t.tipoEvento,
+      tipoServicio: null,
+      lugarEvento: t.lugarEstimado,
+      horaInicioEvento: null,
+    }));
+  });
+
   // ── Merge y ordenar por día ───────────────────────────────────────────────
   const eventos = [
     ...eventosProyecto,
     ...eventosTratoGanado,
+    ...eventosApartados,
   ].sort((a, b) => a.dia - b.dia);
 
   return NextResponse.json({ eventos });

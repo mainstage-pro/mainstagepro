@@ -109,6 +109,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     "realizarRender",
     // Levantamiento de contenido
     "requiereRevision",
+    // Apartado de fecha (reserva tentativa en calendario)
+    "fechaApartada",
     // Cierre / confirmación
     "montoFinal",
     "confirmadaEn", "metodoConfirmacion", "notaConfirmacion",
@@ -130,7 +132,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         data[key] = parseFloat(body[key]);
       } else if ((key === "confirmadaEn" || key === "ultimaVisita") && body[key]) {
         data[key] = new Date(body[key]);
-      } else if (key === "descubrimientoCompleto" || key === "tradeCalificado" || key === "familyAndFriends" || key === "realizarRender" || key === "requiereRevision") {
+      } else if (key === "descubrimientoCompleto" || key === "tradeCalificado" || key === "familyAndFriends" || key === "realizarRender" || key === "requiereRevision" || key === "fechaApartada") {
         data[key] = Boolean(body[key]);
       } else if (key === "tradeNivel") {
         data[key] = body[key] !== null && body[key] !== "" ? parseInt(body[key]) : null;

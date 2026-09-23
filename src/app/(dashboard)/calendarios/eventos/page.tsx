@@ -37,12 +37,13 @@ interface ReporteData {
   porMes: { mes: string; count: number }[];
 }
 
-type Nivel = 'por_confirmar' | 'confirmado';
+type Nivel = 'apartado' | 'por_confirmar' | 'confirmado';
 const NIVEL_COLOR: Record<Nivel, { bar: string; dot: string; text: string }> = {
+  apartado:      { bar: 'border-l-gray-500',    dot: 'bg-gray-400',    text: 'text-gray-400'    },
   por_confirmar: { bar: 'border-l-amber-600',   dot: 'bg-amber-500',   text: 'text-amber-300'   },
   confirmado:    { bar: 'border-l-emerald-500', dot: 'bg-emerald-500', text: 'text-emerald-300' },
 };
-const NIVEL_LABEL: Record<Nivel, string> = { por_confirmar: 'Por confirmar', confirmado: 'Confirmado' };
+const NIVEL_LABEL: Record<Nivel, string> = { apartado: 'Apartado', por_confirmar: 'Por confirmar', confirmado: 'Confirmado' };
 
 interface Evento {
   id: string; dia: number; mes: number; titulo: string; subtitulo: string;
@@ -200,6 +201,7 @@ export default function CalendarioEventosPage() {
 
       {/* Leyenda */}
       <div className="flex items-center gap-4">
+        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-gray-400"/><span className="text-xs text-gray-400">Apartado</span></div>
         <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-amber-500"/><span className="text-xs text-gray-400">Por confirmar</span></div>
         <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500"/><span className="text-xs text-gray-400">Confirmado</span></div>
       </div>

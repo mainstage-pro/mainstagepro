@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, use, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Calendar, CalendarDays, Target, PenLine, Megaphone, DollarSign, MapPin, Trash2, Search, CheckCircle2, Sprout, Zap, Ticket, Settings, Clapperboard, Camera } from "lucide-react";
+import { Calendar, CalendarDays, CalendarClock, Target, PenLine, Megaphone, DollarSign, MapPin, Trash2, Search, CheckCircle2, Sprout, Zap, Ticket, Settings, Clapperboard, Camera } from "lucide-react";
 import { FORM_KEY_LABELS } from "@/lib/form-labels";
 import TimePicker from "@/components/ui/TimePicker";
 import { useToast } from "@/components/Toast";
@@ -51,6 +51,7 @@ interface Trato {
   tipoServicio: string | null;
   lugarEstimado: string | null;
   fechaEventoEstimada: string | null;
+  fechaApartada: boolean;
   presupuestoEstimado: number | null;
   clasificacion: string;
   notas: string | null;
@@ -1914,6 +1915,40 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         <p className="text-xs text-red-400/80 bg-red-900/10 border border-red-900/30 rounded-xl px-4 py-2">
           Motivo pérdida: {trato.motivoPerdida}
         </p>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          FECHA APARTADA (reserva tentativa, antes del descubrimiento)
+      ══════════════════════════════════════════════════════════════════════ */}
+      {trato.etapa !== 'VENTA_PERDIDA' && !trato.confirmadaEn && trato.fechaEventoEstimada && (
+        trato.fechaApartada ? (
+          <div className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl p-4 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-gray-500/15 flex items-center justify-center text-gray-400 shrink-0"><CalendarClock strokeWidth={1.75} className="w-4 h-4" /></div>
+            <div className="flex-1 min-w-0">
+              <p className="text-white text-sm font-semibold">Fecha apartada</p>
+              <p className="text-gray-500 text-xs">{fmtFechaEventoCorta(trato.fechaEventoEstimada)} · bloqueada en el calendario mientras se levanta el descubrimiento</p>
+            </div>
+            <button
+              onClick={async () => {
+                const d = await patch({ fechaApartada: false });
+                if (d) setTrato(p => p ? { ...p, fechaApartada: false } : p);
+              }}
+              className="text-xs text-gray-600 hover:text-gray-300 transition-colors shrink-0"
+            >
+              Liberar fecha
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={async () => {
+              const d = await patch({ fechaApartada: true });
+              if (d) setTrato(p => p ? { ...p, fechaApartada: true } : p);
+            }}
+            className="text-xs text-gray-600 hover:text-gray-300 transition-colors"
+          >
+            Apartar esta fecha en el calendario
+          </button>
+        )
       )}
 
       {/* ══════════════════════════════════════════════════════════════════════

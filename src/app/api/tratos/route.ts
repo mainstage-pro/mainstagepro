@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { cotejarOCrearCliente } from "@/lib/cotejo-cliente";
-import { ensureProcesoVentaColumns } from "@/lib/migraciones-lazy";
+import { ensureProcesoVentaColumns, ensureTratoFechaApartadaColumn } from "@/lib/migraciones-lazy";
 import { defaultEtapaInterna } from "@/lib/etapasInternas";
 
 // Mapeo momento de contratación → etapa por defecto del pipeline (el vendedor puede sobreescribir).
@@ -70,6 +70,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  await ensureTratoFechaApartadaColumn();
 
   try {
     const body = await request.json();
@@ -146,6 +148,7 @@ export async function POST(request: NextRequest) {
         lugarEstimado: body.lugarEstimado || null,
         asistentesEstimados: body.asistentesEstimados ? parseInt(body.asistentesEstimados) : null,
         fechaEventoEstimada: body.fechaEventoEstimada ? new Date(body.fechaEventoEstimada) : null,
+        fechaApartada: Boolean(body.fechaApartada),
         presupuestoEstimado: body.presupuestoEstimado ? parseFloat(body.presupuestoEstimado) : null,
         notas: body.notas || null,
         proximaAccion: body.proximaAccion || null,

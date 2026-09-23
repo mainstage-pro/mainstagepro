@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-import { Telescope, Search, ClipboardList, CheckCircle2, AlertTriangle, Smartphone, type LucideIcon } from "lucide-react";
+import { Telescope, Search, ClipboardList, CheckCircle2, AlertTriangle, Smartphone, CalendarClock, type LucideIcon } from "lucide-react";
 
 import { Combobox } from "@/components/Combobox";
 import { ORIGEN_LEAD_OPTIONS, MOMENTO_OPTIONS } from "@/lib/constants";
@@ -98,6 +98,10 @@ export default function NuevoContactoPage() {
   
   const [nombreEvento, setNombreEvento] = useState("");
   const [fechaEvento, setFechaEvento] = useState("");
+  // Venta cerrada siempre aparta la fecha; en el resto de etapas es opcional
+  // (el cliente pidió reservar el día antes de que exista descubrimiento).
+  const [apartarFecha, setApartarFecha] = useState(false);
+  const apartando = apartarFecha || etapa === "VENTA_CERRADA";
 
   useEffect(() => {
     fetch("/api/clientes").then(r => r.json()).then(d => setClientes(d.clientes || []));
@@ -199,10 +203,8 @@ export default function NuevoContactoPage() {
     if (modoCliente === "existente" && !clienteId) { setError("Selecciona un cliente existente"); return false; }
     if (modoCliente === "nuevo" && !clienteNuevo.nombre.trim()) { setError("El nombre del cliente es requerido"); return false; }
     if (!origenLead) { setError("Selecciona de dónde viene el contacto"); return false; }
-    if (etapa === "VENTA_CERRADA") {
-      if (!nombreEvento.trim()) { setError("Ingresa el nombre del evento a apartar"); return false; }
-      if (!fechaEvento) { setError("Selecciona la fecha del evento para apartarla en el calendario"); return false; }
-    }
+    if (etapa === "VENTA_CERRADA" && !nombreEvento.trim()) { setError("Ingresa el nombre del evento a apartar"); return false; }
+    if (apartando && !fechaEvento) { setError("Selecciona la fecha del evento para apartarla en el calendario"); return false; }
     setError(""); return true;
   }
 
@@ -234,9 +236,10 @@ export default function NuevoContactoPage() {
       vendedorId: vendedorId || undefined,
     };
 
-    if (etapa === "VENTA_CERRADA") {
-      payload.nombreEvento = nombreEvento;
+    if (apartando) {
+      payload.nombreEvento = nombreEvento || null;
       payload.fechaEventoEstimada = new Date(fechaEvento + "T12:00:00").toISOString();
+      payload.fechaApartada = true;
       payload.descubrimientoCompleto = false; // Forzamos descubrimiento
     }
 
@@ -488,15 +491,38 @@ export default function NuevoContactoPage() {
               </p>
             </div>
           )}
-          {etapa === "VENTA_CERRADA" && (
-            <div className="mt-4 p-4 border border-emerald-800/40 bg-emerald-900/10 rounded-xl space-y-4">
-              <h3 className="text-sm font-semibold text-emerald-400">Datos para apartar en calendario</h3>
+          {etapa !== "VENTA_CERRADA" && (
+            <button
+              type="button"
+              onClick={() => setApartarFecha(v => !v)}
+              className={`mt-3 w-full text-left p-3 rounded-xl border transition-all ${
+                apartarFecha ? "border-gray-500 bg-gray-500/10" : "border-[#2a2a2a] hover:border-[#3a3a3a]"
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <CalendarClock strokeWidth={1.75} className={`w-5 h-5 mt-0.5 shrink-0 ${apartarFecha ? "text-gray-300" : "text-gray-500"}`} />
+                <div>
+                  <p className={`text-sm font-semibold ${apartarFecha ? "text-gray-200" : "text-white"}`}>Ya me pidieron apartar la fecha</p>
+                  <p className="text-gray-500 text-xs mt-1 leading-relaxed">
+                    Registra sólo cliente y fecha. El día se bloquea en el calendario como apartado (gris) y el siguiente paso sigue siendo el descubrimiento.
+                  </p>
+                </div>
+              </div>
+            </button>
+          )}
+          {apartando && (
+            <div className={`mt-4 p-4 rounded-xl space-y-4 border ${etapa === "VENTA_CERRADA" ? "border-emerald-800/40 bg-emerald-900/10" : "border-[#2a2a2a] bg-[#0d0d0d]"}`}>
+              <h3 className={`text-sm font-semibold ${etapa === "VENTA_CERRADA" ? "text-emerald-400" : "text-gray-300"}`}>Datos para apartar en calendario</h3>
               <p className="text-xs text-gray-400 leading-relaxed">
-                Al crear un contacto directamente en Venta Cerrada, es necesario registrar la fecha del evento para apartarla en el calendario de inmediato.
+                {etapa === "VENTA_CERRADA"
+                  ? "Al crear un contacto directamente en Venta Cerrada, es necesario registrar la fecha del evento para apartarla en el calendario de inmediato."
+                  : "Con la fecha basta para bloquear el día. El resto del evento se levanta después, en el descubrimiento."}
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Nombre del evento a apartar *</label>
+                  <label className="text-xs text-gray-500 mb-1 block">
+                    Nombre del evento a apartar {etapa === "VENTA_CERRADA" ? "*" : "(opcional)"}
+                  </label>
                   <input
                     type="text"
                     value={nombreEvento}

@@ -273,6 +273,9 @@ model Trato {
 
   lugarEstimado       String?
   fechaEventoEstimada DateTime?
+  // El cliente pidió apartar la fecha antes de que exista descubrimiento o cotización:
+  // el evento aparece en el calendario comercial como reserva tentativa (gris).
+  fechaApartada       Boolean   @default(false)
   presupuestoEstimado Float?
   notas               String?
   proximaAccion       String?
