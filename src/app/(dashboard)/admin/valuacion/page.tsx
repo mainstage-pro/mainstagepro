@@ -43,7 +43,6 @@ type AccProduccion = {
   tipoConteo: "cuantificable" | "default";
   cantidad: number | null;
   valorAdquisicion: number | null;
-  precioRenta: number | null;
 };
 
 const ACC_CATS = ["cable", "herramienta", "consumible", "soporte", "otro"] as const;
@@ -150,7 +149,6 @@ export default function InventarioActivosPage() {
             tipoConteo: acc.accesorio?.tipoConteo === "cuantificable" ? "cuantificable" : "default",
             cantidad: acc.accesorio?.cantidad ?? null,
             valorAdquisicion: acc.accesorio?.valorAdquisicion ?? null,
-            precioRenta: acc.accesorio?.precioRenta ?? null,
           });
         }
       }
@@ -196,23 +194,13 @@ export default function InventarioActivosPage() {
     if (!res.ok) { toast.error("No se pudo guardar el valor"); load(); }
   }
 
-  async function setPrecioAcc(accesorioId: string | null, precio: number | null) {
-    if (!accesorioId) return;
-    setAccesoriosAPI(prev => prev.map(a => a.accesorioId === accesorioId ? { ...a, precioRenta: precio } : a));
-    const res = await fetch(`/api/accesorios/${accesorioId}`, {
-      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ precioRenta: precio }),
-    });
-    if (!res.ok) { toast.error("No se pudo guardar el precio"); load(); }
-  }
-
-  function ValorInput({ a, field }: { a: AccProduccion; field: "valorAdquisicion" | "precioRenta" }) {
-    const val = field === "valorAdquisicion" ? a.valorAdquisicion : a.precioRenta;
-    const save = field === "valorAdquisicion" ? setValorAcc : setPrecioAcc;
+  function ValorInput({ a, field }: { a: AccProduccion; field: "valorAdquisicion" }) {
+    const val = a.valorAdquisicion;
     if (!a.accesorioId) return <span className="text-[#333] text-xs">—</span>;
     if (isEditing(a.id, field)) {
       return (
         <input type="number" min={0} autoFocus defaultValue={val ?? ""} placeholder="0"
-          onBlur={e => { const s = e.target.value.trim(); save(a.accesorioId, s === "" ? null : (parseFloat(s) || 0)); stopEdit(); }}
+          onBlur={e => { const s = e.target.value.trim(); setValorAcc(a.accesorioId, s === "" ? null : (parseFloat(s) || 0)); stopEdit(); }}
           onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); if (e.key === "Escape") stopEdit(); }}
           className="w-20 bg-[#111] border border-[#1e1e1e] rounded px-1.5 py-0.5 text-xs text-white text-right focus:outline-none focus:border-[#B3985B]/40" />
       );
@@ -263,7 +251,7 @@ export default function InventarioActivosPage() {
       setAccesoriosAPI(prev => {
         const exists = prev.find(a => a.id === d.accesorio.id);
         if (exists) return prev;
-        return [...prev, { id: d.accesorio.id, nombre: d.accesorio.nombre, categoria: d.accesorio.categoria, equipoId: formAcc.equipoId, equipoNombre: eqNombre, accesorioId: d.accesorio.accesorioId ?? null, tipoConteo: "default" as const, cantidad: null, valorAdquisicion: null, precioRenta: null }].sort((a, b) => a.nombre.localeCompare(b.nombre));
+        return [...prev, { id: d.accesorio.id, nombre: d.accesorio.nombre, categoria: d.accesorio.categoria, equipoId: formAcc.equipoId, equipoNombre: eqNombre, accesorioId: d.accesorio.accesorioId ?? null, tipoConteo: "default" as const, cantidad: null, valorAdquisicion: null }].sort((a, b) => a.nombre.localeCompare(b.nombre));
       });
       setModalAcc(false);
       setFormAcc({ nombre: "", categoria: "", equipoId: "" });
@@ -400,8 +388,6 @@ export default function InventarioActivosPage() {
 
   // ── KPIs globales
   const valorTotalProd = equiposProd.reduce((s, e) => s + (e.costoInternoEstimado ?? 0) * e.cantidadTotal, 0);
-  const rentaTotalProd = equiposProd.reduce((s, e) => s + e.precioRenta * e.cantidadTotal, 0);
-  const rentabilidadProm = valorTotalProd > 0 ? (rentaTotalProd / valorTotalProd) * 100 : 0;
 
   const tabs: { key: Tab; label: string }[] = [
     { key: "resumen",     label: "Reporte General" },
@@ -484,7 +470,6 @@ export default function InventarioActivosPage() {
       nombre: g.cat.nombre,
       cantidad: g.items.reduce((s, e) => s + e.cantidadTotal, 0),
       valor: g.items.reduce((s, e) => s + (e.costoInternoEstimado ?? 0) * e.cantidadTotal, 0),
-      renta: g.items.reduce((s, e) => s + e.precioRenta * e.cantidadTotal, 0),
     }))
     .sort((a, b) => b.valor - a.valor);
   const resumenMaxValorCat = Math.max(...resumenCatValores.map(c => c.valor), 1);
@@ -547,16 +532,7 @@ export default function InventarioActivosPage() {
                   </div>
                   <p className="text-2xl font-bold text-amber-400 tabular-nums">{fmx(valorTotalProd)}</p>
                   <p className="text-[10px] text-[#555] mt-1">Valor de adquisición · {equiposProd.length} equipos</p>
-                  <div className="mt-3 pt-3 border-t border-[#1e1e1e] grid grid-cols-2 gap-2">
-                    <div>
-                      <p className="text-[10px] text-[#555]">Renta mensual</p>
-                      <p className="text-sm font-semibold text-emerald-400">{fmx(rentaTotalProd)}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-[#555]">Rentabilidad</p>
-                      <p className="text-sm font-semibold text-blue-400">{pct(rentabilidadProm)} anual</p>
-                    </div>
-                  </div>
+                  <button onClick={() => setTab("produccion")} className="mt-3 pt-3 border-t border-[#1e1e1e] w-full text-left text-[10px] text-[#444] hover:text-amber-400 transition-colors">Ver detalle →</button>
                 </div>
 
                 {/* Oficina — PROPIO */}
@@ -623,7 +599,6 @@ export default function InventarioActivosPage() {
                           <div className="h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
                             <div className={`h-full ${RESUMEN_COLORS[i % RESUMEN_COLORS.length]} rounded-full transition-all duration-700`} style={{ width: `${pctBar}%` }} />
                           </div>
-                          {c.renta > 0 && <p className="text-[10px] text-emerald-500/70 mt-0.5">Renta: {fmx(c.renta)}/mes</p>}
                         </div>
                       );
                     })}
@@ -704,7 +679,7 @@ export default function InventarioActivosPage() {
                           <p className="text-sm text-white/90">Equipos de Producción</p>
                           <span className="text-[9px] bg-amber-900/30 text-amber-500 border border-amber-800/30 px-1.5 py-0.5 rounded-full font-medium">Administrado</span>
                         </div>
-                        <p className="text-xs text-[#555]">{equiposProd.length} equipos · {porCategoriaProd.length} categorías · renta {fmx(rentaTotalProd)}/mes</p>
+                        <p className="text-xs text-[#555]">{equiposProd.length} equipos · {porCategoriaProd.length} categorías</p>
                       </div>
                     </div>
                     <div className="text-right">
@@ -791,11 +766,14 @@ export default function InventarioActivosPage() {
 
         /* ── EQUIPOS DE PRODUCCIÓN ── */
         <div className="space-y-5">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <KpiCard label="Equipos propios" value={String(equiposProd.length)} sub={`${porCategoriaProd.length} categorías`} />
             <KpiCard label="Valor total del activo" value={fmx(valorTotalProd)} sub="Costo de adquisición" color="text-[#B3985B]" />
-            <KpiCard label="Renta mensual potencial" value={fmx(rentaTotalProd)} sub="Precio renta × cantidad" color="text-emerald-400" />
           </div>
+          <p className="text-[10px] text-[#444]">
+            Los precios de renta se consultan y editan en{" "}
+            <Link href="/comercial/productos/lista-precios" className="text-[#B3985B] hover:underline">Lista de precios</Link>.
+          </p>
 
           {equiposProd.length === 0 ? (
             <p className="text-center text-[#333] text-sm py-12">No hay equipos de producción registrados.</p>
@@ -808,8 +786,6 @@ export default function InventarioActivosPage() {
                       <th className="text-left px-4 py-2.5 font-medium">Equipo</th>
                       <th className="text-right px-4 py-2.5 font-medium w-16">Cant.</th>
                       <th className="text-right px-4 py-2.5 font-medium w-36">Valor unitario</th>
-                      <th className="text-right px-4 py-2.5 font-medium w-36">Precio de renta</th>
-                      <th className="text-right px-4 py-2.5 font-medium w-32">Rentabilidad</th>
                       <th className="text-center px-4 py-2.5 font-medium w-36">Propietario</th>
                       <th className="text-right px-4 py-2.5 font-medium w-36">Subtotal valor</th>
                     </tr>
@@ -817,26 +793,21 @@ export default function InventarioActivosPage() {
                   <tbody>
                     {porCategoriaProd.map(({ cat, items }) => {
                       const catValor = items.reduce((s, e) => s + (e.costoInternoEstimado ?? 0) * e.cantidadTotal, 0);
-                      const catRenta = items.reduce((s, e) => s + e.precioRenta * e.cantidadTotal, 0);
                       return (
                         <>
                           <tr key={`cat-${cat.id}`} className="border-t border-[#1a1a1a]">
-                            <td colSpan={7} className="px-4 py-1.5 bg-[#0d0d0d]">
+                            <td colSpan={5} className="px-4 py-1.5 bg-[#0d0d0d]">
                               <div className="flex items-center gap-3">
                                 <span className="text-[10px] text-[#6b7280] uppercase tracking-widest font-semibold">{cat.nombre}</span>
                                 <span className="text-[#333] text-[10px]">({items.length})</span>
                                 <div className="flex-1" />
                                 {catValor > 0 && <span className="text-[10px] text-[#555]">Activo {fmx(catValor)}</span>}
-                                {catRenta > 0 && <span className="text-[10px] text-emerald-900">Renta pot. {fmx(catRenta)}</span>}
                               </div>
                             </td>
                           </tr>
                           {items.map(e => {
                             const valorUnitario = e.costoInternoEstimado;
                             const subtotal = valorUnitario != null ? valorUnitario * e.cantidadTotal : null;
-                            const rentabilidad = valorUnitario && valorUnitario > 0
-                              ? (e.precioRenta / valorUnitario) * 100
-                              : null;
                             return (
                               <tr key={e.id} onClick={() => setFichaEquipo(e)} className="border-t border-[#161616] hover:bg-[#0d0d0d] transition-colors cursor-pointer">
                                 <td className="px-4 py-2.5">
@@ -871,29 +842,6 @@ export default function InventarioActivosPage() {
                                     </button>
                                   )}
                                 </td>
-                                {/* Precio renta — editable */}
-                                <td className="px-4 py-2.5 text-right" onClick={ev => ev.stopPropagation()}>
-                                  {isEditing(e.id, "precioRenta") ? (
-                                    <input type="number" autoFocus defaultValue={e.precioRenta} min={0}
-                                      disabled={savingInline === e.id}
-                                      className={`${inlineCls} text-[#B3985B]`}
-                                      onBlur={ev => { const v = parseFloat(ev.target.value) || 0; if (v !== e.precioRenta) patchEquipo(e.id, "precioRenta", v); stopEdit(); }}
-                                      onKeyDown={ev => { if (ev.key === "Enter") (ev.target as HTMLInputElement).blur(); if (ev.key === "Escape") stopEdit(); }} />
-                                  ) : (
-                                    <button onClick={() => startEdit(e.id, "precioRenta")}
-                                      className="text-[#B3985B] font-medium hover:opacity-75 transition-opacity tabular-nums">
-                                      {fmx(e.precioRenta)}
-                                    </button>
-                                  )}
-                                </td>
-                                {/* Rentabilidad */}
-                                <td className="px-4 py-2.5 text-right">
-                                  {rentabilidad != null ? (
-                                    <span className={`font-medium tabular-nums ${rentabilidad >= 10 ? "text-emerald-400" : rentabilidad >= 5 ? "text-yellow-400" : "text-red-400"}`}>
-                                      {pct(rentabilidad)}
-                                    </span>
-                                  ) : <span className="text-[#333]">—</span>}
-                                </td>
                                 {/* Propietario — estático, sin toggle */}
                                 <td className="px-4 py-2.5 text-center">
                                   <span className="inline-block whitespace-nowrap px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#B3985B]/20 text-[#B3985B]">
@@ -922,14 +870,6 @@ export default function InventarioActivosPage() {
                   <div className="text-right">
                     <p className="text-[10px] text-[#555] uppercase tracking-wider mb-0.5">Valor total del activo</p>
                     <p className="text-[#B3985B] font-bold text-base tabular-nums">{fmx(valorTotalProd)}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] text-[#555] uppercase tracking-wider mb-0.5">Renta mensual potencial</p>
-                    <p className="text-emerald-400 font-bold text-base tabular-nums">{fmx(rentaTotalProd)}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] text-[#555] uppercase tracking-wider mb-0.5">Rentabilidad prom.</p>
-                    <p className="text-blue-400 font-bold text-base tabular-nums">{pct(rentabilidadProm)}</p>
                   </div>
                 </div>
               </div>
@@ -1072,7 +1012,6 @@ export default function InventarioActivosPage() {
                     <th className="text-left px-4 py-3 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Accesorio</th>
                     <th className="text-left px-4 py-3 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Conteo</th>
                     <th className="text-right px-4 py-3 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Valor adq.</th>
-                    <th className="text-right px-4 py-3 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Precio renta</th>
                     <th className="text-left px-4 py-3 text-[10px] text-gray-500 uppercase tracking-wider font-semibold hidden lg:table-cell">{agruparAcc === "equipo" ? "Categoría" : "Equipo origen"}</th>
                     <th className="w-10"></th>
                   </tr>
@@ -1086,7 +1025,7 @@ export default function InventarioActivosPage() {
                           .map(({ equipoId, equipoNombre, items }) => (
                           <>
                             <tr key={`eq-${equipoId}`}>
-                              <td colSpan={6} className="px-4 py-2 bg-[#0d0d0d] border-b border-[#1e1e1e]">
+                              <td colSpan={5} className="px-4 py-2 bg-[#0d0d0d] border-b border-[#1e1e1e]">
                                 <div className="flex items-center justify-between">
                                   <div>
                                     <span className="text-[11px] text-[#B3985B] font-semibold">{equipoNombre}</span>
@@ -1105,7 +1044,6 @@ export default function InventarioActivosPage() {
                                 <td className="px-4 py-2.5 pl-8 text-gray-300 font-medium">{a.nombre}</td>
                                 <td className="px-4 py-2.5"><ConteoCell a={a} /></td>
                                 <td className="px-4 py-2.5 text-right"><ValorInput a={a} field="valorAdquisicion" /></td>
-                                <td className="px-4 py-2.5 text-right"><ValorInput a={a} field="precioRenta" /></td>
                                 <td className="px-4 py-2.5 hidden lg:table-cell">
                                   {a.categoria ? (
                                     <span className={`text-xs ${ACC_CAT_COLOR[a.categoria] ?? "text-gray-500"}`}>{ACC_CAT_LABEL[a.categoria] ?? a.categoria}</span>
@@ -1126,14 +1064,14 @@ export default function InventarioActivosPage() {
                         {equiposSinAcc.length > 0 && (
                           <>
                             <tr>
-                              <td colSpan={6} className="px-4 py-2 bg-[#0a0a0a] border-t-2 border-[#1e1e1e]">
+                              <td colSpan={5} className="px-4 py-2 bg-[#0a0a0a] border-t-2 border-[#1e1e1e]">
                                 <span className="text-[10px] text-red-400/70 font-semibold uppercase tracking-wider">Sin accesorios registrados</span>
                                 <span className="text-[#333] text-[10px] ml-2">({equiposSinAcc.length})</span>
                               </td>
                             </tr>
                             {equiposSinAcc.map(eq => (
                               <tr key={eq.equipoId} className="hover:bg-[#0d0d0d] transition-colors group">
-                                <td className="px-4 py-2.5 pl-8" colSpan={4}>
+                                <td className="px-4 py-2.5 pl-8" colSpan={3}>
                                   <p className="text-[#555] text-sm font-medium">{eq.equipoNombre}</p>
                                   {eq.equipoNombre !== eq.descripcion && <p className="text-[#333] text-[10px]">{eq.descripcion}</p>}
                                 </td>
@@ -1166,7 +1104,6 @@ export default function InventarioActivosPage() {
                               <td className="px-4 py-2.5 pl-8 text-gray-300 font-medium">{a.nombre}</td>
                               <td className="px-4 py-2.5"><ConteoCell a={a} /></td>
                               <td className="px-4 py-2.5 text-right"><ValorInput a={a} field="valorAdquisicion" /></td>
-                              <td className="px-4 py-2.5 text-right"><ValorInput a={a} field="precioRenta" /></td>
                               <td className="px-4 py-2.5 text-gray-500 text-xs hidden lg:table-cell">{a.equipoNombre}</td>
                               <td className="px-2">
                                 <button onClick={() => deleteAccesorio(a.equipoId, a.id)}
@@ -1527,7 +1464,6 @@ function FichaEquipoModal({ equipo, onClose }: { equipo: Equipo; onClose: () => 
 
   const valorUnitario = equipo.costoInternoEstimado;
   const subtotal = valorUnitario != null ? valorUnitario * equipo.cantidadTotal : null;
-  const roi = valorUnitario && valorUnitario > 0 ? (equipo.precioRenta / valorUnitario) * 100 : null;
   const nombre = [equipo.marca, equipo.modelo].filter(Boolean).join(" · ") || equipo.descripcion;
   const proyectos = ficha?.proyectoEquipos ?? [];
   const mantenimientos = ficha?.mantenimientos ?? [];
@@ -1564,10 +1500,8 @@ function FichaEquipoModal({ equipo, onClose }: { equipo: Equipo; onClose: () => 
           {/* Financiero */}
           <div>
             <p className="text-[10px] text-[#6b7280] uppercase tracking-wider font-semibold mb-2">Financiero</p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <MetricBox label="Valor unitario" value={valorUnitario != null ? fmx(valorUnitario) : "—"} color="text-[#9ca3af]" />
-              <MetricBox label="Precio de renta" value={fmx(equipo.precioRenta)} color="text-[#B3985B]" />
-              <MetricBox label="Rentabilidad" value={roi != null ? pct(roi) : "—"} color={roi != null ? (roi >= 10 ? "text-emerald-400" : roi >= 5 ? "text-yellow-400" : "text-red-400") : "text-[#333]"} />
               <MetricBox label="Subtotal valor" value={subtotal != null ? fmx(subtotal) : "—"} />
             </div>
           </div>
