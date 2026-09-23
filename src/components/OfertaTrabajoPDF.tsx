@@ -1,6 +1,7 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import type { DocLaboralSnapshot } from "@/lib/documentos-laborales";
+import { ADN_MAINSTAGE } from "@/lib/puesto";
 
 const GOLD = "#B3985B";
 const BLACK = "#0a0a0a";
@@ -110,6 +111,9 @@ export function OfertaTrabajoPDF(p: DocLaboralSnapshot) {
               ))}
             </>
           )}
+
+          <Text style={s.seccionTitulo}>{p.adnTitulo ?? ADN_MAINSTAGE.titulo}</Text>
+          <Text style={s.texto}>{p.adnTexto ?? ADN_MAINSTAGE.texto}</Text>
 
           <Text style={s.seccionTitulo}>Condiciones</Text>
           <View style={s.row2}>

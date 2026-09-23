@@ -13,6 +13,8 @@ interface Snapshot {
   responsabilidades: string[];
   estandares: Estandar[];
   beneficios: string[];
+  adnTitulo?: string;
+  adnTexto?: string;
   // Solo presentes en acuerdos firmados antes de la simplificación del puesto.
   objetivoArea?: string | null;
   coordinaCon?: string[];
@@ -143,6 +145,13 @@ export default function AcuerdoAcusePage() {
             <p className="text-white text-lg font-semibold">{s.personaNombre}</p>
             <p className="text-gray-500 text-sm">{s.puestoNombre} · {s.area}</p>
           </div>
+
+          {s.adnTexto && (
+            <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-xl px-4 py-3">
+              <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">{s.adnTitulo}</p>
+              <p className="text-xs text-gray-400 leading-relaxed">{s.adnTexto}</p>
+            </div>
+          )}
 
           {s.misionPuesto && (
             <Seccion titulo="Misión del puesto">

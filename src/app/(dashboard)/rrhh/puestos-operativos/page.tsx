@@ -518,6 +518,9 @@ export default function PuestosOperativosPage() {
     const org = jparse<OrigenIA>(p.origenIA, {});
     const { hechos, total, faltan } = completitud(p);
     const jor = jparse<JornadaDia[]>(p.jornada, []);
+    const vals = jparse<ValorPerfil[]>(p.valores, []);
+    const apts = jparse<AptitudPerfil[]>(p.aptitudes, []);
+    const cons = jparse<ConocimientoPerfil[]>(p.conocimientos, []);
     return (
       <div className="mt-4 space-y-3 border-t border-[#1a1a1a] pt-4" onClick={e => e.stopPropagation()}>
         <div>
@@ -583,6 +586,25 @@ export default function PuestosOperativosPage() {
             <ul className="space-y-0.5">{reps.map((r, i) => <li key={i} className="text-xs text-gray-300">• {r.nombre} <span className="text-gray-600">({r.frecuencia}{r.formato ? ` · ${r.formato}` : ""})</span></li>)}</ul>
           </div>
         )}
+        <div>
+          <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1 flex items-center gap-1.5">Perfil requerido <SelloIA origen={org} bloque="perfil" /></p>
+          <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-lg px-2.5 py-2 mb-1.5">
+            <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-0.5">{ADN_MAINSTAGE.titulo} · aplica a todos</p>
+            <p className="text-[11px] text-gray-400 leading-relaxed">{ADN_MAINSTAGE.texto}</p>
+          </div>
+          {vals.length > 0 && (
+            <p className="text-xs text-gray-300"><span className="text-gray-600">Valores: </span>
+              {vals.map(v => v.comoSeVe ? `${v.nombre} (${v.comoSeVe})` : v.nombre).join(" · ")}</p>
+          )}
+          {apts.length > 0 && (
+            <p className="text-xs text-gray-300"><span className="text-gray-600">Aptitudes: </span>
+              {apts.map(a => `${a.nombre} (${a.nivel})`).join(" · ")}</p>
+          )}
+          {cons.length > 0 && (
+            <p className="text-xs text-gray-300"><span className="text-gray-600">Conocimientos: </span>
+              {cons.map(c => `${c.nombre} (${c.nivel}${c.indispensable ? ", indispensable" : ""})`).join(" · ")}</p>
+          )}
+        </div>
         {(p.tipoContrato || p.modalidad || jor.length > 0) && (
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
             {p.tipoContrato && <span>Contrato: <span className="text-gray-300">{p.tipoContrato}</span></span>}

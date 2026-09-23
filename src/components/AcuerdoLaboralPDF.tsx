@@ -1,6 +1,7 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import type { DocLaboralSnapshot } from "@/lib/documentos-laborales";
+import { ADN_MAINSTAGE } from "@/lib/puesto";
 
 const GOLD = "#B3985B";
 const BLACK = "#0a0a0a";
@@ -75,6 +76,8 @@ export function AcuerdoLaboralPDF(raw: DocLaboralSnapshot) {
     beneficios: raw.beneficios ?? [],
     reportes: raw.reportes ?? [],
     subAreas: raw.subAreas ?? [],
+    adnTitulo: raw.adnTitulo ?? ADN_MAINSTAGE.titulo,
+    adnTexto: raw.adnTexto ?? ADN_MAINSTAGE.texto,
   };
   return (
     <Document title={`Acuerdo — ${p.personaNombre}`}>
@@ -191,9 +194,12 @@ export function AcuerdoLaboralPDF(raw: DocLaboralSnapshot) {
             </>
           )}
 
+          <Text style={s.seccionTitulo}>6 — Perfil requerido</Text>
+          <Text style={s.texto}>
+            <Text style={s.bold}>{p.adnTitulo}: </Text>{p.adnTexto}
+          </Text>
           {(p.valores.length > 0 || p.aptitudes.length > 0 || p.conocimientos.length > 0) && (
             <>
-              <Text style={s.seccionTitulo}>6 — Perfil requerido</Text>
               {p.valores.length > 0 && (
                 <Text style={s.texto}>
                   <Text style={s.bold}>Valores: </Text>

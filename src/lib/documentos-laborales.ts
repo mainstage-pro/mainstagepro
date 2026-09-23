@@ -4,7 +4,7 @@
 
 import { prisma } from "@/lib/prisma";
 import {
-  jparse, jornadaToString,
+  jparse, jornadaToString, ADN_MAINSTAGE,
   type JornadaDia, type CriterioCalidad, type ValorPerfil,
   type AptitudPerfil, type ConocimientoPerfil, type ReportePuesto,
 } from "@/lib/puesto";
@@ -49,6 +49,9 @@ export interface DocLaboralSnapshot {
   estandares: Estandar[];
   estandaresMinimos: NoNegociable[];
   reportes?: ReportePuesto[];
+  // Base común a todos los puestos, congelada al firmar por si el texto cambia después.
+  adnTitulo?: string;
+  adnTexto?: string;
   valores: ValorPerfil[];
   aptitudes: AptitudPerfil[];
   conocimientos: ConocimientoPerfil[];
@@ -139,6 +142,8 @@ export function buildSnapshot(
       .filter((c) => c.noNegociable)
       .map((c) => ({ enunciado: c.responsabilidad, frecuencia: c.subarea, evidencia: c.estandar })),
     reportes: jparse<ReportePuesto[]>(puesto?.reportes ?? null, []),
+    adnTitulo: ADN_MAINSTAGE.titulo,
+    adnTexto: ADN_MAINSTAGE.texto,
     valores: jparse<ValorPerfil[]>(puesto?.valores ?? null, []),
     aptitudes: jparse<AptitudPerfil[]>(puesto?.aptitudes ?? null, []),
     conocimientos: jparse<ConocimientoPerfil[]>(puesto?.conocimientos ?? null, []),
