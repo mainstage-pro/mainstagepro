@@ -17,7 +17,6 @@ export const AREA_COLORS: Record<string, string> = {
   'Comercial':             AREA_HEX.VENTAS,
   'Ventas':                AREA_HEX.VENTAS,
   'Producción':            AREA_HEX.PRODUCCION,
-  'Operaciones Generales': AREA_HEX.GENERAL,
 }
 
 /** Primer nombre del usuario → color de área */
