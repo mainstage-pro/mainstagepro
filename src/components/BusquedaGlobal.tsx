@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 
-type TipoResultado = "cliente" | "trato" | "cotizacion" | "proyecto" | "tecnico" | "proveedor";
+type TipoResultado = "cliente" | "trato" | "cotizacion" | "proyecto" | "tecnico" | "proveedor" | "modulo";
 
 interface Resultado {
   tipo: TipoResultado;
@@ -13,6 +14,13 @@ interface Resultado {
   href: string;
 }
 
+/** Un módulo del menú lateral, para poder navegar desde el mismo buscador. */
+export interface ModuloBuscable {
+  href: string;
+  label: string;
+  ruta: string;
+}
+
 const TIPO_LABELS: Record<TipoResultado, string> = {
   cliente:    "Cliente",
   trato:      "Trato",
@@ -20,6 +28,7 @@ const TIPO_LABELS: Record<TipoResultado, string> = {
   proyecto:   "Proyecto de evento",
   tecnico:    "Técnico",
   proveedor:  "Proveedor",
+  modulo:     "Ir a",
 };
 
 const TIPO_COLORS: Record<TipoResultado, string> = {
@@ -29,20 +38,66 @@ const TIPO_COLORS: Record<TipoResultado, string> = {
   proyecto:   "bg-green-900/40 text-green-300",
   tecnico:    "bg-orange-900/40 text-orange-300",
   proveedor:  "bg-gray-800 text-gray-400",
+  modulo:     "bg-[#B3985B]/20 text-[#B3985B]",
 };
 
-export default function BusquedaGlobal() {
+// Normaliza para buscar sin acentos ni mayúsculas ("Cotización" ≈ "cotizacion").
+function normalizar(s: string): string {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+export default function BusquedaGlobal({
+  modulos,
+  atajo = true,
+}: {
+  modulos?: ModuloBuscable[];
+  /** Solo una instancia debe escuchar ⌘K: si no, se abrirían dos modales. */
+  atajo?: boolean;
+}) {
   const [open, setOpen]         = useState(false);
   const [query, setQuery]       = useState("");
-  const [resultados, setResultados] = useState<Resultado[]>([]);
+  const [resultadosApi, setResultadosApi] = useState<Resultado[]>([]);
   const [activo, setActivo]     = useState(0);
   const [cargando, setCargando] = useState(false);
+  const [montado, setMontado]   = useState(false);
   const inputRef  = useRef<HTMLInputElement>(null);
   const timerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const router    = useRouter();
 
+  useEffect(() => setMontado(true), []);
+
+  // Los módulos se filtran en local, así que responden desde la primera letra
+  // mientras la búsqueda de registros (que va al servidor) todavía viaja.
+  const resultadosModulos = useMemo<Resultado[]>(() => {
+    const q = normalizar(query.trim());
+    if (!q || !modulos?.length) return [];
+    const palabras = q.split(/\s+/);
+    return modulos
+      .map((m) => {
+        const label = normalizar(m.label);
+        if (!palabras.every((p) => `${label} ${normalizar(m.ruta)}`.includes(p))) return null;
+        return { modulo: m, peso: label.startsWith(q) ? 0 : label.includes(q) ? 1 : 2 };
+      })
+      .filter((r): r is { modulo: ModuloBuscable; peso: number } => r !== null)
+      .sort((a, b) => a.peso - b.peso)
+      .slice(0, 5)
+      .map(({ modulo }) => ({
+        tipo: "modulo" as const,
+        id: modulo.href,
+        titulo: modulo.label,
+        subtitulo: modulo.ruta,
+        href: modulo.href,
+      }));
+  }, [query, modulos]);
+
+  const resultados = useMemo(
+    () => [...resultadosModulos, ...resultadosApi],
+    [resultadosModulos, resultadosApi],
+  );
+
   // Abrir con Cmd+K / Ctrl+K
   useEffect(() => {
+    if (!atajo) return;
     function onKey(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
@@ -52,14 +107,14 @@ export default function BusquedaGlobal() {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [atajo]);
 
   // Focus al abrir
   useEffect(() => {
     if (open) {
       setTimeout(() => inputRef.current?.focus(), 50);
       setQuery("");
-      setResultados([]);
+      setResultadosApi([]);
       setActivo(0);
     }
   }, [open]);
@@ -67,13 +122,13 @@ export default function BusquedaGlobal() {
   // Debounce de búsqueda
   const buscar = useCallback((q: string) => {
     if (timerRef.current) clearTimeout(timerRef.current);
-    if (q.length < 2) { setResultados([]); return; }
+    if (q.length < 2) { setResultadosApi([]); return; }
     timerRef.current = setTimeout(async () => {
       setCargando(true);
       try {
         const res = await fetch(`/api/busqueda?q=${encodeURIComponent(q)}`);
         const data = await res.json();
-        setResultados(data.resultados ?? []);
+        setResultadosApi(data.resultados ?? []);
         setActivo(0);
       } finally {
         setCargando(false);
@@ -92,6 +147,7 @@ export default function BusquedaGlobal() {
   }
 
   function onKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Escape") { e.preventDefault(); setOpen(false); }
     if (e.key === "ArrowDown") { e.preventDefault(); setActivo(p => Math.min(p + 1, resultados.length - 1)); }
     if (e.key === "ArrowUp")   { e.preventDefault(); setActivo(p => Math.max(p - 1, 0)); }
     if (e.key === "Enter" && resultados[activo]) navegar(resultados[activo].href);
@@ -113,8 +169,12 @@ export default function BusquedaGlobal() {
     );
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh] px-4" onClick={() => setOpen(false)}>
+  // El modal va al <body>: el menú lateral usa `transition-transform`, que crea
+  // un contexto de apilamiento y atraparía un `fixed inset-0` dentro del cajón.
+  if (!montado) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[1500] flex items-start justify-center pt-[10vh] px-4" onClick={() => setOpen(false)}>
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
 
@@ -133,7 +193,11 @@ export default function BusquedaGlobal() {
             value={query}
             onChange={onChange}
             onKeyDown={onKeyDown}
-            placeholder="Buscar cliente, trato, cotización, proyecto..."
+            placeholder="Buscar cliente, cotización, módulo..."
+            enterKeyHint="go"
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
             className="flex-1 bg-transparent text-white text-sm placeholder-gray-600 focus:outline-none"
           />
           {cargando && (
@@ -184,6 +248,7 @@ export default function BusquedaGlobal() {
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
