@@ -15,12 +15,25 @@ import PlanTrabajoWidget from "@/components/PlanTrabajoWidget";
 import { NuevoTratoDropdown } from "@/components/NuevoTratoDropdown";
 import { AlertTriangle, Zap } from "lucide-react";
 import { AREA_DASHBOARD } from "@/lib/areas";
+import { headers } from "next/headers";
+import { OWNER_EMAIL } from "@/lib/nav";
 
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const session = await getSession();
+
+  // La PWA instalada grabó "/dashboard" como start_url y el sistema operativo no
+  // lo actualiza; al arrancar la app desde el icono, el dueño debe caer en /inicio.
+  // Un clic en "Mi Dashboard" del menú es navegación RSC (sec-fetch-dest: empty)
+  // y no entra aquí, así que esa pantalla sigue accesible.
+  if (session?.email === OWNER_EMAIL) {
+    const h = await headers();
+    if (h.get("sec-fetch-dest") === "document" && h.get("sec-fetch-site") === "none") {
+      redirect("/inicio");
+    }
+  }
 
   // Redirect non-admin users to their area-specific dashboard
   if (session && session.role !== "ADMIN" && session.area && session.area !== "GENERAL") {
