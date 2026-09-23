@@ -59,8 +59,12 @@ const AREAS = NAV
 
 // Accesos frecuentes por defecto (orden del sidebar): Dashboard, Gestión
 // Operativa, Ventas, Equipos, Finanzas.
-const DEFAULT_FAVS = ["/dashboard", "/gestion", "/crm/tratos", "/equipos", "/finanzas"];
+const DEFAULT_FAVS = ["/mi-dashboard", "/gestion", "/crm/tratos", "/equipos", "/finanzas"];
 const STORAGE_KEY = "inicio-favoritos-v1";
+
+// El dashboard se movió de "/dashboard" (hoy solo punto de entrada que redirige)
+// a "/mi-dashboard". Sin esto, los favoritos ya guardados perderían el mosaico.
+const ID_RENOMBRADOS: Record<string, string> = { "/dashboard": "/mi-dashboard" };
 
 export default function InicioHome({ userName }: { userName: string }) {
   const [favs, setFavs] = useState<string[]>(DEFAULT_FAVS);
@@ -74,7 +78,9 @@ export default function InicioHome({ userName }: { userName: string }) {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const arr = JSON.parse(raw) as string[];
-        if (Array.isArray(arr)) setFavs(arr.filter((id) => BY_ID[id]));
+        if (Array.isArray(arr)) {
+          setFavs(arr.map((id) => ID_RENOMBRADOS[id] ?? id).filter((id) => BY_ID[id]));
+        }
       }
     } catch { /* ignore */ }
     const h = new Date().getHours();

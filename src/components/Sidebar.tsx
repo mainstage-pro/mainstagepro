@@ -268,16 +268,22 @@ export default function Sidebar({ user, userModuleKeys }: SidebarProps) {
     router.refresh();
   }
 
+  // "/dashboard" es solo el punto de entrada de la app (redirige según quién
+  // eres); el dashboard completo se renderiza en "/mi-dashboard".
   const dashboardHref = (!isAdmin && user.area && AREA_DASHBOARD[user.area])
     ? AREA_DASHBOARD[user.area]
-    : "/dashboard";
+    : "/mi-dashboard";
 
   // El logo/marca lleva a la home de accesos directos (solo el dueño la tiene).
   const homeHref = isOwner ? "/inicio" : dashboardHref;
 
   function isActive(href: string) {
     const path = href.split("?")[0];
-    if (path === "/dashboard") return pathname === "/dashboard" || pathname.startsWith("/dashboard/");
+    // "Mi Dashboard" se resalta tanto en /mi-dashboard como en el punto de
+    // entrada /dashboard y en los dashboards por área (/dashboard/ventas...).
+    if (path === "/mi-dashboard" || path === "/dashboard") {
+      return pathname === "/mi-dashboard" || pathname === "/dashboard" || pathname.startsWith("/dashboard/");
+    }
     return pathname === path || pathname.startsWith(path + "/");
   }
 
@@ -349,7 +355,7 @@ export default function Sidebar({ user, userModuleKeys }: SidebarProps) {
         </div>
       );
     }
-    const href = item.href === "/dashboard" ? dashboardHref : item.href!;
+    const href = item.href === "/mi-dashboard" ? dashboardHref : item.href!;
     const badgeCount = item.badge ? (badges[item.badge] ?? 0) : 0;
     const Icon = item.icon;
     const active = isItemActive(item);
@@ -397,7 +403,7 @@ export default function Sidebar({ user, userModuleKeys }: SidebarProps) {
 
         if (item.href && itemOk) {
           push({
-            href: item.href === "/dashboard" ? dashboardHref : item.href,
+            href: item.href === "/mi-dashboard" ? dashboardHref : item.href,
             label: itemLabel,
             ruta: sectionLabel || "General",
           });
@@ -452,7 +458,7 @@ export default function Sidebar({ user, userModuleKeys }: SidebarProps) {
                       {orderedItems.map((item) => {
                         const isGroup = !!(item.children && !item.href);
                         const groupKey = item.key ?? item.label;
-                        const href = item.href === "/dashboard" ? dashboardHref : (item.href ?? "");
+                        const href = item.href === "/mi-dashboard" ? dashboardHref : (item.href ?? "");
                         const id = itemId(item);
                         return (
                           <AdminNavItem

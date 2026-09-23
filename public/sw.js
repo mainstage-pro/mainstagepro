@@ -127,7 +127,7 @@ async function networkFirst(req, cacheName) {
     if (cached) return cached;
     if (req.mode === "navigate") {
       const fallback =
-        (await cache.match("/operaciones")) || (await cache.match("/dashboard"));
+        (await cache.match("/operaciones")) || (await cache.match("/mi-dashboard"));
       if (fallback) return fallback;
     }
     return new Response(

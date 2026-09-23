@@ -51,7 +51,7 @@ export const NAV: NavSection[] = [
     section: "",
     items: [
       { key: "inicio", label: "Inicio", href: "/inicio", icon: LayoutGrid, adminOnly: true, ownerOnly: true },
-      { label: "Mi Dashboard", href: "/dashboard", icon: LayoutDashboard },
+      { label: "Mi Dashboard", href: "/mi-dashboard", icon: LayoutDashboard },
       { key: "calendario", label: "Calendarios", href: "/calendarios/eventos", icon: CalendarDays },
       { key: "portal-capacitacion", label: "Capacitación", href: "/capacitacion", icon: GraduationCap },
       {

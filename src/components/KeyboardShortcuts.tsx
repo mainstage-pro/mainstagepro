@@ -23,7 +23,7 @@ const SHORTCUTS: Shortcut[] = [
 ];
 
 const NAV_SEQUENCES: Record<string, string> = {
-  "gd": "/dashboard",
+  "gd": "/mi-dashboard",
   "gc": "/crm/clientes",
   "gt": "/crm/tratos",
   "gq": "/cotizaciones",
