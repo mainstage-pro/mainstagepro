@@ -9,6 +9,7 @@ import { useConfirm } from "@/components/Confirm";
 import { SkeletonPage } from "@/components/Skeleton";
 import { EmpresaCombobox } from "@/components/EmpresaCombobox";
 import { BackButton } from "@/components/BackButton";
+import { usePdfDownload } from "@/hooks/usePdfDownload";
 import { Modal } from "@/components/Modal";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -734,8 +735,8 @@ function PanelCuentasProveedor({
   cuentasCobrar: CuentaCobrarItem[];
   cuentasPagar: CuentaPagarItem[];
 }) {
-  const [descargando, setDescargando] = useState(false);
-  const toast = useToast();
+  const { downloading, downloadPdf } = usePdfDownload();
+  const descargando = downloading !== null;
 
   const cuentasCobrarPendientes = cuentasCobrar.filter((c) => esCuentaPendiente(c.estado) && Math.max(0, c.monto - c.montoCobrado) > 0);
   const cuentasPagarPendientes = cuentasPagar.filter((c) => esCuentaPendiente(c.estado) && Math.max(0, c.monto - c.montoPagado) > 0);
@@ -746,30 +747,14 @@ function PanelCuentasProveedor({
   const totalPagar = cuentasPagarPendientes.reduce((s, c) => s + Math.max(0, c.monto - c.montoPagado), 0);
   const neto = totalCobrar - totalPagar;
 
-  async function descargar() {
-    setDescargando(true);
-    try {
-      const res = await fetch(`/api/proveedores/${proveedorId}/estado-cuenta/pdf`);
-      if (!res.ok) {
-        toast.error("No se pudo generar el estado de cuenta");
-        return;
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      const fecha = new Date().toISOString().slice(0, 10);
-      const slug = proveedorNombre.replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30);
-      a.download = `EstadoCuenta-${slug || proveedorId.slice(0, 8)}-${fecha}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } catch {
-      toast.error("No se pudo generar el estado de cuenta");
-    } finally {
-      setDescargando(false);
-    }
+  function descargar() {
+    const fecha = new Date().toISOString().slice(0, 10);
+    const slug = proveedorNombre.replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30);
+    downloadPdf(
+      `/api/proveedores/${proveedorId}/estado-cuenta/pdf`,
+      `EstadoCuenta-${slug || proveedorId.slice(0, 8)}-${fecha}.pdf`,
+      "Estado de cuenta"
+    );
   }
 
   const hayMovimientos = cuentasCobrar.length > 0 || cuentasPagar.length > 0;

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { BarChart2, Circle, ClipboardList, Target, Hash, BarChart3, Settings, FileText, PenLine, Wrench, AlertTriangle } from 'lucide-react';
 import React from 'react';
+import { useDescarga } from '@/components/DescargaProvider';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   RadialBarChart, RadialBar,
@@ -312,6 +313,7 @@ export default function KpisDashboardPage() {
 
   // PDF
   const [generandoPDF, setGenerandoPDF] = useState(false);
+  const { entregar } = useDescarga();
 
   // Active tab
   const [activeTab, setActiveTab] = useState<'resumen' | 'administracion' | 'marketing' | 'ventas' | 'produccion'>('resumen');
@@ -450,14 +452,7 @@ export default function KpisDashboardPage() {
         }) as any
       ).toBlob();
 
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `KPIs-Mainstage-${periodoLabel.replace(/\s/g, '-')}-${desde}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      entregar(blob, `KPIs-Mainstage-${periodoLabel.replace(/\s/g, '-')}-${desde}.pdf`, 'Reporte de KPIs');
     } finally {
       setGenerandoPDF(false);
     }

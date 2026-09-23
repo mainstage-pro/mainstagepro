@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { upload } from "@vercel/blob/client";
 import { useToast } from "@/components/Toast";
+import { usePdfDownload } from "@/hooks/usePdfDownload";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Legend,
@@ -279,26 +280,11 @@ export default function ResultadosMarketingPage() {
   const toast = useToast();
   const [mes, setMes] = useState(getMesAnterior());
   const [tab, setTab] = useState<TabKey>("ejecucion-organica");
-  const [downloadingPDF, setDownloadingPDF] = useState(false);
+  const { downloading, downloadPdf } = usePdfDownload();
+  const downloadingPDF = downloading !== null;
 
-  async function handleDescargarPDF() {
-    setDownloadingPDF(true);
-    try {
-      const r = await fetch(`/api/marketing/pdf?mes=${mes}&tipo=${tab}`);
-      if (!r.ok) { toast.error("Error al generar el PDF"); return; }
-      const blob = await r.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      const cd = r.headers.get("Content-Disposition") ?? "";
-      const match = cd.match(/filename="([^"]+)"/);
-      a.download = match?.[1] ?? `Reporte-Marketing-${tab}-${mes}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch { toast.error("Error al generar el PDF"); }
-    finally { setDownloadingPDF(false); }
+  function handleDescargarPDF() {
+    downloadPdf(`/api/marketing/pdf?mes=${mes}&tipo=${tab}`, `Reporte-Marketing-${tab}-${mes}.pdf`, "Reporte de marketing");
   }
 
   // ── Tab 1: Ejecución Orgánica

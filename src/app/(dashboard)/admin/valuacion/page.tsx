@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import { Sliders, Armchair, Lightbulb, Plug } from "lucide-react";
+import { usePdfDownload } from "@/hooks/usePdfDownload";
 
 type Equipo = {
   id: string;
@@ -93,6 +94,7 @@ type Tab = "resumen" | "produccion" | "accesorios" | "oficina" | "intangibles";
 
 export default function InventarioActivosPage() {
   const toast = useToast();
+  const { downloadPdf } = usePdfDownload();
   const [equipos, setEquipos] = useState<Equipo[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [loading, setLoading] = useState(true);
@@ -373,22 +375,13 @@ export default function InventarioActivosPage() {
     }
   }
 
-  async function descargarPDF() {
-    try {
-      const res = await fetch("/api/inventario/pdf", { cache: "no-store" });
-      if (!res.ok) throw new Error();
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `Inventario-Activos-${new Date().toISOString().slice(0, 10)}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch {
-      toast.error("Error al generar el PDF");
-    }
+  function descargarPDF() {
+    downloadPdf(
+      "/api/inventario/pdf",
+      `Inventario-Activos-${new Date().toISOString().slice(0, 10)}.pdf`,
+      "Inventario de activos",
+      { cache: "no-store" }
+    );
   }
 
   // ── Equipos de Producción = equipos propios activos

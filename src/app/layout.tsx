@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import OfflineProvider from "@/components/OfflineProvider";
+import { DescargaProvider } from "@/components/DescargaProvider";
 
 const heading = Space_Grotesk({
   subsets: ["latin"],
@@ -40,7 +41,7 @@ export default function RootLayout({
   return (
     <html lang="es" className={`h-full ${heading.variable}`}>
       <body className="h-full antialiased">
-        {children}
+        <DescargaProvider>{children}</DescargaProvider>
         <OfflineProvider />
       </body>
     </html>

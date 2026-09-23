@@ -3,9 +3,11 @@
 import React, { useMemo, useState } from "react";
 import { CheckCircle2, XCircle, ChevronDown } from "lucide-react";
 import { useResumen, fmtFecha, Aviso, Skeleton } from "../ResumenData";
+import { useDescarga } from "@/components/DescargaProvider";
 
 export default function EvaluacionesPage() {
   const { data, loading, error } = useResumen();
+  const { entregar } = useDescarga();
   const [filtroPersona, setFiltroPersona] = useState("");
   const [expandido, setExpandido] = useState<number | null>(null);
 
@@ -24,12 +26,7 @@ export default function EvaluacionesPage() {
     ].map(esc).join(","));
     const csv = [headers.map(esc).join(","), ...filas].join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `evaluaciones${filtroPersona ? "-" + filtroPersona.replace(/\s+/g, "-").toLowerCase() : ""}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    entregar(blob, `evaluaciones${filtroPersona ? "-" + filtroPersona.replace(/\s+/g, "-").toLowerCase() : ""}.csv`);
   }
 
   if (error === "forbidden") return <Aviso>Sin permiso para ver el panel.</Aviso>;

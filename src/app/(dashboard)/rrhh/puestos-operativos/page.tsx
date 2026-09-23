@@ -7,6 +7,7 @@ import { AREA_CODES } from "@/lib/areas";
 import { useAreas } from "@/components/AreasProvider";
 import { MODULOS_POR_SECCION } from "@/lib/nav";
 import { parseIdList } from "@/lib/onboarding";
+import { usePdfDownload } from "@/hooks/usePdfDownload";
 import {
   asignacionesEfectivas, derivarAsignacionesDefault, nivelMax,
   type CapAsignacion, type NivelCapacitacion,
@@ -108,6 +109,7 @@ export default function PuestosOperativosPage() {
   const [filterArea, setFilterArea] = useState("TODOS");
   const [vista, setVista] = useState<"lista" | "grid">("lista");
   const [genPdf, setGenPdf] = useState<string | null>(null);
+  const { downloadPdf } = usePdfDownload();
   const [genLink, setGenLink] = useState<string | null>(null);
   const [subareasPorArea, setSubareasPorArea] = useState<Record<string, { id: string; nombre: string }[]>>({});
   const [objetivoPorArea, setObjetivoPorArea] = useState<Record<string, string>>({});
@@ -345,7 +347,7 @@ export default function PuestosOperativosPage() {
       });
       const d = await r.json();
       if (!r.ok || !d.doc?.id) { toast.error(d.error ?? "No se pudo generar el acuerdo"); return; }
-      window.open(`/api/rrhh/documentos-laborales/${d.doc.id}/pdf`, "_blank");
+      downloadPdf(`/api/rrhh/documentos-laborales/${d.doc.id}/pdf`, `Acuerdo-${personalId.slice(0, 8)}.pdf`, "Acuerdo laboral");
     } catch { toast.error("Error de conexión"); }
     finally { setGenPdf(null); }
   }

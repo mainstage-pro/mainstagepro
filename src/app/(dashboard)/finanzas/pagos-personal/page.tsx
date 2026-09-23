@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { BotonDescarga } from "@/components/BotonDescarga";
 import Link from "next/link";
 import { Combobox } from "@/components/Combobox";
 import { FileText } from "lucide-react";
@@ -575,14 +576,14 @@ export default function PagosPersonalPage() {
           <p className="ms-subtitle mt-0.5">Ciclo semanal · miércoles de pago</p>
         </div>
         <div className="flex items-center gap-3">
-          <a
-            href={`/api/pagos-personal/pdf?ciclo=${ciclo}`}
-            target="_blank"
-            rel="noopener noreferrer"
+          <BotonDescarga
+            url={`/api/pagos-personal/pdf?ciclo=${ciclo}`}
+            filename={`Pagos-personal-${ciclo}.pdf`}
+            titulo={`Pagos a personal ${ciclo}`}
             className="flex items-center gap-2 ms-card px-4 py-2 hover:bg-[#222] transition-colors text-sm font-medium text-[#B3985B] border border-[#B3985B]/30"
           >
             <FileText className="w-4 h-4" /> PDF
-          </a>
+          </BotonDescarga>
           <div className="flex items-center gap-2 ms-card px-3 py-2">
             <button onClick={() => setCiclo(prevCiclo(ciclo))} className="text-gray-400 hover:text-white px-1 transition-colors">‹</button>
             <div className="text-center">
@@ -770,14 +771,14 @@ export default function PagosPersonalPage() {
                       <div className="flex items-center justify-between mb-2">
                         <p className="text-white text-sm font-medium">{row.tecnicoNombre}</p>
                         <div className="flex items-center gap-3">
-                          <a
-                            href={`/api/pagos-personal/recibo?ciclo=${ciclo}&tecnico=${row.tecnicoId}`}
-                            target="_blank"
-                            title="Descargar recibo desglosado"
+                          <BotonDescarga
+                            url={`/api/pagos-personal/recibo?ciclo=${ciclo}&tecnico=${row.tecnicoId}`}
+                            filename={`Recibo-${row.tecnicoNombre.replace(/\s+/g, "-")}-${ciclo}.pdf`}
+                            titulo={`Recibo ${row.tecnicoNombre}`}
                             className="text-[#B3985B] hover:text-white transition-colors flex items-center justify-center p-1 rounded-md hover:bg-[#B3985B]/20"
                           >
                             <FileText className="w-4 h-4" />
-                          </a>
+                          </BotonDescarga>
                           <p className={`text-base font-bold ${row.todosPagados ? "text-green-400" : "text-[#B3985B]"}`}>
                             {fmt(row.total)}
                           </p>

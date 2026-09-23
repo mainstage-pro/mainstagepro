@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { FileText, ClipboardList, Shield, CreditCard, Send, type LucideIcon } from "lucide-react";
+import { usePdfDownload } from "@/hooks/usePdfDownload";
 
 interface CotizacionLite {
   id: string;
@@ -30,7 +32,9 @@ function estadoLabel(e: string) {
 }
 
 export default function DocumentosClienteModal({ trato }: { trato: TratoLite }) {
+  const { downloadPdf } = usePdfDownload();
   const [open, setOpen] = useState(false);
+  const [montado, setMontado] = useState(false);
   const [selectedCotId, setSelectedCotId] = useState<string>("");
   const [anticipoCxcId, setAnticipoCxcId] = useState<string | null>(null);
   const [cargandoAnticipo, setCargandoAnticipo] = useState(false);
@@ -50,6 +54,8 @@ export default function DocumentosClienteModal({ trato }: { trato: TratoLite }) 
       trato.cotizaciones[0]
     );
   }, [trato.cotizaciones]);
+
+  useEffect(() => setMontado(true), []);
 
   useEffect(() => {
     if (open && !selectedCotId && cotDefault) setSelectedCotId(cotDefault.id);
@@ -80,7 +86,7 @@ export default function DocumentosClienteModal({ trato }: { trato: TratoLite }) 
 
   if (!visible) return null;
 
-  const abrir = (url: string) => window.open(url, "_blank", "noopener,noreferrer");
+  const ref = selectedCot?.numeroCotizacion ?? trato.id.slice(0, 8);
 
   const docs: Array<{
     key: string;
@@ -97,7 +103,9 @@ export default function DocumentosClienteModal({ trato }: { trato: TratoLite }) 
       desc: "Contrato de servicios con anticipo y saldo",
       icon: FileText,
       enabled: !!selectedCot,
-      onClick: () => selectedCot && abrir(`/api/contratos/${trato.id}/pdf?cotizacionId=${selectedCot.id}`),
+      onClick: () =>
+        selectedCot &&
+        downloadPdf(`/api/contratos/${trato.id}/pdf?cotizacionId=${selectedCot.id}`, `Contrato-${ref}.pdf`, "Contrato"),
     },
     {
       key: "listado",
@@ -105,7 +113,13 @@ export default function DocumentosClienteModal({ trato }: { trato: TratoLite }) 
       desc: "Relación de equipos incluidos",
       icon: ClipboardList,
       enabled: !!selectedCot,
-      onClick: () => selectedCot && abrir(`/api/cotizaciones/${selectedCot.id}/listado-equipos-pdf`),
+      onClick: () =>
+        selectedCot &&
+        downloadPdf(
+          `/api/cotizaciones/${selectedCot.id}/listado-equipos-pdf`,
+          `Listado-equipos-${ref}.pdf`,
+          "Listado de equipos"
+        ),
     },
     {
       key: "responsiva",
@@ -114,7 +128,13 @@ export default function DocumentosClienteModal({ trato }: { trato: TratoLite }) 
       icon: Shield,
       enabled: !!proyecto,
       hint: proyecto ? undefined : "Requiere proyecto",
-      onClick: () => proyecto && abrir(`/api/proyectos/${proyecto.id}/carta-responsiva?preview=1`),
+      onClick: () =>
+        proyecto &&
+        downloadPdf(
+          `/api/proyectos/${proyecto.id}/carta-responsiva`,
+          `Carta-responsiva-${proyecto.numeroProyecto}.pdf`,
+          "Carta responsiva"
+        ),
     },
     {
       key: "nota",
@@ -129,7 +149,13 @@ export default function DocumentosClienteModal({ trato }: { trato: TratoLite }) 
       icon: CreditCard,
       enabled: !!anticipoCxcId,
       hint: !proyecto ? "Requiere proyecto" : !anticipoCxcId && !cargandoAnticipo ? "Sin anticipo" : undefined,
-      onClick: () => anticipoCxcId && abrir(`/api/cuentas-cobrar/${anticipoCxcId}/nota?t=${Date.now()}`),
+      onClick: () =>
+        anticipoCxcId &&
+        downloadPdf(
+          `/api/cuentas-cobrar/${anticipoCxcId}/nota?t=${Date.now()}`,
+          `Nota-anticipo-${ref}.pdf`,
+          "Nota de cobro del anticipo"
+        ),
     },
   ];
 
@@ -142,9 +168,9 @@ export default function DocumentosClienteModal({ trato }: { trato: TratoLite }) 
         <Send strokeWidth={1.75} className="w-4 h-4" /> Documentos para el cliente
       </button>
 
-      {open && (
+      {open && montado && createPortal(
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
           onClick={() => setOpen(false)}
         >
           <div
@@ -236,7 +262,8 @@ export default function DocumentosClienteModal({ trato }: { trato: TratoLite }) 
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

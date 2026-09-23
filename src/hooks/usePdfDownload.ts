@@ -1,36 +1,20 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useCallback } from "react";
+import { useDescarga } from "@/components/DescargaProvider";
 
 /**
- * Hook para descargar un PDF desde una URL de API sin abrir nuevas pestañas.
- * Hace fetch en background, crea un blob URL temporal y lo descarga.
- * Retorna: { downloading, downloadPdf }
+ * Descarga un archivo desde una URL de API sin abrir pestañas nuevas.
+ * En escritorio guarda directo; en móvil abre la hoja nativa para compartir
+ * (WhatsApp, correo) o guardar.
  */
 export function usePdfDownload() {
-  const [downloading, setDownloading] = useState<string | null>(null);
+  const { descargar, ocupado } = useDescarga();
 
-  const downloadPdf = useCallback(async (url: string, filename: string) => {
-    if (downloading) return;
-    setDownloading(filename);
-    try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`Error ${res.status}`);
-      const blob = await res.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      // Liberar el blob URL después de un momento
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
-    } catch (err) {
-      console.error("Error descargando PDF:", err);
-    } finally {
-      setDownloading(null);
-    }
-  }, [downloading]);
+  const downloadPdf = useCallback(
+    (url: string, filename: string, titulo?: string, init?: RequestInit) =>
+      descargar({ url, filename, titulo, init }),
+    [descargar]
+  );
 
-  return { downloading, downloadPdf };
+  return { downloading: ocupado, downloadPdf };
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
+import { BotonDescarga } from "@/components/BotonDescarga";
 
 interface Trato {
   id: string;
@@ -144,12 +145,14 @@ export default function ContratoPage({ params }: { params: Promise<{ tratoId: st
             Contrato — {trato.nombreEvento || trato.cliente.nombre}
           </span>
         </div>
-        <a
-          href={`/api/contratos/${tratoId}/pdf`}
+        <BotonDescarga
+          url={`/api/contratos/${tratoId}/pdf`}
+          filename={`Contrato-${tratoId.slice(0, 8)}.pdf`}
+          titulo="Contrato"
           className="bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold text-sm px-5 py-2 rounded-lg transition-colors"
         >
           Descargar PDF
-        </a>
+        </BotonDescarga>
       </div>
 
       {/* Vista previa del contrato */}
@@ -484,12 +487,14 @@ export default function ContratoPage({ params }: { params: Promise<{ tratoId: st
           <div className="mt-6 pt-4 border-t border-white/5 flex items-center justify-between">
             <p className="text-[#B3985B] text-xs font-bold tracking-wider">MAINSTAGE PRODUCCIONES</p>
             <p className="text-white/20 text-xs">Producción técnica profesional</p>
-            <a
-              href={`/api/contratos/${tratoId}/pdf`}
+            <BotonDescarga
+              url={`/api/contratos/${tratoId}/pdf`}
+              filename={`Contrato-${tratoId.slice(0, 8)}.pdf`}
+              titulo="Contrato"
               className="bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold text-xs px-4 py-2 rounded-lg transition-colors"
             >
               Descargar PDF
-            </a>
+            </BotonDescarga>
           </div>
         </div>
       </div>

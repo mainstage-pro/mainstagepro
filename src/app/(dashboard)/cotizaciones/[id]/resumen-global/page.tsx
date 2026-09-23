@@ -3,6 +3,7 @@ import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { BackButton } from "@/components/BackButton";
 import { formatCurrency } from "@/lib/cotizador";
+import { usePdfDownload } from "@/hooks/usePdfDownload";
 
 interface EventoResumen {
   id: string;
@@ -58,23 +59,11 @@ export default function ResumenGlobalPage({ params }: { params: Promise<{ id: st
   const { id } = use(params);
   const [data, setData] = useState<ResumenData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [descargandoGlobal, setDescargandoGlobal] = useState(false);
+  const { downloading, downloadPdf } = usePdfDownload();
+  const descargandoGlobal = downloading !== null;
 
-  async function descargarPdfGlobal() {
-    setDescargandoGlobal(true);
-    try {
-      const res = await fetch(`/api/cotizaciones/${id}/resumen-global/pdf`);
-      if (!res.ok) { alert("Error al generar PDF"); return; }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = res.headers.get("Content-Disposition")?.split('filename="')[1]?.replace('"', '') ?? "cotizacion-global.pdf";
-      a.click();
-      URL.revokeObjectURL(url);
-    } finally {
-      setDescargandoGlobal(false);
-    }
+  function descargarPdfGlobal() {
+    downloadPdf(`/api/cotizaciones/${id}/resumen-global/pdf`, "cotizacion-global.pdf", "Resumen global");
   }
 
   useEffect(() => {
@@ -213,14 +202,20 @@ export default function ResumenGlobalPage({ params }: { params: Promise<{ id: st
                         )}
                       </div>
                       <div className="flex items-center gap-2 mt-1.5 justify-end">
-                        <a
-                          href={`/api/cotizaciones/${ev.id}/pdf`}
-                          target="_blank"
+                        <button
+                          type="button"
+                          onClick={() =>
+                            downloadPdf(
+                              `/api/cotizaciones/${ev.id}/pdf`,
+                              `${ev.numeroCotizacion}.pdf`,
+                              `Cotización ${ev.numeroCotizacion}`
+                            )
+                          }
                           className="inline-block text-[10px] text-gray-500 hover:text-[#B3985B] transition-colors"
                           title="Descargar PDF individual"
                         >
                           ↓ PDF
-                        </a>
+                        </button>
                         <Link
                           href={`/cotizaciones/${ev.id}`}
                           className="inline-block text-[10px] text-[#B3985B]/60 hover:text-[#B3985B] transition-colors"

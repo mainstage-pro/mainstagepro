@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { upload } from "@vercel/blob/client";
 import type { DesignOverrides, EditableField } from "@/lib/diseno/overrides";
+import { BotonDescarga } from "@/components/BotonDescarga";
 
 const GOLD = "#B3985B";
 const CARD = "#141210";
@@ -230,7 +231,7 @@ export default function DesignEditor({ template, disenoId, titulo: tituloInicial
                   Quitar foto
                 </button>
               )}
-              <a href={previewSrc} download={`${template}-${active}.png`} style={btn}>Descargar slide</a>
+              <BotonDescarga url={previewSrc} filename={`${template}-${active}.png`} style={btn}>Descargar slide</BotonDescarga>
             </div>
           </div>
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { ReporteAnalisisSection } from '@/components/ui/ReporteAnalisisSection';
+import { usePdfDownload } from "@/hooks/usePdfDownload";
 import { useSearchParams } from "next/navigation";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -161,7 +162,8 @@ export default function ReporteVentasPage() {
   const [mes1, setMes1] = useState(getMesAnterior());
   const [reporte, setReporte] = useState<ReporteMensual | null>(null);
   const [loadingMensual, setLoadingMensual] = useState(false);
-  const [loadingPdf1, setLoadingPdf1] = useState(false);
+  const { downloading, downloadPdf } = usePdfDownload();
+  const loadingPdf1 = downloading !== null;
   const [showEjecutivo, setShowEjecutivo] = useState(false);
   const [analisis1, setAnalisis1] = useState("");
   const [propuesta1_1, setPropuesta1_1] = useState("");
@@ -175,7 +177,7 @@ export default function ReporteVentasPage() {
   const [vendedorId, setVendedorId] = useState(searchParams.get("vendedorId") ?? "");
   const [reporteVendedor, setReporteVendedor] = useState<ReporteVendedorData | null>(null);
   const [loadingVendedor, setLoadingVendedor] = useState(false);
-  const [loadingPdf2, setLoadingPdf2] = useState(false);
+  const loadingPdf2 = downloading !== null;
   const [analisis2, setAnalisis2] = useState("");
   const [propuesta1_2, setPropuesta1_2] = useState("");
   const [propuesta2_2, setPropuesta2_2] = useState("");
@@ -227,21 +229,12 @@ export default function ReporteVentasPage() {
     setNotasLoaded(true);
   }, [mes1]);
 
-  async function descargarPdf1() {
-    setLoadingPdf1(true);
-    try {
-      const res = await fetch("/api/ventas/reporte-mensual/pdf", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mes: mes1, analisis: analisis1, propuesta1: propuesta1_1, propuesta2: propuesta2_1, propuesta3: propuesta3_1, comentarios: comentarios1 }),
-      });
-      if (!res.ok) { toast("err", "Error al generar PDF"); return; }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = `Reporte-Ventas-${mes1}.pdf`; a.click();
-      URL.revokeObjectURL(url);
-    } finally { setLoadingPdf1(false); }
+  function descargarPdf1() {
+    downloadPdf(`/api/ventas/reporte-mensual/pdf`, `Reporte-Ventas-${mes1}.pdf`, "Reporte de ventas", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mes: mes1, analisis: analisis1, propuesta1: propuesta1_1, propuesta2: propuesta2_1, propuesta3: propuesta3_1, comentarios: comentarios1 }),
+    });
   }
 
   // ── Tab 2 ─────────────────────────────────────────────────────────────────────
@@ -259,24 +252,15 @@ export default function ReporteVentasPage() {
   }, [vendedorId, mes2, session]);
   useEffect(() => { cargarVendedor(); }, [cargarVendedor]);
 
-  async function descargarPdf2() {
+  function descargarPdf2() {
     const vid = vendedorId || session?.id;
     if (!vid) return;
-    setLoadingPdf2(true);
-    try {
-      const res = await fetch("/api/ventas/reporte-vendedor-pdf", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mes: mes2, vendedorId: vid, analisis: analisis2, propuesta1: propuesta1_2, propuesta2: propuesta2_2, propuesta3: propuesta3_2, comentarios: comentarios2 }),
-      });
-      if (!res.ok) { toast("err", "Error al generar PDF"); return; }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `Reporte-${reporteVendedor?.vendedor?.name?.replace(/\s+/g, "-") ?? "Vendedor"}-${mes2}.pdf`;
-      a.click(); URL.revokeObjectURL(url);
-    } finally { setLoadingPdf2(false); }
+    const nombre = reporteVendedor?.vendedor?.name?.replace(/\s+/g, "-") ?? "Vendedor";
+    downloadPdf(`/api/ventas/reporte-vendedor-pdf`, `Reporte-${nombre}-${mes2}.pdf`, "Reporte del vendedor", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mes: mes2, vendedorId: vid, analisis: analisis2, propuesta1: propuesta1_2, propuesta2: propuesta2_2, propuesta3: propuesta3_2, comentarios: comentarios2 }),
+    });
   }
 
   async function registrarPago() {

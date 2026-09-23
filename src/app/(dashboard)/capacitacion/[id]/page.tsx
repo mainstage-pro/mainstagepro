@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useDescarga } from "@/components/DescargaProvider";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -369,6 +370,7 @@ export default function CapacitacionDetailPage() {
 
   const [sesion, setSesion] = useState<Sesion | null>(null);
   const [loading, setLoading] = useState(true);
+  const { entregar } = useDescarga();
   const [generating, setGenerating] = useState(false);
 
   // Editable state
@@ -700,11 +702,7 @@ export default function CapacitacionDetailPage() {
   }
 
   function downloadHtml(html: string, filename: string) {
-    const blob = new Blob([html], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = filename; a.click();
-    URL.revokeObjectURL(url);
+    entregar(new Blob([html], { type: "text/html" }), filename);
   }
 
   // ─── Render ─────────────────────────────────────────────────────────────────

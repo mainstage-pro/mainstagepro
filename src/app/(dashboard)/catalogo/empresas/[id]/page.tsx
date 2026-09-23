@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import CuentaCorrienteTab from "./CuentaCorrienteTab";
+import { usePdfDownload } from "@/hooks/usePdfDownload";
 
 interface Trato { id: string; nombreEvento: string | null; etapa: string; presupuestoEstimado: number | null; updatedAt: string; }
 interface Proyecto { id: string; nombre: string; fechaEvento: string | null; estado: string; }
@@ -92,29 +93,13 @@ export default function EmpresaDetallePage() {
   const [loading, setLoading] = useState(true);
   const initialTab = (searchParams.get("tab") as Tab) ?? "clientes";
   const [tab, setTab] = useState<Tab>(initialTab);
-  const [descargando, setDescargando] = useState(false);
+  const { downloading, downloadPdf } = usePdfDownload();
+  const descargando = downloading !== null;
 
-  const descargarEstadoCuenta = useCallback(async () => {
-    setDescargando(true);
-    try {
-      const res = await fetch(`/api/empresas/${id}/estado-cuenta/pdf`);
-      if (!res.ok) { alert("No se pudo generar el estado de cuenta"); return; }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      const fecha = new Date().toISOString().slice(0, 10);
-      a.download = `EstadoCuenta-${fecha}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } catch {
-      alert("No se pudo generar el estado de cuenta");
-    } finally {
-      setDescargando(false);
-    }
-  }, [id]);
+  const descargarEstadoCuenta = useCallback(() => {
+    const fecha = new Date().toISOString().slice(0, 10);
+    downloadPdf(`/api/empresas/${id}/estado-cuenta/pdf`, `EstadoCuenta-${fecha}.pdf`, "Estado de cuenta");
+  }, [id, downloadPdf]);
 
   const load = useCallback(async () => {
     setLoading(true);

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { upload } from "@vercel/blob/client";
+import { BotonDescarga } from "@/components/BotonDescarga";
 import {
   getEvalConfig,
   SECCION_NOTAS_COLOR,
@@ -621,7 +622,7 @@ export default function ReportePostEventoPage() {
               {subiendoKey === "galeria" ? "Subiendo…" : "+ Agregar fotos / videos"}
               <input type="file" accept="image/*,video/*" multiple className="hidden" disabled={subiendoKey === "galeria"} onChange={onGaleria} />
             </label>
-            <a href={`/api/proyectos/${id}/reporte-servicio-cliente/pdf?preview=1`} target="_blank" rel="noopener noreferrer" className="text-xs rounded-lg border border-[#2a2a2a] text-gray-300 hover:border-[#B3985B]/50 hover:text-white px-3 py-2 transition-colors">Ver reporte del cliente (PDF)</a>
+            <BotonDescarga url={`/api/proyectos/${id}/reporte-servicio-cliente/pdf`} filename="Reporte-servicio-cliente.pdf" titulo="Reporte de servicio" className="text-xs rounded-lg border border-[#2a2a2a] text-gray-300 hover:border-[#B3985B]/50 hover:text-white px-3 py-2 transition-colors">Ver reporte del cliente (PDF)</BotonDescarga>
           </div>
           <p className="text-[#555] text-[11px]">El reporte al cliente incluye sólo fotos (los videos quedan como evidencia interna).</p>
         </div>

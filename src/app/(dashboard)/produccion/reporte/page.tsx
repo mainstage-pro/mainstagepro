@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { ReporteAnalisisSection } from '@/components/ui/ReporteAnalisisSection';
 import Link from "next/link";
 import { getEquipoDisplayName } from "@/lib/equipoNombre";
+import { usePdfDownload } from "@/hooks/usePdfDownload";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Cell, PieChart, Pie,
@@ -954,7 +955,8 @@ export default function ReporteProduccionPage() {
   const [data, setData]     = useState<ReporteData | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab]       = useState("checklist");
-  const [downloadingPDF, setDownloadingPDF] = useState(false);
+  const { downloading, downloadPdf } = usePdfDownload();
+  const downloadingPDF = downloading !== null;
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -967,9 +969,7 @@ export default function ReporteProduccionPage() {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   // Pasa las notas de localStorage al PDF para incluirlas en el documento
-  async function handleDescargarPDF() {
-    setDownloadingPDF(true);
-    try {
+  function handleDescargarPDF() {
       const NOTA_KEYS: Record<string, { analisis: string; propuesta: string; comentarios: string }> = {
         checklist:  { analisis: `rp-checklist-analisis-${mes}`,  propuesta: `rp-checklist-propuesta-${mes}`,  comentarios: `rp-checklist-comentarios-${mes}` },
         equipos:    { analisis: `rp-mant-analisis-${mes}`,        propuesta: `rp-mant-propuestas-${mes}`,       comentarios: `rp-mant-comentarios-${mes}` },
@@ -988,21 +988,11 @@ export default function ReporteProduccionPage() {
       if (propuesta)   params.set(`${p}-propuesta`,   propuesta);
       if (comentarios) params.set(`${p}-comentarios`, comentarios);
 
-      const r = await fetch(`/api/produccion/reporte/pdf?${params.toString()}`);
-      if (!r.ok) { alert("Error al generar el PDF"); return; }
-      const blob = await r.blob();
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement("a");
-      a.href = url;
-      const cd = r.headers.get("Content-Disposition") ?? "";
-      const match = cd.match(/filename="([^"]+)"/);
-      a.download = match?.[1] ?? `Reporte-Produccion-${tab}-${mes}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch { alert("Error al generar el PDF"); }
-    finally { setDownloadingPDF(false); }
+      downloadPdf(
+        `/api/produccion/reporte/pdf?${params.toString()}`,
+        `Reporte-Produccion-${tab}-${mes}.pdf`,
+        "Reporte de producción"
+      );
   }
 
   return (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { BotonDescarga } from "@/components/BotonDescarga";
 
 interface PDFPreviewModalProps {
   isOpen: boolean;
@@ -81,13 +82,12 @@ export function PDFPreviewModal({ isOpen, onClose, title, apiUrl, filename }: PD
         {/* Actions */}
         <div className="flex items-center gap-2 shrink-0">
           {/* Download */}
-          <a
-            href={downloadUrl}
-            download={filename}
+          <BotonDescarga
+            url={downloadUrl}
+            filename={filename}
+            titulo={title}
             className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold text-black transition-all"
             style={{ backgroundColor: "#B3985B" }}
-            onMouseEnter={e => (e.currentTarget.style.backgroundColor = "#c9a96a")}
-            onMouseLeave={e => (e.currentTarget.style.backgroundColor = "#B3985B")}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -95,7 +95,7 @@ export function PDFPreviewModal({ isOpen, onClose, title, apiUrl, filename }: PD
               <line x1="12" y1="15" x2="12" y2="3"/>
             </svg>
             Descargar
-          </a>
+          </BotonDescarga>
 
           {/* Close */}
           <button
@@ -150,14 +150,15 @@ export function PDFPreviewModal({ isOpen, onClose, title, apiUrl, filename }: PD
               <p className="text-gray-200 text-sm font-medium">No se pudo cargar la vista previa</p>
               <p className="text-gray-500 text-xs mt-1">Intenta descargar el PDF directamente</p>
             </div>
-            <a
-              href={downloadUrl}
-              download={filename}
+            <BotonDescarga
+              url={downloadUrl}
+              filename={filename}
+              titulo={title}
               className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold text-black"
               style={{ backgroundColor: "#B3985B" }}
             >
               Descargar PDF
-            </a>
+            </BotonDescarga>
           </div>
         )}
 

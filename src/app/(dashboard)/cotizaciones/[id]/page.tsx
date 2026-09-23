@@ -11,6 +11,8 @@ import { CopyButton } from "@/components/CopyButton";
 import VersionHistorial from "@/components/VersionHistorial";
 import { BackButton } from "@/components/BackButton";
 import { CerrarVentaModal } from "@/components/crm/CerrarVentaModal";
+import { usePdfDownload } from "@/hooks/usePdfDownload";
+import { esMovil } from "@/lib/descargas";
 import { Handshake, Smartphone, PartyPopper, ClipboardList, SlidersHorizontal, Guitar, Building2, Camera, Sparkles, type LucideIcon } from "lucide-react";
 
 interface Linea {
@@ -264,7 +266,8 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [cerrarVentaOpen, setCerrarVentaOpen] = useState(false);
-  const [sharingPdf, setSharingPdf] = useState(false);
+  const { downloading, downloadPdf } = usePdfDownload();
+  const sharingPdf = downloading !== null;
   const [generandoLink, setGenerandoLink] = useState(false);
   const [linkAprobacion, setLinkAprobacion] = useState<string | null>(null);
   const [linkCopiado, setLinkCopiado] = useState(false);
@@ -632,55 +635,10 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
     setTimeout(() => setLinkCopiado(false), 2500);
   }
 
-  async function sharePdf() {
+  function sharePdf() {
     if (!cot) return;
-    setSharingPdf(true);
-    try {
-      const pdfUrl = `/api/cotizaciones/${cot.id}/pdf`;
-      const filename = `${cot.numeroCotizacion}${cot.nombreEvento ? `-${cot.nombreEvento.replace(/\s+/g, "-")}` : ""}.pdf`;
-
-      // Solo usar Web Share API en móvil (iOS/Android)
-      // En desktop macOS/Windows abre AirDrop/share sheet en lugar de descargar
-      const isMobile = typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-      if (isMobile && typeof navigator !== "undefined" && navigator.canShare) {
-        const res = await fetch(pdfUrl, { credentials: "include" });
-        if (!res.ok) throw new Error("Fetch failed: " + res.status);
-        const blob = await res.blob();
-        const file = new File([blob], filename, { type: "application/pdf" });
-        if (navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], title: filename });
-          return;
-        }
-        // Fallback móvil: share URL
-        if (navigator.share) {
-          await navigator.share({ title: filename, url: window.location.origin + pdfUrl });
-          return;
-        }
-      }
-
-      // Desktop o fallback: descarga directa a carpeta de descargas
-      const res = await fetch(pdfUrl, { credentials: "include" });
-      if (!res.ok) throw new Error("Fetch failed: " + res.status);
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch (e) {
-      if (e instanceof Error && e.name !== "AbortError") {
-        const a = document.createElement("a");
-        a.href = `/api/cotizaciones/${cot.id}/pdf`;
-        a.download = `${cot.numeroCotizacion}.pdf`;
-        a.click();
-      }
-    } finally {
-      setSharingPdf(false);
-    }
+    const filename = `${cot.numeroCotizacion}${cot.nombreEvento ? `-${cot.nombreEvento.replace(/\s+/g, "-")}` : ""}.pdf`;
+    downloadPdf(`/api/cotizaciones/${cot.id}/pdf`, filename, `Cotización ${cot.numeroCotizacion}`);
   }
 
   async function toggleIdioma() {
@@ -703,19 +661,11 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
     if (!cot || !cot.cliente.telefono) return;
     setSendingWA(true);
     try {
-      // Paso 1: descargar el PDF silenciosamente
+      // Paso 1: entregar el PDF. En móvil abre la hoja de compartir (WhatsApp
+      // adjunta el archivo); en escritorio se guarda y luego se abre el chat.
       const pdfUrl = `/api/cotizaciones/${cot.id}/pdf`;
       const filename = `${cot.numeroCotizacion}${cot.nombreEvento ? `-${cot.nombreEvento.replace(/\s+/g, "-")}` : ""}.pdf`;
-      const res = await fetch(pdfUrl);
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      downloadPdf(pdfUrl, filename, `Cotización ${cot.numeroCotizacion}`);
 
       // Paso 2: si está en borrador, cambiar a ENVIADA (esto también genera los seguimientos)
       if (cot.estado === "BORRADOR") {
@@ -729,10 +679,10 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
         }
       }
 
-      // Pausa para que el navegador registre la descarga
+      // Paso 3: en escritorio abrir el chat de WhatsApp con mensaje limpio.
+      // En móvil no: el envío sale de la hoja de compartir, con el PDF adjunto.
+      if (esMovil()) return;
       await new Promise(resolve => setTimeout(resolve, 800));
-
-      // Paso 3: abrir WhatsApp con mensaje limpio (sin link al PDF)
       const tel = cot.cliente.telefono.replace(/\D/g, "");
       const nombre = cot.cliente.nombre.split(" ")[0];
       const texto = encodeURIComponent(

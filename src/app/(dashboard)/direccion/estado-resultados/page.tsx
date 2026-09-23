@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { BarChart3, Landmark } from "lucide-react";
+import { usePdfDownload } from "@/hooks/usePdfDownload";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 interface ERProyecto {
@@ -231,7 +232,8 @@ export default function EstadoResultadosDireccionPage() {
   const [activeTab, setActiveTab]         = useState<Tab>("resumen");
   const [savingAnalisis, setSavingAnalisis] = useState(false);
   const [savedMsg, setSavedMsg]           = useState("");
-  const [generatingPdf, setGeneratingPdf] = useState(false);
+  const { downloading, downloadPdf: descargarPdf } = usePdfDownload();
+  const generatingPdf = downloading !== null;
   const [analisisForm, setAnalisisForm]   = useState<ERAnalisis>({});
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -276,17 +278,12 @@ export default function EstadoResultadosDireccionPage() {
     setSavingAnalisis(false);
   };
 
-  const downloadPdf = async () => {
-    setGeneratingPdf(true);
-    try {
-      const res = await fetch(`/api/admin/reportes/estado-resultados/pdf?mes=${mes}`);
-      if (!res.ok) { alert("Error al generar PDF"); return; }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = `Estado-Resultados-${mes}.pdf`; a.click();
-      URL.revokeObjectURL(url);
-    } finally { setGeneratingPdf(false); }
+  const downloadPdf = () => {
+    descargarPdf(
+      `/api/admin/reportes/estado-resultados/pdf?mes=${mes}`,
+      `Estado-Resultados-${mes}.pdf`,
+      "Estado de resultados"
+    );
   };
 
   // ── Loading / empty ───────────────────────────────────────────────────────────

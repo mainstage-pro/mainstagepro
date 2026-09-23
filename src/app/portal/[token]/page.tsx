@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Image from "next/image";
+import { BotonDescarga } from "@/components/BotonDescarga";
 
 interface Linea {
   tipo: string;
@@ -434,11 +435,11 @@ export default function PortalCliente() {
         {proyecto.cotizacion && (
           <section className="bg-white/[0.025] border border-white/8 rounded-2xl p-6">
             <p className="text-[10px] text-white/25 font-semibold uppercase tracking-widest mb-4">Documentos</p>
-            <a
-              href={`/api/cotizaciones/${proyecto.cotizacion.id}/pdf`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-4 bg-white/[0.02] border border-white/6 hover:border-[#B3985B]/25 rounded-xl px-5 py-4 transition-colors group"
+            <BotonDescarga
+              url={`/api/cotizaciones/${proyecto.cotizacion.id}/pdf`}
+              filename={`Cotizacion-${proyecto.cotizacion.numeroCotizacion}.pdf`}
+              titulo={`Cotización ${proyecto.cotizacion.numeroCotizacion}`}
+              className="w-full flex items-center gap-4 bg-white/[0.02] border border-white/6 hover:border-[#B3985B]/25 rounded-xl px-5 py-4 transition-colors group"
             >
               <div className="w-10 h-10 rounded-xl bg-[#B3985B]/10 border border-[#B3985B]/20 flex items-center justify-center shrink-0 group-hover:bg-[#B3985B]/20 transition-colors">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B3985B" strokeWidth="1.8">
@@ -457,7 +458,7 @@ export default function PortalCliente() {
                 <polyline points="7 10 12 15 17 10"/>
                 <line x1="12" y1="15" x2="12" y2="3"/>
               </svg>
-            </a>
+            </BotonDescarga>
           </section>
         )}
 

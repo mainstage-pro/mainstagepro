@@ -5631,7 +5631,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                         </button>
                       )}
                       {p.tecnico && (
-                        <a href={`/api/proyectos/${proyecto.id}/personal/${p.id}/carta`} target="_blank" rel="noopener noreferrer" title="Descargar carta responsiva freelance" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border border-[#333] text-gray-500 hover:border-[#B3985B]/50 hover:text-[#B3985B] transition-colors"><FileText strokeWidth={1.75} className="w-3 h-3" /> Carta</a>
+                        <button type="button" onClick={() => downloadPdf(`/api/proyectos/${proyecto.id}/personal/${p.id}/carta`, `Carta-responsiva-${proyecto.numeroProyecto}-${p.id.slice(0, 6)}.pdf`, "Carta responsiva")} title="Descargar carta responsiva freelance" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border border-[#333] text-gray-500 hover:border-[#B3985B]/50 hover:text-[#B3985B] transition-colors"><FileText strokeWidth={1.75} className="w-3 h-3" /> Carta</button>
                       )}
                     </div>
                   </div>
@@ -6308,14 +6308,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                     Vista previa
                   </button>
-                  <a
-                    href={`/api/proyectos/${id}/rider-pdf`}
-                    download
+                  <button
+                    onClick={() => downloadPdf(`/api/proyectos/${id}/rider-pdf`, `rider-carga-${proyecto.numeroProyecto}.pdf`, 'Rider de carga')}
                     className="flex items-center gap-1.5 text-xs text-[#B3985B] border border-[#B3985B]/30 hover:border-[#B3985B]/60 hover:bg-[#B3985B]/5 px-3 py-1.5 rounded-lg transition-all"
                   >
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                     Descargar rider
-                  </a>
+                  </button>
                 </div>
               </div>
 
@@ -7329,11 +7328,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                         </div>
                         <div className="flex items-center gap-2">
                           {esEsquema && (
-                            <a href={`/api/cuentas-cobrar/${c.id}/recibo`} download
+                            <button
+                              onClick={() => downloadPdf(`/api/cuentas-cobrar/${c.id}/recibo`, `Recibo-${c.id.slice(0, 8)}.pdf`, "Recibo")}
                               className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-2 py-1 rounded-lg transition-colors">
                               <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                               Recibo
-                            </a>
+                            </button>
                           )}
                           {c.estado !== "LIQUIDADO" && (
                             <>
@@ -8246,14 +8246,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 const entregamos = modalidad === "ENTREGA_BODEGA" || modalidad === "ENTREGA_VENUE";
                 if (!entregamos) return null;
                 return (
-                  <a
-                    href={`/api/proyectos/${proyecto.id}/rider-pdf`}
-                    download
+                  <button
+                    onClick={() => downloadPdf(`/api/proyectos/${proyecto.id}/rider-pdf`, `rider-carga-${proyecto.numeroProyecto}.pdf`, 'Rider de carga')}
                     className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-gray-300 hover:text-white hover:border-[#444] text-xs font-medium transition-colors"
                   >
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
                     Rider de Carga
-                  </a>
+                  </button>
                 );
               })()}
               {!esRenta && (
@@ -8753,14 +8752,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 >
                   <ClipboardList strokeWidth={1.75} className="w-3.5 h-3.5" /> Copiar texto
                 </button>
-                <a
-                  href={`/api/proyectos/${proyecto.id}/brief-imagen`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  type="button"
+                  onClick={() => downloadPdf(`/api/proyectos/${proyecto.id}/brief-imagen`, `Brief-${proyecto.numeroProyecto}.png`, "Brief técnico")}
                   className="flex-1 inline-flex items-center justify-center gap-1.5 bg-[#B3985B] hover:bg-[#c9a96a] text-black text-xs font-semibold py-2.5 rounded-xl transition-colors text-center"
                 >
                   <FileImage strokeWidth={1.75} className="w-3.5 h-3.5" /> Descargar imagen
-                </a>
+                </button>
               </div>
             </div>
           </div>

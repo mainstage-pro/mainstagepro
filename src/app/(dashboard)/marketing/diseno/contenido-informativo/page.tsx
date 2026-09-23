@@ -14,6 +14,7 @@ import {
 import { poolIdeas } from "@/lib/diseno/contenido/inventario";
 import { seleccionesDe, seleccionSemana } from "@/lib/diseno/contenido/seleccion";
 import { aprobarAction } from "./actions";
+import { BotonDescarga } from "@/components/BotonDescarga";
 
 export const dynamic = "force-dynamic";
 
@@ -149,9 +150,9 @@ export default async function ContenidoInformativo({
                   <span className="text-[13px] font-medium" style={{ color: "#cfc7b6" }}>
                     {String(i + 1).padStart(2, "0")} · {slide.label}
                   </span>
-                  <a href={src} download={`contenido-${idea.id}-${slide.id}-${formato}.png`} className="ms-btn-ghost">
+                  <BotonDescarga url={src} filename={`contenido-${idea.id}-${slide.id}-${formato}.png`} className="ms-btn-ghost">
                     Descargar
-                  </a>
+                  </BotonDescarga>
                 </div>
               </div>
             );

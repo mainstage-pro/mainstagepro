@@ -7,6 +7,7 @@ import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
 import RowActions from "@/components/ui/RowActions";
+import { usePdfDownload } from "@/hooks/usePdfDownload";
 import { Calendar } from "lucide-react";
 
 // Test de despliegue automático en Vercel
@@ -362,6 +363,7 @@ function generarEstructuraSemanas(lunesHoy: string, cuantas = 10): SemanaOpLocal
 export default function CobrosPagosPage({ view }: { view?: "cobros" | "programacion" } = {}) {
   const toast = useToast();
   const confirm = useConfirm();
+  const { downloadPdf } = usePdfDownload();
   const [pageTabState, setPageTab] = useState<"cobros" | "programacion">("cobros");
   const pageTab = view ?? pageTabState;
   const [tab, setTab] = useState<"cobrar" | "pagar" | "directos">("cobrar");
@@ -924,7 +926,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
   function generarReciboTecnico(grupoKey: string) {
     const ids = Array.from(reciboSeleccionados[grupoKey] ?? []);
     if (ids.length === 0) return;
-    window.open(`/api/recibos/tecnico?ids=${ids.join(",")}`, "_blank");
+    downloadPdf(`/api/recibos/tecnico?ids=${ids.join(",")}`, `Recibos-tecnico-${ids.length}.pdf`, "Recibos de técnico");
   }
 
   const semanaActual = semanasOp[semanaIdx];
@@ -1103,14 +1105,19 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
         </div>
         <div className="flex gap-2 flex-wrap">
           {tab !== "directos" && (
-            <a
-              href={`/api/finanzas/cobros-pagos/reporte/pdf?tipo=${tab === "pagar" ? "pagar" : "cobrar"}`}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
+              onClick={() =>
+                downloadPdf(
+                  `/api/finanzas/cobros-pagos/reporte/pdf?tipo=${tab === "pagar" ? "pagar" : "cobrar"}`,
+                  `Reporte-${tab === "pagar" ? "por-pagar" : "por-cobrar"}.pdf`,
+                  tab === "pagar" ? "Reporte por pagar" : "Reporte por cobrar"
+                )
+              }
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c9a96a] transition-colors">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
               Reporte PDF · {tab === "pagar" ? "Por Pagar" : "Por Cobrar"}
-            </a>
+            </button>
           )}
           <button
             onClick={openReciboModal}

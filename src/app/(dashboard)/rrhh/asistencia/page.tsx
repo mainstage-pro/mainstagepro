@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
+import { BotonDescarga } from "@/components/BotonDescarga";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Personal { id: string; nombre: string; puesto: string; departamento: string; diasLaborables: number[]; }
@@ -464,10 +465,11 @@ function TabHistorial({ personal }: { personal: Personal[] }) {
             <input type="date" value={inicioRep} onChange={e => setInicioRep(e.target.value)} className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]" />
             <span className="text-gray-500 text-xs">al</span>
             <input type="date" value={finRep} onChange={e => setFinRep(e.target.value)} className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]" />
-            <a href={`/api/rrhh/asistencia/pdf?inicio=${inicioRep}&fin=${finRep}`} target="_blank" rel="noopener noreferrer"
+            <BotonDescarga url={`/api/rrhh/asistencia/pdf?inicio=${inicioRep}&fin=${finRep}`}
+               filename={`Asistencia-${inicioRep}-a-${finRep}.pdf`} titulo="Reporte de asistencia"
                className="ml-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#B3985B] text-black hover:bg-[#c9a96a] transition-colors whitespace-nowrap">
               Descargar PDF
-            </a>
+            </BotonDescarga>
           </div>
         </div>
 
@@ -589,10 +591,11 @@ function TabReporte({ personal }: { personal: Personal[] }) {
         <span className="text-white text-sm font-semibold min-w-[130px] text-center">{MESES[month - 1]} {year}</span>
         <button onClick={() => { const d = new Date(`${mes}-15`); d.setMonth(d.getMonth() + 1); setMes(toMes(d)); }}
           className="w-8 h-8 ms-btn-icon">→</button>
-        <a href={`/api/rrhh/asistencia/pdf?mes=${mes}`} target="_blank" rel="noopener noreferrer"
+        <BotonDescarga url={`/api/rrhh/asistencia/pdf?mes=${mes}`}
+          filename={`Asistencia-${mes}.pdf`} titulo="Reporte de asistencia"
           className="ml-auto px-3 py-1.5 rounded-lg text-xs font-medium bg-[#B3985B] text-black hover:bg-[#c9a96a] transition-colors">
           Descargar PDF
-        </a>
+        </BotonDescarga>
       </div>
 
       {loading ? (

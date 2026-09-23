@@ -17,6 +17,7 @@ import {
 import FondoPicker from "./FondoPicker";
 import { getCampanaGuardada, listarCampanas } from "@/lib/diseno/campanas/guardados";
 import { guardarPlantillaAction, eliminarPlantillaAction } from "./actions";
+import { BotonDescarga } from "@/components/BotonDescarga";
 
 export const dynamic = "force-dynamic";
 
@@ -219,13 +220,13 @@ export default async function ContenidoCampanas({ searchParams }: { searchParams
               style={{ width: "100%", aspectRatio: aspect, objectFit: "cover", borderRadius: 14, border: `1px solid ${BORDE}`, display: "block", background: CARD }}
             />
 
-            <a href={src} download={`campana-${brief.objetivo}-${formato}.png`} className="ms-btn-primary text-center">
+            <BotonDescarga url={src} filename={`campana-${brief.objetivo}-${formato}.png`} className="ms-btn-primary text-center">
               Descargar {FORMATOS[formato].label} (PNG)
-            </a>
+            </BotonDescarga>
 
-            <a href={zipHref} download={`${nombreBase}.zip`} className="ms-btn-secondary text-center">
+            <BotonDescarga url={zipHref} filename={`${nombreBase}.zip`} className="ms-btn-secondary text-center">
               Descargar los 3 formatos (ZIP)
-            </a>
+            </BotonDescarga>
 
             {/* Guardar la plantilla para reusarla después */}
             <form action={guardarPlantillaAction} className="flex flex-col gap-2.5 rounded-xl px-4 py-4 mt-1" style={{ background: CARD, border: `1px solid ${BORDE}` }}>
@@ -285,9 +286,9 @@ export default async function ContenidoCampanas({ searchParams }: { searchParams
                       <a href={`?abrir=${g.id}`} className="ms-btn-ghost">
                         Abrir
                       </a>
-                      <a href={zip} download={`campana-${g.id}.zip`} className="ms-btn-ghost">
+                      <BotonDescarga url={zip} filename={`campana-${g.id}.zip`} className="ms-btn-ghost">
                         ZIP
-                      </a>
+                      </BotonDescarga>
                       <form action={eliminarPlantillaAction} className="m-0">
                         <input type="hidden" name="id" value={g.id} />
                         <button type="submit" className="ms-btn-ghost" style={{ color: "#e08a8a" }}>

@@ -4,6 +4,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from 'recharts'
 import { bandaDe, BANDA_LABEL, BANDA_HEX, BANDA_TEXT_CLASS, BANDA_ESCALA } from '@/lib/rendimiento-escala'
+import { usePdfDownload } from '@/hooks/usePdfDownload'
 
 // ── Types (espejo de src/lib/rendimiento) ──────────────────────────────────────
 type FuenteKey = 'NORMAL' | 'PLAN' | 'EVENTO' | 'EMPRESA' | 'TRATO'
@@ -63,8 +64,8 @@ export function VistaRendimiento() {
   const [preset, setPreset] = useState<Preset>('semana')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [expandedSys, setExpandedSys] = useState<Set<FuenteKey>>(new Set())
-  const [pdfGeneral, setPdfGeneral] = useState(false)
-  const [pdfUser, setPdfUser] = useState<string | null>(null)
+  const { downloading, downloadPdf: descargarPdf } = usePdfDownload()
+  const pdfGeneral = downloading !== null
 
   useEffect(() => {
     setLoading(true)
@@ -74,24 +75,11 @@ export function VistaRendimiento() {
       .catch(() => setLoading(false))
   }, [preset])
 
-  const downloadPdf = useCallback(async (tipo: 'general' | 'usuario', userId?: string) => {
-    if (tipo === 'general') setPdfGeneral(true); else setPdfUser(userId!)
-    try {
-      const qs = new URLSearchParams({ tipo, preset })
-      if (userId) qs.set('userId', userId)
-      const res = await fetch(`/api/operaciones/rendimiento/pdf?${qs}`)
-      if (!res.ok) { alert('Error al generar PDF'); return }
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = res.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] ?? 'reporte.pdf'
-      a.click()
-      URL.revokeObjectURL(url)
-    } finally {
-      setPdfGeneral(false); setPdfUser(null)
-    }
-  }, [preset])
+  const downloadPdf = useCallback((tipo: 'general' | 'usuario', userId?: string) => {
+    const qs = new URLSearchParams({ tipo, preset })
+    if (userId) qs.set('userId', userId)
+    descargarPdf(`/api/operaciones/rendimiento/pdf?${qs}`, `Rendimiento-${tipo}-${preset}.pdf`, 'Reporte de rendimiento')
+  }, [preset, descargarPdf])
 
   function toggle(id: string) {
     setExpanded(prev => {
@@ -327,11 +315,11 @@ export function VistaRendimiento() {
 
                     <button
                       onClick={() => downloadPdf('usuario', u.id)}
-                      disabled={pdfUser === u.id}
+                      disabled={pdfGeneral}
                       title="Descargar reporte individual"
                       className="text-[#555] hover:text-[#B3985B] transition-colors shrink-0 text-xs disabled:opacity-40"
                     >
-                      {pdfUser === u.id ? <span className="inline-block w-3 h-3 border-2 border-[#B3985B] border-t-transparent rounded-full animate-spin" /> : '⬇'}
+                      {pdfGeneral ? <span className="inline-block w-3 h-3 border-2 border-[#B3985B] border-t-transparent rounded-full animate-spin" /> : '⬇'}
                     </button>
                     {hasDrill && (
                       <button onClick={() => toggle(u.id)} className="text-[#333] text-[10px] shrink-0" style={{ transform: isExpanded ? 'rotate(180deg)' : 'none' }}>▼</button>

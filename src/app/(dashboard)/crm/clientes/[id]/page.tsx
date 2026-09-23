@@ -10,6 +10,7 @@ import { SkeletonPage } from "@/components/Skeleton";
 import { EmpresaCombobox } from "@/components/EmpresaCombobox";
 import { BackButton } from "@/components/BackButton";
 import TareasClienteSection from "./TareasClienteSection";
+import { usePdfDownload } from "@/hooks/usePdfDownload";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -620,8 +621,8 @@ function PanelCuentas({
   cuentasCobrar: CuentaCobrarItem[];
   cuentasPagar: CuentaPagarItem[];
 }) {
-  const [descargando, setDescargando] = useState(false);
-  const toast = useToast();
+  const { downloading, downloadPdf } = usePdfDownload();
+  const descargando = downloading !== null;
 
   const cuentasCobrarPendientes = cuentasCobrar.filter((c) => esCuentaPendiente(c.estado) && saldoCobrar(c) > 0);
   const cuentasPagarPendientes = cuentasPagar.filter((c) => esCuentaPendiente(c.estado) && saldoPagar(c) > 0);
@@ -633,30 +634,14 @@ function PanelCuentas({
   const esProveedor = cuentasPagar.length > 0;
   const neto = totalCobrar - totalPagar;
 
-  async function descargar() {
-    setDescargando(true);
-    try {
-      const res = await fetch(`/api/clientes/${clienteId}/estado-cuenta/pdf`);
-      if (!res.ok) {
-        toast.error("No se pudo generar el estado de cuenta");
-        return;
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      const fecha = new Date().toISOString().slice(0, 10);
-      const slug = clienteNombre.replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30);
-      a.download = `EstadoCuenta-${slug || clienteId.slice(0, 8)}-${fecha}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } catch {
-      toast.error("No se pudo generar el estado de cuenta");
-    } finally {
-      setDescargando(false);
-    }
+  function descargar() {
+    const fecha = new Date().toISOString().slice(0, 10);
+    const slug = clienteNombre.replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30);
+    downloadPdf(
+      `/api/clientes/${clienteId}/estado-cuenta/pdf`,
+      `EstadoCuenta-${slug || clienteId.slice(0, 8)}-${fecha}.pdf`,
+      "Estado de cuenta"
+    );
   }
 
   const hayMovimientos = cuentasCobrar.length > 0 || cuentasPagar.length > 0;

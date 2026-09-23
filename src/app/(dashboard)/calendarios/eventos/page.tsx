@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import CrearTareaModal from "@/components/calendarios/CrearTareaModal";
 import { TAG_EVENTOS } from "@/lib/calendarios";
+import { BotonDescarga } from "@/components/BotonDescarga";
 
 // ── Reporte constants ────────────────────────────────────────────────────────
 const MESES_RPT = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
@@ -190,8 +191,9 @@ export default function CalendarioEventosPage() {
           )}
           <button onClick={() => setTareaOpen(true)} className="bg-[#1a1a1a] border border-[#333] text-gray-200 px-3 py-2 rounded-lg text-sm hover:bg-[#222] transition-colors">+ Tarea</button>
           {vista === "mes" && (
-            <a href={`/api/produccion/agenda/pdf?mes=${year}-${String(month + 1).padStart(2, "0")}`} target="_blank" rel="noopener noreferrer"
-              className="bg-[#B3985B] hover:bg-[#c9a96a] text-black px-3 py-2 rounded-lg text-sm font-medium transition-colors">PDF</a>
+            <BotonDescarga url={`/api/produccion/agenda/pdf?mes=${year}-${String(month + 1).padStart(2, "0")}`}
+              filename={`Agenda-${year}-${String(month + 1).padStart(2, "0")}.pdf`} titulo="Agenda de producción"
+              className="bg-[#B3985B] hover:bg-[#c9a96a] text-black px-3 py-2 rounded-lg text-sm font-medium transition-colors">PDF</BotonDescarga>
           )}
         </div>
       </div>

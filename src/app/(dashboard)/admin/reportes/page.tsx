@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Scale, Banknote, ClipboardList, TrendingUp, AlertTriangle, type LucideIcon } from "lucide-react";
 import { ReporteAnalisisSection } from '@/components/ui/ReporteAnalisisSection';
+import { usePdfDownload } from "@/hooks/usePdfDownload";
 import {
   BarChart as RBarChart,
   Bar,
@@ -1411,22 +1412,11 @@ export default function ReportesAdminPage() {
   const [tab, setTab] = useState<Tab>("balance");
   const [mes, setMes] = useState(defaultMes);
   const [pdfState, setPdfState] = useState<PDFState>(PDF_DEFAULT);
-  const [downloading, setDownloading] = useState(false);
+  const { downloading: ocupado, downloadPdf } = usePdfDownload();
+  const downloading = ocupado !== null;
 
-  async function handleDownloadPDF() {
-    setDownloading(true);
-    try {
-      const res = await fetch(`/api/admin/reportes/pdf?mes=${mes}&tab=${tab}`);
-      if (!res.ok) { alert('Error al generar el PDF'); return; }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Reporte-Admin-${tab}-${mes}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch { alert('Error al generar el PDF'); }
-    finally { setDownloading(false); }
+  function handleDownloadPDF() {
+    downloadPdf(`/api/admin/reportes/pdf?mes=${mes}&tab=${tab}`, `Reporte-Admin-${tab}-${mes}.pdf`, "Reporte admin");
   }
 
   // Shared data for print layout
