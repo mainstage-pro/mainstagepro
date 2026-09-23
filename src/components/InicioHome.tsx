@@ -66,12 +66,11 @@ const STORAGE_KEY = "inicio-favoritos-v1";
 // a "/mi-dashboard". Sin esto, los favoritos ya guardados perderían el mosaico.
 const ID_RENOMBRADOS: Record<string, string> = { "/dashboard": "/mi-dashboard" };
 
-export default function InicioHome({ userName }: { userName: string }) {
+export default function InicioHome({ userName, greeting }: { userName: string; greeting: string }) {
   const [favs, setFavs] = useState<string[]>(DEFAULT_FAVS);
   const [loaded, setLoaded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [greeting, setGreeting] = useState("Hola");
 
   useEffect(() => {
     try {
@@ -83,8 +82,6 @@ export default function InicioHome({ userName }: { userName: string }) {
         }
       }
     } catch { /* ignore */ }
-    const h = new Date().getHours();
-    setGreeting(h < 12 ? "Buenos días" : h < 19 ? "Buenas tardes" : "Buenas noches");
     setLoaded(true);
   }, []);
 
@@ -152,7 +149,12 @@ export default function InicioHome({ userName }: { userName: string }) {
             </div>
           </div>
 
-          {favMods.length === 0 ? (
+          {!loaded ? (
+            // Tus accesos viven en localStorage, que solo existe en el cliente.
+            // Pintar los de por defecto mientras tanto provocaba un parpadeo:
+            // se veían unos mosaicos y de inmediato saltaban a los tuyos.
+            <div className="min-h-[132px]" aria-hidden />
+          ) : favMods.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-[#222] p-8 text-center text-white/40 text-sm">
               Sin accesos. Usa <span className="text-[#B3985B]">Editar → Agregar</span> para elegir tus módulos frecuentes.
             </div>
