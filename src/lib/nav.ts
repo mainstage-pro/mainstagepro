@@ -304,6 +304,7 @@ const MODULE_META: Record<string, { label?: string; desc?: string }> = {
   "admin-usuarios":      { desc: "Gestión de usuarios y sus permisos" },
   "admin-actividad":     { desc: "Registro de actividad de usuarios" },
   "finanzas-cobros":     { desc: "Cobros y pagos de proyectos" },
+  "finanzas-gastos-recurrentes": { desc: "Gastos fijos y variables recurrentes" },
   "finanzas-flujo":      { desc: "Flujo de cuentas proyectado" },
   "finanzas-pagos-personal": { desc: "Pagos a personal" },
   "finanzas-movimientos":    { desc: "Movimientos financieros" },
@@ -406,7 +407,7 @@ export const ALL_MODULE_KEYS: string[] = MODULOS_POR_SECCION.flatMap(s => s.item
 export const AREA_MODULE_PRESETS: Record<string, string[]> = {
   ADMINISTRACION: [
     "plan-trabajo", "operaciones", "calendario", "vision-semanal", "reporte-area-mensual",
-    "finanzas-cobros", "finanzas-flujo", "finanzas-pagos-personal", "finanzas-movimientos", "finanzas-caja-chica", "inv-analisis",
+    "finanzas-cobros", "finanzas-gastos-recurrentes", "finanzas-flujo", "finanzas-pagos-personal", "finanzas-movimientos", "finanzas-caja-chica", "inv-analisis",
     "rrhh-personal", "rrhh-nomina", "rrhh-asistencia", "rrhh-evaluaciones", "rrhh-satisfaccion",
     "rrhh-candidatos",
     "socios-constitutivos", "tabulador",
