@@ -8,6 +8,7 @@ import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
 import { Modal } from "@/components/Modal";
 import { CostoMantenimientoModal, type CostoMantenimiento } from "@/components/CostoMantenimientoModal";
+import { ReportarFallaModal } from "@/components/ReportarFallaModal";
 import { ESTADOS_EQUIPO, ESTADO_EQUIPO_LABEL, esRetornoAServicio } from "@/lib/equipo-estado";
 import { ORIGEN_FALLA_LABEL, SEVERIDAD_FALLA_BADGE, SEVERIDAD_FALLA_LABEL } from "@/lib/falla-equipo";
 
@@ -160,6 +161,7 @@ function MantenimientoContent() {
   const [editUnidadId, setEditUnidadId] = useState<string | null>(null);
   const [form, setForm] = useState(FORM_EMPTY);
   const [fallasAbiertas, setFallasAbiertas] = useState<FallaAbierta[]>([]);
+  const [reportarFallaLibre, setReportarFallaLibre] = useState(false);
   const [fallaIds, setFallaIds] = useState<string[]>([]);
   const [unidadForm, setUnidadForm] = useState({ codigo: "", estado: "ACTIVO", voltaje: "", notas: "" });
   const [saving, setSaving] = useState(false);
@@ -397,6 +399,12 @@ function MantenimientoContent() {
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {/* Una falla se reporta antes de que el equipo entre a taller, así que este
+              botón no depende de que haya un mantenimiento abierto. */}
+          <button onClick={() => setReportarFallaLibre(true)}
+            className="text-xs text-gray-300 hover:text-white border border-[#333] hover:border-[#B3985B]/50 px-3 py-2 rounded-lg transition-colors whitespace-nowrap">
+            Reportar falla
+          </button>
           <input type="date" value={pdfFecha} onChange={e => setPdfFecha(e.target.value)}
             title="Filtra el reporte por un día específico (vacío = bitácora completa)"
             className="text-xs bg-[#111] border border-[#222] text-gray-300 px-2 py-2 rounded-lg focus:outline-none focus:border-[#B3985B]/40 [color-scheme:dark]" />
@@ -924,6 +932,11 @@ function MantenimientoContent() {
           onCancel={() => setCostoGate(null)}
         />
       )}
+
+      <ReportarFallaModal
+        open={reportarFallaLibre}
+        onClose={() => setReportarFallaLibre(false)}
+      />
     </div>
   );
 }

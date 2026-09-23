@@ -145,6 +145,7 @@ export default function TableroProduccionPage() {
   const [menu, setMenu] = useState<{ id: string; rect: DOMRect } | null>(null);
   const [cambiarEstado, setCambiarEstado] = useState<Objetivo | null>(null);
   const [reportarFalla, setReportarFalla] = useState<Objetivo | null>(null);
+  const [reportarFallaLibre, setReportarFallaLibre] = useState(false);
 
   const cargar = useCallback(() => {
     fetch("/api/produccion/tablero", { cache: "no-store" })
@@ -187,9 +188,19 @@ export default function TableroProduccionPage() {
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="ms-h1">Estado de equipos</h1>
-        <p className="text-gray-500 text-sm mt-0.5">Estado en vivo del área de producción — equipo en taller y equipo fuera</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="ms-h1">Estado de equipos</h1>
+          <p className="text-gray-500 text-sm mt-0.5">Estado en vivo del área de producción — equipo en taller y equipo fuera</p>
+        </div>
+        {/* Reportar una falla no debe exigir que el equipo ya esté en taller: desde aquí
+            se elige cualquier equipo del inventario. */}
+        <button
+          onClick={() => setReportarFallaLibre(true)}
+          className="shrink-0 px-3 py-2 bg-[#B3985B] hover:bg-[#c9a96a] text-black text-xs font-semibold rounded-lg transition-colors"
+        >
+          Reportar falla
+        </button>
       </div>
 
       {/* KPIs */}
@@ -445,6 +456,13 @@ export default function TableroProduccionPage() {
           onSaved={cargar}
         />
       )}
+
+      {/* Reporte libre: el modal pide el equipo porque aquí no hay uno preseleccionado. */}
+      <ReportarFallaModal
+        open={reportarFallaLibre}
+        onClose={() => setReportarFallaLibre(false)}
+        onSaved={cargar}
+      />
     </div>
   );
 }

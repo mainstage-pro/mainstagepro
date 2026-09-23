@@ -13,6 +13,7 @@ export type FallaCreada = { id: string; descripcion: string; severidad: string; 
 
 type UnidadOpcion = { id: string; codigo: string | null };
 type ProyectoOpcion = { id: string; numeroProyecto: string; nombre: string };
+type EquipoOpcion = { id: string; label: string; categoria: string | null };
 
 function hoyISO() {
   const d = new Date();
@@ -23,8 +24,8 @@ function hoyISO() {
 // equipo: una falla reportada no lo saca de stock hasta que se decida mandarlo a taller.
 export function ReportarFallaModal({
   open,
-  equipoId,
-  equipoLabel,
+  equipoId = null,
+  equipoLabel = "",
   unidadId = null,
   unidades = [],
   proyectoId: proyectoIdFijo = null,
@@ -32,14 +33,19 @@ export function ReportarFallaModal({
   onSaved,
 }: {
   open: boolean;
-  equipoId: string;
-  equipoLabel: string;
+  // Sin equipoId el modal pide elegir el equipo: así se puede reportar una falla de
+  // cualquier equipo sin tener que llegar antes a su ficha.
+  equipoId?: string | null;
+  equipoLabel?: string;
   unidadId?: string | null;
   unidades?: UnidadOpcion[];
   proyectoId?: string | null;
   onClose: () => void;
   onSaved?: (falla: FallaCreada) => void;
 }) {
+  const [equipoSel, setEquipoSel] = useState(equipoId ?? "");
+  const [equipos, setEquipos] = useState<EquipoOpcion[]>([]);
+  const [busqueda, setBusqueda] = useState("");
   const [fecha, setFecha] = useState(hoyISO());
   const [descripcion, setDescripcion] = useState("");
   const [severidad, setSeveridad] = useState<string>("MODERADA");
@@ -58,8 +64,28 @@ export function ReportarFallaModal({
     setOrigen(proyectoIdFijo ? "EVENTO" : "BODEGA");
     setProyectoId(proyectoIdFijo ?? "");
     setUnidadSel(unidadId ?? "");
+    setEquipoSel(equipoId ?? "");
+    setBusqueda("");
     setError(null);
-  }, [open, unidadId, proyectoIdFijo]);
+  }, [open, unidadId, proyectoIdFijo, equipoId]);
+
+  // El catálogo de equipos solo se baja cuando hay que elegir uno.
+  useEffect(() => {
+    if (!open || equipoId || equipos.length > 0) return;
+    fetch("/api/equipos", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!Array.isArray(d?.equipos)) return;
+        setEquipos(
+          d.equipos.map((e: { id: string; descripcion: string; marca: string | null; modelo: string | null; categoria: { nombre: string } | null }) => ({
+            id: e.id,
+            label: [e.descripcion, [e.marca, e.modelo].filter(Boolean).join(" ")].filter(Boolean).join(" · "),
+            categoria: e.categoria?.nombre ?? null,
+          })),
+        );
+      })
+      .catch(() => {});
+  }, [open, equipoId, equipos.length]);
 
   // El catálogo de proyectos solo hace falta cuando la falla ocurrió en un evento.
   useEffect(() => {
@@ -77,7 +103,7 @@ export function ReportarFallaModal({
       .catch(() => {});
   }, [open, origen, proyectos.length, proyectoIdFijo]);
 
-  const puedeGuardar = descripcion.trim().length > 0 && !!fecha && !saving;
+  const puedeGuardar = descripcion.trim().length > 0 && !!fecha && !!equipoSel && !saving;
 
   async function guardar() {
     if (!puedeGuardar) return;
@@ -87,7 +113,7 @@ export function ReportarFallaModal({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        equipoId,
+        equipoId: equipoSel,
         unidadId: unidadSel || null,
         fecha,
         descripcion,
@@ -114,9 +140,63 @@ export function ReportarFallaModal({
   return (
     <Modal open={open} onClose={onClose} title="Reportar falla" maxWidth="max-w-lg">
       <div className="space-y-4">
-        <p className="text-gray-400 text-sm">
-          <span className="text-white font-medium">{equipoLabel}</span>
-        </p>
+        {equipoId ? (
+          <p className="text-gray-400 text-sm">
+            <span className="text-white font-medium">{equipoLabel}</span>
+          </p>
+        ) : (
+          <div>
+            <label className="text-[11px] text-gray-500 mb-1 block">¿Qué equipo falló? *</label>
+            {equipoSel ? (
+              <div className="flex items-center justify-between gap-2 bg-[#0d0d0d] border border-[#B3985B]/40 rounded-lg px-3 py-2">
+                <span className="text-white text-sm truncate">
+                  {equipos.find((e) => e.id === equipoSel)?.label ?? "Equipo seleccionado"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => { setEquipoSel(""); setBusqueda(""); }}
+                  className="text-[11px] text-gray-500 hover:text-white transition-colors shrink-0"
+                >
+                  Cambiar
+                </button>
+              </div>
+            ) : (
+              <>
+                <input
+                  value={busqueda}
+                  onChange={(e) => setBusqueda(e.target.value)}
+                  placeholder="Busca por nombre, marca o modelo..."
+                  className={inputCls}
+                  autoFocus
+                />
+                <div className="mt-1.5 max-h-44 overflow-y-auto rounded-lg border border-[#222] divide-y divide-[#1a1a1a]">
+                  {equipos.length === 0 ? (
+                    <p className="text-[#555] text-xs px-3 py-3">Cargando equipos…</p>
+                  ) : (
+                    (() => {
+                      const q = busqueda.trim().toLowerCase();
+                      const filtrados = (q ? equipos.filter((e) => e.label.toLowerCase().includes(q)) : equipos).slice(0, 40);
+                      if (filtrados.length === 0) {
+                        return <p className="text-[#555] text-xs px-3 py-3">Ningún equipo coincide con “{busqueda}”</p>;
+                      }
+                      return filtrados.map((e) => (
+                        <button
+                          key={e.id}
+                          type="button"
+                          onClick={() => setEquipoSel(e.id)}
+                          className="w-full text-left px-3 py-2 hover:bg-[#1a1a1a] transition-colors"
+                        >
+                          <span className="block text-sm text-white truncate">{e.label}</span>
+                          {e.categoria && <span className="block text-[10px] text-[#555]">{e.categoria}</span>}
+                        </button>
+                      ));
+                    })()
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         {unidades.length > 0 && !unidadId && (
           <div>
