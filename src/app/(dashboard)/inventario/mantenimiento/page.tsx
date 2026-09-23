@@ -485,10 +485,10 @@ function MantenimientoContent() {
                         <StatusDot color={color} />
                         <div className="flex-1 min-w-0">
                           <p className={`text-xs font-medium truncate leading-tight ${isSelected ? "text-[#B3985B]" : "text-white"}`}>
-                            {e.descripcion}
+                            {[e.marca, e.modelo].filter(Boolean).join(" ") || e.descripcion}
                           </p>
                           {(e.marca || e.modelo) && (
-                            <p className="text-gray-600 text-[10px] truncate">{[e.marca, e.modelo].filter(Boolean).join(" ")}</p>
+                            <p className="text-gray-600 text-[10px] truncate">{e.descripcion}</p>
                           )}
                           <p className="text-[10px] text-gray-700 mt-0.5">
                             {e.cantidadTotal} unidad{e.cantidadTotal !== 1 ? "es" : ""}
