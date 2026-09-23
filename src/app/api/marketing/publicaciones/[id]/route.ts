@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { PUBLICACION_INCLUDE } from "@/lib/contenido-variaciones";
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -9,10 +10,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const { id } = await params;
   const body = await request.json();
   const allowed = [
-    "fecha", "tipoId", "formato", "objetivo", "descripcion", "copy",
+    "fecha", "tipoId", "variacionId", "formato", "objetivo", "descripcion", "copy",
     "enFacebook", "enInstagram", "enTiktok", "enYoutube",
     "materialLink", "portadaUrl", "portadaUrlB", "colaboradores", "estado", "comentarios",
-    "alcance", "impresiones", "interacciones", "seguidoresGanados", "pruebaPubUrl",
+    "alcance", "impresiones", "interacciones", "seguidoresGanados", "pruebaPubUrl", "oculta",
   ];
   const data: Record<string, unknown> = {};
   for (const key of allowed) {
@@ -25,7 +26,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const pub = await prisma.publicacion.update({
     where: { id },
     data,
-    include: { tipo: { select: { id: true, nombre: true, formato: true, enFeedIG: true, enFacebook: true, enInstagram: true, enTiktok: true, enYoutube: true } } },
+    include: PUBLICACION_INCLUDE,
   });
   return NextResponse.json({ publicacion: pub });
 }

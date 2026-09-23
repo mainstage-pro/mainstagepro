@@ -6,22 +6,32 @@ import Link from "next/link";
 import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
 import { Combobox } from "@/components/Combobox";
-import { Zap, AlertTriangle } from "lucide-react";
+import { Zap, AlertTriangle, EyeOff, Eye } from "lucide-react";
+import { resolverVariacion, etiquetaSlot, type SlotVariacion } from "@/lib/contenido-variaciones";
 
+interface Variacion extends SlotVariacion {
+  id: string; codigo: string; nombre: string;
+}
 interface Tipo {
   id: string; nombre: string; formato: string;
   enFacebook: boolean; enInstagram: boolean; enTiktok: boolean; enYoutube: boolean; enFeedIG: boolean;
+  diaSemana: string | null; cicloSemanas: number | null; cicloInicio: string | null;
+  variaciones?: Variacion[];
 }
 interface Publicacion {
   id: string; fecha: string; tipo: Tipo | null; tipoId: string | null;
   formato: string | null; objetivo: string | null; descripcion: string | null;
   copy: string | null; enFacebook: boolean; enInstagram: boolean; enTiktok: boolean; enYoutube: boolean;
   materialLink: string | null; portadaUrl: string | null; portadaUrlB: string | null; colaboradores: string | null;
-  estado: string; comentarios: string | null;
+  estado: string; comentarios: string | null; oculta: boolean;
+  variacionId: string | null; variacion: Variacion | null;
   alcance: number | null; impresiones: number | null; interacciones: number | null; seguidoresGanados: number | null;
 }
 
-type Vista = "calendario" | "proximas" | "parrilla" | "tipo" | "feed";
+type Vista = "parrilla" | "calendario" | "kanban" | "tipo" | "feed";
+
+/** Vistas que comparten la pestaña "Parrilla" y se alternan con el switcher. */
+const VISTAS_PARRILLA: Vista[] = ["parrilla", "calendario", "kanban"];
 
 const ESTADOS = ["PENDIENTE", "EN_PROCESO", "LISTO", "PUBLICADO", "CANCELADO"];
 const ESTADO_LABEL: Record<string, string> = {
@@ -76,15 +86,22 @@ function parseDate(fecha: string): Date {
 }
 
 const FORM_EMPTY = {
-  fecha: "", tipoId: "", descripcion: "", copy: "",
+  fecha: "", tipoId: "", descripcion: "",
   enFacebook: false, enInstagram: false, enTiktok: false, enYoutube: false,
-  materialLink: "", colaboradores: "", estado: "PENDIENTE", comentarios: "",
+  materialLink: "", estado: "PENDIENTE", comentarios: "",
 };
 
 function parseImagenes(portadaUrl: string | null): string[] {
   if (!portadaUrl) return [];
   try { const arr = JSON.parse(portadaUrl); return Array.isArray(arr) ? arr : [portadaUrl]; }
   catch { return [portadaUrl]; }
+}
+
+/** La variación guardada, o la que le toca por ciclo si el slot aún no tiene una. */
+function variacionDe(p: Publicacion, tipo: Tipo | undefined): Variacion | null {
+  if (p.variacion) return p.variacion;
+  if (!tipo?.variaciones?.length) return null;
+  return resolverVariacion(p.fecha, tipo, tipo.variaciones);
 }
 
 export default function MarketingCalendarioPage({
@@ -106,7 +123,7 @@ export default function MarketingCalendarioPage({
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(FORM_EMPTY);
   const [showNueva, setShowNueva] = useState(false);
-  const [nuevaForm, setNuevaForm] = useState({ fecha: new Date().toISOString().slice(0, 10), tipoId: "", descripcion: "", copy: "", enFacebook: false, enInstagram: false, enTiktok: false, enYoutube: false });
+  const [nuevaForm, setNuevaForm] = useState({ fecha: new Date().toISOString().slice(0, 10), tipoId: "", descripcion: "", enFacebook: false, enInstagram: false, enTiktok: false, enYoutube: false });
   const [guardandoNueva, setGuardandoNueva] = useState(false);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -117,6 +134,9 @@ export default function MarketingCalendarioPage({
   const [uploadingNew, setUploadingNew] = useState(false);
   const [dragFromIdx, setDragFromIdx] = useState<number | null>(null);
   const [lightbox, setLightbox] = useState<{ imgs: string[]; idx: number } | null>(null);
+  const [seleccion, setSeleccion] = useState<string[]>([]);
+  const [verOcultas, setVerOcultas] = useState(false);
+  const [bulking, setBulking] = useState(false);
 
   useEffect(() => { if (vistaForzada) setVista(vistaForzada); }, [vistaForzada]);
 
@@ -158,11 +178,9 @@ export default function MarketingCalendarioPage({
       fecha: p.fecha.slice(0, 10),
       tipoId: p.tipoId ?? "",
       descripcion: p.descripcion ?? "",
-      copy: p.copy ?? "",
       enFacebook: p.enFacebook, enInstagram: p.enInstagram,
       enTiktok: p.enTiktok, enYoutube: p.enYoutube,
       materialLink: p.materialLink ?? "",
-      colaboradores: p.colaboradores ?? "",
       estado: p.estado,
       comentarios: p.comentarios ?? "",
     });
@@ -195,13 +213,12 @@ export default function MarketingCalendarioPage({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         fecha: form.fecha, tipoId: form.tipoId || null,
-        descripcion: form.descripcion || null, copy: form.copy || null,
+        descripcion: form.descripcion || null,
         enFacebook: form.enFacebook, enInstagram: form.enInstagram,
         enTiktok: form.enTiktok, enYoutube: form.enYoutube,
         materialLink: form.materialLink || null,
         portadaUrl,
         portadaUrlB: null,
-        colaboradores: form.colaboradores || null,
         estado: form.estado, comentarios: form.comentarios || null,
       }),
     });
@@ -261,6 +278,33 @@ export default function MarketingCalendarioPage({
     setPublicaciones(prev => prev.filter(p => p.id !== id));
     setExpandedId(null);
     setEditId(null);
+  }
+
+  /** Acciones en lote sobre la selección de la parrilla. */
+  async function bulk(accion: "ocultar" | "mostrar" | "estado" | "mover" | "eliminar", valor?: string | number) {
+    // Al cambiar de mes la selección vieja sigue en memoria: solo actúa sobre lo que está a la vista.
+    const ids = seleccion.filter(id => publicaciones.some(p => p.id === id));
+    if (ids.length === 0) return;
+    if (accion === "eliminar" && !await confirm({
+      message: `¿Eliminar ${ids.length} publicaciones definitivamente?\n\nSi solo quieres sacarlas de la vista usa "Ocultar" — así siguen contando en métricas.`,
+      danger: true, confirmText: "Eliminar",
+    })) return;
+
+    setBulking(true);
+    const res = await fetch("/api/marketing/publicaciones/bulk", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids, accion, valor }),
+    });
+    setBulking(false);
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error en la acción en lote");
+      return;
+    }
+    const { afectadas } = await res.json();
+    toast.success(`${afectadas} publicación${afectadas === 1 ? "" : "es"} actualizada${afectadas === 1 ? "" : "s"}`);
+    setSeleccion([]);
+    await load();
   }
 
   /** Drag-to-reschedule: update fecha optimistically */
@@ -325,7 +369,7 @@ export default function MarketingCalendarioPage({
     const today = new Date().toISOString().slice(0, 10);
     setNuevaForm({
       fecha: fechaInicial ?? today,
-      tipoId: "", descripcion: "", copy: "",
+      tipoId: "", descripcion: "",
       enFacebook: false, enInstagram: false, enTiktok: false, enYoutube: false,
     });
     setShowNueva(true);
@@ -352,7 +396,6 @@ export default function MarketingCalendarioPage({
         fecha: nuevaForm.fecha,
         tipoId: nuevaForm.tipoId || null,
         descripcion: nuevaForm.descripcion || null,
-        copy: nuevaForm.copy || null,
         enFacebook: nuevaForm.enFacebook,
         enInstagram: nuevaForm.enInstagram,
         enTiktok: nuevaForm.enTiktok,
@@ -379,14 +422,20 @@ export default function MarketingCalendarioPage({
   const tipoColorMap: Record<string, typeof TIPO_PALETA[0]> = {};
   tipos.forEach((t, i) => { tipoColorMap[t.id] = TIPO_PALETA[i % TIPO_PALETA.length]; });
 
+  // Las ocultas siguen contando en los KPIs (el mes se midió igual), pero salen de las listas.
   const publicadas = publicaciones.filter(p => p.estado === "PUBLICADO").length;
   const pendientes = publicaciones.filter(p => p.estado === "PENDIENTE" || p.estado === "EN_PROCESO").length;
-  const listas = publicaciones.filter(p => p.estado === "LISTO").length;
-  const sorted = [...publicaciones].sort((a, b) => a.fecha.localeCompare(b.fecha));
+  const ocultas = publicaciones.filter(p => p.oculta).length;
+  const sorted = [...publicaciones]
+    .filter(p => verOcultas || !p.oculta)
+    .sort((a, b) => a.fecha.localeCompare(b.fecha));
+
+  const tiposById: Record<string, Tipo> = {};
+  tipos.forEach(t => { tiposById[t.id] = t; });
 
   const porTipo: Record<string, Publicacion[]> = {};
   const sinTipo: Publicacion[] = [];
-  for (const p of publicaciones) {
+  for (const p of sorted) {
     if (p.tipo) {
       if (!porTipo[p.tipo.id]) porTipo[p.tipo.id] = [];
       porTipo[p.tipo.id].push(p);
@@ -395,16 +444,19 @@ export default function MarketingCalendarioPage({
 
   const feedPosts = sorted.filter(p => p.tipo?.enFeedIG === true);
 
+  // Parrilla, calendario y kanban son la misma pestaña con tres lentes distintos.
+  const conSwitcher = !embedded || !vistaForzada || VISTAS_PARRILLA.includes(vistaForzada);
+
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-5">
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="ms-h1">Calendario de contenido</h1>
+          <h1 className="ms-h1">Parrilla de contenido</h1>
           <p className="ms-subtitle">{publicaciones.length} publicaciones · {mesLabel(mes)}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-end">
-          <Link href="/marketing/contenidos"
+          <Link href="/marketing/contenido/tipos"
             className="bg-[#1a1a1a] border border-[#333] hover:bg-[#222] text-gray-400 text-xs px-3 py-2 rounded-lg transition-colors whitespace-nowrap">
             Estrategia
           </Link>
@@ -435,9 +487,9 @@ export default function MarketingCalendarioPage({
         <button onClick={() => setMes(toMes(new Date()))}
           className="text-xs text-gray-600 hover:text-white transition-colors">Hoy</button>
 
-        {!embedded && (
+        {conSwitcher && (
           <div className="ml-auto flex gap-1 ms-card rounded-lg p-1">
-            {([["calendario","Calendario"],["proximas","Próximas"],["parrilla","Parrilla"],["tipo","Por tipo"],["feed","Feed IG"]] as [Vista,string][]).map(([v, label]) => (
+            {([["parrilla","Parrilla"],["calendario","Calendario"],["kanban","Kanban"]] as [Vista,string][]).map(([v, label]) => (
               <button key={v} onClick={() => setVista(v)}
                 className={`text-xs px-3 py-1 rounded transition-colors ${vista === v ? "bg-[#B3985B] text-black font-semibold" : "text-gray-500 hover:text-white"}`}>
                 {label}
@@ -453,7 +505,7 @@ export default function MarketingCalendarioPage({
           { label: "Total", value: publicaciones.length, color: "text-white" },
           { label: "Publicadas", value: publicadas, color: "text-green-400" },
           { label: "En proceso", value: pendientes, color: "text-blue-400" },
-          { label: "Listas", value: listas, color: "text-yellow-400" },
+          { label: "Ocultas", value: ocultas, color: ocultas > 0 ? "text-gray-400" : "text-gray-700" },
         ].map(k => (
           <div key={k.label} className="ms-card p-3 md:p-4">
             <p className="text-gray-600 text-[10px] uppercase tracking-wider mb-1">{k.label}</p>
@@ -503,14 +555,8 @@ export default function MarketingCalendarioPage({
                     className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
                 </div>
                 <div className="md:col-span-3">
-                  <label className="text-xs text-gray-500 mb-1 block">Copy / Texto</label>
-                  <textarea value={form.copy} onChange={e => setForm(p => ({ ...p, copy: e.target.value }))} rows={3}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none"
-                    placeholder="Texto que irá en la publicación..." />
-                </div>
-                <div className="md:col-span-3">
                   <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs text-gray-500">Fotos del carrusel</label>
+                    <label className="text-xs text-gray-500">Fotos de referencia</label>
                     {formImagenes.length > 0 && (
                       <span className="text-[10px] text-gray-600">{formImagenes.length} foto{formImagenes.length !== 1 ? "s" : ""} · la primera es la portada</span>
                     )}
@@ -579,13 +625,7 @@ export default function MarketingCalendarioPage({
                     placeholder="Drive, Dropbox..."
                     className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
                 </div>
-                <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Colaboradores</label>
-                  <input value={form.colaboradores} onChange={e => setForm(p => ({ ...p, colaboradores: e.target.value }))}
-                    placeholder="@usuario1, @usuario2..."
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div>
+                <div className="md:col-span-2">
                   <label className="text-xs text-gray-500 mb-1 block">Notas</label>
                   <input value={form.comentarios} onChange={e => setForm(p => ({ ...p, comentarios: e.target.value }))}
                     placeholder="Observaciones..."
@@ -629,17 +669,6 @@ export default function MarketingCalendarioPage({
           onDateChange={handleDateChange}
           openNueva={openNueva}
         />
-      ) : vista === "proximas" ? (
-        <VistaProximas
-          publicaciones={sorted}
-          openEdit={openEdit}
-          deletePub={deletePub}
-          quickEstado={quickEstado}
-          onNueva={openNueva}
-          onGenerar={generarMes}
-          generating={generating}
-          mesLabel={mesLabel(mes)}
-        />
       ) : publicaciones.length === 0 ? (
         <div className="ms-empty-state space-y-3">
           <p className="text-gray-500 text-sm">Sin publicaciones para {mesLabel(mes)}</p>
@@ -652,6 +681,7 @@ export default function MarketingCalendarioPage({
       ) : vista === "parrilla" ? (
         <VistaParrilla
           publicaciones={sorted}
+          tiposById={tiposById}
           expandedId={expandedId}
           editId={editId}
           setExpandedId={setExpandedId}
@@ -659,7 +689,16 @@ export default function MarketingCalendarioPage({
           deletePub={deletePub}
           quickEstado={quickEstado}
           openLightbox={(imgs, idx) => setLightbox({ imgs, idx })}
+          seleccion={seleccion.filter(id => publicaciones.some(p => p.id === id))}
+          setSeleccion={setSeleccion}
+          bulk={bulk}
+          bulking={bulking}
+          verOcultas={verOcultas}
+          setVerOcultas={setVerOcultas}
+          ocultas={ocultas}
         />
+      ) : vista === "kanban" ? (
+        <VistaKanban publicaciones={sorted} quickEstado={quickEstado} openEdit={openEdit} />
       ) : vista === "tipo" ? (
         <VistaPorTipo
           porTipo={porTipo}
@@ -746,12 +785,6 @@ export default function MarketingCalendarioPage({
                 <input value={nuevaForm.descripcion} onChange={e => setNuevaForm(p => ({ ...p, descripcion: e.target.value }))}
                   placeholder="¿De qué trata esta publicación?"
                   className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-              </div>
-              <div>
-                <label className="text-xs text-gray-500 mb-1 block">Copy (opcional)</label>
-                <textarea value={nuevaForm.copy} onChange={e => setNuevaForm(p => ({ ...p, copy: e.target.value }))} rows={2}
-                  placeholder="Texto de la publicación..."
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
               </div>
               <div>
                 <label className="text-xs text-gray-500 mb-2 block">Plataformas</label>
@@ -1028,232 +1061,171 @@ function CalendarGrid({ weeks, year, month, today, byDate, tipoColorMap, dragged
   );
 }
 
-// ─── Vista Próximas ──────────────────────────────────────────────────────────
-function VistaProximas({ publicaciones, openEdit, deletePub, quickEstado, onNueva, onGenerar, generating, mesLabel }: {
+// ─── Vista Parrilla (tabla + acciones en lote) ───────────────────────────────
+const PARRILLA_COLS = "grid-cols-[32px_84px_minmax(0,1fr)_150px_76px_104px]";
+
+function VistaParrilla({
+  publicaciones, tiposById, expandedId, editId, setExpandedId, openEdit, deletePub, quickEstado,
+  openLightbox, seleccion, setSeleccion, bulk, bulking, verOcultas, setVerOcultas, ocultas,
+}: {
   publicaciones: Publicacion[];
-  openEdit: (p: Publicacion) => void;
-  deletePub: (id: string) => void;
-  quickEstado: (id: string, estado: string) => void;
-  onNueva: () => void;
-  onGenerar: () => void;
-  generating: boolean;
-  mesLabel: string;
-}) {
-  const today = new Date().toISOString().slice(0, 10);
-  const [verPublicadas, setVerPublicadas] = useState(false);
-
-  const porPublicar = publicaciones.filter(p => !["PUBLICADO", "CANCELADO"].includes(p.estado));
-  const publicadas  = publicaciones.filter(p => p.estado === "PUBLICADO");
-
-  if (publicaciones.length === 0) {
-    return (
-      <div className="ms-empty-state space-y-3">
-        <p className="text-gray-500 text-sm">Sin publicaciones programadas para {mesLabel}</p>
-        <div className="flex items-center justify-center gap-3 mt-2">
-          <button onClick={onGenerar} disabled={generating}
-            className="inline-flex items-center gap-1.5 bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B] text-sm px-5 py-2 rounded-lg hover:bg-[#B3985B]/20 transition-colors disabled:opacity-50">
-            {generating ? "Generando..." : <><Zap strokeWidth={1.75} className="w-3.5 h-3.5" /> Generar desde estrategia</>}
-          </button>
-          <button onClick={onNueva}
-            className="bg-[#1a1a1a] border border-[#333] text-gray-400 text-sm px-5 py-2 rounded-lg hover:text-white transition-colors">
-            + Publicación manual
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      {porPublicar.length === 0 ? (
-        <div className="ms-card py-8 text-center space-y-2">
-          <p className="text-green-400 text-sm font-medium">✓ Todo publicado para {mesLabel}</p>
-        </div>
-      ) : (
-        <div className="ms-table-wrapper">
-          <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#B3985B]" />
-            <span className="text-white text-sm font-semibold">Por publicar</span>
-            <span className="text-gray-600 text-xs">{porPublicar.length}</span>
-          </div>
-          <div className="divide-y divide-[#181818]">
-            {porPublicar.map(p => {
-              const d = parseDate(p.fecha);
-              const fechaStr = p.fecha.slice(0, 10);
-              const isToday = fechaStr === today;
-              const isPast  = fechaStr < today;
-              const formato = p.formato ?? p.tipo?.formato ?? null;
-              return (
-                <div key={p.id} className={`px-4 py-3 flex items-center gap-3 hover:bg-[#141414] transition-colors ${isToday ? "bg-[#B3985B]/5" : ""}`}>
-                  <div className="shrink-0 text-center w-12">
-                    {isToday && <p className="text-[8px] text-[#B3985B] uppercase font-bold tracking-wider leading-none mb-0.5">Hoy</p>}
-                    <p className={`text-lg font-bold leading-none ${isToday ? "text-[#B3985B]" : isPast ? "text-red-400/70" : "text-white"}`}>{d.getDate()}</p>
-                    <p className="text-gray-600 text-[9px] uppercase">{DIAS_ES[d.getDay()]}</p>
-                    <p className="text-[#444] text-[9px]">{MESES[d.getMonth()].slice(0,3)}</p>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-white text-xs font-medium">{p.tipo?.nombre ?? <span className="text-gray-600 italic">Sin tipo</span>}</span>
-                      {formato && <span className={`text-[10px] font-bold ${FORMATO_COLORS[formato] ?? "text-gray-600"}`}>{formato}</span>}
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${ESTADO_COLORS[p.estado]}`}>{ESTADO_LABEL[p.estado]}</span>
-                      {isPast && !isToday && <span className="inline-flex items-center gap-1 text-[10px] text-red-400 font-medium"><AlertTriangle strokeWidth={1.75} className="w-3 h-3" /> Atrasada</span>}
-                    </div>
-                    {p.descripcion && <p className="text-gray-500 text-[10px] mt-0.5 truncate">{p.descripcion}</p>}
-                    <div className="flex gap-1 mt-1">
-                      {PLATAFORMAS.filter(plt => p[plt.key]).map(plt => (
-                        <span key={plt.key} className="text-[9px] text-gray-600 bg-[#1a1a1a] px-1.5 py-0.5 rounded">{plt.short}</span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {p.estado === "PENDIENTE" && (
-                      <button onClick={() => quickEstado(p.id, "EN_PROCESO")}
-                        className="text-[10px] px-2.5 py-1.5 rounded-lg bg-[#1a1a1a] text-blue-400 hover:bg-blue-900/20 transition-colors">Iniciar</button>
-                    )}
-                    {p.estado === "EN_PROCESO" && (
-                      <button onClick={() => quickEstado(p.id, "LISTO")}
-                        className="text-[10px] px-2.5 py-1.5 rounded-lg bg-[#1a1a1a] text-yellow-400 hover:bg-yellow-900/20 transition-colors">Listo</button>
-                    )}
-                    {p.estado === "LISTO" && (
-                      <button onClick={() => quickEstado(p.id, "PUBLICADO")}
-                        className="text-[10px] px-2.5 py-1.5 rounded-lg bg-[#1a1a1a] text-green-400 hover:bg-green-900/20 transition-colors">Publicar ✓</button>
-                    )}
-                    <button onClick={() => openEdit(p)}
-                      className="text-[10px] px-2.5 py-1.5 rounded-lg border border-[#2a2a2a] text-gray-500 hover:text-[#B3985B] hover:border-[#B3985B]/40 transition-colors">Editar</button>
-                    <button onClick={() => deletePub(p.id)}
-                      className="text-[10px] px-2 py-1.5 rounded-lg text-gray-700 hover:text-red-400 transition-colors">✕</button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {publicadas.length > 0 && (
-        <div className="ms-card-deep overflow-hidden">
-          <button onClick={() => setVerPublicadas(v => !v)}
-            className="w-full px-4 py-3 flex items-center justify-between hover:bg-[#111] transition-colors">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-green-500/60" />
-              <span className="text-gray-500 text-sm">Ya publicadas</span>
-              <span className="text-gray-700 text-xs">{publicadas.length}</span>
-            </div>
-            <span className="text-gray-600 text-xs">{verPublicadas ? "▲ Ocultar" : "▼ Ver"}</span>
-          </button>
-          {verPublicadas && (
-            <div className="divide-y divide-[#1a1a1a] border-t border-[#1a1a1a]">
-              {publicadas.map(p => {
-                const d = parseDate(p.fecha);
-                return (
-                  <div key={p.id} className="px-4 py-2.5 flex items-center gap-3 opacity-60 hover:opacity-90 transition-opacity">
-                    <div className="shrink-0 text-center w-12">
-                      <p className="text-green-500 text-base font-bold leading-none">{d.getDate()}</p>
-                      <p className="text-gray-600 text-[9px] uppercase">{DIAS_ES[d.getDay()]}</p>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="text-gray-400 text-xs">{p.tipo?.nombre ?? "Sin tipo"}</span>
-                      {p.descripcion && <span className="text-gray-600 text-[10px] ml-2">{p.descripcion}</span>}
-                    </div>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-green-900/40 text-green-300 shrink-0">Publicada</span>
-                    <button onClick={() => openEdit(p)} className="text-[10px] text-gray-700 hover:text-[#B3985B] transition-colors shrink-0">Editar</button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Vista Parrilla (tabla) ──────────────────────────────────────────────────
-function VistaParrilla({ publicaciones, expandedId, editId, setExpandedId, openEdit, deletePub, quickEstado, openLightbox }: {
-  publicaciones: Publicacion[]; expandedId: string | null; editId: string | null;
+  tiposById: Record<string, Tipo>;
+  expandedId: string | null; editId: string | null;
   setExpandedId: (id: string | null) => void;
   openEdit: (p: Publicacion) => void; deletePub: (id: string) => void;
   quickEstado: (id: string, estado: string) => void;
   openLightbox: (imgs: string[], idx: number) => void;
+  seleccion: string[];
+  setSeleccion: (fn: (prev: string[]) => string[]) => void;
+  bulk: (accion: "ocultar" | "mostrar" | "estado" | "mover" | "eliminar", valor?: string | number) => void;
+  bulking: boolean;
+  verOcultas: boolean;
+  setVerOcultas: (v: boolean) => void;
+  ocultas: number;
 }) {
   const [filtroTipo, setFiltroTipo] = useState<string | null>(null);
+  const [dias, setDias] = useState("7");
+  const hoy = new Date().toISOString().slice(0, 10);
+
   const tiposUnicos = Array.from(new Map(publicaciones.filter(p => p.tipo).map(p => [p.tipo!.id, p.tipo!])).values());
   const filtered = filtroTipo ? publicaciones.filter(p => p.tipoId === filtroTipo) : publicaciones;
 
+  const elegidas = new Set(seleccion);
+  const todasElegidas = filtered.length > 0 && filtered.every(p => elegidas.has(p.id));
+
+  function toggle(id: string) {
+    setSeleccion(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  }
+  function toggleTodas() {
+    const ids = filtered.map(p => p.id);
+    setSeleccion(prev => todasElegidas ? prev.filter(id => !ids.includes(id)) : [...new Set([...prev, ...ids])]);
+  }
+
   return (
     <div className="space-y-3">
-      {tiposUnicos.length > 1 && (
-        <div className="flex items-center gap-2 flex-wrap">
-          <button onClick={() => setFiltroTipo(null)}
-            className={`text-[10px] px-2.5 py-1 rounded-full border transition-colors ${filtroTipo === null ? "bg-[#B3985B]/20 border-[#B3985B] text-[#B3985B]" : "border-[#2a2a2a] text-gray-500 hover:border-[#444]"}`}>
-            Todos
-          </button>
-          {tiposUnicos.map(t => (
-            <button key={t.id} onClick={() => setFiltroTipo(filtroTipo === t.id ? null : t.id)}
-              className={`text-[10px] px-2.5 py-1 rounded-full border transition-colors ${filtroTipo === t.id ? "bg-[#B3985B]/20 border-[#B3985B] text-[#B3985B]" : "border-[#2a2a2a] text-gray-500 hover:border-[#444]"}`}>
-              {t.nombre}
+      <div className="flex items-center gap-2 flex-wrap">
+        {tiposUnicos.length > 1 && (
+          <>
+            <button onClick={() => setFiltroTipo(null)}
+              className={`text-[10px] px-2.5 py-1 rounded-full border transition-colors ${filtroTipo === null ? "bg-[#B3985B]/20 border-[#B3985B] text-[#B3985B]" : "border-[#2a2a2a] text-gray-500 hover:border-[#444]"}`}>
+              Todos
             </button>
-          ))}
+            {tiposUnicos.map(t => (
+              <button key={t.id} onClick={() => setFiltroTipo(filtroTipo === t.id ? null : t.id)}
+                className={`text-[10px] px-2.5 py-1 rounded-full border transition-colors ${filtroTipo === t.id ? "bg-[#B3985B]/20 border-[#B3985B] text-[#B3985B]" : "border-[#2a2a2a] text-gray-500 hover:border-[#444]"}`}>
+                {t.nombre}
+              </button>
+            ))}
+          </>
+        )}
+        {ocultas > 0 && (
+          <button onClick={() => setVerOcultas(!verOcultas)}
+            className={`ml-auto inline-flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded-full border transition-colors ${verOcultas ? "bg-[#B3985B]/20 border-[#B3985B] text-[#B3985B]" : "border-[#2a2a2a] text-gray-500 hover:border-[#444]"}`}>
+            {verOcultas ? <Eye strokeWidth={1.75} className="w-3 h-3" /> : <EyeOff strokeWidth={1.75} className="w-3 h-3" />}
+            {verOcultas ? "Ocultando ocultas" : `Ver ocultas (${ocultas})`}
+          </button>
+        )}
+      </div>
+
+      {/* Barra de acciones en lote */}
+      {seleccion.length > 0 && (
+        <div className="sticky top-2 z-20 flex items-center gap-2 flex-wrap ms-card border-[#B3985B]/40 px-3 py-2">
+          <span className="text-[#B3985B] text-xs font-semibold">{seleccion.length} seleccionada{seleccion.length === 1 ? "" : "s"}</span>
+          <div className="w-px h-4 bg-[#2a2a2a]" />
+          <button onClick={() => bulk("ocultar")} disabled={bulking}
+            className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1.5 rounded-lg bg-[#1a1a1a] border border-[#333] text-gray-300 hover:text-white hover:border-[#555] transition-colors disabled:opacity-50">
+            <EyeOff strokeWidth={1.75} className="w-3 h-3" /> Ocultar
+          </button>
+          <button onClick={() => bulk("mostrar")} disabled={bulking}
+            className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1.5 rounded-lg bg-[#1a1a1a] border border-[#333] text-gray-400 hover:text-white hover:border-[#555] transition-colors disabled:opacity-50">
+            <Eye strokeWidth={1.75} className="w-3 h-3" /> Mostrar
+          </button>
+          <Combobox
+            value=""
+            onChange={v => { if (v) bulk("estado", v); }}
+            options={[{ value: "", label: "Cambiar estado…" }, ...ESTADOS.map(e => ({ value: e, label: ESTADO_LABEL[e] }))]}
+            className="text-[11px] px-2.5 py-1.5 rounded-lg bg-[#1a1a1a] border border-[#333] text-gray-400 focus:outline-none"
+          />
+          <div className="inline-flex items-center gap-1">
+            <input type="number" value={dias} onChange={e => setDias(e.target.value)}
+              className="w-14 text-[11px] px-2 py-1.5 rounded-lg bg-[#1a1a1a] border border-[#333] text-white focus:outline-none focus:border-[#B3985B]" />
+            <button onClick={() => bulk("mover", parseInt(dias) || 0)} disabled={bulking}
+              className="text-[11px] px-2.5 py-1.5 rounded-lg bg-[#1a1a1a] border border-[#333] text-gray-400 hover:text-white hover:border-[#555] transition-colors disabled:opacity-50">
+              Mover días
+            </button>
+          </div>
+          <button onClick={() => bulk("eliminar")} disabled={bulking}
+            className="text-[11px] px-2.5 py-1.5 rounded-lg border border-red-900/40 text-red-500 hover:bg-red-900/20 transition-colors disabled:opacity-50">
+            Eliminar
+          </button>
+          <button onClick={() => setSeleccion(() => [])}
+            className="ml-auto text-[11px] text-gray-600 hover:text-white transition-colors">Limpiar</button>
         </div>
       )}
+
       <div className="ms-table-wrapper">
-        <div className="grid grid-cols-[40px_72px_60px_1fr_1fr_80px_100px] gap-2 px-3 py-2 border-b border-[#1a1a1a] text-[10px] text-gray-600 uppercase tracking-wider">
-          <span></span>
-          <span>Fecha</span><span>Fmt</span><span>Tipo / Descripción</span><span>Copy</span>
-          <span className="text-center">Plataformas</span><span className="text-center">Estado</span>
+        <div className={`grid ${PARRILLA_COLS} gap-2 px-3 py-2 border-b border-[#1a1a1a] text-[10px] text-gray-600 uppercase tracking-wider`}>
+          <span className="flex items-center justify-center">
+            <input type="checkbox" checked={todasElegidas} onChange={toggleTodas} className="accent-[#B3985B] cursor-pointer" />
+          </span>
+          <span>Fecha</span><span>Tipo / Descripción</span><span>Variación</span>
+          <span className="text-center">Plat.</span><span className="text-center">Estado</span>
         </div>
         <div className="divide-y divide-[#181818]">
           {filtered.map(p => {
             const d = parseDate(p.fecha);
+            const fechaStr = p.fecha.slice(0, 10);
+            const isToday = fechaStr === hoy;
+            const sinPublicar = fechaStr < hoy && p.estado !== "PUBLICADO" && p.estado !== "CANCELADO";
             const formato = p.formato ?? p.tipo?.formato ?? null;
             const imagenes = parseImagenes(p.portadaUrl);
-            const coverUrl = imagenes[0] ?? null;
+            const tipo = p.tipoId ? tiposById[p.tipoId] : undefined;
+            const variacion = variacionDe(p, tipo);
+            const elegida = elegidas.has(p.id);
             return (
-              <div key={p.id}>
-                <div className={`grid grid-cols-[40px_72px_60px_1fr_1fr_80px_100px] gap-2 px-3 py-2 items-center hover:bg-[#141414] cursor-pointer transition-colors ${expandedId === p.id ? "bg-[#141414]" : ""} ${editId === p.id ? "opacity-50" : ""}`}
+              <div key={p.id} className={p.oculta ? "opacity-40" : ""}>
+                <div className={`grid ${PARRILLA_COLS} gap-2 px-3 py-2 items-center hover:bg-[#141414] cursor-pointer transition-colors
+                    ${expandedId === p.id ? "bg-[#141414]" : ""} ${editId === p.id ? "opacity-50" : ""} ${elegida ? "bg-[#B3985B]/5" : ""} ${isToday ? "ring-1 ring-inset ring-[#B3985B]/25" : ""}`}
                   onClick={() => { if (editId !== p.id) setExpandedId(expandedId === p.id ? null : p.id); }}>
-                  {/* Miniatura */}
-                  <div className="flex items-center justify-center" onClick={e => { if (coverUrl) { e.stopPropagation(); openLightbox(imagenes, 0); } }}>
-                    {coverUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={coverUrl}
-                        alt=""
-                        className="w-9 h-9 object-cover rounded-md border border-[#2a2a2a] hover:border-[#B3985B]/60 transition-colors shrink-0"
-                      />
-                    ) : (
-                      <div className="w-9 h-9 rounded-md bg-[#1a1a1a] border border-[#222] flex items-center justify-center shrink-0">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="1.5">
-                          <rect x="3" y="3" width="18" height="18" rx="2"/>
-                          <circle cx="8.5" cy="8.5" r="1.5"/>
-                          <polyline points="21 15 16 10 5 21"/>
-                        </svg>
-                      </div>
-                    )}
+                  {/* Selección */}
+                  <div className="flex items-center justify-center" onClick={e => e.stopPropagation()}>
+                    <input type="checkbox" checked={elegida} onChange={() => toggle(p.id)} className="accent-[#B3985B] cursor-pointer" />
                   </div>
-                  {/* Fecha */}
+                  {/* Fecha — el día de la semana es lo que más se lee de un vistazo */}
                   <div>
-                    <p className="text-white text-sm font-bold leading-none">{d.getDate()}</p>
-                    <p className="text-gray-600 text-[9px] uppercase">{DIAS_ES[d.getDay()]}</p>
-                    <p className="text-[#444] text-[9px]">{MESES[d.getMonth()].slice(0,3)}</p>
-                  </div>
-                  {/* Formato */}
-                  <div>
-                    {formato
-                      ? <span className={`text-[10px] font-bold ${FORMATO_COLORS[formato] ?? "text-gray-600"}`}>{FORMATO_LABEL[formato] ?? formato}</span>
-                      : <span className="text-gray-700 text-[9px]">—</span>}
+                    <p className={`text-[15px] font-bold uppercase leading-tight tracking-wide ${sinPublicar ? "text-red-400" : isToday ? "text-[#B3985B]" : "text-white"}`}>
+                      {DIAS_ES[d.getDay()]}
+                    </p>
+                    <p className="text-gray-500 text-[11px] leading-tight">{d.getDate()} {MESES[d.getMonth()].slice(0, 3)}</p>
                   </div>
                   {/* Tipo / descripción */}
                   <div className="min-w-0">
-                    <p className="text-white text-xs font-medium truncate">{p.tipo?.nombre ?? <span className="text-gray-600 italic">Sin tipo</span>}</p>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      {formato && <span className={`text-[9px] font-bold shrink-0 ${FORMATO_COLORS[formato] ?? "text-gray-600"}`}>{FORMATO_LABEL[formato] ?? formato}</span>}
+                      <p className="text-white text-xs font-medium truncate">{p.tipo?.nombre ?? <span className="text-gray-600 italic">Sin tipo</span>}</p>
+                      {p.oculta && <span className="text-[9px] text-gray-600 border border-[#2a2a2a] rounded px-1 shrink-0">oculta</span>}
+                    </div>
                     {p.descripcion && <p className="text-gray-500 text-[10px] truncate">{p.descripcion}</p>}
-                    {imagenes.length > 1 && (
-                      <span className="text-[9px] text-[#B3985B]/70">{imagenes.length} fotos</span>
+                    {sinPublicar && (
+                      <span className="inline-flex items-center gap-1 text-[10px] text-red-400 font-medium">
+                        <AlertTriangle strokeWidth={1.75} className="w-3 h-3" /> No se publicó
+                      </span>
                     )}
                   </div>
-                  {/* Copy */}
+                  {/* Variación */}
                   <div className="min-w-0">
-                    {p.copy ? <p className="text-gray-400 text-[10px] truncate">{p.copy}</p> : <span className="text-gray-700 text-[9px] italic">—</span>}
+                    {variacion ? (
+                      <>
+                        <span className="inline-block text-[9px] font-bold tracking-wide text-[#B3985B] bg-[#B3985B]/10 border border-[#B3985B]/30 rounded px-1.5 py-0.5">
+                          {variacion.codigo}
+                        </span>
+                        <p className="text-gray-500 text-[10px] truncate mt-0.5">{variacion.nombre}</p>
+                      </>
+                    ) : tipo?.cicloSemanas && tipo.cicloSemanas > 1 ? (
+                      <span className="text-[9px] text-gray-700 italic">{etiquetaSlot(tipo, 0, 1)}</span>
+                    ) : (
+                      <span className="text-gray-700 text-[9px]">—</span>
+                    )}
                   </div>
                   {/* Plataformas */}
                   <div className="flex gap-1 justify-center flex-wrap" onClick={e => e.stopPropagation()}>
@@ -1275,18 +1247,17 @@ function VistaParrilla({ publicaciones, expandedId, editId, setExpandedId, openE
                 {expandedId === p.id && editId !== p.id && (
                   <div className="px-4 pb-3 bg-[#0d0d0d] border-t border-[#1a1a1a]">
                     <div className="pt-3 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-                      {parseImagenes(p.portadaUrl).length > 0 && (
+                      {imagenes.length > 0 && (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
-                          src={parseImagenes(p.portadaUrl)[0]} alt="Portada"
+                          src={imagenes[0]} alt="Referencia"
                           className="w-full max-w-[200px] rounded-lg border border-[#2a2a2a] object-contain bg-[#0d0d0d] cursor-zoom-in hover:border-[#B3985B]/40 transition-colors"
-                          onClick={() => openLightbox(parseImagenes(p.portadaUrl), 0)}
+                          onClick={() => openLightbox(imagenes, 0)}
                         />
                       )}
-                      {p.copy && (
-                        <div className={`${parseImagenes(p.portadaUrl).length > 0 ? "md:col-span-2" : "md:col-span-3"} bg-[#111] rounded-lg p-3 border border-[#1e1e1e]`}>
-                          <p className="text-gray-600 mb-1 text-[10px] uppercase">Copy</p>
-                          <p className="text-white whitespace-pre-wrap">{p.copy}</p>
+                      {variacion?.nombre && (
+                        <div><p className="text-gray-600 mb-1 text-[10px] uppercase">Variación</p>
+                          <p className="text-white">{variacion.codigo} · {variacion.nombre}</p>
                         </div>
                       )}
                       {p.materialLink && (
@@ -1294,10 +1265,12 @@ function VistaParrilla({ publicaciones, expandedId, editId, setExpandedId, openE
                           <a href={p.materialLink} target="_blank" rel="noopener noreferrer" className="text-[#B3985B] hover:underline break-all">{p.materialLink}</a>
                         </div>
                       )}
-                      {p.colaboradores && <div><p className="text-gray-600 mb-1 text-[10px] uppercase">Colaboradores</p><p className="text-white">{p.colaboradores}</p></div>}
                       {p.comentarios && <div className="md:col-span-2"><p className="text-gray-600 mb-1 text-[10px] uppercase">Notas</p><p className="text-gray-400">{p.comentarios}</p></div>}
                     </div>
-                    <div className="flex gap-2 mt-3">
+                    <div className="flex gap-2 mt-3 flex-wrap">
+                      {p.estado === "PENDIENTE" && <button onClick={() => quickEstado(p.id, "EN_PROCESO")} className="text-xs text-blue-400 px-3 py-1.5 border border-blue-900/40 rounded-lg hover:bg-blue-900/20 transition-colors">Iniciar</button>}
+                      {p.estado === "EN_PROCESO" && <button onClick={() => quickEstado(p.id, "LISTO")} className="text-xs text-yellow-400 px-3 py-1.5 border border-yellow-900/40 rounded-lg hover:bg-yellow-900/20 transition-colors">Listo</button>}
+                      {p.estado === "LISTO" && <button onClick={() => quickEstado(p.id, "PUBLICADO")} className="text-xs text-green-400 px-3 py-1.5 border border-green-900/40 rounded-lg hover:bg-green-900/20 transition-colors">Publicar ✓</button>}
                       <button onClick={() => openEdit(p)} className="text-xs text-[#B3985B] hover:text-white px-3 py-1.5 border border-[#B3985B]/40 rounded-lg transition-colors">Editar</button>
                       <button onClick={() => deletePub(p.id)} className="text-xs text-red-500 hover:text-red-400 px-3 py-1.5 border border-red-900/30 rounded-lg transition-colors">Eliminar</button>
                     </div>
@@ -1311,6 +1284,78 @@ function VistaParrilla({ publicaciones, expandedId, editId, setExpandedId, openE
     </div>
   );
 }
+
+// ─── Vista Kanban (pipeline por estado) ──────────────────────────────────────
+const KANBAN_HEADER: Record<string, string> = {
+  PENDIENTE: "text-white/40 border-white/10",
+  EN_PROCESO: "text-blue-400 border-blue-700/30",
+  LISTO: "text-yellow-400 border-yellow-700/30",
+  PUBLICADO: "text-green-400 border-green-700/30",
+  CANCELADO: "text-red-400/70 border-red-800/30",
+};
+
+function VistaKanban({ publicaciones, quickEstado, openEdit }: {
+  publicaciones: Publicacion[];
+  quickEstado: (id: string, estado: string) => void;
+  openEdit: (p: Publicacion) => void;
+}) {
+  const [arrastrando, setArrastrando] = useState<string | null>(null);
+  const [sobre, setSobre] = useState<string | null>(null);
+
+  return (
+    <div className="overflow-x-auto pb-2">
+      <div className="flex gap-3" style={{ minWidth: `${ESTADOS.length * 232}px` }}>
+        {ESTADOS.map(estado => {
+          const col = publicaciones.filter(p => p.estado === estado);
+          const isOver = sobre === estado;
+          return (
+            <div key={estado} className="flex flex-col w-56 shrink-0"
+              onDragOver={e => { e.preventDefault(); setSobre(estado); }}
+              onDragLeave={() => setSobre(null)}
+              onDrop={e => {
+                e.preventDefault();
+                if (arrastrando) quickEstado(arrastrando, estado);
+                setArrastrando(null); setSobre(null);
+              }}>
+              <div className={`flex items-center justify-between px-3 py-2 mb-2 rounded-lg border ${KANBAN_HEADER[estado]} bg-white/[0.02]`}>
+                <span className="text-[11px] font-semibold uppercase tracking-wider">{ESTADO_LABEL[estado]}</span>
+                <span className="text-[11px] opacity-60 font-medium">{col.length}</span>
+              </div>
+              <div className={`flex-1 space-y-2 rounded-xl p-1 transition-colors ${isOver ? "bg-white/[0.03] ring-1 ring-white/10" : ""}`}>
+                {col.map(p => {
+                  const d = parseDate(p.fecha);
+                  const formato = p.formato ?? p.tipo?.formato ?? null;
+                  return (
+                    <div key={p.id} draggable
+                      onDragStart={() => setArrastrando(p.id)}
+                      onDragEnd={() => { setArrastrando(null); setSobre(null); }}
+                      onClick={() => openEdit(p)}
+                      className={`bg-white/[0.025] border border-white/10 rounded-xl p-2.5 cursor-grab active:cursor-grabbing select-none transition-all
+                        ${arrastrando === p.id ? "opacity-40 scale-95" : "hover:border-white/20 hover:bg-white/[0.045]"}`}>
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        {formato && <span className={`text-[9px] font-bold ${FORMATO_COLORS[formato] ?? "text-gray-600"}`}>{FORMATO_LABEL[formato] ?? formato}</span>}
+                        {p.variacion && <span className="text-[9px] font-bold text-[#B3985B]/80">{p.variacion.codigo}</span>}
+                      </div>
+                      <p className="text-white/80 text-xs font-medium leading-snug line-clamp-2">{p.tipo?.nombre ?? p.descripcion ?? "Sin tipo"}</p>
+                      {p.descripcion && p.tipo?.nombre && <p className="text-white/30 text-[10px] leading-snug line-clamp-2 mt-0.5">{p.descripcion}</p>}
+                      <p className="text-white/25 text-[10px] mt-1.5">{DIAS_ES[d.getDay()]} {d.getDate()} {MESES[d.getMonth()].slice(0, 3)}</p>
+                    </div>
+                  );
+                })}
+                {col.length === 0 && (
+                  <div className={`flex items-center justify-center h-16 rounded-xl border border-dashed transition-colors ${isOver ? "border-white/20 bg-white/[0.04]" : "border-white/[0.06]"}`}>
+                    <span className="text-white/15 text-xs">Arrastra aquí</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 
 // ─── Vista Por Tipo ──────────────────────────────────────────────────────────
 function VistaPorTipo({ porTipo, sinTipo, expandedId, editId, setExpandedId, openEdit, deletePub, quickEstado, openLightbox }: {
@@ -1353,6 +1398,11 @@ function VistaPorTipo({ porTipo, sinTipo, expandedId, editId, setExpandedId, ope
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${ESTADO_COLORS[p.estado]}`}>{ESTADO_LABEL[p.estado]}</span>
+                          {p.variacion && (
+                            <span className="text-[9px] font-bold tracking-wide text-[#B3985B] bg-[#B3985B]/10 border border-[#B3985B]/30 rounded px-1.5 py-0.5">
+                              {p.variacion.codigo} · {p.variacion.nombre}
+                            </span>
+                          )}
                           {p.descripcion && <span className="text-gray-400 text-xs truncate max-w-xs">{p.descripcion}</span>}
                         </div>
                       </div>
@@ -1377,9 +1427,7 @@ function VistaPorTipo({ porTipo, sinTipo, expandedId, editId, setExpandedId, ope
                               onClick={() => openLightbox(parseImagenes(p.portadaUrl), 0)}
                             />
                           )}
-                          {p.copy && <div className="md:col-span-2 bg-[#111] rounded-lg p-3 border border-[#1e1e1e]"><p className="text-gray-600 mb-1 text-[10px] uppercase">Copy</p><p className="text-white whitespace-pre-wrap">{p.copy}</p></div>}
                           {p.materialLink && <div><p className="text-gray-600 mb-1 text-[10px] uppercase">Material</p><a href={p.materialLink} target="_blank" rel="noopener noreferrer" className="text-[#B3985B] hover:underline break-all">{p.materialLink}</a></div>}
-                          {p.colaboradores && <div><p className="text-gray-600 mb-1 text-[10px] uppercase">Colaboradores</p><p className="text-white">{p.colaboradores}</p></div>}
                           {p.comentarios && <div className="md:col-span-2"><p className="text-gray-600 mb-1 text-[10px] uppercase">Notas</p><p className="text-gray-400">{p.comentarios}</p></div>}
                         </div>
                         <div className="flex gap-2 pt-1">

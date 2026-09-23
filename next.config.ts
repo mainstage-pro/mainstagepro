@@ -33,8 +33,13 @@ const nextConfig: NextConfig = {
       { source: "/proyectos-internos",      destination: "/proyectos-de-empresa",      permanent: true },
       { source: "/proyectos-internos/:id",  destination: "/proyectos-de-empresa/:id",  permanent: true },
       // ── Marketing (legacy routes) ────────────────────────────────────────────
-      { source: "/marketing/calendario",         destination: "/marketing/contenido",               permanent: true },
-      { source: "/marketing/kanban",             destination: "/marketing/contenido/kanban",        permanent: true },
+      { source: "/marketing/calendario",         destination: "/marketing/contenido/parrilla",      permanent: true },
+      { source: "/marketing/kanban",             destination: "/marketing/contenido/parrilla",      permanent: true },
+      // Calendario, Próximas y Kanban son ahora vistas dentro de Parrilla.
+      { source: "/marketing/contenido/calendario", destination: "/marketing/contenido/parrilla",    permanent: true },
+      { source: "/marketing/contenido/proximas",   destination: "/marketing/contenido/parrilla",    permanent: true },
+      { source: "/marketing/contenido/kanban",     destination: "/marketing/contenido/parrilla",    permanent: true },
+      { source: "/marketing/contenido/tipo",       destination: "/marketing/contenido/tipos",       permanent: true },
       { source: "/marketing/levantamientos",     destination: "/marketing/contenido/shoots",        permanent: true },
       { source: "/marketing/metricas",           destination: "/marketing/resultados",              permanent: true },
       { source: "/marketing/contenidos",         destination: "/marketing/contenido/tipos",         permanent: true },

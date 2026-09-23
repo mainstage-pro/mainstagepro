@@ -2404,9 +2404,34 @@ model TipoContenido {
   enYoutube    Boolean @default(false)
   enFeedIG     Boolean @default(false) // Aparece en previsualización Feed IG
 
+  // Ciclo de variaciones: nº de semanas antes de repetir las mismas piezas (null/1 = sin ciclo)
+  cicloSemanas Int?
+  cicloInicio  DateTime? // Ancla del ciclo; se usa el lunes de esa semana
+
   publicaciones Publicacion[]
+  variaciones   VariacionContenido[]
 
   @@map("tipos_contenido")
+}
+
+/// Pieza concreta dentro del ciclo de un tipo: (semana, posición) → contenido con su propio código.
+model VariacionContenido {
+  id          String        @id @default(cuid())
+  tipoId      String
+  tipo        TipoContenido @relation(fields: [tipoId], references: [id], onDelete: Cascade)
+  codigo      String // Identificador interno, ej. "INV-S3-P2"
+  nombre      String
+  semana      Int           @default(1)
+  posicion    Int           @default(1)
+  descripcion String?
+  activo      Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  publicaciones Publicacion[]
+
+  @@index([tipoId, semana, posicion])
+  @@map("variaciones_contenido")
 }
 
 model Publicacion {
@@ -2433,9 +2458,13 @@ model Publicacion {
   interacciones     Int?
   seguidoresGanados Int?
   pruebaPubUrl      String? // URL del archivo de prueba de publicación (apelación)
+  oculta            Boolean        @default(false) // Fuera de las vistas, pero sigue contando en métricas
+  variacionId       String?
+  variacion         VariacionContenido? @relation(fields: [variacionId], references: [id], onDelete: SetNull)
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 
+  @@index([variacionId])
   @@map("publicaciones")
 }
 

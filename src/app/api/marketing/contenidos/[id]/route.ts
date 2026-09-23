@@ -10,11 +10,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const body = await request.json();
   const allowed = [
     "nombre", "formato", "objetivo", "diaSemana", "semanaDelMes", "recurrencia", "cantMes", "descripcion",
-    "activo", "orden", "enFacebook", "enInstagram", "enTiktok", "enYoutube", "enFeedIG",
+    "activo", "orden", "enFacebook", "enInstagram", "enTiktok", "enYoutube", "enFeedIG", "cicloSemanas",
   ];
   const data: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in body) data[key] = body[key];
+  }
+  if ("cicloInicio" in body) {
+    data.cicloInicio = body.cicloInicio ? new Date(body.cicloInicio) : null;
   }
 
   const tipo = await prisma.tipoContenido.update({ where: { id }, data });

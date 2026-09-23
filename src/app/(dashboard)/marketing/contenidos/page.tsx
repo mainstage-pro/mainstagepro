@@ -5,12 +5,19 @@ import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
 import { Combobox } from "@/components/Combobox";
 import { Modal } from "@/components/Modal";
+import { etiquetaSlot, slotsDelCiclo } from "@/lib/contenido-variaciones";
 
+interface Variacion {
+  id: string; codigo: string; nombre: string; semana: number; posicion: number;
+  descripcion: string | null; activo: boolean;
+}
 interface TipoContenido {
   id: string; nombre: string; formato: string; objetivo: string | null;
   diaSemana: string | null; semanaDelMes: number | null; recurrencia: string | null; cantMes: number | null;
   descripcion: string | null; activo: boolean; orden: number;
   enFacebook: boolean; enInstagram: boolean; enTiktok: boolean; enYoutube: boolean; enFeedIG: boolean;
+  cicloSemanas: number | null; cicloInicio: string | null;
+  variaciones: Variacion[];
 }
 
 const SEMANA_LABEL: Record<number, string> = { 1: "1er", 2: "2do", 3: "3er", 4: "4to" };
@@ -36,6 +43,7 @@ const PLATAFORMAS = [
 const EMPTY = {
   nombre: "", formato: "POST", objetivo: "", diaSemana: "", semanaDelMes: "", recurrencia: "", cantMes: "",
   descripcion: "", enFacebook: false, enInstagram: false, enTiktok: false, enYoutube: false, enFeedIG: false,
+  cicloSemanas: "", cicloInicio: "",
 };
 
 export default function ContenidosPage() {
@@ -50,6 +58,8 @@ export default function ContenidosPage() {
   const [search, setSearch] = useState("");
   const [filtroFormato, setFiltroFormato] = useState<string | null>(null);
   const [filtroPlataforma, setFiltroPlataforma] = useState<string | null>(null);
+  const [expandido, setExpandido] = useState<string | null>(null);
+  const [trabajando, setTrabajando] = useState<string | null>(null);
 
   async function load() {
     const r = await fetch("/api/marketing/contenidos", { cache: "no-store" });
@@ -68,6 +78,8 @@ export default function ContenidosPage() {
       descripcion: t.descripcion ?? "",
       enFacebook: t.enFacebook, enInstagram: t.enInstagram,
       enTiktok: t.enTiktok, enYoutube: t.enYoutube, enFeedIG: t.enFeedIG,
+      cicloSemanas: t.cicloSemanas?.toString() ?? "",
+      cicloInicio: t.cicloInicio?.slice(0, 10) ?? "",
     });
     setEditId(t.id);
     setShowForm(true);
@@ -88,6 +100,8 @@ export default function ContenidosPage() {
       descripcion: form.descripcion || null,
       enFacebook: form.enFacebook, enInstagram: form.enInstagram,
       enTiktok: form.enTiktok, enYoutube: form.enYoutube, enFeedIG: form.enFeedIG,
+      cicloSemanas: form.cicloSemanas ? parseInt(form.cicloSemanas) : null,
+      cicloInicio: form.cicloInicio || null,
     };
     if (editId) {
       const res = await fetch(`/api/marketing/contenidos/${editId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
@@ -136,6 +150,53 @@ export default function ContenidosPage() {
     const d = await res.json();
     if (d.eliminadas > 0) toast.info(`Se eliminaron ${d.eliminadas} publicaciones del calendario.`);
     await load();
+  }
+
+  /** Crea de golpe los slots que faltan del ciclo: semanas × días de publicación. */
+  async function generarRejilla(tipoId: string) {
+    setTrabajando(tipoId);
+    const res = await fetch("/api/marketing/variaciones", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tipoId, generarRejilla: true }),
+    });
+    setTrabajando(null);
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al generar variaciones");
+      return;
+    }
+    const d = await res.json();
+    toast.success(d.creadas > 0 ? `${d.creadas} variaciones creadas` : "El ciclo ya estaba completo");
+    await load();
+  }
+
+  async function guardarVariacion(v: Variacion, campos: Partial<Variacion>) {
+    setTipos(prev => prev.map(t => ({
+      ...t, variaciones: t.variaciones.map(x => x.id === v.id ? { ...x, ...campos } : x),
+    })));
+    const res = await fetch(`/api/marketing/variaciones/${v.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(campos),
+    });
+    if (!res.ok) { toast.error("Error al guardar la variación"); await load(); }
+  }
+
+  async function borrarVariacion(v: Variacion) {
+    if (!await confirm({ message: `¿Eliminar la variación "${v.codigo}"?`, danger: true, confirmText: "Eliminar" })) return;
+    const res = await fetch(`/api/marketing/variaciones/${v.id}`, { method: "DELETE" });
+    if (!res.ok) { toast.error("Error al eliminar"); return; }
+    await load();
+  }
+
+  /** Recalcula a qué variación pertenece cada publicación ya existente de este tipo. */
+  async function reasignar(tipoId: string) {
+    setTrabajando(tipoId);
+    const res = await fetch("/api/marketing/publicaciones/asignar-variaciones", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tipoId }),
+    });
+    setTrabajando(null);
+    if (!res.ok) { toast.error("Error al reasignar"); return; }
+    const d = await res.json();
+    toast.success(`${d.asignadas} publicaciones reasignadas`);
   }
 
   const PLAT_KEYS: Record<string, keyof TipoContenido> = {
@@ -263,6 +324,25 @@ export default function ContenidosPage() {
                 className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
                 placeholder="0" min="0" />
             </div>
+            <div className="md:col-span-2 border-t border-[#1e1e1e] pt-3">
+              <p className="text-xs text-gray-400 font-medium">Ciclo de variaciones</p>
+              <p className="text-[10px] text-gray-700 mt-0.5">
+                Si este tipo rota piezas distintas antes de repetirse (ej. inventario: 8 semanas × 2 publicaciones),
+                define aquí cuántas semanas dura el ciclo. Déjalo vacío si siempre es la misma publicación.
+              </p>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Semanas del ciclo</label>
+              <input type="number" min="1" value={form.cicloSemanas} onChange={e => setForm(p => ({ ...p, cicloSemanas: e.target.value }))}
+                placeholder="Sin ciclo"
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Inicio del ciclo</label>
+              <input type="date" value={form.cicloInicio} onChange={e => setForm(p => ({ ...p, cicloInicio: e.target.value }))}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              <p className="text-[10px] text-gray-700 mt-0.5">Semana 1 del ciclo</p>
+            </div>
             <div className="md:col-span-2">
               <label className="text-xs text-gray-500 mb-1 block">Objetivo</label>
               <input value={form.objetivo} onChange={e => setForm(p => ({ ...p, objetivo: e.target.value }))}
@@ -375,6 +455,62 @@ export default function ContenidosPage() {
                   <button onClick={() => toggleActivo(t)} className="text-xs text-gray-500 hover:text-yellow-400 transition-colors">Desactivar</button>
                   <button onClick={() => deleteContenido(t.id, t.nombre)} className="text-xs text-gray-500 hover:text-red-400 transition-colors">Eliminar</button>
                 </div>
+              </div>
+
+              {/* Variaciones del ciclo */}
+              <div className="mt-3 pt-3 border-t border-[#1a1a1a]">
+                <button onClick={() => setExpandido(expandido === t.id ? null : t.id)}
+                  className="flex items-center gap-2 text-xs text-gray-500 hover:text-white transition-colors">
+                  <span>{expandido === t.id ? "▾" : "▸"}</span>
+                  <span>Variaciones</span>
+                  <span className="text-[10px] text-gray-700">
+                    {t.variaciones.length > 0
+                      ? `${t.variaciones.length} pieza${t.variaciones.length === 1 ? "" : "s"}${t.cicloSemanas && t.cicloSemanas > 1 ? ` · ciclo de ${t.cicloSemanas} semanas` : ""}`
+                      : "sin definir"}
+                  </span>
+                </button>
+
+                {expandido === t.id && (
+                  <div className="mt-3 space-y-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button onClick={() => generarRejilla(t.id)} disabled={trabajando === t.id}
+                        className="text-[11px] px-2.5 py-1.5 rounded-lg bg-[#1a1a1a] border border-[#B3985B]/40 text-[#B3985B] hover:bg-[#B3985B]/10 transition-colors disabled:opacity-50">
+                        {trabajando === t.id ? "Trabajando..." : `Generar rejilla (${slotsDelCiclo(t).length} slots)`}
+                      </button>
+                      {t.variaciones.length > 0 && (
+                        <button onClick={() => reasignar(t.id)} disabled={trabajando === t.id}
+                          className="text-[11px] px-2.5 py-1.5 rounded-lg bg-[#1a1a1a] border border-[#333] text-gray-400 hover:text-white transition-colors disabled:opacity-50">
+                          Reasignar publicaciones
+                        </button>
+                      )}
+                    </div>
+
+                    {t.variaciones.length === 0 ? (
+                      <p className="text-[11px] text-gray-700">
+                        Sin variaciones: cada publicación de este tipo es la misma pieza.
+                      </p>
+                    ) : (
+                      <div className="space-y-1">
+                        {t.variaciones.map(v => (
+                          <div key={v.id} className="flex items-center gap-2 bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-2 py-1.5">
+                            <span className="text-[10px] text-gray-600 w-32 shrink-0">{etiquetaSlot(t, v.semana, v.posicion)}</span>
+                            <input defaultValue={v.codigo} onBlur={e => { if (e.target.value !== v.codigo) guardarVariacion(v, { codigo: e.target.value }); }}
+                              className="w-28 shrink-0 bg-[#111] border border-[#222] rounded px-2 py-1 text-[#B3985B] text-[11px] font-bold focus:outline-none focus:border-[#B3985B]" />
+                            <input defaultValue={v.nombre} onBlur={e => { if (e.target.value !== v.nombre) guardarVariacion(v, { nombre: e.target.value }); }}
+                              placeholder="Nombre de la pieza"
+                              className="flex-1 min-w-0 bg-[#111] border border-[#222] rounded px-2 py-1 text-white text-[11px] focus:outline-none focus:border-[#B3985B]" />
+                            <button onClick={() => guardarVariacion(v, { activo: !v.activo })}
+                              className={`text-[10px] px-2 py-1 rounded transition-colors shrink-0 ${v.activo ? "text-green-400 hover:text-green-300" : "text-gray-700 hover:text-gray-500"}`}>
+                              {v.activo ? "Activa" : "Inactiva"}
+                            </button>
+                            <button onClick={() => borrarVariacion(v)}
+                              className="text-[11px] text-gray-700 hover:text-red-400 transition-colors shrink-0">×</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           ))}

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { PUBLICACION_INCLUDE } from "@/lib/contenido-variaciones";
 
 export async function GET(request: NextRequest) {
   const session = await getSession();
@@ -9,6 +10,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const mes = searchParams.get("mes"); // "2026-04"
 
+  // Las ocultas se devuelven siempre: no aparecen en las listas pero sí cuentan en métricas.
   const where = mes
     ? {
         fecha: {
@@ -20,7 +22,7 @@ export async function GET(request: NextRequest) {
 
   const publicaciones = await prisma.publicacion.findMany({
     where,
-    include: { tipo: { select: { id: true, nombre: true, formato: true, enFeedIG: true, enFacebook: true, enInstagram: true, enTiktok: true, enYoutube: true } } },
+    include: PUBLICACION_INCLUDE,
     orderBy: { fecha: "asc" },
   });
   return NextResponse.json({ publicaciones });
@@ -32,7 +34,7 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json();
   const {
-    fecha, tipoId, formato, objetivo, descripcion, copy,
+    fecha, tipoId, variacionId, formato, objetivo, descripcion, copy,
     enFacebook, enInstagram, enTiktok, enYoutube,
     materialLink, colaboradores, estado, comentarios,
   } = body;
@@ -43,6 +45,7 @@ export async function POST(request: NextRequest) {
     data: {
       fecha: new Date(fecha),
       tipoId: tipoId || null,
+      variacionId: variacionId || null,
       formato: formato || null,
       objetivo: objetivo || null,
       descripcion: descripcion || null,
@@ -56,7 +59,7 @@ export async function POST(request: NextRequest) {
       estado: estado ?? "PENDIENTE",
       comentarios: comentarios || null,
     },
-    include: { tipo: { select: { id: true, nombre: true, formato: true, enFeedIG: true, enFacebook: true, enInstagram: true, enTiktok: true, enYoutube: true } } },
+    include: PUBLICACION_INCLUDE,
   });
   return NextResponse.json({ publicacion: pub }, { status: 201 });
 }
