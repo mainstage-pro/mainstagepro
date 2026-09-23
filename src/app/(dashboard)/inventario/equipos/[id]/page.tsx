@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
@@ -9,6 +9,15 @@ import { BackButton } from "@/components/BackButton";
 import { EquipoGaleria } from "@/components/EquipoGaleria";
 import { CostoMantenimientoModal, type CostoMantenimiento } from "@/components/CostoMantenimientoModal";
 import { ESTADOS_EQUIPO as ESTADOS_UNIDAD, ESTADO_EQUIPO_LABEL, esRetornoAServicio } from "@/lib/equipo-estado";
+import { ReportarFallaModal } from "@/components/ReportarFallaModal";
+import {
+  ESTADOS_FALLA_ABIERTA,
+  ESTADO_FALLA_BADGE,
+  ESTADO_FALLA_LABEL,
+  ORIGEN_FALLA_LABEL,
+  SEVERIDAD_FALLA_BADGE,
+  SEVERIDAD_FALLA_LABEL,
+} from "@/lib/falla-equipo";
 
 const ESTADO_UNIDAD_BADGE: Record<string, string> = {
   ACTIVO: "bg-green-900/30 text-green-400 border-green-900/50",
@@ -435,6 +444,144 @@ function NotasSection({ equipoId, initial }: { equipoId: string; initial: Equipo
   );
 }
 
+type FallaFicha = {
+  id: string;
+  fecha: string;
+  descripcion: string;
+  severidad: string;
+  origen: string;
+  estado: string;
+  notaCierre: string | null;
+  unidad: { id: string; codigo: string | null } | null;
+  proyecto: { id: string; numeroProyecto: string; nombre: string } | null;
+  reportadoPor: { id: string; name: string } | null;
+};
+
+function FallasSection({ equipoId, equipoLabel }: { equipoId: string; equipoLabel: string }) {
+  const toast = useToast();
+  const confirm = useConfirm();
+  const [fallas, setFallas] = useState<FallaFicha[]>([]);
+  const [unidades, setUnidades] = useState<{ id: string; codigo: string | null }[]>([]);
+  const [showModal, setShowModal] = useState(false);
+  const [verCerradas, setVerCerradas] = useState(false);
+
+  const reload = useCallback(async () => {
+    const r = await fetch(`/api/fallas?equipoId=${equipoId}`, { cache: "no-store" });
+    if (r.ok) setFallas((await r.json()).fallas ?? []);
+  }, [equipoId]);
+
+  useEffect(() => {
+    reload();
+    fetch(`/api/equipos/${equipoId}/unidades`, { cache: "no-store" })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (d?.unidades) setUnidades(d.unidades.map((u: { id: string; codigo: string | null }) => ({ id: u.id, codigo: u.codigo }))); })
+      .catch(() => {});
+  }, [equipoId, reload]);
+
+  async function cambiarEstado(id: string, estado: string) {
+    const r = await fetch(`/api/fallas/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estado }),
+    });
+    if (!r.ok) { toast.error("No se pudo actualizar la falla"); return; }
+    toast.success(estado === "RESUELTA" ? "Falla marcada como resuelta" : "Falla actualizada");
+    reload();
+  }
+
+  async function eliminar(id: string) {
+    if (!await confirm({ message: "¿Eliminar este reporte de falla?", danger: true, confirmText: "Eliminar" })) return;
+    const r = await fetch(`/api/fallas/${id}`, { method: "DELETE" });
+    if (!r.ok) { toast.error("No se pudo eliminar"); return; }
+    reload();
+  }
+
+  const abiertas = fallas.filter(f => ESTADOS_FALLA_ABIERTA.includes(f.estado));
+  const cerradas = fallas.filter(f => !ESTADOS_FALLA_ABIERTA.includes(f.estado));
+  const visibles = verCerradas ? fallas : abiertas;
+
+  return (
+    <div className="ms-card p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">
+          Fallas {abiertas.length > 0 && <span className="text-orange-400 font-normal">({abiertas.length} abiertas)</span>}
+        </h2>
+        <div className="flex items-center gap-3">
+          {cerradas.length > 0 && (
+            <button onClick={() => setVerCerradas(v => !v)} className="text-[11px] text-[#6b7280] hover:text-white transition-colors">
+              {verCerradas ? "Ocultar cerradas" : `Ver cerradas (${cerradas.length})`}
+            </button>
+          )}
+          <button
+            onClick={() => setShowModal(true)}
+            className="px-3 py-1.5 bg-[#B3985B] hover:bg-[#c9a96a] text-black text-xs font-semibold rounded-lg transition-colors"
+          >
+            Reportar falla
+          </button>
+        </div>
+      </div>
+
+      {visibles.length === 0 ? (
+        <p className="text-[#333] text-xs text-center py-4">
+          {fallas.length === 0 ? "Sin fallas reportadas para este equipo" : "Ninguna falla abierta"}
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {visibles.map(f => (
+            <div key={f.id} className="group p-3 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a]">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${SEVERIDAD_FALLA_BADGE[f.severidad] ?? ""}`}>
+                      {SEVERIDAD_FALLA_LABEL[f.severidad] ?? f.severidad}
+                    </span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${ESTADO_FALLA_BADGE[f.estado] ?? ""}`}>
+                      {ESTADO_FALLA_LABEL[f.estado] ?? f.estado}
+                    </span>
+                    {f.unidad && <span className="text-[10px] text-[#6b7280]">{f.unidad.codigo || "Unidad"}</span>}
+                  </div>
+                  <p className="text-white text-sm leading-relaxed whitespace-pre-wrap">{f.descripcion}</p>
+                  <p className="text-[#444] text-[10px] mt-1.5">
+                    {fmtFechaCorta(f.fecha)} · {ORIGEN_FALLA_LABEL[f.origen] ?? f.origen}
+                    {f.proyecto && <> · <Link href={`/proyectos/${f.proyecto.id}`} className="text-[#6b7280] hover:text-[#B3985B]">{f.proyecto.numeroProyecto}</Link></>}
+                    {f.reportadoPor && <> · {f.reportadoPor.name}</>}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {ESTADOS_FALLA_ABIERTA.includes(f.estado) && (
+                    <>
+                      <button onClick={() => cambiarEstado(f.id, "RESUELTA")} className="text-[11px] text-green-500 hover:text-green-400 transition-colors">Resolver</button>
+                      <button onClick={() => cambiarEstado(f.id, "DESCARTADA")} className="text-[11px] text-[#555] hover:text-white transition-colors">Descartar</button>
+                    </>
+                  )}
+                  <button
+                    onClick={() => eliminar(f.id)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity text-[#444] hover:text-red-400"
+                    title="Eliminar reporte"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <ReportarFallaModal
+        open={showModal}
+        equipoId={equipoId}
+        equipoLabel={equipoLabel}
+        unidades={unidades}
+        onClose={() => setShowModal(false)}
+        onSaved={() => { toast.success("Falla registrada"); reload(); }}
+      />
+    </div>
+  );
+}
+
 function UnidadesSection({ equipoId, cantidadTotal }: { equipoId: string; cantidadTotal: number }) {
   const toast = useToast();
   const confirm = useConfirm();
@@ -792,6 +939,12 @@ export default function EquipoFichaPage() {
 
       {/* Descripción interna */}
       <DescripcionInternaSection equipoId={equipo.id} initial={equipo.descripcionInterna} />
+
+      {/* Fallas reportadas */}
+      <FallasSection
+        equipoId={equipo.id}
+        equipoLabel={[equipo.marca, equipo.modelo].filter(Boolean).join(" · ") || equipo.descripcion}
+      />
 
       {/* Unidades individuales */}
       <UnidadesSection equipoId={equipo.id} cantidadTotal={equipo.cantidadTotal} />

@@ -76,6 +76,7 @@ model User {
   solicitudesCotizacionCreadas   SolicitudCotizacion[] @relation("SolicitudCotizacionCreador")
   visionesSemanales              VisionSemanal[]       @relation("VisionSemanalAutor")
   visionesResponsable            VisionSemanal[]       @relation("VisionSemanalResponsable")
+  fallasReportadas               FallaEquipo[]         @relation("FallasReportadas")
 
   personalInterno PersonalInterno? @relation("PersonalUsuario")
 
@@ -730,6 +731,7 @@ model Proyecto {
   proveedoresEvento ProveedorEvento[]
   actasEvento       ActaAdministrativa[]   @relation("ActaEventoProyecto")
   gastosRecurrentes GastoRecurrente[]
+  fallasEquipo      FallaEquipo[]          @relation("FallasDeProyecto")
 
   @@map("proyectos")
 }
@@ -924,6 +926,7 @@ model Equipo {
   paqueteItems                 PaqueteItem[]
   accesoriosMigrados           Accesorio[]                    @relation("AccesorioEquipoOrigen")
   plantillas_cotizacion_lineas plantillas_cotizacion_lineas[]
+  fallas                       FallaEquipo[]
 
   @@map("equipos")
 }
@@ -1798,6 +1801,7 @@ model EquipoUnidad {
 
   mantenimientos MantenimientoEquipo[]
   observaciones  UnidadObservacion[]
+  fallas         FallaEquipo[]
 
   @@map("equipo_unidades")
 }
@@ -1831,7 +1835,40 @@ model MantenimientoEquipo {
   descripcionReparacion String? // Descripción adicional del gasto de reparación
   createdAt             DateTime      @default(now())
 
+  fallas FallaEquipo[]
+
   @@map("mantenimientos_equipos")
+}
+
+// Falla reportada de un equipo o unidad. Es independiente del mantenimiento: reportar
+// una falla NO cambia el estado del equipo ni lo saca de stock. El mantenimiento es la
+// respuesta opcional a la falla (ver fallaIds en POST /api/mantenimiento).
+model FallaEquipo {
+  id              String               @id @default(cuid())
+  equipoId        String
+  equipo          Equipo               @relation(fields: [equipoId], references: [id], onDelete: Cascade)
+  unidadId        String?
+  unidad          EquipoUnidad?        @relation(fields: [unidadId], references: [id], onDelete: Cascade)
+  fecha           DateTime // cuándo falló, no cuándo se capturó
+  descripcion     String
+  severidad       String // LEVE | MODERADA | CRITICA
+  origen          String // EVENTO | BODEGA | TALLER | CLIENTE | OTRO
+  proyectoId      String?
+  proyecto        Proyecto?            @relation("FallasDeProyecto", fields: [proyectoId], references: [id])
+  estado          String               @default("REPORTADA") // REPORTADA | EN_ATENCION | RESUELTA | DESCARTADA
+  mantenimientoId String?
+  mantenimiento   MantenimientoEquipo? @relation(fields: [mantenimientoId], references: [id])
+  fotoEvidencia   String? // base64 data URL
+  reportadoPorId  String?
+  reportadoPor    User?                @relation("FallasReportadas", fields: [reportadoPorId], references: [id])
+  resueltaEn      DateTime?
+  notaCierre      String?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  @@index([equipoId])
+  @@index([estado])
+  @@map("fallas_equipos")
 }
 
 // ─── RECURSOS HUMANOS ────────────────────────────────────────────────────────

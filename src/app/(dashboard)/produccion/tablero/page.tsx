@@ -1,8 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Wrench, Package, AlertTriangle } from "lucide-react";
+import { Wrench, Package, AlertTriangle, MoreHorizontal } from "lucide-react";
+import { CambiarEstadoEquipoModal } from "@/components/CambiarEstadoEquipoModal";
+import { ReportarFallaModal } from "@/components/ReportarFallaModal";
+import {
+  ESTADO_FALLA_BADGE,
+  ESTADO_FALLA_LABEL,
+  ORIGEN_FALLA_LABEL,
+  SEVERIDAD_FALLA_BADGE,
+  SEVERIDAD_FALLA_LABEL,
+} from "@/lib/falla-equipo";
 
 interface EnTaller {
   tipoRegistro: "unidad" | "equipo";
@@ -14,11 +23,30 @@ interface EnTaller {
   codigo: string | null;
   notas: string | null;
   tipo: string | null;
+  estado: string;
   esReparacion: boolean;
   desde: string | null;
   dias: number | null;
   accion: string | null;
   costo: number | null;
+}
+
+interface Falla {
+  id: string;
+  fecha: string;
+  descripcion: string;
+  severidad: string;
+  origen: string;
+  estado: string;
+  dias: number | null;
+  equipoId: string;
+  equipoDescripcion: string;
+  marca: string | null;
+  categoria: string | null;
+  unidadId: string | null;
+  codigo: string | null;
+  proyectoId: string | null;
+  proyectoNombre: string | null;
 }
 
 interface Fuera {
@@ -43,11 +71,14 @@ interface Resumen {
   equiposFuera: number;
   recoleccionesVencidas: number;
   costoTaller: number;
+  fallasAbiertas: number;
+  fallasCriticas: number;
 }
 
 interface Data {
   enTaller: EnTaller[];
   fuera: Fuera[];
+  fallas: Falla[];
   resumen: Resumen;
 }
 
@@ -77,16 +108,40 @@ function diasLabel(d: number | null) {
   return `${d} ${d === 1 ? "día" : "días"}`;
 }
 
+// Fila del taller sobre la que se está actuando (cambio de estado o reporte de falla).
+type Objetivo = { equipoId: string; unidadId: string | null; label: string; estado: string };
+
 export default function TableroProduccionPage() {
   const [data, setData] = useState<Data | null>(null);
   const [loading, setLoading] = useState(true);
+  const [menuAbierto, setMenuAbierto] = useState<string | null>(null);
+  const [cambiarEstado, setCambiarEstado] = useState<Objetivo | null>(null);
+  const [reportarFalla, setReportarFalla] = useState<Objetivo | null>(null);
 
-  useEffect(() => {
-    fetch("/api/produccion/tablero")
+  const cargar = useCallback(() => {
+    fetch("/api/produccion/tablero", { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => { setData(d); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);
+
+  useEffect(() => { cargar(); }, [cargar]);
+
+  useEffect(() => {
+    if (!menuAbierto) return;
+    const cerrar = () => setMenuAbierto(null);
+    document.addEventListener("click", cerrar);
+    return () => document.removeEventListener("click", cerrar);
+  }, [menuAbierto]);
+
+  async function resolverFalla(id: string, estado: string) {
+    const r = await fetch(`/api/fallas/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estado }),
+    }).catch(() => null);
+    if (r?.ok) cargar();
+  }
 
   if (loading) return (
     <div className="flex items-center justify-center h-48 text-gray-500 text-sm">Cargando tablero...</div>
@@ -95,6 +150,7 @@ export default function TableroProduccionPage() {
   const r = data?.resumen;
   const enTaller = data?.enTaller ?? [];
   const fuera = data?.fuera ?? [];
+  const fallas = data?.fallas ?? [];
 
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6">
@@ -105,10 +161,11 @@ export default function TableroProduccionPage() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
         {[
           { val: r?.enReparacion ?? 0, label: "En reparación", cls: "text-red-400", bg: "bg-red-900/20 border-red-800/30" },
           { val: r?.enMantenimiento ?? 0, label: "En mantenimiento", cls: "text-yellow-400", bg: "bg-yellow-900/20 border-yellow-800/30" },
+          { val: r?.fallasAbiertas ?? 0, label: "Fallas abiertas", cls: "text-fuchsia-400", bg: "bg-fuchsia-900/20 border-fuchsia-800/30" },
           { val: r?.equiposFuera ?? 0, label: "Proyectos fuera", cls: "text-blue-400", bg: "bg-blue-900/20 border-blue-800/30" },
           { val: r?.recoleccionesVencidas ?? 0, label: "Recol. vencidas", cls: "text-orange-400", bg: "bg-orange-900/20 border-orange-800/30" },
           { val: fmtMoney(r?.costoTaller ?? 0), label: "Costo en taller", cls: "text-[#B3985B]", bg: "bg-[#B3985B]/10 border-[#B3985B]/30", small: true },
@@ -138,37 +195,82 @@ export default function TableroProduccionPage() {
               <span className="col-span-2">Estado</span>
               <span className="col-span-2">Desde</span>
               <span className="col-span-1 text-center">Días</span>
-              <span className="col-span-3">Trabajo / costo</span>
+              <span className="col-span-2">Trabajo / costo</span>
+              <span className="col-span-1" />
             </div>
-            {enTaller.map((e, i) => (
-              <Link key={`${e.unidadId ?? e.equipoId}-${i}`} href={`/inventario/equipos/${e.equipoId}`}
-                className="grid grid-cols-2 md:grid-cols-12 gap-2 px-4 py-3 border-t border-[#1c1c1c] hover:bg-[#161616] transition-colors text-sm">
-                <div className="col-span-2 md:col-span-4">
-                  <p className="text-white font-medium truncate">{e.descripcion}</p>
-                  <p className="text-gray-500 text-xs">
-                    {e.marca && <span>{e.marca} · </span>}
-                    {e.codigo ? `Unidad ${e.codigo}` : e.tipoRegistro === "equipo" ? "Equipo completo" : "Unidad"}
-                    {e.categoria && <span className="text-gray-600"> · {e.categoria}</span>}
-                  </p>
+            {enTaller.map((e, i) => {
+              const filaId = `${e.unidadId ?? e.equipoId}-${i}`;
+              const label = `${e.descripcion}${e.codigo ? ` · ${e.codigo}` : ""}`;
+              const objetivo: Objetivo = { equipoId: e.equipoId, unidadId: e.unidadId, label, estado: e.estado };
+              return (
+                <div key={filaId}
+                  className="grid grid-cols-2 md:grid-cols-12 gap-2 px-4 py-3 border-t border-[#1c1c1c] hover:bg-[#161616] transition-colors text-sm">
+                  <div className="col-span-2 md:col-span-4">
+                    <Link href={`/inventario/equipos/${e.equipoId}`} className="text-white font-medium truncate hover:text-[#B3985B] transition-colors block">
+                      {e.descripcion}
+                    </Link>
+                    <p className="text-gray-500 text-xs">
+                      {e.marca && <span>{e.marca} · </span>}
+                      {e.codigo ? `Unidad ${e.codigo}` : e.tipoRegistro === "equipo" ? "Equipo completo" : "Unidad"}
+                      {e.categoria && <span className="text-gray-600"> · {e.categoria}</span>}
+                    </p>
+                  </div>
+                  <div className="md:col-span-2">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${e.esReparacion ? "bg-red-900/30 text-red-400" : "bg-yellow-900/30 text-yellow-400"}`}>
+                      {e.esReparacion ? "En reparación" : "Mantenimiento"}
+                    </span>
+                    {e.tipo && <p className="text-gray-600 text-[11px] mt-0.5">{TIPO_LABEL[e.tipo] ?? e.tipo}</p>}
+                  </div>
+                  <div className="md:col-span-2 text-gray-300 text-xs self-center">{fmtDate(e.desde)}</div>
+                  <div className="md:col-span-1 text-center self-center">
+                    <span className={`text-xs font-medium ${(e.dias ?? 0) >= 15 ? "text-red-400" : (e.dias ?? 0) >= 7 ? "text-yellow-400" : "text-gray-400"}`}>
+                      {diasLabel(e.dias)}
+                    </span>
+                  </div>
+                  <div className="col-span-2 md:col-span-2 self-center">
+                    {e.accion && <p className="text-gray-400 text-xs truncate">{e.accion}</p>}
+                    {e.costo ? <p className="text-[#B3985B] text-xs">{fmtMoney(e.costo)}</p> : null}
+                  </div>
+                  <div className="col-span-2 md:col-span-1 self-center flex justify-end relative">
+                    <button
+                      onClick={(ev) => { ev.stopPropagation(); setMenuAbierto(menuAbierto === filaId ? null : filaId); }}
+                      className="p-1.5 rounded-lg text-gray-500 hover:text-white hover:bg-[#222] transition-colors"
+                      title="Acciones"
+                    >
+                      <MoreHorizontal className="w-4 h-4" />
+                    </button>
+                    {menuAbierto === filaId && (
+                      <div className="absolute right-0 top-8 z-20 w-56 bg-[#161616] border border-[#2a2a2a] rounded-xl shadow-xl overflow-hidden">
+                        <button
+                          onClick={() => { setCambiarEstado(objetivo); setMenuAbierto(null); }}
+                          className="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:bg-[#222] hover:text-white transition-colors"
+                        >
+                          Cambiar estado
+                        </button>
+                        <button
+                          onClick={() => { setReportarFalla(objetivo); setMenuAbierto(null); }}
+                          className="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:bg-[#222] hover:text-white transition-colors border-t border-[#1f1f1f]"
+                        >
+                          Reportar falla
+                        </button>
+                        <Link
+                          href="/inventario/mantenimiento"
+                          className="block px-4 py-2.5 text-xs text-gray-300 hover:bg-[#222] hover:text-white transition-colors border-t border-[#1f1f1f]"
+                        >
+                          Registrar mantenimiento
+                        </Link>
+                        <Link
+                          href={`/inventario/equipos/${e.equipoId}`}
+                          className="block px-4 py-2.5 text-xs text-gray-300 hover:bg-[#222] hover:text-white transition-colors border-t border-[#1f1f1f]"
+                        >
+                          Ver ficha del equipo
+                        </Link>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="md:col-span-2">
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${e.esReparacion ? "bg-red-900/30 text-red-400" : "bg-yellow-900/30 text-yellow-400"}`}>
-                    {e.esReparacion ? "En reparación" : "Mantenimiento"}
-                  </span>
-                  {e.tipo && <p className="text-gray-600 text-[11px] mt-0.5">{TIPO_LABEL[e.tipo] ?? e.tipo}</p>}
-                </div>
-                <div className="md:col-span-2 text-gray-300 text-xs self-center">{fmtDate(e.desde)}</div>
-                <div className="md:col-span-1 text-center self-center">
-                  <span className={`text-xs font-medium ${(e.dias ?? 0) >= 15 ? "text-red-400" : (e.dias ?? 0) >= 7 ? "text-yellow-400" : "text-gray-400"}`}>
-                    {diasLabel(e.dias)}
-                  </span>
-                </div>
-                <div className="col-span-2 md:col-span-3 self-center">
-                  {e.accion && <p className="text-gray-400 text-xs truncate">{e.accion}</p>}
-                  {e.costo ? <p className="text-[#B3985B] text-xs">{fmtMoney(e.costo)}</p> : null}
-                </div>
-              </Link>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>
@@ -222,6 +324,91 @@ export default function TableroProduccionPage() {
           </div>
         )}
       </section>
+
+      {/* Fallas reportadas sin resolver */}
+      <section className="space-y-3">
+        <h2 className="ms-h2">Fallas reportadas — sin atender ({fallas.length})</h2>
+        {fallas.length === 0 ? (
+          <div className="ms-card p-8 text-center">
+            <AlertTriangle strokeWidth={1.5} className="w-8 h-8 mx-auto mb-2 text-gray-600" />
+            <p className="text-gray-400 text-sm">Ninguna falla abierta</p>
+          </div>
+        ) : (
+          <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+            <div className="hidden md:grid grid-cols-12 gap-2 px-4 py-2 bg-[#1a1a1a] text-[11px] uppercase tracking-wider text-gray-500">
+              <span className="col-span-3">Equipo</span>
+              <span className="col-span-4">Falla</span>
+              <span className="col-span-2">Origen</span>
+              <span className="col-span-1 text-center">Días</span>
+              <span className="col-span-2 text-right">Acciones</span>
+            </div>
+            {fallas.map((f) => (
+              <div key={f.id} className="grid grid-cols-2 md:grid-cols-12 gap-2 px-4 py-3 border-t border-[#1c1c1c] hover:bg-[#161616] transition-colors text-sm">
+                <div className="col-span-2 md:col-span-3">
+                  <Link href={`/inventario/equipos/${f.equipoId}`} className="text-white font-medium truncate hover:text-[#B3985B] transition-colors block">
+                    {f.equipoDescripcion}
+                  </Link>
+                  <p className="text-gray-500 text-xs">
+                    {f.marca && <span>{f.marca} · </span>}
+                    {f.codigo ? `Unidad ${f.codigo}` : "Equipo completo"}
+                  </p>
+                </div>
+                <div className="col-span-2 md:col-span-4">
+                  <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${SEVERIDAD_FALLA_BADGE[f.severidad] ?? ""}`}>
+                      {SEVERIDAD_FALLA_LABEL[f.severidad] ?? f.severidad}
+                    </span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${ESTADO_FALLA_BADGE[f.estado] ?? ""}`}>
+                      {ESTADO_FALLA_LABEL[f.estado] ?? f.estado}
+                    </span>
+                  </div>
+                  <p className="text-gray-300 text-xs">{f.descripcion}</p>
+                </div>
+                <div className="md:col-span-2 self-center text-xs">
+                  <p className="text-gray-400">{ORIGEN_FALLA_LABEL[f.origen] ?? f.origen}</p>
+                  {f.proyectoId && (
+                    <Link href={`/proyectos/${f.proyectoId}`} className="text-gray-600 hover:text-[#B3985B] transition-colors">
+                      {f.proyectoNombre}
+                    </Link>
+                  )}
+                </div>
+                <div className="md:col-span-1 text-center self-center">
+                  <span className={`text-xs font-medium ${(f.dias ?? 0) >= 15 ? "text-red-400" : (f.dias ?? 0) >= 7 ? "text-yellow-400" : "text-gray-400"}`}>
+                    {diasLabel(f.dias)}
+                  </span>
+                </div>
+                <div className="col-span-2 md:col-span-2 self-center flex items-center justify-end gap-3">
+                  <button onClick={() => resolverFalla(f.id, "RESUELTA")} className="text-[11px] text-green-500 hover:text-green-400 transition-colors">Resolver</button>
+                  <button onClick={() => resolverFalla(f.id, "DESCARTADA")} className="text-[11px] text-gray-600 hover:text-white transition-colors">Descartar</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {cambiarEstado && (
+        <CambiarEstadoEquipoModal
+          open
+          equipoId={cambiarEstado.equipoId}
+          unidadId={cambiarEstado.unidadId}
+          equipoLabel={cambiarEstado.label}
+          estadoActual={cambiarEstado.estado}
+          onClose={() => setCambiarEstado(null)}
+          onSaved={cargar}
+        />
+      )}
+
+      {reportarFalla && (
+        <ReportarFallaModal
+          open
+          equipoId={reportarFalla.equipoId}
+          unidadId={reportarFalla.unidadId}
+          equipoLabel={reportarFalla.label}
+          onClose={() => setReportarFalla(null)}
+          onSaved={cargar}
+        />
+      )}
     </div>
   );
 }

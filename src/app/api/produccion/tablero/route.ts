@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { ESTADOS_FALLA_ABIERTA } from "@/lib/falla-equipo";
 
-// Tablero operativo de Producción: equipos en taller (mantenimiento/reparación)
-// + equipos de renta que siguen fuera (pendientes de recolección).
+// Tablero operativo de Producción: equipos en taller (mantenimiento/reparación),
+// equipos de renta que siguen fuera (pendientes de recolección) y fallas abiertas.
 
 const ESTADOS_TALLER = ["EN_MANTENIMIENTO", "EN_REPARACION"];
 
@@ -18,7 +19,7 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   try {
-    const [unidades, equiposGenerales, proyectos] = await Promise.all([
+    const [unidades, equiposGenerales, proyectos, fallasAbiertas] = await Promise.all([
       // Unidades individuales en taller
       prisma.equipoUnidad.findMany({
         where: { estado: { in: ESTADOS_TALLER } },
@@ -77,6 +78,22 @@ export async function GET() {
         },
         orderBy: { fechaEvento: "asc" },
       }),
+      // Fallas reportadas que siguen sin resolverse (independientes del taller)
+      prisma.fallaEquipo.findMany({
+        where: { estado: { in: [...ESTADOS_FALLA_ABIERTA] } },
+        select: {
+          id: true,
+          fecha: true,
+          descripcion: true,
+          severidad: true,
+          origen: true,
+          estado: true,
+          equipo: { select: { id: true, descripcion: true, marca: true, categoria: { select: { nombre: true } } } },
+          unidad: { select: { id: true, codigo: true } },
+          proyecto: { select: { id: true, numeroProyecto: true, nombre: true } },
+        },
+        orderBy: { fecha: "desc" },
+      }),
     ]);
 
     const enTaller = [
@@ -92,6 +109,7 @@ export async function GET() {
           codigo: u.codigo,
           notas: u.notas,
           tipo: m?.tipo ?? null,
+          estado: u.estado,
           esReparacion: u.estado === "EN_REPARACION",
           desde: m?.fecha ?? null,
           dias: diasDesde(m?.fecha ?? null),
@@ -111,6 +129,7 @@ export async function GET() {
           codigo: null,
           notas: null,
           tipo: m?.tipo ?? null,
+          estado: e.estado,
           esReparacion: e.estado === "EN_REPARACION",
           desde: m?.fecha ?? null,
           dias: diasDesde(m?.fecha ?? null),
@@ -147,19 +166,40 @@ export async function GET() {
       };
     }).sort((a, b) => (b.diasAtraso ?? 0) - (a.diasAtraso ?? 0));
 
+    const fallas = fallasAbiertas.map((f) => ({
+      id: f.id,
+      fecha: f.fecha,
+      descripcion: f.descripcion,
+      severidad: f.severidad,
+      origen: f.origen,
+      estado: f.estado,
+      dias: diasDesde(f.fecha),
+      equipoId: f.equipo.id,
+      equipoDescripcion: f.equipo.descripcion,
+      marca: f.equipo.marca,
+      categoria: f.equipo.categoria?.nombre ?? null,
+      unidadId: f.unidad?.id ?? null,
+      codigo: f.unidad?.codigo ?? null,
+      proyectoId: f.proyecto?.id ?? null,
+      proyectoNombre: f.proyecto ? `${f.proyecto.numeroProyecto} · ${f.proyecto.nombre}` : null,
+    }));
+
     return NextResponse.json({
       enTaller,
       fuera,
+      fallas,
       resumen: {
         enReparacion: enTaller.filter((x) => x.esReparacion).length,
         enMantenimiento: enTaller.filter((x) => !x.esReparacion).length,
         equiposFuera: fuera.length,
         recoleccionesVencidas: fuera.filter((x) => x.vencida).length,
         costoTaller: enTaller.reduce((s, x) => s + (x.costo ?? 0), 0),
+        fallasAbiertas: fallas.length,
+        fallasCriticas: fallas.filter((x) => x.severidad === "CRITICA").length,
       },
     });
   } catch (e) {
     console.error("[/api/produccion/tablero]", e);
-    return NextResponse.json({ error: String(e), enTaller: [], fuera: [] }, { status: 500 });
+    return NextResponse.json({ error: String(e), enTaller: [], fuera: [], fallas: [] }, { status: 500 });
   }
 }

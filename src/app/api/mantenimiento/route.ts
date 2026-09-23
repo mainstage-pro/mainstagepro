@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await req.json();
-  const { equipoId, unidadId, fecha, tipo, accionRealizada, estadoEquipo, comentarios, proximoMantenimiento, fotoEvidencia, costo } = body;
+  const { equipoId, unidadId, fecha, tipo, accionRealizada, estadoEquipo, comentarios, proximoMantenimiento, fotoEvidencia, costo, fallaIds } = body;
 
   if (!equipoId || !fecha || !tipo || !accionRealizada) {
     return NextResponse.json({ error: "Faltan campos requeridos" }, { status: 400 });
@@ -97,6 +97,19 @@ export async function POST(req: NextRequest) {
       unidad: { select: { id: true, codigo: true } },
     },
   });
+
+  // Puente falla → taller: las fallas que originaron este mantenimiento quedan ligadas.
+  // Si el equipo vuelve a servicio en el mismo registro, se dan por resueltas.
+  if (Array.isArray(fallaIds) && fallaIds.length > 0) {
+    await prisma.fallaEquipo.updateMany({
+      where: { id: { in: fallaIds } },
+      data: {
+        mantenimientoId: registro.id,
+        estado: estadoEquipo === "ACTIVO" ? "RESUELTA" : "EN_ATENCION",
+        resueltaEn: estadoEquipo === "ACTIVO" ? new Date() : null,
+      },
+    });
+  }
 
   if (estadoAnterior && estadoEquipo && esRetornoAServicio(estadoAnterior, estadoEquipo)) {
     await registrarCostoMantenimiento({

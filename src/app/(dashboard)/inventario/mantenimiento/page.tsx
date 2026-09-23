@@ -9,6 +9,7 @@ import { Combobox } from "@/components/Combobox";
 import { Modal } from "@/components/Modal";
 import { CostoMantenimientoModal, type CostoMantenimiento } from "@/components/CostoMantenimientoModal";
 import { ESTADOS_EQUIPO, ESTADO_EQUIPO_LABEL, esRetornoAServicio } from "@/lib/equipo-estado";
+import { ORIGEN_FALLA_LABEL, SEVERIDAD_FALLA_BADGE, SEVERIDAD_FALLA_LABEL } from "@/lib/falla-equipo";
 
 type Equipo = {
   id: string; descripcion: string; marca: string | null; modelo: string | null;
@@ -29,6 +30,10 @@ type Registro = {
   proximoMantenimiento: string | null; fotoEvidencia: string | null;
   unidad: { id: string; codigo: string | null } | null;
   equipo: { id: string; descripcion: string; marca: string | null; modelo: string | null; estado: string; categoria: { nombre: string } };
+};
+
+type FallaAbierta = {
+  id: string; fecha: string; descripcion: string; severidad: string; origen: string; estado: string;
 };
 
 const TIPOS = ["PREVENTIVO", "CORRECTIVO", "ESTETICO", "FUNCIONAL"];
@@ -154,6 +159,8 @@ function MantenimientoContent() {
   const [showAddUnidad, setShowAddUnidad] = useState(false);
   const [editUnidadId, setEditUnidadId] = useState<string | null>(null);
   const [form, setForm] = useState(FORM_EMPTY);
+  const [fallasAbiertas, setFallasAbiertas] = useState<FallaAbierta[]>([]);
+  const [fallaIds, setFallaIds] = useState<string[]>([]);
   const [unidadForm, setUnidadForm] = useState({ codigo: "", estado: "ACTIVO", voltaje: "", notas: "" });
   const [saving, setSaving] = useState(false);
   const [savingUnidad, setSavingUnidad] = useState(false);
@@ -195,6 +202,18 @@ function MantenimientoContent() {
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Fallas abiertas del equipo/unidad seleccionado, para poder cerrarlas con este trabajo.
+  useEffect(() => {
+    if (!selectedEquipoId) { setFallasAbiertas([]); setFallaIds([]); return; }
+    const qs = new URLSearchParams({ equipoId: selectedEquipoId, abiertas: "1" });
+    if (selectedUnidadId) qs.set("unidadId", selectedUnidadId);
+    fetch(`/api/fallas?${qs}`, { cache: "no-store" })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => setFallasAbiertas(d?.fallas ?? []))
+      .catch(() => {});
+    setFallaIds([]);
+  }, [selectedEquipoId, selectedUnidadId]);
 
   // Load units when equipment changes
   useEffect(() => {
@@ -276,6 +295,7 @@ function MantenimientoContent() {
         proximoMantenimiento: form.proximoMantenimiento || null,
         fotoEvidencia: form.fotoEvidencia || null,
         costo: costo ?? undefined,
+        fallaIds,
       }),
     });
     if (res.ok) {
@@ -288,7 +308,12 @@ function MantenimientoContent() {
       }
       setShowForm(false);
       setForm(FORM_EMPTY);
+      setFallaIds([]);
       setCostoGate(null);
+      const qs = new URLSearchParams({ equipoId: selectedEquipoId, abiertas: "1" });
+      if (selectedUnidadId) qs.set("unidadId", selectedUnidadId);
+      const fr = await fetch(`/api/fallas?${qs}`, { cache: "no-store" }).catch(() => null);
+      if (fr?.ok) setFallasAbiertas((await fr.json()).fallas ?? []);
     }
     setSaving(false);
   }
@@ -756,6 +781,36 @@ function MantenimientoContent() {
                           placeholder="Piezas cambiadas, costo, observaciones..."
                           className="w-full bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]" />
                       </div>
+                      {/* Fallas que originaron este mantenimiento */}
+                      {fallasAbiertas.length > 0 && (
+                        <div className="md:col-span-3">
+                          <label className="text-gray-500 text-xs mb-1.5 block">¿Este trabajo atiende alguna falla reportada?</label>
+                          <div className="space-y-1.5">
+                            {fallasAbiertas.map(f => (
+                              <label key={f.id} className="flex items-start gap-2 bg-[#111] border border-[#222] rounded-lg px-3 py-2 cursor-pointer hover:border-[#333] transition-colors">
+                                <input
+                                  type="checkbox"
+                                  checked={fallaIds.includes(f.id)}
+                                  onChange={e => setFallaIds(prev => e.target.checked ? [...prev, f.id] : prev.filter(x => x !== f.id))}
+                                  className="mt-0.5 accent-[#B3985B]"
+                                />
+                                <span className="flex-1 min-w-0">
+                                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium mr-2 ${SEVERIDAD_FALLA_BADGE[f.severidad] ?? ""}`}>
+                                    {SEVERIDAD_FALLA_LABEL[f.severidad] ?? f.severidad}
+                                  </span>
+                                  <span className="text-white text-xs">{f.descripcion}</span>
+                                  <span className="text-gray-600 text-[10px] block mt-0.5">
+                                    {fmtDate(f.fecha)} · {ORIGEN_FALLA_LABEL[f.origen] ?? f.origen}
+                                  </span>
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                          <p className="text-gray-600 text-[10px] mt-1">
+                            Si el estado resultante es Activo, las fallas marcadas se dan por resueltas.
+                          </p>
+                        </div>
+                      )}
                       {/* Foto de evidencia */}
                       <div className="md:col-span-3">
                         <label className="text-gray-500 text-xs mb-1 block">Foto de evidencia</label>
