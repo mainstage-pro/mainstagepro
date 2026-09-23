@@ -5,7 +5,7 @@ import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import BusquedaGlobal from "@/components/BusquedaGlobal";
 import NotificacionesBell from "@/components/NotificacionesBell";
 import { NAV, OWNER_EMAIL, type NavItem } from "@/lib/nav";
@@ -68,6 +68,20 @@ function applyOrder(items: NavItem[], ids?: string[]): NavItem[] {
     const bi = idx.has(itemId(b)) ? (idx.get(itemId(b)) as number) : Infinity;
     return ai - bi;
   });
+}
+
+// Normaliza para buscar sin acentos ni mayúsculas ("Cotización" ≈ "cotizacion").
+function normalizar(s: string): string {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+// Una entrada plana del menú, para el buscador de módulos.
+interface EntradaBusqueda {
+  href: string;
+  label: string;
+  ruta: string; // "Sección" o "Sección › Módulo"
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  icon?: React.ComponentType<any>;
 }
 
 const FolderIcon = () => (
@@ -205,6 +219,7 @@ export default function Sidebar({ user, userModuleKeys }: SidebarProps) {
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set<string>());
   const [stateLoaded, setStateLoaded] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [busqueda, setBusqueda] = useState("");
 
   // Restore persisted state on mount
   useEffect(() => {
@@ -243,7 +258,7 @@ export default function Sidebar({ user, userModuleKeys }: SidebarProps) {
     return () => clearInterval(iv);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { setMobileOpen(false); }, [pathname]);
+  useEffect(() => { setMobileOpen(false); setBusqueda(""); }, [pathname]);
   useEffect(() => {
     document.body.style.overflow = mobileOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
@@ -371,8 +386,144 @@ export default function Sidebar({ user, userModuleKeys }: SidebarProps) {
     );
   }
 
+  // ── Buscador de módulos ────────────────────────────────────────────────────
+  // Índice plano de todo lo que el usuario puede abrir: módulos y sus
+  // sub-secciones. Respeta los mismos permisos y nombres que el árbol.
+  const entradas = useMemo<EntradaBusqueda[]>(() => {
+    const out: EntradaBusqueda[] = [];
+    const vistos = new Set<string>();
+    const push = (e: EntradaBusqueda) => {
+      if (!e.href || vistos.has(e.href)) return;
+      vistos.add(e.href);
+      out.push(e);
+    };
+
+    for (const section of NAV) {
+      const sectionLabel = resolveLabel(section.key, section.section, labels);
+      for (const item of section.items) {
+        if (item.ownerOnly && !isOwner) continue;
+        if (item.adminOnly && !isAdmin) continue;
+        const itemLabel = resolveLabel(item.key, item.label, labels);
+        const itemOk = canAccess(item.accessKey ?? item.key, isAdmin, userModuleKeys);
+
+        if (item.href && itemOk) {
+          push({
+            href: item.href === "/dashboard" ? dashboardHref : item.href,
+            label: itemLabel,
+            ruta: sectionLabel || "General",
+            icon: item.icon,
+          });
+        }
+        for (const child of item.children ?? []) {
+          if (child.adminOnly && !isAdmin) continue;
+          if (!canAccess(child.accessKey ?? child.key, isAdmin, userModuleKeys) && !canAccess(item.key, isAdmin, userModuleKeys)) continue;
+          push({
+            href: child.href,
+            label: resolveLabel(child.key, child.label, labels),
+            ruta: [sectionLabel || "General", itemLabel].join(" › "),
+            icon: item.icon,
+          });
+        }
+      }
+    }
+    return out;
+  }, [labels, isAdmin, isOwner, userModuleKeys, dashboardHref]);
+
+  // Coincide si cada palabra aparece en el nombre o en su ruta. Ordena primero
+  // lo que empieza igual, luego lo que solo contiene el texto.
+  const resultados = useMemo(() => {
+    const q = normalizar(busqueda.trim());
+    if (!q) return [];
+    const palabras = q.split(/\s+/);
+    return entradas
+      .map((e) => {
+        const label = normalizar(e.label);
+        const heno = `${label} ${normalizar(e.ruta)}`;
+        if (!palabras.every((p) => heno.includes(p))) return null;
+        const peso = label.startsWith(q) ? 0 : label.includes(q) ? 1 : 2;
+        return { entrada: e, peso };
+      })
+      .filter((r): r is { entrada: EntradaBusqueda; peso: number } => r !== null)
+      .sort((a, b) => a.peso - b.peso)
+      .slice(0, 14)
+      .map((r) => r.entrada);
+  }, [busqueda, entradas]);
+
+  const buscadorModulos = (
+    <div className="px-3 pt-3 pb-1 shrink-0">
+      <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-[#141414] border border-[#1f1f1f] focus-within:border-[#B3985B]/40 transition-colors">
+        <svg className="w-3.5 h-3.5 text-[#555] shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <circle cx="11" cy="11" r="8" /><path strokeLinecap="round" d="m21 21-4.35-4.35" />
+        </svg>
+        <input
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setBusqueda("");
+            if (e.key === "Enter" && resultados[0]) router.push(resultados[0].href);
+          }}
+          type="text"
+          enterKeyHint="go"
+          autoCapitalize="off"
+          autoCorrect="off"
+          spellCheck={false}
+          placeholder="Buscar módulo…"
+          aria-label="Buscar módulo"
+          className="flex-1 min-w-0 bg-transparent text-white text-[13px] placeholder-[#555] focus:outline-none"
+        />
+        {busqueda && (
+          <button
+            onClick={() => setBusqueda("")}
+            className="text-[#555] hover:text-white transition-colors shrink-0 text-xs leading-none"
+            aria-label="Limpiar búsqueda"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
+  const resultadosNode = (
+    <nav className="flex-1 px-3 py-2 overflow-y-auto">
+      {resultados.length === 0 ? (
+        <p className="px-3 py-6 text-[13px] text-[#555] text-center">
+          Ningún módulo coincide con “{busqueda.trim()}”.
+        </p>
+      ) : (
+        <div className="space-y-0.5">
+          {resultados.map((r) => {
+            const Icon = r.icon;
+            const active = isActive(r.href);
+            return (
+              <Link
+                key={r.href}
+                href={r.href}
+                onClick={() => setBusqueda("")}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
+                  active ? "bg-[#1a1a1a] text-white" : "text-[#8b8f97] hover:text-white hover:bg-[#161616]"
+                }`}
+              >
+                {Icon
+                  ? <Icon strokeWidth={1.75} className={`w-[18px] h-[18px] shrink-0 ${active ? "text-[#B3985B]" : "opacity-70"}`} />
+                  : <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${active ? "bg-[#B3985B]" : "bg-[#333]"}`} />
+                }
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium truncate">{r.label}</span>
+                  <span className="block text-[11px] text-[#5a6370] truncate">{r.ruta}</span>
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </nav>
+  );
+
   const navContent = (
     <>
+      {buscadorModulos}
+      {busqueda.trim() ? resultadosNode : (
       <nav className="flex-1 px-3 py-2 overflow-y-auto">
         {NAV.map((section) => {
           const sectionLabel = resolveLabel(section.key, section.section, labels);
@@ -442,6 +593,7 @@ export default function Sidebar({ user, userModuleKeys }: SidebarProps) {
           );
         })}
       </nav>
+      )}
 
       {/* User */}
       <div className="px-3 py-3 border-t border-[#1a1a1a]">
