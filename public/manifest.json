@@ -2,7 +2,7 @@
   "name": "Mainstage Pro",
   "short_name": "Mainstage",
   "description": "Sistema operativo de Mainstage Pro",
-  "start_url": "/dashboard",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#000000",
