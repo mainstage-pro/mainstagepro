@@ -5,11 +5,12 @@
 import { prisma } from "@/lib/prisma";
 import {
   jparse, jornadaToString,
-  type JornadaDia, type EstandarMinimo, type ValorPerfil,
-  type AptitudPerfil, type ConocimientoPerfil,
+  type JornadaDia, type CriterioCalidad, type ValorPerfil,
+  type AptitudPerfil, type ConocimientoPerfil, type ReportePuesto,
 } from "@/lib/puesto";
 
 export interface Estandar { subarea: string; responsabilidad: string; estandar: string }
+export interface NoNegociable { enunciado: string; frecuencia: string; evidencia: string }
 
 // Tabla auto-migrada: se crea la primera vez que se usa (Neon, sin migración formal).
 export async function ensureDocLaboralSchema() {
@@ -42,20 +43,23 @@ export interface DocLaboralSnapshot {
   puestoNombre: string;
   puestoVersion?: number | null;
   area: string;
-  objetivoArea?: string | null;
-  descripcionPuesto?: string | null;
-  objetivoPuesto?: string | null;
+  subAreas?: string[];
   misionPuesto?: string | null;
   responsabilidades: string[];
   estandares: Estandar[];
-  estandaresMinimos: EstandarMinimo[];
+  estandaresMinimos: NoNegociable[];
+  reportes?: ReportePuesto[];
   valores: ValorPerfil[];
   aptitudes: AptitudPerfil[];
   conocimientos: ConocimientoPerfil[];
-  coordinaCon: string[];
-  supervisaA: string[];
-  funciones: string[];
   beneficios: string[];
+  // Campos de puestos legado: ya no se capturan, pero siguen vivos en snapshots firmados.
+  objetivoArea?: string | null;
+  descripcionPuesto?: string | null;
+  objetivoPuesto?: string | null;
+  coordinaCon?: string[];
+  supervisaA?: string[];
+  funciones?: string[];
   prestacionesOtro?: string | null;
   salario?: number | null;
   periodoPago: string;
@@ -94,14 +98,14 @@ type PersonaLike = {
 };
 type PuestoLike = {
   nombre: string; area: string; version?: number | null;
-  objetivoArea?: string | null; descripcionPuesto?: string | null; objetivoPuesto?: string | null; misionPuesto?: string | null;
-  responsabilidades?: string | null; estandares?: string | null; estandaresMinimos?: string | null;
+  misionPuesto?: string | null;
+  responsabilidades?: string | null; estandares?: string | null; reportes?: string | null;
   valores?: string | null; aptitudes?: string | null; conocimientos?: string | null;
-  coordinaCon?: string | null; supervisaA?: string | null;
-  funciones?: string | null; prestaciones?: string | null; prestacionesOtro?: string | null;
+  prestaciones?: string | null; prestacionesOtro?: string | null;
   jornada?: string | null;
-  tipoContrato?: string | null; modalidad?: string | null; horario?: string | null;
+  tipoContrato?: string | null; modalidad?: string | null;
   reportaA?: { nombre: string } | null;
+  subAreas?: { subArea: { nombre: string } }[];
 } | null;
 
 export function buildSnapshot(
@@ -114,7 +118,8 @@ export function buildSnapshot(
     ? (typeof persona.fechaIngreso === "string" ? persona.fechaIngreso : persona.fechaIngreso.toISOString()).slice(0, 10)
     : null;
   const jornada = jparse<JornadaDia[]>(puesto?.jornada ?? null, []);
-  const horario = puesto?.horario ?? (jornada.length ? jornadaToString(jornada) : null);
+  const horario = jornada.length ? jornadaToString(jornada) : null;
+  const criterios = jparse<CriterioCalidad[]>(puesto?.estandares ?? null, []);
   return {
     tipo,
     personaNombre: persona.nombre,
@@ -125,20 +130,18 @@ export function buildSnapshot(
     // §9: congela la versión del puesto vigente al firmar.
     puestoVersion: puesto?.version ?? null,
     area: puesto?.area ?? "GENERAL",
-    objetivoArea: puesto?.objetivoArea ?? null,
-    descripcionPuesto: puesto?.descripcionPuesto ?? null,
-    objetivoPuesto: puesto?.objetivoPuesto ?? null,
+    subAreas: puesto?.subAreas?.map((s) => s.subArea.nombre) ?? [],
     misionPuesto: puesto?.misionPuesto ?? null,
     responsabilidades: arr(puesto?.responsabilidades),
     estandares: estArr(puesto?.estandares),
-    estandaresMinimos: jparse<EstandarMinimo[]>(puesto?.estandaresMinimos ?? null, []),
+    // Los no negociables son los criterios de calidad marcados como tales (§8).
+    estandaresMinimos: criterios
+      .filter((c) => c.noNegociable)
+      .map((c) => ({ enunciado: c.responsabilidad, frecuencia: c.subarea, evidencia: c.estandar })),
+    reportes: jparse<ReportePuesto[]>(puesto?.reportes ?? null, []),
     valores: jparse<ValorPerfil[]>(puesto?.valores ?? null, []),
     aptitudes: jparse<AptitudPerfil[]>(puesto?.aptitudes ?? null, []),
     conocimientos: jparse<ConocimientoPerfil[]>(puesto?.conocimientos ?? null, []),
-    coordinaCon: arr(puesto?.coordinaCon),
-    supervisaA: arr(puesto?.supervisaA),
-    // Condiciones laborales: se leen del puesto operativo.
-    funciones: arr(puesto?.funciones),
     beneficios: arr(puesto?.prestaciones),
     prestacionesOtro: puesto?.prestacionesOtro ?? null,
     salario: persona.salario ?? null,

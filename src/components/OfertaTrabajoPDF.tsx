@@ -56,7 +56,7 @@ const MODALIDAD: Record<string, string> = {
 const PERIODO: Record<string, string> = { MENSUAL: "mensual", QUINCENAL: "quincenal", SEMANAL: "semanal", POR_EVENTO: "por evento" };
 
 export function OfertaTrabajoPDF(p: DocLaboralSnapshot) {
-  const funciones = p.funciones.length ? p.funciones : p.responsabilidades;
+  const funciones = p.funciones?.length ? p.funciones : (p.responsabilidades ?? []);
   return (
     <Document title={`Oferta — ${p.personaNombre}`}>
       <Page size="LETTER" style={s.page}>

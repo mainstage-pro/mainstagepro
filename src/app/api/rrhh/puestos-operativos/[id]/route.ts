@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { syncPuestoKpis, loadPuestoKpis } from "@/lib/puesto-kpis";
+import { subAreasCreate } from "@/lib/puesto";
 
 const arr = (v: unknown) => (Array.isArray(v) && v.length ? JSON.stringify(v) : null);
 const jstr = (v: unknown) => (Array.isArray(v) ? (v.length ? JSON.stringify(v) : null) : (v ? JSON.stringify(v) : null));
@@ -14,7 +15,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     where: { id },
     include: {
       reportaA: { select: { id: true, nombre: true } },
-      subArea: { select: { id: true, nombre: true } },
+      subAreas: {
+        orderBy: [{ principal: "desc" }, { orden: "asc" }],
+        include: { subArea: { select: { id: true, nombre: true, areaId: true } } },
+      },
       subordinados: { select: { id: true, nombre: true } },
       ocupantes: { select: { id: true, nombre: true, userId: true }, where: { activo: true } },
     },
@@ -36,32 +40,23 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const data: Record<string, unknown> = {};
     if (b.nombre !== undefined) data.nombre = b.nombre;
     if (b.area !== undefined) data.area = b.area || "GENERAL";
-    if (b.subAreaId !== undefined) data.subAreaId = b.subAreaId || null;
-    if (b.objetivoArea !== undefined) data.objetivoArea = b.objetivoArea || null;
-    if (b.descripcionPuesto !== undefined) data.descripcionPuesto = b.descripcionPuesto || null;
-    if (b.objetivoPuesto !== undefined) data.objetivoPuesto = b.objetivoPuesto || null;
     if (b.misionPuesto !== undefined) data.misionPuesto = b.misionPuesto || null;
     if (b.responsabilidades !== undefined) data.responsabilidades = arr(b.responsabilidades);
     if (b.reportaAId !== undefined) data.reportaAId = b.reportaAId || null;
-    if (b.coordinaCon !== undefined) data.coordinaCon = arr(b.coordinaCon);
-    if (b.supervisaA !== undefined) data.supervisaA = arr(b.supervisaA);
     if (b.coordinaConData !== undefined) data.coordinaConData = jstr(b.coordinaConData);
+    if (b.reportes !== undefined) data.reportes = jstr(b.reportes);
     if (b.estandares !== undefined) data.estandares = arr(b.estandares);
-    if (b.estandaresMinimos !== undefined) data.estandaresMinimos = jstr(b.estandaresMinimos);
     if (b.valores !== undefined) data.valores = jstr(b.valores);
     if (b.aptitudes !== undefined) data.aptitudes = jstr(b.aptitudes);
     if (b.conocimientos !== undefined) data.conocimientos = jstr(b.conocimientos);
-    if (b.funciones !== undefined) data.funciones = arr(b.funciones);
     if (b.prestaciones !== undefined) data.prestaciones = arr(b.prestaciones);
     if (b.prestacionesOtro !== undefined) data.prestacionesOtro = b.prestacionesOtro || null;
     if (b.tipoContrato !== undefined) data.tipoContrato = b.tipoContrato || null;
     if (b.modalidad !== undefined) data.modalidad = b.modalidad || null;
-    if (b.horario !== undefined) data.horario = b.horario || null;
     if (b.jornada !== undefined) data.jornada = jstr(b.jornada);
     if (b.onboardingModulos !== undefined) data.onboardingModulos = arr(b.onboardingModulos);
-    if (b.onboardingCapacitaciones !== undefined) data.onboardingCapacitaciones = arr(b.onboardingCapacitaciones);
     if (b.capacitacionAsignaciones !== undefined) data.capacitacionAsignaciones = arr(b.capacitacionAsignaciones);
-    if (b.color !== undefined) data.color = b.color || null;
+    if (b.origenIA !== undefined) data.origenIA = jstr(b.origenIA);
     if (b.posX !== undefined) data.posX = b.posX === null ? null : Number(b.posX);
     if (b.posY !== undefined) data.posY = b.posY === null ? null : Number(b.posY);
     if (b.activo !== undefined) data.activo = b.activo;
@@ -74,9 +69,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     );
     if (prev && !prev.legacyData && editaContenido) {
       data.legacyData = JSON.stringify({
-        reportaAId: prev.reportaAId, coordinaCon: prev.coordinaCon, supervisaA: prev.supervisaA,
-        tipoContrato: prev.tipoContrato, modalidad: prev.modalidad, horario: prev.horario,
-        prestaciones: prev.prestaciones,
+        reportaAId: prev.reportaAId, tipoContrato: prev.tipoContrato,
+        modalidad: prev.modalidad, prestaciones: prev.prestaciones,
       });
     }
     // Bumpea versión cuando cambia contenido (no cuando solo se reubica en organigrama).
@@ -84,6 +78,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     const puesto = await prisma.puesto.update({ where: { id }, data });
     if (Array.isArray(b.kpis)) await syncPuestoKpis(id, puesto.area, b.kpis);
+
+    // Sub-áreas: se reemplaza el conjunto completo; la primera queda como principal.
+    if (Array.isArray(b.subAreaIds)) {
+      await prisma.puestoSubArea.deleteMany({ where: { puestoId: id } });
+      const nuevas = subAreasCreate(b.subAreaIds);
+      if (nuevas.length) {
+        await prisma.puestoSubArea.createMany({
+          data: nuevas.map((s) => ({ ...s, puestoId: id })),
+        });
+      }
+    }
 
     // Reasignar titulares (ocupantes) si viene el arreglo de IDs de personal
     if (Array.isArray(b.ocupantesIds)) {

@@ -6,7 +6,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { computeRendimiento } from "@/lib/rendimiento";
-import { jparse, PESOS_EVAL, type ValorPerfil, type AptitudPerfil, type ConocimientoPerfil, type EstandarMinimo } from "@/lib/puesto";
+import { jparse, PESOS_EVAL, type ValorPerfil, type AptitudPerfil, type ConocimientoPerfil, type CriterioCalidad } from "@/lib/puesto";
 
 export type CalifLabel = "EXCEDE" | "CUMPLE" | "EN_DESARROLLO" | "NO_CUMPLE";
 
@@ -127,17 +127,20 @@ export function competenciasDesdePuesto(raw: {
   ];
 }
 
-// Item del checklist de estándares mínimos en la evaluación (§7 bloque 2).
+// Checklist binario de la evaluación (§7 bloque 2): son los criterios de calidad
+// que el puesto marcó como no negociables. Fallar uno topa la calificación.
 export interface EstMinCheck {
   enunciado: string;
   frecuencia: string;
   evidencia: string;
   cumple: boolean | null; // sí/no; null = sin evaluar
 }
-export function estMinDesdePuesto(raw: { estandaresMinimos?: string | null }): EstMinCheck[] {
-  return jparse<EstandarMinimo[]>(raw.estandaresMinimos ?? null, []).map(e => ({
-    enunciado: e.enunciado, frecuencia: e.frecuencia, evidencia: e.evidencia, cumple: null,
-  }));
+export function estMinDesdePuesto(raw: { estandares?: string | null }): EstMinCheck[] {
+  return jparse<CriterioCalidad[]>(raw.estandares ?? null, [])
+    .filter(c => c.noNegociable)
+    .map(c => ({
+      enunciado: c.responsabilidad, frecuencia: c.subarea, evidencia: c.estandar, cumple: null,
+    }));
 }
 
 // Promedio de perfil (1–5) → porcentaje 0–100.

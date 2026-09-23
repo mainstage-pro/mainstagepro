@@ -1827,60 +1827,69 @@ model MantenimientoEquipo {
 // permanentes, estructura de reporte y estándares). Espeja el Acuerdo de Alineación.
 // El plan de trabajo (variable) cuelga de estas responsabilidades, no al revés.
 model Puesto {
-  id                       String     @id @default(cuid())
+  id                       String          @id @default(cuid())
   nombre                   String
-  area                     String     @default("GENERAL") // DIRECCION | ADMINISTRACION | MARKETING | VENTAS | PRODUCCION | RRHH | GENERAL
-  objetivoArea             String?    @map("objetivo_area") @db.Text // solo lectura: se jala de PTArea.objetivo (§1)
-  descripcionPuesto        String?    @map("descripcion_puesto") @db.Text // qué hace en el día a día (§1)
-  objetivoPuesto           String?    @map("objetivo_puesto") @db.Text // resultado único por el que existe el puesto (§1)
-  misionPuesto             String?    @map("mision_puesto") @db.Text // contribución del puesto a la operación
-  responsabilidades        String?    @db.Text // JSON string[] — responsabilidades permanentes (§4.2)
+  area                     String          @default("GENERAL") // DIRECCION | ADMINISTRACION | MARKETING | VENTAS | PRODUCCION | RRHH | GENERAL
+  misionPuesto             String?         @map("mision_puesto") @db.Text // para qué existe el puesto (§1)
+  responsabilidades        String?         @db.Text // JSON string[] — responsabilidades permanentes (§4.2)
   // Estructura de reporte (§2)
-  reportaAId               String?    @map("reporta_a_id")
-  reportaA                 Puesto?    @relation("PuestoJerarquia", fields: [reportaAId], references: [id], onDelete: SetNull)
-  subordinados             Puesto[]   @relation("PuestoJerarquia")
-  coordinaCon              String?    @map("coordina_con") @db.Text // JSON string[] (legado; ver coordinaConData)
-  supervisaA               String?    @map("supervisa_a") @db.Text // JSON string[] (legado; ahora derivado de subordinados)
-  coordinaConData          String?    @map("coordina_con_data") @db.Text // JSON [{ puestoId, nota }] (§2)
-  // Subárea del maestro (Áreas y organización). Ubica el puesto dentro de su área.
-  subAreaId                String?    @map("sub_area_id")
-  subArea                  PTSubArea? @relation("PuestoSubArea", fields: [subAreaId], references: [id], onDelete: SetNull)
-  // Criterios de calidad (narrativos) — JSON: [{ subarea, responsabilidad, estandar }] (§6)
-  estandares               String?    @db.Text
-  // Estándares mínimos no negociables (binarios) — JSON: [{ enunciado, frecuencia, evidencia, verificaPuestoId }] (§6)
-  estandaresMinimos        String?    @map("estandares_minimos") @db.Text
-  // Perfil requerido (§5)
-  valores                  String?    @db.Text // JSON [{ valorId, nombre, comoSeVe }]
-  aptitudes                String?    @db.Text // JSON [{ nombre, nivel }]  nivel: basico|intermedio|avanzado
-  conocimientos            String?    @db.Text // JSON [{ nombre, nivel, indispensable }]
+  reportaAId               String?         @map("reporta_a_id")
+  reportaA                 Puesto?         @relation("PuestoJerarquia", fields: [reportaAId], references: [id], onDelete: SetNull)
+  subordinados             Puesto[]        @relation("PuestoJerarquia")
+  coordinaConData          String?         @map("coordina_con_data") @db.Text // JSON [{ puestoId, nota }] (§2)
+  reportes                 String?         @db.Text // JSON [{ nombre, frecuencia, formato }] — lo que entrega a quien le reporta
+  // Sub-áreas del maestro que abarca el puesto; una de ellas es la principal.
+  subAreas                 PuestoSubArea[] @relation("PuestoSubAreas")
+  // Criterios de calidad — JSON: [{ subarea, responsabilidad, estandar, noNegociable }] (§6)
+  estandares               String?         @db.Text
+  // Perfil requerido (§5). El ADN base (pasión por los eventos, crecimiento mutuo) aplica
+  // a todos los puestos y no se captura aquí: vive en src/lib/puesto.ts.
+  valores                  String?         @db.Text // JSON [{ valorId, nombre, comoSeVe }]
+  aptitudes                String?         @db.Text // JSON [{ nombre, nivel }]  nivel: basico|intermedio|avanzado
+  conocimientos            String?         @db.Text // JSON [{ nombre, nivel, indispensable }]
   // Condiciones laborales — fuente para el acuerdo laboral
-  funciones                String?    @db.Text // JSON string[] — funciones/actividades del puesto
-  prestaciones             String?    @db.Text // JSON string[] — prestaciones seleccionadas (nombres del catálogo + otros)
-  prestacionesOtro         String?    @map("prestaciones_otro") @db.Text // texto libre cuando se elige "Otro" (§3.4)
-  tipoContrato             String?    @map("tipo_contrato") // Contratación | Honorarios (§3.1)
+  prestaciones             String?         @db.Text // JSON string[] — prestaciones seleccionadas (nombres del catálogo + otros)
+  prestacionesOtro         String?         @map("prestaciones_otro") @db.Text // texto libre cuando se elige "Otro" (§3.4)
+  tipoContrato             String?         @map("tipo_contrato") // Contratación | Honorarios (§3.1)
   modalidad                String? // Presencial | Remoto | Híbrido (§3.2)
-  horario                  String? // legado texto libre (§3.3)
-  jornada                  String?    @db.Text // JSON [{ dia, entrada, salida, ubicacion }] (§3.3)
-  // Configuración de onboarding (Organización → Puesto → Onboarding)
-  onboardingModulos        String?    @map("onboarding_modulos") @db.Text // JSON string[] — moduloKeys de plataforma a revisar
-  onboardingCapacitaciones String?    @map("onboarding_capacitaciones") @db.Text // JSON string[] — LEGADO: ids de CategoriaCapacitacion (áreas). Superado por capacitacionAsignaciones.
-  capacitacionAsignaciones String?    @map("capacitacion_asignaciones") @db.Text // JSON [{ categoriaId, subArea|null, nivel: "OBLIGATORIO"|"RECOMENDADO" }] — capacitación ligada al área/sub-área del puesto
+  jornada                  String?         @db.Text // JSON [{ dia, entrada, salida, ubicacion }] (§3.3)
+  // Onboarding — se deriva del área y sub-áreas; aquí solo se guarda el ajuste manual
+  onboardingModulos        String?         @map("onboarding_modulos") @db.Text // JSON string[] — moduloKeys de plataforma a revisar
+  capacitacionAsignaciones String?         @map("capacitacion_asignaciones") @db.Text // JSON [{ categoriaId, subArea|null, nivel: "OBLIGATORIO"|"RECOMENDADO" }]
+  // Procedencia del contenido — JSON { <bloque>: "IA"|"MANUAL"|"IA_EDITADO", generadoEn: ISO }
+  origenIA                 String?         @map("origen_ia") @db.Text
   // Versionado del registro (§7/§9): se congela en acuerdos y evaluaciones
-  version                  Int        @default(1)
-  legacyData               String?    @map("legacy_data") @db.Text // JSON snapshot de textos libres previos (§10)
-  // Presentación / organigrama
-  color                    String?
-  posX                     Float?     @map("pos_x") // posición X en el lienzo del organigrama
-  posY                     Float?     @map("pos_y") // posición Y en el lienzo del organigrama
-  activo                   Boolean    @default(true)
-  createdAt                DateTime   @default(now()) @map("created_at")
-  updatedAt                DateTime   @updatedAt @map("updated_at")
+  version                  Int             @default(1)
+  legacyData               String?         @map("legacy_data") @db.Text // JSON snapshot de textos libres previos (§10)
+  // Organigrama — el color se deriva del área (AREA_HEX), no se captura
+  posX                     Float?          @map("pos_x") // posición X en el lienzo del organigrama
+  posY                     Float?          @map("pos_y") // posición Y en el lienzo del organigrama
+  activo                   Boolean         @default(true)
+  createdAt                DateTime        @default(now()) @map("created_at")
+  updatedAt                DateTime        @updatedAt @map("updated_at")
 
   ocupantes     PersonalInterno[] @relation("PuestoTitular")
   postulaciones Postulacion[]
   kpis          PTKPI[]           @relation("PTKPIPuesto")
 
   @@map("puestos")
+}
+
+// Sub-áreas que abarca un puesto. La principal define color, capacitación y los
+// módulos de onboarding por defecto; las demás suman responsabilidades y resultados.
+model PuestoSubArea {
+  id        String    @id @default(cuid())
+  puestoId  String    @map("puesto_id")
+  puesto    Puesto    @relation("PuestoSubAreas", fields: [puestoId], references: [id], onDelete: Cascade)
+  subAreaId String    @map("sub_area_id")
+  subArea   PTSubArea @relation("SubAreaPuestos", fields: [subAreaId], references: [id], onDelete: Cascade)
+  principal Boolean   @default(false)
+  orden     Int       @default(0)
+
+  @@unique([puestoId, subAreaId])
+  @@index([puestoId])
+  @@index([subAreaId])
+  @@map("puesto_subareas")
 }
 
 model PersonalInterno {
@@ -3886,7 +3895,7 @@ model PTSubArea {
 
   templates PTTareaTemplate[]
   secciones TareaSeccion[]    @relation("SeccionSubArea")
-  puestos   Puesto[]          @relation("PuestoSubArea")
+  puestos   PuestoSubArea[]   @relation("SubAreaPuestos")
 
   @@index([areaId])
   @@map("pt_subareas")

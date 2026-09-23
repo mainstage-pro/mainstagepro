@@ -29,7 +29,13 @@ export async function POST(req: NextRequest) {
       where: { id: b.personalId },
       include: {
         puestoRef: {
-          include: { reportaA: { select: { nombre: true } } },
+          include: {
+            reportaA: { select: { nombre: true } },
+            subAreas: {
+              orderBy: [{ principal: "desc" }, { orden: "asc" }],
+              include: { subArea: { select: { nombre: true } } },
+            },
+          },
         },
       },
     });

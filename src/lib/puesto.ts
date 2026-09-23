@@ -66,14 +66,25 @@ export const PRESTACIONES_DEFAULT = [
   "Prestaciones adicionales",
 ];
 
-// Valores por defecto (migrados de /presentacion/alineacion-2026).
+// Los cuatro valores que rigen la empresa. Se ofrecen en el perfil de cada puesto
+// para precisar "cómo se ve" ese valor en ese rol concreto.
 export const VALORES_DEFAULT = [
-  { nombre: "Responsabilidad", descripcion: "Cumplir con lo prometido, cuidar el equipo, al cliente y la seguridad del evento." },
-  { nombre: "Compromiso", descripcion: "Dar el máximo en cada proyecto, desde el más pequeño hasta el más grande." },
+  { nombre: "Honestidad", descripcion: "Decir las cosas como son, reconocer los errores a tiempo y cuidar lo que no es nuestro." },
+  { nombre: "Mejora continua", descripcion: "Cada evento deja un aprendizaje; lo aplicamos para que el siguiente salga mejor." },
   { nombre: "Trabajo en equipo", descripcion: "Generosidad, apoyo mutuo y comunicación clara — el resultado es de todos." },
-  { nombre: "Profesionalismo", descripcion: "Presentarse, operar y comunicar con seriedad, aunque el trato sea cercano." },
-  { nombre: "Pasión por los eventos", descripcion: "Mantener la energía que dio origen a la empresa: audio, luces, escenarios y shows en vivo." },
+  { nombre: "Respeto", descripcion: "Trato digno al compañero, al cliente, al proveedor y al público, sin importar la presión del momento." },
 ];
+
+// ADN Mainstage: base común a TODOS los puestos. No se captura ni se edita por puesto;
+// se muestra en la ficha, en el acuerdo laboral y en la vacante.
+export const ADN_MAINSTAGE = {
+  titulo: "Lo que esperamos de cualquier persona en Mainstage",
+  texto:
+    "Buscamos personas genuinamente apasionadas por el mundo de los eventos y los shows en vivo: " +
+    "por el audio, la iluminación y el video, y por lo que sucede cuando todo eso se junta frente a un público. " +
+    "Esperamos que cada integrante del equipo proponga, aporte y empuje el crecimiento de la empresa, " +
+    "entendiendo que ese crecimiento y el profesional de cada quien son el mismo camino.",
+} as const;
 
 // ── Formas estructuradas (JSON en columnas de texto) ──
 export interface JornadaDia { dia: string; entrada: string; salida: string; ubicacion: UbicacionDia }
@@ -81,12 +92,18 @@ export interface CoordinaConItem { puestoId: string; nota?: string }
 export interface ValorPerfil { valorId?: string; nombre: string; comoSeVe?: string }
 export interface AptitudPerfil { nombre: string; nivel: Nivel }
 export interface ConocimientoPerfil { nombre: string; nivel: Nivel; indispensable: boolean }
-export interface EstandarMinimo {
-  enunciado: string;
+// Reportes que el puesto entrega a quien le reporta. Se arranca con tres de base.
+export interface ReportePuesto {
+  nombre: string;
   frecuencia: FrecuenciaEstandar;
-  evidencia: string;
-  verificaPuestoId?: string;
+  formato?: string;
 }
+
+export const REPORTES_BASE: ReportePuesto[] = [
+  { nombre: "Avance del plan de trabajo de la semana", frecuencia: "semanal", formato: "Junta de seguimiento" },
+  { nombre: "Resultados del mes contra la meta de cada indicador", frecuencia: "mensual", formato: "Reporte de área" },
+  { nombre: "Riesgos y pendientes que requieren decisión del jefe", frecuencia: "semanal", formato: "Junta de seguimiento" },
+];
 export interface KpiPuesto {
   id?: string;
   nombre: string;
@@ -169,11 +186,19 @@ export const PESOS_EVAL = {
   kpis: 0.3,
 } as const;
 
-export interface CriterioCalidad { subarea: string; responsabilidad: string; estandar: string }
+// Criterio de calidad: cómo se mide que una responsabilidad está bien cumplida.
+// Los marcados como no negociables topan la evaluación en "En desarrollo" si fallan.
+export interface CriterioCalidad {
+  subarea: string;
+  responsabilidad: string;
+  estandar: string;
+  noNegociable?: boolean;
+}
+
 export interface PuestoSnapshot {
   version: number;
   criteriosCalidad: CriterioCalidad[];
-  estandaresMinimos: EstandarMinimo[];
+  noNegociables: CriterioCalidad[];
   valores: ValorPerfil[];
   aptitudes: AptitudPerfil[];
   conocimientos: ConocimientoPerfil[];
@@ -187,23 +212,55 @@ export function buildPuestoSnapshot(
   raw: {
     version?: number | null;
     estandares?: string | null;
-    estandaresMinimos?: string | null;
     valores?: string | null;
     aptitudes?: string | null;
     conocimientos?: string | null;
   },
   kpis: KpiPuesto[],
 ): PuestoSnapshot {
+  const criterios = jparse<CriterioCalidad[]>(raw.estandares, []);
   return {
     version: raw.version ?? 1,
-    criteriosCalidad: jparse<CriterioCalidad[]>(raw.estandares, []),
-    estandaresMinimos: jparse<EstandarMinimo[]>(raw.estandaresMinimos, []),
+    criteriosCalidad: criterios,
+    noNegociables: criterios.filter((c) => c.noNegociable),
     valores: jparse<ValorPerfil[]>(raw.valores, []),
     aptitudes: jparse<AptitudPerfil[]>(raw.aptitudes, []),
     conocimientos: jparse<ConocimientoPerfil[]>(raw.conocimientos, []),
     kpis,
     pesos: PESOS_EVAL,
   };
+}
+
+// La primera sub-área de la lista es la principal: manda en color, capacitación y
+// módulos de onboarding por defecto.
+export function subAreasCreate(ids: unknown): { subAreaId: string; principal: boolean; orden: number }[] {
+  if (!Array.isArray(ids)) return [];
+  const limpios = [...new Set(ids.filter((x): x is string => typeof x === "string" && !!x))];
+  return limpios.map((subAreaId, i) => ({ subAreaId, principal: i === 0, orden: i }));
+}
+
+// ── Procedencia del contenido (IA vs manual) ──
+export type Procedencia = "IA" | "MANUAL" | "IA_EDITADO";
+export const BLOQUES_IA = ["misionPuesto", "responsabilidades", "estandares", "reportes", "kpis", "perfil"] as const;
+export type BloqueIA = (typeof BLOQUES_IA)[number];
+export type OrigenIA = Partial<Record<BloqueIA, Procedencia>> & { generadoEn?: string };
+
+export function procedencia(origen: OrigenIA | null | undefined, bloque: BloqueIA): Procedencia {
+  return origen?.[bloque] ?? "MANUAL";
+}
+
+// Al guardar, un bloque generado por IA que cambió de contenido pasa a IA_EDITADO:
+// así el refresh sabe qué puede volver a escribir y qué debe respetar.
+export function marcarEdiciones(
+  previo: OrigenIA | null | undefined,
+  cambiados: BloqueIA[],
+): OrigenIA {
+  const out: OrigenIA = { ...(previo ?? {}) };
+  for (const b of cambiados) {
+    if (out[b] === "IA") out[b] = "IA_EDITADO";
+    else if (!out[b]) out[b] = "MANUAL";
+  }
+  return out;
 }
 
 // Detecta ciclos en la jerarquía "reporta a" (§2).

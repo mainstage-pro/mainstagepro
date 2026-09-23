@@ -24,15 +24,12 @@ export async function GET() {
 
   const persona = await prisma.personalInterno.findFirst({
     where: { userId: session.id },
-    select: { puestoRef: { select: { area: true, capacitacionAsignaciones: true, onboardingCapacitaciones: true } } },
+    select: { puestoRef: { select: { area: true, capacitacionAsignaciones: true } } },
   });
   const puesto = persona?.puestoRef;
   if (!puesto) return NextResponse.json(vacio);
 
-  const asignaciones = asignacionesEfectivas(
-    puesto.capacitacionAsignaciones,
-    puesto.onboardingCapacitaciones,
-  );
+  const asignaciones = asignacionesEfectivas(puesto.capacitacionAsignaciones);
   if (!asignaciones.length) return NextResponse.json(vacio);
 
   // Resolver slug por categoriaId. Si el área del puesto no matchea ninguna

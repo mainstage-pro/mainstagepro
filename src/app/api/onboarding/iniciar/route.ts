@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
         puestoRef: {
           select: {
             id: true, nombre: true, area: true,
-            onboardingModulos: true, onboardingCapacitaciones: true, capacitacionAsignaciones: true,
+            onboardingModulos: true, capacitacionAsignaciones: true,
           },
         },
       },
@@ -90,9 +90,9 @@ export async function POST(req: NextRequest) {
     const puesto = persona.puestoRef;
     const moduloKeys = parseIdList(puesto.onboardingModulos);
 
-    // Capacitación ligada al puesto: usa las asignaciones nuevas (área/sub-área con
-    // nivel) o cae al legado. Cada asignación se vuelve una tarea; OBLIGATORIO primero.
-    const asignaciones = asignacionesEfectivas(puesto.capacitacionAsignaciones, puesto.onboardingCapacitaciones);
+    // Capacitación ligada al puesto: asignaciones de área/sub-área con nivel.
+    // Cada asignación se vuelve una tarea; OBLIGATORIO primero.
+    const asignaciones = asignacionesEfectivas(puesto.capacitacionAsignaciones);
     const catIds = Array.from(new Set(asignaciones.map((a) => a.categoriaId)));
     const catRows = catIds.length
       ? await prisma.categoriaCapacitacion.findMany({

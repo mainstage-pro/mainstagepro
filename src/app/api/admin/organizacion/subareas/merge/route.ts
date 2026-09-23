@@ -28,9 +28,17 @@ export async function POST(req: NextRequest) {
   const [templates, secciones, puestos] = await prisma.$transaction(async (tx) => {
     const t = await tx.pTTareaTemplate.updateMany({ where: { subAreaId: fromId }, data: { subAreaId: toId } });
     const s = await tx.tareaSeccion.updateMany({ where: { subAreaId: fromId }, data: { subAreaId: toId } });
-    const p = await tx.puesto.updateMany({ where: { subAreaId: fromId }, data: { subAreaId: toId } });
+    // Tabla puente: un puesto que ya tenga la subárea destino no puede duplicarla
+    // (@@unique puestoId+subAreaId) — ese vínculo se borra en vez de moverse.
+    const origen = await tx.puestoSubArea.findMany({ where: { subAreaId: fromId }, select: { id: true, puestoId: true } });
+    const destino = await tx.puestoSubArea.findMany({ where: { subAreaId: toId }, select: { puestoId: true } });
+    const yaTienen = new Set(destino.map((d) => d.puestoId));
+    const duplicados = origen.filter((o) => yaTienen.has(o.puestoId)).map((o) => o.id);
+    const movibles = origen.filter((o) => !yaTienen.has(o.puestoId)).map((o) => o.id);
+    if (duplicados.length) await tx.puestoSubArea.deleteMany({ where: { id: { in: duplicados } } });
+    if (movibles.length) await tx.puestoSubArea.updateMany({ where: { id: { in: movibles } }, data: { subAreaId: toId } });
     await tx.pTSubArea.delete({ where: { id: fromId } });
-    return [t.count, s.count, p.count];
+    return [t.count, s.count, movibles.length];
   });
 
   return NextResponse.json({ ok: true, templates, secciones, puestos });

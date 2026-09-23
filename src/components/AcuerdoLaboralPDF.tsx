@@ -73,6 +73,8 @@ export function AcuerdoLaboralPDF(raw: DocLaboralSnapshot) {
     supervisaA: raw.supervisaA ?? [],
     funciones: raw.funciones ?? [],
     beneficios: raw.beneficios ?? [],
+    reportes: raw.reportes ?? [],
+    subAreas: raw.subAreas ?? [],
   };
   return (
     <Document title={`Acuerdo — ${p.personaNombre}`}>
@@ -123,6 +125,7 @@ export function AcuerdoLaboralPDF(raw: DocLaboralSnapshot) {
             <View style={s.campo}><Text style={s.campoLabel}>ÁREA</Text><Text style={s.campoValue}>{p.area}</Text></View>
             {p.reportaA && <View style={s.campo}><Text style={s.campoLabel}>REPORTA A</Text><Text style={s.campoValue}>{p.reportaA}</Text></View>}
           </View>
+          {p.subAreas.length > 0 && (<><Text style={s.campoLabel}>SUB-ÁREAS QUE ABARCA</Text><Text style={s.texto}>{p.subAreas.join(" · ")}</Text></>)}
           {p.objetivoArea && (<><Text style={s.campoLabel}>OBJETIVO DEL ÁREA</Text><Text style={s.texto}>{p.objetivoArea}</Text></>)}
           {p.descripcionPuesto && (<><Text style={s.campoLabel}>DESCRIPCIÓN DEL PUESTO</Text><Text style={s.texto}>{p.descripcionPuesto}</Text></>)}
           {p.objetivoPuesto && (<><Text style={s.campoLabel}>OBJETIVO DEL PUESTO</Text><Text style={s.texto}>{p.objetivoPuesto}</Text></>)}
@@ -138,9 +141,20 @@ export function AcuerdoLaboralPDF(raw: DocLaboralSnapshot) {
             </>
           )}
 
-          {(p.coordinaCon.length > 0 || p.supervisaA.length > 0) && (
+          {(p.reportes.length > 0 || p.coordinaCon.length > 0 || p.supervisaA.length > 0) && (
             <>
-              <Text style={s.seccionTitulo}>3 — Relaciones de trabajo</Text>
+              <Text style={s.seccionTitulo}>3 — Reportes y relaciones de trabajo</Text>
+              {p.reportes.length > 0 && (
+                <>
+                  <Text style={s.texto}>El/La colaborador(a) entrega a {p.reportaA ?? "su jefe directo"} los siguientes reportes:</Text>
+                  {p.reportes.map((r, i) => (
+                    <View key={i} style={s.bullet}>
+                      <Text style={s.bulletDot}>•</Text>
+                      <Text style={s.bulletText}>{r.nombre} <Text style={{ color: LIGHT }}>({FREC[r.frecuencia] ?? r.frecuencia}{r.formato ? ` · ${r.formato}` : ""})</Text></Text>
+                    </View>
+                  ))}
+                </>
+              )}
               {p.coordinaCon.length > 0 && <Text style={s.texto}><Text style={s.bold}>Coordina con: </Text>{p.coordinaCon.join(", ")}.</Text>}
               {p.supervisaA.length > 0 && <Text style={s.texto}><Text style={s.bold}>Supervisa a: </Text>{p.supervisaA.join(", ")}.</Text>}
             </>

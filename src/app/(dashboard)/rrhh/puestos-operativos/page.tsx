@@ -2,10 +2,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
-import { LayoutList, LayoutGrid, FileText, UserCheck, UserX, Link2, X, Plus, AlertTriangle } from "lucide-react";
+import { LayoutList, LayoutGrid, FileText, UserCheck, UserX, Link2, X, Plus, AlertTriangle, Sparkles, RefreshCw } from "lucide-react";
 import { AREA_CODES } from "@/lib/areas";
 import { useAreas } from "@/components/AreasProvider";
-import { MODULOS_POR_SECCION } from "@/lib/nav";
+import { MODULOS_POR_SECCION, AREA_MODULE_PRESETS } from "@/lib/nav";
 import { parseIdList } from "@/lib/onboarding";
 import { usePdfDownload } from "@/hooks/usePdfDownload";
 import {
@@ -14,28 +14,28 @@ import {
 } from "@/lib/capacitacion-plan";
 import {
   TIPOS_CONTRATO, MODALIDADES, DIAS_SEMANA, FRECUENCIAS_KPI, UNIDADES_KPI, FRECUENCIAS_ESTANDAR,
-  FUENTES_KPI, KPI_PLAN_NOMBRE, KPI_PLAN_META_DEFAULT, jparse, jornadaToString, horasSemanales,
-  textosMuySimilares, adverbioVago, generaCiclo,
+  FUENTES_KPI, KPI_PLAN_NOMBRE, KPI_PLAN_META_DEFAULT, ADN_MAINSTAGE, REPORTES_BASE, VALORES_DEFAULT,
+  jparse, jornadaToString, horasSemanales, adverbioVago, generaCiclo, procedencia,
   type JornadaDia, type CoordinaConItem, type ValorPerfil, type AptitudPerfil, type ConocimientoPerfil,
-  type EstandarMinimo, type KpiPuesto, type Nivel,
+  type CriterioCalidad, type ReportePuesto, type KpiPuesto, type Nivel, type OrigenIA, type BloqueIA,
 } from "@/lib/puesto";
 
 interface Ocupante { id: string; nombre: string; userId?: string | null }
-interface Estandar { subarea: string; responsabilidad: string; estandar: string }
+interface SubAreaLink { subAreaId: string; principal: boolean; subArea: { id: string; nombre: string; areaId: string } }
 interface Puesto {
   id: string; nombre: string; area: string;
-  subAreaId?: string | null; subArea?: { id: string; nombre: string } | null;
-  objetivoArea?: string | null; descripcionPuesto?: string | null; objetivoPuesto?: string | null; misionPuesto?: string | null;
+  subAreas?: SubAreaLink[];
+  misionPuesto?: string | null;
   responsabilidades?: string | null;
   reportaAId?: string | null; reportaA?: { id: string; nombre: string } | null;
-  coordinaCon?: string | null; supervisaA?: string | null; coordinaConData?: string | null;
-  estandares?: string | null; estandaresMinimos?: string | null;
+  coordinaConData?: string | null;
+  estandares?: string | null; reportes?: string | null; origenIA?: string | null;
   valores?: string | null; aptitudes?: string | null; conocimientos?: string | null;
-  funciones?: string | null; prestaciones?: string | null; prestacionesOtro?: string | null;
-  tipoContrato?: string | null; modalidad?: string | null; horario?: string | null; jornada?: string | null;
-  onboardingModulos?: string | null; onboardingCapacitaciones?: string | null; capacitacionAsignaciones?: string | null;
+  prestaciones?: string | null; prestacionesOtro?: string | null;
+  tipoContrato?: string | null; modalidad?: string | null; jornada?: string | null;
+  onboardingModulos?: string | null; capacitacionAsignaciones?: string | null;
   version?: number | null;
-  color?: string | null; activo: boolean;
+  activo: boolean;
   ocupantes?: Ocupante[]; kpis?: KpiPuesto[];
 }
 interface PersonaLite { id: string; nombre: string; puesto: string; activo: boolean }
@@ -45,6 +45,7 @@ interface Catalogos {
   aptitudes: { id: string; nombre: string }[];
   conocimientos: { id: string; nombre: string }[];
 }
+interface SubAreaOpt { id: string; nombre: string; area: string }
 
 const AREAS = [...AREA_CODES];
 function normArea(a: string): string {
@@ -54,10 +55,6 @@ function parseArr(s?: string | null): string[] {
   if (!s) return [];
   try { const v = JSON.parse(s); return Array.isArray(v) ? v : []; } catch { return s.split(",").map(x=>x.trim()).filter(Boolean); }
 }
-function parseEst(s?: string | null): Estandar[] {
-  if (!s) return [];
-  try { const v = JSON.parse(s); return Array.isArray(v) ? v : []; } catch { return []; }
-}
 function toArr(s: string) {
   return s.split(/\n/).map(x=>x.trim()).filter(Boolean);
 }
@@ -66,11 +63,9 @@ const NIVELES: { value: Nivel; label: string }[] = [
 ];
 
 const EMPTY_FORM = {
-  nombre:"", area:"ADMINISTRACION", subAreaId:"", color:"",
-  descripcionPuesto:"", objetivoPuesto:"", misionPuesto:"",
-  responsabilidades:"",
-  reportaAId:"",
-  funciones:"", tipoContrato:"", modalidad:"", prestacionesOtro:"",
+  nombre:"", area:"ADMINISTRACION",
+  misionPuesto:"", responsabilidades:"",
+  reportaAId:"", tipoContrato:"", modalidad:"", prestacionesOtro:"",
 };
 type FormState = typeof EMPTY_FORM;
 
@@ -78,6 +73,33 @@ function kpiFijo(): KpiPuesto {
   return { nombre: KPI_PLAN_NOMBRE, resultadoEsperado: "El plan de trabajo del puesto se cumple mes a mes",
     unidad: "%", meta: KPI_PLAN_META_DEFAULT, frecuencia: "mensual", fuenteTipo: "automatica",
     fuente: "Cumplimiento (Plan)", esFijoPlan: true };
+}
+
+// Qué bloques del registro están completos: alimenta la barra de avance de la ficha.
+function completitud(p: Puesto): { hechos: number; total: number; faltan: string[] } {
+  const chk: [string, boolean][] = [
+    ["Misión", !!p.misionPuesto?.trim()],
+    ["Responsabilidades", parseArr(p.responsabilidades).length > 0],
+    ["Criterios de calidad", jparse<CriterioCalidad[]>(p.estandares, []).length > 0],
+    ["Resultados clave", (p.kpis?.length ?? 0) >= 3],
+    ["Reportes", jparse<ReportePuesto[]>(p.reportes, []).length > 0],
+    ["Perfil", jparse<AptitudPerfil[]>(p.aptitudes, []).length > 0 || jparse<ConocimientoPerfil[]>(p.conocimientos, []).length > 0],
+    ["Condiciones", !!p.tipoContrato || !!p.modalidad || jparse<JornadaDia[]>(p.jornada, []).length > 0],
+    ["Titular", (p.ocupantes?.length ?? 0) > 0],
+  ];
+  return { hechos: chk.filter(c => c[1]).length, total: chk.length, faltan: chk.filter(c => !c[1]).map(c => c[0]) };
+}
+
+// Sello de procedencia de un bloque: deja ver de un vistazo qué escribió la IA.
+function SelloIA({ origen, bloque }: { origen: OrigenIA; bloque: BloqueIA }) {
+  const p = procedencia(origen, bloque);
+  if (p === "MANUAL") return null;
+  const esPuro = p === "IA";
+  return (
+    <span className={`text-[10px] px-1.5 py-0.5 rounded-full border shrink-0 ${esPuro ? "text-violet-300 border-violet-500/40 bg-violet-500/10" : "text-gray-400 border-[#2a2a2a]"}`}>
+      {esPuro ? "IA" : "IA · editado"}
+    </span>
+  );
 }
 
 export default function PuestosOperativosPage() {
@@ -89,8 +111,9 @@ export default function PuestosOperativosPage() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Puesto | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
-  const [estandares, setEstandares] = useState<Estandar[]>([]);
-  const [estMinimos, setEstMinimos] = useState<EstandarMinimo[]>([]);
+  const [subAreaIds, setSubAreaIds] = useState<string[]>([]);
+  const [estandares, setEstandares] = useState<CriterioCalidad[]>([]);
+  const [reportes, setReportes] = useState<ReportePuesto[]>([]);
   const [coordina, setCoordina] = useState<CoordinaConItem[]>([]);
   const [jornada, setJornada] = useState<JornadaDia[]>([]);
   const [prestacionesSel, setPrestacionesSel] = useState<string[]>([]);
@@ -100,9 +123,12 @@ export default function PuestosOperativosPage() {
   const [kpis, setKpis] = useState<KpiPuesto[]>([]);
   const [ocupantesIds, setOcupantesIds] = useState<string[]>([]);
   const [onbModulos, setOnbModulos] = useState<string[]>([]);
-  const [onbCapacitaciones, setOnbCapacitaciones] = useState<string[]>([]);
   const [capAsignaciones, setCapAsignaciones] = useState<CapAsignacion[]>([]);
   const [categoriasCap, setCategoriasCap] = useState<{ id: string; nombre: string; slug: string; subAreas: string[] }[]>([]);
+  const [origen, setOrigen] = useState<OrigenIA>({});
+  // Copia literal de lo que devolvió la IA: al guardar, lo que ya no coincide pasa a "IA · editado".
+  const [iaSnapshot, setIaSnapshot] = useState<Partial<Record<BloqueIA, string>>>({});
+  const [generando, setGenerando] = useState<"completo" | "refresh" | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [selected, setSelected] = useState<Puesto | null>(null);
@@ -154,6 +180,20 @@ export default function PuestosOperativosPage() {
       .catch(() => {});
   }, []);
 
+  // Catálogo plano de sub-áreas de TODAS las áreas: un puesto puede abarcar
+  // sub-áreas de otra área (p. ej. Dirección general toca RRHH y Ventas).
+  const subAreaOpts = useMemo<SubAreaOpt[]>(
+    () => AREAS.flatMap(code => (subareasPorArea[code] ?? []).map(s => ({ ...s, area: code }))),
+    [subareasPorArea],
+  );
+  const subAreaById = useMemo(() => new Map(subAreaOpts.map(s => [s.id, s])), [subAreaOpts]);
+  // Áreas que toca el puesto: la suya más las de sus sub-áreas prestadas.
+  const areasDelPuesto = useMemo(() => {
+    const set = new Set<string>([form.area]);
+    for (const id of subAreaIds) { const s = subAreaById.get(id); if (s) set.add(s.area); }
+    return [...set];
+  }, [form.area, subAreaIds, subAreaById]);
+
   // Mapa puesto→reportaAId para validar ciclos.
   const reportaDe = useMemo(() => {
     const m = new Map<string, string | null>();
@@ -166,43 +206,36 @@ export default function PuestosOperativosPage() {
     [puestos, editing],
   );
 
-  function resetExtras() {
-    setEstandares([]); setEstMinimos([]); setCoordina([]); setJornada([]);
-    setPrestacionesSel([]); setValores([]); setAptitudes([]); setConocimientos([]);
-    setKpis([kpiFijo()]); setOcupantesIds([]);
-    setOnbModulos([]); setOnbCapacitaciones([]); setCapAsignaciones([]);
-  }
+  // Módulos ofrecidos en el onboarding: solo los del área (y los de las áreas de
+  // las sub-áreas prestadas). Sin esto el editor mostraba los ~60 del sistema.
+  const modulosPermitidos = useMemo(() => {
+    const set = new Set(areasDelPuesto.flatMap(a => AREA_MODULE_PRESETS[a] ?? []));
+    return MODULOS_POR_SECCION
+      .map(sec => ({ seccion: sec.seccion, items: sec.items.filter(i => set.has(i.key)) }))
+      .filter(sec => sec.items.length > 0);
+  }, [areasDelPuesto]);
 
-  // Nivel actual de una asignación (área completa = subArea null) o undefined si no está.
-  function nivelDe(categoriaId: string, subArea: string | null): NivelCapacitacion | undefined {
-    return capAsignaciones.find(a => a.categoriaId === categoriaId && (a.subArea ?? null) === subArea)?.nivel;
-  }
-  // Fija/limpia el nivel de una asignación. Pasar undefined la elimina.
-  function fijarNivel(categoriaId: string, subArea: string | null, nivel: NivelCapacitacion | undefined) {
-    setCapAsignaciones(prev => {
-      const resto = prev.filter(a => !(a.categoriaId === categoriaId && (a.subArea ?? null) === subArea));
-      return nivel ? [...resto, { categoriaId, subArea, nivel }] : resto;
-    });
-  }
-  // Alterna: si ya está en ese nivel lo quita; si no, lo pone en ese nivel.
-  function alternarNivel(categoriaId: string, subArea: string | null, nivel: NivelCapacitacion) {
-    fijarNivel(categoriaId, subArea, nivelDe(categoriaId, subArea) === nivel ? undefined : nivel);
-  }
-  // "Sugerir según el puesto": deriva del área + sub-área del puesto y fusiona
-  // con lo existente (OBLIGATORIO gana). No pisa ajustes manuales previos.
-  function sugerirCapacitacion() {
-    const subNombre = subareasPorArea[form.area]?.find(s => s.id === form.subAreaId)?.nombre ?? null;
-    const derivadas = derivarAsignacionesDefault(form.area, subNombre, categoriasCap);
-    if (!derivadas.length) return;
-    setCapAsignaciones(prev => {
-      const merged = [...prev];
-      for (const d of derivadas) {
-        const i = merged.findIndex(a => a.categoriaId === d.categoriaId && (a.subArea ?? null) === (d.subArea ?? null));
-        if (i >= 0) merged[i] = { ...merged[i], nivel: nivelMax(merged[i].nivel, d.nivel) };
-        else merged.push(d);
-      }
-      return merged;
-    });
+  // Capacitación obligatoria: el área completa de cada área que toca el puesto,
+  // para que quien lo ocupe entienda la operación entera y no solo su rincón.
+  const capObligatoria = useMemo(
+    () => areasDelPuesto.flatMap(a => derivarAsignacionesDefault(a, null, categoriasCap)),
+    [areasDelPuesto, categoriasCap],
+  );
+  const capExtra = useMemo(
+    () => capAsignaciones.filter(a => !capObligatoria.some(o => o.categoriaId === a.categoriaId && (o.subArea ?? null) === (a.subArea ?? null))),
+    [capAsignaciones, capObligatoria],
+  );
+
+  function resetExtras() {
+    setSubAreaIds([]); setEstandares([]); setReportes(REPORTES_BASE.map(r => ({ ...r })));
+    setCoordina([]); setJornada([]);
+    setPrestacionesSel([]);
+    // Los valores rigen a toda la empresa; lo que se captura por puesto es cómo se ven aquí.
+    setValores(VALORES_DEFAULT.map(v => ({ nombre: v.nombre, comoSeVe: "" })));
+    setAptitudes([]); setConocimientos([]);
+    setKpis([kpiFijo()]); setOcupantesIds([]);
+    setOnbModulos([]); setCapAsignaciones([]);
+    setOrigen({}); setIaSnapshot({});
   }
 
   function openNew() {
@@ -222,18 +255,17 @@ export default function PuestosOperativosPage() {
     } catch { /* usa el de la lista */ }
     setEditing(full);
     setForm({
-      nombre: full.nombre, area: normArea(full.area), subAreaId: full.subAreaId ?? "", color: full.color ?? "",
-      descripcionPuesto: full.descripcionPuesto ?? "", objetivoPuesto: full.objetivoPuesto ?? "", misionPuesto: full.misionPuesto ?? "",
+      nombre: full.nombre, area: normArea(full.area),
+      misionPuesto: full.misionPuesto ?? "",
       responsabilidades: parseArr(full.responsabilidades).join("\n"),
       reportaAId: full.reportaAId ?? "",
-      funciones: parseArr(full.funciones).join("\n"),
       tipoContrato: full.tipoContrato ?? "", modalidad: full.modalidad ?? "", prestacionesOtro: full.prestacionesOtro ?? "",
     });
-    setEstandares(parseEst(full.estandares));
-    setEstMinimos(jparse<EstandarMinimo[]>(full.estandaresMinimos, []));
-    // coordinaConData nuevo; si no existe, migra del legado coordinaCon (nombres) sin puestoId.
-    const cc = jparse<CoordinaConItem[]>(full.coordinaConData, []);
-    setCoordina(cc);
+    setSubAreaIds((full.subAreas ?? []).map(s => s.subAreaId));
+    setEstandares(jparse<CriterioCalidad[]>(full.estandares, []));
+    const reps = jparse<ReportePuesto[]>(full.reportes, []);
+    setReportes(reps.length ? reps : REPORTES_BASE.map(r => ({ ...r })));
+    setCoordina(jparse<CoordinaConItem[]>(full.coordinaConData, []));
     setJornada(jparse<JornadaDia[]>(full.jornada, []));
     setPrestacionesSel(parseArr(full.prestaciones));
     setValores(jparse<ValorPerfil[]>(full.valores, []));
@@ -244,8 +276,9 @@ export default function PuestosOperativosPage() {
     setKpis(ks.some(k => k.esFijoPlan) ? ks : [kpiFijo(), ...ks]);
     setOcupantesIds((full.ocupantes ?? []).map(o => o.id));
     setOnbModulos(parseIdList(full.onboardingModulos));
-    setOnbCapacitaciones(parseIdList(full.onboardingCapacitaciones));
-    setCapAsignaciones(asignacionesEfectivas(full.capacitacionAsignaciones, full.onboardingCapacitaciones));
+    setCapAsignaciones(asignacionesEfectivas(full.capacitacionAsignaciones, null));
+    setOrigen(jparse<OrigenIA>(full.origenIA, {}));
+    setIaSnapshot({});
     setShowForm(true);
   }
 
@@ -261,19 +294,99 @@ export default function PuestosOperativosPage() {
     } catch { /* silencioso */ }
   }
 
+  // Borrador con IA. "completo" reescribe todo; "refresh" solo los bloques que
+  // siguen siendo 100% IA y respeta lo que se escribió o corrigió a mano.
+  async function generar(modo: "completo" | "refresh") {
+    if (!editing) { setSaveError("Guarda el puesto antes de generar con IA."); return; }
+    if (modo === "completo" && !confirm("Se reemplazará el contenido actual de misión, responsabilidades, criterios, resultados, reportes y perfil. ¿Continuar?")) return;
+    setGenerando(modo);
+    setSaveError("");
+    try {
+      const r = await fetch(`/api/rrhh/puestos-operativos/${editing.id}/generar`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ modo, subAreaIds }),
+      });
+      const d = await r.json();
+      if (!r.ok) { setSaveError(d.error ?? "No se pudo generar"); return; }
+      if (!d.borrador) { toast.success(d.mensaje ?? "Nada que refrescar"); return; }
+      const b = d.borrador as Record<string, unknown>;
+      const snap: Partial<Record<BloqueIA, string>> = {};
+      if (b.misionPuesto !== undefined) {
+        setForm(p => ({ ...p, misionPuesto: String(b.misionPuesto) }));
+        snap.misionPuesto = String(b.misionPuesto);
+      }
+      if (b.responsabilidades !== undefined) {
+        const txt = (b.responsabilidades as string[]).join("\n");
+        setForm(p => ({ ...p, responsabilidades: txt }));
+        snap.responsabilidades = txt;
+      }
+      if (b.estandares !== undefined) {
+        setEstandares(b.estandares as CriterioCalidad[]);
+        snap.estandares = JSON.stringify(b.estandares);
+      }
+      if (b.reportes !== undefined) {
+        setReportes(b.reportes as ReportePuesto[]);
+        snap.reportes = JSON.stringify(b.reportes);
+      }
+      if (b.kpis !== undefined) {
+        const nuevos = [kpiFijo(), ...(b.kpis as KpiPuesto[])].slice(0, 5);
+        setKpis(nuevos);
+        snap.kpis = JSON.stringify(nuevos);
+      }
+      if (b.perfil !== undefined) {
+        const perf = b.perfil as { aptitudes: AptitudPerfil[]; conocimientos: ConocimientoPerfil[] };
+        setAptitudes(perf.aptitudes);
+        setConocimientos(perf.conocimientos);
+        snap.perfil = JSON.stringify(perf);
+      }
+      setIaSnapshot(s => ({ ...s, ...snap }));
+      setOrigen(o => {
+        const out = { ...o, generadoEn: new Date().toISOString() };
+        for (const k of d.regenerar as BloqueIA[]) out[k] = "IA";
+        return out;
+      });
+      const ins = d.insumo as { subAreas: number; plantillas: number; tareasTitular: number };
+      toast.success(`Borrador listo · ${ins.subAreas} sub-área(s), ${ins.plantillas} plantilla(s), ${ins.tareasTitular} tarea(s)`);
+    } catch {
+      setSaveError("Error de conexión al generar");
+    } finally {
+      setGenerando(null);
+    }
+  }
+
   function validar(): string | null {
     if (!form.nombre) return "El nombre del puesto es requerido";
     if (form.reportaAId && editing && generaCiclo(editing.id, form.reportaAId, reportaDe)) {
       return "La relación de reporte genera un ciclo (A reporta a B y B a A).";
     }
     const kpisValidos = kpis.filter(k => k.esFijoPlan || k.nombre.trim());
-    if (kpisValidos.length < 3) return "Define al menos 3 KPIs del puesto (incluyendo Cumplimiento del plan).";
-    if (kpisValidos.length > 5) return "Máximo 5 KPIs por puesto.";
+    if (kpisValidos.length < 3) return "Define al menos 3 resultados clave (incluyendo Cumplimiento del plan).";
+    if (kpisValidos.length > 5) return "Máximo 5 resultados clave por puesto.";
     for (const k of kpis) {
       if (!k.esFijoPlan && k.nombre.trim() && !k.resultadoEsperado.trim())
-        return `El KPI "${k.nombre}" necesita el resultado esperado del puesto.`;
+        return `El resultado "${k.nombre}" necesita el resultado esperado del puesto.`;
     }
     return null;
+  }
+
+  // Compara cada bloque contra lo que devolvió la IA: lo que ya no coincide
+  // se degrada a IA_EDITADO para que el refresh no lo vuelva a pisar.
+  function origenFinal(): OrigenIA {
+    const actual: Record<BloqueIA, string> = {
+      misionPuesto: form.misionPuesto,
+      responsabilidades: form.responsabilidades,
+      estandares: JSON.stringify(estandares),
+      reportes: JSON.stringify(reportes),
+      kpis: JSON.stringify(kpis),
+      perfil: JSON.stringify({ aptitudes, conocimientos }),
+    };
+    const out: OrigenIA = { ...origen };
+    for (const b of Object.keys(actual) as BloqueIA[]) {
+      if (out[b] !== "IA") continue;
+      const snap = iaSnapshot[b];
+      if (snap !== undefined && snap !== actual[b]) out[b] = "IA_EDITADO";
+    }
+    return out;
   }
 
   async function save() {
@@ -286,33 +399,35 @@ export default function PuestosOperativosPage() {
         ...prestacionesSel,
         ...(form.prestacionesOtro.trim() ? [form.prestacionesOtro.trim()] : []),
       ];
+      // La capacitación obligatoria del área se guarda siempre; lo extra se suma encima.
+      const capFinal: CapAsignacion[] = [...capObligatoria];
+      for (const e of capExtra) {
+        const i = capFinal.findIndex(a => a.categoriaId === e.categoriaId && (a.subArea ?? null) === (e.subArea ?? null));
+        if (i >= 0) capFinal[i] = { ...capFinal[i], nivel: nivelMax(capFinal[i].nivel, e.nivel) };
+        else capFinal.push(e);
+      }
       const body = {
-        nombre: form.nombre, area: form.area, subAreaId: form.subAreaId || null, color: form.color || null,
-        objetivoArea: objetivoPorArea[form.area] || null,
-        descripcionPuesto: form.descripcionPuesto || null,
-        objetivoPuesto: form.objetivoPuesto || null,
+        nombre: form.nombre, area: form.area,
+        subAreaIds,
         misionPuesto: form.misionPuesto || null,
         responsabilidades: toArr(form.responsabilidades),
         reportaAId: form.reportaAId || null,
-        coordinaCon: coordina.map(c => puestos.find(p => p.id === c.puestoId)?.nombre).filter(Boolean),
         coordinaConData: coordina.filter(c => c.puestoId),
         estandares: estandares.filter(e => e.subarea || e.responsabilidad || e.estandar),
-        estandaresMinimos: estMinimos.filter(e => e.enunciado.trim()),
+        reportes: reportes.filter(r => r.nombre.trim()),
         valores: valores.filter(v => v.nombre),
         aptitudes: aptitudes.filter(a => a.nombre.trim()),
         conocimientos: conocimientos.filter(c => c.nombre.trim()),
-        funciones: toArr(form.funciones),
         prestaciones: prestacionesFinal,
         prestacionesOtro: form.prestacionesOtro || null,
         tipoContrato: form.tipoContrato || null,
         modalidad: form.modalidad || null,
-        horario: jornada.length ? jornadaToString(jornada) : null,
         jornada: jornada,
         kpis: kpis.filter(k => k.esFijoPlan || k.nombre.trim()),
         ocupantesIds,
         onboardingModulos: onbModulos,
-        onboardingCapacitaciones: onbCapacitaciones,
-        capacitacionAsignaciones: capAsignaciones,
+        capacitacionAsignaciones: capFinal,
+        origenIA: origenFinal(),
       };
       const url = editing ? `/api/rrhh/puestos-operativos/${editing.id}` : "/api/rrhh/puestos-operativos";
       const method = editing ? "PATCH" : "POST";
@@ -384,12 +499,9 @@ export default function PuestosOperativosPage() {
   const totalAsignados = visible.filter(p => (p.ocupantes?.length ?? 0) > 0).length;
   const totalVacantes = visible.length - totalAsignados;
 
-  // Aviso suave de duplicación (§1)
-  const dupWarn = (textosMuySimilares(form.descripcionPuesto, form.objetivoPuesto) ||
-    textosMuySimilares(form.objetivoPuesto, form.misionPuesto) ||
-    textosMuySimilares(form.descripcionPuesto, form.misionPuesto));
   const horasSem = horasSemanales(jornada);
   const esHibrido = form.modalidad === "Híbrido";
+  const colorPuesto = areaColor(form.area);
 
   // Opciones de "Coordina con": excluye el propio, el superior y los subordinados.
   const excluidosCoordina = new Set<string>([
@@ -401,42 +513,81 @@ export default function PuestosOperativosPage() {
 
   function Detalle({ p }: { p: Puesto }) {
     const resp = parseArr(p.responsabilidades);
-    const est = parseEst(p.estandares);
-    const min = jparse<EstandarMinimo[]>(p.estandaresMinimos, []);
+    const crit = jparse<CriterioCalidad[]>(p.estandares, []);
+    const reps = jparse<ReportePuesto[]>(p.reportes, []);
+    const org = jparse<OrigenIA>(p.origenIA, {});
+    const { hechos, total, faltan } = completitud(p);
+    const jor = jparse<JornadaDia[]>(p.jornada, []);
     return (
       <div className="mt-4 space-y-3 border-t border-[#1a1a1a] pt-4" onClick={e => e.stopPropagation()}>
-        {p.subArea && (<div><p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Subárea</p><p className="text-xs text-[#B3985B]">{p.subArea.nombre}</p></div>)}
-        {p.descripcionPuesto && (<div><p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Descripción del puesto</p><p className="text-xs text-gray-300">{p.descripcionPuesto}</p></div>)}
-        {p.objetivoPuesto && (<div><p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Objetivo del puesto</p><p className="text-xs text-gray-300">{p.objetivoPuesto}</p></div>)}
-        {p.misionPuesto && (<div><p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Misión del puesto</p><p className="text-xs text-gray-300">{p.misionPuesto}</p></div>)}
+        <div>
+          <div className="flex items-center justify-between text-[10px] text-gray-600 uppercase tracking-wider mb-1">
+            <span>Registro del puesto</span><span>{hechos}/{total}</span>
+          </div>
+          <div className="h-1 rounded-full bg-[#1a1a1a] overflow-hidden">
+            <div className="h-full rounded-full transition-all" style={{ width: `${(hechos / total) * 100}%`, background: areaColor(normArea(p.area)) }} />
+          </div>
+          {faltan.length > 0 && <p className="text-[11px] text-gray-600 mt-1">Falta: {faltan.join(", ")}</p>}
+        </div>
+        {(p.subAreas?.length ?? 0) > 0 && (
+          <div>
+            <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Sub-áreas</p>
+            <div className="flex flex-wrap gap-1.5">
+              {p.subAreas!.map(s => (
+                <span key={s.subAreaId} className="text-[11px] px-2 py-0.5 rounded-full border"
+                  style={{ color: areaColor(normArea(p.area)), borderColor: `${areaColor(normArea(p.area))}55` }}>
+                  {s.subArea.nombre}{s.principal ? " · principal" : ""}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+        {p.misionPuesto && (
+          <div>
+            <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1 flex items-center gap-1.5">Misión del puesto <SelloIA origen={org} bloque="misionPuesto" /></p>
+            <p className="text-xs text-gray-300">{p.misionPuesto}</p>
+          </div>
+        )}
         {resp.length > 0 && (
           <div>
-            <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Responsabilidades permanentes</p>
+            <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1 flex items-center gap-1.5">Responsabilidades permanentes <SelloIA origen={org} bloque="responsabilidades" /></p>
             <ul className="list-disc list-inside space-y-0.5">{resp.map((r, i) => <li key={i} className="text-xs text-gray-300">{r}</li>)}</ul>
           </div>
         )}
-        {min.length > 0 && (
+        {(p.kpis?.length ?? 0) > 0 && (
           <div>
-            <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Estándares mínimos (no negociables)</p>
-            <ul className="space-y-0.5">{min.map((m, i) => <li key={i} className="text-xs text-gray-300">• {m.enunciado} <span className="text-gray-600">({m.frecuencia})</span></li>)}</ul>
+            <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1 flex items-center gap-1.5">Resultados clave <SelloIA origen={org} bloque="kpis" /></p>
+            <div className="space-y-1">{p.kpis!.map((k, i) => (
+              <div key={i} className="text-xs text-gray-300 bg-[#0d0d0d] rounded px-2 py-1 flex items-center justify-between gap-2">
+                <span className="truncate">{k.nombre}</span>
+                <span className="text-[#B3985B] shrink-0">{k.meta}{k.unidad === "%" ? "" : ` ${k.unidad}`}</span>
+              </div>))}
+            </div>
           </div>
         )}
-        {est.length > 0 && (
+        {crit.length > 0 && (
           <div>
-            <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Criterios de calidad</p>
-            <div className="space-y-1">{est.map((e, i) => (
+            <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1 flex items-center gap-1.5">Criterios de calidad <SelloIA origen={org} bloque="estandares" /></p>
+            <div className="space-y-1">{crit.map((e, i) => (
               <div key={i} className="text-xs text-gray-300 bg-[#0d0d0d] rounded px-2 py-1">
+                {e.noNegociable && <span className="text-red-400 mr-1" title="No negociable">●</span>}
                 {e.subarea && <span className="text-[#B3985B]">{e.subarea}: </span>}
                 {e.responsabilidad} {e.estandar && <span className="text-gray-500">→ {e.estandar}</span>}
               </div>))}
             </div>
           </div>
         )}
-        {(p.tipoContrato || p.modalidad || p.horario) && (
+        {reps.length > 0 && (
+          <div>
+            <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1 flex items-center gap-1.5">Reportes a {p.reportaA?.nombre ?? "su jefe"} <SelloIA origen={org} bloque="reportes" /></p>
+            <ul className="space-y-0.5">{reps.map((r, i) => <li key={i} className="text-xs text-gray-300">• {r.nombre} <span className="text-gray-600">({r.frecuencia}{r.formato ? ` · ${r.formato}` : ""})</span></li>)}</ul>
+          </div>
+        )}
+        {(p.tipoContrato || p.modalidad || jor.length > 0) && (
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
             {p.tipoContrato && <span>Contrato: <span className="text-gray-300">{p.tipoContrato}</span></span>}
             {p.modalidad && <span>Modalidad: <span className="text-gray-300">{p.modalidad}</span></span>}
-            {p.horario && <span>Jornada: <span className="text-gray-300">{p.horario}</span></span>}
+            {jor.length > 0 && <span>Jornada: <span className="text-gray-300">{jornadaToString(jor)}</span></span>}
           </div>
         )}
         <div>
@@ -474,14 +625,16 @@ export default function PuestosOperativosPage() {
   function Fila({ p }: { p: Puesto }) {
     const asignado = (p.ocupantes?.length ?? 0) > 0;
     const isOpen = selected?.id === p.id;
+    const { hechos, total } = completitud(p);
     return (
       <div className="border-b border-[#161616] last:border-0">
         <div className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-[#0f0f0f] transition-colors" onClick={() => setSelected(isOpen ? null : p)}>
-          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: p.color || areaColor(normArea(p.area)) }} />
+          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: areaColor(normArea(p.area)) }} />
           <div className="flex-1 min-w-0">
             <p className="text-white text-sm font-medium truncate">{p.nombre}</p>
             {p.reportaA && <p className="text-[11px] text-gray-600 truncate">Reporta a: {p.reportaA.nombre}</p>}
           </div>
+          <span className={`text-[11px] shrink-0 ${hechos === total ? "text-green-400" : "text-gray-600"}`}>{hechos}/{total}</span>
           {asignado ? (
             <span className="flex items-center gap-1 text-[11px] text-green-400 bg-green-900/20 border border-green-500/20 px-2 py-0.5 rounded-full shrink-0">
               <UserCheck className="w-3 h-3" />{p.ocupantes!.length === 1 ? p.ocupantes![0].nombre : `${p.ocupantes!.length} titulares`}
@@ -502,7 +655,7 @@ export default function PuestosOperativosPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="ms-h1">Puestos</h1>
-          <p className="ms-subtitle">Fuente única de verdad: descripción, estándares, KPIs, perfil y titular por puesto</p>
+          <p className="ms-subtitle">Fuente única de verdad: misión, responsabilidades, resultados clave, perfil y titular por puesto</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex rounded-lg border border-[#222] overflow-hidden">
@@ -551,7 +704,7 @@ export default function PuestosOperativosPage() {
                       <div key={p.id} className="ms-stat-card hover:border-[#2a2a2a] cursor-pointer transition-all" onClick={() => setSelected(p === selected ? null : p)}>
                         <div className="flex items-start justify-between gap-2 mb-2">
                           <p className="text-white font-semibold flex items-center gap-2 min-w-0">
-                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: p.color || areaColor(normArea(p.area)) }} />
+                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: areaColor(normArea(p.area)) }} />
                             <span className="truncate">{p.nombre}</span>
                           </p>
                         </div>
@@ -575,15 +728,35 @@ export default function PuestosOperativosPage() {
       {showForm && (
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 overflow-auto">
           <div className="ms-card w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-[#111] border-b border-[#222] px-6 py-4 flex items-center justify-between z-10">
-              <h2 className="text-white font-semibold">{editing ? "Editar puesto" : "Nuevo puesto"}{editing?.version ? <span className="text-gray-600 text-xs font-normal ml-2">v{editing.version}</span> : null}</h2>
-              <button onClick={() => setShowForm(false)} className="text-gray-500 hover:text-white text-xl">×</button>
+            <div className="sticky top-0 bg-[#111] border-b border-[#222] px-6 py-4 flex items-center justify-between gap-3 z-10">
+              <h2 className="text-white font-semibold flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full" style={{ background: colorPuesto }} />
+                {editing ? "Editar puesto" : "Nuevo puesto"}
+                {editing?.version ? <span className="text-gray-600 text-xs font-normal">v{editing.version}</span> : null}
+              </h2>
+              <div className="flex items-center gap-2">
+                {editing && (
+                  <>
+                    <button onClick={() => generar("refresh")} disabled={!!generando}
+                      title="Vuelve a escribir solo lo que generó la IA y no has tocado"
+                      className="flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-lg border border-[#222] text-gray-400 hover:text-white hover:border-[#333] transition-colors disabled:opacity-50">
+                      <RefreshCw className={`w-3 h-3 ${generando === "refresh" ? "animate-spin" : ""}`} /> Refrescar
+                    </button>
+                    <button onClick={() => generar("completo")} disabled={!!generando}
+                      title="Genera todo el contenido desde el área, las sub-áreas y el plan de trabajo"
+                      className="flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-lg border border-violet-500/40 text-violet-300 hover:bg-violet-500/10 transition-colors disabled:opacity-50">
+                      <Sparkles className="w-3 h-3" /> {generando === "completo" ? "Generando…" : "Generar con IA"}
+                    </button>
+                  </>
+                )}
+                <button onClick={() => setShowForm(false)} className="text-gray-500 hover:text-white text-xl leading-none">×</button>
+              </div>
             </div>
 
             <div className="p-6 space-y-6">
-              {/* §1 Identificación */}
+              {/* 1 — Identidad y lugar en la organización */}
               <div>
-                <p className={sectionCls}>Identificación</p>
+                <p className={sectionCls}>Identidad</p>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2 md:col-span-1">
                     <label className={labelCls}>Nombre del puesto *</label>
@@ -591,58 +764,41 @@ export default function PuestosOperativosPage() {
                   </div>
                   <div>
                     <label className={labelCls}>Área *</label>
-                    <Combobox value={form.area} onChange={v => setForm(p => ({ ...p, area: v, subAreaId: "" }))} options={AREAS.map(a => ({ value: a, label: areaLabel(a) }))} className={inputCls} />
+                    <Combobox value={form.area} onChange={v => setForm(p => ({ ...p, area: v }))} options={AREAS.map(a => ({ value: a, label: areaLabel(a) }))} className={inputCls} />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4 mt-3">
-                  <div>
-                    <label className={labelCls}>Subárea</label>
-                    <Combobox value={form.subAreaId} onChange={v => setForm(p => ({ ...p, subAreaId: v }))}
-                      options={[{ value: "", label: "— Sin subárea —" }, ...(subareasPorArea[form.area] ?? []).map(s => ({ value: s.id, label: s.nombre }))]} className={inputCls} />
-                  </div>
-                  <div>
-                    <label className={labelCls}>Color (para organigrama)</label>
-                    <input {...f("color")} type="text" className={inputCls} placeholder="#B3985B" />
-                  </div>
-                </div>
-                <div className="mt-3">
-                  <label className={labelCls}>Objetivo del área (solo lectura, del maestro de Áreas)</label>
-                  <div className="w-full bg-[#0a0a0a] border border-[#1a1a1a] text-gray-400 text-sm rounded-lg px-3 py-2 min-h-[38px]">
-                    {objetivoPorArea[form.area] || <span className="text-gray-700">Define el objetivo en Organización → Áreas.</span>}
-                  </div>
-                </div>
-                <div className="mt-3">
-                  <label className={labelCls}>Descripción del puesto (qué hace en el día a día)</label>
-                  <textarea {...f("descripcionPuesto")} rows={3} className={`${inputCls} resize-none`} placeholder="En lenguaje operativo y concreto: lo que lee un candidato para saber en qué consiste el trabajo." />
-                </div>
-                <div className="mt-3">
-                  <label className={labelCls}>Objetivo del puesto (el resultado único por el que existe)</label>
-                  <textarea {...f("objetivoPuesto")} rows={2} className={`${inputCls} resize-none`} placeholder="Un resultado, no una actividad. Ej: Cada evento se entrega montado y operando a tiempo." />
-                </div>
-                <div className="mt-3">
-                  <label className={labelCls}>Misión del puesto (su contribución a la operación)</label>
-                  <textarea {...f("misionPuesto")} rows={2} className={`${inputCls} resize-none`} placeholder="Para qué existe este puesto dentro de la organización" />
-                </div>
-                {dupWarn && (
-                  <p className="mt-2 text-[11px] text-orange-400/90 flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5" /> Descripción, objetivo y misión se parecen mucho. Diferéncialos: la descripción es el día a día, el objetivo es el resultado, la misión es la contribución.</p>
-                )}
-              </div>
 
-              {/* §4.2 Responsabilidades */}
-              <div>
-                <p className={sectionCls}>Responsabilidades permanentes (una por línea)</p>
-                <textarea {...f("responsabilidades")} rows={5} className={`${inputCls} resize-none font-mono text-xs`}
-                  placeholder={"Lo que SIEMPRE es responsable, sin importar el plan de trabajo\nEj:\nEntregar cada evento montado a tiempo"} />
-              </div>
+                <div className="mt-3">
+                  <label className={labelCls}>Sub-áreas que abarca (la primera es la principal)</label>
+                  <div className="flex flex-wrap gap-1.5 mb-2 min-h-[26px]">
+                    {subAreaIds.length === 0 && <span className="text-gray-700 text-xs">Sin sub-áreas. Elige al menos una: de ahí salen las responsabilidades y un resultado clave por sub-área.</span>}
+                    {subAreaIds.map((id, i) => {
+                      const s = subAreaById.get(id);
+                      const col = areaColor(s?.area ?? form.area);
+                      return (
+                        <span key={id} className="text-[11px] px-2 py-0.5 rounded-full border flex items-center gap-1"
+                          style={{ color: col, borderColor: `${col}55`, background: `${col}14` }}>
+                          {s?.nombre ?? "(sub-área eliminada)"}
+                          {i === 0 && <span className="opacity-60">· principal</span>}
+                          {s && s.area !== form.area && <span className="opacity-60">· {areaLabel(s.area)}</span>}
+                          <button onClick={() => setSubAreaIds(a => a.filter(x => x !== id))} className="opacity-60 hover:opacity-100"><X className="w-3 h-3" /></button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                  <Combobox value="" onChange={v => { if (v && !subAreaIds.includes(v)) setSubAreaIds(a => [...a, v]); }}
+                    options={[
+                      { value: "", label: "+ Agregar sub-área…" },
+                      ...subAreaOpts.filter(s => !subAreaIds.includes(s.id))
+                        .map(s => ({ value: s.id, label: s.area === form.area ? s.nombre : `${s.nombre} — ${areaLabel(s.area)}` })),
+                    ]} className={inputCls} />
+                </div>
 
-              {/* §2 Relaciones de trabajo */}
-              <div>
-                <p className={sectionCls}>Relaciones de trabajo</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
                   <div>
-                    <label className={labelCls}>Reporta a (puesto)</label>
+                    <label className={labelCls}>Reporta a (define el organigrama)</label>
                     <Combobox value={form.reportaAId} onChange={v => setForm(p => ({ ...p, reportaAId: v }))}
-                      options={[{ value: "", label: "— Ninguno —" }, ...puestos.filter(x => x.id !== editing?.id).map(x => ({ value: x.id, label: x.nombre }))]} className={inputCls} />
+                      options={[{ value: "", label: "— Ninguno (nivel más alto) —" }, ...puestos.filter(x => x.id !== editing?.id).map(x => ({ value: x.id, label: x.nombre }))]} className={inputCls} />
                   </div>
                   <div>
                     <label className={labelCls}>Supervisa a (derivado)</label>
@@ -650,18 +806,25 @@ export default function PuestosOperativosPage() {
                       {supervisaDerivado.length === 0 ? <span className="text-gray-700 text-xs">Ningún puesto reporta a este.</span> :
                         supervisaDerivado.map(s => <span key={s.id} className="text-[11px] bg-[#1a1a1a] text-gray-300 px-2 py-0.5 rounded-full">{s.nombre}</span>)}
                     </div>
-                    <p className="text-[10px] text-gray-600 mt-1">Se actualiza automáticamente desde el campo <em>Reporta a</em> de cada puesto.</p>
                   </div>
                 </div>
+
+                <div className="mt-3">
+                  <label className={labelCls}>Objetivo del área (del maestro de Áreas)</label>
+                  <div className="w-full bg-[#0a0a0a] border border-[#1a1a1a] text-gray-400 text-sm rounded-lg px-3 py-2 min-h-[38px]">
+                    {objetivoPorArea[form.area] || <span className="text-gray-700">Define el objetivo en Organización → Áreas.</span>}
+                  </div>
+                </div>
+
                 <div className="mt-3">
                   <div className="flex items-center justify-between mb-1">
-                    <label className={labelCls}>Coordina con</label>
+                    <label className={`${labelCls} !mb-0`}>Coordina con</label>
                     <Combobox value="" onChange={v => { if (v && !coordina.some(c => c.puestoId === v)) setCoordina(c => [...c, { puestoId: v, nota: "" }]); }}
                       options={[{ value: "", label: "+ Agregar puesto…" }, ...opcionesCoordina.filter(p => !coordina.some(c => c.puestoId === p.id)).map(p => ({ value: p.id, label: p.nombre }))]}
                       className="text-xs bg-[#0d0d0d] border border-[#222] rounded px-2 py-1" />
                   </div>
                   <div className="space-y-2">
-                    {coordina.length === 0 && <p className="text-gray-700 text-xs">Sin coordinaciones. Agrega los puestos con los que este colabora.</p>}
+                    {coordina.length === 0 && <p className="text-gray-700 text-xs">Sin coordinaciones.</p>}
                     {coordina.map((c, i) => {
                       const nombre = puestos.find(p => p.id === c.puestoId)?.nombre ?? "(puesto eliminado)";
                       return (
@@ -677,61 +840,23 @@ export default function PuestosOperativosPage() {
                 </div>
               </div>
 
-              {/* §6 Estándares mínimos (no negociables) */}
+              {/* 2 — Misión */}
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <p className={sectionCls + " mb-0"}>Estándares mínimos (no negociables)</p>
-                  <button onClick={() => setEstMinimos(e => [...e, { enunciado: "", frecuencia: "semanal", evidencia: "", verificaPuestoId: "" }])} className="text-xs text-gray-500 hover:text-[#B3985B] flex items-center gap-1"><Plus className="w-3 h-3" /> Agregar</button>
-                </div>
-                <p className="text-[11px] text-gray-600 mb-2">Entre 3 y 8. Cada uno una sola afirmación verificable en sí/no. Ej: “Entrega el reporte de cierre antes del martes 12:00.”</p>
-                <div className="space-y-2">
-                  {estMinimos.map((m, i) => {
-                    const adv = adverbioVago(m.enunciado);
-                    return (
-                      <div key={i} className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg p-2 space-y-2">
-                        <div className="flex items-start gap-2">
-                          <input value={m.enunciado} onChange={e => setEstMinimos(arr => arr.map((x, ix) => ix === i ? { ...x, enunciado: e.target.value } : x))}
-                            className={`${inputCls} flex-1`} placeholder="Afirmación verificable sí/no (sin conjunciones)" />
-                          <button onClick={() => setEstMinimos(arr => arr.filter((_, ix) => ix !== i))} className="text-gray-600 hover:text-red-400 pt-2"><X className="w-4 h-4" /></button>
-                        </div>
-                        {adv && <p className="text-[11px] text-orange-400/90 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Evita “{adv}”: reescríbelo como algo verificable en sí/no.</p>}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                          <select value={m.frecuencia} onChange={e => setEstMinimos(arr => arr.map((x, ix) => ix === i ? { ...x, frecuencia: e.target.value as EstandarMinimo["frecuencia"] } : x))} className={inputCls}>
-                            {FRECUENCIAS_ESTANDAR.map(fr => <option key={fr.value} value={fr.value}>{fr.label}</option>)}
-                          </select>
-                          <input value={m.evidencia} onChange={e => setEstMinimos(arr => arr.map((x, ix) => ix === i ? { ...x, evidencia: e.target.value } : x))} className={inputCls} placeholder="Evidencia esperada (foto, reporte…)" />
-                          <Combobox value={m.verificaPuestoId ?? ""} onChange={v => setEstMinimos(arr => arr.map((x, ix) => ix === i ? { ...x, verificaPuestoId: v } : x))}
-                            options={[{ value: "", label: "Verifica: —" }, ...puestos.map(p => ({ value: p.id, label: p.nombre }))]} className={inputCls} />
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {estMinimos.length === 0 && <p className="text-gray-700 text-xs">Sin estándares mínimos. Define el piso no negociable.</p>}
-                </div>
+                <p className={`${sectionCls} flex items-center gap-2`}>Misión del puesto <SelloIA origen={origen} bloque="misionPuesto" /></p>
+                <textarea {...f("misionPuesto")} rows={2} className={`${inputCls} resize-none`} placeholder="Para qué existe este puesto: su contribución concreta a la operación." />
               </div>
 
-              {/* §6 Criterios de calidad (narrativos, antes "Estándares") */}
+              {/* 3 — Responsabilidades */}
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <p className={sectionCls + " mb-0"}>Criterios de calidad (cómo se ve bien hecho)</p>
-                  <button onClick={() => setEstandares(e => [...e, { subarea:"", responsabilidad:"", estandar:"" }])} className="text-xs text-gray-500 hover:text-[#B3985B]">+ Agregar</button>
-                </div>
-                <div className="space-y-2">
-                  {estandares.map((e, i) => (
-                    <div key={i} className="grid grid-cols-12 gap-2 items-start">
-                      <input value={e.subarea} onChange={ev => setEstandares(arr => arr.map((x,ix)=>ix===i?{...x,subarea:ev.target.value}:x))} className={`${inputCls} col-span-3`} placeholder="Subárea" />
-                      <input value={e.responsabilidad} onChange={ev => setEstandares(arr => arr.map((x,ix)=>ix===i?{...x,responsabilidad:ev.target.value}:x))} className={`${inputCls} col-span-4`} placeholder="Responsabilidad" />
-                      <input value={e.estandar} onChange={ev => setEstandares(arr => arr.map((x,ix)=>ix===i?{...x,estandar:ev.target.value}:x))} className={`${inputCls} col-span-4`} placeholder="Estándar narrativo" />
-                      <button onClick={() => setEstandares(arr => arr.filter((_,ix)=>ix!==i))} className="col-span-1 text-gray-600 hover:text-red-400 text-lg leading-none pt-1">×</button>
-                    </div>
-                  ))}
-                  {estandares.length === 0 && <p className="text-gray-700 text-xs">Sin criterios de calidad.</p>}
-                </div>
+                <p className={`${sectionCls} flex items-center gap-2`}>Responsabilidades permanentes (una por línea) <SelloIA origen={origen} bloque="responsabilidades" /></p>
+                <textarea {...f("responsabilidades")} rows={5} className={`${inputCls} resize-none font-mono text-xs`}
+                  placeholder={"Lo que SIEMPRE es responsable, sin importar el plan de trabajo\nEj:\nEntregar cada evento montado a tiempo"} />
               </div>
 
-              {/* §4 KPIs del puesto */}
+              {/* 4 — Resultados clave */}
               <div>
-                <p className={sectionCls}>KPIs del puesto (3 a 5)</p>
+                <p className={`${sectionCls} flex items-center gap-2`}>Resultados clave (3 a 5) <SelloIA origen={origen} bloque="kpis" /></p>
+                <p className="text-[11px] text-gray-600 mb-2 -mt-2">Con esto se califica el desempeño. Idealmente uno por sub-área: el objetivo del área se arma con los resultados de sus sub-áreas.</p>
                 <div className="space-y-3">
                   {kpis.map((k, i) => (
                     <div key={i} className={`rounded-lg p-3 space-y-2 border ${k.esFijoPlan ? "bg-[#0d0d0d] border-[#B3985B]/30" : "bg-[#0d0d0d] border-[#1a1a1a]"}`}>
@@ -739,7 +864,7 @@ export default function PuestosOperativosPage() {
                         {k.esFijoPlan ? (
                           <span className="text-sm text-[#B3985B] font-medium flex-1">{KPI_PLAN_NOMBRE} <span className="text-[10px] text-gray-500">· automático · mensual</span></span>
                         ) : (
-                          <input value={k.nombre} onChange={e => setKpis(a => a.map((x, ix) => ix === i ? { ...x, nombre: e.target.value } : x))} className={`${inputCls} flex-1`} placeholder="Nombre del KPI" />
+                          <input value={k.nombre} onChange={e => setKpis(a => a.map((x, ix) => ix === i ? { ...x, nombre: e.target.value } : x))} className={`${inputCls} flex-1`} placeholder="Nombre del resultado clave" />
                         )}
                         {!k.esFijoPlan && <button onClick={() => setKpis(a => a.filter((_, ix) => ix !== i))} className="text-gray-600 hover:text-red-400"><X className="w-4 h-4" /></button>}
                       </div>
@@ -770,15 +895,79 @@ export default function PuestosOperativosPage() {
                 </div>
                 {kpis.length < 5 && (
                   <button onClick={() => setKpis(a => [...a, { nombre: "", resultadoEsperado: "", unidad: "%", meta: "", frecuencia: "mensual", fuenteTipo: "manual" }])}
-                    className="mt-2 text-xs text-gray-500 hover:text-[#B3985B] flex items-center gap-1"><Plus className="w-3 h-3" /> Agregar KPI</button>
+                    className="mt-2 text-xs text-gray-500 hover:text-[#B3985B] flex items-center gap-1"><Plus className="w-3 h-3" /> Agregar resultado clave</button>
                 )}
               </div>
 
-              {/* §5 Perfil requerido */}
+              {/* 5 — Criterios de calidad */}
               <div>
-                <p className={sectionCls}>Perfil requerido</p>
-                {/* Valores */}
-                <label className={labelCls}>Valores (del catálogo de la empresa)</label>
+                <div className="flex items-center justify-between mb-1">
+                  <p className={`${sectionCls} mb-0 flex items-center gap-2`}>Criterios de calidad <SelloIA origen={origen} bloque="estandares" /></p>
+                  <button onClick={() => setEstandares(e => [...e, { subarea: subAreaById.get(subAreaIds[0])?.nombre ?? "", responsabilidad:"", estandar:"", noNegociable: false }])} className="text-xs text-gray-500 hover:text-[#B3985B] flex items-center gap-1"><Plus className="w-3 h-3" /> Agregar</button>
+                </div>
+                <p className="text-[11px] text-gray-600 mb-2">Cómo se verifica que una responsabilidad está bien cumplida. Marca <span className="text-red-400">no negociable</span> los que, de fallar, topan la evaluación del mes en “En desarrollo”.</p>
+                <div className="space-y-2">
+                  {estandares.map((e, i) => {
+                    const adv = adverbioVago(e.estandar);
+                    return (
+                      <div key={i} className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg p-2 space-y-2">
+                        <div className="grid grid-cols-12 gap-2 items-start">
+                          <input value={e.subarea} onChange={ev => setEstandares(arr => arr.map((x,ix)=>ix===i?{...x,subarea:ev.target.value}:x))} className={`${inputCls} col-span-3`} placeholder="Sub-área" />
+                          <input value={e.responsabilidad} onChange={ev => setEstandares(arr => arr.map((x,ix)=>ix===i?{...x,responsabilidad:ev.target.value}:x))} className={`${inputCls} col-span-4`} placeholder="Responsabilidad" />
+                          <input value={e.estandar} onChange={ev => setEstandares(arr => arr.map((x,ix)=>ix===i?{...x,estandar:ev.target.value}:x))} className={`${inputCls} col-span-4`} placeholder="Cómo se verifica (medible)" />
+                          <button onClick={() => setEstandares(arr => arr.filter((_,ix)=>ix!==i))} className="col-span-1 text-gray-600 hover:text-red-400 text-lg leading-none pt-1">×</button>
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                          <label className="flex items-center gap-1.5 text-[11px] text-gray-400 cursor-pointer">
+                            <input type="checkbox" checked={!!e.noNegociable} className="accent-red-500"
+                              onChange={ev => setEstandares(arr => arr.map((x,ix)=>ix===i?{...x,noNegociable:ev.target.checked}:x))} />
+                            No negociable
+                          </label>
+                          {adv && <p className="text-[11px] text-orange-400/90 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Evita “{adv}”: dilo de forma verificable.</p>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {estandares.length === 0 && <p className="text-gray-700 text-xs">Sin criterios de calidad.</p>}
+                </div>
+              </div>
+
+              {/* 6 — Reportes al jefe */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <p className={`${sectionCls} mb-0 flex items-center gap-2`}>
+                    Reportes a {puestos.find(p => p.id === form.reportaAId)?.nombre ?? "su jefe"}
+                    <SelloIA origen={origen} bloque="reportes" />
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setReportes(REPORTES_BASE.map(r => ({ ...r })))} className="text-xs text-gray-600 hover:text-gray-300">Restaurar base</button>
+                    <button onClick={() => setReportes(r => [...r, { nombre: "", frecuencia: "semanal", formato: "" }])} className="text-xs text-gray-500 hover:text-[#B3985B] flex items-center gap-1"><Plus className="w-3 h-3" /> Agregar</button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {reportes.map((r, i) => (
+                    <div key={i} className="grid grid-cols-12 gap-2 items-start">
+                      <input value={r.nombre} onChange={ev => setReportes(a => a.map((x,ix)=>ix===i?{...x,nombre:ev.target.value}:x))} className={`${inputCls} col-span-6`} placeholder="Qué reporta" />
+                      <select value={r.frecuencia} onChange={ev => setReportes(a => a.map((x,ix)=>ix===i?{...x,frecuencia:ev.target.value as ReportePuesto["frecuencia"]}:x))} className={`${inputCls} col-span-2`}>
+                        {FRECUENCIAS_ESTANDAR.map(fr => <option key={fr.value} value={fr.value}>{fr.label}</option>)}
+                      </select>
+                      <input value={r.formato ?? ""} onChange={ev => setReportes(a => a.map((x,ix)=>ix===i?{...x,formato:ev.target.value}:x))} className={`${inputCls} col-span-3`} placeholder="Dónde / cómo" />
+                      <button onClick={() => setReportes(a => a.filter((_,ix)=>ix!==i))} className="col-span-1 text-gray-600 hover:text-red-400 text-lg leading-none pt-1">×</button>
+                    </div>
+                  ))}
+                  {reportes.length === 0 && <p className="text-gray-700 text-xs">Sin reportes definidos.</p>}
+                </div>
+              </div>
+
+              {/* 7 — Perfil requerido */}
+              <div>
+                <p className={`${sectionCls} flex items-center gap-2`}>Perfil requerido <SelloIA origen={origen} bloque="perfil" /></p>
+                <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-lg px-3 py-2.5 mb-4">
+                  <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">{ADN_MAINSTAGE.titulo} · aplica a todos</p>
+                  <p className="text-xs text-gray-400 leading-relaxed">{ADN_MAINSTAGE.texto}</p>
+                </div>
+
+                <label className={labelCls}>Valores de la empresa — precisa cómo se ven en este puesto</label>
                 <div className="flex flex-wrap gap-1.5 mb-2">
                   {catalogos.valores.map(v => {
                     const on = valores.some(x => x.nombre === v.nombre);
@@ -796,17 +985,16 @@ export default function PuestosOperativosPage() {
                     </div>
                   ))}
                 </div>
-                {/* Aptitudes */}
+
                 <label className={labelCls}>Aptitudes y habilidades</label>
                 <TagNivelEditor items={aptitudes} setItems={setAptitudes} catalogo={catalogos.aptitudes.map(a => a.nombre)}
                   onCreate={n => crearCatalogo("aptitud", n)} conIndispensable={false} inputCls={inputCls} />
-                {/* Conocimientos */}
                 <label className={labelCls + " mt-4"}>Conocimientos</label>
                 <TagNivelEditor items={conocimientos} setItems={setConocimientos as never} catalogo={catalogos.conocimientos.map(c => c.nombre)}
                   onCreate={n => crearCatalogo("conocimiento", n)} conIndispensable inputCls={inputCls} />
               </div>
 
-              {/* §3 Condiciones laborales */}
+              {/* 8 — Condiciones laborales */}
               <div>
                 <p className={sectionCls}>Condiciones laborales (para el acuerdo)</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -826,7 +1014,6 @@ export default function PuestosOperativosPage() {
                   </div>
                 </div>
 
-                {/* §3.3 Jornada semanal */}
                 <div className="mt-4">
                   <div className="flex items-center justify-between mb-1">
                     <label className={labelCls}>Días y horario de operación</label>
@@ -869,7 +1056,6 @@ export default function PuestosOperativosPage() {
                   )}
                 </div>
 
-                {/* §3.4 Prestaciones */}
                 <div className="mt-4">
                   <label className={labelCls}>Prestaciones</label>
                   <div className="flex flex-wrap gap-1.5">
@@ -882,11 +1068,6 @@ export default function PuestosOperativosPage() {
                     })}
                   </div>
                   <input {...f("prestacionesOtro")} className={`${inputCls} mt-2`} placeholder="Otro (texto libre)" />
-                </div>
-
-                <div className="mt-4">
-                  <label className={labelCls}>Funciones (una por línea)</label>
-                  <textarea {...f("funciones")} rows={3} className={`${inputCls} resize-none font-mono text-xs`} placeholder={"Operar la consola de audio\nSupervisar el montaje"} />
                 </div>
               </div>
 
@@ -904,16 +1085,17 @@ export default function PuestosOperativosPage() {
                 </div>
               </div>
 
-              {/* Onboarding del puesto */}
+              {/* 9 — Onboarding */}
               <div>
                 <p className={sectionCls}>Onboarding del puesto</p>
                 <p className="text-[11px] text-gray-500 mb-3 -mt-1">
-                  El recorrido de integración es fijo (firma de documentos, cultura, plan de trabajo, etc.). Aquí eliges solo lo específico de este puesto: qué módulos de la plataforma revisa y qué áreas de capacitación le tocan.
+                  El recorrido de integración es fijo. Aquí solo eliges los módulos que revisa — y ya filtrados a {areasDelPuesto.map(a => areaLabel(a)).join(" · ")}.
                 </p>
 
                 <label className={labelCls}>Módulos de la plataforma a revisar</label>
                 <div className="space-y-2 mb-4">
-                  {MODULOS_POR_SECCION.map(sec => (
+                  {modulosPermitidos.length === 0 && <p className="text-gray-700 text-xs">No hay módulos preconfigurados para esta área.</p>}
+                  {modulosPermitidos.map(sec => (
                     <div key={sec.seccion}>
                       <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">{sec.seccion}</p>
                       <div className="flex flex-wrap gap-1.5">
@@ -929,41 +1111,40 @@ export default function PuestosOperativosPage() {
                   ))}
                 </div>
 
-                <div className="flex items-center justify-between mb-2">
-                  <label className={`${labelCls} !mb-0`}>Capacitación del puesto</label>
-                  <button type="button" onClick={sugerirCapacitacion}
-                    className="text-[11px] px-2.5 py-1 rounded-lg border border-[#B3985B]/40 text-[#B3985B] hover:bg-[#B3985B]/10 transition-colors">
-                    Sugerir según el puesto
-                  </button>
-                </div>
-                <p className="text-[11px] text-gray-500 mb-3 -mt-1">
-                  Marca cada área o sub-área como <span className="text-[#B3985B]">Obligatorio</span> o <span className="text-gray-400">Recomendado</span>. Si el puesto no tiene sub-área, marca el área completa. Esto define lo que cursa quien ocupe el puesto.
+                <label className={labelCls}>Capacitación del puesto</label>
+                <p className="text-[11px] text-gray-500 mb-2 -mt-1">
+                  Toda la capacitación del área es obligatoria, para que quien ocupe el puesto entienda la operación completa. Se asigna sola.
                 </p>
-
-                {categoriasCap.length === 0 ? (
-                  <span className="text-gray-700 text-xs">No hay áreas de capacitación registradas.</span>
+                {capObligatoria.length === 0 ? (
+                  <p className="text-gray-700 text-xs">No hay áreas de capacitación registradas para {areasDelPuesto.map(a => areaLabel(a)).join(", ")}.</p>
                 ) : (
-                  <div className="space-y-2">
-                    {categoriasCap.map(c => (
-                      <div key={c.id} className="border border-[#222] rounded-lg bg-[#0d0d0d] overflow-hidden">
-                        <div className="flex items-center justify-between gap-2 px-3 py-2">
-                          <span className="text-sm text-gray-200 font-medium">{c.nombre}
-                            <span className="text-gray-600 text-xs font-normal"> · área completa</span>
-                          </span>
-                          <NivelSwitch nivel={nivelDe(c.id, null)} onPick={n => alternarNivel(c.id, null, n)} />
-                        </div>
-                        {c.subAreas.length > 0 && (
-                          <div className="border-t border-[#1a1a1a] divide-y divide-[#1a1a1a]">
-                            {c.subAreas.map(sa => (
-                              <div key={sa} className="flex items-center justify-between gap-2 pl-6 pr-3 py-1.5">
-                                <span className="text-[13px] text-gray-400">{sa}</span>
-                                <NivelSwitch nivel={nivelDe(c.id, sa)} onPick={n => alternarNivel(c.id, sa, n)} />
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {capObligatoria.map(a => (
+                      <span key={a.categoriaId} className="text-[11px] px-2 py-0.5 rounded-full border border-[#B3985B]/40 bg-[#B3985B]/15 text-[#B3985B]">
+                        {categoriasCap.find(c => c.id === a.categoriaId)?.nombre ?? "Área"} · obligatorio
+                      </span>
                     ))}
+                  </div>
+                )}
+                {categoriasCap.length > 0 && (
+                  <div className="mt-3">
+                    <label className={labelCls}>Capacitación adicional recomendada (opcional)</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {categoriasCap
+                        .filter(c => !capObligatoria.some(o => o.categoriaId === c.id))
+                        .map(c => {
+                          const on = capExtra.some(e => e.categoriaId === c.id && e.subArea === null);
+                          return (
+                            <button key={c.id} type="button"
+                              onClick={() => setCapAsignaciones(prev => on
+                                ? prev.filter(x => !(x.categoriaId === c.id && x.subArea === null))
+                                : [...prev, { categoriaId: c.id, subArea: null, nivel: "RECOMENDADO" as NivelCapacitacion }])}
+                              className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${on ? "bg-sky-500/15 text-sky-300 border-sky-500/40" : "border-[#222] text-gray-500 hover:text-white"}`}>
+                              {c.nombre}
+                            </button>
+                          );
+                        })}
+                    </div>
                   </div>
                 )}
               </div>
@@ -979,27 +1160,6 @@ export default function PuestosOperativosPage() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-// Selector de nivel de capacitación: Obligatorio / Recomendado (toggle). Sin selección = no asignado.
-function NivelSwitch({ nivel, onPick }: { nivel?: NivelCapacitacion; onPick: (n: NivelCapacitacion) => void }) {
-  const opts: { n: NivelCapacitacion; label: string; on: string }[] = [
-    { n: "OBLIGATORIO", label: "Obligatorio", on: "bg-[#B3985B]/20 text-[#B3985B] border-[#B3985B]/50" },
-    { n: "RECOMENDADO", label: "Recomendado", on: "bg-sky-500/15 text-sky-300 border-sky-500/40" },
-  ];
-  return (
-    <div className="flex items-center gap-1 shrink-0">
-      {opts.map(o => {
-        const active = nivel === o.n;
-        return (
-          <button key={o.n} type="button" onClick={() => onPick(o.n)}
-            className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${active ? o.on : "border-[#222] text-gray-600 hover:text-gray-300"}`}>
-            {o.label}
-          </button>
-        );
-      })}
     </div>
   );
 }

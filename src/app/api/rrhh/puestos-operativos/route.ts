@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { syncPuestoKpis } from "@/lib/puesto-kpis";
+import { subAreasCreate } from "@/lib/puesto";
 
 // Migración lazy YA APLICADA en prod (verificado 2026-08-19: la tabla puestos,
 // todas sus columnas, personal_interno.user_id/puesto_id, pt_kpis, las columnas
@@ -22,7 +23,10 @@ export async function GET() {
     orderBy: [{ area: "asc" }, { nombre: "asc" }],
     include: {
       reportaA: { select: { id: true, nombre: true } },
-      subArea: { select: { id: true, nombre: true } },
+      subAreas: {
+        orderBy: [{ principal: "desc" }, { orden: "asc" }],
+        include: { subArea: { select: { id: true, nombre: true, areaId: true } } },
+      },
       ocupantes: { select: { id: true, nombre: true, userId: true }, where: { activo: true } },
     },
   });
@@ -40,32 +44,24 @@ export async function POST(req: NextRequest) {
       data: {
         nombre: b.nombre,
         area: b.area || "GENERAL",
-        subAreaId: b.subAreaId || null,
-        objetivoArea: b.objetivoArea || null,
-        descripcionPuesto: b.descripcionPuesto || null,
-        objetivoPuesto: b.objetivoPuesto || null,
         misionPuesto: b.misionPuesto || null,
         responsabilidades: arr(b.responsabilidades),
         reportaAId: b.reportaAId || null,
-        coordinaCon: arr(b.coordinaCon),
-        supervisaA: arr(b.supervisaA),
         coordinaConData: jstr(b.coordinaConData),
+        reportes: jstr(b.reportes),
         estandares: arr(b.estandares),
-        estandaresMinimos: jstr(b.estandaresMinimos),
         valores: jstr(b.valores),
         aptitudes: jstr(b.aptitudes),
         conocimientos: jstr(b.conocimientos),
-        funciones: arr(b.funciones),
         prestaciones: arr(b.prestaciones),
         prestacionesOtro: b.prestacionesOtro || null,
         tipoContrato: b.tipoContrato || null,
         modalidad: b.modalidad || null,
-        horario: b.horario || null,
         jornada: jstr(b.jornada),
         onboardingModulos: arr(b.onboardingModulos),
-        onboardingCapacitaciones: arr(b.onboardingCapacitaciones),
         capacitacionAsignaciones: arr(b.capacitacionAsignaciones),
-        color: b.color || null,
+        origenIA: jstr(b.origenIA),
+        subAreas: { create: subAreasCreate(b.subAreaIds) },
       },
     });
     if (Array.isArray(b.kpis)) await syncPuestoKpis(puesto.id, puesto.area, b.kpis);

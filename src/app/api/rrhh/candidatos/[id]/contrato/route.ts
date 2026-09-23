@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import ReactPDF from "@react-pdf/renderer";
 import { ContratoEmpleoPDF } from "@/components/ContratoEmpleoPDF";
 import React from "react";
+import { jparse, jornadaToString, type JornadaDia } from "@/lib/puesto";
 
 function fmtDate(d: Date) {
   return d.toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
@@ -35,6 +36,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   let beneficios: string[] = [];
   try { beneficios = JSON.parse(post?.beneficios ?? "[]"); } catch { beneficios = []; }
 
+  const jornada = jparse<JornadaDia[]>(puesto?.jornada ?? null, []);
+  const horario = jornada.length ? jornadaToString(jornada) : null;
+
   const props = {
     candidatoNombre:   candidato.nombre,
     candidatoCorreo:   candidato.correo,
@@ -45,7 +49,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     salario:           post?.salarioPropuesto ?? 0,
     tipoContrato:      puesto?.tipoContrato ?? null,
     modalidad:         puesto?.modalidad ?? null,
-    horario:           puesto?.horario ?? null,
+    horario,
     fechaIngreso:      post?.fechaIngresoEstimada ? fmtDate(new Date(post.fechaIngresoEstimada)) : fmtDate(new Date()),
     beneficios,
     responsableNombre: session.name ?? "Director de Producción",

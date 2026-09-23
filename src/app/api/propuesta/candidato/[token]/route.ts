@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { jparse, jornadaToString, type JornadaDia } from "@/lib/puesto";
 
 // GET: get proposal data for public acceptance page (no auth required)
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
@@ -9,7 +10,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
     where: { propuestaToken: token },
     include: {
       candidato: { select: { id: true, nombre: true, correo: true } },
-      puesto: { select: { nombre: true, area: true, misionPuesto: true, modalidad: true, tipoContrato: true, horario: true } },
+      puesto: { select: { nombre: true, area: true, misionPuesto: true, modalidad: true, tipoContrato: true, jornada: true } },
     },
   });
 
@@ -18,6 +19,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
   let beneficios: string[] = [];
   try { beneficios = JSON.parse(post.beneficios ?? "[]"); } catch { beneficios = []; }
 
+  const jornada = jparse<JornadaDia[]>(post.puesto?.jornada ?? null, []);
+  const horario = jornada.length ? jornadaToString(jornada) : null;
+
   return NextResponse.json({
     candidatoNombre: post.candidato.nombre,
     puestoTitulo: post.puesto?.nombre ?? post.puestoManual ?? "Colaborador",
@@ -25,7 +29,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
     puestoDescripcion: post.puesto?.misionPuesto ?? null,
     modalidad: post.puesto?.modalidad ?? null,
     tipoContrato: post.puesto?.tipoContrato ?? null,
-    horario: post.puesto?.horario ?? null,
+    horario,
     salarioPropuesto: post.salarioPropuesto ?? null,
     fechaIngresoEstimada: post.fechaIngresoEstimada ?? null,
     beneficios,

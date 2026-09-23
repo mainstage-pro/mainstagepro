@@ -9,14 +9,15 @@ interface Snapshot {
   personaNombre: string;
   puestoNombre: string;
   area: string;
-  objetivoArea: string | null;
   misionPuesto: string | null;
   responsabilidades: string[];
   estandares: Estandar[];
-  coordinaCon: string[];
-  supervisaA: string[];
-  funciones: string[];
   beneficios: string[];
+  // Solo presentes en acuerdos firmados antes de la simplificación del puesto.
+  objetivoArea?: string | null;
+  coordinaCon?: string[];
+  supervisaA?: string[];
+  funciones?: string[];
   tipoContrato: string | null;
   modalidad: string | null;
   horario: string | null;
@@ -169,13 +170,13 @@ export default function AcuerdoAcusePage() {
               </div>
             </Seccion>
           )}
-          {s.funciones.length > 0 && (
+          {!!s.funciones?.length && (
             <Seccion titulo="Funciones"><Lista items={s.funciones} /></Seccion>
           )}
-          {s.coordinaCon.length > 0 && (
+          {!!s.coordinaCon?.length && (
             <Seccion titulo="Coordina con"><Lista items={s.coordinaCon} /></Seccion>
           )}
-          {s.supervisaA.length > 0 && (
+          {!!s.supervisaA?.length && (
             <Seccion titulo="Supervisa a"><Lista items={s.supervisaA} /></Seccion>
           )}
           {condiciones.length > 0 && (
