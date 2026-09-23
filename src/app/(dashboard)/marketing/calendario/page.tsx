@@ -1017,8 +1017,8 @@ function CalendarGrid({ weeks, year, month, today, byDate, tipoColorMap, dragged
                           onClick={e => { e.stopPropagation(); openEdit(p); }}
                           className={`flex items-center gap-1 px-1.5 py-0.5 rounded cursor-grab active:cursor-grabbing
                             group/chip transition-opacity
-                            ${paleta.bg} ${paleta.text}
-                            ${draggedId === p.id ? "opacity-30" : ""}`}
+                            ${paleta.bg} ${paleta.text} hover:opacity-100
+                            ${draggedId === p.id ? "opacity-30" : p.estado === "PUBLICADO" || p.estado === "CANCELADO" ? "opacity-45" : ""}`}
                         >
                           <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${ESTADO_DOT[p.estado] ?? "bg-gray-600"}`} />
                           <span className="truncate text-[10px] font-medium leading-snug flex-1">
@@ -1177,15 +1177,16 @@ function VistaParrilla({
             const fechaStr = p.fecha.slice(0, 10);
             const isToday = fechaStr === hoy;
             const sinPublicar = fechaStr < hoy && p.estado !== "PUBLICADO" && p.estado !== "CANCELADO";
+            const cerrada = p.estado === "PUBLICADO" || p.estado === "CANCELADO";
             const formato = p.formato ?? p.tipo?.formato ?? null;
             const imagenes = parseImagenes(p.portadaUrl);
             const tipo = p.tipoId ? tiposById[p.tipoId] : undefined;
             const variacion = variacionDe(p, tipo);
             const elegida = elegidas.has(p.id);
             return (
-              <div key={p.id} className={p.oculta ? "opacity-40" : ""}>
+              <div key={p.id} className={`transition-opacity hover:opacity-100 ${p.oculta ? "opacity-40" : cerrada && expandedId !== p.id ? "opacity-45" : ""}`}>
                 <div className={`grid ${PARRILLA_COLS} gap-2 px-3 py-2 items-center hover:bg-[#141414] cursor-pointer transition-colors
-                    ${expandedId === p.id ? "bg-[#141414]" : ""} ${editId === p.id ? "opacity-50" : ""} ${elegida ? "bg-[#B3985B]/5" : ""} ${isToday ? "ring-1 ring-inset ring-[#B3985B]/25" : ""}`}
+                    ${cerrada ? "bg-black/40" : ""} ${expandedId === p.id ? "bg-[#141414]" : ""} ${editId === p.id ? "opacity-50" : ""} ${elegida ? "bg-[#B3985B]/5" : ""} ${isToday ? "ring-1 ring-inset ring-[#B3985B]/25" : ""}`}
                   onClick={() => { if (editId !== p.id) setExpandedId(expandedId === p.id ? null : p.id); }}>
                   {/* Selección */}
                   <div className="flex items-center justify-center" onClick={e => e.stopPropagation()}>
