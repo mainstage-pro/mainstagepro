@@ -171,6 +171,16 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   if (!proyecto) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
+  // Red de seguridad: ingresos ligados al proyecto que nunca se convirtieron en
+  // Abono de una CxC (dinero "suelto" que quedaría invisible en el P&L). No es
+  // una relación de Prisma (movimientos ya se usa para GASTO arriba), así que
+  // se consulta aparte y se adjunta como campo calculado.
+  const movimientosIngresoSueltos = await prisma.movimientoFinanciero.findMany({
+    where: { proyectoId: id, tipo: "INGRESO", abono: null },
+    orderBy: { fecha: "desc" },
+  });
+  proyecto = { ...proyecto, movimientosIngresoSueltos } as unknown as typeof proyecto;
+
   const avance = calcularAvanceProyecto({
     tipoServicio: proyecto.tipoServicio ?? null,
     planProduccionAprobado: proyecto.planProduccionAprobado,
@@ -193,6 +203,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       cuentasCobrar: [],
       cuentasPagar: [],
       movimientos: [],
+      movimientosIngresoSueltos: [],
       cierreFinanciero: null,
       equipos: Array.isArray(proyecto.equipos) ? proyecto.equipos.map((eq: any) => ({
         ...eq,

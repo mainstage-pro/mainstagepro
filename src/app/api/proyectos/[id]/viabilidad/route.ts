@@ -32,6 +32,7 @@ export async function GET(
       nombre: true,
       estado: true,
       tratoId: true,
+      cotizacionId: true,
       trato: {
         select: {
           id: true,
@@ -81,11 +82,16 @@ export async function GET(
 
   const cotizaciones = proyecto.trato?.cotizaciones ?? []
 
-  // La cotización activa es la más reciente en estado APROBADA, ENVIADA o BORRADOR
+  // La cotización activa es la que realmente quedó ligada al proyecto
+  // (Proyecto.cotizacionId es única y obligatoria) — no una heurística por
+  // estado, que puede apuntar a una versión/duplicado equivocado del mismo
+  // trato (bug reportado con duplicados de cotización).
   const prioridad = ['APROBADA', 'ENVIADA', 'BORRADOR', 'ARCHIVADA']
-  const cotActiva = cotizaciones
-    .slice()
-    .sort((a, b) => prioridad.indexOf(a.estado) - prioridad.indexOf(b.estado))[0] ?? null
+  const cotActiva = cotizaciones.find(c => c.id === proyecto.cotizacionId)
+    ?? cotizaciones
+      .slice()
+      .sort((a, b) => prioridad.indexOf(a.estado) - prioridad.indexOf(b.estado))[0]
+    ?? null
 
   const analisis = cotizaciones.map(cot => {
     const costoReal = cot.lineas.reduce((s, l) => s + l.subtotal, 0)

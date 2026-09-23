@@ -59,23 +59,71 @@ export async function POST(request: NextRequest) {
       cuentaDestinoId = body.cuentaId || null;
     }
 
-    const movimiento = await prisma.movimientoFinanciero.create({
-      data: {
-        fecha: new Date(body.fecha),
-        tipo: body.tipo,
-        cuentaOrigenId,
-        cuentaDestinoId,
-        clienteId: body.clienteId || null,
-        proveedorId: body.proveedorId || null,
-        proyectoId: body.proyectoId || null,
-        categoriaId: body.categoriaId || null,
-        concepto: body.concepto,
-        monto: parseFloat(body.monto),
-        metodoPago: body.metodoPago || "TRANSFERENCIA",
-        referencia: body.referencia || null,
-        notas: body.notas || null,
-        creadoPor: session.id,
-      },
+    const proyectoId = body.proyectoId || null;
+    const montoMovimiento = parseFloat(body.monto);
+
+    const movimiento = await prisma.$transaction(async (tx) => {
+      const mov = await tx.movimientoFinanciero.create({
+        data: {
+          fecha: new Date(body.fecha),
+          tipo: body.tipo,
+          cuentaOrigenId,
+          cuentaDestinoId,
+          clienteId: body.clienteId || null,
+          proveedorId: body.proveedorId || null,
+          proyectoId,
+          categoriaId: body.categoriaId || null,
+          concepto: body.concepto,
+          monto: montoMovimiento,
+          metodoPago: body.metodoPago || "TRANSFERENCIA",
+          referencia: body.referencia || null,
+          notas: body.notas || null,
+          creadoPor: session.id,
+        },
+      });
+
+      // Si es un ingreso ligado a un proyecto, aplícalo automáticamente como
+      // abono a su cuenta por cobrar pendiente más antigua — igual que hace
+      // `cuentas-cobrar/[id]/pagar` — para que este "Registrar Movimiento"
+      // nunca deje el cobro invisible para el estado financiero del proyecto
+      // (bug reportado: dinero cobrado que no se reflejaba). Un Abono solo
+      // puede enlazar un movimiento (movimientoId es único), así que si hay
+      // varias CxC pendientes se abona únicamente a la más antigua; el resto
+      // del monto (si sobra) queda sin CxC específica pero el movimiento
+      // sigue siendo visible en Finanzas.
+      if (naturaleza === "ENTRADA" && proyectoId && montoMovimiento > 0) {
+        const cxc = await tx.cuentaCobrar.findFirst({
+          where: { proyectoId, estado: { in: ["PENDIENTE", "PARCIAL", "VENCIDO"] } },
+          orderBy: { fechaCompromiso: "asc" },
+        });
+
+        if (cxc) {
+          await tx.abono.create({
+            data: {
+              cuentaCobrarId: cxc.id,
+              monto: montoMovimiento,
+              fecha: mov.fecha,
+              metodoPago: mov.metodoPago,
+              notas: "Aplicado automáticamente desde Registrar Movimiento",
+              cuentaDestinoId,
+              movimientoId: mov.id,
+              creadoPor: session.id,
+            },
+          });
+
+          const nuevoMontoCobrado = Math.round((cxc.montoCobrado + montoMovimiento) * 100) / 100;
+          await tx.cuentaCobrar.update({
+            where: { id: cxc.id },
+            data: {
+              montoCobrado: nuevoMontoCobrado,
+              estado: nuevoMontoCobrado >= cxc.monto ? "LIQUIDADO" : "PARCIAL",
+              fechaCobroReal: mov.fecha,
+            },
+          });
+        }
+      }
+
+      return mov;
     });
 
     return NextResponse.json({ movimiento });

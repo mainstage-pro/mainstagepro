@@ -141,6 +141,8 @@ interface Proyecto {
   cuentasPagar: CxP[];
   bitacora: Bitacora[];
   movimientos: Gasto[];
+  // Red de seguridad: ingresos ligados al proyecto sin Abono a una CxC (ver /api/proyectos/[id]).
+  movimientosIngresoSueltos?: { id: string; fecha: string; concepto: string; monto: number }[];
   cierreFinanciero: { cerradoEn: string; notas: string | null; totalCobrado: number; totalGastado: number; utilidadReal: number; margenReal: number; granTotalEstimado: number; costoEstimado: number; utilidadEstimada: number } | null;
   portalToken: string | null;
   infoToken: string | null;
@@ -7055,7 +7057,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       {(() => {
         // ── P&L en tiempo real ──────────────────────────────────────────────
         const ingresoContratado = proyecto.cotizacion?.granTotal ?? 0;
-        const ingresoCobrado = proyecto.cuentasCobrar.reduce((s, c) => s + c.montoCobrado, 0);
+        // Red de seguridad: suma también ingresos ligados al proyecto que nunca se
+        // convirtieron en Abono de una CxC (dinero "suelto" que de otro modo
+        // quedaría invisible en el P&L; ver /api/proyectos/[id]).
+        const ingresoCobradoSuelto = (proyecto.movimientosIngresoSueltos ?? []).reduce((s: number, m: { monto: number }) => s + m.monto, 0);
+        const ingresoCobrado = proyecto.cuentasCobrar.reduce((s, c) => s + c.montoCobrado, 0) + ingresoCobradoSuelto;
         // Costos personal: usar CxP de técnicos si existen (fuente de verdad); fallback a tarifas acordadas
         const tarifaTotal = proyecto.personal
           .filter(p => p.tarifaAcordada && p.tarifaAcordada > 0)

@@ -1,0 +1,84 @@
+[
+  {
+    "caso": "COT-0020",
+    "lineasBorradas": [
+      {
+        "id": "cmoiv7sbt000as26dalw8rscy",
+        "tipo": "OPERACION_TECNICA",
+        "descripcion": "Operador de Audio",
+        "subtotal": 1500,
+        "costoUnitario": 1500,
+        "cantidad": 1,
+        "dias": 1
+      },
+      {
+        "id": "cmoiv7sbt000ds26d54lgrg3t",
+        "tipo": "OPERACION_TECNICA",
+        "descripcion": "Operador de Iluminación",
+        "subtotal": 1500,
+        "costoUnitario": 1500,
+        "cantidad": 1,
+        "dias": 1
+      },
+      {
+        "id": "cmoiv7sbt000fs26dvh7822d3",
+        "tipo": "OPERACION_TECNICA",
+        "descripcion": "Técnico / Stagehand",
+        "subtotal": 800,
+        "costoUnitario": 800,
+        "cantidad": 1,
+        "dias": 1
+      }
+    ],
+    "cotizacionAntes": {
+      "subtotalOperacion": 7600,
+      "total": 24560,
+      "montoIva": 0,
+      "granTotal": 24560,
+      "costosTotalesEstimados": 7600,
+      "utilidadEstimada": 16960,
+      "porcentajeUtilidad": 0.6905537459283387
+    },
+    "cotizacionDespues": {
+      "subtotalOperacion": 3800,
+      "total": 20760,
+      "montoIva": 0,
+      "granTotal": 20760,
+      "costosTotalesEstimados": 3800,
+      "utilidadEstimada": 16960,
+      "porcentajeUtilidad": 0.8169556840077071
+    }
+  },
+  {
+    "caso": "COT-0009",
+    "lineasBorradas": [
+      {
+        "id": "cmohloq5z000v9ays4fmhz4g7",
+        "tipo": "OPERACION_TECNICA",
+        "descripcion": "Técnico / Stagehand",
+        "subtotal": 1000,
+        "costoUnitario": 1000,
+        "cantidad": 1,
+        "dias": 1
+      }
+    ],
+    "cotizacionAntes": {
+      "subtotalOperacion": 17500,
+      "total": 172650,
+      "montoIva": 0,
+      "granTotal": 172650,
+      "costosTotalesEstimados": 22000,
+      "utilidadEstimada": 150650,
+      "porcentajeUtilidad": 0.8725745728352158
+    },
+    "cotizacionDespues": {
+      "subtotalOperacion": 16500,
+      "total": 171650,
+      "montoIva": 0,
+      "granTotal": 171650,
+      "costosTotalesEstimados": 21000,
+      "utilidadEstimada": 150650,
+      "porcentajeUtilidad": 0.8776580250509758
+    }
+  }
+]

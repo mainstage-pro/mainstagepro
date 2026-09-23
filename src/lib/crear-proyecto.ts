@@ -216,33 +216,63 @@ export async function crearProyectoDesdeCotizacion(
     },
   });
 
-  // 2. Copiar equipos al proyecto (incluyendo proveedorId para externos)
-  if (lineasEquipo.length > 0 || equiposDePaquetes.length > 0) {
-    await tx.proyectoEquipo.createMany({
-      data: [
-        ...lineasEquipo.map((l) => ({
-          proyectoId: proy.id,
-          equipoId: l.equipoId!,
-          tipo: l.tipo === "EQUIPO_EXTERNO" ? "EXTERNO" : "PROPIO",
-          cantidad: Math.round(l.cantidad),
-          dias: l.dias,
-          costoExterno: l.tipo === "EQUIPO_EXTERNO" ? l.costoUnitario : null,
-          proveedorId: l.tipo === "EQUIPO_EXTERNO" ? (l.proveedorId ?? null) : null,
-          // Copia la nota del concepto de la cotización como semilla editable
-          // (sin el prefijo interno "cat:…" que codifica la categoría).
-          notas: notaVisibleDeCotizacion(l.notas),
-        })),
-        ...equiposDePaquetes.map((c) => ({
-          proyectoId: proy.id,
-          equipoId: c.equipoId,
-          tipo: "PROPIO",
-          cantidad: c.cantidad,
-          dias: c.dias,
-          costoExterno: null,
-          proveedorId: null,
-        })),
-      ],
+  // 2. Copiar equipos al proyecto (incluyendo proveedorId para externos).
+  // Una misma pieza de equipo puede aparecer en varias líneas de la cotización
+  // (ej. "2× para monitoreo" + "4× para backstage"): se agrupan por
+  // equipo+tipo+proveedor en una sola fila de proyecto_equipos con la cantidad
+  // sumada, para no duplicar la fila en el rider (bug reportado en Lazy Sunday).
+  type EquipoAgrupado = {
+    proyectoId: string; equipoId: string; tipo: string; cantidad: number; dias: number;
+    costoExterno: number | null; proveedorId: string | null; notas: string | null;
+  };
+  const equiposAgrupados = new Map<string, EquipoAgrupado>();
+  const acumular = (item: {
+    equipoId: string; tipo: string; cantidad: number; dias: number;
+    costoExterno: number | null; proveedorId: string | null; notas: string | null;
+  }) => {
+    const key = `${item.equipoId}::${item.tipo}::${item.proveedorId ?? ""}`;
+    const previo = equiposAgrupados.get(key);
+    if (!previo) {
+      equiposAgrupados.set(key, {
+        proyectoId: proy.id, equipoId: item.equipoId, tipo: item.tipo,
+        cantidad: item.cantidad, dias: item.dias,
+        costoExterno: item.costoExterno, proveedorId: item.proveedorId, notas: item.notas,
+      });
+      return;
+    }
+    // Costo externo ponderado por cantidad (por si el precio unitario difiere entre líneas).
+    if (previo.costoExterno != null || item.costoExterno != null) {
+      const totalPrevio = (previo.costoExterno ?? 0) * previo.cantidad;
+      const totalNuevo = (item.costoExterno ?? 0) * item.cantidad;
+      const cantidadTotal = previo.cantidad + item.cantidad;
+      previo.costoExterno = cantidadTotal > 0 ? (totalPrevio + totalNuevo) / cantidadTotal : null;
+    }
+    previo.cantidad += item.cantidad;
+    previo.dias = Math.max(previo.dias, item.dias);
+    if (item.notas && item.notas !== previo.notas) {
+      previo.notas = previo.notas ? `${previo.notas}; ${item.notas}` : item.notas;
+    }
+  };
+
+  for (const l of lineasEquipo) {
+    acumular({
+      equipoId: l.equipoId!,
+      tipo: l.tipo === "EQUIPO_EXTERNO" ? "EXTERNO" : "PROPIO",
+      cantidad: Math.round(l.cantidad),
+      dias: l.dias,
+      costoExterno: l.tipo === "EQUIPO_EXTERNO" ? l.costoUnitario : null,
+      proveedorId: l.tipo === "EQUIPO_EXTERNO" ? (l.proveedorId ?? null) : null,
+      // Copia la nota del concepto de la cotización como semilla editable
+      // (sin el prefijo interno "cat:…" que codifica la categoría).
+      notas: notaVisibleDeCotizacion(l.notas),
     });
+  }
+  for (const c of equiposDePaquetes) {
+    acumular({ equipoId: c.equipoId, tipo: "PROPIO", cantidad: c.cantidad, dias: c.dias, costoExterno: null, proveedorId: null, notas: null });
+  }
+
+  if (equiposAgrupados.size > 0) {
+    await tx.proyectoEquipo.createMany({ data: [...equiposAgrupados.values()] });
   }
 
   // 2b. Crear CxP para cada equipo externo con costo

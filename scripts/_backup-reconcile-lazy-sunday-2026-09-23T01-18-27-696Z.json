@@ -1,0 +1,20 @@
+{
+  "proyecto": {
+    "id": "cmsgbz3ke0004lg1p0zqtt5za",
+    "clienteId": "cmnrq8zco000gg1ddq38p2j68",
+    "cotizacionId": "cmruwwbjd0005b6ut1wnsbjc4",
+    "numeroProyecto": "PRY-2026-082",
+    "nombre": "Lazy Sunday"
+  },
+  "movimiento": {
+    "id": "cmtorr4wa0035j646lqqmvqat",
+    "fecha": "2026-09-01T06:00:00.000Z",
+    "monto": 10100,
+    "metodoPago": "TRANSFERENCIA",
+    "cuentaDestinoId": "cmnrpg65l000rzmizc039imjd",
+    "creadoPor": "cmo7ikcc00000oqfsqwzys8g4"
+  },
+  "granTotal": 132426,
+  "sumaActual": 122326,
+  "gapActual": 10100
+}

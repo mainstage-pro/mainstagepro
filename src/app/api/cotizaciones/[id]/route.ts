@@ -122,6 +122,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         select: {
           granTotal: true,
           numeroCotizacion: true,
+          clienteId: true,
           proyecto: { select: { id: true } },
         },
       });
@@ -296,6 +297,29 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
                 data:  { monto: nuevoMonto, ajustesLog: JSON.stringify(log) },
               });
             }));
+          }
+        } else if (cxcAll.length > 0) {
+          // Todas las CxC ya están LIQUIDADO. Si el total subió después de
+          // liquidar (ej. se agregó un concepto tras el cobro final), no hay
+          // ninguna CxC pendiente donde reflejar la diferencia: sin esto, el
+          // proyecto se queda mostrando "por cobrar" un monto que nadie
+          // registró como pendiente, aunque nadie lo haya cobrado tampoco.
+          const sumLiquidadas = liquidadas.reduce((s, c) => s + c.monto, 0);
+          const diferencia = Math.round((newGranTotal - sumLiquidadas) * 100) / 100;
+          if (diferencia > 0.01) {
+            await prisma.cuentaCobrar.create({
+              data: {
+                proyectoId,
+                cotizacionId: id,
+                clienteId: prev.clienteId,
+                concepto: `Ajuste por aumento de total (${prev.numeroCotizacion})`,
+                tipoPago: "OTRO",
+                monto: diferencia,
+                fechaCompromiso: new Date(),
+                estado: "PENDIENTE",
+                notas: `Generada automáticamente: la cotización subió de ${prevGranTotal} a ${newGranTotal} después de que todas las cuentas por cobrar existentes ya estaban liquidadas.`,
+              },
+            });
           }
         }
       }
