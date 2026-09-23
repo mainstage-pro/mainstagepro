@@ -32,66 +32,42 @@ export async function POST(req: NextRequest) {
   const fechaInicio = new Date(fechaCompromiso);
 
   if (esRecurrente && frecuencia) {
-    // Generate dates for the recurrence
-    const fechas = generarFechasRecurrentes({
-      frecuencia: frecuencia as FrecuenciaRecurrencia,
-      fechaInicio,
-      fechaFin: fechaFin ? new Date(fechaFin) : null,
-      diaVencimiento: diaVencimiento ? parseInt(diaVencimiento, 10) : null
-    }, 24); // generate up to 24 months (2 years)
-
-    if (fechas.length === 0) {
-      return NextResponse.json({ error: "La configuración de recurrencia no genera ninguna fecha" }, { status: 400 });
-    }
-
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Create the template (SerieRecurrente)
-      const serie = await tx.serieRecurrente.create({
+      // 1. Create the new GastoRecurrente instead of SerieRecurrente
+      const gasto = await tx.gastoRecurrente.create({
         data: {
-          tipo: "CXP",
+          nombre: concepto,
+          descripcion: notas || null,
+          tipoMonto: "FIJO",
+          montoBase: montoFloat,
           frecuencia,
-          intervalo: 1,
           fechaInicio,
           fechaFin: fechaFin ? new Date(fechaFin) : null,
           diaVencimiento: diaVencimiento ? parseInt(diaVencimiento, 10) : null,
-          concepto,
-          monto: montoFloat,
-          empresaId: empresaId || null,
           proveedorId: proveedorId || null,
-          socioId: socioId || null,
-          tecnicoId: tecnicoId || null,
-          proyectoId: proyectoId || null,
+          empresaId: empresaId || null,
           categoriaId: categoriaId || null,
+          proyectoId: proyectoId || null,
+          estado: "ACTIVO",
           ultimaGeneracion: new Date(),
         }
       });
 
-      // 2. Create the child accounts
-      const cuentas = await Promise.all(fechas.map((fecha, idx) => 
-        tx.cuentaPagar.create({
-          data: {
-            tipoAcreedor: resolvedTipo,
-            concepto: `${concepto} (${idx + 1})`,
-            monto: montoFloat,
-            fechaCompromiso: fecha,
-            estado: "PENDIENTE",
-            notas: notas || null,
-            proveedorId: proveedorId || null,
-            tecnicoId: tecnicoId || null,
-            empresaId: empresaId || null,
-            socioId: socioId || null,
-            proyectoId: proyectoId || null,
-          categoriaId: categoriaId || null,
-            serieRecurrenteId: serie.id,
-            numeroPeriodo: idx + 1,
-          }
-        })
-      ));
-
-      return cuentas[0]; // return the first one as response
+      // Se generarán los periodos mediante la función central.
+      return gasto;
     });
 
-    return NextResponse.json({ cxp: result });
+    // Llamamos asíncronamente (o de inmediato) a la utilidad central
+    const { generarPeriodosGastosRecurrentes } = await import("@/lib/gastos-recurrentes");
+    await generarPeriodosGastosRecurrentes();
+
+    // Fetch the first generated CuentaPagar to return
+    const primeraCxP = await prisma.cuentaPagar.findFirst({
+      where: { gastoRecurrenteId: result.id },
+      orderBy: { fechaCompromiso: "asc" }
+    });
+
+    return NextResponse.json({ cxp: primeraCxP || { id: "generando..." } });
   }
 
   // Normal creation (non-recurrent)

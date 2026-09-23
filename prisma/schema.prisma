@@ -133,12 +133,13 @@ model Empresa {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  contactosCliente   Cliente[]      @relation("ClienteEmpresa")
-  contactosProveedor Proveedor[]    @relation("ProveedorEmpresa")
+  contactosCliente   Cliente[]           @relation("ClienteEmpresa")
+  contactosProveedor Proveedor[]         @relation("ProveedorEmpresa")
   cuentasCobrar      CuentaCobrar[]
   cuentasPagar       CuentaPagar[]
   cortesCompensacion CorteCompensacion[]
   compensaciones     Compensacion[]
+  gastosRecurrentes  GastoRecurrente[]
 
   @@map("empresas")
 }
@@ -725,6 +726,7 @@ model Proyecto {
   tareas            Tarea[]                @relation("TareasDeProyecto")
   proveedoresEvento ProveedorEvento[]
   actasEvento       ActaAdministrativa[]   @relation("ActaEventoProyecto")
+  gastosRecurrentes GastoRecurrente[]
 
   @@map("proyectos")
 }
@@ -1301,17 +1303,18 @@ model Proveedor {
   portalToken    String?  @unique @map("portal_token")
   createdAt      DateTime @default(now())
 
-  equiposDefault   Equipo[]                @relation("ProveedorDefault")
-  cotizacionLineas CotizacionLinea[]
-  proyectoEquipos  ProyectoEquipo[]
-  cuentasPagar     CuentaPagar[]
-  movimientos      MovimientoFinanciero[]
-  ordenesCompra    OrdenCompra[]
-  equiposPortal    EquipoProveedor[]
-  equiposPrecios   EquipoProveedorPrecio[] @relation("ProveedorEquiposPrecios")
-  lineasRenta      CotizacionLinea[]       @relation("ProveedorRentaLineas")
-  pasivosDeuda     PasivoDeuda[]
-  accesorios       Accesorio[]
+  equiposDefault    Equipo[]                @relation("ProveedorDefault")
+  cotizacionLineas  CotizacionLinea[]
+  proyectoEquipos   ProyectoEquipo[]
+  cuentasPagar      CuentaPagar[]
+  movimientos       MovimientoFinanciero[]
+  ordenesCompra     OrdenCompra[]
+  equiposPortal     EquipoProveedor[]
+  equiposPrecios    EquipoProveedorPrecio[] @relation("ProveedorEquiposPrecios")
+  lineasRenta       CotizacionLinea[]       @relation("ProveedorRentaLineas")
+  pasivosDeuda      PasivoDeuda[]
+  accesorios        Accesorio[]
+  gastosRecurrentes GastoRecurrente[]
 
   @@map("proveedores")
 }
@@ -1443,8 +1446,9 @@ model CategoriaFinanciera {
   orden       Int     @default(0)
   descripcion String?
 
-  movimientos  MovimientoFinanciero[]
-  cuentasPagar CuentaPagar[]
+  movimientos       MovimientoFinanciero[]
+  cuentasPagar      CuentaPagar[]
+  gastosRecurrentes GastoRecurrente[]
 
   @@map("categorias_financieras")
 }
@@ -1550,8 +1554,8 @@ model CuentaCobrar {
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
-  abonos Abono[]
-  cuotas CuotaCobro[]
+  abonos                   Abono[]
+  cuotas                   CuotaCobro[]
   aplicacionesCompensacion CompensacionAplicacion[]
 
   @@map("cuentas_cobrar")
@@ -1594,6 +1598,12 @@ model CuentaPagar {
   serieRecurrente   SerieRecurrente? @relation(fields: [serieRecurrenteId], references: [id])
   numeroPeriodo     Int?
 
+  // Gastos Recurrentes
+  gastoRecurrenteId String?
+  gastoRecurrente   GastoRecurrente?        @relation(fields: [gastoRecurrenteId], references: [id])
+  periodoGastoId    String?                 @unique
+  periodoGasto      PeriodoGastoRecurrente? @relation(fields: [periodoGastoId], references: [id])
+
   concepto        String
   monto           Float
   montoPagado     Float                 @default(0)
@@ -1613,16 +1623,16 @@ model CuentaPagar {
   createdAt       DateTime              @default(now())
   updatedAt       DateTime              @updatedAt
 
-  abonos       AbonoPago[]
-  cuotas       CuotaPago[]
-  cuotaDeuda   CuotaDeuda?   @relation("CuotaDeudaCxP")
-  cuotaReparto CuotaReparto? @relation("CuotaRepatoCxP")
-  pagoNomina   PagoNomina?   @relation("PagoNominaCxP")
+  abonos                   AbonoPago[]
+  cuotas                   CuotaPago[]
+  cuotaDeuda               CuotaDeuda?              @relation("CuotaDeudaCxP")
+  cuotaReparto             CuotaReparto?            @relation("CuotaRepatoCxP")
+  pagoNomina               PagoNomina?              @relation("PagoNominaCxP")
   aplicacionesCompensacion CompensacionAplicacion[]
   // tipo extra para identificar origen en cobros-pagos
-  esDeuda      Boolean       @default(false) // true si viene de PasivoDeuda
-  esReparto    Boolean       @default(false) // true si viene de RepartoUtilidad
-  esNomina     Boolean       @default(false) // true si viene de nómina de personal interno
+  esDeuda                  Boolean                  @default(false) // true si viene de PasivoDeuda
+  esReparto                Boolean                  @default(false) // true si viene de RepartoUtilidad
+  esNomina                 Boolean                  @default(false) // true si viene de nómina de personal interno
 
   @@map("cuentas_pagar")
 }
@@ -5029,23 +5039,23 @@ model proyectos_presentacion {
 // ─── CORTES DE COMPENSACIÓN ──────────────────────────────────────────────────
 
 model CorteCompensacion {
-  id                    String   @id @default(cuid())
-  empresaId             String
-  empresa               Empresa  @relation(fields: [empresaId], references: [id])
-  fechaInicial          DateTime
-  fechaFinal            DateTime
-  
-  totalFavorMainstage   Decimal  @db.Decimal(14, 2)
-  totalFavorContraparte Decimal  @db.Decimal(14, 2)
-  montoCompensable      Decimal  @db.Decimal(14, 2)
-  saldoNeto             Decimal  @db.Decimal(14, 2)
-  
-  estado                String   @default("BORRADOR") // BORRADOR | CONCILIADO | PARCIALMENTE_LIQUIDADO | LIQUIDADO | CANCELADO
-  creadoPor             String?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id           String   @id @default(cuid())
+  empresaId    String
+  empresa      Empresa  @relation(fields: [empresaId], references: [id])
+  fechaInicial DateTime
+  fechaFinal   DateTime
 
-  compensaciones        Compensacion[]
+  totalFavorMainstage   Decimal @db.Decimal(14, 2)
+  totalFavorContraparte Decimal @db.Decimal(14, 2)
+  montoCompensable      Decimal @db.Decimal(14, 2)
+  saldoNeto             Decimal @db.Decimal(14, 2)
+
+  estado    String   @default("BORRADOR") // BORRADOR | CONCILIADO | PARCIALMENTE_LIQUIDADO | LIQUIDADO | CANCELADO
+  creadoPor String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  compensaciones Compensacion[]
 
   @@index([empresaId])
   @@index([estado])
@@ -5055,27 +5065,27 @@ model CorteCompensacion {
 // ─── COMPENSACIONES ──────────────────────────────────────────────────────────
 
 model Compensacion {
-  id                String   @id @default(cuid())
+  id                String             @id @default(cuid())
   empresaId         String
-  empresa           Empresa  @relation(fields: [empresaId], references: [id])
+  empresa           Empresa            @relation(fields: [empresaId], references: [id])
   corteId           String?
   corte             CorteCompensacion? @relation(fields: [corteId], references: [id])
-  fecha             DateTime @default(now())
-  importeCompensado Decimal  @db.Decimal(14, 2)
+  fecha             DateTime           @default(now())
+  importeCompensado Decimal            @db.Decimal(14, 2)
   notas             String?
-  
-  estado            String   @default("ACTIVA") // ACTIVA | REVERSADA
-  reversadaPorId    String?  @unique // Si esta compensación fue reversada, este es el ID de la compensación que la reversa
-  reversaDeId       String?  @unique // Si esta es una compensación de reversa, este es el ID de la original a la que anula
-  
-  creadoPor         String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
 
-  reversadaPor      Compensacion? @relation("CompensacionReversa", fields: [reversadaPorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  reversaDe         Compensacion? @relation("CompensacionReversa")
+  estado         String  @default("ACTIVA") // ACTIVA | REVERSADA
+  reversadaPorId String? @unique // Si esta compensación fue reversada, este es el ID de la compensación que la reversa
+  reversaDeId    String? @unique // Si esta es una compensación de reversa, este es el ID de la original a la que anula
 
-  aplicaciones      CompensacionAplicacion[]
+  creadoPor String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reversadaPor Compensacion? @relation("CompensacionReversa", fields: [reversadaPorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  reversaDe    Compensacion? @relation("CompensacionReversa")
+
+  aplicaciones CompensacionAplicacion[]
 
   @@index([empresaId])
   @@index([corteId])
@@ -5084,20 +5094,96 @@ model Compensacion {
 }
 
 model CompensacionAplicacion {
-  id              String   @id @default(cuid())
-  compensacionId  String
-  compensacion    Compensacion @relation(fields: [compensacionId], references: [id], onDelete: Cascade)
-  
-  cuentaCobrarId  String
-  cuentaCobrar    CuentaCobrar @relation(fields: [cuentaCobrarId], references: [id])
-  
-  cuentaPagarId   String
-  cuentaPagar     CuentaPagar  @relation(fields: [cuentaPagarId], references: [id])
-  
-  montoAplicado   Decimal      @db.Decimal(14, 2)
+  id             String       @id @default(cuid())
+  compensacionId String
+  compensacion   Compensacion @relation(fields: [compensacionId], references: [id], onDelete: Cascade)
+
+  cuentaCobrarId String
+  cuentaCobrar   CuentaCobrar @relation(fields: [cuentaCobrarId], references: [id])
+
+  cuentaPagarId String
+  cuentaPagar   CuentaPagar @relation(fields: [cuentaPagarId], references: [id])
+
+  montoAplicado Decimal @db.Decimal(14, 2)
 
   @@index([compensacionId])
   @@index([cuentaCobrarId])
   @@index([cuentaPagarId])
   @@map("compensaciones_aplicaciones")
+}
+
+// ─── GASTOS RECURRENTES ──────────────────────────────────────────────────────
+
+model GastoRecurrente {
+  id          String  @id @default(cuid())
+  nombre      String
+  descripcion String?
+
+  // Relaciones
+  proveedorId   String?
+  proveedor     Proveedor? @relation(fields: [proveedorId], references: [id])
+  empresaId     String?
+  empresa       Empresa?   @relation(fields: [empresaId], references: [id])
+  acreedorLibre String?
+
+  tipoMonto String @default("FIJO") // FIJO | VARIABLE
+  montoBase Float? // Obligatorio para FIJO, Opcional para VARIABLE (monto de referencia)
+
+  frecuencia     String // MENSUAL | BIMESTRAL | TRIMESTRAL | SEMESTRAL | ANUAL
+  fechaInicio    DateTime
+  fechaFin       DateTime?
+  diaVencimiento Int? // Día límite
+
+  categoriaId String?
+  categoria   CategoriaFinanciera? @relation(fields: [categoriaId], references: [id])
+  proyectoId  String?
+  proyecto    Proyecto?            @relation(fields: [proyectoId], references: [id])
+
+  estado String @default("ACTIVO") // ACTIVO | PAUSADO | FINALIZADO
+
+  ultimaGeneracion DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  periodos     PeriodoGastoRecurrente[]
+  cuentasPagar CuentaPagar[]
+  historial    GastoRecurrenteHistorial[]
+
+  @@map("gastos_recurrentes")
+}
+
+model PeriodoGastoRecurrente {
+  id                String          @id @default(cuid())
+  gastoRecurrenteId String
+  gastoRecurrente   GastoRecurrente @relation(fields: [gastoRecurrenteId], references: [id], onDelete: Cascade)
+
+  periodo          String // ej: "OCT-2026"
+  fechaInicio      DateTime
+  fechaVencimiento DateTime
+
+  montoEstimado   Float?
+  montoConfirmado Float?
+
+  estado String @default("PENDIENTE_IMPORTE") // PENDIENTE_IMPORTE | PENDIENTE_PAGO | PAGADO | VENCIDO | CANCELADO
+
+  cuentaPagar CuentaPagar?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([gastoRecurrenteId, periodo]) // Idempotencia: un gasto no puede tener dos periodos "OCT-2026"
+  @@map("periodos_gasto_recurrente")
+}
+
+model GastoRecurrenteHistorial {
+  id                String          @id @default(cuid())
+  gastoRecurrenteId String
+  gastoRecurrente   GastoRecurrente @relation(fields: [gastoRecurrenteId], references: [id], onDelete: Cascade)
+
+  cambio    String // Descripción del cambio o JSON
+  creadoPor String?
+  createdAt DateTime @default(now())
+
+  @@map("gastos_recurrentes_historial")
 }
