@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { NAV } from "@/lib/nav";
-import { Pencil, Plus, X, Check, ChevronLeft, ChevronRight, Star } from "lucide-react";
+import { Pencil, Plus, X, Check, ChevronLeft, ChevronRight } from "lucide-react";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type IconType = React.ComponentType<any>;
@@ -106,67 +106,61 @@ export default function InicioHome({ userName }: { userName: string }) {
   const firstName = userName?.split(" ")[0] ?? "";
 
   return (
-    <div className="min-h-full bg-[#0a0a0a] text-white flex items-center justify-center">
-      <div className="w-full max-w-6xl mx-auto px-5 md:px-8 py-8 md:py-12">
+    <div className="text-white">
+      <div>
         {/* ── Encabezado ── */}
-        <header className="mb-9 text-center">
-          <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-[0.18em] mb-1.5">Mainstage Pro</p>
-          <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">
-            {greeting}{firstName ? `, ${firstName}` : ""}
-          </h1>
-          <p className="text-white/40 text-sm mt-1">Tus accesos frecuentes en un solo lugar.</p>
+        <header className="flex items-end justify-between gap-4 mb-5">
+          <div>
+            <p className="text-[#B3985B] text-[11px] font-semibold uppercase tracking-[0.18em] mb-1">Mainstage Pro</p>
+            <h1 className="text-xl md:text-2xl font-semibold tracking-tight">
+              {greeting}{firstName ? `, ${firstName}` : ""}
+            </h1>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {editing && (
+              <button
+                onClick={() => setPickerOpen(true)}
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-[#B3985B] hover:bg-[#c9a96a] text-black font-medium transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" /> Agregar
+              </button>
+            )}
+            <button
+              onClick={() => setEditing((e) => !e)}
+              className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+                editing
+                  ? "border-[#B3985B]/40 text-[#B3985B] bg-[#B3985B]/10"
+                  : "border-[#222] text-white/50 hover:text-white hover:border-[#333]"
+              }`}
+            >
+              <Pencil className="w-3.5 h-3.5" /> {editing ? "Listo" : "Accesos"}
+            </button>
+          </div>
         </header>
 
         {/* ── Accesos frecuentes (editables) ── */}
-        <section>
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="flex items-center gap-2">
-              <Star strokeWidth={1.75} className="w-4 h-4 text-[#B3985B]" />
-              <h2 className="text-sm font-semibold tracking-wide">Accesos frecuentes</h2>
-            </div>
-            <div className="flex items-center gap-2">
-              {editing && (
-                <button
-                  onClick={() => setPickerOpen(true)}
-                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-[#B3985B] hover:bg-[#c9a96a] text-black font-medium transition-colors"
-                >
-                  <Plus className="w-3.5 h-3.5" /> Agregar
-                </button>
-              )}
-              <button
-                onClick={() => setEditing((e) => !e)}
-                className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors ${
-                  editing
-                    ? "border-[#B3985B]/40 text-[#B3985B] bg-[#B3985B]/10"
-                    : "border-[#222] text-white/50 hover:text-white hover:border-[#333]"
-                }`}
-              >
-                <Pencil className="w-3.5 h-3.5" /> {editing ? "Listo" : "Editar"}
-              </button>
-            </div>
-          </div>
-
+        <section className="mb-6">
           {favMods.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-[#222] p-8 text-center text-white/40 text-sm">
-              Sin accesos. Usa <span className="text-[#B3985B]">Editar → Agregar</span> para elegir tus módulos frecuentes.
+            <div className="rounded-xl border border-dashed border-[#222] p-4 text-center text-white/40 text-xs">
+              Sin accesos. Usa <span className="text-[#B3985B]">Accesos → Agregar</span> para elegir tus módulos frecuentes.
             </div>
           ) : (
-            <div className="flex flex-wrap justify-center gap-3">
+            <div className="flex flex-wrap gap-2">
               {favMods.map((m, idx) => (
-                <div key={m.id} className="relative group w-[150px] sm:w-[160px]">
+                <div key={m.id} className="relative group">
                   <Link
                     href={m.href}
-                    className={`flex flex-col items-center justify-center gap-2.5 p-5 rounded-2xl bg-gradient-to-b from-[#151515] to-[#0e0e0e] border border-[#1f1f1f] transition-all hover:-translate-y-0.5 hover:border-[#B3985B]/45 ${
+                    className={`flex items-center gap-2 pl-2 pr-3.5 py-2 rounded-xl bg-[#0e0e0e] border border-[#1f1f1f] transition-colors hover:border-[#B3985B]/45 ${
                       editing ? "pointer-events-none opacity-90" : ""
                     }`}
                   >
                     <span
-                      className="w-12 h-12 rounded-xl flex items-center justify-center"
+                      className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                       style={{ backgroundColor: `${m.accent}1f`, color: m.accent }}
                     >
-                      <m.Icon strokeWidth={1.75} className="w-[22px] h-[22px]" />
+                      <m.Icon strokeWidth={1.75} className="w-4 h-4" />
                     </span>
-                    <span className="text-[13px] text-gray-200 text-center leading-tight">{m.label}</span>
+                    <span className="text-xs text-gray-200 leading-tight whitespace-nowrap">{m.label}</span>
                   </Link>
 
                   {editing && (
