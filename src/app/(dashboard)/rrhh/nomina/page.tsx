@@ -42,7 +42,8 @@ const TIPO_LABELS: Record<string, string> = {
 
 // Fecha del siguiente pago de nómina según el tipo de período, a partir de la
 // fecha del pago recién confirmado.
-function proximoPago(tipoPeriodo: string, desdeISO: string): Date {
+function proximoPago(tipoPeriodo: string, desdeISO: string): Date | null {
+  if (tipoPeriodo === "EVENTO" || tipoPeriodo === "UNICO") return null;
   const [y, m, d] = desdeISO.substring(0, 10).split("-").map(Number);
   const base = new Date(y, m - 1, d);
   if (tipoPeriodo === "SEMANAL") base.setDate(base.getDate() + 7);
@@ -242,7 +243,7 @@ export default function NominaPage() {
     // Mantener la fila visible con el botón bloqueado hasta el próximo pago de
     // nómina, en lugar de recargar y ocultarla de inmediato.
     const prox = proximoPago(pago.tipoPeriodo, data.fecha);
-    setPagados(prev => ({ ...prev, [pago.id]: fmtFechaCorta(prox) }));
+    setPagados(prev => ({ ...prev, [pago.id]: prox ? fmtFechaCorta(prox) : "LIQUIDADO" }));
   }
 
   const totalPendiente = pendientes.filter(p => !pagados[p.id]).reduce((s, p) => s + p.monto, 0);
@@ -380,7 +381,7 @@ export default function NominaPage() {
                               ? "bg-gray-700 text-gray-400 cursor-wait"
                               : "bg-green-800 hover:bg-green-700 text-white"
                           }`}>
-                          {proxPago ? `✓ Pagado · próximo ${proxPago}` : isConfirmando ? "Procesando..." : "✓ Confirmar pago"}
+                          {proxPago ? (proxPago === "LIQUIDADO" ? "✓ Pagado" : `✓ Pagado · próximo ${proxPago}`) : isConfirmando ? "Procesando..." : "✓ Confirmar pago"}
                         </button>
                       </div>
                     </div>
