@@ -187,6 +187,58 @@ export default function PuestosOperativosPage() {
     [subareasPorArea],
   );
   const subAreaById = useMemo(() => new Map(subAreaOpts.map(s => [s.id, s])), [subAreaOpts]);
+  // Quién ocupa cada sub-área en los demás puestos. El dueño (principal) es único:
+  // es a quien se le califica el resultado. Los demás pueden participar sin ser responsables.
+  const ocupacion = useMemo(() => {
+    const m = new Map<string, { dueno: string | null; participan: string[] }>();
+    for (const p of puestos) {
+      if (p.id === editing?.id) continue;
+      for (const l of p.subAreas ?? []) {
+        const e = m.get(l.subAreaId) ?? { dueno: null, participan: [] };
+        if (l.principal) e.dueno = p.nombre; else e.participan.push(p.nombre);
+        m.set(l.subAreaId, e);
+      }
+    }
+    return m;
+  }, [puestos, editing]);
+  // Opciones del selector: al abrir solo las del área del puesto (libres primero);
+  // al escribir se busca en todas, porque un puesto puede prestar sub-áreas de otra área.
+  const subAreaOpcion = (s: SubAreaOpt) => {
+    const oc = ocupacion.get(s.id);
+    const quien = oc?.dueno
+      ? `dueño: ${oc.dueno}`
+      : oc?.participan.length ? `participa: ${oc.participan.join(", ")}` : "libre";
+    const otra = s.area === form.area ? "" : ` · ${areaLabel(s.area)}`;
+    return {
+      value: s.id,
+      label: `${s.nombre}${otra} — ${quien}`,
+      group: oc?.dueno ? "Ya tienen dueño" : "Libres",
+    };
+  };
+  const disponibles = useMemo(
+    () => subAreaOpts.filter(s => !subAreaIds.includes(s.id)),
+    [subAreaOpts, subAreaIds],
+  );
+  const ordenar = (a: SubAreaOpt[]) =>
+    [...a].sort((x, y) => Number(!!ocupacion.get(x.id)?.dueno) - Number(!!ocupacion.get(y.id)?.dueno));
+  const subAreaDelArea = useMemo(
+    () => ordenar(disponibles.filter(s => s.area === form.area)).map(subAreaOpcion),
+    [disponibles, form.area, ocupacion], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  const subAreaTodas = useMemo(
+    () => ordenar(disponibles).map(subAreaOpcion),
+    [disponibles, form.area, ocupacion], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  // La primera sub-área es la principal: de ella el puesto es dueño y no puede
+  // haber dos dueños de la misma sub-área.
+  const conflictoDueno = useMemo(() => {
+    const principal = subAreaIds[0];
+    const dueno = principal ? ocupacion.get(principal)?.dueno : null;
+    if (!dueno) return null;
+    const nombre = subAreaById.get(principal)?.nombre ?? "esa sub-área";
+    return `${nombre} ya es principal de ${dueno}. Quítala de ahí o déjala aquí como secundaria (no en primer lugar).`;
+  }, [subAreaIds, ocupacion, subAreaById]);
+
   // Áreas que toca el puesto: la suya más las de sus sub-áreas prestadas.
   const areasDelPuesto = useMemo(() => {
     const set = new Set<string>([form.area]);
@@ -359,6 +411,7 @@ export default function PuestosOperativosPage() {
     if (form.reportaAId && editing && generaCiclo(editing.id, form.reportaAId, reportaDe)) {
       return "La relación de reporte genera un ciclo (A reporta a B y B a A).";
     }
+    if (conflictoDueno) return conflictoDueno;
     const kpisValidos = kpis.filter(k => k.esFijoPlan || k.nombre.trim());
     if (kpisValidos.length < 3) return "Define al menos 3 resultados clave (incluyendo Cumplimiento del plan).";
     if (kpisValidos.length > 5) return "Máximo 5 resultados clave por puesto.";
@@ -498,6 +551,22 @@ export default function PuestosOperativosPage() {
     .filter(g => g.items.length > 0);
   const totalAsignados = visible.filter(p => (p.ocupantes?.length ?? 0) > 0).length;
   const totalVacantes = visible.length - totalAsignados;
+  // Cobertura de sub-áreas: cada una necesita exactamente un puesto dueño (principal).
+  const cobertura = useMemo(() => {
+    const duenos = new Map<string, string[]>();
+    const tocadas = new Set<string>();
+    for (const p of puestos) {
+      for (const l of p.subAreas ?? []) {
+        tocadas.add(l.subAreaId);
+        if (l.principal) duenos.set(l.subAreaId, [...(duenos.get(l.subAreaId) ?? []), p.nombre]);
+      }
+    }
+    const sinDueno = [...tocadas].filter(id => !duenos.has(id));
+    const duplicados = [...duenos.entries()].filter(([, ps]) => ps.length > 1);
+    const libres = subAreaOpts.filter(s => !tocadas.has(s.id));
+    return { sinDueno, duplicados, libres };
+  }, [puestos, subAreaOpts]);
+  const nombreSub = (id: string) => subAreaById.get(id)?.nombre ?? "sub-área";
 
   const horasSem = horasSemanales(jornada);
   const esHibrido = form.modalidad === "Híbrido";
@@ -692,6 +761,21 @@ export default function PuestosOperativosPage() {
         <div className="flex items-center gap-4 text-xs">
           <span className="flex items-center gap-1.5 text-green-400"><UserCheck className="w-3.5 h-3.5" /> {totalAsignados} asignado{totalAsignados !== 1 ? "s" : ""}</span>
           <span className="flex items-center gap-1.5 text-orange-400"><UserX className="w-3.5 h-3.5" /> {totalVacantes} sin rol</span>
+          {cobertura.libres.length > 0 && (
+            <span className="text-gray-500" title={cobertura.libres.map(s => s.nombre).join(" · ")}>
+              {cobertura.libres.length} sub-área{cobertura.libres.length !== 1 ? "s" : ""} sin puesto
+            </span>
+          )}
+          {cobertura.sinDueno.length > 0 && (
+            <span className="flex items-center gap-1.5 text-yellow-500" title={cobertura.sinDueno.map(nombreSub).join(" · ")}>
+              <AlertTriangle className="w-3.5 h-3.5" /> {cobertura.sinDueno.length} sin dueño
+            </span>
+          )}
+          {cobertura.duplicados.length > 0 && (
+            <span className="flex items-center gap-1.5 text-red-400" title={cobertura.duplicados.map(([id, ps]) => `${nombreSub(id)}: ${ps.join(", ")}`).join(" · ")}>
+              <AlertTriangle className="w-3.5 h-3.5" /> {cobertura.duplicados.length} con dueño duplicado
+            </span>
+          )}
         </div>
       )}
 
@@ -796,12 +880,15 @@ export default function PuestosOperativosPage() {
                     {subAreaIds.length === 0 && <span className="text-gray-700 text-xs">Sin sub-áreas. Elige al menos una: de ahí salen las responsabilidades y un resultado clave por sub-área.</span>}
                     {subAreaIds.map((id, i) => {
                       const s = subAreaById.get(id);
-                      const col = areaColor(s?.area ?? form.area);
+                      const choca = i === 0 && !!conflictoDueno;
+                      const col = choca ? "#f87171" : areaColor(s?.area ?? form.area);
+                      const oc = ocupacion.get(id);
                       return (
                         <span key={id} className="text-[11px] px-2 py-0.5 rounded-full border flex items-center gap-1"
                           style={{ color: col, borderColor: `${col}55`, background: `${col}14` }}>
                           {s?.nombre ?? "(sub-área eliminada)"}
                           {i === 0 && <span className="opacity-60">· principal</span>}
+                          {i > 0 && oc?.dueno && <span className="opacity-60">· dueño {oc.dueno}</span>}
                           {s && s.area !== form.area && <span className="opacity-60">· {areaLabel(s.area)}</span>}
                           <button onClick={() => setSubAreaIds(a => a.filter(x => x !== id))} className="opacity-60 hover:opacity-100"><X className="w-3 h-3" /></button>
                         </span>
@@ -809,11 +896,18 @@ export default function PuestosOperativosPage() {
                     })}
                   </div>
                   <Combobox value="" onChange={v => { if (v && !subAreaIds.includes(v)) setSubAreaIds(a => [...a, v]); }}
-                    options={[
-                      { value: "", label: "+ Agregar sub-área…" },
-                      ...subAreaOpts.filter(s => !subAreaIds.includes(s.id))
-                        .map(s => ({ value: s.id, label: s.area === form.area ? s.nombre : `${s.nombre} — ${areaLabel(s.area)}` })),
-                    ]} className={inputCls} />
+                    options={[{ value: "", label: "+ Agregar sub-área…" }, ...subAreaTodas]}
+                    idleOptions={[{ value: "", label: "+ Agregar sub-área…" }, ...subAreaDelArea]}
+                    className={inputCls} />
+                  <p className="text-[10px] text-gray-600 mt-1">
+                    Al abrir verás las sub-áreas de {areaLabel(form.area)}; escribe para buscar en las demás áreas.
+                  </p>
+                  {conflictoDueno && (
+                    <p className="text-[11px] text-red-400 mt-1 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3 shrink-0" />
+                      {conflictoDueno}
+                    </p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
