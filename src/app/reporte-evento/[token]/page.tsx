@@ -3,8 +3,14 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { SearchX } from "lucide-react";
+import { SEVERIDADES_FALLA, SEVERIDAD_FALLA_LABEL } from "@/lib/falla-equipo";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+interface EquipoOpcion {
+  id: string;
+  label: string;
+}
 
 interface Contexto {
   estado: string;
@@ -13,12 +19,22 @@ interface Contexto {
   clienteNombre: string;
   fechaEvento: string | null;
   tipoServicio: string | null;
+  equipos: EquipoOpcion[];
 }
 
 interface Incidencia {
   descripcion: string;
   impacto: "bajo" | "medio" | "alto";
   resolucion: string;
+}
+
+// Falla capturada en el reporte. Si equipoId viene lleno, el sistema la convierte en
+// una falla real del inventario y aparece en el tablero de producción.
+interface FallaDraft {
+  equipoId: string | null;
+  equipoLabel: string;
+  severidad: string;
+  descripcion: string;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -124,6 +140,121 @@ function TagList({ label, items, setItems, placeholder }: {
   );
 }
 
+const SEVERIDAD_ACTIVA: Record<string, string> = {
+  LEVE: "bg-gray-600 text-white border-gray-600",
+  MODERADA: "bg-yellow-500 text-black border-yellow-500",
+  CRITICA: "bg-red-600 text-white border-red-600",
+};
+
+const SEVERIDAD_PUNTO: Record<string, string> = {
+  LEVE: "text-gray-500",
+  MODERADA: "text-yellow-500",
+  CRITICA: "text-red-500",
+};
+
+// Captura de fallas ligadas al inventario: el coordinador elige el equipo de los que
+// salieron a este evento, marca qué tan grave es y describe qué pasó.
+function FallasInput({ label, equipos, items, setItems }: {
+  label: string;
+  equipos: EquipoOpcion[];
+  items: FallaDraft[];
+  setItems: (v: FallaDraft[]) => void;
+}) {
+  const [equipoId, setEquipoId] = useState("");
+  const [otroNombre, setOtroNombre] = useState("");
+  const [severidad, setSeveridad] = useState<string>("MODERADA");
+  const [descripcion, setDescripcion] = useState("");
+
+  const esOtro = equipoId === "__otro__";
+  const puedeAgregar = descripcion.trim() !== "" && (esOtro ? otroNombre.trim() !== "" : equipoId !== "");
+
+  function add() {
+    if (!puedeAgregar) return;
+    setItems([...items, {
+      equipoId: esOtro ? null : equipoId,
+      equipoLabel: esOtro ? otroNombre.trim() : (equipos.find(e => e.id === equipoId)?.label ?? ""),
+      severidad,
+      descripcion: descripcion.trim(),
+    }]);
+    setEquipoId(""); setOtroNombre(""); setSeveridad("MODERADA"); setDescripcion("");
+  }
+
+  return (
+    <div className="mb-5">
+      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{label}</p>
+
+      <div className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl p-3 space-y-3">
+        <select
+          value={equipoId}
+          onChange={e => setEquipoId(e.target.value)}
+          className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#B3985B] transition-colors"
+        >
+          <option value="">¿Qué equipo falló?</option>
+          {equipos.map(e => <option key={e.id} value={e.id}>{e.label}</option>)}
+          <option value="__otro__">Otro — no está en la lista</option>
+        </select>
+
+        {esOtro && (
+          <input
+            value={otroNombre}
+            onChange={e => setOtroNombre(e.target.value)}
+            placeholder="Nombre del equipo"
+            className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-gray-700 focus:outline-none focus:border-[#B3985B] transition-colors"
+          />
+        )}
+
+        <div>
+          <p className="text-xs text-gray-600 mb-2">Qué tan grave</p>
+          <div className="flex gap-2">
+            {SEVERIDADES_FALLA.map(s => (
+              <button
+                key={s} type="button" onClick={() => setSeveridad(s)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                  severidad === s ? SEVERIDAD_ACTIVA[s] : "bg-[#111] text-gray-500 border-[#2a2a2a] hover:border-[#3a3a3a]"
+                }`}
+              >{SEVERIDAD_FALLA_LABEL[s]}</button>
+            ))}
+          </div>
+        </div>
+
+        <input
+          value={descripcion}
+          onChange={e => setDescripcion(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
+          placeholder="¿Qué le pasó? Describe la falla..."
+          className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-gray-700 focus:outline-none focus:border-[#B3985B] transition-colors"
+        />
+
+        <button
+          type="button" onClick={add} disabled={!puedeAgregar}
+          className="w-full bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-30 disabled:cursor-not-allowed text-black text-sm font-bold py-2.5 rounded-lg transition-colors"
+        >+ Agregar falla</button>
+      </div>
+
+      {items.length > 0 ? (
+        <ul className="space-y-1.5 mt-2">
+          {items.map((f, i) => (
+            <li key={i} className="flex items-start gap-2 bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-3 py-2 text-sm text-gray-300">
+              <span className={`text-xs mt-0.5 ${SEVERIDAD_PUNTO[f.severidad]}`}>●</span>
+              <span className="flex-1">
+                <span className="text-white">{f.equipoLabel}</span>
+                <span className="text-gray-500"> — {f.descripcion}</span>
+                <span className="block text-[11px] text-gray-600 mt-0.5">
+                  {SEVERIDAD_FALLA_LABEL[f.severidad]}
+                  {!f.equipoId && " · no está en el inventario del proyecto"}
+                </span>
+              </span>
+              <button type="button" onClick={() => setItems(items.filter((_, j) => j !== i))} className="text-gray-700 hover:text-red-500 transition-colors text-xs">✕</button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-xs text-gray-700 italic mt-2">Ninguna registrada</p>
+      )}
+    </div>
+  );
+}
+
 function TriSelector({ label, options, value, onChange }: {
   label: string;
   options: { value: string; label: string }[];
@@ -191,7 +322,7 @@ export default function ReportePostEventoPage() {
   const [inicioP, setInicioP] = useState(""); const [inicioR, setInicioR] = useState("");
   const [salidaP, setSalidaP] = useState(""); const [salidaR, setSalidaR] = useState("");
   const [seEjecuto, setSeEjecuto] = useState("");
-  const [fallas, setFallas] = useState<string[]>([]);
+  const [fallas, setFallas] = useState<FallaDraft[]>([]);
   const [mantenimiento, setMantenimiento] = useState<string[]>([]);
   const [faltantes, setFaltantes] = useState<string[]>([]);
   const [brief, setBrief] = useState("");
@@ -238,7 +369,7 @@ export default function ReportePostEventoPage() {
       inicioProgramado: inicioP, inicioReal: inicioR,
       salidaPlaneada: salidaP, salidaReal: salidaR,
       seEjecutoSegunPlan: seEjecuto,
-      fallasEquipo: fallas, equipoMantenimiento: mantenimiento, herramientasFaltantes: faltantes,
+      fallasDetalle: fallas, equipoMantenimiento: mantenimiento, herramientasFaltantes: faltantes,
       briefCompleto: brief,
       cambiosUltimoMomento: cambios, descripcionCambios: descCambios,
       calificacionEquipo: calificacion || null,
@@ -392,7 +523,12 @@ export default function ReportePostEventoPage() {
           {/* BLOQUE 2 — Estado de equipos */}
           <Card>
             <SectionHeader num="2" title={esRenta ? "Estado de los equipos" : "Equipos"} sub="Presiona Enter o + para agregar cada ítem" />
-            <TagList label={esRenta ? "Equipos con daños o fallas al regresar" : "Fallas de equipo durante el evento"} items={fallas} setItems={setFallas} placeholder="Describe la falla o daño..." />
+            <FallasInput
+              label={esRenta ? "Equipos con daños o fallas al regresar" : "Fallas de equipo durante el evento"}
+              equipos={contexto.equipos ?? []}
+              items={fallas}
+              setItems={setFallas}
+            />
             <TagList label="Equipos que requieren mantenimiento" items={mantenimiento} setItems={setMantenimiento} placeholder="Nombre del equipo..." />
             <TagList label={esRenta ? "Accesorios o cables que faltaron / no regresaron" : "Herramientas o accesorios que faltaron"} items={faltantes} setItems={setFaltantes} placeholder="¿Qué faltó?" />
           </Card>
