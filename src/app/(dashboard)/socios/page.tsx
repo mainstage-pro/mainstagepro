@@ -122,13 +122,6 @@ export default function SociosConstitutivosPage() {
             { border: "border-green-400/40", text: "text-green-400" },
           ];
           const accent = accents[i % accents.length];
-          const rSocio = repartosPorSocio[s.id] ?? [];
-          const rActivo = rSocio.find(r => r.activo);
-          const ultimasCuotas = rActivo?.cuotas
-            .sort((a, b) => b.fechaGenerada.localeCompare(a.fechaGenerada))
-            .slice(0, 4) ?? [];
-          const cxpSocio = cxpPorSocio[s.id] ?? [];
-          const cxpVencidas = cxpSocio.filter(c => c.estado === "VENCIDO").length;
 
           return (
             <div key={s.id} className="ms-table-wrapper">
