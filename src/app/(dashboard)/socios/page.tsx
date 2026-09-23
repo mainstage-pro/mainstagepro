@@ -22,25 +22,6 @@ type Socio = {
   createdAt: string;
 };
 
-type RepartoHistorial = {
-  id: string;
-  nombre: string;
-  beneficiario: string;
-  montoBase: number;
-  tipoPeriodo: string;
-  activo: boolean;
-  cuotas: { id: string; periodo: string; monto: number; estado: string; fechaGenerada: string }[];
-};
-
-type CxPItem = {
-  id: string;
-  concepto: string;
-  monto: number;
-  fechaCompromiso: string;
-  estado: string;
-  socioId: string | null;
-};
-
 function fmt(n: number) {
   return n.toLocaleString("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 });
 }
@@ -50,34 +31,16 @@ function Initials({ name }: { name: string }) {
   return <>{parts.map(p => p[0]).join("").toUpperCase()}</>;
 }
 
-const CXP_ESTADO: Record<string, { label: string; className: string }> = {
-  VENCIDO:   { label: "Vencido",   className: "bg-red-900/30 text-red-400 border-red-800/30" },
-  PENDIENTE: { label: "Pendiente", className: "bg-amber-900/20 text-amber-400 border-amber-800/30" },
-  PARCIAL:   { label: "Parcial",   className: "bg-blue-900/20 text-blue-400 border-blue-800/30" },
-  LIQUIDADO: { label: "Liquidado", className: "bg-green-900/20 text-green-400 border-green-800/30" },
-  PAGADO:    { label: "Pagado",    className: "bg-green-900/20 text-green-400 border-green-800/30" },
-};
-
 export default function SociosConstitutivosPage() {
   useToast();
   const [socios, setSocios] = useState<Socio[]>([]);
-  const [repartos, setRepartos] = useState<RepartoHistorial[]>([]);
-  const [cxpTodos, setCxpTodos] = useState<CxPItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   const cargar = async () => {
     setLoading(true);
-    const [sr, rr, cr] = await Promise.all([
-      fetch("/api/socios", { cache: "no-store" }),
-      fetch("/api/finanzas/repartos", { cache: "no-store" }),
-      fetch("/api/cuentas-pagar", { cache: "no-store" }),
-    ]);
+    const sr = await fetch("/api/socios", { cache: "no-store" });
     const sd = await sr.json().catch(() => ({ socios: [] }));
-    const rd = await rr.json().catch(() => ({ repartos: [] }));
-    const cd = await cr.json().catch(() => []);
     setSocios(sd.socios || []);
-    setRepartos(rd.repartos || []);
-    setCxpTodos(Array.isArray(cd) ? cd : []);
     setLoading(false);
   };
 
@@ -92,37 +55,6 @@ export default function SociosConstitutivosPage() {
   );
 
   const totalPct = constitutivos.reduce((s, x) => s + (x.pctParticipacion ?? 0), 0);
-
-  // Repartos activos por socio
-  const repartosPorSocio = useMemo(() => {
-    const map: Record<string, RepartoHistorial[]> = {};
-    for (const r of repartos) {
-      const socio = constitutivos.find(s =>
-        r.beneficiario.toLowerCase().includes(s.nombre.split(" ")[0].toLowerCase()) ||
-        s.nombre.toLowerCase().includes(r.beneficiario.split(" ")[0].toLowerCase())
-      );
-      if (socio) {
-        if (!map[socio.id]) map[socio.id] = [];
-        map[socio.id].push(r);
-      }
-    }
-    return map;
-  }, [repartos, constitutivos]);
-
-  // CxP agrupadas por socioId — solo PENDIENTE y VENCIDO, ordenadas por fecha
-  const cxpPorSocio = useMemo(() => {
-    const map: Record<string, CxPItem[]> = {};
-    for (const c of cxpTodos) {
-      if (!c.socioId) continue;
-      if (c.estado === "LIQUIDADO" || c.estado === "PAGADO") continue;
-      if (!map[c.socioId]) map[c.socioId] = [];
-      map[c.socioId].push(c);
-    }
-    for (const id of Object.keys(map)) {
-      map[id].sort((a, b) => a.fechaCompromiso.localeCompare(b.fechaCompromiso));
-    }
-    return map;
-  }, [cxpTodos]);
 
   if (loading) {
     return (
@@ -255,96 +187,6 @@ export default function SociosConstitutivosPage() {
                 </div>
               </div>
 
-              {/* ── Compromisos mensuales (CxP) ── */}
-              {cxpSocio.length > 0 && (
-                <div className="border-t border-[#1a1a1a] px-5 py-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <p className="text-xs text-white/70 font-medium flex items-center gap-2">
-                        Compromisos mensuales
-                        {cxpVencidas > 0 && (
-                          <span className="text-[9px] bg-red-900/30 text-red-400 border border-red-800/30 px-1.5 py-0.5 rounded-full font-semibold animate-pulse">
-                            {cxpVencidas} vencido{cxpVencidas > 1 ? "s" : ""}
-                          </span>
-                        )}
-                      </p>
-                      <p className="text-[10px] text-[#555] mt-0.5">Fecha límite: día 5 de cada mes</p>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-lg font-bold text-white">{fmt(cxpSocio[0]?.monto ?? 0)}</div>
-                      <div className="text-[10px] text-[#555]">por mes</div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    {cxpSocio.slice(0, 5).map(c => {
-                      const badge = CXP_ESTADO[c.estado] ?? { label: c.estado, className: "bg-[#1e1e1e] text-gray-400 border-[#2a2a2a]" };
-                      const fecha = new Date(c.fechaCompromiso);
-                      const label = fecha.toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
-                      return (
-                        <div key={c.id} className="flex items-center justify-between">
-                          <span className={`inline-flex items-center gap-1 text-[11px] ${c.estado === "VENCIDO" ? "text-red-400 font-medium" : "text-[#555]"}`}>
-                            {label}{c.estado === "VENCIDO" && <AlertTriangle strokeWidth={1.75} className="w-3 h-3" />}
-                          </span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-[11px] text-white/60">{fmt(c.monto)}</span>
-                            <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-medium ${badge.className}`}>
-                              {badge.label}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <p className="text-[10px] text-[#444] mt-2 italic truncate">{cxpSocio[0]?.concepto}</p>
-                </div>
-              )}
-
-              {/* ── Reparto semanal ── */}
-              {(s.esRepartoUtilidades || rActivo) && (
-                <div className="border-t border-[#1a1a1a] px-5 py-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <p className="text-xs text-white/70 font-medium">Pago semanal automático</p>
-                      <p className="text-[10px] text-[#555] mt-0.5">Generado cada lunes · Ligado a Reparto de Utilidades</p>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-lg font-bold text-white">
-                        {rActivo ? fmt(rActivo.montoBase) : fmt(s.montoRepartoSemanal ?? 0)}
-                      </div>
-                      <div className="text-[10px] text-[#555]">por semana</div>
-                    </div>
-                  </div>
-
-                  {ultimasCuotas.length > 0 && (
-                    <div className="space-y-1.5">
-                      {ultimasCuotas.map(c => (
-                        <div key={c.id} className="flex items-center justify-between">
-                          <span className="text-[11px] text-[#555]">{c.periodo}</span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-[11px] text-white/60">{fmt(c.monto)}</span>
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                              c.estado === "PAGADO" ? "bg-green-900/30 text-green-400" :
-                              c.estado === "PENDIENTE" ? "bg-yellow-900/30 text-yellow-400" :
-                              "bg-gray-800 text-gray-500"
-                            }`}>
-                              {c.estado}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Footer: sin nada configurado */}
-              {!s.esRepartoUtilidades && !rActivo && cxpSocio.length === 0 && (
-                <div className="border-t border-[#1a1a1a] px-5 py-3">
-                  <p className="text-xs text-[#444] italic">Sin pago periódico configurado</p>
-                </div>
-              )}
             </div>
           );
         })}
