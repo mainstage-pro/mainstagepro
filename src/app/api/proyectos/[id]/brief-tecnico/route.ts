@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import ReactPDF, { Document } from "@react-pdf/renderer";
 import { BriefTecnico } from "@/components/pdf/BriefTecnico";
 import { logoBase64 } from "@/components/pdf/PdfShared";
+import { bloqueoDocumento } from "@/lib/proyecto-documentos-guard";
 import React from "react";
 import path from "path";
 
@@ -14,6 +15,9 @@ export async function GET(req: NextRequest,
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
+
+  const bloqueo = await bloqueoDocumento(id, "BRIEF_TECNICO");
+  if (bloqueo) return bloqueo;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const proyecto = await (prisma.proyecto.findUnique as any)({

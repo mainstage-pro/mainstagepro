@@ -8,6 +8,7 @@ import {
   DocsData, EquipoRiderExtra, ProveedorRenta,
 } from "@/components/pdf/PdfShared";
 import { sembrarNotasEquiposProyecto } from "@/lib/notas-equipos";
+import { bloqueoDocumento } from "@/lib/proyecto-documentos-guard";
 import React from "react";
 import path from "path";
 
@@ -16,6 +17,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
+
+  const bloqueo = await bloqueoDocumento(id, "FICHA_OPERATIVA");
+  if (bloqueo) return bloqueo;
 
   // Auto-siembra notas de equipo desde la cotización (solo rellena vacías).
   await sembrarNotasEquiposProyecto(id);

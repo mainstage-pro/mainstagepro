@@ -27,7 +27,16 @@ function nombreDesdeHeaders(res: Response): string | null {
 
 export async function obtenerArchivo(url: string, filename?: string, init?: RequestInit): Promise<File> {
   const res = await fetch(url, { credentials: "include", ...init });
-  if (!res.ok) throw new Error(`No se pudo generar el archivo (${res.status})`);
+  if (!res.ok) {
+    // Los candados de documentos responden 409 con el detalle de lo que falta.
+    const detalle = await res
+      .json()
+      .then((d: { error?: string; bloqueos?: string[] }) =>
+        [d.error, ...(d.bloqueos ?? []).map(b => `• ${b}`)].filter(Boolean).join("\n")
+      )
+      .catch(() => "");
+    throw new Error(detalle || `No se pudo generar el archivo (${res.status})`);
+  }
   const blob = await res.blob();
   const nombre = filename || nombreDesdeHeaders(res) || "documento.pdf";
   return new File([blob], nombre, { type: blob.type || tipoPorExtension(nombre) });

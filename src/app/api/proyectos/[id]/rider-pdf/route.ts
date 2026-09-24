@@ -5,6 +5,7 @@ import ReactPDF, { Document } from '@react-pdf/renderer'
 import { RiderPDF } from '@/components/RiderPDF'
 import { makePdfImageResolver } from '@/components/pdf/PdfShared'
 import { sembrarNotasEquiposProyecto } from '@/lib/notas-equipos'
+import { bloqueoDocumento } from '@/lib/proyecto-documentos-guard'
 import React from 'react'
 import path from 'path'
 import fs from 'fs'
@@ -16,6 +17,9 @@ export async function GET(req: NextRequest,
   if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
   const { id } = await params
+
+  const bloqueo = await bloqueoDocumento(id, 'RIDER_CARGA')
+  if (bloqueo) return bloqueo
 
   // Auto-siembra notas de equipo desde la cotización antes de armar el rider.
   await sembrarNotasEquiposProyecto(id)

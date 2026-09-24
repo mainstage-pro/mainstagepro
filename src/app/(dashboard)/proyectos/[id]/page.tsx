@@ -29,6 +29,7 @@ import { getDireccionConfig, promedioDireccion, type EvaluacionDireccionData } f
 import { diasEvento, parseHorariosEvento, horarioDeDia, parseFechasEvento } from "@/lib/fechas-evento";
 import { construirCronologia } from "@/lib/cronologia-evento";
 import { checksAvanceProduccion } from "@/lib/proyecto-avance";
+import { requisitosDocumento, type ProyectoDocumentoInput, type RequisitosDocumento, type TipoDocumento } from "@/lib/proyecto-documentos";
 import { getEquipoDisplayName } from "@/lib/equipoNombre";
 import { normalizarAmPm, fmt24to12 } from "@/lib/hora";
 
@@ -194,6 +195,49 @@ function fmtDate(s: string | null) {
 }
 function fmtDateTime(s: string) {
   return normalizarAmPm(new Date(s).toLocaleString("es-MX", { day: "2-digit", month: "short", hour: "numeric", minute: "2-digit" }));
+}
+
+// ─── Botón de documento con candado ──────────────────────────────────────────
+// Si al proyecto le falta información, el botón queda bloqueado y lista lo que
+// falta. Las advertencias no bloquean: solo marcan el documento como incompleto.
+function BotonDocumento({ label, icono, requisitos, cargando, deshabilitado, onDescargar }: {
+  label: string;
+  icono: React.ReactNode;
+  requisitos: RequisitosDocumento;
+  cargando: boolean;
+  deshabilitado: boolean;
+  onDescargar: () => void;
+}) {
+  const { listo, bloqueos, advertencias } = requisitos;
+  return (
+    <div>
+      <button
+        onClick={onDescargar}
+        disabled={!listo || deshabilitado}
+        title={!listo ? bloqueos.join(" · ") : advertencias.join(" · ") || undefined}
+        className={`w-full flex items-center gap-2.5 py-[7px] text-left text-[12.5px] transition-colors ${
+          listo
+            ? "text-gray-400 hover:text-[#B3985B] disabled:opacity-60"
+            : "text-gray-600 cursor-not-allowed"
+        }`}
+      >
+        {listo ? icono : (
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        )}
+        <span>{cargando ? "Generando..." : label}</span>
+        {listo && advertencias.length > 0 && (
+          <span className="ml-auto text-[10px] text-amber-600/80 shrink-0">incompleto</span>
+        )}
+      </button>
+      {!listo && (
+        <ul className="pl-[21px] pb-1.5 space-y-0.5">
+          {bloqueos.map(b => (
+            <li key={b} className="text-[10.5px] text-amber-600/70 leading-snug">{b}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 }
 
 // ─── Accesorios sugeridos por tipo de equipo ──────────────────────────────────
@@ -3905,6 +3949,31 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     new Date(iso + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" });
   const esRenta = proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA";
 
+  // Candados de documentos: mismo criterio que aplica el servidor (409).
+  const docInput: ProyectoDocumentoInput = {
+    lugarEvento: proyecto.lugarEvento,
+    direccionVenue: proyecto.direccionVenue,
+    linkMaps: proyecto.linkMaps,
+    fechaMontaje: proyecto.fechaMontaje,
+    horaInicioMontaje: proyecto.horaInicioMontaje,
+    horaInicioEvento: proyecto.horaInicioEvento,
+    horaInicio: proyecto.horaInicio,
+    llamadoBodega: proyecto.llamadoBodega,
+    lugarLlamado: proyecto.lugarLlamado,
+    encargadoNombre: proyecto.encargado?.name ?? null,
+    encargadoLugar: proyecto.encargadoLugar,
+    encargadoCliente: proyecto.encargadoCliente,
+    contactosEmergencia: proyecto.contactosEmergencia,
+    cronograma: proyecto.cronograma,
+    logisticaRenta: proyecto.logisticaRenta || proyecto.trato?.ideasReferencias || null,
+    equiposCount: proyecto.equipos.length,
+    personalCount: proyecto.personal.filter(p => p.tecnico).length,
+    personalSinAsignar: proyecto.personal.filter(p => !p.tecnico).length,
+    personalSinRol: proyecto.personal.filter(p => p.tecnico && !p.rolTecnico && !p.rolEnEvento?.trim()).length,
+    equiposSinConfirmar: proyecto.equipos.filter(e => !e.confirmado).length,
+  };
+  const reqDoc = (tipo: TipoDocumento) => requisitosDocumento(tipo, docInput);
+
   return (
     <>
     <div className="p-4 md:p-6 max-w-6xl mx-auto pb-12">
@@ -6260,22 +6329,31 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <p className="text-white font-semibold">Rider de carga</p>
                   <p className="text-gray-500 text-xs mt-0.5">Listado de equipos con accesorios y herramientas necesarias para montaje</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => previewPdf(`/api/proyectos/${id}/rider-pdf`, 'Rider de Carga', `rider-carga-${proyecto.numeroProyecto}.pdf`)}
-                    className="flex items-center gap-1.5 text-xs text-gray-400 border border-[#2a2a2a] hover:border-[#B3985B]/40 hover:text-[#B3985B] px-3 py-1.5 rounded-lg transition-all"
-                  >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                    Vista previa
-                  </button>
-                  <button
-                    onClick={() => downloadPdf(`/api/proyectos/${id}/rider-pdf`, `rider-carga-${proyecto.numeroProyecto}.pdf`, 'Rider de carga')}
-                    className="flex items-center gap-1.5 text-xs text-[#B3985B] border border-[#B3985B]/30 hover:border-[#B3985B]/60 hover:bg-[#B3985B]/5 px-3 py-1.5 rounded-lg transition-all"
-                  >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    Descargar rider
-                  </button>
-                </div>
+                {(() => {
+                  const rq = reqDoc('RIDER_CARGA');
+                  return (
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => previewPdf(`/api/proyectos/${id}/rider-pdf`, 'Rider de Carga', `rider-carga-${proyecto.numeroProyecto}.pdf`)}
+                        disabled={!rq.listo}
+                        title={rq.bloqueos.join(" · ") || undefined}
+                        className="flex items-center gap-1.5 text-xs text-gray-400 border border-[#2a2a2a] hover:border-[#B3985B]/40 hover:text-[#B3985B] px-3 py-1.5 rounded-lg transition-all disabled:opacity-40 disabled:hover:border-[#2a2a2a] disabled:hover:text-gray-400 disabled:cursor-not-allowed"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        Vista previa
+                      </button>
+                      <button
+                        onClick={() => downloadPdf(`/api/proyectos/${id}/rider-pdf`, `rider-carga-${proyecto.numeroProyecto}.pdf`, 'Rider de carga')}
+                        disabled={!rq.listo}
+                        title={rq.bloqueos.join(" · ") || undefined}
+                        className="flex items-center gap-1.5 text-xs text-[#B3985B] border border-[#B3985B]/30 hover:border-[#B3985B]/60 hover:bg-[#B3985B]/5 px-3 py-1.5 rounded-lg transition-all disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Descargar rider
+                      </button>
+                    </div>
+                  );
+                })()}
               </div>
 
               {esRenta && (() => {
@@ -8186,23 +8264,23 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-1.5">Documentos</p>
             <div>
               {esRenta && (
-                <button
-                  onClick={() => downloadPdf(`/api/proyectos/${proyecto.id}/hoja-entrega`, `hoja-entrega-${proyecto.numeroProyecto}.pdf`)}
-                  disabled={downloading === `hoja-entrega-${proyecto.numeroProyecto}.pdf`}
-                  className="w-full flex items-center gap-2.5 py-[7px] text-left text-gray-400 hover:text-[#B3985B] text-[12.5px] transition-colors disabled:opacity-60"
-                >
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
-                  {downloading === `hoja-entrega-${proyecto.numeroProyecto}.pdf` ? 'Generando...' : 'Hoja de Entrega'}
-                </button>
+                <BotonDocumento
+                  label="Hoja de Entrega"
+                  icono={<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>}
+                  requisitos={reqDoc('HOJA_ENTREGA')}
+                  cargando={downloading === `hoja-entrega-${proyecto.numeroProyecto}.pdf`}
+                  deshabilitado={downloading === `hoja-entrega-${proyecto.numeroProyecto}.pdf`}
+                  onDescargar={() => downloadPdf(`/api/proyectos/${proyecto.id}/hoja-entrega`, `hoja-entrega-${proyecto.numeroProyecto}.pdf`)}
+                />
               )}
-              <button
-                onClick={() => downloadPdf(`/api/proyectos/${proyecto.id}/fichas/cliente`, `confirmacion-cliente-${proyecto.numeroProyecto}.pdf`)}
-                disabled={!!downloading}
-                className="w-full flex items-center gap-2.5 py-[7px] text-left text-gray-400 hover:text-[#B3985B] text-[12.5px] transition-colors disabled:opacity-60"
-              >
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                {downloading === `confirmacion-cliente-${proyecto.numeroProyecto}.pdf` ? 'Generando...' : 'Confirmación Cliente'}
-              </button>
+              <BotonDocumento
+                label="Confirmación Cliente"
+                icono={<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>}
+                requisitos={reqDoc('FICHA_CLIENTE')}
+                cargando={downloading === `confirmacion-cliente-${proyecto.numeroProyecto}.pdf`}
+                deshabilitado={!!downloading}
+                onDescargar={() => downloadPdf(`/api/proyectos/${proyecto.id}/fichas/cliente`, `confirmacion-cliente-${proyecto.numeroProyecto}.pdf`)}
+              />
               {esRenta && (() => {
                 let rd: Record<string, string> = {};
                 try { if (proyecto.logisticaRenta) rd = JSON.parse(proyecto.logisticaRenta); } catch {}
@@ -8210,34 +8288,35 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 const entregamos = modalidad === "ENTREGA_BODEGA" || modalidad === "ENTREGA_VENUE";
                 if (!entregamos) return null;
                 return (
-                  <button
-                    onClick={() => downloadPdf(`/api/proyectos/${proyecto.id}/rider-pdf`, `rider-carga-${proyecto.numeroProyecto}.pdf`, 'Rider de carga')}
-                    className="w-full flex items-center gap-2.5 py-[7px] text-left text-gray-400 hover:text-[#B3985B] text-[12.5px] transition-colors"
-                  >
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-                    Rider de Carga
-                  </button>
+                  <BotonDocumento
+                    label="Rider de Carga"
+                    icono={<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>}
+                    requisitos={reqDoc('RIDER_CARGA')}
+                    cargando={downloading === `rider-carga-${proyecto.numeroProyecto}.pdf`}
+                    deshabilitado={!!downloading}
+                    onDescargar={() => downloadPdf(`/api/proyectos/${proyecto.id}/rider-pdf`, `rider-carga-${proyecto.numeroProyecto}.pdf`, 'Rider de carga')}
+                  />
                 );
               })()}
               {!esRenta && (
-                <button
-                  onClick={() => downloadPdf(`/api/proyectos/${proyecto.id}/fichas/operativa`, `ficha-operativa-${proyecto.numeroProyecto}.pdf`)}
-                  disabled={!!downloading}
-                  className="w-full flex items-center gap-2.5 py-[7px] text-left text-gray-400 hover:text-[#B3985B] text-[12.5px] transition-colors disabled:opacity-60"
-                >
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="11" y2="16"/></svg>
-                  {downloading === `ficha-operativa-${proyecto.numeroProyecto}.pdf` ? 'Generando...' : 'Ficha Operativa'}
-                </button>
+                <BotonDocumento
+                  label="Ficha Operativa"
+                  icono={<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="11" y2="16"/></svg>}
+                  requisitos={reqDoc('FICHA_OPERATIVA')}
+                  cargando={downloading === `ficha-operativa-${proyecto.numeroProyecto}.pdf`}
+                  deshabilitado={!!downloading}
+                  onDescargar={() => downloadPdf(`/api/proyectos/${proyecto.id}/fichas/operativa`, `ficha-operativa-${proyecto.numeroProyecto}.pdf`)}
+                />
               )}
               {proyecto.tipoServicio === 'PRODUCCION_TECNICA' && (
-                <button
-                  onClick={() => downloadPdf(`/api/proyectos/${proyecto.id}/brief-tecnico`, `info-tecnicos-${proyecto.numeroProyecto}.pdf`)}
-                  disabled={!!downloading}
-                  className="w-full flex items-center gap-2.5 py-[7px] text-left text-gray-400 hover:text-[#B3985B] text-[12.5px] transition-colors disabled:opacity-60"
-                >
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-                  {downloading === `info-tecnicos-${proyecto.numeroProyecto}.pdf` ? 'Generando...' : 'Info para Técnicos'}
-                </button>
+                <BotonDocumento
+                  label="Info para Técnicos"
+                  icono={<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>}
+                  requisitos={reqDoc('BRIEF_TECNICO')}
+                  cargando={downloading === `info-tecnicos-${proyecto.numeroProyecto}.pdf`}
+                  deshabilitado={!!downloading}
+                  onDescargar={() => downloadPdf(`/api/proyectos/${proyecto.id}/brief-tecnico`, `info-tecnicos-${proyecto.numeroProyecto}.pdf`)}
+                />
               )}
               {!esRenta && (
                 <Link

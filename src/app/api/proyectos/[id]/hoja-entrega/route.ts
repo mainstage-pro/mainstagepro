@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import ReactPDF, { Document } from "@react-pdf/renderer";
 import { HojaEntregaRentaPDF } from "@/components/HojaEntregaRentaPDF";
 import { makePdfImageResolver } from "@/components/pdf/PdfShared";
+import { bloqueoDocumento } from "@/lib/proyecto-documentos-guard";
 import React from "react";
 import path from "path";
 import fs from "fs";
@@ -13,6 +14,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
+
+  const bloqueo = await bloqueoDocumento(id, "HOJA_ENTREGA");
+  if (bloqueo) return bloqueo;
 
   const proyecto = await prisma.proyecto.findUnique({
     where: { id },
