@@ -26,7 +26,7 @@ export async function GET() {
       secciones: { orderBy: { orden: "asc" }, select: { id: true, nombre: true, orden: true, colapsada: true, tipoModulo: true } },
       _count: { select: { tareas: { where: { estado: { not: "COMPLETADA" }, parentId: null } } } },
     },
-    orderBy: [{ carpetaId: "asc" }, { orden: "asc" }],
+    orderBy: [{ carpetaId: "asc" }, { orden: "asc" }, { nombre: "asc" }],
   });
 
   return NextResponse.json({ proyectos });
@@ -39,8 +39,15 @@ export async function POST(req: NextRequest) {
   const { nombre, descripcion, color, icono, carpetaId } = await req.json();
   if (!nombre?.trim()) return NextResponse.json({ error: "Nombre requerido" }, { status: 400 });
 
+  const ultimo = await prisma.tareaProyecto.findFirst({
+    where: { carpetaId: carpetaId ?? null },
+    orderBy: { orden: "desc" },
+    select: { orden: true },
+  });
+
   const proyecto = await prisma.tareaProyecto.create({
     data: {
+      orden: (ultimo?.orden ?? -1) + 1,
       nombre: nombre.trim(),
       descripcion: descripcion ?? null,
       color: color ?? null,

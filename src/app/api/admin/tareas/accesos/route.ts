@@ -8,7 +8,7 @@ export async function GET() {
 
   const proyectos = await prisma.tareaProyecto.findMany({
     where: { archivado: false },
-    orderBy: [{ carpetaId: "asc" }, { orden: "asc" }],
+    orderBy: [{ carpetaId: "asc" }, { orden: "asc" }, { nombre: "asc" }],
     select: {
       id: true,
       nombre: true,
