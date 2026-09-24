@@ -69,40 +69,40 @@ export default function DetalleGastoRecurrentePage() {
     }
   };
 
-  if (loading) return <div className="p-8 text-center">Cargando...</div>;
+  if (loading) return <div className="p-8 text-center text-[#9ca3af]">Cargando...</div>;
   if (!gasto) return null;
 
   const proveedorNombre = gasto.proveedor?.nombre || gasto.empresa?.nombre || gasto.acreedorLibre || "-";
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto space-y-6 text-white">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-4">
-          <Link href="/finanzas/gastos-recurrentes" className="text-gray-500 hover:text-gray-800">
+          <Link href="/finanzas/gastos-recurrentes" className="text-[#9ca3af] hover:text-[#B3985B] transition-colors">
             &larr; Volver
           </Link>
           <h1 className="text-2xl font-bold">{gasto.nombre}</h1>
-          <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
-            gasto.estado === "ACTIVO" ? "bg-green-100 text-green-800" :
-            gasto.estado === "PAUSADO" ? "bg-yellow-100 text-yellow-800" :
-            "bg-gray-100 text-gray-800"
+          <span className={`px-3 py-1 text-[10px] font-semibold uppercase tracking-wider rounded-full border ${
+            gasto.estado === "ACTIVO" ? "bg-green-900/30 text-green-400 border-green-800/50" :
+            gasto.estado === "PAUSADO" ? "bg-yellow-900/30 text-yellow-400 border-yellow-800/50" :
+            "bg-gray-800/50 text-gray-400 border-gray-700/50"
           }`}>
             {gasto.estado}
           </span>
         </div>
         <div className="flex gap-2">
           {gasto.estado !== "ACTIVO" && (
-            <button onClick={() => handleEstado("ACTIVO")} className="px-3 py-1.5 text-sm border rounded bg-white hover:bg-gray-50">
+            <button onClick={() => handleEstado("ACTIVO")} className="px-3 py-1.5 text-xs font-semibold border border-[#333] rounded-lg bg-[#1a1a1a] hover:bg-[#222] transition-colors">
               Reactivar
             </button>
           )}
           {gasto.estado === "ACTIVO" && (
-            <button onClick={() => handleEstado("PAUSADO")} className="px-3 py-1.5 text-sm border rounded bg-white hover:bg-gray-50">
+            <button onClick={() => handleEstado("PAUSADO")} className="px-3 py-1.5 text-xs font-semibold border border-[#333] rounded-lg bg-[#1a1a1a] hover:bg-[#222] transition-colors">
               Pausar
             </button>
           )}
           {gasto.estado !== "FINALIZADO" && (
-            <button onClick={() => handleEstado("FINALIZADO")} className="px-3 py-1.5 text-sm border border-red-200 text-red-600 rounded bg-white hover:bg-red-50">
+            <button onClick={() => handleEstado("FINALIZADO")} className="px-3 py-1.5 text-xs font-semibold border border-red-900/50 text-red-400 rounded-lg bg-red-900/20 hover:bg-red-900/40 transition-colors">
               Finalizar
             </button>
           )}
@@ -113,90 +113,90 @@ export default function DetalleGastoRecurrentePage() {
         
         {/* Ficha Principal */}
         <div className="col-span-1 md:col-span-2 space-y-6">
-          <div className="bg-white p-6 rounded-lg shadow border border-gray-100">
-            <h2 className="text-lg font-semibold mb-4 border-b pb-2">Información del Gasto</h2>
+          <div className="bg-[#111] p-6 rounded-xl border border-[#222]">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-[#9ca3af] mb-4 border-b border-[#222] pb-2">Información del Gasto</h2>
             <div className="grid grid-cols-2 gap-y-4 gap-x-6 text-sm">
               <div>
-                <span className="block text-gray-500">Proveedor</span>
-                <span className="font-medium">{proveedorNombre}</span>
+                <span className="block text-[#9ca3af] text-xs uppercase tracking-wider mb-1">Proveedor</span>
+                <span className="font-medium text-[#d1d5db]">{proveedorNombre}</span>
               </div>
               <div>
-                <span className="block text-gray-500">Tipo</span>
-                <span className="font-medium">{gasto.tipoMonto}</span>
+                <span className="block text-[#9ca3af] text-xs uppercase tracking-wider mb-1">Tipo</span>
+                <span className="font-medium text-[#d1d5db]">{gasto.tipoMonto}</span>
               </div>
               <div>
-                <span className="block text-gray-500">Frecuencia</span>
-                <span className="font-medium">{gasto.frecuencia}</span>
+                <span className="block text-[#9ca3af] text-xs uppercase tracking-wider mb-1">Frecuencia</span>
+                <span className="font-medium text-[#d1d5db]">{gasto.frecuencia}</span>
               </div>
               <div>
-                <span className="block text-gray-500">Categoría</span>
-                <span className="font-medium">{gasto.categoria?.nombre || "-"}</span>
+                <span className="block text-[#9ca3af] text-xs uppercase tracking-wider mb-1">Categoría</span>
+                <span className="font-medium text-[#d1d5db]">{gasto.categoria?.nombre || "-"}</span>
               </div>
               <div>
-                <span className="block text-gray-500">Monto Base / Estimado</span>
-                <span className="font-medium">{formatCurrency(gasto.montoBase || 0)}</span>
+                <span className="block text-[#9ca3af] text-xs uppercase tracking-wider mb-1">Monto Base / Estimado</span>
+                <span className="font-medium text-white text-lg">{formatCurrency(gasto.montoBase || 0)}</span>
               </div>
               <div>
-                <span className="block text-gray-500">Día Vencimiento</span>
-                <span className="font-medium">{gasto.diaVencimiento || "Automático"}</span>
+                <span className="block text-[#9ca3af] text-xs uppercase tracking-wider mb-1">Día Vencimiento</span>
+                <span className="font-medium text-[#d1d5db]">{gasto.diaVencimiento || "Automático"}</span>
               </div>
               <div className="col-span-2">
-                <span className="block text-gray-500">Descripción</span>
-                <span>{gasto.descripcion || "Sin descripción"}</span>
+                <span className="block text-[#9ca3af] text-xs uppercase tracking-wider mb-1">Descripción</span>
+                <span className="text-[#d1d5db]">{gasto.descripcion || "Sin descripción"}</span>
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow border border-gray-100">
-            <h2 className="text-lg font-semibold mb-4 border-b pb-2">Historial de Periodos</h2>
+          <div className="bg-[#111] p-6 rounded-xl border border-[#222]">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-[#9ca3af] mb-4 border-b border-[#222] pb-2">Historial de Periodos</h2>
             
             {gasto.periodos?.length === 0 ? (
-              <p className="text-gray-500 text-sm">No hay periodos generados aún.</p>
+              <p className="text-[#9ca3af] text-sm">No hay periodos generados aún.</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
-                  <thead className="text-xs text-gray-500 uppercase bg-gray-50">
+                  <thead className="text-[10px] text-[#9ca3af] uppercase tracking-wider bg-[#0d0d0d] border-b border-[#222]">
                     <tr>
-                      <th className="px-4 py-2">Periodo</th>
-                      <th className="px-4 py-2">Vence</th>
-                      <th className="px-4 py-2 text-right">Monto</th>
-                      <th className="px-4 py-2">Estado</th>
-                      <th className="px-4 py-2">Cuenta x Pagar</th>
-                      <th className="px-4 py-2">Acciones</th>
+                      <th className="px-4 py-3 font-semibold">Periodo</th>
+                      <th className="px-4 py-3 font-semibold">Vence</th>
+                      <th className="px-4 py-3 font-semibold text-right">Monto</th>
+                      <th className="px-4 py-3 font-semibold">Estado</th>
+                      <th className="px-4 py-3 font-semibold">Cuenta x Pagar</th>
+                      <th className="px-4 py-3 font-semibold">Acciones</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y">
+                  <tbody className="divide-y divide-[#222]">
                     {gasto.periodos.map((p: any) => (
-                      <tr key={p.id}>
-                        <td className="px-4 py-3 font-medium">{p.periodo}</td>
-                        <td className="px-4 py-3 text-gray-500">{format(new Date(p.fechaVencimiento), "dd MMM yy", { locale: es })}</td>
+                      <tr key={p.id} className="hover:bg-[#1a1a1a] transition-colors">
+                        <td className="px-4 py-3 font-medium text-white">{p.periodo}</td>
+                        <td className="px-4 py-3 text-[#d1d5db]">{format(new Date(p.fechaVencimiento), "dd MMM yy", { locale: es })}</td>
                         <td className="px-4 py-3 text-right">
                           {p.estado === "PENDIENTE_IMPORTE" ? (
-                            <span className="text-gray-400">Est. {formatCurrency(p.montoEstimado || 0)}</span>
+                            <span className="text-[#9ca3af] text-xs">Est. {formatCurrency(p.montoEstimado || 0)}</span>
                           ) : (
-                            <span className="font-medium">{formatCurrency(p.montoConfirmado || 0)}</span>
+                            <span className="font-medium text-white">{formatCurrency(p.montoConfirmado || 0)}</span>
                           )}
                         </td>
                         <td className="px-4 py-3">
-                          <span className={`px-2 py-1 text-xs rounded-full ${
-                            p.estado === "PENDIENTE_IMPORTE" ? "bg-orange-100 text-orange-800" :
-                            p.estado === "PENDIENTE_PAGO" ? "bg-yellow-100 text-yellow-800" :
-                            p.estado === "PAGADO" ? "bg-green-100 text-green-800" :
-                            "bg-gray-100 text-gray-800"
+                          <span className={`px-2 py-0.5 text-[10px] uppercase tracking-wider font-semibold rounded-full border ${
+                            p.estado === "PENDIENTE_IMPORTE" ? "bg-orange-900/30 text-orange-400 border-orange-800/50" :
+                            p.estado === "PENDIENTE_PAGO" ? "bg-yellow-900/30 text-yellow-400 border-yellow-800/50" :
+                            p.estado === "PAGADO" ? "bg-green-900/30 text-green-400 border-green-800/50" :
+                            "bg-gray-800/50 text-gray-400 border-gray-700/50"
                           }`}>
                             {p.estado}
                           </span>
                         </td>
                         <td className="px-4 py-3">
                           {p.cuentaPagar ? (
-                            <Link href={`/finanzas/cobros-pagos?cxp=${p.cuentaPagar.id}`} className="text-blue-600 hover:underline">
+                            <Link href={`/finanzas/cobros-pagos?cxp=${p.cuentaPagar.id}`} className="text-[#B3985B] hover:underline text-xs font-medium">
                               Ver CxP
                             </Link>
                           ) : "-"}
                         </td>
                         <td className="px-4 py-3">
                           {p.estado === "PENDIENTE_IMPORTE" && confirmandoPeriodo !== p.id && (
-                            <button onClick={() => setConfirmandoPeriodo(p.id)} className="text-blue-600 hover:underline text-xs font-medium">
+                            <button onClick={() => setConfirmandoPeriodo(p.id)} className="text-[#B3985B] hover:underline text-xs font-medium">
                               Confirmar Importe
                             </button>
                           )}
@@ -204,13 +204,13 @@ export default function DetalleGastoRecurrentePage() {
                             <div className="flex items-center gap-2">
                               <input 
                                 type="number" step="0.01" 
-                                className="border rounded px-2 py-1 w-24 text-xs"
+                                className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 w-24 text-xs text-white outline-none focus:border-[#B3985B]"
                                 placeholder="Monto real"
                                 value={montoConfirmado}
                                 onChange={e => setMontoConfirmado(e.target.value)}
                               />
-                              <button onClick={() => handleConfirmarImporte(p.id)} className="bg-black text-white px-2 py-1 rounded text-xs">OK</button>
-                              <button onClick={() => setConfirmandoPeriodo(null)} className="text-gray-500 text-xs">X</button>
+                              <button onClick={() => handleConfirmarImporte(p.id)} className="bg-[#B3985B] text-black font-semibold px-2 py-1.5 rounded text-xs hover:bg-[#c9a96a] transition-colors">OK</button>
+                              <button onClick={() => setConfirmandoPeriodo(null)} className="text-[#9ca3af] hover:text-white transition-colors text-xs ml-1">X</button>
                             </div>
                           )}
                         </td>
@@ -225,16 +225,16 @@ export default function DetalleGastoRecurrentePage() {
 
         {/* Sidebar derecha */}
         <div className="col-span-1 space-y-6">
-          <div className="bg-gray-50 p-6 rounded-lg border border-gray-100">
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-4">Registro de Actividad</h3>
+          <div className="bg-[#111] p-6 rounded-xl border border-[#222]">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-[#9ca3af] mb-4 border-b border-[#222] pb-2">Registro de Actividad</h3>
             <div className="space-y-4">
               {gasto.historial?.length === 0 ? (
-                <p className="text-sm text-gray-400">No hay actividad registrada.</p>
+                <p className="text-sm text-[#9ca3af]">No hay actividad registrada.</p>
               ) : (
                 gasto.historial?.map((h: any) => (
                   <div key={h.id} className="text-sm">
-                    <p className="text-gray-800">{h.cambio}</p>
-                    <p className="text-xs text-gray-400">{format(new Date(h.createdAt), "dd MMM yyyy HH:mm", { locale: es })}</p>
+                    <p className="text-[#d1d5db]">{h.cambio}</p>
+                    <p className="text-[10px] uppercase tracking-wider text-[#9ca3af] mt-0.5">{format(new Date(h.createdAt), "dd MMM yyyy HH:mm", { locale: es })}</p>
                   </div>
                 ))
               )}
