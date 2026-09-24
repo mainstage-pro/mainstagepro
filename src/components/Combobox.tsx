@@ -61,14 +61,14 @@ export function Combobox({
     const left = Math.min(Math.max(r.left, margin), vw - width - margin);
     const below = vh - r.bottom - margin;
     const above = r.top - margin;
-    const flip = below < 180 && above > below;
+    const flip = below < 200 && above > below;
     setDropStyle({
       position: "fixed",
       top: flip ? undefined : r.bottom + 4,
       bottom: flip ? vh - r.top + 4 : undefined,
       left,
       width,
-      maxHeight: Math.max(flip ? above : below, 120),
+      maxHeight: Math.min(Math.max(flip ? above : below, 120), 320),
       zIndex: 9999,
     });
   }
@@ -110,7 +110,7 @@ export function Combobox({
     "w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] disabled:opacity-50";
 
   const dropdown = open && !disabled && filtered.length > 0 && (
-    <div style={dropStyle} className="bg-[#111] border border-[#333] rounded-lg shadow-xl overflow-y-auto overscroll-contain">
+    <div style={dropStyle} className="bg-[#111] border border-[#333] rounded-lg shadow-[0_0_30px_rgba(0,0,0,1)] overflow-y-auto overscroll-contain">
       {filtered.map((opt, i) => (
         <div key={opt.value}>
           {opt.group && opt.group !== filtered[i - 1]?.group && (
