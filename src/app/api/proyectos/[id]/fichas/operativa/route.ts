@@ -9,6 +9,7 @@ import {
 } from "@/components/pdf/PdfShared";
 import { BloqueTiempo } from "@/lib/cronologia-evento";
 import { sembrarNotasEquiposProyecto } from "@/lib/notas-equipos";
+import { resumenMontaje } from "@/lib/montaje-reportes";
 import { bloqueoDocumento } from "@/lib/proyecto-documentos-guard";
 import React from "react";
 import path from "path";
@@ -41,9 +42,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       },
       equipos: {
         include: {
-          equipo: { select: { descripcion: true, marca: true, modelo: true, imagenUrl: true, categoria: { select: { nombre: true } } } },
+          equipo: { select: { descripcion: true, marca: true, modelo: true, imagenUrl: true, categoria: { select: { nombre: true, disciplina: true } } } },
           proveedor: { select: { nombre: true, telefono: true } },
           riderAccesorios: { orderBy: { orden: "asc" } },
+          posiciones: { orderBy: { orden: "asc" } },
         },
         orderBy: { id: "asc" },
       },
@@ -106,6 +108,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       proveedor: e.proveedor?.nombre ?? null,
       imagenUrl: await resolveImg(e.equipo?.imagenUrl),
       notas: e.notas ?? null,
+      montaje: resumenMontaje(e.posiciones, e.equipo?.categoria?.nombre, e.equipo?.categoria?.disciplina),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       accesorios: (e.riderAccesorios ?? []).map((a: any) => ({
         nombre: a.nombre,

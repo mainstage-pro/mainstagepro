@@ -9,6 +9,7 @@ import path from "path";
 
 import { validarTokenPresentacion } from "@/lib/presentacion-token";
 import { ensureProcesoVentaColumns } from "@/lib/migraciones-lazy";
+import { notaVisibleDeCotizacion } from "@/lib/notas-equipos";
 
 export async function GET(
   req: NextRequest,
@@ -77,6 +78,7 @@ export async function GET(
   };
   const cotizacion = cotizacionRaw ? {
     ...cotizacionRaw,
+    lineas: cotizacionRaw.lineas.map(l => ({ ...l, notas: notaVisibleDeCotizacion(l.notas) })),
     cuentasCobrar: cotizacionRaw.cuentasCobrar.map(c => ({
       ...c,
       fechaCompromiso: c.fechaCompromiso instanceof Date ? c.fechaCompromiso.toISOString() : c.fechaCompromiso,

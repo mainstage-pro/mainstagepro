@@ -19,6 +19,7 @@ type ProyectoEquipoData = {
   tipo: string  // 'PROPIO' | 'EXTERNO'
   cantidad: number
   notas: string | null
+  montaje?: string
   equipo: {
     descripcion: string
     marca: string | null
@@ -117,6 +118,8 @@ const s = StyleSheet.create({
   // Notas
   notaRow:    { paddingHorizontal: 10, paddingVertical: 5, backgroundColor: LIGHT1 },
   notaTxt:    { fontSize: 8, color: INK5, fontStyle: 'italic' },
+  montajeRow: { paddingHorizontal: 10, paddingTop: 3, paddingBottom: 4 },
+  montajeTxt: { fontSize: 7.5, color: GOLD },
   // Footer
   footer:     { marginTop: 32, borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 20 },
   sigRow:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
@@ -319,6 +322,13 @@ export function RiderPDF({ data }: { data: RiderPDFData }) {
                     </View>
                   )}
                 </View>
+
+                {/* Montaje capturado por el coordinador */}
+                {eq.montaje ? (
+                  <View style={s.montajeRow}>
+                    <Text style={s.montajeTxt}>{eq.montaje}</Text>
+                  </View>
+                ) : null}
 
                 {/* Notas del equipo */}
                 {eq.notas && (

@@ -5,6 +5,7 @@ import ReactPDF, { Document } from "@react-pdf/renderer";
 import { FichaTecnicos } from "@/components/pdf/FichaTecnicos";
 import { logoBase64, makePdfImageResolver, EquipoFlat, TransporteSlot } from "@/components/pdf/PdfShared";
 import { ProveedorEvento } from "@/components/pdf/FichaCoordinador";
+import { resumenMontaje } from "@/lib/montaje-reportes";
 import React from "react";
 import path from "path";
 
@@ -28,8 +29,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       },
       equipos: {
         include: {
-          equipo: { select: { descripcion: true, marca: true, imagenUrl: true, categoria: { select: { nombre: true } } } },
+          equipo: { select: { descripcion: true, marca: true, imagenUrl: true, categoria: { select: { nombre: true, disciplina: true } } } },
           proveedor: { select: { nombre: true } },
+          posiciones: { orderBy: { orden: "asc" } },
         },
         orderBy: { id: "asc" },
       },
@@ -75,6 +77,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       confirmado: e.confirmado,
       proveedor: e.proveedor?.nombre ?? null,
       imagenUrl: await resolveImg(e.equipo?.imagenUrl),
+      montaje: resumenMontaje(e.posiciones, e.equipo?.categoria?.nombre, e.equipo?.categoria?.disciplina),
     }))
   );
 

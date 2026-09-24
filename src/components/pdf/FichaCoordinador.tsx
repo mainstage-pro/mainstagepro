@@ -13,6 +13,7 @@ import { diasEvento, horarioDeDia } from "@/lib/fechas-evento";
 import { normalizarAmPm } from "@/lib/hora";
 import { CronologiaEvento } from "./CronologiaEvento";
 import { construirCronologia, BloqueTiempo } from "@/lib/cronologia-evento";
+import { labelModalidad } from "@/lib/proveedor-evento";
 
 const s = StyleSheet.create({
   // Header
@@ -47,6 +48,7 @@ const s = StyleSheet.create({
   tblHdTxt: { fontSize: 6.5, fontFamily: "Helvetica-Bold", color: C.grisMedio },
   tblTxt: { fontSize: 7.5, color: C.negro },
   tblTxtMuted: { fontSize: 7.5, color: C.grisMedio },
+  tblTxtMontaje: { fontSize: 7, color: C.dorado, marginTop: 1 },
   // Cat header dentro de tabla
   catRow: { flexDirection: "row", backgroundColor: "#f5f5f5", paddingVertical: 3, paddingHorizontal: 6, borderBottomWidth: 0.3, borderBottomColor: C.grisLinea, borderBottomStyle: "solid" },
   catTxt: { fontSize: 6.5, fontFamily: "Helvetica-Bold", color: C.grisMedio, textTransform: "uppercase", letterSpacing: 0.8 },
@@ -77,6 +79,8 @@ export interface ProveedorEvento {
   nombreProveedor: string;
   servicioEquipo: string | null;
   telefonoProveedor: string | null;
+  modalidadEntrega?: string | null;
+  modalidadRegreso?: string | null;
 }
 export interface ArchivoItem {
   tipo: string;
@@ -227,8 +231,14 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
 
   const transConDatos = data.transportes.filter(t => t.horaSalida || t.choferNombre);
   const todosProveedores = [
-    ...data.proveedoresEvento.map(p => ({ nombre: p.nombreProveedor, servicio: p.servicioEquipo, telefono: p.telefonoProveedor })),
-    ...data.proveedoresRenta.map(p => ({ nombre: p.nombre, servicio: p.equipos.join(", "), telefono: p.contacto })),
+    ...data.proveedoresEvento.map(p => ({
+      nombre: p.nombreProveedor, servicio: p.servicioEquipo, telefono: p.telefonoProveedor,
+      entrega: p.modalidadEntrega ?? null, regreso: p.modalidadRegreso ?? null,
+    })),
+    ...data.proveedoresRenta.map(p => ({
+      nombre: p.nombre, servicio: p.equipos.join(", "), telefono: p.contacto,
+      entrega: null, regreso: null,
+    })),
   ];
 
   return (
@@ -407,7 +417,10 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
                   {items.map((e, i) => (
                     <View key={i} style={s.tblRow} wrap={false}>
                       <Text style={[s.tblTxt, { width: 36 }]}>{e.cantidad}</Text>
-                      <Text style={[s.tblTxt, { flex: 1 }]}>{e.descripcion}{e.marca ? ` — ${e.marca}` : ""}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={s.tblTxt}>{e.descripcion}{e.marca ? ` — ${e.marca}` : ""}</Text>
+                        {e.montaje ? <Text style={s.tblTxtMontaje}>{e.montaje}</Text> : null}
+                      </View>
                       <Text style={[s.tblTxtMuted, { width: 80 }]}>{cat}</Text>
                     </View>
                   ))}
@@ -452,12 +465,16 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
               <View style={s.tblHd}>
                 <Text style={[s.tblHdTxt, { flex: 1 }]}>Proveedor</Text>
                 <Text style={[s.tblHdTxt, { flex: 1 }]}>Equipo / Servicio</Text>
+                <Text style={[s.tblHdTxt, { flex: 1 }]}>Entrega / Regreso</Text>
                 <Text style={[s.tblHdTxt, { width: 90 }]}>Teléfono</Text>
               </View>
               {todosProveedores.map((p, i) => (
                 <View key={i} style={i < todosProveedores.length - 1 ? s.tblRow : s.tblRowLast} wrap={false}>
                   <Text style={[s.tblTxt, { flex: 1, fontFamily: "Helvetica-Bold" }]}>{p.nombre}</Text>
                   <Text style={[s.tblTxtMuted, { flex: 1 }]}>{p.servicio ?? "—"}</Text>
+                  <Text style={[s.tblTxtMuted, { flex: 1 }]}>
+                    {[labelModalidad(p.entrega), labelModalidad(p.regreso)].filter(Boolean).join(" · ") || "—"}
+                  </Text>
                   <Text style={[s.tblTxtMuted, { width: 90 }]}>{p.telefono ?? "—"}</Text>
                 </View>
               ))}

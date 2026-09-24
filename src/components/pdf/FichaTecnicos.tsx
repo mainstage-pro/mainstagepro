@@ -49,6 +49,7 @@ const s = StyleSheet.create({
   checkBox: { width: 11, height: 11, borderWidth: 0.8, borderColor: C.grisMedio, borderStyle: "solid", marginRight: 8, marginTop: 1, borderRadius: 1, flexShrink: 0 },
   checkText: { flex: 1, fontSize: 9, color: C.negro },
   checkSub: { fontSize: 7.5, color: C.grisClaro },
+  checkMontaje: { fontSize: 7.5, color: C.dorado, marginTop: 1 },
   // Equipo de trabajo
   equipoRow: { flexDirection: "row", paddingVertical: 7, borderBottomWidth: 0.5, borderBottomColor: C.grisLinea, borderBottomStyle: "solid", alignItems: "center" },
   equipoNombre: { flex: 1, fontSize: 10, fontFamily: "Helvetica-Bold", color: C.negro },
@@ -224,10 +225,13 @@ export function FichaTecnicos({ data }: { data: FichaTecnicosData }) {
                     {e.imagenUrl ? (
                       <Image src={e.imagenUrl} style={{ width: 24, height: 24, marginRight: 4, objectFit: "contain" }} />
                     ) : null}
-                    <Text style={s.checkText}>
-                      {e.cantidad}x {e.descripcion}
-                      {e.marca ? <Text style={s.checkSub}> — {e.marca}</Text> : null}
-                    </Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.checkText}>
+                        {e.cantidad}x {e.descripcion}
+                        {e.marca ? <Text style={s.checkSub}> — {e.marca}</Text> : null}
+                      </Text>
+                      {e.montaje ? <Text style={s.checkMontaje}>{e.montaje}</Text> : null}
+                    </View>
                   </View>
                 ))}
               </View>

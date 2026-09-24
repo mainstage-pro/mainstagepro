@@ -4,7 +4,8 @@ import { getSession } from '@/lib/auth'
 import ReactPDF, { Document } from '@react-pdf/renderer'
 import { RiderPDF } from '@/components/RiderPDF'
 import { makePdfImageResolver } from '@/components/pdf/PdfShared'
-import { sembrarNotasEquiposProyecto } from '@/lib/notas-equipos'
+import { sembrarNotasEquiposProyecto, notaVisibleDeCotizacion } from '@/lib/notas-equipos'
+import { resumenMontaje } from '@/lib/montaje-reportes'
 import { bloqueoDocumento } from '@/lib/proyecto-documentos-guard'
 import React from 'react'
 import path from 'path'
@@ -38,12 +39,13 @@ export async function GET(req: NextRequest,
               marca: true,
               modelo: true,
               imagenUrl: true,
-              categoria: { select: { nombre: true } },
+              categoria: { select: { nombre: true, disciplina: true } },
             },
           },
           riderAccesorios: {
             orderBy: { orden: 'asc' },
           },
+          posiciones: { orderBy: { orden: 'asc' } },
         },
         orderBy: { id: 'asc' },
       },
@@ -145,12 +147,13 @@ export async function GET(req: NextRequest,
       tipo: (eq as unknown as Record<string, unknown>).tipo as string ?? 'PROPIO',
       cantidad: eq.cantidad,
       notas: (eq as unknown as Record<string, unknown>).notas as string | null ?? null,
+      montaje: resumenMontaje(eq.posiciones, eq.equipo.categoria?.nombre, eq.equipo.categoria?.disciplina),
       equipo: {
         descripcion: eq.equipo.descripcion,
         marca: eq.equipo.marca,
         modelo: (eq.equipo as unknown as Record<string, unknown>).modelo as string | null ?? null,
         imagenUrl: imagenPorEquipo.get(eq.id) ?? logoIconSrc,
-        categoria: eq.equipo.categoria,
+        categoria: eq.equipo.categoria ? { nombre: eq.equipo.categoria.nombre } : null,
       },
       riderAccesorios: eq.riderAccesorios.map(a => ({
         id: a.id,
@@ -217,7 +220,15 @@ export async function GET(req: NextRequest,
           if (seenLineas.has(descNorm)) return false
           seenLineas.add(descNorm)
           return true
-        }) as { id: string; tipo: string; descripcion: string; marca: string | null; cantidad: number; notas: string | null }[]
+        })
+        .map((l: CotLinea) => ({
+          id: l.id,
+          tipo: l.tipo,
+          descripcion: l.descripcion,
+          marca: l.marca,
+          cantidad: l.cantidad,
+          notas: notaVisibleDeCotizacion(l.notas),
+        }))
     })(),
     logoSrc,
     esRenta,

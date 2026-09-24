@@ -5,6 +5,8 @@ import ReactPDF, { Document } from "@react-pdf/renderer";
 import { HojaEntregaRentaPDF } from "@/components/HojaEntregaRentaPDF";
 import { makePdfImageResolver } from "@/components/pdf/PdfShared";
 import { bloqueoDocumento } from "@/lib/proyecto-documentos-guard";
+import { notaVisibleDeCotizacion } from "@/lib/notas-equipos";
+import { resumenMontaje } from "@/lib/montaje-reportes";
 import React from "react";
 import path from "path";
 import fs from "fs";
@@ -43,13 +45,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
               marca: true,
               modelo: true,
               imagenUrl: true,
-              categoria: { select: { nombre: true } },
+              categoria: { select: { nombre: true, disciplina: true } },
             },
           },
           riderAccesorios: {
             select: { nombre: true, cantidad: true, categoria: true },
             orderBy: { orden: "asc" },
           },
+          posiciones: { orderBy: { orden: "asc" } },
         },
         orderBy: [{ equipo: { categoriaId: "asc" } }, { id: "asc" }],
       },
@@ -68,6 +71,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const equipos = await Promise.all(
     proyecto.equipos.map(async (pe) => ({
       ...pe,
+      montaje: resumenMontaje(pe.posiciones, pe.equipo?.categoria?.nombre, pe.equipo?.categoria?.disciplina),
       equipo: pe.equipo
         ? { ...pe.equipo, imagenUrl: await resolveImg(pe.equipo.imagenUrl) }
         : null,
@@ -77,6 +81,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const proyectoData = {
     ...proyecto,
     equipos,
+    cotizacion: proyecto.cotizacion
+      ? {
+          ...proyecto.cotizacion,
+          lineas: proyecto.cotizacion.lineas.map((l) => ({ ...l, notas: notaVisibleDeCotizacion(l.notas) })),
+        }
+      : null,
     fechaEvento: proyecto.fechaEvento?.toISOString() ?? null,
     tratoIdeasReferencias: proyecto.trato?.ideasReferencias ?? null,
   };

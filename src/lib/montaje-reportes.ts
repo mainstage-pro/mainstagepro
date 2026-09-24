@@ -30,6 +30,39 @@ export type EquipoConPosiciones = {
   }[];
 };
 
+export type PosicionResumible = {
+  cantidad: number;
+  funcion: string | null;
+  soporte: string | null;
+  zona: string | null;
+  alturaM: number | null;
+};
+
+/**
+ * Una línea de texto con el montaje de un equipo, para incrustarla en los
+ * documentos que ya listan equipos sin convertirlos en un plano técnico:
+ * "2 PA principal · Tripié · Escenario   ·   4 Monitor de piso · Piso · Escenario"
+ */
+export function resumenMontaje(
+  posiciones: PosicionResumible[] | null | undefined,
+  categoria?: string | null,
+  disciplina?: string | null,
+): string {
+  if (!posiciones?.length) return "";
+  return posiciones
+    .map((p) => {
+      const partes = [
+        labelConfiguracion(p.funcion, categoria, disciplina),
+        labelSoporte(p.soporte, categoria, disciplina),
+        labelZona(p.zona),
+        p.alturaM ? `${p.alturaM} m` : "",
+      ].filter(Boolean);
+      return partes.length ? `${p.cantidad} ${partes.join(" · ")}` : "";
+    })
+    .filter(Boolean)
+    .join("   ·   ");
+}
+
 export type PosicionPlana = {
   nombre: string;
   categoria: string;

@@ -4,6 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import { getEquipoImage, type FotoPresentacion } from "@/lib/presentacion-imagenes";
 import { useEquipoGaleria } from "./_galeria";
 
+// Extrae solo la nota visible del campo codificado ("cat:X|nota:Y", "nota:Y", "cat:X", texto plano).
+function notaVisible(notas: string | null | undefined): string | null {
+  if (!notas) return null;
+  if (notas.includes("|nota:")) return notas.split("|nota:")[1]?.trim() || null;
+  if (notas.startsWith("nota:")) return notas.slice(5).trim() || null;
+  if (notas.startsWith("cat:")) return null;
+  return notas.trim() || null;
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Linea {
   id: string;
@@ -202,8 +211,8 @@ function EquipoRow({ linea, index }: { linea: Linea; index: number }) {
           {linea.modelo && linea.descripcion !== linea.modelo && (
             <p className="text-white/35 text-xs mt-0.5 truncate">{linea.descripcion}</p>
           )}
-          {linea.notas && (
-            <p className="text-white/30 text-xs mt-1 italic">{linea.notas}</p>
+          {notaVisible(linea.notas) && (
+            <p className="text-white/30 text-xs mt-1 italic">{notaVisible(linea.notas)}</p>
           )}
           {tieneGaleria && (
             <button type="button" onClick={abrir} className="text-[#B3985B]/70 hover:text-[#B3985B] text-[10px] mt-1 transition-colors">

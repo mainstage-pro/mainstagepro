@@ -438,6 +438,7 @@ interface ProyectoEquipo {
   cantidad: number;
   equipo: EquipoItem | null;
   descripcionManual?: string | null;
+  montaje?: string;
   riderAccesorios?: RiderAccesorioItem[];
 }
 interface CotizacionLinea {
@@ -695,7 +696,12 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
                             {eq.equipo?.imagenUrl ? (
                               <Image src={eq.equipo.imagenUrl} style={{ width: 28, height: 28, flexShrink: 0, objectFit: "contain" }} />
                             ) : null}
-                            <Text style={[s.cellText, { fontFamily: "Helvetica-Bold", flex: 1 }]}>{nombre}</Text>
+                            <View style={{ flex: 1 }}>
+                              <Text style={[s.cellText, { fontFamily: "Helvetica-Bold" }]}>{nombre}</Text>
+                              {eq.montaje ? (
+                                <Text style={{ fontSize: 6, color: GOLD, marginTop: 1 }}>{eq.montaje}</Text>
+                              ) : null}
+                            </View>
                           </View>
                           <View style={s.colQty}>
                             <Text style={[s.cellText, { textAlign: "center", fontFamily: "Helvetica-Bold" }]}>{eq.cantidad}</Text>

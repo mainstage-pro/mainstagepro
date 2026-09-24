@@ -41,6 +41,7 @@ const styles = StyleSheet.create({
   tableRow: { flexDirection: "row", paddingVertical: 4, paddingHorizontal: 8, borderBottomWidth: 0.5, borderBottomColor: C.border },
   tableCell: { fontSize: 8.5, color: C.black },
   tableCellSub: { fontSize: 7, color: C.gray, marginTop: 1 },
+  tableCellMontaje: { fontSize: 7, color: C.gold, marginTop: 1 },
   // List
   listItem: { flexDirection: "row", marginBottom: 3.5 },
   listBullet: { color: C.gold, marginRight: 5, marginTop: 1 },
@@ -81,7 +82,7 @@ export interface FichaCoordinadorData {
   encargadoNombre: string | null;
   encargadoCelular: string | null;
   // Equipos
-  equipos: { descripcion: string; marca: string | null; modelo: string | null; cantidad: number; tipo: string }[];
+  equipos: { descripcion: string; marca: string | null; modelo: string | null; cantidad: number; tipo: string; montaje?: string }[];
   // Personal
   personal: { nombre: string; rolEnEvento: string | null; rolTecnico: string | null; celular: string | null }[];
   // Proveedores
@@ -264,6 +265,7 @@ export function FichaCoordinadorPDF({ data }: { data: FichaCoordinadorData }) {
                     {(eq.marca || eq.modelo) && (
                       <Text style={styles.tableCellSub}>{eq.descripcion}</Text>
                     )}
+                    {eq.montaje ? <Text style={styles.tableCellMontaje}>{eq.montaje}</Text> : null}
                   </View>
                 </View>
               ))}

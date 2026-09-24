@@ -38,6 +38,7 @@ const styles = StyleSheet.create({
   cantBadge: { backgroundColor: C.gold, color: C.white, fontFamily: "Helvetica-Bold", fontSize: 9, paddingHorizontal: 5, paddingVertical: 2, borderRadius: 3, marginRight: 8, minWidth: 22, textAlign: "center" },
   equipoText: { fontSize: 11, fontFamily: "Helvetica-Bold", color: C.black, flex: 1 },
   equipoSubText: { fontSize: 8.5, color: C.gray, flex: 1, marginTop: 1 },
+  equipoMontaje: { fontSize: 8.5, color: C.gold, flex: 1, marginTop: 1 },
   // Personal
   personalCard: { borderWidth: 0.5, borderColor: C.border, borderRadius: 3, paddingHorizontal: 10, paddingVertical: 7, marginBottom: 5 },
   personalNombre: { fontSize: 11, fontFamily: "Helvetica-Bold", color: C.black },
@@ -63,7 +64,7 @@ export interface FichaTecnicosData {
   direccionVenue: string | null;
   linkMaps: string | null;
   indicacionesAcceso: string | null;
-  equipos: { descripcion: string; marca: string | null; modelo: string | null; cantidad: number; tipo: string }[];
+  equipos: { descripcion: string; marca: string | null; modelo: string | null; cantidad: number; tipo: string; montaje?: string }[];
   personal: { nombre: string; rolEnEvento: string | null; rolTecnico: string | null; celular: string | null }[];
   encargadoNombre: string | null;
   encargadoCelular: string | null;
@@ -182,6 +183,7 @@ export function FichaTecnicosPDF({ data }: { data: FichaTecnicosData }) {
                   {(eq.marca || eq.modelo) && (
                     <Text style={styles.equipoSubText}>{eq.descripcion}</Text>
                   )}
+                  {eq.montaje ? <Text style={styles.equipoMontaje}>{eq.montaje}</Text> : null}
                 </View>
               </View>
             ))}

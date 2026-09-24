@@ -4,6 +4,15 @@ import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { BotonDescarga } from "@/components/BotonDescarga";
 
+// Extrae solo la nota visible del campo codificado ("cat:X|nota:Y", "nota:Y", "cat:X", texto plano).
+function notaVisible(notas: string | null | undefined): string | null {
+  if (!notas) return null;
+  if (notas.includes("|nota:")) return notas.split("|nota:")[1]?.trim() || null;
+  if (notas.startsWith("nota:")) return notas.slice(5).trim() || null;
+  if (notas.startsWith("cat:")) return null;
+  return notas.trim() || null;
+}
+
 interface Trato {
   id: string;
   nombreEvento: string | null;
@@ -248,7 +257,7 @@ export default function ContratoPage({ params }: { params: Promise<{ tratoId: st
                             {(l.marca || l.modelo) && (
                               <span className="text-white/30 ml-2">{[l.marca, l.modelo].filter(Boolean).join(" ")}</span>
                             )}
-                            {l.notas && <p className="text-white/20 italic text-[10px] mt-0.5">{l.notas}</p>}
+                            {notaVisible(l.notas) && <p className="text-white/20 italic text-[10px] mt-0.5">{notaVisible(l.notas)}</p>}
                           </td>
                           <td className="text-center text-white/40 px-3 py-2.5">{l.cantidad}</td>
                           <td className="text-center text-white/40 px-3 py-2.5">{l.dias}</td>

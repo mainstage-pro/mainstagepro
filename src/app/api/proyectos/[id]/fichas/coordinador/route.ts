@@ -5,6 +5,7 @@ import ReactPDF, { Document } from "@react-pdf/renderer";
 import { FichaCoordinador, FichaCoordinadorData } from "@/components/pdf/FichaCoordinador";
 import { logoBase64, EquipoFlat, TransporteSlot, EquipoRiderExtra, ProveedorRenta } from "@/components/pdf/PdfShared";
 import { BloqueTiempo } from "@/lib/cronologia-evento";
+import { resumenMontaje } from "@/lib/montaje-reportes";
 import React from "react";
 import path from "path";
 
@@ -30,8 +31,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       },
       equipos: {
         include: {
-          equipo: { select: { descripcion: true, marca: true, categoria: { select: { nombre: true } } } },
+          equipo: { select: { descripcion: true, marca: true, categoria: { select: { nombre: true, disciplina: true } } } },
           proveedor: { select: { nombre: true, telefono: true } },
+          posiciones: { orderBy: { orden: "asc" } },
         },
         orderBy: { id: "asc" },
       },
@@ -90,6 +92,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     tipo: e.tipo,
     confirmado: e.confirmado,
     proveedor: e.proveedor?.nombre ?? null,
+    montaje: resumenMontaje(e.posiciones, e.equipo?.categoria?.nombre, e.equipo?.categoria?.disciplina),
   }));
 
   const data: FichaCoordinadorData = {
@@ -150,6 +153,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       nombreProveedor: p.nombreProveedor,
       servicioEquipo: p.servicioEquipo ?? null,
       telefonoProveedor: p.telefonoProveedor ?? null,
+      modalidadEntrega: p.modalidadEntrega ?? null,
+      modalidadRegreso: p.modalidadRegreso ?? null,
     })),
     proveedoresRenta,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -6,6 +6,7 @@ import { FichaCliente, FichaClienteData } from "@/components/pdf/FichaCliente";
 import { logoBase64, logoBase64Dark, EquipoFlat } from "@/components/pdf/PdfShared";
 import { bloqueoDocumento } from "@/lib/proyecto-documentos-guard";
 import { BloqueTiempo } from "@/lib/cronologia-evento";
+import { resumenMontaje } from "@/lib/montaje-reportes";
 import React from "react";
 import path from "path";
 
@@ -26,9 +27,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       encargado: { select: { name: true } },
       equipos: {
         include: {
-          equipo: { select: { descripcion: true, marca: true, categoria: { select: { nombre: true } } } },
+          equipo: { select: { descripcion: true, marca: true, categoria: { select: { nombre: true, disciplina: true } } } },
           proveedor: { select: { nombre: true } },
           riderAccesorios: { orderBy: { orden: "asc" } },
+          posiciones: { orderBy: { orden: "asc" } },
         },
         orderBy: { id: "asc" },
       },
@@ -50,6 +52,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     tipo: e.tipo,
     confirmado: e.confirmado,
     proveedor: e.proveedor?.nombre ?? null,
+    montaje: resumenMontaje(e.posiciones, e.equipo?.categoria?.nombre, e.equipo?.categoria?.disciplina),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     accesorios: (e.riderAccesorios ?? []).map((a: any) => ({
       nombre: a.nombre, cantidad: a.cantidad, categoria: a.categoria ?? null,

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import ReactPDF, { Document } from "@react-pdf/renderer";
 import { FichaTecnicosPDF } from "@/components/FichaTecnicosPDF";
+import { resumenMontaje } from "@/lib/montaje-reportes";
 import React from "react";
 import path from "path";
 import fs from "fs";
@@ -27,7 +28,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       },
       equipos: {
         include: {
-          equipo: { select: { descripcion: true, marca: true, modelo: true } },
+          equipo: {
+            select: {
+              descripcion: true,
+              marca: true,
+              modelo: true,
+              categoria: { select: { nombre: true, disciplina: true } },
+            },
+          },
+          posiciones: { orderBy: { orden: "asc" } },
         },
         orderBy: { id: "asc" },
       },
@@ -61,6 +70,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       modelo: e.equipo?.modelo ?? null,
       cantidad: e.cantidad,
       tipo: e.tipo,
+      montaje: resumenMontaje(e.posiciones, e.equipo?.categoria?.nombre, e.equipo?.categoria?.disciplina),
     })),
     personal: (proyecto.personal ?? [])
       .filter((p: any) => p.tecnico)

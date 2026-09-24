@@ -236,7 +236,10 @@ export function FichaCliente({ data }: { data: FichaClienteData }) {
                     {items.map((e, i) => (
                       <View key={i} style={base.tableRow} wrap={false}>
                         <Text style={[base.tdTxt, { width: 36 }]}>{e.cantidad}</Text>
-                        <Text style={[base.tdTxt, { flex: 1 }]}>{e.descripcion}{e.marca ? ` — ${e.marca}` : ""}</Text>
+                        <View style={{ flex: 1 }}>
+                          <Text style={base.tdTxt}>{e.descripcion}{e.marca ? ` — ${e.marca}` : ""}</Text>
+                          {e.montaje ? <Text style={[base.tdMuted, { color: C.dorado }]}>{e.montaje}</Text> : null}
+                        </View>
                         <Text style={[base.tdMuted, { width: 100 }]}>{cat}</Text>
                       </View>
                     ))}

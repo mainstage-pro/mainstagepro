@@ -299,7 +299,7 @@ export function makePdfImageResolver(publicDir: string) {
 export type EquipoFlat = {
   descripcion: string; marca: string | null; modelo: string | null; categoria: string;
   cantidad: number; tipo: string; confirmado: boolean; proveedor: string | null;
-  imagenUrl?: string | null; notas?: string | null;
+  imagenUrl?: string | null; notas?: string | null; montaje?: string;
   accesorios: { nombre: string; cantidad: number; categoria: string | null }[];
 };
 

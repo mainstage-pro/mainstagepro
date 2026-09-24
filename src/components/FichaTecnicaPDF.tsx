@@ -312,6 +312,7 @@ interface EquipoItem {
   dias: number;
   costoExterno: number | null;
   confirmado: boolean;
+  montaje?: string;
   equipo: {
     descripcion: string;
     marca: string | null;
@@ -699,6 +700,9 @@ export function FichaTecnicaPDF({ proyecto, logoSrc }: { proyecto: FichaTecnicaD
                         {(e.equipo.marca || e.equipo.modelo) && (
                           <Text style={[s.tdText, { fontSize: 7.5, color: LIGHT_GRAY }]}>{e.equipo.descripcion}</Text>
                         )}
+                        {e.montaje ? (
+                          <Text style={[s.tdText, { fontSize: 7, color: GOLD }]}>{e.montaje}</Text>
+                        ) : null}
                       </View>
                       <Text style={[s.tdText, { width: "15%", textAlign: "center" }]}>{e.cantidad}</Text>
                       <Text style={[s.tdText, { width: "15%", textAlign: "center" }]}>{e.dias}</Text>

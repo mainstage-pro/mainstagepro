@@ -88,6 +88,8 @@ const s = StyleSheet.create({
   riderAccQty:     { fontSize: 7, color: "#9A7A3F", marginLeft: 4 },
   riderNotaRow:    { paddingHorizontal: 10, paddingVertical: 5, backgroundColor: "#f8f8f8", borderTopWidth: 0.5, borderTopColor: "#e0e0e0" },
   riderNotaTxt:    { fontSize: 8, color: "#555555", fontStyle: "italic" },
+  riderMontajeRow: { paddingHorizontal: 10, paddingVertical: 4 },
+  riderMontajeTxt: { fontSize: 7.5, color: "#9A7A3F" },
 });
 
 function SecNum({ num, titulo }: { num: string; titulo: string }) {
@@ -391,7 +393,7 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                         {/* Header del equipo */}
                         <View style={[
                           s.riderEquipHead,
-                          (accs.length > 0 || nota) ? { borderBottomWidth: 1, borderBottomColor: "#e0e0e0" } : {},
+                          (accs.length > 0 || nota || e.montaje) ? { borderBottomWidth: 1, borderBottomColor: "#e0e0e0" } : {},
                         ]}>
                           <View style={s.riderCheckBox} />
                           {e.imagenUrl && (
@@ -411,6 +413,13 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                             </View>
                           )}
                         </View>
+
+                        {/* Montaje capturado por el coordinador */}
+                        {e.montaje ? (
+                          <View style={s.riderMontajeRow}>
+                            <Text style={s.riderMontajeTxt}>{e.montaje}</Text>
+                          </View>
+                        ) : null}
 
                         {/* Nota del concepto (viene de la cotización o del proyecto) */}
                         {nota && (
