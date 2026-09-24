@@ -11,7 +11,6 @@ export type Posicion = {
   zona: string | null;
   alturaM: number | null;
   notas: string | null;
-  esSugerencia?: boolean;
 };
 
 type Props = {
@@ -50,7 +49,7 @@ export function MontajePosiciones({ proyectoId, equipoId, cantidadTotal, categor
   const restante = cantidadTotal - asignadas;
 
   const actualizar = (i: number, cambios: Partial<Posicion>) => {
-    setFilas((prev) => prev.map((f, idx) => (idx === i ? { ...f, ...cambios, esSugerencia: false } : f)));
+    setFilas((prev) => prev.map((f, idx) => (idx === i ? { ...f, ...cambios } : f)));
     setDirty(true);
   };
 
@@ -86,17 +85,10 @@ export function MontajePosiciones({ proyectoId, equipoId, cantidadTotal, categor
     }
   };
 
-  const hayS = filas.some((f) => f.esSugerencia);
-
   return (
     <div className="mt-2 rounded-lg bg-[#0a0a0a] border border-[#1a1a1a] p-3">
       <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] text-[#B3985B]/70 font-bold uppercase tracking-widest">Montaje</span>
-          {hayS && (
-            <span className="text-[9px] text-gray-500 bg-[#1a1a1a] px-1.5 py-0.5 rounded">sugerido — confirma o corrige</span>
-          )}
-        </div>
+        <span className="text-[10px] text-[#B3985B]/70 font-bold uppercase tracking-widest">Montaje</span>
         <span className={`text-[10px] font-semibold ${restante === 0 ? "text-green-500" : "text-amber-500"}`}>
           {asignadas} de {cantidadTotal} asignadas
           {restante > 0 && ` · faltan ${restante}`}
@@ -129,14 +121,14 @@ export function MontajePosiciones({ proyectoId, equipoId, cantidadTotal, categor
                     className={`${selectCls} text-center`}
                   />
                 </Campo>
-                <Campo label="Función" className="lg:col-span-4">
+                <Campo label="Configuración" className="lg:col-span-4">
                   <select
                     value={f.funcion ?? ""}
                     onChange={(e) => actualizar(i, { funcion: e.target.value || null })}
                     className={selectCls}
                   >
                     <option value="">— Elegir —</option>
-                    {perfil.funciones.map((o) => (
+                    {perfil.configuraciones.map((o) => (
                       <option key={o.id} value={o.id}>{o.label}</option>
                     ))}
                   </select>
@@ -196,7 +188,7 @@ export function MontajePosiciones({ proyectoId, equipoId, cantidadTotal, categor
         <button onClick={agregar} className="text-[11px] text-[#B3985B] hover:text-[#d4b56f] transition-colors">
           + Agregar posición
         </button>
-        {(dirty || hayS) && (
+        {dirty && (
           <button
             onClick={guardar}
             disabled={guardando}

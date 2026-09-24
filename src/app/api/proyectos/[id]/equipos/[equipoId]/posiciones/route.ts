@@ -28,7 +28,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ equi
     zona: p.zona || null,
     alturaM: p.alturaM != null && p.alturaM !== "" ? Number(p.alturaM) : null,
     notas: p.notas || null,
-    esSugerencia: false,
     orden: i,
   }));
 

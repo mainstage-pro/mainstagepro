@@ -21,7 +21,7 @@ export type OpcionMontaje = {
 };
 
 export type PerfilMontaje = {
-  funciones: OpcionMontaje[];
+  configuraciones: OpcionMontaje[];
   soportes: OpcionMontaje[];
 };
 
@@ -77,7 +77,7 @@ const S = {
 const PERFILES_POR_CATEGORIA: Record<string, PerfilMontaje> = {
   // ── AUDIO ────────────────────────────────────────────────────────────────
   "Equipo de Audio": {
-    funciones: [
+    configuraciones: [
       { id: "PA_PRINCIPAL", label: "PA principal (house)" },
       { id: "PA_REFUERZO", label: "Refuerzo / delay" },
       { id: "FRONT_FILL", label: "Front fill" },
@@ -92,7 +92,7 @@ const PERFILES_POR_CATEGORIA: Record<string, PerfilMontaje> = {
     soportes: [S.piso, S.tripie, S.posteSub, S.tarima, S.totem, S.trussVolada, S.arrayVolado, S.arrayApilado, S.colgadoMotor, S.pared],
   },
   "Consolas de Audio": {
-    funciones: [
+    configuraciones: [
       { id: "CONSOLA_FOH", label: "Consola FOH (casa)" },
       { id: "CONSOLA_MONITORES", label: "Consola de monitores" },
       { id: "STAGEBOX", label: "Stagebox / snake digital" },
@@ -103,7 +103,7 @@ const PERFILES_POR_CATEGORIA: Record<string, PerfilMontaje> = {
     soportes: [S.mesa, S.rack, S.tarima, S.piso],
   },
   "Sistemas de Microfonía": {
-    funciones: [
+    configuraciones: [
       { id: "VOZ_PRINCIPAL", label: "Voz principal" },
       { id: "VOZ_APOYO", label: "Voz de apoyo / coros" },
       { id: "MC_PRESENTADOR", label: "MC / presentador" },
@@ -129,7 +129,7 @@ const PERFILES_POR_CATEGORIA: Record<string, PerfilMontaje> = {
     ],
   },
   "Monitoreo In-Ear": {
-    funciones: [
+    configuraciones: [
       { id: "IEM_MUSICO", label: "IEM músico / artista" },
       { id: "IEM_STAFF", label: "IEM staff / coordinación" },
       { id: "TRANSMISOR", label: "Transmisor / antena" },
@@ -140,7 +140,7 @@ const PERFILES_POR_CATEGORIA: Record<string, PerfilMontaje> = {
 
   // ── DJ ───────────────────────────────────────────────────────────────────
   "Consolas/Equipo para DJ": {
-    funciones: [
+    configuraciones: [
       { id: "DJ_PRINCIPAL", label: "Setup DJ principal" },
       { id: "DJ_SECUNDARIO", label: "Setup DJ secundario / B2B" },
       { id: "EFECTOS", label: "Efectos / controlador extra" },
@@ -154,7 +154,7 @@ const PERFILES_POR_CATEGORIA: Record<string, PerfilMontaje> = {
     ],
   },
   "DJ Booths": {
-    funciones: [
+    configuraciones: [
       { id: "BOOTH_PRINCIPAL", label: "Booth principal" },
       { id: "BOOTH_SECUNDARIO", label: "Booth secundario" },
       { id: "PODIO", label: "Podio / plataforma" },
@@ -165,18 +165,19 @@ const PERFILES_POR_CATEGORIA: Record<string, PerfilMontaje> = {
 
   // ── ILUMINACIÓN ──────────────────────────────────────────────────────────
   "Equipo de Iluminación": {
-    funciones: [
-      { id: "FRONT_WASH", label: "Front / luz frontal (cara)" },
-      { id: "BACKLIGHT", label: "Contraluz" },
-      { id: "WASH_ESCENARIO", label: "Wash de escenario" },
-      { id: "WASH_SALON", label: "Wash de salón / ambientación" },
-      { id: "SPOT_GOBOS", label: "Spot / gobos" },
-      { id: "BEAM_AEREO", label: "Beam / efecto aéreo" },
-      { id: "BLINDER_ESTROBO", label: "Blinder / estrobo" },
-      { id: "PIXEL_DECORATIVO", label: "Pixel / tubo decorativo" },
-      { id: "UPLIGHT", label: "Uplight / arquitectural" },
-      { id: "PINSPOT_MESAS", label: "Pinspot a mesas / centros" },
-      { id: "LASER", label: "Láser" },
+    configuraciones: [
+      { id: "FRONT_WASH", label: "Frontal al escenario" },
+      { id: "BACKLIGHT", label: "Contra del escenario" },
+      { id: "WASH_ESCENARIO", label: "Sobre el escenario" },
+      { id: "LATERAL_ESCENARIO", label: "Lateral del escenario" },
+      { id: "BEAM_AEREO", label: "Aérea sobre pista" },
+      { id: "PISTA_BAILE", label: "A pista de baile" },
+      { id: "WASH_SALON", label: "Ambientación de salón" },
+      { id: "UPLIGHT", label: "A muros y columnas" },
+      { id: "PINSPOT_MESAS", label: "A mesas / centros" },
+      { id: "FACHADA_ACCESO", label: "Fachada / acceso" },
+      { id: "CEREMONIA_ILUM", label: "Área de ceremonia" },
+      { id: "CABINA_DJ_ILUM", label: "Cabina de DJ" },
       { id: "ATMOSFERA", label: "Atmósfera (humo / haze)" },
       { id: "LUZ_SERVICIO", label: "Luz de servicio / trabajo" },
       { id: "RESPALDO", label: "Respaldo (no se monta)" },
@@ -197,7 +198,7 @@ const PERFILES_POR_CATEGORIA: Record<string, PerfilMontaje> = {
     ],
   },
   "Consolas de Iluminación": {
-    funciones: [
+    configuraciones: [
       { id: "CONSOLA_PRINCIPAL", label: "Consola principal" },
       { id: "CONSOLA_RESPALDO", label: "Consola de respaldo" },
       { id: "NODO_DMX", label: "Nodo DMX / Art-Net" },
@@ -207,7 +208,7 @@ const PERFILES_POR_CATEGORIA: Record<string, PerfilMontaje> = {
     soportes: [S.mesa, S.rack, S.tarima, S.piso, S.trussTerrena],
   },
   "Efectos especiales": {
-    funciones: [
+    configuraciones: [
       { id: "MOMENTO_CLAVE", label: "Momento clave (entrada, vals, brindis)" },
       { id: "EFECTO_AMBIENTE", label: "Efecto de ambiente" },
       { id: "EFECTO_CIERRE", label: "Cierre / gran final" },
@@ -218,7 +219,7 @@ const PERFILES_POR_CATEGORIA: Record<string, PerfilMontaje> = {
 
   // ── VIDEO ────────────────────────────────────────────────────────────────
   "Pantalla / Video": {
-    funciones: [
+    configuraciones: [
       { id: "PANTALLA_PRINCIPAL", label: "Pantalla principal" },
       { id: "PANTALLA_LATERAL", label: "Pantalla lateral / refuerzo" },
       { id: "CONFIDENCE", label: "Confidence / retorno de presentador" },
@@ -233,7 +234,7 @@ const PERFILES_POR_CATEGORIA: Record<string, PerfilMontaje> = {
 
   // ── RIGGING ──────────────────────────────────────────────────────────────
   "Rigging y Estructuras": {
-    funciones: [
+    configuraciones: [
       { id: "TRUSS_FRONTAL", label: "Truss frontal" },
       { id: "TRUSS_TRASERA", label: "Truss trasera" },
       { id: "TRUSS_LATERAL", label: "Truss lateral" },
@@ -256,7 +257,7 @@ const PERFILES_POR_CATEGORIA: Record<string, PerfilMontaje> = {
 
   // ── STAGE ────────────────────────────────────────────────────────────────
   Entarimado: {
-    funciones: [
+    configuraciones: [
       { id: "ESCENARIO_PRINCIPAL", label: "Escenario principal" },
       { id: "PLATAFORMA_DJ", label: "Plataforma de DJ" },
       { id: "RISER_BATERIA", label: "Riser de batería / banda" },
@@ -273,7 +274,7 @@ const PERFILES_POR_CATEGORIA: Record<string, PerfilMontaje> = {
     ],
   },
   "Pistas de baile": {
-    funciones: [
+    configuraciones: [
       { id: "PISTA_PRINCIPAL", label: "Pista principal" },
       { id: "PISTA_SECUNDARIA", label: "Pista secundaria" },
       { id: "PASILLO", label: "Pasillo / camino" },
@@ -287,7 +288,7 @@ const PERFILES_POR_CATEGORIA: Record<string, PerfilMontaje> = {
     ],
   },
   "Mamparas decorativas": {
-    funciones: [
+    configuraciones: [
       { id: "FONDO_ESCENARIO", label: "Fondo de escenario / backdrop" },
       { id: "FRENTE_DJ", label: "Frente de cabina DJ" },
       { id: "DIVISION", label: "División de área" },
@@ -297,7 +298,7 @@ const PERFILES_POR_CATEGORIA: Record<string, PerfilMontaje> = {
     soportes: [S.piso, { id: "BASE_LASTRE", label: "Base con lastre" }, S.estructura, S.pared, S.trussTerrena],
   },
   "Escenografía": {
-    funciones: [
+    configuraciones: [
       { id: "FONDO_ESCENARIO", label: "Fondo de escenario / backdrop" },
       { id: "AMBIENTACION_ESC", label: "Ambientación" },
       { id: "BRANDING", label: "Branding / impresión" },
@@ -306,7 +307,7 @@ const PERFILES_POR_CATEGORIA: Record<string, PerfilMontaje> = {
     soportes: [S.piso, { id: "BASE_LASTRE", label: "Base con lastre" }, S.estructura, S.pared, S.trussTerrena],
   },
   "Toldos y lonas": {
-    funciones: [
+    configuraciones: [
       { id: "CUBIERTA_ESCENARIO", label: "Cubierta de escenario" },
       { id: "CUBIERTA_INVITADOS", label: "Cubierta de invitados" },
       { id: "CUBIERTA_CONTROL", label: "Cubierta de FOH / control" },
@@ -322,7 +323,7 @@ const PERFILES_POR_CATEGORIA: Record<string, PerfilMontaje> = {
 
   // ── ELECTRICIDAD ─────────────────────────────────────────────────────────
   "Corriente Eléctrica": {
-    funciones: [
+    configuraciones: [
       { id: "ACOMETIDA", label: "Acometida / alimentación principal" },
       { id: "PLANTA", label: "Planta de luz / generador" },
       { id: "DISTRIBUCION", label: "Distribución / tablero" },
@@ -345,7 +346,7 @@ const PERFILES_POR_CATEGORIA: Record<string, PerfilMontaje> = {
 
   // ── SIN DISCIPLINA ───────────────────────────────────────────────────────
   Vehículos: {
-    funciones: [
+    configuraciones: [
       { id: "TRANSPORTE_EQUIPO", label: "Transporte de equipo" },
       { id: "TRANSPORTE_PERSONAL", label: "Transporte de personal" },
       { id: "APOYO_SITIO", label: "Apoyo en sitio" },
@@ -369,7 +370,7 @@ const PERFILES_POR_DISCIPLINA: Record<string, PerfilMontaje> = {
 };
 
 const PERFIL_GENERICO: PerfilMontaje = {
-  funciones: [
+  configuraciones: [
     { id: "PRINCIPAL", label: "Uso principal" },
     { id: "APOYO", label: "Apoyo / complemento" },
     { id: "DECORATIVO", label: "Decorativo" },
@@ -394,9 +395,9 @@ function buscar(opciones: OpcionMontaje[], id?: string | null): OpcionMontaje | 
   return opciones.find((o) => o.id === id) ?? null;
 }
 
-export function labelFuncion(id: string | null | undefined, categoria?: string | null, disciplina?: string | null): string {
+export function labelConfiguracion(id: string | null | undefined, categoria?: string | null, disciplina?: string | null): string {
   if (!id) return "";
-  return buscar(getPerfilMontaje(categoria, disciplina).funciones, id)?.label ?? id;
+  return buscar(getPerfilMontaje(categoria, disciplina).configuraciones, id)?.label ?? id;
 }
 
 export function labelSoporte(id: string | null | undefined, categoria?: string | null, disciplina?: string | null): string {

@@ -614,6 +614,12 @@ model CotizacionLinea {
   proveedorRenta   Proveedor? @relation("ProveedorRentaLineas", fields: [proveedorRentaId], references: [id])
   notasInternas    String? // notas internas que NO salen en el PDF
 
+  // Bloque de proveedor del evento que se hace cargo de este concepto. Se asigna desde
+  // el listado de equipos del proyecto, no desde la cotización.
+  proveedorEventoId String?
+  proveedorEvento   ProveedorEvento? @relation(fields: [proveedorEventoId], references: [id])
+
+  @@index([proveedorEventoId])
   @@map("cotizacion_lineas")
 }
 
@@ -729,6 +735,7 @@ model Proyecto {
   cierreFinanciero  CierreFinanciero?
   tareas            Tarea[]                @relation("TareasDeProyecto")
   proveedoresEvento ProveedorEvento[]
+  bloquesTiempo     ProyectoBloqueTiempo[]
   actasEvento       ActaAdministrativa[]   @relation("ActaEventoProyecto")
   gastosRecurrentes GastoRecurrente[]
   fallasEquipo      FallaEquipo[]          @relation("FallasDeProyecto")
@@ -812,12 +819,11 @@ model ProyectoEquipoPosicion {
   proyectoEquipoId String
   proyectoEquipo   ProyectoEquipo @relation(fields: [proyectoEquipoId], references: [id], onDelete: Cascade)
   cantidad         Int            @default(1)
-  funcion          String? // Para qué sirve — depende de la categoría (PA_PRINCIPAL, MONITOR_PISO, BACKLIGHT...)
+  funcion          String? // Configuración de montaje — depende de la categoría (PA_PRINCIPAL, MONITOR_PISO, BACKLIGHT...)
   soporte          String? // Cómo se sostiene (TRIPIE, POSTE_SUB, TRUSS_VOLADA, COLGADO_MOTOR...)
   zona             String? // Dónde va (ESCENARIO, FOH, CABINA_DJ, SALON...) — catálogo universal
   alturaM          Float? // Altura de montaje en metros (solo soportes volados / torres)
   notas            String?
-  esSugerencia     Boolean        @default(false) // La generó el sistema y nadie la ha confirmado
   orden            Int            @default(0)
   createdAt        DateTime       @default(now())
 
@@ -1343,6 +1349,7 @@ model Proveedor {
   pasivosDeuda      PasivoDeuda[]
   accesorios        Accesorio[]
   gastosRecurrentes GastoRecurrente[]
+  eventos           ProveedorEvento[]
 
   @@map("proveedores")
 }
@@ -1656,6 +1663,7 @@ model CuentaPagar {
   cuotaDeuda               CuotaDeuda?              @relation("CuotaDeudaCxP")
   cuotaReparto             CuotaReparto?            @relation("CuotaRepatoCxP")
   pagoNomina               PagoNomina?              @relation("PagoNominaCxP")
+  proveedorEvento          ProveedorEvento?
   aplicacionesCompensacion CompensacionAplicacion[]
   // tipo extra para identificar origen en cobros-pagos
   esDeuda                  Boolean                  @default(false) // true si viene de PasivoDeuda
@@ -3951,16 +3959,64 @@ model ReportePostEvento {
 
 // ── Módulo Proveedores / Subrentas por evento ─────────────────────────────────
 
+// Participación de un proveedor externo en un evento. Es el espacio fijo donde se
+// concentra todo lo suyo: qué equipo lleva (CotizacionLinea.proveedorEventoId), quién
+// responde, cuánto nos cuesta y sus ventanas de instalación/operación/recolección
+// (filas de ProyectoBloqueTiempo con tipo PROVEEDOR).
 model ProveedorEvento {
-  id                String   @id @default(cuid())
-  createdAt         DateTime @default(now())
+  id                String     @id @default(cuid())
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
   proyectoId        String
-  proyecto          Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  proyecto          Proyecto   @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  // Null mientras el proveedor solo exista como nombre suelto; el alta rápida lo liga.
+  proveedorId       String?
+  proveedor         Proveedor? @relation(fields: [proveedorId], references: [id])
   nombreProveedor   String
   servicioEquipo    String?
   telefonoProveedor String?
+  responsable       String?
+  notas             String?    @db.Text
+  // Lo que nos cuesta, capturado a mano: no se deriva de la cotización.
+  costoAcordado     Float?
+  cuentaPagarId     String?      @unique
+  cuentaPagar       CuentaPagar? @relation(fields: [cuentaPagarId], references: [id])
 
+  lineas  CotizacionLinea[]
+  bloques ProyectoBloqueTiempo[]
+
+  @@index([proyectoId])
   @@map("proveedores_evento")
+}
+
+// Línea única de tiempo del proyecto. Reemplaza los JSON sueltos `Proyecto.cronograma`,
+// `docsTecnicos.programaEvento` y `docsTecnicos.soundcheck`: cada documento es un filtro
+// por `tipo` sobre esta misma tabla, no una captura aparte.
+//
+// Los horarios base del proyecto (llamado, salida de bodega, inicio/fin de evento) NO
+// viven aquí — siguen en los campos de Proyecto y los inyecta construirCronologia().
+model ProyectoBloqueTiempo {
+  id                String           @id @default(cuid())
+  proyectoId        String
+  proyecto          Proyecto         @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  tipo              String           @default("PROGRAMA") // MONTAJE | SOUNDCHECK | PROGRAMA | PROVEEDOR | DESMONTAJE
+  fase              String? // Solo tipo PROVEEDOR: INSTALACION | OPERACION | RECOLECCION
+  proveedorEventoId String?
+  proveedorEvento   ProveedorEvento? @relation(fields: [proveedorEventoId], references: [id], onDelete: Cascade)
+  fecha             DateTime? // Día del bloque; null = el día 1 del evento
+  horaInicio        String? // "HH:MM" 24h canónico (se formatea a 12h al presentar)
+  horaFin           String?
+  titulo            String
+  detalle           String?
+  responsable       String?
+  involucrados      String?
+  orden             Int              @default(0)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([proyectoId, tipo])
+  @@index([proveedorEventoId])
+  @@map("proyecto_bloques_tiempo")
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

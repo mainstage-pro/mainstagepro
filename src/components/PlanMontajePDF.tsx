@@ -150,7 +150,7 @@ export function PlanMontajePDF({ data }: { data: PlanMontajePDFData }) {
                     <Text style={[s.th, { width: 15 }]}> </Text>
                     <Text style={[s.th, { width: 26 }]}>Cant</Text>
                     <Text style={[s.th, { flex: 3 }]}>Equipo</Text>
-                    <Text style={[s.th, { flex: 2.4 }]}>Función</Text>
+                    <Text style={[s.th, { flex: 2.4 }]}>Configuración</Text>
                     <Text style={[s.th, { flex: 2.4 }]}>Soporte</Text>
                     <Text style={[s.th, { width: 34, textAlign: 'right' }]}>Alt.</Text>
                   </View>
@@ -160,7 +160,7 @@ export function PlanMontajePDF({ data }: { data: PlanMontajePDFData }) {
                         <View style={s.check} />
                         <Text style={s.cQty}>{p.cantidad}</Text>
                         <Text style={s.cName}>{p.nombre}</Text>
-                        <Text style={s.cFunc}>{p.funcion || '—'}</Text>
+                        <Text style={s.cFunc}>{p.configuracion || '—'}</Text>
                         <Text style={s.cSop}>{p.soporte || '—'}</Text>
                         <Text style={s.cAlt}>{p.alturaM != null ? `${p.alturaM} m` : ''}</Text>
                       </View>

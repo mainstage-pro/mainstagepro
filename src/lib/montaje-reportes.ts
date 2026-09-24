@@ -7,7 +7,7 @@
  */
 
 import { getEquipoDisplayName } from "./equipoNombre";
-import { labelFuncion, labelSoporte, labelZona, ordenDisciplina, ordenZona, soporteEsRigging } from "./montaje-vocabulario";
+import { labelConfiguracion, labelSoporte, labelZona, ordenDisciplina, ordenZona, soporteEsRigging } from "./montaje-vocabulario";
 
 export type EquipoConPosiciones = {
   tipo?: string;
@@ -35,7 +35,7 @@ export type PosicionPlana = {
   categoria: string;
   disciplina: string;
   cantidad: number;
-  funcion: string;
+  configuracion: string;
   soporte: string;
   zona: string;
   alturaM: number | null;
@@ -56,7 +56,7 @@ export function aplanarPosiciones(equipos: EquipoConPosiciones[]): PosicionPlana
         categoria,
         disciplina,
         cantidad: p.cantidad,
-        funcion: labelFuncion(p.funcion, categoria, disciplina),
+        configuracion: labelConfiguracion(p.funcion, categoria, disciplina),
         soporte: labelSoporte(p.soporte, categoria, disciplina),
         zona: labelZona(p.zona) || "Sin zona",
         alturaM: p.alturaM,

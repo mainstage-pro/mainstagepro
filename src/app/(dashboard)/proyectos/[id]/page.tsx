@@ -24,7 +24,8 @@ import { BackButton } from "@/components/BackButton";
 import { Package, AlertTriangle, Smartphone, Truck, Home, Radio, MessageCircle, FileText, Bell, User, Factory, ClipboardList, FileImage } from "lucide-react";
 import { ViabilidadWidget, type ViabilidadActiva, type ViabilidadHistoricoItem } from "@/components/proyectos/ViabilidadWidget";
 import { MontajePosiciones, type Posicion as PosicionMontaje } from "@/components/proyectos/MontajePosiciones";
-import { labelFuncion, labelZona, ordenDisciplina } from "@/lib/montaje-vocabulario";
+import { PanelProveedores } from "@/components/proyectos/PanelProveedores";
+import { labelConfiguracion, labelZona } from "@/lib/montaje-vocabulario";
 import { DISCIPLINA_COLORS, DISCIPLINA_LABELS } from "@/lib/disciplinaColors";
 import { contarRespondidos, contarIncidencias, nivelResultado, getEvalConfig, aplicaEvaluacion, type EvalPostEventoData } from "@/lib/evaluacion-post-evento";
 import { getDireccionConfig, promedioDireccion, type EvaluacionDireccionData } from "@/lib/evaluacion-direccion";
@@ -71,16 +72,37 @@ interface Gasto { id: string; fecha: string; concepto: string; monto: number; me
 interface EquipoAccesorioLib { id: string; nombre: string; categoria: string | null; accesorioId?: string | null }
 interface RiderAccesorio { id: string; nombre: string; cantidad: number; categoria: string | null; completado: boolean; esSugerencia: boolean; orden: number; origen?: string | null; accesorioId?: string | null }
 interface ProyectoEquipoItem { id: string; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; confirmToken: string | null; confirmDisponible: boolean | null; notas: string | null; necesitaRevision: boolean; equipo: { descripcion: string; marca: string | null; modelo: string | null; imagenUrl: string | null; amperajeRequerido?: number | null; voltajeRequerido?: string | null; categoria: { nombre: string; disciplina?: string | null }; accesorios: EquipoAccesorioLib[] }; proveedor: { nombre: string; empresa: string | null; telefono: string | null } | null; riderAccesorios: RiderAccesorio[]; posiciones?: PosicionMontaje[] }
-type FaseCrono = "montaje" | "operacion" | "desmontaje";
-const FASE_ORDEN: Record<FaseCrono, number> = { montaje: 0, operacion: 1, desmontaje: 2 };
+type FaseCrono = "montaje" | "soundcheck" | "operacion" | "desmontaje";
+const FASE_ORDEN: Record<FaseCrono, number> = { montaje: 0, soundcheck: 1, operacion: 2, desmontaje: 3 };
 const faseDe = (r: CronoRow): FaseCrono => r.fase ?? "operacion";
 interface CronoRow { horaInicio: string; horaFin: string; actividad: string; responsable: string; involucrados: string; dia?: string; fase?: FaseCrono; _id?: string }
+
+// La cronología ya no vive en JSON sueltos: cada fase es un `tipo` de ProyectoBloqueTiempo.
+// PROVEEDOR queda fuera porque esos bloques se editan en el panel de proveedores.
+const FASE_A_TIPO: Record<FaseCrono, string> = { montaje: "MONTAJE", soundcheck: "SOUNDCHECK", operacion: "PROGRAMA", desmontaje: "DESMONTAJE" };
+const TIPO_A_FASE: Record<string, FaseCrono> = { MONTAJE: "montaje", SOUNDCHECK: "soundcheck", PROGRAMA: "operacion", DESMONTAJE: "desmontaje" };
+const TIPOS_CRONOLOGIA = ["MONTAJE", "SOUNDCHECK", "PROGRAMA", "DESMONTAJE"];
+
+type BloqueApi = { id: string; tipo: string; fecha: string | null; horaInicio: string | null; horaFin: string | null; titulo: string; detalle: string | null; responsable: string | null; involucrados: string | null };
+
+function bloqueACronoRow(b: BloqueApi): CronoRow {
+  return {
+    _id: b.id,
+    fase: TIPO_A_FASE[b.tipo] ?? "operacion",
+    dia: b.fecha ? new Date(b.fecha).toISOString().slice(0, 10) : undefined,
+    horaInicio: b.horaInicio ?? "",
+    horaFin: b.horaFin ?? "",
+    actividad: b.titulo,
+    responsable: b.responsable ?? "",
+    // El detalle del programa/soundcheck viejo se muestra en la columna de notas.
+    involucrados: b.involucrados || b.detalle || "",
+  };
+}
 
 // Id estable por fila: permite reordenar/eliminar sin que React reutilice inputs por
 // posición (causa del bug móvil "se mueve todo y se borra" al teclear).
 let cronoIdSeq = 0;
 function nuevoCronoId() { return `cr_${Date.now().toString(36)}_${(cronoIdSeq++).toString(36)}`; }
-function conCronoId(r: CronoRow): CronoRow { return r._id ? r : { ...r, _id: nuevoCronoId() }; }
 
 // Fila arrastrable de la tabla de cronograma. El handle (⠿) es lo único que dispara el
 // drag, para no interferir con el click/escritura en los inputs de la fila.
@@ -863,9 +885,11 @@ type LineaEquipo = {
   conflictos: Array<{ ref: string; nombre: string; estado: string; fecha: string | null }>;
   yaConfirmado: boolean;
   cxp: { id: string; monto: number; estado: string } | null;
+  proveedorEventoId: string | null;
 };
 
 type ProveedorOpt = { id: string; nombre: string; empresa: string | null };
+type BloqueProveedorOpt = { id: string; nombreProveedor: string; servicioEquipo: string | null };
 
 const CLASIF_CFG: Record<ClasifEquipo, { bg: string; text: string; label: string; dot: string }> = {
   PROPIO_INVENTARIO:  { bg: 'bg-emerald-900/20 border border-emerald-800/30', text: 'text-emerald-400', label: '\u2713 Nuestro', dot: 'bg-emerald-400' },
@@ -880,7 +904,7 @@ function fmxEquipo(n: number) {
 }
 
 function EquiposTab({ proyectoId }: { proyectoId: string }) {
-  const [data, setData] = React.useState<{ lineas: LineaEquipo[]; proveedores: ProveedorOpt[]; proyecto: { fechaEvento: string; fechaMontaje: string | null } } | null>(null);
+  const [data, setData] = React.useState<{ lineas: LineaEquipo[]; proveedores: ProveedorOpt[]; proveedoresEvento: BloqueProveedorOpt[]; proyecto: { fechaEvento: string; fechaMontaje: string | null } } | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [confirmando, setConfirmando] = React.useState<string | null>(null);
@@ -957,6 +981,21 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
         body: JSON.stringify({ lineaId, nuevoTipo }),
       });
       if (!res.ok) { alert('Error al reclasificar'); return; }
+      await load();
+    } finally { setReclasificando(null); }
+  }
+
+  // Cuelga la línea del bloque fijo del proveedor que se hace cargo de ese concepto.
+  async function asignarBloque(lineaId: string, proveedorEventoId: string | null) {
+    setMenuAbierto(null);
+    setReclasificando(lineaId);
+    try {
+      const res = await fetch(`/api/proyectos/${proyectoId}/equipos-cotizacion`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lineaId, proveedorEventoId }),
+      });
+      if (!res.ok) { alert('Error al asignar el proveedor'); return; }
       await load();
     } finally { setReclasificando(null); }
   }
@@ -1042,11 +1081,12 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
                   <span className="text-[#444] font-normal"> · {linea.disponible}/{linea.cantidadTotal} disp.</span>
                 )}
               </span>
-            ) : linea.proveedor ? (
-              <span className="text-[11px] text-white">{linea.proveedor.nombre}</span>
-            ) : (
-              <span className="text-[#444] italic text-[11px]">Sin proveedor</span>
-            )}
+            ) : (() => {
+              const bloque = (data?.proveedoresEvento ?? []).find(bp => bp.id === linea.proveedorEventoId);
+              if (bloque) return <span className="text-[11px] text-[#B3985B]">{bloque.nombreProveedor}</span>;
+              if (linea.proveedor) return <span className="text-[11px] text-white">{linea.proveedor.nombre}</span>;
+              return <span className="text-[#444] italic text-[11px]">Sin proveedor</span>;
+            })()}
           </td>
           {/* Precio */}
           <td className="px-3 py-2.5 text-right hidden md:table-cell">
@@ -1116,6 +1156,35 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
                       Externo / A conseguir
                       {linea.tipo === 'EQUIPO_EXTERNO' && <span className="ml-auto text-[9px] text-[#444]">✓ actual</span>}
                     </button>
+                    <div className="border-t border-[#1f1f1f] mt-1 pt-1">
+                      <p className="text-[9px] text-[#444] uppercase tracking-wider px-3 pb-1">Proveedor del evento:</p>
+                      {(data?.proveedoresEvento ?? []).length === 0 ? (
+                        <p className="px-3 pb-1.5 text-[10px] text-[#444] leading-snug">Agrega proveedores en la pestaña Operación.</p>
+                      ) : (
+                        <>
+                          {(data?.proveedoresEvento ?? []).map(bp => (
+                            <button
+                              key={bp.id}
+                              onClick={() => asignarBloque(linea.id, bp.id)}
+                              className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-[#1a1a1a] transition-colors ${
+                                linea.proveedorEventoId === bp.id ? 'text-[#B3985B]' : 'text-[#9ca3af]'
+                              }`}
+                            >
+                              <span className="truncate">{bp.nombreProveedor}</span>
+                              {linea.proveedorEventoId === bp.id && <span className="ml-auto text-[9px] text-[#444] shrink-0">✓</span>}
+                            </button>
+                          ))}
+                          {linea.proveedorEventoId && (
+                            <button
+                              onClick={() => asignarBloque(linea.id, null)}
+                              className="w-full text-left px-3 py-1.5 text-xs text-[#555] hover:bg-[#1a1a1a] hover:text-[#9ca3af] transition-colors"
+                            >
+                              Quitar asignación
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -1654,17 +1723,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [agregandoSugerido, setAgregandoSugerido] = useState<string | null>(null); // tecnicoId en curso
   // Flag "técnico adicional" (fuera de lo cotizado) para el form de alta
   const [selEsAdicional, setSelEsAdicional] = useState(false);
-  // Proveedores y subrentas
-  const [showAddProveedor, setShowAddProveedor] = useState(false);
   const { downloading, downloadPdf } = usePdfDownload();
   const [pdfPreview, setPdfPreview] = useState<{ url: string; title: string; filename: string } | null>(null);
   const previewPdf = (url: string, title: string, filename: string) => setPdfPreview({ url, title, filename });
-  const [provNombre, setProvNombre] = useState("");
-  const [provServicio, setProvServicio] = useState("");
-  const [provTelefono, setProvTelefono] = useState("");
-  const [addingProveedor, setAddingProveedor] = useState(false);
-  const [editandoProveedorId, setEditandoProveedorId] = useState<string | null>(null);
-  const [editProvForm, setEditProvForm] = useState({ nombre: "", servicio: "", telefono: "" });
 
   // Estados para nuevo técnico inline
   const [showNuevoTecnico, setShowNuevoTecnico] = useState(false);
@@ -2290,14 +2351,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   useEffect(() => {
     if (!proyecto) return;
     try {
-      const parsed = proyecto.cronograma ? JSON.parse(proyecto.cronograma) : [];
-      // El orden que se muestra es el orden guardado (el usuario lo controla con las
-      // flechas ↑↓ de cada fila); no se reordena por hora porque eso rompe eventos que
-      // cruzan medianoche (ej. un DJ de 00:00 a 2:00 am debe quedar al final, no al inicio).
-      const rows: CronoRow[] = Array.isArray(parsed) ? parsed.map(conCronoId) : [];
-      setCronoRows(rows);
-    } catch { setCronoRows([]); }
-    try {
       const parsed = proyecto.transportes ? JSON.parse(proyecto.transportes) : [];
       const normalized: TransporteSlot[] = (Array.isArray(parsed) && parsed.length > 0)
         ? parsed.map((s: Partial<TransporteSlot>) => ({ vehiculoId: s.vehiculoId ?? "", choferId: s.choferId ?? "", horaSalida: s.horaSalida ?? "", comentarios: s.comentarios ?? "" }))
@@ -2315,7 +2368,27 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       setCatering({ ...CATERING_EMPTY, ...c, personasCrew: autoPersonas, comidasPorDia: autoDias });
     } catch { setCatering(CATERING_EMPTY); }
     // Mark as loaded after a short delay so initial setState doesn't trigger auto-save
-    setTimeout(() => { cronoLoaded.current = true; cateringLoaded.current = true; }, 300);
+    setTimeout(() => { cateringLoaded.current = true; }, 300);
+  }, [proyecto?.id]);
+
+  // La cronología se carga aparte porque vive en su propia tabla (proyecto_bloques_tiempo),
+  // no en el JSON del proyecto. El orden que se muestra es el guardado: no se reordena por
+  // hora porque eso rompe eventos que cruzan medianoche (un DJ de 00:00 a 2:00 am debe
+  // quedar al final, no al inicio).
+  useEffect(() => {
+    if (!proyecto?.id) return;
+    let cancelado = false;
+    cronoLoaded.current = false;
+    (async () => {
+      const res = await fetch(`/api/proyectos/${proyecto.id}/bloques-tiempo`);
+      if (cancelado) return;
+      if (res.ok) {
+        const { bloques } = await res.json();
+        setCronoRows((bloques as BloqueApi[]).filter(b => TIPOS_CRONOLOGIA.includes(b.tipo)).map(bloqueACronoRow));
+      }
+      setTimeout(() => { if (!cancelado) cronoLoaded.current = true; }, 300);
+    })();
+    return () => { cancelado = true; };
   }, [proyecto?.id]);
 
   // Auto-save cronograma
@@ -2537,13 +2610,21 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     // filas dentro de una misma fase, así que no interfiere con la escritura en pantalla,
     // pero garantiza que los PDF (que leen el JSON en orden de array) salgan cronológicos.
     const ordenadas = [...rows].sort((a, b) => FASE_ORDEN[faseDe(a)] - FASE_ORDEN[faseDe(b)]);
-    const clean = ordenadas.map(({ _id, ...r }) => r); // eslint-disable-line @typescript-eslint/no-unused-vars
-    const json = JSON.stringify(clean);
-    await fetch(`/api/proyectos/${id}`, {
-      method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cronograma: json }),
+    await fetch(`/api/proyectos/${id}/bloques-tiempo`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tipos: TIPOS_CRONOLOGIA,
+        bloques: ordenadas.map(r => ({
+          tipo: FASE_A_TIPO[faseDe(r)],
+          fecha: r.dia ?? null,
+          horaInicio: r.horaInicio || null,
+          horaFin: r.horaFin || null,
+          titulo: r.actividad || "",
+          responsable: r.responsable || null,
+          involucrados: r.involucrados || null,
+        })),
+      }),
     });
-    setProyecto(prev => prev ? { ...prev, cronograma: json } : prev);
     setSavingCrono(false);
   }
 
@@ -2800,6 +2881,32 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     );
   }
 
+  // Orden de soundcheck: mismas filas de la cronología, solo cambian las etiquetas
+  // (Actividad = artista, Involucrados = notas). Antes era una captura aparte en Producción.
+  function renderSoundcheck() {
+    const entries = cronoRows.map((row, i) => ({ row, i })).filter(({ row }) => faseDe(row) === "soundcheck");
+    return (
+      <div>
+        <div className="flex items-center justify-between mb-2 flex-wrap gap-2 border-b border-[#222] pb-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[9px] font-semibold text-black bg-[#B3985B] rounded px-1.5 py-0.5 shrink-0">S</span>
+            <span className="text-white text-sm font-medium">Soundcheck</span>
+            <span className="text-gray-600 text-xs">artista por artista</span>
+          </div>
+          <button onClick={() => addCronoRow({ fase: "soundcheck" })}
+            className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/40 hover:border-[#B3985B] px-3 py-1 rounded-lg transition-colors">
+            + Agregar artista
+          </button>
+        </div>
+        {entries.length === 0 ? (
+          <p className="text-gray-600 text-xs py-3">Sin orden de soundcheck. Usa <span className="text-gray-400">+ Agregar artista</span>.</p>
+        ) : (
+          renderCronoTabla(entries)
+        )}
+      </div>
+    );
+  }
+
   // ── Guardar transportes ──
   async function guardarTransportes(slots: TransporteSlot[]) {
     setSavingTransporte(true);
@@ -3007,21 +3114,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     }
     setGenerandoRider(false);
     if (d.mensaje) toast.info(d.mensaje);
-  }
-
-  // ── Montaje: sembrar una posición sugerida por equipo sin desglosar ──
-  const [generandoMontaje, setGenerandoMontaje] = useState(false);
-  async function generarMontajeSugerido() {
-    setGenerandoMontaje(true);
-    try {
-      const res = await fetch(`/api/proyectos/${id}/posiciones/generar`, { method: "POST" });
-      if (!res.ok) { toast.error("No se pudo generar el montaje"); return; }
-      const d = await res.json();
-      await load();
-      toast.success(d.creadas > 0 ? `${d.creadas} equipo${d.creadas !== 1 ? "s" : ""} con montaje sugerido` : "Todos los equipos ya tienen montaje");
-    } finally {
-      setGenerandoMontaje(false);
-    }
   }
 
   // ── Rider: agregar accesorio persistido ──
@@ -5785,127 +5877,17 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
 
           {/* ── Proveedores y Subrentas ── */}
-          <div className="space-y-3">
-            <div className="ms-stat-card">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">Proveedores y subrentas</p>
-                <button onClick={() => setShowAddProveedor(v => !v)}
-                  className="text-sm text-[#B3985B] hover:text-white transition-colors font-medium">
-                  {showAddProveedor ? "− Cancelar" : "+ Agregar proveedor"}
-                </button>
-              </div>
-              {showAddProveedor && (
-                <div className="mt-4 grid grid-cols-3 gap-3">
-                  <div className="col-span-3 md:col-span-1">
-                    <label className="text-xs text-gray-500 block mb-1">Nombre del proveedor *</label>
-                    <input value={provNombre} onChange={e => setProvNombre(e.target.value)}
-                      placeholder="Proveedor o empresa..."
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
-                  <div className="col-span-3 md:col-span-1">
-                    <label className="text-xs text-gray-500 block mb-1">Equipo / Servicio</label>
-                    <input value={provServicio} onChange={e => setProvServicio(e.target.value)}
-                      placeholder="Qué equipo o servicio provee..."
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
-                  <div className="col-span-3 md:col-span-1">
-                    <label className="text-xs text-gray-500 block mb-1">Teléfono</label>
-                    <input value={provTelefono} onChange={e => setProvTelefono(e.target.value)}
-                      placeholder="Teléfono de contacto"
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
-                  <div className="col-span-3 flex gap-2">
-                    <button
-                      disabled={addingProveedor || !provNombre.trim()}
-                      onClick={async () => {
-                        if (!provNombre.trim()) return;
-                        setAddingProveedor(true);
-                        const res = await fetch(`/api/proyectos/${id}/proveedores-evento`, {
-                          method: "POST", headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ nombreProveedor: provNombre, servicioEquipo: provServicio || null, telefonoProveedor: provTelefono || null }),
-                        });
-                        if (res.ok) {
-                          const d = await res.json();
-                          setProyecto(prev => prev ? { ...prev, proveedoresEvento: [...(prev.proveedoresEvento ?? []), d.proveedor] } : prev);
-                          setProvNombre(""); setProvServicio(""); setProvTelefono(""); setShowAddProveedor(false);
-                        } else { toast.error("Error al agregar proveedor"); }
-                        setAddingProveedor(false);
-                      }}
-                      className="flex-1 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
-                      {addingProveedor ? "Guardando..." : "Agregar"}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+          <PanelProveedores
+            proyectoId={id}
+            dias={diasDelEvento}
+            evento={{
+              numeroProyecto: proyecto.numeroProyecto,
+              nombre: proyecto.nombre,
+              venue: proyecto.lugarEvento,
+              direccion: proyecto.direccionVenue,
+            }}
+          />
 
-            {/* Lista de proveedores */}
-            {(proyecto.proveedoresEvento ?? []).length > 0 && (
-              <div className="ms-table-wrapper">
-                <div className="divide-y divide-[#1a1a1a]">
-                  {(proyecto.proveedoresEvento ?? []).map(prov => (
-                    <div key={prov.id} className="px-4 py-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1">
-                          {editandoProveedorId === prov.id ? (
-                            <div className="grid grid-cols-3 gap-2">
-                              <input value={editProvForm.nombre} onChange={e => setEditProvForm(p => ({ ...p, nombre: e.target.value }))}
-                                placeholder="Nombre *"
-                                className="bg-[#0d0d0d] border border-[#B3985B]/40 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
-                              <input value={editProvForm.servicio} onChange={e => setEditProvForm(p => ({ ...p, servicio: e.target.value }))}
-                                placeholder="Equipo/Servicio"
-                                className="bg-[#0d0d0d] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
-                              <input value={editProvForm.telefono} onChange={e => setEditProvForm(p => ({ ...p, telefono: e.target.value }))}
-                                placeholder="Teléfono"
-                                className="bg-[#0d0d0d] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
-                              <div className="col-span-3 flex gap-2">
-                                <button onClick={async () => {
-                                  const res = await fetch(`/api/proyectos/${id}/proveedores-evento/${prov.id}`, {
-                                    method: "PATCH", headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({ nombreProveedor: editProvForm.nombre, servicioEquipo: editProvForm.servicio || null, telefonoProveedor: editProvForm.telefono || null }),
-                                  });
-                                  if (res.ok) {
-                                    const d = await res.json();
-                                    setProyecto(prev => prev ? { ...prev, proveedoresEvento: (prev.proveedoresEvento ?? []).map(p => p.id === prov.id ? d.proveedor : p) } : prev);
-                                    setEditandoProveedorId(null);
-                                  }
-                                }}
-                                  className="flex-1 bg-[#B3985B] hover:bg-[#c9a96a] text-black text-xs font-semibold py-1.5 rounded-lg transition-colors">Guardar</button>
-                                <button onClick={() => setEditandoProveedorId(null)}
-                                  className="px-3 text-gray-500 hover:text-white text-xs transition-colors">Cancelar</button>
-                              </div>
-                            </div>
-                          ) : (
-                            <>
-                              <p className="text-white text-sm font-medium">{prov.nombreProveedor}</p>
-                              <p className="text-gray-500 text-xs mt-0.5">
-                                {[prov.servicioEquipo, prov.telefonoProveedor].filter(Boolean).join(" · ")}
-                              </p>
-                            </>
-                          )}
-                        </div>
-                        {editandoProveedorId !== prov.id && (
-                          <div className="flex items-center gap-1 shrink-0">
-                            <button
-                              onClick={() => { setEditandoProveedorId(prov.id); setEditProvForm({ nombre: prov.nombreProveedor, servicio: prov.servicioEquipo ?? "", telefono: prov.telefonoProveedor ?? "" }); }}
-                              className="text-xs px-1.5 py-0.5 rounded border border-transparent text-gray-600 hover:text-gray-300 hover:border-[#333] transition-colors">Editar</button>
-                            <button
-                              onClick={async () => {
-                                const ok = await confirm({ message: "¿Eliminar este proveedor del proyecto?", confirmText: "Eliminar", danger: true });
-                                if (!ok) return;
-                                const res = await fetch(`/api/proyectos/${id}/proveedores-evento/${prov.id}`, { method: "DELETE" });
-                                if (res.ok) setProyecto(prev => prev ? { ...prev, proveedoresEvento: (prev.proveedoresEvento ?? []).filter(p => p.id !== prov.id) } : prev);
-                              }}
-                              className="text-gray-600 hover:text-red-400 text-base leading-none transition-colors px-1">×</button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
 
           {/* ── Cronograma (tabla) — solo producción técnica / dirección técnica ── */}
           {!esRenta && (() => {
@@ -5942,7 +5924,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               {/* 1. MONTAJE (día aparte) */}
               {montajeFaseActiva && renderFaseExtra("montaje")}
 
-              {/* 2. OPERACIÓN (día del evento; multidía = un bloque por día) */}
+              {/* 2. SOUNDCHECK */}
+              {renderSoundcheck()}
+
+              {/* 3. OPERACIÓN (día del evento; multidía = un bloque por día) */}
               {esMultidia ? (
                 <div className="space-y-6">
                   {diasDelEvento.map((dia, di) => {
@@ -6003,7 +5988,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 </div>
               )}
 
-              {/* 3. DESMONTAJE (día aparte) */}
+              {/* 4. DESMONTAJE (día aparte) */}
               {desmontajeFaseActiva && renderFaseExtra("desmontaje")}
             </div>
           </div>
@@ -6231,35 +6216,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         const esMusical = tipoEvento.includes("MUSICAL") || tipoEvento.includes("CONCIERTO") || tipoEvento.includes("FESTIVAL");
         const esEmpresarial = tipoEvento.includes("EMPRESARIAL") || tipoEvento.includes("CORPORATIVO") || tipoEvento.includes("CONGRESO") || tipoEvento.includes("CONFERENCIA");
         const esSocial = !esMusical && !esEmpresarial;
-        type DocsData = {
-          soundcheck: { hora: string; artista: string; duracion: string; notas: string }[];
-          programaEvento: { hora: string; actividad: string; responsable: string; notas: string }[];
-          coordinacionProveedores: { proveedor: string; contacto: string; horario: string; notas: string }[];
-        };
-
-        const defaultDocs: DocsData = {
-          soundcheck: [{ hora: "", artista: "", duracion: "", notas: "" }],
-          programaEvento: [{ hora: "", actividad: "", responsable: "", notas: "" }],
-          coordinacionProveedores: [{ proveedor: "", contacto: "", horario: "", notas: "" }],
-        };
-
-        let docs: DocsData;
-        try {
-          docs = proyecto.docsTecnicos ? { ...defaultDocs, ...JSON.parse(proyecto.docsTecnicos) } : defaultDocs;
-        } catch { docs = defaultDocs; }
-
-        const saveDocs = async (updated: DocsData) => {
-          const res = await fetch(`/api/proyectos/${proyecto.id}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ docsTecnicos: JSON.stringify(updated) }),
-          });
-          if (res.ok) {
-            const d = await res.json();
-            setProyecto(prev => prev ? { ...prev, docsTecnicos: d.proyecto?.docsTecnicos ?? JSON.stringify(updated) } : prev);
-          }
-        };
-
         // ── Protocolo helpers ──────────────────────────���───────────────
         let salida: ProtocoloData;
         let entrada: ProtocoloData;
@@ -6412,22 +6368,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     <div className="flex-1 min-w-[200px]">
                       <p className="text-white text-sm font-semibold">Plan de montaje</p>
                       <p className="text-gray-500 text-xs mt-0.5">
-                        Función, soporte y zona de cada equipo.{" "}
+                        Configuración, soporte y zona de cada equipo.{" "}
                         <span className={completo ? "text-green-500" : "text-amber-500"}>
                           {conMontaje} de {total} equipos definidos
                         </span>
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      {!completo && (
-                        <button
-                          onClick={generarMontajeSugerido}
-                          disabled={generandoMontaje}
-                          className="flex items-center gap-1.5 text-xs text-gray-400 border border-[#2a2a2a] hover:border-[#B3985B]/40 hover:text-[#B3985B] px-3 py-1.5 rounded-lg transition-all disabled:opacity-40"
-                        >
-                          {generandoMontaje ? "Generando…" : "Generar sugerido"}
-                        </button>
-                      )}
                       <button
                         onClick={() => previewPdf(`/api/proyectos/${id}/plan-montaje`, 'Plan de Montaje', `plan-montaje-${proyecto.numeroProyecto}.pdf`)}
                         disabled={conMontaje === 0}
@@ -6474,26 +6421,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
                 // Agrupado por disciplina → categoría, en orden de montaje real
                 // (rigging y escenario primero, DJ al final).
-                const porDisciplina: Record<string, Record<string, typeof riderEquipos>> = {};
-                for (const e of riderEquipos) {
-                  const disc = e.equipo.categoria.disciplina ?? "PRODUCCION";
-                  const cat = e.equipo.categoria.nombre;
-                  if (!porDisciplina[disc]) porDisciplina[disc] = {};
-                  if (!porDisciplina[disc][cat]) porDisciplina[disc][cat] = [];
-                  porDisciplina[disc][cat].push(e);
-                }
-                const discOrdenadas = Object.keys(porDisciplina).sort((a, b) => ordenDisciplina(a) - ordenDisciplina(b));
+                const grupos: Record<string, typeof riderEquipos> = {};
+                for (const e of riderEquipos) { const cat = e.equipo.categoria.nombre; if (!grupos[cat]) grupos[cat] = []; grupos[cat].push(e); }
                 return (
                   <div className="ms-table-wrapper">
-                    {discOrdenadas.map(disc => (
-                      <div key={disc}>
-                        <div className="px-4 py-2 bg-[#0d0d0d] border-b border-[#1a1a1a] flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: DISCIPLINA_COLORS[disc] ?? "#6B7280" }} />
-                          <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: DISCIPLINA_COLORS[disc] ?? "#6B7280" }}>
-                            {DISCIPLINA_LABELS[disc] ?? disc}
-                          </span>
-                        </div>
-                    {Object.entries(porDisciplina[disc]).map(([cat, items]) => (
+                    {Object.entries(grupos).map(([cat, items]) => (
                       <div key={cat}>
                         <div className="px-4 py-1.5 bg-[#0a0a0a] border-b border-[#1a1a1a]">
                           <span className="text-[10px] text-[#B3985B]/60 font-bold uppercase tracking-widest">{cat}</span>
@@ -6537,7 +6469,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                 <div className="flex items-center gap-2 shrink-0">
                                   {(e.posiciones?.length ?? 0) > 0 && (() => {
                                     const resumen = (e.posiciones ?? [])
-                                      .map(p => `${p.cantidad} ${labelFuncion(p.funcion, e.equipo.categoria.nombre, e.equipo.categoria.disciplina ?? null) || "sin función"}${p.zona ? ` · ${labelZona(p.zona)}` : ""}`)
+                                      .map(p => `${p.cantidad} ${labelConfiguracion(p.funcion, e.equipo.categoria.nombre, e.equipo.categoria.disciplina ?? null) || "sin definir"}${p.zona ? ` · ${labelZona(p.zona)}` : ""}`)
                                       .join("  |  ");
                                     return (
                                       <span
@@ -6756,8 +6688,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             </div>
                           );
                         })}
-                      </div>
-                    ))}
                       </div>
                     ))}
                     {/* ── Equipos adicionales / terceros desde cotización ── */}
@@ -7014,33 +6944,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 </button>
               )}
             </div></>
-
-            {/* ═══════ ZONA 2: DOCUMENTOS DEL SHOW (accordion) ═══════ */}
-            {!esRenta && <><SectionDivider label="Documentos del show" />
-            <div className="space-y-3">
-              <DocAccordion docKey="soundcheck" title="Orden de Soundcheck" desc="Secuencia y horario de pruebas de sonido" isOpen={openDocs.has("soundcheck")} onToggle={() => toggleDoc("soundcheck")}>
-                <div className="p-4 space-y-2 overflow-x-auto">
-                  <TableHeader cols={["Hora", "Artista / Acto", "Duración", "Notas"]} />
-                  {docs.soundcheck.map((row, i) => { const update = (field: string, val: string) => { const next = docs.soundcheck.map((r, j) => j === i ? { ...r, [field]: val } : r); saveDocs({ ...docs, soundcheck: next }); }; return (<div key={i} className="grid gap-1" style={{ gridTemplateColumns: "100px 1fr 100px 1fr 32px" }}><input defaultValue={row.hora} onBlur={e => update("hora", e.target.value)} placeholder="00:00" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.artista} onBlur={e => update("artista", e.target.value)} placeholder="Artista" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.duracion} onBlur={e => update("duracion", e.target.value)} placeholder="30 min" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Notas" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><button onClick={() => { const next = docs.soundcheck.filter((_, j) => j !== i); saveDocs({ ...docs, soundcheck: next.length ? next : [{ hora: "", artista: "", duracion: "", notas: "" }] }); }} className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button></div>); })}
-                  <button onClick={() => saveDocs({ ...docs, soundcheck: [...docs.soundcheck, { hora: "", artista: "", duracion: "", notas: "" }] })} className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar artista</button>
-                </div>
-              </DocAccordion>
-              <DocAccordion docKey="programaEvento" title="Programa general del evento" desc="Secuencia completa de actividades" isOpen={openDocs.has("programaEvento")} onToggle={() => toggleDoc("programaEvento")}>
-                <div className="p-4 space-y-2 overflow-x-auto">
-                  <TableHeader cols={["Hora", "Actividad", "Responsable", "Notas"]} />
-                  {docs.programaEvento.map((row, i) => { const update = (field: string, val: string) => { const next = docs.programaEvento.map((r, j) => j === i ? { ...r, [field]: val } : r); saveDocs({ ...docs, programaEvento: next }); }; return (<div key={i} className="grid gap-1" style={{ gridTemplateColumns: "100px 1fr 1fr 1fr 32px" }}><input defaultValue={row.hora} onBlur={e => update("hora", e.target.value)} placeholder="00:00" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.actividad} onBlur={e => update("actividad", e.target.value)} placeholder="Actividad" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.responsable} onBlur={e => update("responsable", e.target.value)} placeholder="Responsable" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Notas" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><button onClick={() => { const next = docs.programaEvento.filter((_, j) => j !== i); saveDocs({ ...docs, programaEvento: next.length ? next : [{ hora: "", actividad: "", responsable: "", notas: "" }] }); }} className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button></div>); })}
-                  <button onClick={() => saveDocs({ ...docs, programaEvento: [...docs.programaEvento, { hora: "", actividad: "", responsable: "", notas: "" }] })} className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar actividad</button>
-                </div>
-              </DocAccordion>
-              <DocAccordion docKey="coordinacionProveedores" title="Coordinación de proveedores" desc="Catering, decoración, fotografía, etc." isOpen={openDocs.has("coordinacionProveedores")} onToggle={() => toggleDoc("coordinacionProveedores")}>
-                <div className="p-4 space-y-2 overflow-x-auto">
-                  <TableHeader cols={["Proveedor", "Contacto", "Horario llegada", "Notas"]} />
-                  {docs.coordinacionProveedores.map((row, i) => { const update = (field: string, val: string) => { const next = docs.coordinacionProveedores.map((r, j) => j === i ? { ...r, [field]: val } : r); saveDocs({ ...docs, coordinacionProveedores: next }); }; return (<div key={i} className="grid gap-1" style={{ gridTemplateColumns: "1fr 1fr 120px 1fr 32px" }}><input defaultValue={row.proveedor} onBlur={e => update("proveedor", e.target.value)} placeholder="Nombre proveedor" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.contacto} onBlur={e => update("contacto", e.target.value)} placeholder="Tel / nombre" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.horario} onBlur={e => update("horario", e.target.value)} placeholder="00:00" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Notas" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><button onClick={() => { const next = docs.coordinacionProveedores.filter((_, j) => j !== i); saveDocs({ ...docs, coordinacionProveedores: next.length ? next : [{ proveedor: "", contacto: "", horario: "", notas: "" }] }); }} className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button></div>); })}
-                  <button onClick={() => saveDocs({ ...docs, coordinacionProveedores: [...docs.coordinacionProveedores, { proveedor: "", contacto: "", horario: "", notas: "" }] })} className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar proveedor</button>
-                </div>
-              </DocAccordion>
-              <p className="text-center text-gray-700 text-[10px] pb-2">Los cambios se guardan automáticamente al salir de cada campo</p>
-            </div></>}
 
             {/* ═══════ ZONA 3: CIERRE — Protocolo · Evaluación ═══════ */}
             <SectionDivider label="Cierre & Evaluación" />
