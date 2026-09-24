@@ -36,9 +36,9 @@ export default function NuevoGastoRecurrentePage() {
       fetch("/api/empresas").then(r => r.json()),
       fetch("/api/categorias-financieras?tipo=GASTO").then(r => r.json())
     ]).then(([provs, emps, cats]) => {
-      if(Array.isArray(provs)) setProveedores(provs);
-      if(Array.isArray(emps)) setEmpresas(emps);
-      if(Array.isArray(cats)) setCategorias(cats);
+      if(provs?.proveedores) setProveedores(provs.proveedores);
+      if(emps?.empresas) setEmpresas(emps.empresas);
+      if(cats?.categorias) setCategorias(cats.categorias);
     }).catch(console.error);
   }, []);
 
@@ -78,7 +78,7 @@ export default function NuevoGastoRecurrentePage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 text-white">
+    <div className="w-full space-y-6 text-white">
       <div className="flex items-center gap-4">
         <Link href="/finanzas/gastos-recurrentes" className="text-[#9ca3af] hover:text-[#B3985B] transition-colors">
           &larr; Volver
