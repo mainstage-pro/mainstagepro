@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useToast } from '@/components/Toast';
 import { Globe, Building2, Megaphone, Settings, Calendar, type LucideIcon } from 'lucide-react';
+import { fmtHoraDate } from '@/lib/hora';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -46,7 +47,7 @@ function fmtRango(lunes: Date): string {
 }
 
 function fmtFecha(iso: string) {
-  return new Date(iso).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
+  return fmtHoraDate(iso);
 }
 
 const TIPO_LABEL: Record<string, string> = {

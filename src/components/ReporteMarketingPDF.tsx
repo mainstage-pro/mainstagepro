@@ -3,6 +3,7 @@ import {
   Document, Page, Text, View, StyleSheet, Image, Svg,
   Rect, G, Path, Line, Circle,
 } from "@react-pdf/renderer";
+import { normalizarAmPm } from "@/lib/hora";
 
 // ─── Paleta ───────────────────────────────────────────────────────────────────
 const GOLD   = "#B3985B";
@@ -1172,11 +1173,11 @@ function PaginaResultadosCampanas({ d, gen }: { d: ReporteMarketingData; gen: st
 // ─── Documento principal ──────────────────────────────────────────────────────
 
 export function ReporteMarketingPDF({ data }: { data: ReporteMarketingData }) {
-  const gen = new Date().toLocaleString("es-MX", {
+  const gen = normalizarAmPm(new Date().toLocaleString("es-MX", {
     timeZone: "America/Mexico_City",
     day: "2-digit", month: "short", year: "numeric",
-    hour: "2-digit", minute: "2-digit",
-  });
+    hour: "numeric", minute: "2-digit",
+  }));
 
   return (
     <Document

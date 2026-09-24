@@ -1,5 +1,6 @@
 import React from 'react'
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
+import { normalizarAmPm } from '@/lib/hora'
 
 const styles = StyleSheet.create({
   page: { backgroundColor: '#ffffff', padding: 40, fontFamily: 'Helvetica' },
@@ -67,10 +68,10 @@ export function KpiReportePDF({ data }: { data: KpiReporteData }) {
     new Date(iso + 'T12:00:00Z').toLocaleDateString('es-MX', {
       day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC',
     })
-  const generado = new Date().toLocaleString('es-MX', {
+  const generado = normalizarAmPm(new Date().toLocaleString('es-MX', {
     timeZone: 'America/Mexico_City',
-    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
-  })
+    day: '2-digit', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit',
+  }))
 
   return (
     <Document title={`Reporte KPIs — ${data.periodoLabel}`} author="Mainstage Pro">

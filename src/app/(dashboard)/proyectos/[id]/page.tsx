@@ -30,6 +30,7 @@ import { diasEvento, parseHorariosEvento, horarioDeDia, parseFechasEvento } from
 import { construirCronologia } from "@/lib/cronologia-evento";
 import { checksAvanceProduccion } from "@/lib/proyecto-avance";
 import { getEquipoDisplayName } from "@/lib/equipoNombre";
+import { normalizarAmPm, fmt24to12 } from "@/lib/hora";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Tecnico { id: string; nombre: string; nivel: string; rol: { nombre: string } | null }
@@ -192,7 +193,7 @@ function fmtDate(s: string | null) {
   return new Date(s.substring(0, 10) + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", day: "2-digit", month: "short", year: "numeric" });
 }
 function fmtDateTime(s: string) {
-  return new Date(s).toLocaleString("es-MX", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+  return normalizarAmPm(new Date(s).toLocaleString("es-MX", { day: "2-digit", month: "short", hour: "numeric", minute: "2-digit" }));
 }
 
 // ─── Accesorios sugeridos por tipo de equipo ──────────────────────────────────
@@ -2386,7 +2387,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         const fechaStr = new Date(updated.fechaEvento.substring(0, 10) + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
         const buildMsg = (nombre: string, extra: string) =>
-          `Hola ${nombre.split(" ")[0]}, hay una actualización en el proyecto *${updated.nombre}*:\n\n📋 *${campoLabel}:* ${value || "—"}\n\n📅 ${fechaStr}${updated.horaInicioEvento ? `\n⏰ ${updated.horaInicioEvento}${updated.horaFinEvento ? `–${updated.horaFinEvento}` : ""}` : ""}${updated.lugarEvento ? `\n📍 ${updated.lugarEvento}` : ""}${extra}\n\nPor favor confirma que todo sigue en orden.`;
+          `Hola ${nombre.split(" ")[0]}, hay una actualización en el proyecto *${updated.nombre}*:\n\n📋 *${campoLabel}:* ${value || "—"}\n\n📅 ${fechaStr}${updated.horaInicioEvento ? `\n⏰ ${fmt24to12(updated.horaInicioEvento)}${updated.horaFinEvento ? `–${fmt24to12(updated.horaFinEvento)}` : ""}` : ""}${updated.lugarEvento ? `\n📍 ${updated.lugarEvento}` : ""}${extra}\n\nPor favor confirma que todo sigue en orden.`;
 
         const contactos: CambioNotif["contactos"] = [];
         const tecnicosVistos = new Set<string>();
@@ -2412,7 +2413,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           contactos.push({
             nombre: eq.proveedor.nombre,
             tipo: "proveedor",
-            waUrl: `https://wa.me/${num}?text=${encodeURIComponent(buildMsg(eq.proveedor.nombre, updated.horaInicioMontaje ? `\n🔧 Montaje desde: ${updated.horaInicioMontaje}` : ""))}`,
+            waUrl: `https://wa.me/${num}?text=${encodeURIComponent(buildMsg(eq.proveedor.nombre, updated.horaInicioMontaje ? `\n🔧 Montaje desde: ${fmt24to12(updated.horaInicioMontaje)}` : ""))}`,
           });
         }
         if (contactos.length > 0) setPendingNotif({ campoLabel, valor: value, contactos });
@@ -3931,7 +3932,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               <span className="text-white font-medium">{fmtDate(proyecto.fechaEvento)}</span>
             )}
             {proyecto.horaInicioEvento && (
-              <span className="text-gray-500">{proyecto.horaInicioEvento}{proyecto.horaFinEvento ? ` – ${proyecto.horaFinEvento}` : ""}</span>
+              <span className="text-gray-500">{fmt24to12(proyecto.horaInicioEvento)}{proyecto.horaFinEvento ? ` – ${fmt24to12(proyecto.horaFinEvento)}` : ""}</span>
             )}
             <span className="text-[#2f2f2f]">·</span>
             <span className="text-gray-500 truncate max-w-[18rem]">
@@ -4970,7 +4971,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       <p className="text-gray-500 text-xs mb-0.5">Fecha de devolución/recolección</p>
                       <p className={`font-medium ${sc.text}`}>
                         {new Date(rentaData.fechaDevolucion + "T12:00:00").toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" })}
-                        {rentaData.horaDevolucion && <span className="text-gray-400 ml-1 font-normal">· {rentaData.horaDevolucion}</span>}
+                        {rentaData.horaDevolucion && <span className="text-gray-400 ml-1 font-normal">· {fmt24to12(rentaData.horaDevolucion)}</span>}
                       </p>
                     </div>
                   )}
@@ -5050,7 +5051,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               {showBroadcast && (() => {
                 const fecha = new Date(proyecto.fechaEvento.substring(0, 10) + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long", year: "numeric" });
                 const lugar = proyecto.lugarEvento ?? "lugar a confirmar";
-                const hora = proyecto.horaInicioEvento ? ` a las ${proyecto.horaInicioEvento}` : "";
+                const hora = proyecto.horaInicioEvento ? ` a las ${fmt24to12(proyecto.horaInicioEvento)}` : "";
                 const msg = `Hola, te confirmamos tu participación en el evento *${proyecto.nombre}* del cliente *${proyecto.cliente.nombre}*.\n\n📅 Fecha: ${fecha}${hora}\n📍 Lugar: ${lugar}\n\nPor favor confirma tu asistencia. ¡Gracias!`;
                 return (
                   <div className="mt-3 bg-[#0a0a0a] border border-green-800/30 rounded-lg p-3 space-y-2">

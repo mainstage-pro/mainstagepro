@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import { Package, AlertTriangle, ClipboardList } from "lucide-react";
 import { getEquipoDisplayName } from "@/lib/equipoNombre";
+import { normalizarAmPm, fmt24to12 } from "@/lib/hora";
 
 interface Equipo {
   id: string; tipo: string; cantidad: number;
@@ -312,7 +313,7 @@ export default function RecoleccionesPage() {
                       {fechaDev ? (
                         <p className={`font-medium text-xs ${esVencida ? "text-red-400" : esHoy ? "text-yellow-400" : "text-white"}`}>
                           {fmtDateFull(fechaDev)}
-                          {rd.horaDevolucion && <span className="text-gray-400 ml-1 font-normal">· {rd.horaDevolucion}</span>}
+                          {rd.horaDevolucion && <span className="text-gray-400 ml-1 font-normal">· {fmt24to12(rd.horaDevolucion)}</span>}
                         </p>
                       ) : (
                         <p className="text-gray-600 italic text-xs">Sin fecha</p>
@@ -571,7 +572,7 @@ function ProtocoloViewer({ data, equipos, label, color }: {
 }) {
   const textCls = color === "blue" ? "text-blue-400" : "text-green-400";
   const bgCls   = color === "blue" ? "bg-blue-900/20 border-blue-800/30" : "bg-green-900/20 border-green-800/30";
-  const ts      = data.timestamp ? new Date(data.timestamp).toLocaleString("es-MX", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+  const ts      = data.timestamp ? normalizarAmPm(new Date(data.timestamp).toLocaleString("es-MX", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })) : "";
 
   return (
     <div className="space-y-4">

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { notFound, redirect } from "next/navigation";
 import { Printer } from "lucide-react";
+import { fmt24to12 } from "@/lib/hora";
 
 export default async function RiderPrintPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -45,7 +46,7 @@ export default async function RiderPrintPage({ params }: { params: Promise<{ id:
     return new Date(y, m - 1, day).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   };
 
-  const fmtHora = (h: string | null) => h ?? "—";
+  const fmtHora = (h: string | null) => fmt24to12(h) || "—";
 
   const grupos: Record<string, typeof proyecto.equipos> = {};
   for (const e of proyecto.equipos) {

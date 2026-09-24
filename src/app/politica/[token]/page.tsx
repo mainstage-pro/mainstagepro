@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { normalizarAmPm } from "@/lib/hora";
 
 interface PoliticaData {
   titulo: string;
@@ -72,7 +73,7 @@ export default function PoliticaAcusePage() {
   );
 
   const fmtFecha = (s: string | null) =>
-    s ? new Date(s).toLocaleString("es-MX", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+    s ? normalizarAmPm(new Date(s).toLocaleString("es-MX", { day: "numeric", month: "long", year: "numeric", hour: "numeric", minute: "2-digit" })) : "";
 
   return (
     <div className="min-h-screen bg-black text-white" style={{ fontFamily: FONT }}>

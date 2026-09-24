@@ -4,6 +4,7 @@ import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { AREA_LABELS, AREA_COLORS, TIPO_AGENDA_LABELS, type AreaJunta, type TipoAgenda } from "@/lib/junta-templates";
 import { Users, Video, FileText, type LucideIcon } from "lucide-react";
+import { fmtHoraDate } from "@/lib/hora";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -82,7 +83,7 @@ function fmtFecha(iso: string) {
   });
 }
 function fmtHora(iso: string) {
-  return new Date(iso).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", hour12: true });
+  return fmtHoraDate(iso);
 }
 function fmtVenc(iso: string | null): { label: string; cls: string } | null {
   if (!iso) return null;

@@ -6,6 +6,7 @@ import {
   ShieldCheck, CheckCircle2, XCircle, Camera, FileText, ExternalLink,
   StickyNote, CalendarClock, ClipboardCheck, X, Trash2,
 } from "lucide-react";
+import { normalizarAmPm } from "@/lib/hora";
 
 interface Archivo { id: string; nombre: string; url: string; tipo: string | null; tamano: number | null }
 interface TareaVerif {
@@ -49,7 +50,7 @@ const MOTIVO_NO_REALIZADA_LABEL: Record<string, string> = {
 
 function fmtFecha(iso: string | null): string {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("es-MX", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  return normalizarAmPm(new Date(iso).toLocaleDateString("es-MX", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }));
 }
 
 export default function VerificacionClient() {

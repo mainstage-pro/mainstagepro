@@ -6,6 +6,7 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useDescarga } from "@/components/DescargaProvider";
+import { normalizarAmPm } from "@/lib/hora";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -1183,7 +1184,7 @@ export default function CapacitacionDetailPage() {
                           <span className="text-[10px]" style={{ color: "#4b5563" }}>
                             {new Date(v.generadaEn).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}
                             {" · "}
-                            {new Date(v.generadaEn).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}
+                            {normalizarAmPm(new Date(v.generadaEn).toLocaleTimeString("es-MX", { hour: "numeric", minute: "2-digit" }))}
                           </span>
                         </div>
 

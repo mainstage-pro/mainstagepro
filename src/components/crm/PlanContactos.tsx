@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Map, ClipboardList, Sliders, Guitar, PartyPopper, Building2, Sparkles, Camera, Pin, Search, type LucideIcon } from "lucide-react";
 import { useToast } from "@/components/Toast";
+import { normalizarAmPm } from "@/lib/hora";
 
 // ─── Constantes compartidas ──────────────────────────────────────────────────
 export const CONTACTOS_INBOUND = [
@@ -233,9 +234,9 @@ export function NotasSeguimiento({
   }
 
   function fmt(iso: string) {
-    return new Date(iso).toLocaleString("es-MX", {
-      day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
-    });
+    return normalizarAmPm(new Date(iso).toLocaleString("es-MX", {
+      day: "numeric", month: "short", hour: "numeric", minute: "2-digit",
+    }));
   }
 
   return (
@@ -310,7 +311,7 @@ export function SeguimientosTracker({
   const todosHechos = hechos >= maxSlots;
 
   function fmt(iso: string) {
-    return new Date(iso).toLocaleString("es-MX", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    return normalizarAmPm(new Date(iso).toLocaleString("es-MX", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }));
   }
 
   return (

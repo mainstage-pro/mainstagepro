@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { normalizarAmPm } from "@/lib/hora";
 
 export interface PorUsuario {
   id: string;
@@ -116,7 +117,7 @@ export function Skeleton() {
 export function fmtFecha(iso: string) {
   const d = new Date(iso);
   return d.toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" }) +
-    " · " + d.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
+    " · " + normalizarAmPm(d.toLocaleTimeString("es-MX", { hour: "numeric", minute: "2-digit" }));
 }
 export function fmtTiempo(seg: number) {
   if (seg < 60) return `${seg}s`;

@@ -5,6 +5,7 @@ import Link from "next/link";
 import CrearTareaModal from "@/components/calendarios/CrearTareaModal";
 import { TAG_EVENTOS } from "@/lib/calendarios";
 import { BotonDescarga } from "@/components/BotonDescarga";
+import { fmt24to12 } from "@/lib/hora";
 
 // ── Reporte constants ────────────────────────────────────────────────────────
 const MESES_RPT = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
@@ -407,7 +408,7 @@ function VistaMes({ year, month, ahora, eventos, loading, esMesActual, diaSelecc
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 mb-0.5"><span className={`w-1.5 h-1.5 rounded-full shrink-0 ${nc.dot}`} /><p className="text-xs font-medium truncate text-white">{e.titulo}</p></div>
                         <p className="text-gray-500 text-[11px] truncate">{e.subtitulo}</p>
-                        {e.horaInicioEvento && <p className="text-[#B3985B] text-[10px] mt-0.5">{e.horaInicioEvento}</p>}
+                        {e.horaInicioEvento && <p className="text-[#B3985B] text-[10px] mt-0.5">{fmt24to12(e.horaInicioEvento)}</p>}
                         <span className={`text-[10px] ${nc.text}`}>{NIVEL_LABEL[e.nivel ?? 'por_confirmar']}</span>
                       </div>
                     </Link>
@@ -449,7 +450,7 @@ function VistaSemana({ weekStart, year, ahora, eventos, loading }: {
                     <Link key={e.id} href={e.url} className={`block px-2 py-1.5 rounded-md bg-[#141414] border-l-2 ${nc.bar} hover:bg-[#1c1c1c] transition-colors`}>
                       <p className="text-[11px] font-medium text-white truncate">{e.titulo}</p>
                       <p className="text-[10px] text-gray-500 truncate">{e.subtitulo}</p>
-                      {e.horaInicioEvento && <p className="text-[9px] text-[#B3985B] mt-0.5">{e.horaInicioEvento}</p>}
+                      {e.horaInicioEvento && <p className="text-[9px] text-[#B3985B] mt-0.5">{fmt24to12(e.horaInicioEvento)}</p>}
                     </Link>
                   );
                 })}

@@ -9,6 +9,7 @@ import { EquipoGaleria } from "@/components/EquipoGaleria";
 import { CostoMantenimientoModal, type CostoMantenimiento } from "@/components/CostoMantenimientoModal";
 import { ESTADO_EQUIPO_LABEL, esRetornoAServicio } from "@/lib/equipo-estado";
 import { getEquipoDisplayName } from "@/lib/equipoNombre";
+import { normalizarAmPm } from "@/lib/hora";
 import { TipoEventoCell, type TipoEventoOpcion } from "@/components/TipoEventoCell";
 import { AccesoriosTab } from "@/components/AccesoriosTab";
 
@@ -406,9 +407,9 @@ function FormPanel({ panel, equipos, form, setForm, imagen, saving, categorias, 
 }
 
 function fmtFechaHoraMaestro(iso: string) {
-  return new Date(iso).toLocaleString("es-MX", {
-    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
-  });
+  return normalizarAmPm(new Date(iso).toLocaleString("es-MX", {
+    day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit",
+  }));
 }
 function fmtFechaMaestro(iso: string) {
   return new Date(iso).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AREA_LABELS, AREA_COLORS, TIPO_AGENDA_LABELS, TIPO_AGENDA_COLORS, type AreaJunta, type TipoAgenda } from "@/lib/junta-templates";
 import { Users, Video, FileText } from "lucide-react";
+import { fmtHoraDate } from "@/lib/hora";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -84,7 +85,7 @@ function fmtFecha(iso: string) {
   return new Date(iso).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
 }
 function fmtHora(iso: string) {
-  return new Date(iso).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", hour12: false });
+  return fmtHoraDate(iso);
 }
 // ISO → valor local "YYYY-MM-DDTHH:mm" para <input type="datetime-local">
 function toInputDateTime(iso: string) {

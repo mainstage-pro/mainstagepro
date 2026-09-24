@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import { BotonDescarga } from "@/components/BotonDescarga";
+import { fmt24to12 } from "@/lib/hora";
 
 interface Linea {
   tipo: string;
@@ -267,7 +268,7 @@ export default function PortalCliente() {
                   {formatDate(proyecto.fechaMontaje, { weekday: "long", month: "long", day: "numeric" })}
                 </p>
                 {proyecto.horaInicioMontaje && (
-                  <p className="text-[10px] text-white/25 mt-1">{proyecto.horaInicioMontaje} hrs</p>
+                  <p className="text-[10px] text-white/25 mt-1">{fmt24to12(proyecto.horaInicioMontaje)}</p>
                 )}
               </div>
             )}
@@ -279,7 +280,7 @@ export default function PortalCliente() {
                 </p>
                 {(proyecto.horaInicioEvento || proyecto.horaFinEvento) && (
                   <p className="text-[10px] text-white/25 mt-1">
-                    {proyecto.horaInicioEvento ?? ""}{proyecto.horaFinEvento ? ` – ${proyecto.horaFinEvento}` : ""} hrs
+                    {fmt24to12(proyecto.horaInicioEvento)}{proyecto.horaFinEvento ? ` – ${fmt24to12(proyecto.horaFinEvento)}` : ""}
                   </p>
                 )}
               </div>

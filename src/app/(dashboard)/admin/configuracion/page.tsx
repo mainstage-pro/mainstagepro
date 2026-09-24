@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useToast } from "@/components/Toast";
 import { ShieldCheck } from "lucide-react";
+import { normalizarAmPm } from "@/lib/hora";
 
 // ─── Módulos / Etiquetas ──────────────────────────────────────────────────────
 
@@ -481,7 +482,7 @@ export default function ConfiguracionPage() {
                 <div className="min-w-0">
                   <p className="text-xs text-white truncate">{b.nombre}</p>
                   <p className="text-[10px] text-gray-600 mt-0.5">
-                    {new Date(b.fecha).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })} · {b.size}
+                    {normalizarAmPm(new Date(b.fecha).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" }))} · {b.size}
                     {i === 0 && <span className="ml-2 text-green-400 font-semibold">● más reciente</span>}
                   </p>
                 </div>

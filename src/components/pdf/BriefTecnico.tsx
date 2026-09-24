@@ -8,6 +8,7 @@ import React from "react";
 import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
 import { CronologiaEvento } from "./CronologiaEvento";
 import { construirCronologia } from "@/lib/cronologia-evento";
+import { fmt24to12 } from "@/lib/hora";
 
 // ─── Estilos locales B&W ──────────────────────────────────────────────────────
 const s = StyleSheet.create({
@@ -278,7 +279,7 @@ export function BriefTecnico({ proyecto, logoSrc }: BriefTecnicoData) {
             const partes: string[] = [];
             if (item.vehiculoNombre) partes.push(String(item.vehiculoNombre));
             if (item.choferId) partes.push(`Chofer: ${item.choferId}`);
-            if (item.horaSalida) partes.push(`Salida: ${item.horaSalida}`);
+            if (item.horaSalida) partes.push(`Salida: ${fmt24to12(String(item.horaSalida))}`);
             if (item.comentarios) partes.push(String(item.comentarios));
             lineas.push(`Vehículo ${idx + 1}: ${partes.join(" · ")}`);
           }

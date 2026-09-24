@@ -3,6 +3,7 @@ import {
   Document, Page, Text, View, StyleSheet, Image,
 } from "@react-pdf/renderer";
 import { getEquipoDisplayName } from "@/lib/equipoNombre";
+import { fmt24to12 } from "@/lib/hora";
 
 const C = {
   black: "#0a0a0a",
@@ -101,7 +102,7 @@ export function FichaClientePDF({ data }: { data: FichaClienteData }) {
             {horaInicio && (
               <View style={styles.row}>
                 <Text style={styles.rowLabel}>Hora de inicio</Text>
-                <Text style={styles.rowValue}>{horaInicio} hrs</Text>
+                <Text style={styles.rowValue}>{fmt24to12(horaInicio)}</Text>
               </View>
             )}
             {lugarEvento && (

@@ -13,6 +13,40 @@ export function fmt24to12(val: string | null | undefined): string {
   return `${h}:${m} ${period}`;
 }
 
+// Rango de horas de pared: "6:00 PM – 11:00 PM". Devuelve "" si no hay ninguna.
+export function fmtRango(
+  inicio: string | null | undefined,
+  fin: string | null | undefined,
+): string {
+  const i = fmt24to12(inicio);
+  const f = fmt24to12(fin);
+  if (i && f) return `${i} – ${f}`;
+  return i || f;
+}
+
+// es-MX ya entrega 12h pero como "8:30 p.m."; unificamos a "8:30 PM".
+export function normalizarAmPm(s: string): string {
+  return s.replace(/\b([ap])\.\s?m\./gi, (_, p: string) => `${p.toUpperCase()}M`);
+}
+
+// Hora de un Date/ISO en 12h. timeZone por defecto la del navegador/servidor.
+export function fmtHoraDate(
+  value: Date | string | null | undefined,
+  timeZone?: string,
+): string {
+  if (!value) return "";
+  const d = value instanceof Date ? value : new Date(value);
+  if (isNaN(d.getTime())) return "";
+  return normalizarAmPm(
+    d.toLocaleTimeString("es-MX", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+      ...(timeZone ? { timeZone } : {}),
+    }),
+  );
+}
+
 // Interpreta texto libre escrito a mano y lo normaliza a "HH:MM" 24h.
 // Acepta: "2:30 pm", "230pm", "2 pm", "14:30", "1430", "8", etc.
 // Devuelve "" si no se puede interpretar.

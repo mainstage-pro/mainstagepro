@@ -8,6 +8,7 @@ import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
 import { Link2, Camera, Paperclip, FileText, ExternalLink, ChevronDown, ChevronRight, ShieldCheck, ClipboardCheck, AlertTriangle } from "lucide-react";
 import AccesoDirectoField from "./AccesoDirectoField";
+import { normalizarAmPm } from "@/lib/hora";
 
 // ── Bloque 5: tag de origen (mismo esquema que TaskItem) ──
 const TIPO_ORIGEN: Record<string, { label: string; color: string; bg: string; border: string }> = {
@@ -907,7 +908,7 @@ export default function TaskModal({
                     </button>
                     {evidenciaEnviadaAt && (
                       <p className="text-[10px] text-green-600/80 mt-1.5 text-center">
-                        ✓ Enviado {new Date(evidenciaEnviadaAt).toLocaleDateString("es-MX", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                        ✓ Enviado {normalizarAmPm(new Date(evidenciaEnviadaAt).toLocaleDateString("es-MX", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }))}
                       </p>
                     )}
                   </div>
@@ -943,7 +944,7 @@ export default function TaskModal({
                             {verificada && <span className="text-[9px] uppercase tracking-wider text-green-500 border border-green-500/30 rounded px-1.5 py-0.5">Verificada</span>}
                             {pendiente && <span className="text-[9px] uppercase tracking-wider text-[#B3985B] border border-[#B3985B]/30 rounded px-1.5 py-0.5">Pendiente</span>}
                             <span className="text-[10px] text-[#555]">
-                              {h.completadaPor ?? "—"} · {new Date(h.completadaAt).toLocaleDateString("es-MX", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                              {h.completadaPor ?? "—"} · {normalizarAmPm(new Date(h.completadaAt).toLocaleDateString("es-MX", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }))}
                             </span>
                           </div>
                         </div>
@@ -1179,7 +1180,7 @@ export default function TaskModal({
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-xs font-medium text-[#888]">{c.autor?.name ?? "Desconocido"}</span>
                         <span className="text-[11px] text-[#333]">
-                          {new Date(c.createdAt).toLocaleDateString("es-MX", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                          {normalizarAmPm(new Date(c.createdAt).toLocaleDateString("es-MX", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }))}
                         </span>
                         {c.autor?.id === sessionId && (
                           <button onClick={() => eliminarComentario(c.id)}

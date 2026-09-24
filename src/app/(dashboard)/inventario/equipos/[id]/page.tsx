@@ -10,6 +10,7 @@ import { EquipoGaleria } from "@/components/EquipoGaleria";
 import { CostoMantenimientoModal, type CostoMantenimiento } from "@/components/CostoMantenimientoModal";
 import { ESTADOS_EQUIPO as ESTADOS_UNIDAD, ESTADO_EQUIPO_LABEL, esRetornoAServicio } from "@/lib/equipo-estado";
 import { ReportarFallaModal } from "@/components/ReportarFallaModal";
+import { normalizarAmPm } from "@/lib/hora";
 import {
   ESTADOS_FALLA_ABIERTA,
   ESTADO_FALLA_BADGE,
@@ -380,7 +381,7 @@ function NotasSection({ equipoId, initial }: { equipoId: string; initial: Equipo
 
   function fmtFecha(iso: string) {
     const d = new Date(iso);
-    return d.toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit" });
+    return normalizarAmPm(d.toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "2-digit", hour: "numeric", minute: "2-digit" }));
   }
 
   return (

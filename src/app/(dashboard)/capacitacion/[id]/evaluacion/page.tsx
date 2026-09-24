@@ -3,6 +3,7 @@
 import React, { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { ArrowLeft, Sparkles, CheckCircle2, XCircle, RotateCcw, Trophy } from "lucide-react";
+import { normalizarAmPm } from "@/lib/hora";
 
 interface Pregunta { pregunta: string; opciones: string[]; }
 interface Intento { id: string; calificacion: number; aprobado: boolean; creadoEn: string; }
@@ -184,7 +185,7 @@ export default function EvaluacionPage({ params }: { params: Promise<{ id: strin
                 <div className="space-y-2">
                   {data.intentos.map((it) => (
                     <div key={it.id} className="flex items-center justify-between text-sm">
-                      <span style={{ color: "#9ca3af" }}>{new Date(it.creadoEn).toLocaleDateString("es-MX", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                      <span style={{ color: "#9ca3af" }}>{normalizarAmPm(new Date(it.creadoEn).toLocaleDateString("es-MX", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }))}</span>
                       <span className="flex items-center gap-2">
                         <span className="font-mono" style={{ color: it.aprobado ? "#22c55e" : "#EF4444" }}>{it.calificacion}%</span>
                         {it.aprobado ? <CheckCircle2 size={14} style={{ color: "#22c55e" }} /> : <XCircle size={14} style={{ color: "#EF4444" }} />}

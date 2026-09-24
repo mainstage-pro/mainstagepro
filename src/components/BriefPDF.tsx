@@ -2,6 +2,7 @@ import React from "react";
 import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
 import { construirCronologia } from "@/lib/cronologia-evento";
 import { getEquipoDisplayName } from "@/lib/equipoNombre";
+import { normalizarAmPm } from "@/lib/hora";
 
 const GOLD  = "#B3985B";
 const BLACK = "#0a0a0a";
@@ -293,10 +294,10 @@ export function BriefPDF({
     llamadoBodega: proyecto.llamadoBodega, lugarLlamado: proyecto.lugarLlamado, lugarEvento: proyecto.lugarEvento,
   });
 
-  const generado = new Date().toLocaleDateString("es-MX", {
+  const generado = normalizarAmPm(new Date().toLocaleDateString("es-MX", {
     day: "2-digit", month: "long", year: "numeric",
-    hour: "2-digit", minute: "2-digit",
-  });
+    hour: "numeric", minute: "2-digit",
+  }));
 
   return (
     <Document>

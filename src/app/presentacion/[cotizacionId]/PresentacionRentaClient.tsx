@@ -539,7 +539,7 @@ Mainstage Pro puede proveer soporte técnico básico vía WhatsApp durante el us
                   <div className="rounded-xl p-5" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.05)" }}>
                     <p className="text-white/35 text-[10px] uppercase tracking-wider mb-2">Entrega de equipo</p>
                     <p className="text-white text-sm font-semibold">{fmtDateShort(rentaData.fechaEntrega)}</p>
-                    {rentaData.horaEntrega && <p className="text-white/40 text-xs mt-0.5">{rentaData.horaEntrega}</p>}
+                    {rentaData.horaEntrega && <p className="text-white/40 text-xs mt-0.5">{fmtHora(rentaData.horaEntrega)}</p>}
                   </div>
                 </R>
               )}
@@ -548,7 +548,7 @@ Mainstage Pro puede proveer soporte técnico básico vía WhatsApp durante el us
                   <div className="rounded-xl p-5" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.05)" }}>
                     <p className="text-white/35 text-[10px] uppercase tracking-wider mb-2">Devolución</p>
                     <p className="text-white text-sm font-semibold">{fmtDateShort(rentaData.fechaDevolucion)}</p>
-                    {rentaData.horaDevolucion && <p className="text-white/40 text-xs mt-0.5">{rentaData.horaDevolucion}</p>}
+                    {rentaData.horaDevolucion && <p className="text-white/40 text-xs mt-0.5">{fmtHora(rentaData.horaDevolucion)}</p>}
                   </div>
                 </R>
               )}

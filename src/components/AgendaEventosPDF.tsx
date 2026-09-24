@@ -1,6 +1,7 @@
 import React from "react";
 import { Text, View } from "@react-pdf/renderer";
 import { base, ReporteLayout, fmtFecha } from "@/components/pdf/ReporteBase";
+import { fmt24to12 } from "@/lib/hora";
 
 export interface AgendaEventoData {
   id: string;
@@ -73,7 +74,7 @@ export function AgendaEventosPDF({ data }: { data: AgendaEventosPDFData }) {
           <View key={ev.id} style={i % 2 === 0 ? base.tbodyRow : base.tbodyRowAlt} wrap={false}>
             <View style={{ width: 58 }}>
               <Text style={base.td}>{fmtFecha(ev.fechaEvento)}</Text>
-              {ev.horaInicio ? <Text style={base.tdSub}>{ev.horaInicio}</Text> : null}
+              {ev.horaInicio ? <Text style={base.tdSub}>{fmt24to12(ev.horaInicio)}</Text> : null}
             </View>
             <View style={{ flex: 2.8, paddingRight: 4 }}>
               <Text style={base.tdStrong}>{ev.nombre}</Text>

@@ -2,6 +2,7 @@ import React from 'react'
 import {
   Document, Page, View, Text, Image, StyleSheet, Font,
 } from '@react-pdf/renderer'
+import { fmt24to12 } from '@/lib/hora'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -230,8 +231,8 @@ export function RiderPDF({ data }: { data: RiderPDFData }) {
         <View style={[s.gridRow, { marginBottom: 8 }]}>
           <GridCell label="Cliente" value={data.cliente?.empresa ?? data.cliente?.nombre ?? '—'} />
           <GridCell label="Venue" value={data.lugarEvento ?? '—'} />
-          <DateTimeCell label="Fecha y hora de montaje" fecha={fmtFechaCorta(data.fechaMontaje) || fmtFechaCorta(data.fechaEvento)} hora={data.horaMontaje} />
-          <DateTimeCell label="Fecha y hora inicio evento" fecha={fmtFechaCorta(data.fechaEvento)} hora={data.horaInicio} />
+          <DateTimeCell label="Fecha y hora de montaje" fecha={fmtFechaCorta(data.fechaMontaje) || fmtFechaCorta(data.fechaEvento)} hora={fmt24to12(data.horaMontaje)} />
+          <DateTimeCell label="Fecha y hora inicio evento" fecha={fmtFechaCorta(data.fechaEvento)} hora={fmt24to12(data.horaInicio)} />
         </View>
 
         {/* ── Dirección y acceso ── */}
@@ -239,7 +240,7 @@ export function RiderPDF({ data }: { data: RiderPDFData }) {
           <View style={[s.gridRow, { marginBottom: 8 }]}>
             {data.direccionVenue && <GridCell label="Dirección" value={data.direccionVenue} />}
             {data.linkMaps && <GridCell label="Google Maps" value={data.linkMaps} />}
-            {data.horaSalidaBodega && <GridCell label={data.puntoSalidaBodega ? `Salida de ${data.puntoSalidaBodega}` : 'Salida desde bodega'} value={`${data.horaSalidaBodega} hrs`} />}
+            {data.horaSalidaBodega && <GridCell label={data.puntoSalidaBodega ? `Salida de ${data.puntoSalidaBodega}` : 'Salida desde bodega'} value={fmt24to12(data.horaSalidaBodega)} />}
             {data.choferNombre && <GridCell label="Chofer" value={data.choferNombre} />}
           </View>
         )}

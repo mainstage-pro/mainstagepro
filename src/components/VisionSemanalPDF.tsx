@@ -2,6 +2,7 @@ import React from "react";
 import {
   Document, Page, Text, View, StyleSheet, Image,
 } from "@react-pdf/renderer";
+import { normalizarAmPm } from "@/lib/hora";
 
 // ─── Paleta ──────────────────────────────────────────────────────────────────
 const GOLD = "#B3985B";
@@ -330,14 +331,14 @@ function TablaProyectos({ proyectos }: { proyectos: VisionProyectoPDF[] }) {
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 export function VisionSemanalPDF({ data, logoSrc }: { data: VisionSemanalPDFData; logoSrc?: string | null }) {
-  const generadoEl = new Date().toLocaleDateString("es-MX", {
+  const generadoEl = normalizarAmPm(new Date().toLocaleDateString("es-MX", {
     day: "2-digit", month: "long", year: "numeric",
-    hour: "2-digit", minute: "2-digit",
-  });
+    hour: "numeric", minute: "2-digit",
+  }));
   const actualizado = data.actualizadoEn
-    ? new Date(data.actualizadoEn).toLocaleDateString("es-MX", {
-        day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
-      })
+    ? normalizarAmPm(new Date(data.actualizadoEn).toLocaleDateString("es-MX", {
+        day: "2-digit", month: "long", year: "numeric", hour: "numeric", minute: "2-digit",
+      }))
     : "Sin guardar aún";
 
   return (

@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import { AlertTriangle } from "lucide-react";
+import { normalizarAmPm } from "@/lib/hora";
 
 type PersonalItem = { id: string; nombre: string; rol: string; confirmado: boolean; telefono?: string | null };
 type EquipoItem = { id: string; nombre: string; cantidad: number };
@@ -385,7 +386,7 @@ export default function PlanProduccionPage() {
               <p className="text-green-400 text-sm font-bold">Plan aprobado</p>
               {proyecto.planProduccionAprobadoEn && (
                 <p className="text-green-600 text-[10px] mt-0.5">
-                  {new Date(proyecto.planProduccionAprobadoEn).toLocaleString("es-MX", { timeZone: "America/Mexico_City", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                  {normalizarAmPm(new Date(proyecto.planProduccionAprobadoEn).toLocaleString("es-MX", { timeZone: "America/Mexico_City", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }))}
                 </p>
               )}
             </div>

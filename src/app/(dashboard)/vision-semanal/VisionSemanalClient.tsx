@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import TaskItem, { type TareaItem } from "@/app/(dashboard)/operaciones/components/TaskItem";
 import { usePdfDownload } from "@/hooks/usePdfDownload";
+import { normalizarAmPm } from "@/lib/hora";
 
 // ─── Tipos (espejo del API) ──────────────────────────────────────────────────
 interface EntregaPunto {
@@ -117,7 +118,7 @@ function fmtFecha(iso: string | null): string {
 }
 function fmtActualizado(iso: string | null | undefined, autor?: { name: string } | null): string {
   if (!iso) return "Sin llenar aún";
-  const f = new Date(iso).toLocaleString("es-MX", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  const f = normalizarAmPm(new Date(iso).toLocaleString("es-MX", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }));
   return `Actualizado ${f}${autor ? ` · ${autor.name}` : ""}`;
 }
 
@@ -712,7 +713,7 @@ function DocumentoView({
             <p className="text-[11px] text-[#555] truncate">
               {error ? <span className="text-red-400">{error}</span>
                 : data.documento.actualizadoEn
-                  ? `Última actualización ${new Date(data.documento.actualizadoEn).toLocaleString("es-MX", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}${data.documento.autor ? ` · ${data.documento.autor.name}` : ""}`
+                  ? `Última actualización ${normalizarAmPm(new Date(data.documento.actualizadoEn).toLocaleString("es-MX", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }))}${data.documento.autor ? ` · ${data.documento.autor.name}` : ""}`
                   : "Sin guardar aún"}
             </p>
             <button onClick={guardar} disabled={saving || !dirty}

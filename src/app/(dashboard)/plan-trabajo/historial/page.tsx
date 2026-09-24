@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Lock } from 'lucide-react'
 import { getAreaColor } from '@/lib/areaColors'
+import { fmt24to12 } from '@/lib/hora'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -81,7 +82,7 @@ function fmtHora(iso: string | null): string {
   const d = new Date(iso)
   const offset = -6 * 60
   const local = new Date(d.getTime() + offset * 60 * 1000)
-  return local.toISOString().slice(11, 16)
+  return fmt24to12(local.toISOString().slice(11, 16))
 }
 
 function getLunesAnterior(): string {

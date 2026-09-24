@@ -3,6 +3,7 @@ import {
   Document, Page, Text, View, StyleSheet, Image,
 } from "@react-pdf/renderer";
 import { getEquipoDisplayName } from "@/lib/equipoNombre";
+import { fmt24to12 } from "@/lib/hora";
 
 const C = {
   black: "#0a0a0a",
@@ -112,25 +113,25 @@ export function FichaTecnicosPDF({ data }: { data: FichaTecnicosData }) {
                 <Text style={styles.dataLabel}>
                   Salida bodega{data.puntoSalidaBodega ? `\n${data.puntoSalidaBodega}` : ""}
                 </Text>
-                <Text style={styles.dataValue}>{data.horaSalidaBodega} hrs</Text>
+                <Text style={styles.dataValue}>{fmt24to12(data.horaSalidaBodega)}</Text>
               </View>
             )}
             {data.horaMontaje && (
               <View style={styles.dataRow}>
                 <Text style={styles.dataLabel}>Llegada / montaje</Text>
-                <Text style={styles.dataValue}>{data.horaMontaje} hrs</Text>
+                <Text style={styles.dataValue}>{fmt24to12(data.horaMontaje)}</Text>
               </View>
             )}
             {data.horaInicio && (
               <View style={styles.dataRow}>
                 <Text style={styles.dataLabel}>Inicio del evento</Text>
-                <Text style={styles.dataValue}>{data.horaInicio} hrs</Text>
+                <Text style={styles.dataValue}>{fmt24to12(data.horaInicio)}</Text>
               </View>
             )}
             {data.horaDesmontaje && (
               <View style={styles.dataRow}>
                 <Text style={styles.dataLabel}>Salida estimada</Text>
-                <Text style={styles.dataValue}>{data.horaDesmontaje} hrs</Text>
+                <Text style={styles.dataValue}>{fmt24to12(data.horaDesmontaje)}</Text>
               </View>
             )}
           </View>

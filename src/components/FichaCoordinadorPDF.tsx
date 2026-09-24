@@ -3,6 +3,7 @@ import {
   Document, Page, Text, View, StyleSheet, Image,
 } from "@react-pdf/renderer";
 import { getEquipoDisplayName } from "@/lib/equipoNombre";
+import { fmt24to12 } from "@/lib/hora";
 
 const C = {
   black: "#0a0a0a",
@@ -173,26 +174,26 @@ export function FichaCoordinadorPDF({ data }: { data: FichaCoordinadorData }) {
                 <View style={styles.row}>
                   <Text style={styles.rowLabel}>Salida desde bodega</Text>
                   <Text style={styles.rowValue}>
-                    {data.horaSalidaBodega} hrs{data.puntoSalidaBodega ? ` · ${data.puntoSalidaBodega}` : ""}
+                    {fmt24to12(data.horaSalidaBodega)}{data.puntoSalidaBodega ? ` · ${data.puntoSalidaBodega}` : ""}
                   </Text>
                 </View>
               )}
               {data.horaMontaje && (
                 <View style={styles.row}>
                   <Text style={styles.rowLabel}>Llegada / montaje</Text>
-                  <Text style={styles.rowValue}>{data.horaMontaje} hrs</Text>
+                  <Text style={styles.rowValue}>{fmt24to12(data.horaMontaje)}</Text>
                 </View>
               )}
               {data.horaInicio && (
                 <View style={styles.row}>
                   <Text style={styles.rowLabel}>Inicio del evento</Text>
-                  <Text style={styles.rowValue}>{data.horaInicio} hrs</Text>
+                  <Text style={styles.rowValue}>{fmt24to12(data.horaInicio)}</Text>
                 </View>
               )}
               {data.horaDesmontaje && (
                 <View style={styles.row}>
                   <Text style={styles.rowLabel}>Desmontaje estimado</Text>
-                  <Text style={styles.rowValue}>{data.horaDesmontaje} hrs</Text>
+                  <Text style={styles.rowValue}>{fmt24to12(data.horaDesmontaje)}</Text>
                 </View>
               )}
             </View>

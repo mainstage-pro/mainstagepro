@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle } from "lucide-react";
+import { normalizarAmPm } from "@/lib/hora";
 
 interface AreaResumen {
   id: string;
@@ -131,7 +132,7 @@ export default function PlanTrabajoWidget() {
                   <p className="text-gray-600 text-[10px]">{e.template.area.nombre} · {e.responsable?.name ?? "Sin asignar"}</p>
                 </div>
                 <p className="text-yellow-400 text-[10px] font-semibold ml-3 shrink-0">
-                  {new Date(e.fechaVencimiento).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}
+                  {normalizarAmPm(new Date(e.fechaVencimiento).toLocaleTimeString("es-MX", { hour: "numeric", minute: "2-digit" }))}
                 </p>
               </div>
             ))}

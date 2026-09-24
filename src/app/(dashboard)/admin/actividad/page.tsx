@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { normalizarAmPm } from "@/lib/hora";
 
 interface Actividad {
   id: string;
@@ -37,7 +38,7 @@ export default function ActividadPage() {
   void userId;
   void setUserId;
 
-  const fmtDate = (s: string) => new Date(s).toLocaleString("es-MX", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+  const fmtDate = (s: string) => normalizarAmPm(new Date(s).toLocaleString("es-MX", { day: "2-digit", month: "short", hour: "numeric", minute: "2-digit" }));
 
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-4">

@@ -7,6 +7,7 @@ import TaskItem, { type TareaItem } from "./TaskItem";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
 import { Link2 } from "lucide-react";
+import { normalizarAmPm } from "@/lib/hora";
 
 interface Usuario { id: string; name: string }
 interface Proyecto { id: string; nombre: string; color: string | null }
@@ -581,7 +582,7 @@ export default function TaskPanel({
               <div className="flex-1 space-y-0.5">
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-[#888]">{c.autor?.name ?? "Desconocido"}</span>
-                  <span className="text-[11px] text-[#444]">{new Date(c.createdAt).toLocaleDateString("es-MX", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                  <span className="text-[11px] text-[#444]">{normalizarAmPm(new Date(c.createdAt).toLocaleDateString("es-MX", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }))}</span>
                   {(c.autor?.id === sessionId) && (
                     <button type="button" onClick={() => eliminarComentario(c.id)}
                       className="opacity-0 group-hover:opacity-100 text-[#333] hover:text-red-400 text-xs ml-auto transition-all">✕</button>

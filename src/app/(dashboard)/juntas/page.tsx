@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { fmtHoraDate } from "@/lib/hora";
 import {
   JUNTA_TEMPLATES,
   AREA_LABELS,
@@ -37,7 +38,7 @@ function fmtFecha(iso: string) {
   });
 }
 function fmtHora(iso: string) {
-  return new Date(iso).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", hour12: false });
+  return fmtHoraDate(iso);
 }
 
 const ESTADO_BADGE: Record<string, { label: string; cls: string }> = {

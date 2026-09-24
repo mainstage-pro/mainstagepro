@@ -3,6 +3,7 @@
  * Ambas fichas (cliente y operativa) comparten este sistema visual.
  */
 import { StyleSheet } from "@react-pdf/renderer";
+import { fmt24to12, normalizarAmPm } from "@/lib/hora";
 
 // ─── Paleta ──────────────────────────────────────────────────────────────────
 export const C = {
@@ -183,7 +184,7 @@ export function fmtFechaCorta(iso: string | null | undefined): string {
 
 export function fmtHora(h: string | null | undefined): string {
   if (!h) return "";
-  return h;
+  return fmt24to12(h) || h;
 }
 
 export function duracion(ini: string | null | undefined, fin: string | null | undefined): string {
@@ -198,10 +199,10 @@ export function duracion(ini: string | null | undefined, fin: string | null | un
 }
 
 export function nowStr(): string {
-  return new Date().toLocaleDateString("es-MX", {
+  return normalizarAmPm(new Date().toLocaleDateString("es-MX", {
     day: "2-digit", month: "short", year: "numeric",
-    hour: "2-digit", minute: "2-digit",
-  });
+    hour: "numeric", minute: "2-digit", hour12: true,
+  }));
 }
 
 export function logoBase64(publicDir: string): string | null {

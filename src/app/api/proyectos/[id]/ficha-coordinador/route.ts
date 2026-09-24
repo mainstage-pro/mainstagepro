@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { normalizarAmPm } from "@/lib/hora";
 import ReactPDF, { Document } from "@react-pdf/renderer";
 import { FichaCoordinadorPDF } from "@/components/FichaCoordinadorPDF";
 import React from "react";
@@ -43,9 +44,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     ? `data:image/png;base64,${fs.readFileSync(logoPath).toString("base64")}`
     : null;
 
-  const now = new Date().toLocaleDateString("es-MX", {
-    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
-  });
+  const now = normalizarAmPm(new Date().toLocaleDateString("es-MX", {
+    day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit",
+  }));
 
   const data = {
     nombre: proyecto.nombre,

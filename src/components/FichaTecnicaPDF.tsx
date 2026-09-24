@@ -5,6 +5,7 @@ import {
 import { JORNADA_LABELS } from "@/lib/constants";
 import { diasEvento, agruparPorDia, horarioDeDia } from "@/lib/fechas-evento";
 import { getEquipoDisplayName } from "@/lib/equipoNombre";
+import { normalizarAmPm, fmt24to12 } from "@/lib/hora";
 
 
 // ─── Paleta ──────────────────────────────────────────────────────────────────
@@ -510,8 +511,8 @@ export function FichaTecnicaPDF({ proyecto, logoSrc }: { proyecto: FichaTecnicaD
       </View>
       {rows.map((r, i) => (
         <View key={i} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
-          <Text style={[s.tdText, { width: "12%" }]}>{r.horaInicio || "—"}</Text>
-          <Text style={[s.tdText, { width: "12%" }]}>{r.horaFin || "—"}</Text>
+          <Text style={[s.tdText, { width: "12%" }]}>{fmt24to12(r.horaInicio) || "—"}</Text>
+          <Text style={[s.tdText, { width: "12%" }]}>{fmt24to12(r.horaFin) || "—"}</Text>
           <Text style={[s.tdBold, { width: "36%" }]}>{r.actividad || "—"}</Text>
           <Text style={[s.tdText, { width: "20%" }]}>{r.responsable || "—"}</Text>
           <Text style={[s.tdText, { width: "20%" }]}>{r.involucrados || "—"}</Text>
@@ -520,10 +521,10 @@ export function FichaTecnicaPDF({ proyecto, logoSrc }: { proyecto: FichaTecnicaD
     </View>
   );
 
-  const generadoEl = new Date().toLocaleDateString("es-MX", {
+  const generadoEl = normalizarAmPm(new Date().toLocaleDateString("es-MX", {
     day: "2-digit", month: "long", year: "numeric",
-    hour: "2-digit", minute: "2-digit",
-  });
+    hour: "numeric", minute: "2-digit",
+  }));
 
   return (
     <Document>
@@ -598,7 +599,7 @@ export function FichaTecnicaPDF({ proyecto, logoSrc }: { proyecto: FichaTecnicaD
                 label="Horario del evento"
                 value={
                   proyecto.horaInicioEvento
-                    ? `${proyecto.horaInicioEvento}${proyecto.horaFinEvento ? ` – ${proyecto.horaFinEvento}` : ""}`
+                    ? `${fmt24to12(proyecto.horaInicioEvento)}${proyecto.horaFinEvento ? ` – ${fmt24to12(proyecto.horaFinEvento)}` : ""}`
                     : null
                 }
               />
@@ -611,7 +612,7 @@ export function FichaTecnicaPDF({ proyecto, logoSrc }: { proyecto: FichaTecnicaD
               label="Inicio montaje"
               value={
                 proyecto.horaInicioMontaje
-                  ? `${proyecto.horaInicioMontaje}${proyecto.duracionMontajeHrs ? ` (${proyecto.duracionMontajeHrs} hrs)` : ""}`
+                  ? `${fmt24to12(proyecto.horaInicioMontaje)}${proyecto.duracionMontajeHrs ? ` (${proyecto.duracionMontajeHrs} hrs)` : ""}`
                   : null
               }
             />

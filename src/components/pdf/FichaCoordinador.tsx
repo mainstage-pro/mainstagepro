@@ -10,6 +10,7 @@ import {
   CronoRow, TransporteSlot, DocsData, EquipoRiderExtra, ProveedorRenta,
 } from "./PdfShared";
 import { diasEvento, agruparPorDia, horarioDeDia } from "@/lib/fechas-evento";
+import { normalizarAmPm } from "@/lib/hora";
 
 const s = StyleSheet.create({
   // Header
@@ -187,7 +188,7 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
   const horaMontajeStr = fmtHora(data.horaMontaje || data.horaInicioMontaje);
   const horaSalidaStr = fmtHora(data.horaSalidaBodega);
   const llamadoBodegaHora = data.llamadoBodega
-    ? new Date(data.llamadoBodega).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" })
+    ? normalizarAmPm(new Date(data.llamadoBodega).toLocaleTimeString("es-MX", { hour: "numeric", minute: "2-digit", timeZone: "UTC" }))
     : null;
 
   const equiposPropios = data.equipos.filter(e => e.tipo === "PROPIO");

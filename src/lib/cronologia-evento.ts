@@ -14,6 +14,7 @@
  * Todos los PDFs deben usar esto para que la información esté completa y ordenada igual.
  */
 import { diasEvento, horarioDeDia, fechaISOaDia } from "./fechas-evento";
+import { fmt24to12 } from "./hora";
 
 export type ItemCronologia = {
   label: string;
@@ -60,13 +61,14 @@ export type ProyectoCronologia = {
   lugarEvento: string | null;
 };
 
-/** "HH:MM" (UTC) desde un DateTime; null si no hay. */
+/** "HH:MM" (UTC, 24h canónico) desde un DateTime; null si no hay. */
 function horaDeDateTime(dt: Date | string | null | undefined): string | null {
   if (!dt) return null;
   try {
-    return new Date(dt).toLocaleTimeString("es-MX", {
+    return new Date(dt).toLocaleTimeString("en-GB", {
       hour: "2-digit",
       minute: "2-digit",
+      hour12: false,
       timeZone: "UTC",
     });
   } catch {
@@ -86,18 +88,11 @@ function sumarHoras(hhmm: string | null | undefined, horas: number | null | unde
   return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
 }
 
-/** Convierte "HH:MM" a 12 hrs con a.m./p.m. (mismo estilo que horaDeDateTime). Deja intactos valores no numéricos (p.ej. "Por definir" o ya formateados). */
+/** Convierte "HH:MM" a 12 hrs con AM/PM. Deja intactos valores no numéricos (p.ej. "Por definir" o ya formateados). */
 function horaAmPm(hhmm: string | null): string | null {
   if (!hhmm) return hhmm;
-  const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm.trim());
-  if (!m) return hhmm;
-  const hh = Number(m[1]);
-  const mm = Number(m[2]);
-  return new Date(Date.UTC(2000, 0, 1, hh, mm)).toLocaleTimeString("es-MX", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "UTC",
-  });
+  if (!/^\d{1,2}:\d{2}$/.test(hhmm.trim())) return hhmm;
+  return fmt24to12(hhmm.trim()) || hhmm;
 }
 
 /** "lun 5 jul" desde "YYYY-MM-DD" | Date | ISO. */

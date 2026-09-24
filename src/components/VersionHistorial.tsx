@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useConfirm } from "@/components/Confirm";
+import { normalizarAmPm } from "@/lib/hora";
 
 interface Version {
   id: string;
@@ -77,7 +78,7 @@ export default function VersionHistorial({ entidad, entidadId, onRestaurar }: Pr
                 <div key={v.id} className="flex items-center justify-between px-4 py-3 text-sm">
                   <div>
                     <span className="text-white font-medium">v{versiones.length - idx}</span>
-                    <span className="text-[#555] ml-3">{new Date(v.createdAt).toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" })}</span>
+                    <span className="text-[#555] ml-3">{normalizarAmPm(new Date(v.createdAt).toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" }))}</span>
                     <span className="text-[#666] ml-3">por {v.usuario?.name ?? "—"}</span>
                     {v.nota && <span className="text-[#888] ml-3 text-xs">{v.nota}</span>}
                   </div>
