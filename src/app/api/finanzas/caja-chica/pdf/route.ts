@@ -46,7 +46,6 @@ export async function GET() {
   const pdfData = { movimientos: movData, saldo, totalIngresos, totalEgresos, generadoEn: new Date().toISOString() };
 
   const pdfStream = await ReactPDF.renderToStream(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     React.createElement(CajaChicaPDF, { data: pdfData }) as React.ReactElement<React.ComponentProps<typeof Document>>
   );
   const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {

@@ -245,7 +245,7 @@ export default function Sidebar({ user, userModuleKeys }: SidebarProps) {
     load();
     const iv = setInterval(load, 60_000);
     return () => clearInterval(iv);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => { setMobileOpen(false); }, [pathname]);
   useEffect(() => {

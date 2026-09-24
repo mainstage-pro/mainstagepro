@@ -844,7 +844,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
 
   useEffect(() => {
     if (discForm.tipoServicio === "RENTA") setBriefAplica(false);
-  }, [discForm.tipoServicio]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [discForm.tipoServicio]);
 
   const PASOS_DISCOVERY = discForm.tipoServicio === "RENTA"
     ? PASOS_DISCOVERY_RENTA

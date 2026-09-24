@@ -33,7 +33,7 @@ export function EmpresaCombobox({ value, onChange, tipoDefault = "AMBOS", placeh
   // Keep query in sync when value is set externally
   useEffect(() => {
     setQuery(value?.nombre ?? "");
-  }, [value?.nombre]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [value?.nombre]);
 
   const filtered = query.trim()
     ? empresas.filter(e => e.nombre.toLowerCase().includes(query.toLowerCase()))

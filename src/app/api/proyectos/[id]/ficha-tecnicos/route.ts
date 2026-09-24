@@ -62,7 +62,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       cantidad: e.cantidad,
       tipo: e.tipo,
     })),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     personal: (proyecto.personal ?? [])
       .filter((p: any) => p.tecnico)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

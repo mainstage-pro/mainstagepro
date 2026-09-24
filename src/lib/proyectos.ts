@@ -296,7 +296,6 @@ function slugify(text: string): string {
 async function slugUnico(base: string, excluirId?: string): Promise<string> {
   let slug = base;
   let n = 1;
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     const rows = await prisma.$queryRawUnsafe<{ id: string }[]>(
       `SELECT "id" FROM "proyectos_presentacion" WHERE "slug" = $1 LIMIT 1;`,

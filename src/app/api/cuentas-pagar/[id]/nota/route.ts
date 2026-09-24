@@ -87,7 +87,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   try {
     const pdfStream = await ReactPDF.renderToStream(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       React.createElement(NotaPagoPDF, { nota: notaData }) as React.ReactElement<React.ComponentProps<typeof Document>>
     );
 

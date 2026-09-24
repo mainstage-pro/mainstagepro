@@ -399,7 +399,6 @@ export default function OperacionesPage() {
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d) setCapturaCounts(d); })
       .catch(() => {});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Búsqueda global — debounce 350ms + fetch ?q= ───────────────────────────
@@ -488,7 +487,7 @@ export default function OperacionesPage() {
       })
       .catch(() => {})
       .finally(() => setLoadingMain(false));
-  }, [vista, syncTrigger]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [vista, syncTrigger]);
 
   useEffect(() => {
     if (typeof vista === "string") return;
@@ -774,7 +773,7 @@ export default function OperacionesPage() {
       } : null);
     }
     setUndoState(null);
-  }, [undoState]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [undoState]);
 
   const saveTarea = useCallback((id: string, patch: Record<string, unknown>) => {
     // Optimistic update happens first; si el guardado falla lo avisamos.
@@ -919,7 +918,7 @@ export default function OperacionesPage() {
     // Si lo arrastrado era una subtarea, su padre original la tiene en estado local:
     // refrescamos para que desaparezca de ahí y aparezca bajo el nuevo padre.
     if (dragIsSubRef.current) { dragIsSubRef.current = false; setSyncTrigger(n => n + 1); }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Reordenar tareas (above / below) sin hacer subtarea ─────────────────
   const reorderTask = useCallback((draggedId: string, targetId: string, position: "above" | "below") => {
@@ -940,7 +939,7 @@ export default function OperacionesPage() {
       secciones: prev.secciones.map(s => ({ ...s, tareas: reorder(s.tareas) })),
     } : null);
     setDraggingId(null);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const moveToSection = useCallback((taskId: string, seccionId: string) => {
     setProyectoDetalle(prev => {
@@ -969,7 +968,7 @@ export default function OperacionesPage() {
     });
     setDraggingId(null);
     if (dragIsSubRef.current) { dragIsSubRef.current = false; setSyncTrigger(n => n + 1); }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
   // Keep ref in sync so the global mousemove/mouseup can call it without stale closure
   useEffect(() => { moveToSecRef.current = moveToSection; }, [moveToSection]);
   // FIX 5: Keep selectedIds ref in sync so the mouseup closure can read current value
@@ -997,7 +996,7 @@ export default function OperacionesPage() {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ seccionId: null }),
     });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const moveManyToSection = useCallback((taskIds: string[], seccionId: string) => {
     const idSet = new Set(taskIds);
@@ -1028,7 +1027,7 @@ export default function OperacionesPage() {
       body: JSON.stringify({ seccionId }),
     })));
     setDraggingId(null);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
   // FIX 5: Keep moveManyToSection ref in sync for multi-select drag
   useEffect(() => { moveManyToSecRef.current = moveManyToSection; }, [moveManyToSection]);
 
@@ -1050,7 +1049,7 @@ export default function OperacionesPage() {
       body: JSON.stringify({ seccionId: null }),
     })));
     setDraggingId(null);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const moveToProject = useCallback((taskId: string, proyectoId: string, proyectoNombre: string) => {
     // FIX 2: Optimistic removal from both flat list AND project sections (prevents ghost)
@@ -1068,7 +1067,7 @@ export default function OperacionesPage() {
     });
     setAddToast({ msg: `Movida a ${proyectoNombre}`, visible: true });
     setTimeout(() => setAddToast(null), 2000);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const toggleMultiSelect = useCallback((id: string) => {
     setSelectedIds(prev => {
@@ -1101,7 +1100,7 @@ export default function OperacionesPage() {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ estado: "COMPLETADA" }),
     })));
-  }, [selectedIds, clearMultiSelect]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedIds, clearMultiSelect]);
 
   const handleExtractChild = useCallback((extracted: TareaItem) => {
     if (typeof vista !== "string") {
@@ -1109,7 +1108,7 @@ export default function OperacionesPage() {
     } else {
       setTareas(prev => [extracted, ...prev]);
     }
-  }, [vista]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [vista]);
 
   const bulkDelete = useCallback(async () => {
     const ids = [...selectedIds];
@@ -1122,7 +1121,7 @@ export default function OperacionesPage() {
     clearMultiSelect();
     setConfirmBulk(false);
     await Promise.all(ids.map(id => fetch(`/api/tareas/${id}`, { method: "DELETE" })));
-  }, [selectedIds, clearMultiSelect]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedIds, clearMultiSelect]);
 
   const addSeccion = useCallback(async (tipoModulo: "TAREA" | "PLAN") => {
     if (!nuevaSeccionNombre.trim() || typeof vista === "string" || vista.tipo === "area") return;

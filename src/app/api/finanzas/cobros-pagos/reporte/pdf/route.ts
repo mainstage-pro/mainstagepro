@@ -77,7 +77,6 @@ export async function GET(req: NextRequest) {
   const pdfData = { tipo, rows, totalPendiente, totalVencido, totalCubierto, generadoEn: new Date().toISOString() };
 
   const pdfStream = await ReactPDF.renderToStream(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     React.createElement(CuentasReportePDF, { data: pdfData }) as React.ReactElement<React.ComponentProps<typeof Document>>
   );
   const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {

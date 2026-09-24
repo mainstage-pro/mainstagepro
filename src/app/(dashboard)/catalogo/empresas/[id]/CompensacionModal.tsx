@@ -37,8 +37,8 @@ export default function CompensacionModal({
     // La API espera { cuentaCobrarId, cuentaPagarId, montoAplicado }
     // En un escenario real esto requiere una distribución iterativa si hay N a M.
     // Distribución Simple:
-    let tempCxc = Object.entries(aplicacionesCxc).filter(x => (x[1] || 0) > 0).map(x => ({ id: x[0], val: x[1] }));
-    let tempCxp = Object.entries(aplicacionesCxp).filter(x => (x[1] || 0) > 0).map(x => ({ id: x[0], val: x[1] }));
+    const tempCxc = Object.entries(aplicacionesCxc).filter(x => (x[1] || 0) > 0).map(x => ({ id: x[0], val: x[1] }));
+    const tempCxp = Object.entries(aplicacionesCxp).filter(x => (x[1] || 0) > 0).map(x => ({ id: x[0], val: x[1] }));
 
     for (const cx of tempCxc) {
       let restanteCx = cx.val;

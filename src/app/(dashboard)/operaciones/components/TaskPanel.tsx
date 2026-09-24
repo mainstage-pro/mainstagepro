@@ -123,7 +123,7 @@ export default function TaskPanel({
   // Auto-save when switching to another task if dirty
   useEffect(() => {
     return () => { pendingSave.current?.(); };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // Reset when tarea changes
   useEffect(() => {

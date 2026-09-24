@@ -839,7 +839,6 @@ export default function TaskModal({
                           {archivosLocal.map(a => (
                             (a.tipo ?? "").toLowerCase().startsWith("image/") ? (
                               <div key={a.id} className="relative group w-14 h-14">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <a href={a.url} target="_blank" rel="noopener noreferrer" className="block w-full h-full rounded-lg overflow-hidden border border-[#222]">
                                   <img src={a.url} alt={a.nombre} className="w-full h-full object-cover" />
                                 </a>

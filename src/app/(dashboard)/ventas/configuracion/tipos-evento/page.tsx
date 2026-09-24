@@ -146,7 +146,6 @@ function RendersSection() {
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
 
@@ -402,7 +401,6 @@ function TipoCard({
   const [dragIdx, setDragIdx] = useState<number | null>(null);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setFotos(tipo.fotos);
   }, [tipo.fotos]);
 
@@ -734,7 +732,6 @@ function HeroSlidesManager() {
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
 

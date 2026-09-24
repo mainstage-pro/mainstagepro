@@ -470,14 +470,12 @@ export default function PresentacionClient({ cotizacion, tradeNiveles , token, g
     return () => clearInterval(t);
   }, [heroImgs.length]);
 
-  /* eslint-disable react-hooks/rules-of-hooks */
   const stats = [
     { hook: useCounter(750),   suffix: "+", label: "Eventos realizados" },
     { hook: useCounter(50000), suffix: "+", label: "Asistentes cubiertos" },
     { hook: useCounter(7),     suffix: "+", label: "Años de experiencia" },
     { hook: useCounter(100),   suffix: "%", label: "Compromiso con cada evento" },
   ];
-  /* eslint-enable react-hooks/rules-of-hooks */
 
   const heroOpacity = Math.max(0, 1 - scrollY / 800);
   const heroY       = scrollY * 0.3;

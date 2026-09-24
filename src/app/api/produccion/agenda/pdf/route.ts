@@ -54,7 +54,6 @@ export async function GET(req: NextRequest) {
   };
 
   const pdfStream = await ReactPDF.renderToStream(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     React.createElement(AgendaEventosPDF, { data: pdfData }) as React.ReactElement<React.ComponentProps<typeof Document>>
   );
   const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {

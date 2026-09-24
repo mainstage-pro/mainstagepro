@@ -68,7 +68,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       const vehiculoIds = transportes.map((t: TransporteSlot) => t.vehiculoId).filter(Boolean);
       const choferIds = transportes.map((t: TransporteSlot) => t.choferId).filter(Boolean);
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const [vData, cData] = await Promise.all([
           vehiculoIds.length > 0 ? (prisma.vehiculo as any).findMany({ where: { id: { in: vehiculoIds } }, select: { id: true, nombre: true } }) : [],
           choferIds.length > 0 ? (prisma.tecnico as any).findMany({ where: { id: { in: choferIds } }, select: { id: true, nombre: true } }) : [],

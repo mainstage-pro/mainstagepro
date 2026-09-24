@@ -163,7 +163,7 @@ export default function QuickAdd({
     if (!triggerOpen) return;
     setOpen(true);
     setTimeout(() => titleRef.current?.focus(), 30);
-  }, [triggerOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [triggerOpen]);
 
   // Auto-resize textarea height after every titulo change
   useEffect(() => {
@@ -185,7 +185,6 @@ export default function QuickAdd({
     if (!titulo.includes("\n")) return null;
     const lines = titulo.split("\n").map(cleanLine).filter(l => l.length > 0);
     return lines.length >= 2 ? lines : null;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [titulo]);
 
   // Combined: clipboard-parsed (paste) OR textarea-typed multiline

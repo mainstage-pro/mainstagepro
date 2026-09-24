@@ -143,7 +143,7 @@ export function VistaSemanaEquipo() {
     return () => { vivo = false; };
   };
 
-  useEffect(() => { cargar(null); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  useEffect(() => { cargar(null); }, []);
 
   // Reasignar una tarea a otro día (optimista + PATCH).
   const moverTarea = async (tareaId: string, nuevoDia: string) => {

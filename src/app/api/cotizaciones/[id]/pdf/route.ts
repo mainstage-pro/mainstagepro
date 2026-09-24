@@ -122,7 +122,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   // solo se traducen los textos LIBRES (escritos a mano) que vienen de la base de datos.
   let cotizacionFinal = cotizacionWithImgs;
   let descCategoriasFinal = descCategorias;
-  let catLabels: Record<string, string> = {};
+  const catLabels: Record<string, string> = {};
   if (cotizacion.idioma === "en") {
     const notasSecciones: Record<string, string> = cotizacion.notasSecciones ? JSON.parse(cotizacion.notasSecciones) : {};
     const textos: Record<string, string> = {};
