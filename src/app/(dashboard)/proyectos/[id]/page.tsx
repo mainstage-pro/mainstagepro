@@ -1617,13 +1617,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  // Plantillas por fase. La operación es adaptativa: si el montaje/desmontaje viven en su
-  // propia fase (día aparte), no se duplican esos ítems dentro de la operación.
+  // Plantillas por fase. Cada una alimenta su propia cronología: el acarreo de bodega es
+  // logística general y nunca operación, ocurra o no el mismo día del evento.
   const MONTAJE_ITEMS = [
     "Llamado en bodega", "Cargar transporte", "Traslado a venue", "Llegada a venue y descarga de equipos",
     "Acomodo seccionado de equipos", "Inicio de montaje", "Fin de montaje", "Pruebas de sonido", "Pruebas de iluminación",
   ];
-  const EVENTO_ITEMS = ["Inicio de evento", "Fin de evento / Inicio de desmontaje"];
+  const EVENTO_ITEMS = ["Inicio de evento", "Fin de evento"];
   const DESMONTAJE_ITEMS = [
     "Inicio de desmontaje", "Orden de equipos para carga a transporte", "Carga de equipos a transporte",
     "Traslado a bodega", "Llegada a bodega y descarga de equipos", "Acomodo de equipos en bodega", "Fin de la jornada",
@@ -2601,24 +2601,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     const fase: FaseCrono = opts?.fase ?? "operacion";
     const horaInicio = proyecto?.horaInicioEvento ?? "";
     const horaFin = proyecto?.horaFinEvento ?? "";
-    const montajeAparte = proyecto?.montajeDiaAparte === true;
-    const desmontajeAparte = proyecto?.desmontajeDiaAparte === true;
 
     let plantilla: CronoRow[];
     if (fase === "montaje") plantilla = mkCronoRows(MONTAJE_ITEMS, "montaje");
     else if (fase === "desmontaje") plantilla = mkCronoRows(DESMONTAJE_ITEMS, "desmontaje");
-    else {
-      // Operación adaptativa: no repite ítems que ya viven en su propia fase (día aparte).
-      plantilla = mkCronoRows([
-        ...(montajeAparte ? [] : MONTAJE_ITEMS),
-        ...EVENTO_ITEMS,
-        ...(desmontajeAparte ? [] : DESMONTAJE_ITEMS),
-      ], "operacion");
-    }
+    else plantilla = mkCronoRows(EVENTO_ITEMS, "operacion");
     const base = plantilla.map(r => {
       const row: CronoRow = { ...r, _id: nuevoCronoId(), ...(dia ? { dia } : {}) };
       if (r.actividad === "Inicio de evento" && horaInicio) row.horaInicio = horaInicio;
-      if (r.actividad === "Fin de evento / Inicio de desmontaje" && horaFin) row.horaInicio = horaFin;
+      if (r.actividad === "Fin de evento" && horaFin) row.horaInicio = horaFin;
       return row;
     });
 
@@ -2654,31 +2645,20 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     d.setUTCDate(d.getUTCDate() + delta);
     return d.toISOString().substring(0, 10);
   }
-  async function activarFaseMontaje() {
-    await guardarBool("montajeDiaAparte", true);
-    if (!proyecto?.fechaMontaje) {
-      const evt = proyecto?.fechaEvento?.substring(0, 10);
-      if (evt) await guardarCampo("fechaMontaje", fechaMasDias(evt, -1));
+  // El día aparte es solo una fecha: el montaje y el desmontaje siempre se capturan,
+  // ocurran la víspera o el mismo día del evento. Al activarlo se propone la fecha vecina.
+  async function alternarDiaAparte(fase: "montaje" | "desmontaje") {
+    const esMont = fase === "montaje";
+    const activar = !(esMont ? proyecto?.montajeDiaAparte : proyecto?.desmontajeDiaAparte);
+    await guardarBool(esMont ? "montajeDiaAparte" : "desmontajeDiaAparte", activar);
+    if (!activar) return;
+    const dias = diasEvento(proyecto?.fechaEvento, proyecto?.fechasEvento);
+    if (esMont && !proyecto?.fechaMontaje && dias[0]) {
+      await guardarCampo("fechaMontaje", fechaMasDias(dias[0], -1));
     }
-  }
-  async function activarFaseDesmontaje() {
-    await guardarBool("desmontajeDiaAparte", true);
-    if (!proyecto?.fechaDesmontaje) {
-      const dias = diasEvento(proyecto?.fechaEvento, proyecto?.fechasEvento);
-      const ultimo = dias[dias.length - 1];
-      if (ultimo) await guardarCampo("fechaDesmontaje", fechaMasDias(ultimo, 1));
+    if (!esMont && !proyecto?.fechaDesmontaje && dias[dias.length - 1]) {
+      await guardarCampo("fechaDesmontaje", fechaMasDias(dias[dias.length - 1], 1));
     }
-  }
-  async function quitarFaseCrono(fase: "montaje" | "desmontaje") {
-    const nombre = fase === "montaje" ? "montaje" : "desmontaje";
-    const tieneRows = cronoRows.some(r => faseDe(r) === fase);
-    if (tieneRows && !await confirm({ message: `¿Quitar la cronología de ${nombre}? Se borrarán sus filas.`, danger: true, confirmText: "Quitar" })) return;
-    if (tieneRows) {
-      const next = cronoRows.filter(r => faseDe(r) !== fase);
-      setCronoRows(next);
-      guardarCronograma(next);
-    }
-    await guardarBool(fase === "montaje" ? "montajeDiaAparte" : "desmontajeDiaAparte", false);
   }
 
   function updateCronoRow(i: number, field: keyof CronoRow, value: string) {
@@ -2813,6 +2793,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     const esMont = fase === "montaje";
     const fechaField = esMont ? "fechaMontaje" : "fechaDesmontaje";
     const fecha = (esMont ? proyecto?.fechaMontaje : proyecto?.fechaDesmontaje)?.toString().substring(0, 10) ?? "";
+    const diaAparte = (esMont ? proyecto?.montajeDiaAparte : proyecto?.desmontajeDiaAparte) === true;
     const label = esMont ? "Montaje" : "Desmontaje";
     const badge = esMont ? "M" : "D";
     const entries = cronoRows.map((row, i) => ({ row, i })).filter(({ row }) => faseDe(row) === fase);
@@ -2822,8 +2803,23 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[9px] font-semibold text-black bg-[#B3985B] rounded px-1.5 py-0.5 shrink-0">{badge}</span>
             <span className="text-white text-sm font-medium">{label}</span>
-            <input type="date" value={fecha} onChange={e => guardarCampo(fechaField, e.target.value)}
-              className="bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+            {diaAparte ? (
+              <input type="date" value={fecha} onChange={e => guardarCampo(fechaField, e.target.value)}
+                className="bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+            ) : (
+              <span className="text-gray-500 text-xs capitalize">
+                {(() => {
+                  const d = esMont ? diasDelEvento[0] : diasDelEvento[diasDelEvento.length - 1];
+                  return d ? fmtDiaCorto(d) : "El día del evento";
+                })()}
+              </span>
+            )}
+            <button onClick={() => alternarDiaAparte(fase)}
+              className={`text-[11px] px-2 py-0.5 rounded-lg border transition-colors ${diaAparte
+                ? "text-[#B3985B] border-[#B3985B]/50 hover:border-[#B3985B]"
+                : "text-gray-500 border-[#333] hover:text-gray-300 hover:border-[#555]"}`}>
+              Día aparte
+            </button>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <button onClick={() => cargarPlantillaCrono({ fase })}
@@ -2833,10 +2829,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             <button onClick={() => addCronoRow({ fase })}
               className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/40 hover:border-[#B3985B] px-3 py-1 rounded-lg transition-colors">
               + Agregar fila
-            </button>
-            <button onClick={() => quitarFaseCrono(fase)}
-              className="text-xs text-gray-500 hover:text-red-400 border border-[#333] hover:border-red-400/50 px-3 py-1 rounded-lg transition-colors">
-              Quitar
             </button>
           </div>
         </div>
@@ -4020,8 +4012,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   // Servicio de varios días: lista canónica de fechas (día 1 = fechaEvento)
   const diasDelEvento = diasEvento(proyecto.fechaEvento, proyecto.fechasEvento);
   const esMultidia = diasDelEvento.length > 1;
-  const montajeFaseActiva = proyecto.montajeDiaAparte === true;
-  const desmontajeFaseActiva = proyecto.desmontajeDiaAparte === true;
   const fmtDiaCorto = (iso: string) =>
     new Date(iso + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" });
   const esRenta = proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA";
@@ -5881,18 +5871,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 </p>
                 <div className="flex items-center gap-2 flex-wrap">
                   {savingCrono && <span className="text-xs text-gray-600">Guardando...</span>}
-                  {!montajeFaseActiva && (
-                    <button onClick={activarFaseMontaje}
-                      className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-3 py-1 rounded-lg transition-colors">
-                      + Montaje
-                    </button>
-                  )}
-                  {!desmontajeFaseActiva && (
-                    <button onClick={activarFaseDesmontaje}
-                      className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-3 py-1 rounded-lg transition-colors">
-                      + Desmontaje
-                    </button>
-                  )}
                   {cronoRows.length > 0 && (
                     <button onClick={() => guardarCronograma(cronoRows)} disabled={savingCrono}
                       className="text-xs bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black font-semibold px-3 py-1 rounded-lg transition-colors">
@@ -5902,16 +5880,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 </div>
               </div>
               <p className="text-[11px] text-gray-600 mb-4">{VISTAS_CRONOLOGIA.LOGISTICA.descripcion}</p>
-              {montajeFaseActiva || desmontajeFaseActiva ? (
-                <div className="space-y-8">
-                  {montajeFaseActiva && renderFaseExtra("montaje")}
-                  {desmontajeFaseActiva && renderFaseExtra("desmontaje")}
-                </div>
-              ) : (
-                <p className="text-gray-600 text-xs">
-                  El montaje y el desmontaje ocurren el mismo día del evento. Agrégalos arriba si van en día aparte.
-                </p>
-              )}
+              <div className="space-y-8">
+                {renderFaseExtra("montaje")}
+                {renderFaseExtra("desmontaje")}
+              </div>
             </div>
           )}
 
