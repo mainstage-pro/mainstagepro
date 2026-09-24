@@ -3910,101 +3910,70 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       <div className="mb-2"><BackButton /></div>
 
       {/* ── Header ── */}
-      <div className="flex flex-col gap-4">
-        {/* Título e intención */}
+      <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h1 className="text-xl md:ms-h1">{proyecto.nombre}</h1>
-          <p className="text-[#444] text-xs mt-1 italic">
-            Estamos creando una experiencia memorable para {proyecto.cliente.nombre.split(" ")[0]}.
-          </p>
-        </div>
 
-        {/* Datos clave del evento: Cliente · Fecha · Lugar */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="min-w-0">
-            <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">Cliente</p>
-            <Link href={`/crm/clientes/${proyecto.cliente.id}`} className="text-[#B3985B] text-sm font-medium hover:underline block truncate">
+          {/* Metadatos en una sola línea: cliente · fecha · lugar · servicio */}
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-2 text-[13px]">
+            <Link href={`/crm/clientes/${proyecto.cliente.id}`} className="text-[#B3985B] font-medium hover:underline truncate max-w-[16rem]">
               {proyecto.cliente.nombre}
             </Link>
             {proyecto.cliente.empresa && (
-              <p className="text-gray-500 text-xs truncate">{proyecto.cliente.empresa}</p>
+              <span className="text-gray-600 truncate max-w-[12rem]">({proyecto.cliente.empresa})</span>
             )}
-          </div>
-          <div className="min-w-0">
-            <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">
-              {esMultidia ? `Días del evento · ${diasDelEvento.length}` : "Fecha del evento"}
-            </p>
+            <span className="text-[#2f2f2f]">·</span>
             {esMultidia ? (
-              <div className="space-y-1">
-                {diasDelEvento.map((d, i) => (
-                  <div key={d} className="flex items-center gap-2">
-                    <span className="text-[9px] font-semibold text-black bg-[#B3985B] rounded px-1.5 py-0.5 shrink-0">D{i + 1}</span>
-                    <span className="text-white text-sm capitalize">{fmtDiaCorto(d)}</span>
-                  </div>
-                ))}
-                {proyecto.horaInicioEvento && (
-                  <p className="text-gray-400 text-xs mt-0.5">{proyecto.horaInicioEvento}{proyecto.horaFinEvento ? ` – ${proyecto.horaFinEvento}` : ""}</p>
-                )}
-              </div>
+              <span className="text-white font-medium capitalize">
+                {diasDelEvento.length} días · {fmtDiaCorto(diasDelEvento[0])} – {fmtDiaCorto(diasDelEvento[diasDelEvento.length - 1])}
+              </span>
             ) : (
-              <>
-                <p className="text-white font-semibold text-sm leading-tight">{fmtDate(proyecto.fechaEvento)}</p>
-                {proyecto.horaInicioEvento && (
-                  <p className="text-gray-400 text-xs mt-0.5">{proyecto.horaInicioEvento}{proyecto.horaFinEvento ? ` – ${proyecto.horaFinEvento}` : ""}</p>
-                )}
-              </>
+              <span className="text-white font-medium">{fmtDate(proyecto.fechaEvento)}</span>
             )}
-          </div>
-          <div className="min-w-0">
-            <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">Lugar del evento</p>
-            <p className="text-gray-300 text-sm inline-flex items-start gap-1.5">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 mt-0.5 text-gray-600"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-              <span>{proyecto.lugarEvento ?? <span className="text-red-500/60 italic">Sin lugar</span>}</span>
-            </p>
-          </div>
-        </div>
-
-        {/* Contexto: etapa · tipo de servicio · cuenta regresiva */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] ${ESTADO_COLORS[proyecto.estado]}`}>
-            <span className="opacity-60">Etapa del proyecto</span>
-            <span className="font-semibold">{ESTADO_LABELS[proyecto.estado] ?? proyecto.estado.replace("_", " ")}</span>
-          </span>
-          {proyecto.tipoServicio && (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-[#2a2a2a] bg-[#1a1a1a] text-[11px]">
-              <span className="text-gray-500">Tipo de servicio</span>
-              <span className="font-semibold text-[#B3985B]">{proyecto.tipoServicio === "RENTA" ? "Renta de Equipo" : proyecto.tipoServicio === "PRODUCCION_TECNICA" ? "Producción Técnica" : proyecto.tipoServicio === "DIRECCION_TECNICA" ? "Dirección Técnica" : proyecto.tipoServicio}</span>
+            {proyecto.horaInicioEvento && (
+              <span className="text-gray-500">{proyecto.horaInicioEvento}{proyecto.horaFinEvento ? ` – ${proyecto.horaFinEvento}` : ""}</span>
+            )}
+            <span className="text-[#2f2f2f]">·</span>
+            <span className="text-gray-500 truncate max-w-[18rem]">
+              {proyecto.lugarEvento ?? <span className="text-red-500/60 italic">Sin lugar</span>}
             </span>
-          )}
-          {diasRestantes >= 0 && (
-            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] ${diasRestantes <= 7 ? "bg-red-900/40 text-red-300" : diasRestantes <= 30 ? "bg-yellow-900/30 text-yellow-400" : "bg-[#1a1a1a] border border-[#2a2a2a] text-gray-400"}`}>
-              <span className="opacity-60">Cuenta regresiva</span>
-              <span className="font-semibold">{diasRestantes === 0 ? "Es hoy" : `Faltan ${diasRestantes} día${diasRestantes !== 1 ? "s" : ""}`}</span>
-            </span>
-          )}
-        </div>
+            {proyecto.tipoServicio && (<>
+              <span className="text-[#2f2f2f]">·</span>
+              <span className="text-gray-500">{proyecto.tipoServicio === "RENTA" ? "Renta de equipo" : proyecto.tipoServicio === "PRODUCCION_TECNICA" ? "Producción técnica" : proyecto.tipoServicio === "DIRECCION_TECNICA" ? "Dirección técnica" : proyecto.tipoServicio}</span>
+            </>)}
+          </div>
 
-        {/* Referencias: Proyecto y Cotización bajo un mismo formato */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-[#2a2a2a] bg-[#111] text-[11px] text-gray-400">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-            <span className="text-gray-500">Proyecto</span>
-            <span className="font-mono text-gray-300">{proyecto.numeroProyecto}</span>
+          {/* Referencias: folios y trato, en tono discreto */}
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-2 text-[11px]">
+            <span className="text-[#3a3a3a]">Proyecto</span>
+            <span className="font-mono text-gray-600">{proyecto.numeroProyecto}</span>
             <CopyButton value={proyecto.numeroProyecto} size="xs" />
+            {proyecto.cotizacion && (<>
+              <span className="text-[#2f2f2f]">·</span>
+              <span className="text-[#3a3a3a]">Cotización</span>
+              <Link href={`/cotizaciones/${proyecto.cotizacion.id}`} className="font-mono text-gray-600 hover:text-[#B3985B] transition-colors">
+                {proyecto.cotizacion.numeroCotizacion}
+              </Link>
+            </>)}
+            {proyecto.tratoId && (<>
+              <span className="text-[#2f2f2f]">·</span>
+              <Link href={`/crm/tratos/${proyecto.tratoId}`} className="text-gray-600 hover:text-[#B3985B] transition-colors">
+                Ver trato ↗
+              </Link>
+            </>)}
+          </div>
+        </div>
+
+        {/* Estado y urgencia: lo único que se lee de un vistazo */}
+        <div className="flex items-center gap-2 shrink-0 pt-1">
+          <span className={`inline-flex items-center px-2.5 py-1.5 rounded-lg text-[12px] font-semibold ${ESTADO_COLORS[proyecto.estado]}`}>
+            {ESTADO_LABELS[proyecto.estado] ?? proyecto.estado.replace("_", " ")}
           </span>
-          {proyecto.cotizacion && (
-            <Link href={`/cotizaciones/${proyecto.cotizacion.id}`} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-[#2a2a2a] bg-[#111] text-[11px] text-gray-400 hover:border-[#B3985B]/40 hover:text-[#B3985B] transition-colors">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-              <span className="text-gray-500">Cotización</span>
-              <span className="font-mono">{proyecto.cotizacion.numeroCotizacion}</span>
-            </Link>
-          )}
-          {proyecto.tratoId && (
-            <Link href={`/crm/tratos/${proyecto.tratoId}`} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-[#2a2a2a] bg-[#111] text-[11px] text-gray-400 hover:border-[#B3985B]/40 hover:text-[#B3985B] transition-colors">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m11 17 2 2a1 1 0 1 0 3-3"/><path d="m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4"/><path d="m21 3 1 11h-2"/><path d="M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3"/><path d="M3 4h8"/></svg>
-              <span className="text-gray-500">Trato</span>
-              <span>{proyecto.cliente.nombre}{proyecto.nombre ? ` · ${proyecto.nombre}` : ""}</span>
-            </Link>
+          {diasRestantes >= 0 && (
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-semibold ${diasRestantes <= 7 ? "bg-red-900/40 text-red-300" : diasRestantes <= 30 ? "bg-yellow-900/30 text-yellow-400" : "bg-[#1a1a1a] border border-[#2a2a2a] text-gray-400"}`}>
+              {diasRestantes <= 7 && <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />}
+              {diasRestantes === 0 ? "Es hoy" : diasRestantes === 1 ? "Mañana" : `Faltan ${diasRestantes} días`}
+            </span>
           )}
         </div>
       </div>
@@ -4016,8 +3985,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         <div className="flex-1 min-w-0 space-y-4">
 
         {/* ──── Sticky tab navigation ──── */}
-        <div className="sticky top-0 z-30 -mx-3 md:-mx-6 px-3 md:px-6 py-2 bg-[#0a0a0a]/95 backdrop-blur-sm border-b border-[#1a1a1a]">
-          <div className="flex gap-1">
+        <div className="sticky top-0 z-30 -mx-3 md:-mx-6 px-3 md:px-6 bg-[#0a0a0a]/95 backdrop-blur-sm border-b border-[#1e1e1e]">
+          <div className="flex gap-0.5">
             {([
               { id: 'resumen',   label: 'Resumen' },
               { id: 'operacion', label: 'Operación' },
@@ -4028,10 +3997,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                className={`px-3.5 py-2.5 -mb-px text-xs font-semibold border-b-2 transition-colors ${
                   activeTab === item.id
-                    ? 'bg-[#B3985B]/20 text-[#B3985B] border border-[#B3985B]/40'
-                    : 'text-gray-500 hover:text-gray-300 hover:bg-[#1a1a1a]'
+                    ? 'text-white border-[#B3985B]'
+                    : 'text-gray-500 border-transparent hover:text-gray-300'
                 }`}
               >
                 {item.label}
@@ -4043,62 +4012,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         {/* ──── RESUMEN tab ──── */}
         {activeTab === 'resumen' && (
           <div className="space-y-4">
-
-      {/* ── Confirmación de información del cliente ── */}
-      <div className="ms-card p-5 space-y-3">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Confirmación del cliente</p>
-            <p className="text-gray-500 text-xs mt-0.5">Enlace para que el cliente confirme y complete los datos del evento. Al guardar, se llenan aquí automáticamente.</p>
-          </div>
-          {proyecto.infoToken ? (
-            <span className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full font-semibold ${proyecto.infoRecibidoEn ? "bg-green-900/50 text-green-300" : "bg-yellow-900/50 text-yellow-300"}`}>
-              {proyecto.infoRecibidoEn ? "Recibido" : "Pendiente"}
-            </span>
-          ) : null}
-        </div>
-
-        {!proyecto.infoToken ? (
-          <button
-            onClick={generarInfoToken}
-            disabled={generandoInfoToken}
-            className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] disabled:opacity-50 text-white text-xs px-4 py-2 rounded-lg transition-colors"
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-            {generandoInfoToken ? "Generando..." : "Generar enlace de confirmación"}
-          </button>
-        ) : (
-          <div className="space-y-2">
-            <div className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 flex items-center gap-2">
-              <span className="text-gray-500 text-xs flex-1 truncate font-mono">{`${typeof window !== "undefined" ? window.location.origin : ""}/confirmar/proyecto/${proyecto.infoToken}`}</span>
-              <button onClick={copiarInfoLink} className="text-[10px] text-[#B3985B] hover:text-white shrink-0 transition-colors">Copiar</button>
-              {proyecto.cliente.telefono && (
-                <a
-                  href={`https://wa.me/${proyecto.cliente.telefono.replace(/\D/g, "")}?text=${encodeURIComponent(`Hola ${proyecto.cliente.nombre}, para tu evento "${proyecto.nombre}" nos ayudas confirmando los datos en este enlace: ${window.location.origin}/confirmar/proyecto/${proyecto.infoToken}`)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[10px] text-green-400 hover:text-green-300 shrink-0 transition-colors flex items-center gap-1"
-                >
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.999 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.984-1.31A9.944 9.944 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg>
-                  WhatsApp
-                </a>
-              )}
-            </div>
-            <div className="flex items-center gap-3">
-              {proyecto.infoRecibidoEn && (
-                <span className="text-xs text-gray-500">Recibido {fmtDateTime(proyecto.infoRecibidoEn)}</span>
-              )}
-              <button
-                onClick={revocarInfoToken}
-                disabled={revocandoInfoToken}
-                className="text-[10px] text-red-400/70 hover:text-red-400 disabled:opacity-50 transition-colors ml-auto"
-              >
-                {revocandoInfoToken ? "Revocando..." : "Revocar enlace"}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
 
       {/* ── Progreso del proyecto (Avance) ── */}
       {(() => {
@@ -4192,22 +4105,55 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
         const pendientes = wChecks.filter(c => !c.ok);
 
+        // ── Semáforo de preparación (vive dentro de esta misma tarjeta) ──────
+        const anticipoCobrado = anticipoCxC ? anticipoCxC.montoCobrado >= anticipoCxC.monto : false;
+        const fichaOk = esRenta
+          ? !!proyecto.lugarEvento
+          : !!(proyecto.horaInicioEvento && proyecto.horaFinEvento && proyecto.lugarEvento);
+        const prepItems = [
+          {
+            label: "Ficha",
+            ok: fichaOk,
+            warn: !fichaOk,
+            txt: fichaOk ? "Completa" : (esRenta ? "lugar faltante" : [!proyecto.horaInicioEvento && "hora", !proyecto.lugarEvento && "lugar"].filter(Boolean).join(", ") + " faltante"),
+          },
+          ...(!esRenta ? [{
+            label: "Personal",
+            ok: proyecto.personal.length > 0 && personalConfirmado === proyecto.personal.length,
+            warn: proyecto.personal.length > 0 && personalConfirmado < proyecto.personal.length,
+            txt: proyecto.personal.length === 0 ? "Sin asignar" : `${personalConfirmado}/${proyecto.personal.length} confirmados`,
+          }] : []),
+          {
+            label: "Anticipo",
+            ok: anticipoCobrado,
+            warn: !!(anticipoCxC && !anticipoCobrado),
+            txt: anticipoCxC ? (anticipoCobrado ? "Cobrado" : "Pendiente") : "Sin esquema",
+          },
+          {
+            label: "Confirmación cliente",
+            ok: !!proyecto.infoRecibidoEn,
+            warn: !proyecto.infoRecibidoEn,
+            txt: proyecto.infoRecibidoEn ? "Recibida" : proyecto.infoToken ? "Enviada" : "Sin enviar",
+          },
+        ];
+
         return (
-          <div className="ms-stat-card">
+          <div className="rounded-xl border border-[#242424] bg-gradient-to-b from-[#141414] to-[#0f0f0f] overflow-hidden">
             {/* Header row */}
-            <div className="flex items-center justify-between gap-3 mb-3">
-              <div className="flex items-center gap-3">
-                <span className="text-3xl font-bold tabular-nums" style={{ color: barColor }}>{pct}%</span>
-                <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wider leading-none">Avance del proyecto</p>
+            <div className="flex items-center justify-between gap-3 px-4 pt-4 pb-3">
+              <div className="flex items-center gap-3.5 min-w-0">
+                <span className="text-[40px] leading-none font-bold tabular-nums tracking-tight shrink-0" style={{ color: barColor }}>
+                  {pct}<span className="text-[17px] opacity-50">%</span>
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[10.5px] text-gray-600 uppercase tracking-[0.09em] font-semibold leading-none">Avance del proyecto</p>
                   {pendientes.length > 0 && proyecto.estado !== "CANCELADO" && (
-                    <p className="text-[11px] text-gray-600 mt-0.5">
-                      {pendientes.length} pendiente{pendientes.length > 1 ? 's' : ''}: {pendientes.slice(0, 2).map(p => p.label).join(', ')}{pendientes.length > 2 ? ` +${pendientes.length - 2}` : ''}
+                    <p className="text-[12.5px] text-gray-400 mt-1.5">
+                      {pendientes.length} pendiente{pendientes.length > 1 ? 's' : ''}: <span className="text-gray-300">{pendientes.slice(0, 2).map(p => p.label).join(', ')}</span>{pendientes.length > 2 ? ` +${pendientes.length - 2}` : ''}
                     </p>
                   )}
                   {pendientes.length === 0 && proyecto.estado !== "CANCELADO" && (
-                    <p className="text-[11px] text-emerald-500/70 mt-0.5">✓ Todo completado
-                    </p>
+                    <p className="text-[12.5px] text-emerald-500/70 mt-1.5">✓ Todo completado</p>
                   )}
                 </div>
               </div>
@@ -4245,61 +4191,82 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             </div>
 
             {/* Progress bar */}
-            <div className="h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden mb-3">
+            <div className="h-[3px] mx-4 bg-[#1c1c1c] rounded-full overflow-hidden">
               <div className="h-full rounded-full transition-all duration-700"
                 style={{ width: `${pct}%`, backgroundColor: barColor }} />
+            </div>
+
+            {/* Semáforo de preparación */}
+            <div className="flex flex-wrap gap-x-7 gap-y-3 px-4 pt-4 pb-4">
+              {prepItems.map(item => (
+                <div key={item.label} className="flex flex-col gap-1">
+                  <span className="text-[9.5px] uppercase tracking-[0.1em] text-[#3f3f3f] font-semibold">{item.label}</span>
+                  <span className={`text-[12.5px] flex items-center gap-1.5 ${item.ok ? "text-gray-200" : item.warn ? "text-gray-500 italic" : "text-gray-600"}`}>
+                    {item.txt}
+                    {item.ok && <span className="text-emerald-500 text-[11px] not-italic">✓</span>}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         );
       })()}
 
-      {/* ── Semáforo de preparación del evento ── */}
-      {(() => {
-        const anticipo = proyecto.cuentasCobrar.find(c => c.tipoPago === "ANTICIPO");
-        const anticipoCobrado = anticipo ? anticipo.montoCobrado >= anticipo.monto : false;
-        const equiposTotal = proyecto.equipos?.length ?? 0;
-        const equiposConf = proyecto.equipos?.filter((e: { confirmado: boolean }) => e.confirmado).length ?? 0;
-        const fichaOk = esRenta
-          ? !!proyecto.lugarEvento
-          : !!(proyecto.horaInicioEvento && proyecto.horaFinEvento && proyecto.lugarEvento);
-        const items = [
-          {
-            label: "Ficha",
-            ok: fichaOk,
-            warn: !fichaOk,
-            txt: fichaOk ? "Completa" : (esRenta ? "lugar faltante" : [!proyecto.horaInicioEvento && "hora", !proyecto.lugarEvento && "lugar"].filter(Boolean).join(", ") + " faltante"),
-          },
-          ...(!esRenta ? [{
-            label: "Personal",
-            ok: proyecto.personal.length > 0 && personalConfirmado === proyecto.personal.length,
-            warn: proyecto.personal.length > 0 && personalConfirmado < proyecto.personal.length,
-            txt: proyecto.personal.length === 0 ? "Sin asignar" : `${personalConfirmado}/${proyecto.personal.length} confirmados`,
-          }] : []),
-          {
-            label: "Anticipo",
-            ok: anticipoCobrado,
-            warn: !!(anticipo && !anticipoCobrado),
-            txt: anticipo ? (anticipoCobrado ? "Cobrado" : "Pendiente") : "Sin esquema",
-          },
-        ];
-        const allOk = items.every(i => i.ok);
-        const anyWarn = items.some(i => i.warn);
-        return (
-          <div className={`rounded-xl border px-5 py-3.5 bg-[#0d0d0d] flex flex-wrap items-center gap-x-6 gap-y-2.5 ${allOk ? "border-white/[0.08]" : "border-[#1a1a1a]"}`}>
-            <p className={`text-[10px] font-bold uppercase tracking-[0.14em] shrink-0 ${allOk ? "text-white" : "text-gray-600"}`}>
-              {allOk ? "✓ Listo" : "Preparación"}
-            </p>
-            <span className="w-px h-3 bg-[#252525] shrink-0" />
-            {items.map((item, idx) => (
-              <div key={item.label} className="flex items-baseline gap-1.5">
-                <span className="text-[9px] uppercase tracking-[0.12em] text-gray-700 shrink-0">{item.label}</span>
-                <span className={`text-[11px] font-medium ${item.ok ? "text-white" : item.warn ? "text-gray-400" : "text-gray-600"}`}>{item.txt}</span>
-                {item.ok && <span className="text-[9px] text-gray-600">✓</span>}
-              </div>
-            ))}
+      {/* ── Confirmación de información del cliente ── */}
+      <div className="rounded-xl border border-[#1e1e1e] bg-[#0d0d0d] px-4 py-3.5 space-y-3">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="min-w-0">
+            <p className="text-[13px] text-gray-300 font-medium">Confirmación del cliente</p>
+            <p className="text-gray-600 text-[11.5px] mt-0.5">Enlace para que el cliente confirme y complete los datos del evento.</p>
           </div>
-        );
-      })()}
+          {!proyecto.infoToken ? (
+            <button
+              onClick={generarInfoToken}
+              disabled={generandoInfoToken}
+              className="shrink-0 flex items-center gap-1.5 border border-[#2a2a2a] hover:border-[#B3985B]/40 hover:text-[#B3985B] disabled:opacity-50 text-gray-300 text-[11.5px] font-semibold px-3 py-2 rounded-lg transition-colors"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+              {generandoInfoToken ? "Generando..." : "Generar enlace"}
+            </button>
+          ) : (
+            <span className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full font-semibold ${proyecto.infoRecibidoEn ? "bg-green-900/50 text-green-300" : "bg-yellow-900/50 text-yellow-300"}`}>
+              {proyecto.infoRecibidoEn ? "Recibido" : "Pendiente"}
+            </span>
+          )}
+        </div>
+
+        {!proyecto.infoToken ? null : (
+          <div className="space-y-2">
+            <div className="bg-[#0a0a0a] border border-[#1e1e1e] rounded-lg px-3 py-2.5 flex items-center gap-2">
+              <span className="text-gray-500 text-xs flex-1 truncate font-mono">{`${typeof window !== "undefined" ? window.location.origin : ""}/confirmar/proyecto/${proyecto.infoToken}`}</span>
+              <button onClick={copiarInfoLink} className="text-[10px] text-[#B3985B] hover:text-white shrink-0 transition-colors">Copiar</button>
+              {proyecto.cliente.telefono && (
+                <a
+                  href={`https://wa.me/${proyecto.cliente.telefono.replace(/\D/g, "")}?text=${encodeURIComponent(`Hola ${proyecto.cliente.nombre}, para tu evento "${proyecto.nombre}" nos ayudas confirmando los datos en este enlace: ${window.location.origin}/confirmar/proyecto/${proyecto.infoToken}`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] text-green-400 hover:text-green-300 shrink-0 transition-colors flex items-center gap-1"
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.999 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.984-1.31A9.944 9.944 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg>
+                  WhatsApp
+                </a>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              {proyecto.infoRecibidoEn && (
+                <span className="text-xs text-gray-500">Recibido {fmtDateTime(proyecto.infoRecibidoEn)}</span>
+              )}
+              <button
+                onClick={revocarInfoToken}
+                disabled={revocandoInfoToken}
+                className="text-[10px] text-red-400/70 hover:text-red-400 disabled:opacity-50 transition-colors ml-auto"
+              >
+                {revocandoInfoToken ? "Revocando..." : "Revocar enlace"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
             {/* ── Datos de la sección Resumen ── */}
       {(() => {
@@ -4320,74 +4287,26 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 </p>
               </div>
             )}
-            {/* Cliente */}
-            <div className="ms-card p-5">
-              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Cliente</p>
-              <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-                <div>
-                  <p className="text-gray-500 text-xs mb-1">Nombre</p>
-                  <Link href={`/crm/clientes/${proyecto.cliente.id}`} className="text-white hover:text-[#B3985B] font-medium">
-                    {proyecto.cliente.nombre}
-                  </Link>
-                  {proyecto.cliente.empresa && <p className="text-gray-400 text-xs">{proyecto.cliente.empresa}</p>}
-                </div>
-                <div>
-                  <p className="text-gray-500 text-xs mb-1">Contacto</p>
-                  <p className="text-white">{proyecto.cliente.telefono ?? "—"}</p>
-                  {proyecto.cliente.correo && <p className="text-gray-400 text-xs">{proyecto.cliente.correo}</p>}
-                </div>
-                <div className="col-span-2">
-                  <p className="text-gray-500 text-xs mb-1">Coordinador de producción</p>
-                  <Combobox
-                    value={proyecto.encargado?.id ?? ""}
-                    onChange={v => guardarCampo("encargadoId", v)}
-                    options={[{ value: "", label: "— Sin asignar —" }, ...usuariosActivos.map(u => ({ value: u.id, label: u.name + (u.area ? ` (${u.area})` : "") }))]}
-                    className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] hover:border-[#444] transition-colors"
-                  />
-                </div>
-                {esRenta && (<>
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="text-gray-500 text-xs">Encargado del cliente</p>
-                      <button
-                        onClick={async () => {
-                          await guardarCampo("encargadoCliente", proyecto.cliente.nombre);
-                          if (proyecto.cliente.telefono) await guardarCampo("encargadoClienteContacto", proyecto.cliente.telefono);
-                        }}
-                        className="text-[10px] text-[#B3985B]/70 hover:text-[#B3985B] transition-colors"
-                        title="Usar datos del cliente"
-                      >
-                        → usar cliente
-                      </button>
-                    </div>
-                    <Campo label="Encargado del cliente" noLabel value={proyecto.encargadoCliente} field="encargadoCliente" onSave={guardarCampo} />
-                  </div>
-                  <Campo label="Contacto del cliente" value={proyecto.encargadoClienteContacto} field="encargadoClienteContacto" onSave={guardarCampo} />
-                  <div className="col-span-2">
-                    <Campo label="Indicaciones para el cliente" value={proyecto.indicacionesCliente} field="indicacionesCliente" type="textarea" onSave={guardarCampo} />
-                  </div>
-                </>)}
-              </div>
-            </div>
             {/* Evento */}
             <div className="ms-card p-5">
-              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Datos del evento</p>
-
-              {/* Tipo de evento + servicio — badges estáticos */}
-              <div className="flex flex-wrap gap-2 mb-5">
-                {proyecto.tipoEvento && (() => {
-                  const TE: Record<string, string> = { MUSICAL: "Musical", SOCIAL: "Social", EMPRESARIAL: "Empresarial", OTRO: "Otro" };
-                  return <span className="px-2.5 py-1 rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] text-gray-300 text-xs">{TE[proyecto.tipoEvento] ?? proyecto.tipoEvento}</span>;
-                })()}
-                {proyecto.tipoServicio && (() => {
-                  const TS: Record<string, string> = { PRODUCCION_TECNICA: "Producción técnica", RENTA: "Renta de equipo", DIRECCION_TECNICA: "Dirección técnica" };
-                  return <span className="px-2.5 py-1 rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] text-gray-300 text-xs">{TS[proyecto.tipoServicio] ?? proyecto.tipoServicio}</span>;
-                })()}
-                {!esRenta && (
-                  <span className="px-2.5 py-1 rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] text-gray-400 text-xs">
-                    {proyecto.zona === "BAJIO" ? "Bajío" : proyecto.zona === "NACIONAL" ? "Nacional" : "Local"}
-                  </span>
-                )}
+              {/* Título + badges de contexto en la misma línea */}
+              <div className="flex items-start justify-between gap-3 flex-wrap mb-5">
+                <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em] pt-1">Datos del evento</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {proyecto.tipoEvento && (() => {
+                    const TE: Record<string, string> = { MUSICAL: "Musical", SOCIAL: "Social", EMPRESARIAL: "Empresarial", OTRO: "Otro" };
+                    return <span className="px-2 py-1 rounded-md border border-[#2a2a2a] text-gray-400 text-[11px]">{TE[proyecto.tipoEvento] ?? proyecto.tipoEvento}</span>;
+                  })()}
+                  {proyecto.tipoServicio && (() => {
+                    const TS: Record<string, string> = { PRODUCCION_TECNICA: "Producción técnica", RENTA: "Renta de equipo", DIRECCION_TECNICA: "Dirección técnica" };
+                    return <span className="px-2 py-1 rounded-md border border-[#2a2a2a] text-gray-400 text-[11px]">{TS[proyecto.tipoServicio] ?? proyecto.tipoServicio}</span>;
+                  })()}
+                  {!esRenta && (
+                    <span className="px-2 py-1 rounded-md border border-[#2a2a2a] text-gray-400 text-[11px]">
+                      {proyecto.zona === "BAJIO" ? "Bajío" : proyecto.zona === "NACIONAL" ? "Nacional" : "Local"}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {!esRenta && (<>
@@ -4399,6 +4318,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 <div className="grid grid-cols-2 gap-x-6 gap-y-3 mb-5">
                   <div className="col-span-2">
                     <Campo label="Lugar del evento" value={proyecto.lugarEvento} field="lugarEvento" onSave={guardarCampo} />
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-gray-500 text-xs mb-1">Coordinador de producción</p>
+                    <Combobox
+                      value={proyecto.encargado?.id ?? ""}
+                      onChange={v => guardarCampo("encargadoId", v)}
+                      options={[{ value: "", label: "— Sin asignar —" }, ...usuariosActivos.map(u => ({ value: u.id, label: u.name + (u.area ? ` (${u.area})` : "") }))]}
+                      className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] hover:border-[#444] transition-colors"
+                    />
                   </div>
                   <div>
                     <div className="flex items-center justify-between mb-1">
@@ -4625,6 +4553,35 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <div className="col-span-2">
                     <Campo label="Lugar del evento" value={proyecto.lugarEvento} field="lugarEvento" onSave={guardarCampo} />
                   </div>
+                  <div className="col-span-2">
+                    <p className="text-gray-500 text-xs mb-1">Coordinador de producción</p>
+                    <Combobox
+                      value={proyecto.encargado?.id ?? ""}
+                      onChange={v => guardarCampo("encargadoId", v)}
+                      options={[{ value: "", label: "— Sin asignar —" }, ...usuariosActivos.map(u => ({ value: u.id, label: u.name + (u.area ? ` (${u.area})` : "") }))]}
+                      className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] hover:border-[#444] transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-gray-500 text-xs">Encargado del cliente</p>
+                      <button
+                        onClick={async () => {
+                          await guardarCampo("encargadoCliente", proyecto.cliente.nombre);
+                          if (proyecto.cliente.telefono) await guardarCampo("encargadoClienteContacto", proyecto.cliente.telefono);
+                        }}
+                        className="text-[10px] text-[#B3985B]/70 hover:text-[#B3985B] transition-colors"
+                        title="Usar datos del cliente"
+                      >
+                        → usar cliente
+                      </button>
+                    </div>
+                    <Campo label="Encargado del cliente" noLabel value={proyecto.encargadoCliente} field="encargadoCliente" onSave={guardarCampo} />
+                  </div>
+                  <Campo label="Contacto del cliente" value={proyecto.encargadoClienteContacto} field="encargadoClienteContacto" onSave={guardarCampo} />
+                  <div className="col-span-2">
+                    <Campo label="Indicaciones para el cliente" value={proyecto.indicacionesCliente} field="indicacionesCliente" type="textarea" onSave={guardarCampo} />
+                  </div>
                 </div>
               )}
 
@@ -4632,7 +4589,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
             {/* Notas */}
             <div className="ms-card p-5 space-y-3">
-              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Notas del proyecto</p>
+              <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">Notas del proyecto</p>
             {/* Notas del descubrimiento */}
             {(() => {
               let notasDesc: string | null = null;
@@ -4716,7 +4673,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           {/* ── Traslados (solo producción) ── */}
           {!esRenta && <div className="ms-card p-5">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Traslados</p>
+              <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">Traslados</p>
               {savingTransporte && <p className="text-xs text-gray-600">Guardando...</p>}
             </div>
             <div className="space-y-3">
@@ -4784,7 +4741,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             return (
               <div className="ms-card p-5">
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Equipo cotizado</p>
+                  <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">Equipo cotizado</p>
                   <a
                     href={`/cotizaciones/${proyecto.cotizacion.id}`}
                     className="text-[10px] text-[#B3985B]/60 hover:text-[#B3985B] transition-colors"
@@ -4847,7 +4804,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             return (
               <div className="bg-[#111] border border-[#B3985B]/20 rounded-xl p-5">
                 <div className="flex items-center justify-between mb-4">
-                  <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Logística de renta</p>
+                  <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">Logística de renta</p>
                   <span className="text-[10px] text-[#B3985B]/50 bg-[#B3985B]/8 px-2 py-0.5 rounded-full">RENTA DE EQUIPO</span>
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-4">
@@ -5071,7 +5028,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             {/* ── Cabecera ── */}
             <div className="p-4">
               <div className="flex items-center justify-between gap-2 flex-wrap">
-                <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Personal técnico del evento</p>
+                <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">Personal técnico del evento</p>
                 <div className="flex items-center gap-2">
                   {proyecto.personal.length > 0 && (
                     <button
@@ -5744,7 +5701,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           <div className="space-y-3">
             <div className="ms-stat-card">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Proveedores y subrentas</p>
+                <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">Proveedores y subrentas</p>
                 <button onClick={() => setShowAddProveedor(v => !v)}
                   className="text-sm text-[#B3985B] hover:text-white transition-colors font-medium">
                   {showAddProveedor ? "− Cancelar" : "+ Agregar proveedor"}
@@ -5869,7 +5826,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             return (
           <div className="ms-card p-5">
             <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">
+              <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">
                 Cronología del evento
               </p>
               <div className="flex items-center gap-2 flex-wrap">
@@ -5969,7 +5926,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           {/* ── Documentos operativos ── */}
           {!esRenta && <div className="ms-card p-5">
             <div className="flex items-center justify-between mb-1">
-              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Documentos operativos</p>
+              <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">Documentos operativos</p>
               <label className={`cursor-pointer text-xs border px-3 py-1.5 rounded-lg transition-colors ${
                 uploadingTipo ? "border-gray-700 text-gray-600" : "border-[#B3985B]/40 text-[#B3985B] hover:border-[#B3985B] hover:text-white"
               }`}>
@@ -6059,7 +6016,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           <div className="space-y-4">
             {showAddEquipo && (
               <div className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 space-y-3">
-                <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Agregar equipo</p>
+                <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">Agregar equipo</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="col-span-2">
                     <label className="text-xs text-gray-500 mb-1 block">Equipo *</label>
@@ -6145,7 +6102,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             {equiposExternos.length > 0 && (
               <div className="ms-table-wrapper">
                 <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
-                  <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Equipo externo / renta ({equiposExternos.length})</p>
+                  <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">Equipo externo / renta ({equiposExternos.length})</p>
                   <p className="text-xs text-yellow-400 font-semibold">
                     Total: {fmt(equiposExternos.reduce((s, e) => s + (e.costoExterno ?? 0) * e.cantidad * e.dias, 0))}
                   </p>
@@ -6264,7 +6221,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 <div className="bg-[#111] border border-[#B3985B]/20 rounded-xl overflow-hidden">
                   <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center gap-2">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#B3985B" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                    <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Notas de la cotización</p>
+                    <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">Notas de la cotización</p>
                     <span className="text-[10px] text-[#B3985B]/40 ml-auto">{proyecto.cotizacion!.numeroCotizacion}</span>
                   </div>
                   <div className="p-5 space-y-3">
@@ -6929,7 +6886,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       <div className="ms-card p-5 space-y-4">
                         <div className="flex items-center justify-between gap-3 flex-wrap">
                           <div>
-                            <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">{config.etiqueta}</p>
+                            <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">{config.etiqueta}</p>
                             <p className="text-gray-500 text-xs mt-0.5">{config.resumenSubtitulo}</p>
                           </div>
                           <Link
@@ -6979,7 +6936,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       <div className="ms-card p-5 space-y-4">
                         <div className="flex items-center justify-between gap-3 flex-wrap">
                           <div>
-                            <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">{dirConfig.etiqueta}</p>
+                            <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">{dirConfig.etiqueta}</p>
                             <p className="text-gray-500 text-xs mt-0.5">{dirConfig.subtitulo}</p>
                           </div>
                           <Link
@@ -7016,7 +6973,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
                   {/* ── Evaluación del cliente ── */}
                   <div className="ms-card p-5 space-y-4">
-                    <div className="flex items-center justify-between"><div><p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Evaluación del cliente</p><p className="text-gray-500 text-xs mt-0.5">Formulario externo para que el cliente califique el servicio</p></div><button onClick={async () => { const token = evalCliente?.tokenAcceso ?? await generarLinkEvalCliente(); if (token) { try { await navigator.clipboard.writeText(`${linkBaseEval}${token}`); } catch { /* noop */ } } }} disabled={generandoLink || loadingEvalCliente || evalCliente?.respondida} className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] disabled:opacity-50 text-white text-xs px-4 py-2 rounded-lg transition-colors"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>{generandoLink ? "Copiando..." : evalCliente?.respondida ? "Respondida" : "Copiar link"}</button></div>
+                    <div className="flex items-center justify-between"><div><p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">Evaluación del cliente</p><p className="text-gray-500 text-xs mt-0.5">Formulario externo para que el cliente califique el servicio</p></div><button onClick={async () => { const token = evalCliente?.tokenAcceso ?? await generarLinkEvalCliente(); if (token) { try { await navigator.clipboard.writeText(`${linkBaseEval}${token}`); } catch { /* noop */ } } }} disabled={generandoLink || loadingEvalCliente || evalCliente?.respondida} className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] disabled:opacity-50 text-white text-xs px-4 py-2 rounded-lg transition-colors"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>{generandoLink ? "Copiando..." : evalCliente?.respondida ? "Respondida" : "Copiar link"}</button></div>
                     {loadingEvalCliente && <p className="text-gray-600 text-sm">Cargando...</p>}
                     {evalCliente && (
                       <div className="space-y-3">
@@ -7219,7 +7176,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
                     {/* Anticipo */}
                     <div className="space-y-2">
-                      <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Anticipo</p>
+                      <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">Anticipo</p>
                       <div className="flex gap-2">
                         {(["porcentaje", "monto"] as const).map(t => (
                           <button key={t} onClick={() => setEsquemaAnticipoTipo(t)}
@@ -8224,14 +8181,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           </div>
 
           {/* Documentos card */}
-          <div className="ms-stat-card space-y-2">
-            <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-3">Documentos</p>
-            <div className="space-y-1.5">
+          <div className="ms-stat-card">
+            <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-1.5">Documentos</p>
+            <div>
               {esRenta && (
                 <button
                   onClick={() => downloadPdf(`/api/proyectos/${proyecto.id}/hoja-entrega`, `hoja-entrega-${proyecto.numeroProyecto}.pdf`)}
                   disabled={downloading === `hoja-entrega-${proyecto.numeroProyecto}.pdf`}
-                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-gray-300 hover:text-white hover:border-[#444] text-xs font-medium transition-colors disabled:opacity-60"
+                  className="w-full flex items-center gap-2.5 py-[7px] text-left text-gray-400 hover:text-[#B3985B] text-[12.5px] transition-colors disabled:opacity-60"
                 >
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
                   {downloading === `hoja-entrega-${proyecto.numeroProyecto}.pdf` ? 'Generando...' : 'Hoja de Entrega'}
@@ -8240,7 +8197,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               <button
                 onClick={() => downloadPdf(`/api/proyectos/${proyecto.id}/fichas/cliente`, `confirmacion-cliente-${proyecto.numeroProyecto}.pdf`)}
                 disabled={!!downloading}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-gray-300 hover:text-white hover:border-[#444] text-xs font-medium transition-colors disabled:opacity-60"
+                className="w-full flex items-center gap-2.5 py-[7px] text-left text-gray-400 hover:text-[#B3985B] text-[12.5px] transition-colors disabled:opacity-60"
               >
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 {downloading === `confirmacion-cliente-${proyecto.numeroProyecto}.pdf` ? 'Generando...' : 'Confirmación Cliente'}
@@ -8254,7 +8211,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 return (
                   <button
                     onClick={() => downloadPdf(`/api/proyectos/${proyecto.id}/rider-pdf`, `rider-carga-${proyecto.numeroProyecto}.pdf`, 'Rider de carga')}
-                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-gray-300 hover:text-white hover:border-[#444] text-xs font-medium transition-colors"
+                    className="w-full flex items-center gap-2.5 py-[7px] text-left text-gray-400 hover:text-[#B3985B] text-[12.5px] transition-colors"
                   >
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
                     Rider de Carga
@@ -8265,7 +8222,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 <button
                   onClick={() => downloadPdf(`/api/proyectos/${proyecto.id}/fichas/operativa`, `ficha-operativa-${proyecto.numeroProyecto}.pdf`)}
                   disabled={!!downloading}
-                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-gray-300 hover:text-white hover:border-[#444] text-xs font-medium transition-colors disabled:opacity-60"
+                  className="w-full flex items-center gap-2.5 py-[7px] text-left text-gray-400 hover:text-[#B3985B] text-[12.5px] transition-colors disabled:opacity-60"
                 >
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="11" y2="16"/></svg>
                   {downloading === `ficha-operativa-${proyecto.numeroProyecto}.pdf` ? 'Generando...' : 'Ficha Operativa'}
@@ -8275,7 +8232,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 <button
                   onClick={() => downloadPdf(`/api/proyectos/${proyecto.id}/brief-tecnico`, `info-tecnicos-${proyecto.numeroProyecto}.pdf`)}
                   disabled={!!downloading}
-                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-gray-300 hover:text-white hover:border-[#444] text-xs font-medium transition-colors disabled:opacity-60"
+                  className="w-full flex items-center gap-2.5 py-[7px] text-left text-gray-400 hover:text-[#B3985B] text-[12.5px] transition-colors disabled:opacity-60"
                 >
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
                   {downloading === `info-tecnicos-${proyecto.numeroProyecto}.pdf` ? 'Generando...' : 'Info para Técnicos'}
@@ -8284,7 +8241,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               {!esRenta && (
                 <Link
                   href={`/carta-responsiva/${proyecto.id}`}
-                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-gray-300 hover:text-white hover:border-[#444] text-xs font-medium transition-colors"
+                  className="w-full flex items-center gap-2.5 py-[7px] text-left text-gray-400 hover:text-[#B3985B] text-[12.5px] transition-colors"
                 >
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="11" y2="16"/></svg>
                   Carta Responsiva
@@ -8293,7 +8250,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               <div className="border-t border-[#1e1e1e] my-1" />
               <button
                 onClick={() => setShowAnuncioCierre(true)}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-gray-300 hover:text-white hover:border-[#444] text-xs font-medium transition-colors"
+                className="w-full flex items-center gap-2.5 py-[7px] text-left text-gray-400 hover:text-[#B3985B] text-[12.5px] transition-colors"
               >
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                 Confirmación a Team Mainstage
@@ -8302,19 +8259,17 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           </div>
 
           {/* Danger zone */}
-          <div className="border border-[#1e1e1e] rounded-xl p-4">
-            <button
-              onClick={async () => {
-                const ok = await confirm({ message: `¿Eliminar el proyecto "${proyecto.nombre}"? Esta acción no se puede deshacer.`, danger: true, confirmText: 'Eliminar proyecto' });
-                if (!ok) return;
-                await fetch(`/api/proyectos/${proyecto.id}`, { method: 'DELETE' });
-                router.push('/proyectos');
-              }}
-              className="w-full py-2 rounded-lg border border-red-500/20 text-red-500/60 text-xs font-medium hover:bg-red-500/5 hover:border-red-500/40 hover:text-red-500/80 transition-colors"
-            >
-              Eliminar proyecto
-            </button>
-          </div>
+          <button
+            onClick={async () => {
+              const ok = await confirm({ message: `¿Eliminar el proyecto "${proyecto.nombre}"? Esta acción no se puede deshacer.`, danger: true, confirmText: 'Eliminar proyecto' });
+              if (!ok) return;
+              await fetch(`/api/proyectos/${proyecto.id}`, { method: 'DELETE' });
+              router.push('/proyectos');
+            }}
+            className="w-full py-1.5 text-red-900 hover:text-red-500 text-[11.5px] transition-colors"
+          >
+            Eliminar proyecto
+          </button>
 
         </div>{/* /right sidebar */}
 
