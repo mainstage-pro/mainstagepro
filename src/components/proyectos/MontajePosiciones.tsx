@@ -27,6 +27,15 @@ type Props = {
 const selectCls =
   "bg-[#141414] border border-[#252525] rounded-md px-2 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-[#B3985B]/50 w-full";
 
+function Campo({ label, children, className = "" }: { label: string; children: React.ReactNode; className?: string }) {
+  return (
+    <label className={`block min-w-0 ${className}`}>
+      <span className="block text-[9px] text-gray-500 uppercase tracking-wider mb-1">{label}</span>
+      {children}
+    </label>
+  );
+}
+
 export function MontajePosiciones({ proyectoId, equipoId, cantidadTotal, categoria, disciplina, posiciones, onSaved }: Props) {
   const perfil = getPerfilMontaje(categoria, disciplina);
   const [filas, setFilas] = useState<Posicion[]>(
@@ -95,79 +104,89 @@ export function MontajePosiciones({ proyectoId, equipoId, cantidadTotal, categor
         </span>
       </div>
 
-      <div className="space-y-1.5">
+      <div className="space-y-2">
         {filas.map((f, i) => {
           const pideAltura = soportePideAltura(f.soporte, categoria, disciplina);
           return (
-            <div key={f.id ?? i} className="flex items-start gap-1.5">
-              <input
-                type="number"
-                min={1}
-                value={f.cantidad}
-                onChange={(e) => actualizar(i, { cantidad: Math.max(1, Number(e.target.value) || 1) })}
-                className={`${selectCls} w-14 shrink-0 text-center`}
-                aria-label="Cantidad"
-              />
-              <select
-                value={f.funcion ?? ""}
-                onChange={(e) => actualizar(i, { funcion: e.target.value || null })}
-                className={`${selectCls} flex-[2]`}
-                aria-label="Función"
-              >
-                <option value="">— Función —</option>
-                {perfil.funciones.map((o) => (
-                  <option key={o.id} value={o.id}>{o.label}</option>
-                ))}
-              </select>
-              <select
-                value={f.soporte ?? ""}
-                onChange={(e) => actualizar(i, { soporte: e.target.value || null })}
-                className={`${selectCls} flex-[2]`}
-                aria-label="Soporte"
-              >
-                <option value="">— Soporte —</option>
-                {perfil.soportes.map((o) => (
-                  <option key={o.id} value={o.id}>{o.label}</option>
-                ))}
-              </select>
-              <select
-                value={f.zona ?? ""}
-                onChange={(e) => actualizar(i, { zona: e.target.value || null })}
-                className={`${selectCls} flex-[2]`}
-                aria-label="Zona"
-              >
-                <option value="">— Zona —</option>
-                {ZONAS.map((o) => (
-                  <option key={o.id} value={o.id}>{o.label}</option>
-                ))}
-              </select>
-              {pideAltura && (
-                <input
-                  type="number"
-                  step="0.1"
-                  min={0}
-                  placeholder="m"
-                  value={f.alturaM ?? ""}
-                  onChange={(e) => actualizar(i, { alturaM: e.target.value === "" ? null : Number(e.target.value) })}
-                  className={`${selectCls} w-16 shrink-0 text-center`}
-                  aria-label="Altura en metros"
-                />
-              )}
-              <input
-                type="text"
-                placeholder="Notas"
-                value={f.notas ?? ""}
-                onChange={(e) => actualizar(i, { notas: e.target.value || null })}
-                className={`${selectCls} flex-[2]`}
-                aria-label="Notas"
-              />
-              <button
-                onClick={() => quitar(i)}
-                className="shrink-0 px-2 py-1.5 text-gray-600 hover:text-red-400 transition-colors"
-                title="Quitar posición"
-              >
-                ×
-              </button>
+            <div key={f.id ?? i} className="rounded-md border border-[#1a1a1a] bg-[#101010] p-2">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[9px] text-gray-500 uppercase tracking-wider">Posición {i + 1}</span>
+                <button
+                  onClick={() => quitar(i)}
+                  className="text-[10px] text-gray-500 hover:text-red-400 transition-colors"
+                >
+                  Eliminar
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 lg:grid-cols-12 gap-1.5">
+                <Campo label="Cantidad" className="lg:col-span-1">
+                  <input
+                    type="number"
+                    min={1}
+                    value={f.cantidad}
+                    onChange={(e) => actualizar(i, { cantidad: Math.max(1, Number(e.target.value) || 1) })}
+                    className={`${selectCls} text-center`}
+                  />
+                </Campo>
+                <Campo label="Función" className="lg:col-span-4">
+                  <select
+                    value={f.funcion ?? ""}
+                    onChange={(e) => actualizar(i, { funcion: e.target.value || null })}
+                    className={selectCls}
+                  >
+                    <option value="">— Elegir —</option>
+                    {perfil.funciones.map((o) => (
+                      <option key={o.id} value={o.id}>{o.label}</option>
+                    ))}
+                  </select>
+                </Campo>
+                <Campo label="Soporte" className="lg:col-span-4">
+                  <select
+                    value={f.soporte ?? ""}
+                    onChange={(e) => actualizar(i, { soporte: e.target.value || null })}
+                    className={selectCls}
+                  >
+                    <option value="">— Elegir —</option>
+                    {perfil.soportes.map((o) => (
+                      <option key={o.id} value={o.id}>{o.label}</option>
+                    ))}
+                  </select>
+                </Campo>
+                <Campo label="Zona" className={pideAltura ? "lg:col-span-2" : "lg:col-span-3"}>
+                  <select
+                    value={f.zona ?? ""}
+                    onChange={(e) => actualizar(i, { zona: e.target.value || null })}
+                    className={selectCls}
+                  >
+                    <option value="">— Elegir —</option>
+                    {ZONAS.map((o) => (
+                      <option key={o.id} value={o.id}>{o.label}</option>
+                    ))}
+                  </select>
+                </Campo>
+                {pideAltura && (
+                  <Campo label="Altura m" className="lg:col-span-1">
+                    <input
+                      type="number"
+                      step="0.1"
+                      min={0}
+                      value={f.alturaM ?? ""}
+                      onChange={(e) => actualizar(i, { alturaM: e.target.value === "" ? null : Number(e.target.value) })}
+                      className={`${selectCls} text-center`}
+                    />
+                  </Campo>
+                )}
+                <Campo label="Notas" className="col-span-2 lg:col-span-12">
+                  <input
+                    type="text"
+                    placeholder="Indicación para el técnico (opcional)"
+                    value={f.notas ?? ""}
+                    onChange={(e) => actualizar(i, { notas: e.target.value || null })}
+                    className={selectCls}
+                  />
+                </Campo>
+              </div>
             </div>
           );
         })}
