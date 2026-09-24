@@ -12,7 +12,14 @@ import {
 export type FallaCreada = { id: string; descripcion: string; severidad: string; estado: string };
 
 type UnidadOpcion = { id: string; codigo: string | null };
-type ProyectoOpcion = { id: string; numeroProyecto: string; nombre: string };
+type ProyectoOpcion = {
+  id: string;
+  numeroProyecto: string;
+  nombre: string;
+  cliente: string | null;
+  empresa: string | null;
+  numeroCotizacion: string | null;
+};
 type EquipoOpcion = { id: string; label: string; categoria: string | null };
 
 function hoyISO() {
@@ -53,6 +60,7 @@ export function ReportarFallaModal({
   const [proyectoId, setProyectoId] = useState(proyectoIdFijo ?? "");
   const [unidadSel, setUnidadSel] = useState(unidadId ?? "");
   const [proyectos, setProyectos] = useState<ProyectoOpcion[]>([]);
+  const [busquedaProyecto, setBusquedaProyecto] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,6 +74,7 @@ export function ReportarFallaModal({
     setUnidadSel(unidadId ?? "");
     setEquipoSel(equipoId ?? "");
     setBusqueda("");
+    setBusquedaProyecto("");
     setError(null);
   }, [open, unidadId, proyectoIdFijo, equipoId]);
 
@@ -97,7 +106,22 @@ export function ReportarFallaModal({
       .then((d) => {
         const lista = Array.isArray(d) ? d : d?.proyectos;
         if (Array.isArray(lista)) {
-          setProyectos(lista.map((p: ProyectoOpcion) => ({ id: p.id, numeroProyecto: p.numeroProyecto, nombre: p.nombre })));
+          setProyectos(
+            lista.map((p: {
+              id: string;
+              numeroProyecto: string;
+              nombre: string;
+              cliente?: { nombre?: string | null; empresa?: string | null } | null;
+              numeroCotizacion?: string | null;
+            }) => ({
+              id: p.id,
+              numeroProyecto: p.numeroProyecto,
+              nombre: p.nombre,
+              cliente: p.cliente?.nombre ?? null,
+              empresa: p.cliente?.empresa ?? null,
+              numeroCotizacion: p.numeroCotizacion ?? null,
+            })),
+          );
         }
       })
       .catch(() => {});
@@ -228,12 +252,77 @@ export function ReportarFallaModal({
         {origen === "EVENTO" && !proyectoIdFijo && (
           <div>
             <label className="text-[11px] text-gray-500 mb-1 block">Evento (opcional)</label>
-            <select value={proyectoId} onChange={(e) => setProyectoId(e.target.value)} className={inputCls}>
-              <option value="">— Sin especificar —</option>
-              {proyectos.map((p) => (
-                <option key={p.id} value={p.id}>{p.numeroProyecto} · {p.nombre}</option>
-              ))}
-            </select>
+            {proyectoId ? (
+              (() => {
+                const sel = proyectos.find((p) => p.id === proyectoId);
+                return (
+                  <div className="flex items-center justify-between gap-2 bg-[#0d0d0d] border border-[#B3985B]/40 rounded-lg px-3 py-2">
+                    <span className="text-white text-sm truncate">
+                      {sel ? `${sel.numeroProyecto} · ${sel.nombre}` : "Evento seleccionado"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => { setProyectoId(""); setBusquedaProyecto(""); }}
+                      className="text-[11px] text-gray-500 hover:text-white transition-colors shrink-0"
+                    >
+                      Cambiar
+                    </button>
+                  </div>
+                );
+              })()
+            ) : (
+              <>
+                <input
+                  value={busquedaProyecto}
+                  onChange={(e) => setBusquedaProyecto(e.target.value)}
+                  placeholder="Cliente, evento, No. de proyecto o cotización..."
+                  className={inputCls}
+                />
+                <div className="mt-1.5 max-h-40 overflow-y-auto rounded-lg border border-[#222] divide-y divide-[#1a1a1a]">
+                  {proyectos.length === 0 ? (
+                    <p className="text-[#555] text-xs px-3 py-3">Cargando eventos…</p>
+                  ) : (
+                    (() => {
+                      const q = busquedaProyecto.trim().toLowerCase();
+                      // Se busca contra todo lo que el coordinador recuerda del evento:
+                      // el cliente, el nombre, y los dos folios (proyecto y cotización).
+                      const filtrados = (
+                        q
+                          ? proyectos.filter((p) =>
+                              [p.numeroProyecto, p.nombre, p.cliente, p.empresa, p.numeroCotizacion]
+                                .filter(Boolean)
+                                .some((campo) => campo!.toLowerCase().includes(q)),
+                            )
+                          : proyectos
+                      ).slice(0, 40);
+                      if (filtrados.length === 0) {
+                        return (
+                          <p className="text-[#555] text-xs px-3 py-3">
+                            Ningún evento coincide con “{busquedaProyecto}”
+                          </p>
+                        );
+                      }
+                      return filtrados.map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => setProyectoId(p.id)}
+                          className="w-full text-left px-3 py-2 hover:bg-[#1a1a1a] transition-colors"
+                        >
+                          <span className="block text-sm text-white truncate">
+                            {p.numeroProyecto} · {p.nombre}
+                          </span>
+                          <span className="block text-[10px] text-[#555] truncate">
+                            {[p.empresa || p.cliente, p.numeroCotizacion].filter(Boolean).join(" · ") || "Sin cliente"}
+                          </span>
+                        </button>
+                      ));
+                    })()
+                  )}
+                </div>
+                <p className="mt-1 text-[10px] text-[#555]">Déjalo vacío si no quieres ligarlo a un evento.</p>
+              </>
+            )}
           </div>
         )}
 

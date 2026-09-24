@@ -44,7 +44,7 @@ export async function GET(req: Request) {
         encargado: { select: { name: true } },
         personal: { select: { confirmado: true } },
         trato: { select: { responsable: { select: { name: true } } } },
-        cotizacion: { select: { id: true, granTotal: true } },
+        cotizacion: { select: { id: true, numeroCotizacion: true, granTotal: true } },
         equipos: { select: { id: true }, take: 1 },
         cuentasCobrar: { select: { id: true, tipoPago: true, estado: true } },
         checklist: { select: { completado: true, item: true } },
@@ -77,6 +77,9 @@ export async function GET(req: Request) {
         ...p,
         avance,
         liquidacionCobrada,
+        // El número de cotización es un identificador (sale en PDFs y URLs), así que
+        // se expone aparte para poder buscar por él sin abrir el candado de montos.
+        numeroCotizacion: p.cotizacion?.numeroCotizacion ?? null,
         cotizacion: canViewFinances ? p.cotizacion : null,
       };
     });
