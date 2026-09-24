@@ -6,7 +6,7 @@ import React from "react";
 import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
 import { C, base, fmtFecha, fmtHora, duracion, nowStr, agruparPorCategoria, EquipoFlat, MAPS } from "./PdfShared";
 import { CronologiaEvento } from "./CronologiaEvento";
-import { construirCronologia } from "@/lib/cronologia-evento";
+import { construirCronologia, BloqueTiempo } from "@/lib/cronologia-evento";
 
 const s = StyleSheet.create({
   // Chips de horario
@@ -48,6 +48,8 @@ export interface FichaClienteData {
   encargadoNombre: string | null;
   cliente: { nombre: string; empresa: string | null };
   equipos: EquipoFlat[];
+  /** Cronología unificada; al cliente solo se le muestra el programa del evento. */
+  bloquesTiempo: BloqueTiempo[];
   logoSrc: string | null;
   logoSrcDark: string | null;
 }
@@ -71,7 +73,7 @@ export function FichaCliente({ data }: { data: FichaClienteData }) {
     desmontajeDiaAparte: data.desmontajeDiaAparte, fechaDesmontaje: data.fechaDesmontaje,
     llamadoBodega: null, lugarLlamado: null,
     lugarEvento: data.lugarEvento,
-  }, { interno: false });
+  }, { interno: false, bloques: data.bloquesTiempo });
   const esMultidia = bloques.filter(b => b.titulo !== "Montaje" && b.titulo !== "Desmontaje").length > 1;
 
   return (

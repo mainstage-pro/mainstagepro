@@ -1,6 +1,6 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
-import { construirCronologia } from "@/lib/cronologia-evento";
+import { construirCronologia, BloqueTiempo } from "@/lib/cronologia-evento";
 import { getEquipoDisplayName } from "@/lib/equipoNombre";
 import { normalizarAmPm } from "@/lib/hora";
 
@@ -251,6 +251,10 @@ export interface BriefData {
     cantidad: number;
     equipo: { descripcion: string; marca: string | null; modelo: string | null };
   }[];
+  /** Cronología unificada: montaje, soundcheck, programa, ventanas de proveedor y desmontaje. */
+  bloquesTiempo?: BloqueTiempo[];
+  /** id de ProveedorEvento → nombre, para etiquetar sus ventanas. */
+  nombresProveedor?: Record<string, string>;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -292,7 +296,7 @@ export function BriefPDF({
     duracionDesmontajeHrs: proyecto.duracionDesmontajeHrs, desmontajeDiaAparte: proyecto.desmontajeDiaAparte,
     fechaDesmontaje: proyecto.fechaDesmontaje,
     llamadoBodega: proyecto.llamadoBodega, lugarLlamado: proyecto.lugarLlamado, lugarEvento: proyecto.lugarEvento,
-  });
+  }, { bloques: proyecto.bloquesTiempo, nombresProveedor: proyecto.nombresProveedor });
 
   const generado = normalizarAmPm(new Date().toLocaleDateString("es-MX", {
     day: "2-digit", month: "long", year: "numeric",

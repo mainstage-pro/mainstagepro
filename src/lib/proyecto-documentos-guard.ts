@@ -25,12 +25,12 @@ const SELECT = {
   encargadoLugar: true,
   encargadoCliente: true,
   contactosEmergencia: true,
-  cronograma: true,
   logisticaRenta: true,
   encargado: { select: { name: true } },
   trato: { select: { ideasReferencias: true } },
   equipos: { select: { confirmado: true } },
   personal: { select: { tecnicoId: true, rolTecnicoId: true, rolEnEvento: true } },
+  bloquesTiempo: { select: { id: true } },
 } as const;
 
 /**
@@ -58,7 +58,7 @@ export async function bloqueoDocumento(
     encargadoLugar: p.encargadoLugar,
     encargadoCliente: p.encargadoCliente,
     contactosEmergencia: p.contactosEmergencia,
-    cronograma: p.cronograma,
+    bloquesCronologia: p.bloquesTiempo.length,
     logisticaRenta: p.logisticaRenta || p.trato?.ideasReferencias || null,
     equiposCount: p.equipos.length,
     personalCount: p.personal.filter(x => x.tecnicoId).length,

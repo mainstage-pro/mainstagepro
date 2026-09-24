@@ -30,7 +30,7 @@ import { DISCIPLINA_COLORS, DISCIPLINA_LABELS } from "@/lib/disciplinaColors";
 import { contarRespondidos, contarIncidencias, nivelResultado, getEvalConfig, aplicaEvaluacion, type EvalPostEventoData } from "@/lib/evaluacion-post-evento";
 import { getDireccionConfig, promedioDireccion, type EvaluacionDireccionData } from "@/lib/evaluacion-direccion";
 import { diasEvento, parseHorariosEvento, horarioDeDia, parseFechasEvento } from "@/lib/fechas-evento";
-import { construirCronologia } from "@/lib/cronologia-evento";
+import { construirCronologia, type BloqueTiempo } from "@/lib/cronologia-evento";
 import { checksAvanceProduccion } from "@/lib/proyecto-avance";
 import { requisitosDocumento, type ProyectoDocumentoInput, type RequisitosDocumento, type TipoDocumento } from "@/lib/proyecto-documentos";
 import { getEquipoDisplayName } from "@/lib/equipoNombre";
@@ -179,6 +179,7 @@ interface Proyecto {
   lugarLlamado: string | null;
   notasBriefTecnico: string | null;
   proveedoresEvento: { id: string; nombreProveedor: string; servicioEquipo: string | null; telefonoProveedor: string | null }[];
+  bloquesTiempo: BloqueTiempo[];
   createdAt: string;
   updatedAt: string;
   _canViewFinances?: boolean;
@@ -496,38 +497,6 @@ function SectionDivider({ label }: { label: string }) {
     <div className="flex items-center gap-3 pt-2">
       <p className="text-xs text-gray-600 font-semibold uppercase tracking-widest shrink-0">{label}</p>
       <div className="flex-1 border-t border-[#1a1a1a]" />
-    </div>
-  );
-}
-
-function TableHeader({ cols }: { cols: string[] }) {
-  return (
-    <div className="grid gap-1 mb-1" style={{ gridTemplateColumns: `repeat(${cols.length + 1}, minmax(0, 1fr))` }}>
-      {cols.map(c => <div key={c} className="text-[10px] text-gray-600 uppercase tracking-widest px-2">{c}</div>)}
-      <div />
-    </div>
-  );
-}
-
-function DocAccordion({ docKey, title, desc, tag, children, isOpen, onToggle }: {
-  docKey: string; title: string; desc?: string; tag?: string; children: React.ReactNode;
-  isOpen: boolean; onToggle: () => void;
-}) {
-  return (
-    <div className="ms-table-wrapper">
-      <button onClick={onToggle} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-[#1a1a1a] transition-colors">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="min-w-0">
-            <p className="text-white text-sm font-semibold">{title}</p>
-            {desc && <p className="text-gray-500 text-xs mt-0.5">{desc}</p>}
-          </div>
-          {tag && <span className="shrink-0 text-[10px] text-[#B3985B] bg-[#B3985B]/10 px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider">{tag}</span>}
-        </div>
-        <svg className={`w-4 h-4 text-gray-500 transition-transform shrink-0 ml-2 ${isOpen ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-        </svg>
-      </button>
-      {isOpen && <div className="border-t border-[#222]">{children}</div>}
     </div>
   );
 }
@@ -1400,7 +1369,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [loadErrorMsg, setLoadErrorMsg] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const [openDocs, setOpenDocs] = useState<Set<string>>(new Set());
   const [gastosOp, setGastosOp] = useState<GastoOp[]>([]);
   const [gastosLoaded, setGastosLoaded] = useState(false);
   const [showGastoOpForm, setShowGastoOpForm] = useState(false);
@@ -4073,7 +4041,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     encargadoLugar: proyecto.encargadoLugar,
     encargadoCliente: proyecto.encargadoCliente,
     contactosEmergencia: proyecto.contactosEmergencia,
-    cronograma: proyecto.cronograma,
+    bloquesCronologia: proyecto.bloquesTiempo.length,
     logisticaRenta: proyecto.logisticaRenta || proyecto.trato?.ideasReferencias || null,
     equiposCount: proyecto.equipos.length,
     personalCount: proyecto.personal.filter(p => p.tecnico).length,
@@ -6247,7 +6215,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         function colorBg(v: number) { return v === 0 ? "bg-[#222]" : v >= 9 ? "bg-green-900/40 border-green-700/40" : v >= 7 ? "bg-[#B3985B]/10 border-[#B3985B]/30" : v >= 5 ? "bg-yellow-900/30 border-yellow-700/40" : "bg-red-900/30 border-red-700/40"; }
 
         // ── Accordion helpers ──────────────────────────────────────────
-        const toggleDoc = (key: string) => setOpenDocs(prev => { const next = new Set(prev); if (next.has(key)) next.delete(key); else next.add(key); return next; });
 
         // ── Notas de cotización por sección ──
         let cotNotasSecciones: Record<string, string> = {};
@@ -8765,6 +8732,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         duracionDesmontajeHrs: proyecto.duracionDesmontajeHrs, desmontajeDiaAparte: proyecto.desmontajeDiaAparte,
         fechaDesmontaje: proyecto.fechaDesmontaje,
         llamadoBodega: proyecto.llamadoBodega, lugarLlamado: proyecto.lugarLlamado, lugarEvento: proyecto.lugarEvento,
+      }, {
+        bloques: proyecto.bloquesTiempo,
+        nombresProveedor: Object.fromEntries(proyecto.proveedoresEvento.map(p => [p.id, p.nombreProveedor])),
       });
       const cronoTexto = bloquesBrief.map(b => {
         const head = b.subtitulo ? `${b.titulo} — ${b.subtitulo}` : b.titulo;

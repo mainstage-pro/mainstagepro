@@ -7,7 +7,7 @@
 import React from "react";
 import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
 import { CronologiaEvento } from "./CronologiaEvento";
-import { construirCronologia } from "@/lib/cronologia-evento";
+import { construirCronologia, BloqueTiempo } from "@/lib/cronologia-evento";
 import { fmt24to12 } from "@/lib/hora";
 
 // ─── Estilos locales B&W ──────────────────────────────────────────────────────
@@ -206,6 +206,10 @@ export interface BriefTecnicoData {
     notasBriefTecnico: string | null;
     cliente: { nombre: string; empresa: string | null };
     encargado: { name: string } | null;
+    /** Cronología unificada: montaje, soundcheck, programa, ventanas de proveedor y desmontaje. */
+    bloquesTiempo?: BloqueTiempo[];
+    /** id de ProveedorEvento → nombre, para etiquetar sus ventanas. */
+    nombresProveedor?: Record<string, string>;
   };
   logoSrc: string | null;
 }
@@ -264,7 +268,7 @@ export function BriefTecnico({ proyecto, logoSrc }: BriefTecnicoData) {
     llamadoBodega: p.llamadoBodega,
     lugarLlamado: p.lugarLlamado,
     lugarEvento: p.lugarEvento,
-  });
+  }, { bloques: p.bloquesTiempo, nombresProveedor: p.nombresProveedor });
 
   // Transportes: intentar parsear JSON, mostrar representación legible
   let transportesStr: string | null = null;

@@ -3,7 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import ReactPDF, { Document } from "@react-pdf/renderer";
 import { FichaCoordinador, FichaCoordinadorData } from "@/components/pdf/FichaCoordinador";
-import { logoBase64, EquipoFlat, CronoRow, TransporteSlot, DocsData, EquipoRiderExtra, ProveedorRenta } from "@/components/pdf/PdfShared";
+import { logoBase64, EquipoFlat, TransporteSlot, EquipoRiderExtra, ProveedorRenta } from "@/components/pdf/PdfShared";
+import { BloqueTiempo } from "@/lib/cronologia-evento";
 import React from "react";
 import path from "path";
 
@@ -38,6 +39,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       archivos: { orderBy: { createdAt: "desc" } },
       cuentasCobrar: { select: { concepto: true, monto: true, montoCobrado: true, estado: true, tipoPago: true } },
       proveedoresEvento: { orderBy: { createdAt: "asc" } },
+      bloquesTiempo: { orderBy: { orden: "asc" } },
     },
   });
 
@@ -46,22 +48,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const logoSrc = logoBase64(path.join(process.cwd(), "public"));
 
   // Parse JSON fields
-  let cronograma: CronoRow[] = [];
-  try { cronograma = proyecto.cronograma ? JSON.parse(proyecto.cronograma) : []; } catch { /* ignore */ }
-
   let transportes: TransporteSlot[] = [];
   try {
     const raw = proyecto.transportes ? JSON.parse(proyecto.transportes) : [];
     transportes = Array.isArray(raw) ? raw : [];
     // Resolve vehiculo/chofer names if needed — IDs are stored; resolve via DB if possible
     // For now pass as-is; names would need extra query
-  } catch { /* ignore */ }
-
-  let docsTecnicos: DocsData | null = null;
-  try {
-    if (proyecto.docsTecnicos) {
-      docsTecnicos = JSON.parse(proyecto.docsTecnicos) as DocsData;
-    }
   } catch { /* ignore */ }
 
   let equiposRiderExtra: EquipoRiderExtra[] = [];
@@ -118,9 +110,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     horaInicioMontaje: proyecto.horaInicioMontaje ?? null,
     duracionMontajeHrs: proyecto.duracionMontajeHrs ?? null,
     horaMontaje: proyecto.horaMontaje ?? null,
+    montajeDiaAparte: proyecto.montajeDiaAparte ?? null,
+    desmontajeDiaAparte: proyecto.desmontajeDiaAparte ?? null,
+    fechaDesmontaje: proyecto.fechaDesmontaje?.toISOString() ?? null,
+    duracionDesmontajeHrs: proyecto.duracionDesmontajeHrs ?? null,
     horaSalidaBodega: proyecto.horaSalidaBodega ?? null,
     puntoSalidaBodega: proyecto.puntoSalidaBodega ?? null,
     llamadoBodega: proyecto.llamadoBodega?.toISOString() ?? null,
+    lugarLlamado: proyecto.lugarLlamado ?? null,
     lugarEvento: proyecto.lugarEvento ?? null,
     direccionVenue: proyecto.direccionVenue ?? null,
     linkMaps: proyecto.linkMaps ?? null,
@@ -175,10 +172,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       estado: c.estado,
       tipoPago: c.tipoPago ?? "",
     })),
-    cronograma,
+    bloquesTiempo: (proyecto.bloquesTiempo ?? []) as BloqueTiempo[],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    nombresProveedor: Object.fromEntries((proyecto.proveedoresEvento ?? []).map((p: any) => [p.id, p.nombreProveedor])),
     transportes,
     equiposRiderExtra,
-    docsTecnicos,
     tratoNotas: proyecto.trato?.notas ?? null,
     logoSrc,
   };

@@ -98,6 +98,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         },
         cierreFinanciero: { select: { cerradoEn: true, notas: true, totalCobrado: true, totalGastado: true, utilidadReal: true, margenReal: true, granTotalEstimado: true, costoEstimado: true, utilidadEstimada: true } },
         proveedoresEvento: { orderBy: { createdAt: "asc" } },
+        bloquesTiempo: { orderBy: { orden: "asc" } },
       },
     });
   } catch {
@@ -153,6 +154,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         },
         cierreFinanciero: { select: { cerradoEn: true, notas: true, totalCobrado: true, totalGastado: true, utilidadReal: true, margenReal: true, granTotalEstimado: true, costoEstimado: true, utilidadEstimada: true } },
         proveedoresEvento: { orderBy: { createdAt: "asc" } },
+        bloquesTiempo: { orderBy: { orden: "asc" } },
       },
     });
     // Normalize fallback: add empty arrays for new fields
@@ -167,6 +169,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
           equipo: { ...(e.equipo as Record<string, unknown>), accesorios: [] },
         })),
         proveedoresEvento: (proyecto as { proveedoresEvento?: unknown[] }).proveedoresEvento ?? [],
+        bloquesTiempo: (proyecto as { bloquesTiempo?: unknown[] }).bloquesTiempo ?? [],
       } as unknown as typeof proyecto;
     }
   }

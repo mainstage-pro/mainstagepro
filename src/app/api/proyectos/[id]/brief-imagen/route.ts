@@ -27,6 +27,8 @@ export async function GET(req: NextRequest,
         },
         orderBy: [{ equipo: { categoriaId: "asc" } }, { id: "asc" }],
       },
+      proveedoresEvento: { select: { id: true, nombreProveedor: true } },
+      bloquesTiempo: { orderBy: { orden: "asc" } },
     },
   });
 
@@ -40,6 +42,7 @@ export async function GET(req: NextRequest,
   const proyectoData = {
     ...proyecto,
     fechaEvento: proyecto.fechaEvento?.toISOString() ?? null,
+    nombresProveedor: Object.fromEntries(proyecto.proveedoresEvento.map((p) => [p.id, p.nombreProveedor])),
   };
 
   const pdfStream = await ReactPDF.renderToStream(

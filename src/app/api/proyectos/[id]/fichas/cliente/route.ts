@@ -5,6 +5,7 @@ import ReactPDF, { Document } from "@react-pdf/renderer";
 import { FichaCliente, FichaClienteData } from "@/components/pdf/FichaCliente";
 import { logoBase64, logoBase64Dark, EquipoFlat } from "@/components/pdf/PdfShared";
 import { bloqueoDocumento } from "@/lib/proyecto-documentos-guard";
+import { BloqueTiempo } from "@/lib/cronologia-evento";
 import React from "react";
 import path from "path";
 
@@ -31,6 +32,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         },
         orderBy: { id: "asc" },
       },
+      bloquesTiempo: { orderBy: { orden: "asc" } },
     },
   });
 
@@ -80,6 +82,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     encargadoNombre: proyecto.encargado?.name ?? null,
     cliente: { nombre: proyecto.cliente.nombre, empresa: proyecto.cliente.empresa ?? null },
     equipos,
+    bloquesTiempo: (proyecto.bloquesTiempo ?? []) as BloqueTiempo[],
     logoSrc,
     logoSrcDark,
   };

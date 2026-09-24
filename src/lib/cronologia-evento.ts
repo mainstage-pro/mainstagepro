@@ -16,13 +16,40 @@
 import { diasEvento, horarioDeDia, fechaISOaDia } from "./fechas-evento";
 import { fmt24to12 } from "./hora";
 
+/** Tipos de fila de `ProyectoBloqueTiempo`. Cada documento filtra por estos. */
+export const TIPOS_BLOQUE = ["MONTAJE", "SOUNDCHECK", "PROGRAMA", "PROVEEDOR", "DESMONTAJE"] as const;
+export type TipoBloque = (typeof TIPOS_BLOQUE)[number];
+
+/** Fila de `ProyectoBloqueTiempo` tal como viene de la BD. */
+export type BloqueTiempo = {
+  id: string;
+  tipo: string;
+  fase: string | null;
+  proveedorEventoId: string | null;
+  fecha: Date | string | null;
+  horaInicio: string | null;
+  horaFin: string | null;
+  titulo: string;
+  detalle: string | null;
+  responsable: string | null;
+  involucrados: string | null;
+  orden: number;
+};
+
 export type ItemCronologia = {
   label: string;
   hora: string;
+  /** Hora de término cuando el bloque es un rango; ausente si es un instante. */
+  horaFin?: string | null;
   /** Fecha corta ("lun 5 jul") cuando aporta contexto; null si es obvia por el bloque. */
   fecha: string | null;
   /** Nota breve al lado (lugar, referencia). */
   nota: string | null;
+  /** Ausente o "BASE" = horario del proyecto; lo demás viene de un ProyectoBloqueTiempo. */
+  tipo?: TipoBloque | "BASE";
+  /** Nombre del proveedor cuando el ítem es tipo PROVEEDOR. */
+  proveedor?: string | null;
+  responsable?: string | null;
 };
 
 export type BloqueCronologia = {
@@ -114,18 +141,56 @@ function fechaCorta(fecha: string | Date | null | undefined): string | null {
   }
 }
 
+/** Convierte una fila de ProyectoBloqueTiempo en un ítem de la cronología. */
+function bloqueAItem(b: BloqueTiempo, nombreProveedor?: string | null): ItemCronologia {
+  const fase = b.fase ? b.fase.charAt(0) + b.fase.slice(1).toLowerCase() : null;
+  const label = b.tipo === "PROVEEDOR" && fase ? `${fase} — ${nombreProveedor ?? b.titulo}` : b.titulo;
+  return {
+    label,
+    hora: b.horaInicio || "Por definir",
+    horaFin: b.horaFin,
+    fecha: null,
+    nota: b.detalle || b.involucrados || null,
+    tipo: (b.tipo as TipoBloque) ?? "PROGRAMA",
+    proveedor: b.tipo === "PROVEEDOR" ? nombreProveedor ?? null : null,
+    responsable: b.responsable,
+  };
+}
+
 /**
  * Construye la cronología ordenada del proyecto.
  * @param opts.interno  true (default) incluye logística de bodega (llamado, salida, desmontaje).
  *                      false = versión cliente: solo montaje en venue y horarios de cada día.
+ * @param opts.bloques  Filas de ProyectoBloqueTiempo del proyecto. Se intercalan en el día
+ *                      que les toca, entre el inicio y el fin del evento.
+ * @param opts.tipos    Qué tipos de bloque incluir. Sin esto, entran todos. Es el filtro con
+ *                      el que cada documento se queda solo con lo suyo (ej. solo SOUNDCHECK).
+ * @param opts.nombresProveedor  id de ProveedorEvento → nombre, para etiquetar sus ventanas.
  */
 export function construirCronologia(
   p: ProyectoCronologia,
-  opts?: { interno?: boolean },
+  opts?: {
+    interno?: boolean;
+    bloques?: BloqueTiempo[];
+    tipos?: TipoBloque[];
+    nombresProveedor?: Record<string, string>;
+  },
 ): BloqueCronologia[] {
   const interno = opts?.interno ?? true;
   const dias = diasEvento(p.fechaEvento, p.fechasEvento);
   const bloques: BloqueCronologia[] = [];
+
+  // ── Bloques de tiempo capturados, agrupados por día ──
+  const permitidos = opts?.tipos ?? [...TIPOS_BLOQUE];
+  const extras = (opts?.bloques ?? [])
+    .filter((b) => permitidos.includes(b.tipo as TipoBloque))
+    .sort((a, b) => a.orden - b.orden);
+  const nombres = opts?.nombresProveedor ?? {};
+  const itemsExtra = (dia: string, tipos: TipoBloque[]): ItemCronologia[] =>
+    extras
+      .filter((b) => tipos.includes(b.tipo as TipoBloque))
+      .filter((b) => (b.fecha ? fechaISOaDia(b.fecha) : dias[0]) === dia)
+      .map((b) => bloqueAItem(b, b.proveedorEventoId ? nombres[b.proveedorEventoId] : null));
 
   const montajeDiaAparte = p.montajeDiaAparte === true;
   const desmontajeDiaAparte = p.desmontajeDiaAparte === true;
@@ -161,15 +226,22 @@ export function construirCronologia(
       nota: p.horaMontaje ? null : p.lugarEvento,
     });
   }
+  const diaMontaje = (montajeDiaAparte ? montajeFecha : null) ?? dias[0];
+  itemsMontaje.push(...itemsExtra(diaMontaje, ["MONTAJE"]));
   if (terminoMontaje) {
     itemsMontaje.push({ label: "Término aprox. de montaje", hora: terminoMontaje, fecha: null, nota: null });
   }
 
   // ── Ítems de desmontaje (solo interno) ──
   const terminoDesmontaje = sumarHoras(p.horaDesmontaje, p.duracionDesmontajeHrs);
+  const desmontajeFecha = p.fechaDesmontaje ? fechaISOaDia(p.fechaDesmontaje) : null;
   const itemsDesmontaje: ItemCronologia[] = [];
   if (interno && p.horaDesmontaje) {
     itemsDesmontaje.push({ label: "Inicio de desmontaje", hora: p.horaDesmontaje, fecha: null, nota: null });
+  }
+  if (interno) {
+    const diaDesmontaje = (desmontajeDiaAparte ? desmontajeFecha : null) ?? dias[dias.length - 1];
+    itemsDesmontaje.push(...itemsExtra(diaDesmontaje, ["DESMONTAJE"]));
   }
   if (interno && terminoDesmontaje) {
     itemsDesmontaje.push({ label: "Término aprox. de desmontaje", hora: terminoDesmontaje, fecha: null, nota: null });
@@ -209,6 +281,9 @@ export function construirCronologia(
     if (h.inicio) {
       items.push({ label: "Inicio del evento", hora: h.inicio, fecha: null, nota: p.lugarEvento });
     }
+    // El detalle del día (soundcheck, programa, ventanas de proveedor) vive entre el
+    // inicio y el fin del evento, que es donde ocurre.
+    items.push(...itemsExtra(fecha, interno ? ["SOUNDCHECK", "PROGRAMA", "PROVEEDOR"] : ["PROGRAMA"]));
     if (h.fin) {
       items.push({ label: "Fin del evento", hora: h.fin, fecha: null, nota: null });
     }
@@ -227,11 +302,13 @@ export function construirCronologia(
 
   // ── Desmontaje como día adicional (después de los días del evento) ──
   if (desmontajeDiaAparte && itemsDesmontaje.length) {
-    const desmontajeFecha = p.fechaDesmontaje ? fechaISOaDia(p.fechaDesmontaje) : null;
     bloques.push({ titulo: "Desmontaje", subtitulo: fechaCorta(desmontajeFecha), items: itemsDesmontaje });
   }
 
-  bloques.forEach((b) => b.items.forEach((it) => { it.hora = horaAmPm(it.hora) ?? it.hora; }));
+  bloques.forEach((b) => b.items.forEach((it) => {
+    it.hora = horaAmPm(it.hora) ?? it.hora;
+    if (it.horaFin) it.horaFin = horaAmPm(it.horaFin);
+  }));
 
   return bloques;
 }

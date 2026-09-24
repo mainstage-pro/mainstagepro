@@ -4,9 +4,10 @@ import { getSession } from "@/lib/auth";
 import ReactPDF, { Document } from "@react-pdf/renderer";
 import { FichaOperativa, FichaOperativaData } from "@/components/pdf/FichaOperativa";
 import {
-  logoBase64, logoBase64Dark, makePdfImageResolver, EquipoFlat, CronoRow, TransporteSlot,
-  DocsData, EquipoRiderExtra, ProveedorRenta,
+  logoBase64, logoBase64Dark, makePdfImageResolver, EquipoFlat, TransporteSlot,
+  EquipoRiderExtra, ProveedorRenta,
 } from "@/components/pdf/PdfShared";
+import { BloqueTiempo } from "@/lib/cronologia-evento";
 import { sembrarNotasEquiposProyecto } from "@/lib/notas-equipos";
 import { bloqueoDocumento } from "@/lib/proyecto-documentos-guard";
 import React from "react";
@@ -49,6 +50,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       checklist: { orderBy: { orden: "asc" } },
       archivos: { orderBy: { createdAt: "desc" } },
       proveedoresEvento: { orderBy: { createdAt: "asc" } },
+      bloquesTiempo: { orderBy: { orden: "asc" } },
     },
   });
 
@@ -60,9 +62,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const resolveImg = makePdfImageResolver(publicDir);
 
   // ── Parse JSON fields ──────────────────────────────────────────────────────
-  let cronograma: CronoRow[] = [];
-  try { cronograma = proyecto.cronograma ? JSON.parse(proyecto.cronograma) : []; } catch { /* ignore */ }
-
   let transportes: TransporteSlot[] = [];
   try {
     const raw = proyecto.transportes ? JSON.parse(proyecto.transportes) : [];
@@ -86,9 +85,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       } catch { /* use raw IDs */ }
     }
   } catch { /* ignore */ }
-
-  let docsTecnicos: DocsData | null = null;
-  try { if (proyecto.docsTecnicos) docsTecnicos = JSON.parse(proyecto.docsTecnicos); } catch { /* ignore */ }
 
   let equiposRiderExtra: EquipoRiderExtra[] = [];
   try { equiposRiderExtra = proyecto.equiposRiderExtra ? JSON.parse(proyecto.equiposRiderExtra) : []; } catch { /* ignore */ }
@@ -185,15 +181,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       nombreProveedor: p.nombreProveedor,
       servicioEquipo: p.servicioEquipo ?? null,
       telefonoProveedor: p.telefonoProveedor ?? null,
+      responsable: p.responsable ?? null,
+      notas: p.notas ?? null,
     })),
     proveedoresRenta,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     archivos: (proyecto.archivos ?? []).map((a: any) => ({ tipo: a.tipo, nombre: a.nombre, url: a.url })),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     checklist: (proyecto.checklist ?? []).map((c: any) => ({ item: c.item, completado: c.completado, tipo: c.tipo })),
-    cronograma,
+    bloquesTiempo: (proyecto.bloquesTiempo ?? []) as BloqueTiempo[],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    nombresProveedor: Object.fromEntries((proyecto.proveedoresEvento ?? []).map((p: any) => [p.id, p.nombreProveedor])),
     transportes,
-    docsTecnicos,
     tratoNotas: proyecto.trato?.notas ?? null,
     logoSrc,
     logoSrcDark,

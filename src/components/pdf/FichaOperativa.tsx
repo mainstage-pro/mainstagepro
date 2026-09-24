@@ -8,12 +8,11 @@ import React from "react";
 import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
 import {
   C, base, fmtFecha, fmtHora, duracion, nowStr,
-  agruparPorCategoria, EquipoFlat, CronoRow, TransporteSlot,
-  DocsData, EquipoRiderExtra, ProveedorRenta, MAPS,
+  agruparPorCategoria, EquipoFlat, TransporteSlot,
+  EquipoRiderExtra, ProveedorRenta, MAPS,
 } from "./PdfShared";
-import { diasEvento, agruparPorDia } from "@/lib/fechas-evento";
 import { CronologiaEvento } from "./CronologiaEvento";
-import { construirCronologia } from "@/lib/cronologia-evento";
+import { construirCronologia, BloqueTiempo } from "@/lib/cronologia-evento";
 
 const s = StyleSheet.create({
   // Sección numerada con badge negro
@@ -22,7 +21,6 @@ const s = StyleSheet.create({
     alignItems: "center", justifyContent: "center", marginRight: 7, flexShrink: 0,
   },
   secNumTxt: { fontSize: 7, fontFamily: "Helvetica-Bold", color: C.blanco, paddingTop: 1 },
-  diaLabel: { fontSize: 8, fontFamily: "Helvetica-Bold", color: C.dorado, marginBottom: 4 },
   secTitleRow: {
     flexDirection: "row", alignItems: "center", marginBottom: 8,
     paddingBottom: 4, borderBottomWidth: 0.8,
@@ -118,6 +116,7 @@ export interface PersonalItem {
 }
 export interface ProveedorEvento {
   nombreProveedor: string; servicioEquipo: string | null; telefonoProveedor: string | null;
+  responsable: string | null; notas: string | null;
 }
 export interface ArchivoItem { tipo: string; nombre: string; url: string }
 export interface CheckItemFlat { item: string; completado: boolean; tipo: string }
@@ -156,9 +155,11 @@ export interface FichaOperativaData {
   proveedoresRenta: ProveedorRenta[];
   archivos: ArchivoItem[];
   checklist: CheckItemFlat[];
-  cronograma: CronoRow[];
+  /** Cronología unificada: montaje, soundcheck, programa, ventanas de proveedor y desmontaje. */
+  bloquesTiempo: BloqueTiempo[];
+  /** id de ProveedorEvento → nombre, para etiquetar sus ventanas en la cronología. */
+  nombresProveedor: Record<string, string>;
   transportes: TransporteSlot[];
-  docsTecnicos: DocsData | null;
   tratoNotas: string | null;
   logoSrc: string | null;
   logoSrcDark: string | null;
@@ -181,30 +182,18 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
   // Agrupa TODOS los equipos (propios + externos) por categoría — igual que RiderPDF
   const todasCategorias = agruparPorCategoria(data.equipos);
 
-  const cronConDatos = data.cronograma.filter(r => r.actividad?.trim());
-  // Servicio de varios días: agrupa el cronograma por fecha.
-  const diasCrono = diasEvento(data.fechaEvento, data.fechasEvento);
-  const esMultidiaCrono = diasCrono.length > 1;
-  const fmtDiaCrono = (iso: string) =>
-    new Date(iso + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long" });
-  const cronoFilasDoc = (rows: CronoRow[]) => rows.map((r, i) => (
-    <View key={i} style={i < rows.length - 1 ? base.tableRow : base.tableRowLast} wrap={false}>
-      <Text style={[base.tdTxt, { width: 46, fontFamily: "Helvetica-Bold" }]}>{fmtHora(r.horaInicio)}</Text>
-      <Text style={[base.tdMuted, { width: 40 }]}>{fmtHora(r.horaFin)}</Text>
-      <Text style={[base.tdTxt, { flex: 1 }]}>{r.actividad}</Text>
-      <Text style={[base.tdMuted, { width: 100 }]}>{r.responsable}</Text>
-    </View>
-  ));
   const transConDatos = data.transportes.filter(t => t.horaSalida || t.choferNombre || t.vehiculoNombre);
 
   const todosProveedores = [
-    ...data.proveedoresEvento.map(p => ({ nombre: p.nombreProveedor, servicio: p.servicioEquipo, tel: p.telefonoProveedor })),
-    ...data.proveedoresRenta.map(p => ({ nombre: p.nombre, servicio: p.equipos.join(", "), tel: p.contacto })),
+    ...data.proveedoresEvento.map(p => ({
+      nombre: p.nombreProveedor, servicio: p.servicioEquipo,
+      tel: p.telefonoProveedor, responsable: p.responsable, notas: p.notas,
+    })),
+    ...data.proveedoresRenta.map(p => ({
+      nombre: p.nombre, servicio: p.equipos.join(", "),
+      tel: p.contacto, responsable: null, notas: null,
+    })),
   ];
-
-  const soundcheck = data.docsTecnicos?.soundcheck?.filter(r => r.artista || r.hora) ?? [];
-  const programa = data.docsTecnicos?.programaEvento?.filter(r => r.actividad || r.hora) ?? [];
-  const coordProv = data.docsTecnicos?.coordinacionProveedores?.filter(r => r.proveedor) ?? [];
 
   // Cronología unificada (montaje/logística primero, luego cada día en orden).
   const bloquesCrono = construirCronologia({
@@ -216,7 +205,7 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
     duracionDesmontajeHrs: data.duracionDesmontajeHrs, desmontajeDiaAparte: data.desmontajeDiaAparte,
     fechaDesmontaje: data.fechaDesmontaje,
     llamadoBodega: data.llamadoBodega, lugarLlamado: data.lugarLlamado, lugarEvento: data.lugarEvento,
-  });
+  }, { bloques: data.bloquesTiempo, nombresProveedor: data.nombresProveedor });
 
   let seccion = 0;
   const sec = (titulo: string) => { seccion++; return String(seccion); };
@@ -358,41 +347,6 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
             </View>
           )}
 
-          {/* 4. CRONOGRAMA */}
-          {cronConDatos.length > 0 && (
-            <View style={base.section} minPresenceAhead={110}>
-              <SecNum num={sec("crono")} titulo="Cronograma" />
-              {esMultidiaCrono ? (
-                agruparPorDia(cronConDatos, diasCrono)
-                  .filter(g => g.rows.length > 0)
-                  .map(g => (
-                    <View key={g.fecha} style={{ marginBottom: 8 }} minPresenceAhead={90}>
-                      <Text style={[s.diaLabel, { textTransform: "capitalize" }]}>Día {g.numero} · {fmtDiaCrono(g.fecha)}</Text>
-                      <View style={base.table}>
-                        <View style={base.tableHd}>
-                          <Text style={[base.thTxt, { width: 46 }]}>Inicio</Text>
-                          <Text style={[base.thTxt, { width: 40 }]}>Fin</Text>
-                          <Text style={[base.thTxt, { flex: 1 }]}>Actividad</Text>
-                          <Text style={[base.thTxt, { width: 100 }]}>Responsable</Text>
-                        </View>
-                        {cronoFilasDoc(g.rows)}
-                      </View>
-                    </View>
-                  ))
-              ) : (
-                <View style={base.table} minPresenceAhead={90}>
-                  <View style={base.tableHd}>
-                    <Text style={[base.thTxt, { width: 46 }]}>Inicio</Text>
-                    <Text style={[base.thTxt, { width: 40 }]}>Fin</Text>
-                    <Text style={[base.thTxt, { flex: 1 }]}>Actividad</Text>
-                    <Text style={[base.thTxt, { width: 100 }]}>Responsable</Text>
-                  </View>
-                  {cronoFilasDoc(cronConDatos)}
-                </View>
-              )}
-            </View>
-          )}
-
           {/* 5. TRASLADOS */}
           {transConDatos.length > 0 && (
             <View style={base.section}>
@@ -520,16 +474,26 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                 <View style={base.tableHd}>
                   <Text style={[base.thTxt, { flex: 1 }]}>Proveedor</Text>
                   <Text style={[base.thTxt, { flex: 1 }]}>Equipo / Servicio</Text>
-                  <Text style={[base.thTxt, { width: 100 }]}>Teléfono</Text>
+                  <Text style={[base.thTxt, { width: 90 }]}>Responsable</Text>
+                  <Text style={[base.thTxt, { width: 90 }]}>Teléfono</Text>
                 </View>
                 {todosProveedores.map((p, i) => (
                   <View key={i} style={i < todosProveedores.length - 1 ? base.tableRow : base.tableRowLast} wrap={false}>
                     <Text style={[base.tdTxt, { flex: 1, fontFamily: "Helvetica-Bold" }]}>{p.nombre}</Text>
                     <Text style={[base.tdMuted, { flex: 1 }]}>{p.servicio ?? "—"}</Text>
-                    <Text style={[base.tdMuted, { width: 100 }]}>{p.tel ?? "—"}</Text>
+                    <Text style={[base.tdMuted, { width: 90 }]}>{p.responsable ?? "—"}</Text>
+                    <Text style={[base.tdMuted, { width: 90 }]}>{p.tel ?? "—"}</Text>
                   </View>
                 ))}
               </View>
+              {todosProveedores.filter(p => p.notas).map((p, i) => (
+                <View key={i} style={[base.textBox, { marginTop: 4 }]} wrap={false}>
+                  <Text style={{ fontSize: 6.5, fontFamily: "Helvetica-Bold", color: C.grisClaro, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 3 }}>
+                    {p.nombre}
+                  </Text>
+                  <Text style={base.textBoxContent}>{p.notas}</Text>
+                </View>
+              ))}
             </View>
           )}
 
@@ -664,76 +628,6 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                   </View>
                 ))}
               </View>
-            </View>
-          )}
-
-          {/* 12. DOCUMENTOS DEL SHOW */}
-          {(soundcheck.length > 0 || programa.length > 0 || coordProv.length > 0) && (
-            <View style={base.section}>
-              <SecNum num={sec("docs")} titulo="Documentos del Show" />
-              {soundcheck.length > 0 && (
-                <View style={{ marginBottom: 8 }}>
-                  <Text style={[base.kvLabel, { marginBottom: 4 }]}>Orden de Soundcheck</Text>
-                  <View style={base.table}>
-                    <View style={base.tableHd}>
-                      <Text style={[base.thTxt, { width: 46 }]}>Hora</Text>
-                      <Text style={[base.thTxt, { flex: 1 }]}>Artista / Act</Text>
-                      <Text style={[base.thTxt, { width: 56 }]}>Duración</Text>
-                      <Text style={[base.thTxt, { flex: 1 }]}>Notas</Text>
-                    </View>
-                    {soundcheck.map((r, i) => (
-                      <View key={i} style={i < soundcheck.length - 1 ? base.tableRow : base.tableRowLast} wrap={false}>
-                        <Text style={[base.tdTxt, { width: 46 }]}>{r.hora}</Text>
-                        <Text style={[base.tdTxt, { flex: 1 }]}>{r.artista}</Text>
-                        <Text style={[base.tdMuted, { width: 56 }]}>{r.duracion}</Text>
-                        <Text style={[base.tdMuted, { flex: 1 }]}>{r.notas}</Text>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              )}
-              {programa.length > 0 && (
-                <View style={{ marginBottom: 8 }}>
-                  <Text style={[base.kvLabel, { marginBottom: 4 }]}>Programa General del Evento</Text>
-                  <View style={base.table}>
-                    <View style={base.tableHd}>
-                      <Text style={[base.thTxt, { width: 46 }]}>Hora</Text>
-                      <Text style={[base.thTxt, { flex: 1 }]}>Actividad</Text>
-                      <Text style={[base.thTxt, { width: 100 }]}>Responsable</Text>
-                      <Text style={[base.thTxt, { flex: 1 }]}>Notas</Text>
-                    </View>
-                    {programa.map((r, i) => (
-                      <View key={i} style={i < programa.length - 1 ? base.tableRow : base.tableRowLast} wrap={false}>
-                        <Text style={[base.tdTxt, { width: 46, fontFamily: "Helvetica-Bold" }]}>{r.hora}</Text>
-                        <Text style={[base.tdTxt, { flex: 1 }]}>{r.actividad}</Text>
-                        <Text style={[base.tdMuted, { width: 100 }]}>{r.responsable}</Text>
-                        <Text style={[base.tdMuted, { flex: 1 }]}>{r.notas}</Text>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              )}
-              {coordProv.length > 0 && (
-                <View>
-                  <Text style={[base.kvLabel, { marginBottom: 4 }]}>Coordinación de Proveedores</Text>
-                  <View style={base.table}>
-                    <View style={base.tableHd}>
-                      <Text style={[base.thTxt, { flex: 1 }]}>Proveedor</Text>
-                      <Text style={[base.thTxt, { width: 100 }]}>Contacto</Text>
-                      <Text style={[base.thTxt, { width: 56 }]}>Horario</Text>
-                      <Text style={[base.thTxt, { flex: 1 }]}>Notas</Text>
-                    </View>
-                    {coordProv.map((r, i) => (
-                      <View key={i} style={i < coordProv.length - 1 ? base.tableRow : base.tableRowLast} wrap={false}>
-                        <Text style={[base.tdTxt, { flex: 1 }]}>{r.proveedor}</Text>
-                        <Text style={[base.tdMuted, { width: 100 }]}>{r.contacto}</Text>
-                        <Text style={[base.tdMuted, { width: 56 }]}>{r.horario}</Text>
-                        <Text style={[base.tdMuted, { flex: 1 }]}>{r.notas}</Text>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              )}
             </View>
           )}
 

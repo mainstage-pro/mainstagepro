@@ -35,7 +35,8 @@ export interface ProyectoDocumentoInput {
   encargadoLugar: string | null;
   encargadoCliente: string | null;
   contactosEmergencia: string | null;
-  cronograma: string | null;
+  /** Bloques de la cronología unificada (montaje, soundcheck, programa, proveedores, desmontaje). */
+  bloquesCronologia: number;
   /** JSON de logística de renta, ya resuelto el fallback a trato.ideasReferencias. */
   logisticaRenta: string | null;
   equiposCount: number;
@@ -54,16 +55,6 @@ export interface RequisitosDocumento {
 }
 
 const falta = (s: string | null | undefined) => !s || !s.trim();
-
-function filasCronograma(raw: string | null): number {
-  if (!raw) return 0;
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.length : 0;
-  } catch {
-    return 0;
-  }
-}
 
 function modalidadEntrega(raw: string | null): { modalidad: string; direccion: string } {
   if (!raw) return { modalidad: "", direccion: "" };
@@ -129,7 +120,7 @@ export function requisitosDocumento(
       if (sinComoLlegar) bloqueos.push("Falta dirección del venue o link de Maps");
       if (sinMontaje) bloqueos.push("Falta fecha u hora de montaje");
       if (sinContactoEnSitio) advertencias.push("Sin encargado del lugar ni del cliente");
-      if (filasCronograma(p.cronograma) === 0) advertencias.push("Cronograma vacío");
+      if (p.bloquesCronologia === 0) advertencias.push("Cronología vacía");
       if (p.personalSinAsignar > 0)
         advertencias.push(`${p.personalSinAsignar} lugar(es) de personal sin técnico`);
       if (p.personalSinRol > 0) advertencias.push(`${p.personalSinRol} técnico(s) sin rol asignado`);

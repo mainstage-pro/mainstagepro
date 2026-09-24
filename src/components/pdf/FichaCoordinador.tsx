@@ -7,10 +7,12 @@ import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/render
 import {
   C, base, fmtFecha, fmtFechaCorta, fmtHora, duracion, nowStr,
   agruparPorCategoria, EquipoFlat,
-  CronoRow, TransporteSlot, DocsData, EquipoRiderExtra, ProveedorRenta,
+  TransporteSlot, EquipoRiderExtra, ProveedorRenta,
 } from "./PdfShared";
-import { diasEvento, agruparPorDia, horarioDeDia } from "@/lib/fechas-evento";
+import { diasEvento, horarioDeDia } from "@/lib/fechas-evento";
 import { normalizarAmPm } from "@/lib/hora";
+import { CronologiaEvento } from "./CronologiaEvento";
+import { construirCronologia, BloqueTiempo } from "@/lib/cronologia-evento";
 
 const s = StyleSheet.create({
   // Header
@@ -112,9 +114,14 @@ export interface FichaCoordinadorData {
   horaInicioMontaje: string | null;
   duracionMontajeHrs: number | null;
   horaMontaje: string | null;
+  montajeDiaAparte: boolean | null;
+  desmontajeDiaAparte: boolean | null;
+  fechaDesmontaje: string | null;
+  duracionDesmontajeHrs: number | null;
   horaSalidaBodega: string | null;
   puntoSalidaBodega: string | null;
   llamadoBodega: string | null;
+  lugarLlamado: string | null;
   lugarEvento: string | null;
   direccionVenue: string | null;
   linkMaps: string | null;
@@ -136,10 +143,12 @@ export interface FichaCoordinadorData {
   archivos: ArchivoItem[];
   checklist: CheckItemFlat[];
   cuentasCobrar: CxCFlat[];
-  cronograma: CronoRow[];
+  /** Cronología unificada: montaje, soundcheck, programa, ventanas de proveedor y desmontaje. */
+  bloquesTiempo: BloqueTiempo[];
+  /** id de ProveedorEvento → nombre, para etiquetar sus ventanas. */
+  nombresProveedor: Record<string, string>;
   transportes: TransporteSlot[];
   equiposRiderExtra: EquipoRiderExtra[];
-  docsTecnicos: DocsData | null;
   tratoNotas: string | null;
   logoSrc: string | null;
 }
@@ -186,7 +195,6 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
   const horaFin = fmtHora(data.horaDesmontaje || data.horaFinEvento);
   const duracionEvento = duracion(data.horaInicio || data.horaInicioEvento, data.horaDesmontaje || data.horaFinEvento);
   const horaMontajeStr = fmtHora(data.horaMontaje || data.horaInicioMontaje);
-  const horaSalidaStr = fmtHora(data.horaSalidaBodega);
   const llamadoBodegaHora = data.llamadoBodega
     ? normalizarAmPm(new Date(data.llamadoBodega).toLocaleTimeString("es-MX", { hour: "numeric", minute: "2-digit", timeZone: "UTC" }))
     : null;
@@ -203,29 +211,25 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
   const anticipo = data.cuentasCobrar.find(c => c.tipoPago === "ANTICIPO");
   const liquidacion = data.cuentasCobrar.find(c => c.tipoPago === "LIQUIDACION");
 
-  const cronConDatos = data.cronograma.filter(r => r.actividad?.trim());
-  // Servicio de varios días: agrupa la cronología por fecha.
   const diasCrono = diasEvento(data.fechaEvento, data.fechasEvento);
   const esMultidiaCrono = diasCrono.length > 1;
-  const fmtDiaCrono = (iso: string) =>
-    new Date(iso + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long" });
-  const cronoFilasDoc = (rows: CronoRow[]) => rows.map((r, i) => (
-    <View key={i} style={i < rows.length - 1 ? s.tblRow : s.tblRowLast} wrap={false}>
-      <Text style={[s.tblTxt, { width: 50 }]}>{fmtHora(r.horaInicio)}</Text>
-      <Text style={[s.tblTxtMuted, { width: 50 }]}>{fmtHora(r.horaFin)}</Text>
-      <Text style={[s.tblTxt, { flex: 1 }]}>{r.actividad}</Text>
-      <Text style={[s.tblTxtMuted, { width: 90 }]}>{r.responsable}</Text>
-    </View>
-  ));
+
+  const bloquesCrono = construirCronologia({
+    fechaEvento: data.fechaEvento, fechasEvento: data.fechasEvento, horariosEvento: data.horariosEvento,
+    horaInicioEvento: data.horaInicioEvento, horaFinEvento: data.horaFinEvento,
+    fechaMontaje: data.fechaMontaje, horaMontaje: data.horaMontaje, horaInicioMontaje: data.horaInicioMontaje,
+    duracionMontajeHrs: data.duracionMontajeHrs, montajeDiaAparte: data.montajeDiaAparte,
+    horaSalidaBodega: data.horaSalidaBodega, horaDesmontaje: data.horaDesmontaje,
+    duracionDesmontajeHrs: data.duracionDesmontajeHrs, desmontajeDiaAparte: data.desmontajeDiaAparte,
+    fechaDesmontaje: data.fechaDesmontaje,
+    llamadoBodega: data.llamadoBodega, lugarLlamado: data.lugarLlamado, lugarEvento: data.lugarEvento,
+  }, { bloques: data.bloquesTiempo, nombresProveedor: data.nombresProveedor });
+
   const transConDatos = data.transportes.filter(t => t.horaSalida || t.choferNombre);
   const todosProveedores = [
     ...data.proveedoresEvento.map(p => ({ nombre: p.nombreProveedor, servicio: p.servicioEquipo, telefono: p.telefonoProveedor })),
     ...data.proveedoresRenta.map(p => ({ nombre: p.nombre, servicio: p.equipos.join(", "), telefono: p.contacto })),
   ];
-
-  const soundcheckConDatos = data.docsTecnicos?.soundcheck?.filter(r => r.artista || r.hora) ?? [];
-  const programaConDatos = data.docsTecnicos?.programaEvento?.filter(r => r.actividad || r.hora) ?? [];
-  const coordProvConDatos = data.docsTecnicos?.coordinacionProveedores?.filter(r => r.proveedor || r.horario) ?? [];
 
   return (
     <Document title={`Ficha Operativa ${data.numeroProyecto}`} author="Mainstage Pro">
@@ -357,37 +361,10 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
         )}
 
         {/* 4. CRONOLOGÍA */}
-        {cronConDatos.length > 0 && (
+        {bloquesCrono.length > 0 && (
           <View style={base.section}>
             <SeccionHeader num="4" titulo="Cronología del Evento" />
-            {esMultidiaCrono ? (
-              agruparPorDia(cronConDatos, diasCrono)
-                .filter(g => g.rows.length > 0)
-                .map(g => (
-                  <View key={g.fecha} style={{ marginBottom: 8 }}>
-                    <Text style={[s.diaLabel, { textTransform: "capitalize" }]}>Día {g.numero} · {fmtDiaCrono(g.fecha)}</Text>
-                    <View style={s.tbl}>
-                      <View style={s.tblHd}>
-                        <Text style={[s.tblHdTxt, { width: 50 }]}>Hora</Text>
-                        <Text style={[s.tblHdTxt, { width: 50 }]}>Fin</Text>
-                        <Text style={[s.tblHdTxt, { flex: 1 }]}>Actividad</Text>
-                        <Text style={[s.tblHdTxt, { width: 90 }]}>Responsable</Text>
-                      </View>
-                      {cronoFilasDoc(g.rows)}
-                    </View>
-                  </View>
-                ))
-            ) : (
-              <View style={s.tbl}>
-                <View style={s.tblHd}>
-                  <Text style={[s.tblHdTxt, { width: 50 }]}>Hora</Text>
-                  <Text style={[s.tblHdTxt, { width: 50 }]}>Fin</Text>
-                  <Text style={[s.tblHdTxt, { flex: 1 }]}>Actividad</Text>
-                  <Text style={[s.tblHdTxt, { width: 90 }]}>Responsable</Text>
-                </View>
-                {cronoFilasDoc(cronConDatos)}
-              </View>
-            )}
+            <CronologiaEvento bloques={bloquesCrono} />
           </View>
         )}
 
@@ -588,76 +565,6 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
                 </View>
               ))}
             </View>
-          </View>
-        )}
-
-        {/* 11. DOCUMENTOS DEL SHOW */}
-        {(soundcheckConDatos.length > 0 || programaConDatos.length > 0 || coordProvConDatos.length > 0) && (
-          <View style={base.section}>
-            <SeccionHeader num="11" titulo="Documentos del Show" />
-            {soundcheckConDatos.length > 0 && (
-              <View style={{ marginBottom: 8 }}>
-                <Text style={[s.kvLabel, { marginBottom: 4 }]}>Orden de Soundcheck</Text>
-                <View style={s.tbl}>
-                  <View style={s.tblHd}>
-                    <Text style={[s.tblHdTxt, { width: 50 }]}>Hora</Text>
-                    <Text style={[s.tblHdTxt, { flex: 1 }]}>Artista / Act</Text>
-                    <Text style={[s.tblHdTxt, { width: 60 }]}>Duración</Text>
-                    <Text style={[s.tblHdTxt, { flex: 1 }]}>Notas</Text>
-                  </View>
-                  {soundcheckConDatos.map((r, i) => (
-                    <View key={i} style={i < soundcheckConDatos.length - 1 ? s.tblRow : s.tblRowLast} wrap={false}>
-                      <Text style={[s.tblTxt, { width: 50 }]}>{r.hora}</Text>
-                      <Text style={[s.tblTxt, { flex: 1 }]}>{r.artista}</Text>
-                      <Text style={[s.tblTxtMuted, { width: 60 }]}>{r.duracion}</Text>
-                      <Text style={[s.tblTxtMuted, { flex: 1 }]}>{r.notas}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            )}
-            {programaConDatos.length > 0 && (
-              <View style={{ marginBottom: 8 }}>
-                <Text style={[s.kvLabel, { marginBottom: 4 }]}>Programa General del Evento</Text>
-                <View style={s.tbl}>
-                  <View style={s.tblHd}>
-                    <Text style={[s.tblHdTxt, { width: 50 }]}>Hora</Text>
-                    <Text style={[s.tblHdTxt, { flex: 1 }]}>Actividad</Text>
-                    <Text style={[s.tblHdTxt, { width: 90 }]}>Responsable</Text>
-                    <Text style={[s.tblHdTxt, { flex: 1 }]}>Notas</Text>
-                  </View>
-                  {programaConDatos.map((r, i) => (
-                    <View key={i} style={i < programaConDatos.length - 1 ? s.tblRow : s.tblRowLast} wrap={false}>
-                      <Text style={[s.tblTxt, { width: 50 }]}>{r.hora}</Text>
-                      <Text style={[s.tblTxt, { flex: 1 }]}>{r.actividad}</Text>
-                      <Text style={[s.tblTxtMuted, { width: 90 }]}>{r.responsable}</Text>
-                      <Text style={[s.tblTxtMuted, { flex: 1 }]}>{r.notas}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            )}
-            {coordProvConDatos.length > 0 && (
-              <View>
-                <Text style={[s.kvLabel, { marginBottom: 4 }]}>Coordinación de Proveedores</Text>
-                <View style={s.tbl}>
-                  <View style={s.tblHd}>
-                    <Text style={[s.tblHdTxt, { flex: 1 }]}>Proveedor</Text>
-                    <Text style={[s.tblHdTxt, { width: 90 }]}>Contacto</Text>
-                    <Text style={[s.tblHdTxt, { width: 60 }]}>Horario</Text>
-                    <Text style={[s.tblHdTxt, { flex: 1 }]}>Notas</Text>
-                  </View>
-                  {coordProvConDatos.map((r, i) => (
-                    <View key={i} style={i < coordProvConDatos.length - 1 ? s.tblRow : s.tblRowLast} wrap={false}>
-                      <Text style={[s.tblTxt, { flex: 1 }]}>{r.proveedor}</Text>
-                      <Text style={[s.tblTxtMuted, { width: 90 }]}>{r.contacto}</Text>
-                      <Text style={[s.tblTxtMuted, { width: 60 }]}>{r.horario}</Text>
-                      <Text style={[s.tblTxtMuted, { flex: 1 }]}>{r.notas}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            )}
           </View>
         )}
 

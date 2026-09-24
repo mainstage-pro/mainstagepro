@@ -25,6 +25,8 @@ export async function GET(req: NextRequest,
     include: {
       cliente: { select: { nombre: true, empresa: true } },
       encargado: { select: { name: true } },
+      proveedoresEvento: { select: { id: true, nombreProveedor: true } },
+      bloquesTiempo: { orderBy: { orden: "asc" } },
     },
   });
 
@@ -76,6 +78,9 @@ export async function GET(req: NextRequest,
           empresa: proyecto.cliente.empresa ?? null,
         },
         encargado: proyecto.encargado ? { name: proyecto.encargado.name } : null,
+        bloquesTiempo: proyecto.bloquesTiempo ?? [],
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        nombresProveedor: Object.fromEntries((proyecto.proveedoresEvento ?? []).map((p: any) => [p.id, p.nombreProveedor])),
       },
       logoSrc,
     }) as React.ReactElement<React.ComponentProps<typeof Document>>
