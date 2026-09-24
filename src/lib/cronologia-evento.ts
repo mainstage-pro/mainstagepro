@@ -20,6 +20,45 @@ import { fmt24to12 } from "./hora";
 export const TIPOS_BLOQUE = ["MONTAJE", "SOUNDCHECK", "PROGRAMA", "PROVEEDOR", "DESMONTAJE"] as const;
 export type TipoBloque = (typeof TIPOS_BLOQUE)[number];
 
+/**
+ * Qué horarios derivados del proyecto (los que no son filas capturadas) acompañan
+ * a los bloques:
+ *   COMPLETA — llamado, salida de bodega, llegada, montaje, evento y desmontaje.
+ *   EVENTO   — solo inicio y fin de cada día, como anclas del detalle del show.
+ *   NINGUNA  — nada derivado; solo las filas capturadas.
+ */
+export type BaseCronologia = "COMPLETA" | "EVENTO" | "NINGUNA";
+
+/**
+ * Las tres cronologías que se leen por separado. Una sola captura, tres lecturas:
+ * cada bloque ya sabe qué es, así que nadie recaptura lo mismo en dos lados.
+ */
+export type VistaCronologia = "LOGISTICA" | "PROVEEDORES" | "OPERACION";
+
+export const VISTAS_CRONOLOGIA: Record<
+  VistaCronologia,
+  { titulo: string; descripcion: string; tipos: TipoBloque[]; base: BaseCronologia }
+> = {
+  LOGISTICA: {
+    titulo: "Logística general",
+    descripcion: "Los trazos gruesos: llamado, salida de bodega, montaje y desmontaje.",
+    tipos: ["MONTAJE", "DESMONTAJE"],
+    base: "COMPLETA",
+  },
+  PROVEEDORES: {
+    titulo: "Cronología de proveedores",
+    descripcion: "Entrega, operación y recolección de cada proveedor externo.",
+    tipos: ["PROVEEDOR"],
+    base: "NINGUNA",
+  },
+  OPERACION: {
+    titulo: "Operación del evento",
+    descripcion: "El correr del show: soundcheck y programa.",
+    tipos: ["SOUNDCHECK", "PROGRAMA"],
+    base: "EVENTO",
+  },
+};
+
 /** Fila de `ProyectoBloqueTiempo` tal como viene de la BD. */
 export type BloqueTiempo = {
   id: string;
@@ -166,6 +205,8 @@ function bloqueAItem(b: BloqueTiempo, nombreProveedor?: string | null): ItemCron
  * @param opts.tipos    Qué tipos de bloque incluir. Sin esto, entran todos. Es el filtro con
  *                      el que cada documento se queda solo con lo suyo (ej. solo SOUNDCHECK).
  * @param opts.nombresProveedor  id de ProveedorEvento → nombre, para etiquetar sus ventanas.
+ * @param opts.base     Qué horarios derivados del proyecto acompañan a los bloques.
+ *                      Sin esto entran todos (COMPLETA).
  */
 export function construirCronologia(
   p: ProyectoCronologia,
@@ -174,11 +215,23 @@ export function construirCronologia(
     bloques?: BloqueTiempo[];
     tipos?: TipoBloque[];
     nombresProveedor?: Record<string, string>;
+    base?: BaseCronologia;
   },
 ): BloqueCronologia[] {
   const interno = opts?.interno ?? true;
+  const base = opts?.base ?? "COMPLETA";
+  // Los horarios derivados del proyecto (llamado, salida, montaje) solo acompañan a la
+  // logística; las otras vistas se quedan con lo capturado para no repetir lo mismo.
+  const conLogistica = base === "COMPLETA";
+  const conEvento = base !== "NINGUNA";
   const dias = diasEvento(p.fechaEvento, p.fechasEvento);
   const bloques: BloqueCronologia[] = [];
+  // Día (ISO) de cada bloque ya emitido, para saber dónde intercalar los rescatados.
+  const claves: string[] = [];
+  const agregar = (clave: string, bloque: BloqueCronologia) => {
+    bloques.push(bloque);
+    claves.push(clave);
+  };
 
   // ── Bloques de tiempo capturados, agrupados por día ──
   const permitidos = opts?.tipos ?? [...TIPOS_BLOQUE];
@@ -186,11 +239,17 @@ export function construirCronologia(
     .filter((b) => permitidos.includes(b.tipo as TipoBloque))
     .sort((a, b) => a.orden - b.orden);
   const nombres = opts?.nombresProveedor ?? {};
+  const diaDeBloque = (b: BloqueTiempo) => (b.fecha ? fechaISOaDia(b.fecha) : dias[0]);
+  // Un bloque puede caer en un día que ningún encabezado cubre (ej. el proveedor que
+  // entrega dos días antes); se rescatan al final para que nada quede invisible.
+  const colocados = new Set<string>();
   const itemsExtra = (dia: string, tipos: TipoBloque[]): ItemCronologia[] =>
     extras
-      .filter((b) => tipos.includes(b.tipo as TipoBloque))
-      .filter((b) => (b.fecha ? fechaISOaDia(b.fecha) : dias[0]) === dia)
-      .map((b) => bloqueAItem(b, b.proveedorEventoId ? nombres[b.proveedorEventoId] : null));
+      .filter((b) => tipos.includes(b.tipo as TipoBloque) && diaDeBloque(b) === dia)
+      .map((b) => {
+        colocados.add(b.id);
+        return bloqueAItem(b, b.proveedorEventoId ? nombres[b.proveedorEventoId] : null);
+      });
 
   const montajeDiaAparte = p.montajeDiaAparte === true;
   const desmontajeDiaAparte = p.desmontajeDiaAparte === true;
@@ -203,7 +262,7 @@ export function construirCronologia(
   const montajeFecha = p.fechaMontaje ? fechaISOaDia(p.fechaMontaje) : llamadoFecha;
   const terminoMontaje = sumarHoras(p.horaInicioMontaje, p.duracionMontajeHrs);
   const itemsMontaje: ItemCronologia[] = [];
-  if (interno && (llamadoHora || p.lugarLlamado)) {
+  if (conLogistica && interno && (llamadoHora || p.lugarLlamado)) {
     itemsMontaje.push({
       label: "Llamado en bodega",
       hora: llamadoHora ?? "Por definir",
@@ -212,13 +271,13 @@ export function construirCronologia(
       nota: p.lugarLlamado,
     });
   }
-  if (interno && p.horaSalidaBodega) {
+  if (conLogistica && interno && p.horaSalidaBodega) {
     itemsMontaje.push({ label: "Salida de bodega", hora: p.horaSalidaBodega, fecha: null, nota: null });
   }
-  if (p.horaMontaje) {
+  if (conLogistica && p.horaMontaje) {
     itemsMontaje.push({ label: "Llegada al venue", hora: p.horaMontaje, fecha: null, nota: p.lugarEvento });
   }
-  if (p.horaInicioMontaje) {
+  if (conLogistica && p.horaInicioMontaje) {
     itemsMontaje.push({
       label: "Inicio de montaje",
       hora: p.horaInicioMontaje,
@@ -228,7 +287,7 @@ export function construirCronologia(
   }
   const diaMontaje = (montajeDiaAparte ? montajeFecha : null) ?? dias[0];
   itemsMontaje.push(...itemsExtra(diaMontaje, ["MONTAJE"]));
-  if (terminoMontaje) {
+  if (conLogistica && terminoMontaje) {
     itemsMontaje.push({ label: "Término aprox. de montaje", hora: terminoMontaje, fecha: null, nota: null });
   }
 
@@ -236,20 +295,20 @@ export function construirCronologia(
   const terminoDesmontaje = sumarHoras(p.horaDesmontaje, p.duracionDesmontajeHrs);
   const desmontajeFecha = p.fechaDesmontaje ? fechaISOaDia(p.fechaDesmontaje) : null;
   const itemsDesmontaje: ItemCronologia[] = [];
-  if (interno && p.horaDesmontaje) {
+  if (conLogistica && interno && p.horaDesmontaje) {
     itemsDesmontaje.push({ label: "Inicio de desmontaje", hora: p.horaDesmontaje, fecha: null, nota: null });
   }
   if (interno) {
     const diaDesmontaje = (desmontajeDiaAparte ? desmontajeFecha : null) ?? dias[dias.length - 1];
     itemsDesmontaje.push(...itemsExtra(diaDesmontaje, ["DESMONTAJE"]));
   }
-  if (interno && terminoDesmontaje) {
+  if (conLogistica && interno && terminoDesmontaje) {
     itemsDesmontaje.push({ label: "Término aprox. de desmontaje", hora: terminoDesmontaje, fecha: null, nota: null });
   }
 
   // ── Montaje como día adicional (antes de los días del evento) ──
   if (montajeDiaAparte && itemsMontaje.length) {
-    bloques.push({ titulo: "Montaje", subtitulo: fechaCorta(montajeFecha), items: itemsMontaje });
+    agregar(montajeFecha ?? dias[0], { titulo: "Montaje", subtitulo: fechaCorta(montajeFecha), items: itemsMontaje });
   }
 
   // ── Bloques por día del evento ──
@@ -272,19 +331,19 @@ export function construirCronologia(
     if (!montajeDiaAparte && i === 0) {
       items.push(...itemsMontaje);
     }
-    if (interno && h.llamado) {
+    if (conLogistica && interno && h.llamado) {
       items.push({ label: "Llamado", hora: h.llamado, fecha: null, nota: p.lugarLlamado });
     }
-    if (interno && i > 0 && h.aplicaMontaje && h.montaje) {
+    if (conLogistica && interno && i > 0 && h.aplicaMontaje && h.montaje) {
       items.push({ label: "Montaje", hora: h.montaje, fecha: null, nota: p.lugarEvento });
     }
-    if (h.inicio) {
+    if (conEvento && h.inicio) {
       items.push({ label: "Inicio del evento", hora: h.inicio, fecha: null, nota: p.lugarEvento });
     }
     // El detalle del día (soundcheck, programa, ventanas de proveedor) vive entre el
     // inicio y el fin del evento, que es donde ocurre.
     items.push(...itemsExtra(fecha, interno ? ["SOUNDCHECK", "PROGRAMA", "PROVEEDOR"] : ["PROGRAMA"]));
-    if (h.fin) {
+    if (conEvento && h.fin) {
       items.push({ label: "Fin del evento", hora: h.fin, fecha: null, nota: null });
     }
     // Desmontaje el mismo día → se agrega al final del último día del evento.
@@ -292,7 +351,7 @@ export function construirCronologia(
       items.push(...itemsDesmontaje);
     }
     if (items.length) {
-      bloques.push({
+      agregar(fecha, {
         titulo: dias.length > 1 ? `Día ${i + 1}` : "Día del evento",
         subtitulo: fechaCorta(fecha),
         items,
@@ -302,8 +361,38 @@ export function construirCronologia(
 
   // ── Desmontaje como día adicional (después de los días del evento) ──
   if (desmontajeDiaAparte && itemsDesmontaje.length) {
-    bloques.push({ titulo: "Desmontaje", subtitulo: fechaCorta(desmontajeFecha), items: itemsDesmontaje });
+    agregar(desmontajeFecha ?? dias[dias.length - 1], {
+      titulo: "Desmontaje",
+      subtitulo: fechaCorta(desmontajeFecha),
+      items: itemsDesmontaje,
+    });
   }
+
+  // ── Rescate: bloques en días que ningún encabezado cubrió ──
+  // Típico del proveedor que entrega dos días antes o recoge al día siguiente.
+  const sueltos = extras.filter((b) => !colocados.has(b.id) && (interno || b.tipo === "PROGRAMA"));
+  const porDia = new Map<string, BloqueTiempo[]>();
+  sueltos.forEach((b) => {
+    const dia = diaDeBloque(b);
+    porDia.set(dia, [...(porDia.get(dia) ?? []), b]);
+  });
+  [...porDia.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .forEach(([dia, filas]) => {
+      const bloque: BloqueCronologia = {
+        titulo: dia < dias[0] ? "Antes del evento" : "Después del evento",
+        subtitulo: fechaCorta(dia),
+        items: filas.map((b) => bloqueAItem(b, b.proveedorEventoId ? nombres[b.proveedorEventoId] : null)),
+      };
+      const pos = claves.findIndex((c) => c > dia);
+      if (pos === -1) {
+        bloques.push(bloque);
+        claves.push(dia);
+      } else {
+        bloques.splice(pos, 0, bloque);
+        claves.splice(pos, 0, dia);
+      }
+    });
 
   bloques.forEach((b) => b.items.forEach((it) => {
     it.hora = horaAmPm(it.hora) ?? it.hora;

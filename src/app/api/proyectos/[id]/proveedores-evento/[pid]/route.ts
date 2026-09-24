@@ -14,7 +14,14 @@ export async function PATCH(
 
   const data: Record<string, unknown> = {};
   if (body.nombreProveedor?.trim()) data.nombreProveedor = body.nombreProveedor.trim();
-  for (const campo of ["servicioEquipo", "telefonoProveedor", "responsable", "notas"] as const) {
+  for (const campo of [
+    "servicioEquipo",
+    "telefonoProveedor",
+    "responsable",
+    "notas",
+    "modalidadEntrega",
+    "modalidadRegreso",
+  ] as const) {
     if (body[campo] !== undefined) data[campo] = body[campo]?.trim() || null;
   }
   if (body.costoAcordado !== undefined) {

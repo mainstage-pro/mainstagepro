@@ -23,7 +23,11 @@ export async function POST(
 
   const bloque = await prisma.proveedorEvento.findUnique({
     where: { id: pid },
-    include: { proyecto: { select: { numeroProyecto: true, fechaEvento: true } } },
+    include: {
+      proyecto: { select: { numeroProyecto: true, fechaEvento: true } },
+      items: { orderBy: { orden: "asc" } },
+      lineas: { select: { descripcion: true, cantidad: true }, orderBy: { orden: "asc" } },
+    },
   });
   if (!bloque || bloque.proyectoId !== id) {
     return NextResponse.json({ error: "No encontrado" }, { status: 404 });
@@ -38,7 +42,14 @@ export async function POST(
     );
   }
 
-  const concepto = `${bloque.servicioEquipo?.trim() || "Servicio de proveedor"} — ${bloque.nombreProveedor} · ${bloque.proyecto.numeroProyecto}`;
+  // Si nadie escribió el servicio, la CxP se describe con lo que el proveedor renta:
+  // sus conceptos manuales y las líneas de la cotización que se le asignaron.
+  const rentado = [
+    ...bloque.items.map((it) => `${it.cantidad}× ${it.descripcion}`),
+    ...bloque.lineas.map((l) => `${l.cantidad}× ${l.descripcion}`),
+  ].join(", ");
+  const servicio = (bloque.servicioEquipo?.trim() || rentado || "Servicio de proveedor").slice(0, 180);
+  const concepto = `${servicio} — ${bloque.nombreProveedor} · ${bloque.proyecto.numeroProyecto}`;
   const fechaCompromiso = proximoMiercolesTraEvento(bloque.proyecto.fechaEvento ?? new Date());
 
   if (bloque.cuentaPagarId) {

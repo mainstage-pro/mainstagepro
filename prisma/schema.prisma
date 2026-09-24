@@ -3977,16 +3977,39 @@ model ProveedorEvento {
   telefonoProveedor String?
   responsable       String?
   notas             String?    @db.Text
+  // Cómo llega el equipo y cómo se regresa. Se capturan por separado porque
+  // muchas veces no coinciden (nos lo deja en bodega pero lo recoge en el venue).
+  // Entrega: DEJA_BODEGA | LLEVA_VENUE | RECOGEMOS_NOSOTROS
+  modalidadEntrega  String?
+  // Regreso: RECOGE_BODEGA | RECOGE_VENUE | DEVOLVEMOS_NOSOTROS
+  modalidadRegreso  String?
   // Lo que nos cuesta, capturado a mano: no se deriva de la cotización.
   costoAcordado     Float?
   cuentaPagarId     String?      @unique
   cuentaPagar       CuentaPagar? @relation(fields: [cuentaPagarId], references: [id])
 
   lineas  CotizacionLinea[]
+  items   ProveedorEventoItem[]
   bloques ProyectoBloqueTiempo[]
 
   @@index([proyectoId])
   @@map("proveedores_evento")
+}
+
+// Concepto que renta el proveedor sin corresponder a una línea de la cotización.
+// Lo que sí viene de la cotización se liga con CotizacionLinea.proveedorEventoId.
+model ProveedorEventoItem {
+  id                String          @id @default(cuid())
+  proveedorEventoId String
+  proveedorEvento   ProveedorEvento @relation(fields: [proveedorEventoId], references: [id], onDelete: Cascade)
+  descripcion       String
+  cantidad          Int             @default(1)
+  orden             Int             @default(0)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([proveedorEventoId])
+  @@map("proveedor_evento_items")
 }
 
 // Línea única de tiempo del proyecto. Reemplaza los JSON sueltos `Proyecto.cronograma`,

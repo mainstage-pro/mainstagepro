@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
-const FASES = ["INSTALACION", "OPERACION", "RECOLECCION"] as const;
-type Fase = (typeof FASES)[number];
+import { FASES_PROVEEDOR, TITULO_FASE, type FaseProveedor } from "@/lib/proveedor-evento";
+
+const FASES = FASES_PROVEEDOR;
+type Fase = FaseProveedor;
 
 type VentanaEntrada = {
   fase?: string;
@@ -19,12 +21,6 @@ function aFecha(v: string | null | undefined): Date | null {
   const d = /^\d{4}-\d{2}-\d{2}$/.test(v) ? new Date(`${v}T12:00:00.000Z`) : new Date(v);
   return isNaN(d.getTime()) ? null : d;
 }
-
-const TITULO: Record<Fase, string> = {
-  INSTALACION: "Instalación",
-  OPERACION: "Operación",
-  RECOLECCION: "Recolección",
-};
 
 /**
  * Reemplaza las tres ventanas (instalación / operación / recolección) de un proveedor.
@@ -47,8 +43,9 @@ export async function PUT(
 
   const filas = entradas
     .filter((v): v is VentanaEntrada & { fase: Fase } => FASES.includes(v.fase as Fase))
-    // Una ventana sin hora ni nota no aporta nada a la cronología.
-    .filter((v) => v.horaInicio?.trim() || v.horaFin?.trim() || v.detalle?.trim())
+    // Se conserva aunque falte la hora: una recolección fechada y sin hora sigue siendo
+    // un pendiente que debe verse en la cronología.
+    .filter((v) => v.fecha || v.horaInicio?.trim() || v.horaFin?.trim() || v.detalle?.trim())
     .map((v, i) => ({
       proyectoId: id,
       proveedorEventoId: pid,
@@ -57,7 +54,7 @@ export async function PUT(
       fecha: aFecha(v.fecha),
       horaInicio: v.horaInicio?.trim() || null,
       horaFin: v.horaFin?.trim() || null,
-      titulo: `${TITULO[v.fase]} — ${proveedor.nombreProveedor}`,
+      titulo: `${TITULO_FASE[v.fase]} — ${proveedor.nombreProveedor}`,
       detalle: v.detalle?.trim() || null,
       responsable: v.responsable?.trim() || proveedor.responsable,
       involucrados: null,

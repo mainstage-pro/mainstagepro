@@ -30,7 +30,7 @@ import { DISCIPLINA_COLORS, DISCIPLINA_LABELS } from "@/lib/disciplinaColors";
 import { contarRespondidos, contarIncidencias, nivelResultado, getEvalConfig, aplicaEvaluacion, type EvalPostEventoData } from "@/lib/evaluacion-post-evento";
 import { getDireccionConfig, promedioDireccion, type EvaluacionDireccionData } from "@/lib/evaluacion-direccion";
 import { diasEvento, parseHorariosEvento, horarioDeDia, parseFechasEvento } from "@/lib/fechas-evento";
-import { construirCronologia, type BloqueTiempo } from "@/lib/cronologia-evento";
+import { construirCronologia, VISTAS_CRONOLOGIA, type BloqueTiempo } from "@/lib/cronologia-evento";
 import { checksAvanceProduccion } from "@/lib/proyecto-avance";
 import { requisitosDocumento, type ProyectoDocumentoInput, type RequisitosDocumento, type TipoDocumento } from "@/lib/proyecto-documentos";
 import { getEquipoDisplayName } from "@/lib/equipoNombre";
@@ -4026,6 +4026,19 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     new Date(iso + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" });
   const esRenta = proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA";
 
+  // Los horarios del proyecto que alimentan las tres cronologías.
+  const datosCrono = {
+    fechaEvento: proyecto.fechaEvento, fechasEvento: proyecto.fechasEvento, horariosEvento: proyecto.horariosEvento,
+    horaInicioEvento: proyecto.horaInicioEvento, horaFinEvento: proyecto.horaFinEvento,
+    fechaMontaje: proyecto.fechaMontaje, horaMontaje: proyecto.horaMontaje, horaInicioMontaje: proyecto.horaInicioMontaje,
+    duracionMontajeHrs: proyecto.duracionMontajeHrs, montajeDiaAparte: proyecto.montajeDiaAparte,
+    horaSalidaBodega: proyecto.horaSalidaBodega, horaDesmontaje: proyecto.horaDesmontaje,
+    duracionDesmontajeHrs: proyecto.duracionDesmontajeHrs, desmontajeDiaAparte: proyecto.desmontajeDiaAparte,
+    fechaDesmontaje: proyecto.fechaDesmontaje,
+    llamadoBodega: proyecto.llamadoBodega, lugarLlamado: proyecto.lugarLlamado, lugarEvento: proyecto.lugarEvento,
+  };
+  const nombresProveedor = Object.fromEntries(proyecto.proveedoresEvento.map(p => [p.id, p.nombreProveedor]));
+
   // Candados de documentos: mismo criterio que aplica el servidor (409).
   const docInput: ProyectoDocumentoInput = {
     lugarEvento: proyecto.lugarEvento,
@@ -5853,33 +5866,111 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               nombre: proyecto.nombre,
               venue: proyecto.lugarEvento,
               direccion: proyecto.direccionVenue,
+              fechaMontaje: proyecto.fechaMontaje,
+              fechaDesmontaje: proyecto.fechaDesmontaje,
             }}
           />
 
 
-          {/* ── Cronograma (tabla) — solo producción técnica / dirección técnica ── */}
+          {/* ── Cronología 1: logística general ── */}
+          {!esRenta && (
+            <div className="ms-card p-5">
+              <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
+                <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">
+                  {VISTAS_CRONOLOGIA.LOGISTICA.titulo}
+                </p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {savingCrono && <span className="text-xs text-gray-600">Guardando...</span>}
+                  {!montajeFaseActiva && (
+                    <button onClick={activarFaseMontaje}
+                      className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-3 py-1 rounded-lg transition-colors">
+                      + Montaje
+                    </button>
+                  )}
+                  {!desmontajeFaseActiva && (
+                    <button onClick={activarFaseDesmontaje}
+                      className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-3 py-1 rounded-lg transition-colors">
+                      + Desmontaje
+                    </button>
+                  )}
+                  {cronoRows.length > 0 && (
+                    <button onClick={() => guardarCronograma(cronoRows)} disabled={savingCrono}
+                      className="text-xs bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black font-semibold px-3 py-1 rounded-lg transition-colors">
+                      Guardar
+                    </button>
+                  )}
+                </div>
+              </div>
+              <p className="text-[11px] text-gray-600 mb-4">{VISTAS_CRONOLOGIA.LOGISTICA.descripcion}</p>
+              {montajeFaseActiva || desmontajeFaseActiva ? (
+                <div className="space-y-8">
+                  {montajeFaseActiva && renderFaseExtra("montaje")}
+                  {desmontajeFaseActiva && renderFaseExtra("desmontaje")}
+                </div>
+              ) : (
+                <p className="text-gray-600 text-xs">
+                  El montaje y el desmontaje ocurren el mismo día del evento. Agrégalos arriba si van en día aparte.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* ── Cronología 2: proveedores (se captura en el panel de arriba) ── */}
+          {!esRenta && (() => {
+            const bloquesProv = construirCronologia(datosCrono, {
+              bloques: proyecto.bloquesTiempo,
+              tipos: VISTAS_CRONOLOGIA.PROVEEDORES.tipos,
+              base: VISTAS_CRONOLOGIA.PROVEEDORES.base,
+              nombresProveedor,
+            });
+            return (
+              <div className="ms-card p-5">
+                <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">
+                  {VISTAS_CRONOLOGIA.PROVEEDORES.titulo}
+                </p>
+                <p className="text-[11px] text-gray-600 mb-4">
+                  {VISTAS_CRONOLOGIA.PROVEEDORES.descripcion} Se captura en <span className="text-gray-400">Proveedores y subrentas</span>.
+                </p>
+                {bloquesProv.length === 0 ? (
+                  <p className="text-gray-600 text-xs">Ningún proveedor externo tiene horarios capturados.</p>
+                ) : (
+                  <div className="space-y-5">
+                    {bloquesProv.map(bloque => (
+                      <div key={`${bloque.titulo}-${bloque.subtitulo}`}>
+                        <div className="flex items-baseline gap-2 border-b border-[#222] pb-2 mb-2">
+                          <span className="text-white text-sm font-medium">{bloque.titulo}</span>
+                          <span className="text-gray-500 text-xs capitalize">{bloque.subtitulo}</span>
+                        </div>
+                        <div className="space-y-1.5">
+                          {bloque.items.map((it, i) => (
+                            <div key={i} className="flex items-baseline gap-3 text-xs">
+                              <span className="text-[#B3985B] font-mono shrink-0 w-32">
+                                {[it.hora, it.horaFin].filter(Boolean).join(" – ")}
+                              </span>
+                              <span className="text-gray-300">{it.label}</span>
+                              {it.nota && <span className="text-gray-600">· {it.nota}</span>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* ── Cronología 3: operación del evento ── */}
           {!esRenta && (() => {
             const opRows = cronoRows.filter(r => faseDe(r) === "operacion");
             return (
           <div className="ms-card p-5">
-            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
               <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">
-                Cronología del evento
+                {VISTAS_CRONOLOGIA.OPERACION.titulo}
               </p>
               <div className="flex items-center gap-2 flex-wrap">
                 {savingCrono && <span className="text-xs text-gray-600">Guardando...</span>}
-                {!montajeFaseActiva && (
-                  <button onClick={activarFaseMontaje}
-                    className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-3 py-1 rounded-lg transition-colors">
-                    + Montaje
-                  </button>
-                )}
-                {!desmontajeFaseActiva && (
-                  <button onClick={activarFaseDesmontaje}
-                    className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-3 py-1 rounded-lg transition-colors">
-                    + Desmontaje
-                  </button>
-                )}
                 {cronoRows.length > 0 && (
                   <button onClick={() => guardarCronograma(cronoRows)} disabled={savingCrono}
                     className="text-xs bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black font-semibold px-3 py-1 rounded-lg transition-colors">
@@ -5888,14 +5979,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 )}
               </div>
             </div>
+            <p className="text-[11px] text-gray-600 mb-4">{VISTAS_CRONOLOGIA.OPERACION.descripcion}</p>
             <div className="space-y-8">
-              {/* 1. MONTAJE (día aparte) */}
-              {montajeFaseActiva && renderFaseExtra("montaje")}
-
-              {/* 2. SOUNDCHECK */}
               {renderSoundcheck()}
 
-              {/* 3. OPERACIÓN (día del evento; multidía = un bloque por día) */}
+              {/* Día del evento; multidía = un bloque por día */}
               {esMultidia ? (
                 <div className="space-y-6">
                   {diasDelEvento.map((dia, di) => {
@@ -5955,9 +6043,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   )}
                 </div>
               )}
-
-              {/* 4. DESMONTAJE (día aparte) */}
-              {desmontajeFaseActiva && renderFaseExtra("desmontaje")}
             </div>
           </div>
             );
