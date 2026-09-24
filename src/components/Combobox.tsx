@@ -52,8 +52,38 @@ export function Combobox({
   function updatePosition() {
     if (!inputRef.current) return;
     const r = inputRef.current.getBoundingClientRect();
-    setDropStyle({ position: "fixed", top: r.bottom + 4, left: r.left, width: r.width, zIndex: 9999 });
+    const margin = 8;
+    const vw = document.documentElement.clientWidth;
+    const vh = document.documentElement.clientHeight;
+    // En pantallas chicas el input puede ser muy angosto; el panel necesita un
+    // ancho legible propio, recortado al viewport.
+    const width = Math.min(Math.max(r.width, 240), vw - margin * 2);
+    const left = Math.min(Math.max(r.left, margin), vw - width - margin);
+    const below = vh - r.bottom - margin;
+    const above = r.top - margin;
+    const flip = below < 180 && above > below;
+    setDropStyle({
+      position: "fixed",
+      top: flip ? undefined : r.bottom + 4,
+      bottom: flip ? vh - r.top + 4 : undefined,
+      left,
+      width,
+      maxHeight: Math.max(flip ? above : below, 120),
+      zIndex: 9999,
+    });
   }
+
+  // `position: fixed` no sigue al scroll: hay que recolocar el panel mientras está abierto.
+  useEffect(() => {
+    if (!open) return;
+    const onMove = () => updatePosition();
+    window.addEventListener("scroll", onMove, true);
+    window.addEventListener("resize", onMove);
+    return () => {
+      window.removeEventListener("scroll", onMove, true);
+      window.removeEventListener("resize", onMove);
+    };
+  }, [open]);
 
   function handleFocus() {
     if (closeTimer.current) clearTimeout(closeTimer.current);
@@ -80,7 +110,7 @@ export function Combobox({
     "w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] disabled:opacity-50";
 
   const dropdown = open && !disabled && filtered.length > 0 && (
-    <div style={dropStyle} className="bg-[#111] border border-[#333] rounded-lg shadow-xl overflow-hidden max-h-52 overflow-y-auto">
+    <div style={dropStyle} className="bg-[#111] border border-[#333] rounded-lg shadow-xl overflow-y-auto overscroll-contain">
       {filtered.map((opt, i) => (
         <div key={opt.value}>
           {opt.group && opt.group !== filtered[i - 1]?.group && (
@@ -94,7 +124,7 @@ export function Combobox({
               e.preventDefault();
               select(opt);
             }}
-            className={`w-full text-left px-3 py-2 text-sm hover:bg-[#1a1a1a] transition-colors border-b border-[#1a1a1a] last:border-0 ${
+            className={`w-full text-left px-3 py-2.5 text-sm leading-snug hover:bg-[#1a1a1a] transition-colors border-b border-[#1a1a1a] last:border-0 ${
               opt.value === value ? "text-[#B3985B] font-medium" : "text-white"
             }`}
           >

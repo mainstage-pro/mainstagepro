@@ -2159,7 +2159,7 @@ function CotizadorForm() {
           {/* ── Datos del evento ── */}
           <Seccion titulo="Datos del evento">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="col-span-2">
+              <div className="sm:col-span-2">
                 <Input label="Nombre del evento" value={evento.nombreEvento} onChange={e => setEvento(p => ({ ...p, nombreEvento: e.target.value }))} placeholder="Boda García, Concierto XYZ..." />
               </div>
               <div>
@@ -2508,7 +2508,7 @@ function CotizadorForm() {
 
             {/* Selector — equipo individual */}
             {equipoTab === "individual" && (
-            <div className="flex gap-2 mb-4 items-end">
+            <div className="flex flex-col gap-2 mb-4 sm:flex-row sm:items-end">
               {/* Cascade selector */}
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] text-[#555] mb-1 px-1">Equipo</p>
@@ -2522,33 +2522,35 @@ function CotizadorForm() {
                   fechaEvento={evento.fechaEvento}
                 />
               </div>
-              {/* Cantidad */}
-              <div className="shrink-0">
-                <p className="text-[10px] text-[#555] mb-1 text-center">Cantidad</p>
-                <NumSelect value={selEqCant} onChange={setSelEqCant} max={50} className="w-20 py-2" />
-              </div>
+              <div className="flex items-end gap-2">
+                {/* Cantidad */}
+                <div className="shrink-0">
+                  <p className="text-[10px] text-[#555] mb-1 text-center">Cantidad</p>
+                  <NumSelect value={selEqCant} onChange={setSelEqCant} max={50} className="w-20 py-2" />
+                </div>
 
-              {/* Días */}
-              <div className="shrink-0">
-                <p className="text-[10px] text-[#555] mb-1 text-center">Días</p>
-                <NumSelect value={selEqDias} onChange={setSelEqDias} max={10} className="w-20 py-2" />
-              </div>
+                {/* Días */}
+                <div className="shrink-0">
+                  <p className="text-[10px] text-[#555] mb-1 text-center">Días</p>
+                  <NumSelect value={selEqDias} onChange={setSelEqDias} max={10} className="w-20 py-2" />
+                </div>
 
-              {/* Agregar */}
-              <button
-                type="button"
-                onClick={agregarEquipo}
-                disabled={!selEq}
-                className="shrink-0 px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm disabled:opacity-40 hover:bg-[#c9a96a] transition-colors"
-              >
-                + Agregar
-              </button>
+                {/* Agregar */}
+                <button
+                  type="button"
+                  onClick={agregarEquipo}
+                  disabled={!selEq}
+                  className="flex-1 px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm disabled:opacity-40 hover:bg-[#c9a96a] transition-colors sm:flex-none"
+                >
+                  + Agregar
+                </button>
+              </div>
             </div>
             )}
 
             {/* Selector — producto armado */}
             {equipoTab === "producto" && (
-            <div className="flex gap-2 mb-4 items-end">
+            <div className="flex flex-col gap-2 mb-4 sm:flex-row sm:items-end">
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] text-[#555] mb-1 px-1">Producto armado</p>
                 <CascadeCatalogSelect
@@ -2559,28 +2561,30 @@ function CotizadorForm() {
                   categoriaLabel="producto"
                 />
               </div>
-              <div className="shrink-0">
-                <p className="text-[10px] text-[#555] mb-1 text-center">Cantidad</p>
-                <NumSelect value={selPaqCant} onChange={setSelPaqCant} max={50} className="w-20 py-2" />
+              <div className="flex items-end gap-2">
+                <div className="shrink-0">
+                  <p className="text-[10px] text-[#555] mb-1 text-center">Cantidad</p>
+                  <NumSelect value={selPaqCant} onChange={setSelPaqCant} max={50} className="w-20 py-2" />
+                </div>
+                <div className="shrink-0">
+                  <p className="text-[10px] text-[#555] mb-1 text-center">Días</p>
+                  <NumSelect value={selEqDias} onChange={setSelEqDias} max={10} className="w-20 py-2" />
+                </div>
+                <button
+                  type="button"
+                  onClick={agregarPaqueteManual}
+                  disabled={!selPaq}
+                  className="flex-1 px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm disabled:opacity-40 hover:bg-[#c9a96a] transition-colors sm:flex-none"
+                >
+                  + Agregar
+                </button>
               </div>
-              <div className="shrink-0">
-                <p className="text-[10px] text-[#555] mb-1 text-center">Días</p>
-                <NumSelect value={selEqDias} onChange={setSelEqDias} max={10} className="w-20 py-2" />
-              </div>
-              <button
-                type="button"
-                onClick={agregarPaqueteManual}
-                disabled={!selPaq}
-                className="shrink-0 px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm disabled:opacity-40 hover:bg-[#c9a96a] transition-colors"
-              >
-                + Agregar
-              </button>
             </div>
             )}
 
             {/* Selector — paquete comercial (se desglosa en líneas) */}
             {equipoTab === "paquete" && (
-            <div className="flex gap-2 mb-4 items-end">
+            <div className="flex flex-col gap-2 mb-4 sm:flex-row sm:items-end">
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] text-[#555] mb-1 px-1">Paquete comercial · se desglosa en líneas</p>
                 <CascadeCatalogSelect
@@ -2591,18 +2595,20 @@ function CotizadorForm() {
                   categoriaLabel="paquete"
                 />
               </div>
-              <div className="shrink-0">
-                <p className="text-[10px] text-[#555] mb-1 text-center">Cantidad</p>
-                <NumSelect value={selPaqComCant} onChange={setSelPaqComCant} max={50} className="w-20 py-2" />
+              <div className="flex items-end gap-2">
+                <div className="shrink-0">
+                  <p className="text-[10px] text-[#555] mb-1 text-center">Cantidad</p>
+                  <NumSelect value={selPaqComCant} onChange={setSelPaqComCant} max={50} className="w-20 py-2" />
+                </div>
+                <button
+                  type="button"
+                  onClick={agregarPaqueteComercialManual}
+                  disabled={!selPaqCom}
+                  className="flex-1 px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm disabled:opacity-40 hover:bg-[#c9a96a] transition-colors sm:flex-none"
+                >
+                  + Agregar
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={agregarPaqueteComercialManual}
-                disabled={!selPaqCom}
-                className="shrink-0 px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm disabled:opacity-40 hover:bg-[#c9a96a] transition-colors"
-              >
-                + Agregar
-              </button>
             </div>
             )}
 
@@ -2679,7 +2685,7 @@ function CotizadorForm() {
                               className="w-24 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white text-sm text-right"
                               title="Precio unitario"
                             />
-                            <span className="w-24 text-right text-[#B3985B] text-sm font-medium shrink-0">{formatCurrency(l.subtotal)}</span>
+                            <span className="ml-auto w-24 text-right text-[#B3985B] text-sm font-medium shrink-0 sm:ml-0">{formatCurrency(l.subtotal)}</span>
                             <button
                               type="button"
                               onClick={() => removePaquete(l.id)}
@@ -2766,7 +2772,7 @@ function CotizadorForm() {
                                 <span className="text-[10px] text-gray-600 line-through">{formatCurrency(precioBase)}</span>
                               )}
                             </div>
-                            <span className="w-24 text-right text-white text-sm font-medium shrink-0">{formatCurrency(l.subtotal)}</span>
+                            <span className="ml-auto w-24 text-right text-white text-sm font-medium shrink-0 sm:ml-0">{formatCurrency(l.subtotal)}</span>
                             {/* Botón guardar precio especial */}
                             {precioDifiere && (resolvedClienteId || clienteId || manualClienteId) && (
                               <button
@@ -2796,8 +2802,8 @@ function CotizadorForm() {
               })()
             )}
 
-            <div className="mt-1 flex items-center justify-between">
-              <div className="flex items-center gap-3">
+            <div className="mt-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                 <button
                   onClick={() => setShowNuevoEqPropioModal(p => !p)}
                   className="text-xs text-[#B3985B] hover:text-white transition-colors flex items-center gap-1"
@@ -2863,7 +2869,7 @@ function CotizadorForm() {
                   placeholder="Modelo"
                   className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
                 />
-                <div className="col-span-2">
+                <div className="sm:col-span-2">
                   <input
                     value={nuevoEqPropioForm.descripcion}
                     onChange={e => {
@@ -2910,12 +2916,14 @@ function CotizadorForm() {
                       placeholder="Cantidad en catálogo"
                       className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
                     />
-                    <Combobox
-                      value={nuevoEqPropioForm.proveedorId}
-                      onChange={v => setNuevoEqPropioForm(p => ({ ...p, proveedorId: v }))}
-                      options={[{ value: "", label: "— Proveedor (opcional)" }, ...proveedores.map(p => ({ value: p.id, label: p.nombre }))]}
-                      className="col-span-2 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                    />
+                    <div className="sm:col-span-2">
+                      <Combobox
+                        value={nuevoEqPropioForm.proveedorId}
+                        onChange={v => setNuevoEqPropioForm(p => ({ ...p, proveedorId: v }))}
+                        options={[{ value: "", label: "— Proveedor (opcional)" }, ...proveedores.map(p => ({ value: p.id, label: p.nombre }))]}
+                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                      />
+                    </div>
                   </>
                 )}
               </div>
@@ -2993,7 +3001,7 @@ function CotizadorForm() {
               <div className="mb-4 bg-[#0a0a0a] border border-[#B3985B]/40 rounded-xl p-4">
                 <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wider mb-3">Registrar nuevo equipo de proveedor</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
-                  <div className="col-span-2">
+                  <div className="sm:col-span-2">
                     <input value={nuevoEqForm.descripcion} onChange={e => setNuevoEqForm(p => ({ ...p, descripcion: e.target.value }))}
                       placeholder="Descripción del equipo *"
                       className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
@@ -3005,7 +3013,7 @@ function CotizadorForm() {
                     value={nuevoEqForm.categoriaId}
                     onChange={v => setNuevoEqForm(p => ({ ...p, categoriaId: v }))}
                     options={[{ value: "", label: "— Categoría *" }, ...categoriasList.map(c => ({ value: c.id, label: c.nombre }))]}
-                    className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
                   />
                   <input type="number" min="0" value={nuevoEqForm.precioRenta} onChange={e => setNuevoEqForm(p => ({ ...p, precioRenta: e.target.value }))}
                     placeholder="Precio al cliente"
@@ -3016,12 +3024,14 @@ function CotizadorForm() {
                   <input type="number" min="1" value={nuevoEqForm.cantidadTotal} onChange={e => setNuevoEqForm(p => ({ ...p, cantidadTotal: e.target.value }))}
                     placeholder="Cantidad en catálogo"
                     className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  <Combobox
-                    value={nuevoEqForm.proveedorId}
-                    onChange={v => setNuevoEqForm(p => ({ ...p, proveedorId: v }))}
-                    options={[{ value: "", label: "— Proveedor (opcional)" }, ...proveedores.map(p => ({ value: p.id, label: p.nombre }))]}
-                    className="col-span-2 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                  />
+                  <div className="sm:col-span-2">
+                    <Combobox
+                      value={nuevoEqForm.proveedorId}
+                      onChange={v => setNuevoEqForm(p => ({ ...p, proveedorId: v }))}
+                      options={[{ value: "", label: "— Proveedor (opcional)" }, ...proveedores.map(p => ({ value: p.id, label: p.nombre }))]}
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                    />
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <button onClick={crearEquipoProveedor} disabled={guardandoEq || !nuevoEqForm.descripcion || !nuevoEqForm.categoriaId}
@@ -3035,8 +3045,8 @@ function CotizadorForm() {
               </div>
             )}
 
-            <div className="flex gap-2 mb-4 items-end">
-              <div className="flex-1">
+            <div className="flex flex-col gap-2 mb-4 sm:flex-row sm:items-end">
+              <div className="flex-1 min-w-0">
                 <p className="text-[10px] text-[#555] mb-1 px-1">Equipo del catálogo</p>
                 <SearchableSelect
                   options={equiposExternos.map(eq => ({
@@ -3048,15 +3058,17 @@ function CotizadorForm() {
                   placeholder="— Buscar equipo externo —"
                 />
               </div>
-              <div>
-                <p className="text-[10px] text-[#555] mb-1 text-center">Cantidad</p>
-                <NumSelect value={selExtCant} onChange={setSelExtCant} max={50} className="w-20 py-2" />
+              <div className="flex items-end gap-2">
+                <div className="shrink-0">
+                  <p className="text-[10px] text-[#555] mb-1 text-center">Cantidad</p>
+                  <NumSelect value={selExtCant} onChange={setSelExtCant} max={50} className="w-20 py-2" />
+                </div>
+                <div className="shrink-0">
+                  <p className="text-[10px] text-[#555] mb-1 text-center">Días</p>
+                  <NumSelect value={selExtDias} onChange={setSelExtDias} max={10} className="w-20 py-2" />
+                </div>
+                <button onClick={agregarExterno} disabled={!selExt} className="flex-1 px-3 py-2 rounded-lg bg-[#333] text-white font-semibold text-sm disabled:opacity-40 hover:bg-[#444] sm:flex-none">+ Agregar</button>
               </div>
-              <div>
-                <p className="text-[10px] text-[#555] mb-1 text-center">Días</p>
-                <NumSelect value={selExtDias} onChange={setSelExtDias} max={10} className="w-20 py-2" />
-              </div>
-              <button onClick={agregarExterno} disabled={!selExt} className="px-3 py-2 rounded-lg bg-[#333] text-white font-semibold text-sm disabled:opacity-40 hover:bg-[#444]">+ Agregar</button>
             </div>
 
             {lineasExterno.length === 0 ? (
@@ -3064,8 +3076,8 @@ function CotizadorForm() {
             ) : (
               <div className="border border-[#222] rounded-lg overflow-hidden">
                 {lineasExterno.map(l => (
-                  <div key={l.id} className="flex items-center gap-2 px-3 py-2 border-b border-[#111] last:border-0">
-                    <div className="flex-1 min-w-0">
+                  <div key={l.id} className="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-[#111] last:border-0">
+                    <div className="w-full min-w-0 sm:w-auto sm:flex-1">
                       <div className="flex items-center gap-1.5">
                         <p className="text-white text-sm truncate">{l.marca || l.descripcion}</p>
                         {l.categoria && <span className="shrink-0 text-[10px] px-1.5 py-0.5 bg-[#1e1e1e] text-[#6b7280] rounded" title="En el PDF aparece dentro de esta categoría">{l.categoria}</span>}
@@ -3076,7 +3088,7 @@ function CotizadorForm() {
                     <NumSelect value={l.cantidad} onChange={v => updateExterno(l.id, "cantidad", parseFloat(v) || 1)} max={50} className="w-14 py-1" title="Cantidad" />
                     <NumSelect value={l.dias} onChange={v => updateExterno(l.id, "dias", parseInt(v) || 1)} max={10} className="w-14 py-1" title="Días" />
                     <input type="number" value={l.precioUnitario} min="0" onChange={e => updateExterno(l.id, "precioUnitario", parseFloat(e.target.value) || 0)} className="w-22 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white text-sm text-right" title="Precio al cliente" />
-                    <span className="w-22 text-right text-white text-sm font-medium shrink-0">{formatCurrency(l.subtotal)}</span>
+                    <span className="ml-auto w-22 text-right text-white text-sm font-medium shrink-0 sm:ml-0">{formatCurrency(l.subtotal)}</span>
                     <button onClick={() => setLineasExterno(p => p.filter(x => x.id !== l.id))} className="text-gray-600 hover:text-red-400 text-lg leading-none shrink-0">×</button>
                   </div>
                 ))}
@@ -3106,30 +3118,32 @@ function CotizadorForm() {
 
           {/* ── Adicionales / conceptos ocasionales ── */}
           <Seccion titulo="Adicionales" hint="conceptos únicos · sin descuento · no se registran en catálogo">
-            <div className="flex gap-2 mb-3 items-end flex-wrap">
-              <div className="flex-1 min-w-48">
+            <div className="flex flex-col gap-2 mb-3 sm:flex-row sm:flex-wrap sm:items-end">
+              <div className="flex-1 sm:min-w-48">
                 <p className="text-[10px] text-[#555] mb-1 px-1">Descripción</p>
                 <input value={selOcDesc} onChange={e => setSelOcDesc(e.target.value)}
                   onKeyDown={e => { if (e.key === "Enter") agregarOcasional(); }}
                   placeholder="Nombre del concepto u equipo..."
                   className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
               </div>
-              <div>
-                <p className="text-[10px] text-[#555] mb-1 text-center">Precio</p>
-                <input type="number" min="0" value={selOcPrecio} onChange={e => setSelOcPrecio(e.target.value)}
-                  placeholder="0"
-                  className="w-28 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm text-right focus:outline-none focus:border-[#B3985B]" />
-              </div>
-              <div>
-                <p className="text-[10px] text-[#555] mb-1 text-center">Cant</p>
-                <NumSelect value={selOcCant} onChange={setSelOcCant} max={50} className="w-16 py-2" />
-              </div>
-              <div>
-                <p className="text-[10px] text-[#555] mb-1 text-center">Días</p>
-                <NumSelect value={selOcDias} onChange={setSelOcDias} max={10} className="w-16 py-2" />
+              <div className="flex items-end gap-2">
+                <div className="flex-1 sm:flex-none">
+                  <p className="text-[10px] text-[#555] mb-1 text-center">Precio</p>
+                  <input type="number" min="0" value={selOcPrecio} onChange={e => setSelOcPrecio(e.target.value)}
+                    placeholder="0"
+                    className="w-full sm:w-28 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm text-right focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div className="shrink-0">
+                  <p className="text-[10px] text-[#555] mb-1 text-center">Cant</p>
+                  <NumSelect value={selOcCant} onChange={setSelOcCant} max={50} className="w-16 py-2" />
+                </div>
+                <div className="shrink-0">
+                  <p className="text-[10px] text-[#555] mb-1 text-center">Días</p>
+                  <NumSelect value={selOcDias} onChange={setSelOcDias} max={10} className="w-16 py-2" />
+                </div>
               </div>
               <button onClick={agregarOcasional} disabled={!selOcDesc.trim() || !selOcPrecio}
-                className="px-3 py-2 rounded-lg bg-[#333] text-white font-semibold text-sm disabled:opacity-40 hover:bg-[#444]">
+                className="w-full px-3 py-2 rounded-lg bg-[#333] text-white font-semibold text-sm disabled:opacity-40 hover:bg-[#444] sm:w-auto">
                 + Agregar
               </button>
             </div>
@@ -3138,10 +3152,10 @@ function CotizadorForm() {
             ) : (
               <div className="border border-[#222] rounded-lg overflow-hidden">
                 {lineasOcasional.map(l => (
-                  <div key={l.id} className="flex items-center gap-2 px-3 py-2 border-b border-[#111] last:border-0">
-                    <p className="flex-1 text-white text-sm truncate">{l.descripcion}</p>
+                  <div key={l.id} className="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-[#111] last:border-0">
+                    <p className="w-full min-w-0 truncate text-white text-sm sm:w-auto sm:flex-1">{l.descripcion}</p>
                     <span className="text-gray-500 text-xs shrink-0">×{l.cantidad} · {l.dias}d · {formatCurrency(l.precioUnitario)}</span>
-                    <span className="w-22 text-right text-white text-sm font-medium shrink-0">{formatCurrency(l.subtotal)}</span>
+                    <span className="ml-auto w-22 text-right text-white text-sm font-medium shrink-0 sm:ml-0">{formatCurrency(l.subtotal)}</span>
                     <button onClick={() => setLineasOcasional(p => p.filter(x => x.id !== l.id))} className="text-gray-600 hover:text-red-400 text-lg leading-none shrink-0">×</button>
                   </div>
                 ))}
@@ -3156,8 +3170,8 @@ function CotizadorForm() {
           {/* ── Accesorios (catálogo primera clase) ── */}
           {accesoriosCatalogo.length > 0 && (
           <Seccion titulo="Accesorios" hint="del catálogo · precio precargado editable · sin descuento">
-            <div className="flex gap-2 mb-3 items-end flex-wrap">
-              <div className="flex-1 min-w-48">
+            <div className="flex flex-col gap-2 mb-3 sm:flex-row sm:flex-wrap sm:items-end">
+              <div className="flex-1 sm:min-w-48">
                 <p className="text-[10px] text-[#555] mb-1 px-1">Accesorio</p>
                 <select
                   value={selAcc}
@@ -3177,22 +3191,24 @@ function CotizadorForm() {
                   ))}
                 </select>
               </div>
-              <div>
-                <p className="text-[10px] text-[#555] mb-1 text-center">Precio</p>
-                <input type="number" min="0" value={selAccPrecio} onChange={e => setSelAccPrecio(e.target.value)}
-                  placeholder="0"
-                  className="w-28 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm text-right focus:outline-none focus:border-[#B3985B]" />
-              </div>
-              <div>
-                <p className="text-[10px] text-[#555] mb-1 text-center">Cant</p>
-                <NumSelect value={selAccCant} onChange={setSelAccCant} max={50} className="w-16 py-2" />
-              </div>
-              <div>
-                <p className="text-[10px] text-[#555] mb-1 text-center">Días</p>
-                <NumSelect value={selAccDias} onChange={setSelAccDias} max={10} className="w-16 py-2" />
+              <div className="flex items-end gap-2">
+                <div className="flex-1 sm:flex-none">
+                  <p className="text-[10px] text-[#555] mb-1 text-center">Precio</p>
+                  <input type="number" min="0" value={selAccPrecio} onChange={e => setSelAccPrecio(e.target.value)}
+                    placeholder="0"
+                    className="w-full sm:w-28 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm text-right focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div className="shrink-0">
+                  <p className="text-[10px] text-[#555] mb-1 text-center">Cant</p>
+                  <NumSelect value={selAccCant} onChange={setSelAccCant} max={50} className="w-16 py-2" />
+                </div>
+                <div className="shrink-0">
+                  <p className="text-[10px] text-[#555] mb-1 text-center">Días</p>
+                  <NumSelect value={selAccDias} onChange={setSelAccDias} max={10} className="w-16 py-2" />
+                </div>
               </div>
               <button onClick={agregarAccesorio} disabled={!selAcc}
-                className="px-3 py-2 rounded-lg bg-[#333] text-white font-semibold text-sm disabled:opacity-40 hover:bg-[#444]">
+                className="w-full px-3 py-2 rounded-lg bg-[#333] text-white font-semibold text-sm disabled:opacity-40 hover:bg-[#444] sm:w-auto">
                 + Agregar
               </button>
             </div>
@@ -3300,8 +3316,8 @@ function CotizadorForm() {
                         const slotRol = roles.find(r => r.id === slot.rolId);
                         const porJornada = !slotRol || rolUsaJornada(slotRol.tipoPago);
                         return (
-                        <div key={slot.id} className="flex items-center gap-2 px-3 py-2 border-b border-[#111] last:border-0">
-                          <div className="flex-1 min-w-0">
+                        <div key={slot.id} className="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-[#111] last:border-0">
+                          <div className="w-full min-w-0 sm:w-auto sm:flex-1">
                             <p className="text-white text-sm truncate">{slot.rolNombre || "(sin rol)"}</p>
                           </div>
                           <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#222] text-gray-400 shrink-0">
@@ -3330,7 +3346,7 @@ function CotizadorForm() {
                               className="w-20 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs text-right focus:outline-none focus:border-[#B3985B]"
                             />
                           </div>
-                          <span className="text-white text-xs font-semibold w-20 text-right shrink-0">
+                          <span className="ml-auto text-white text-xs font-semibold w-20 text-right shrink-0 sm:ml-0">
                             {formatCurrency(slot.tarifa * slot.cantidad)}
                           </span>
                           <button
@@ -3350,8 +3366,8 @@ function CotizadorForm() {
                   )}
 
                   {/* Selector para agregar técnico — igual que sección de equipos */}
-                  <div className="flex gap-2 items-end flex-wrap border-t border-[#1a1a1a] pt-3">
-                    <div className="flex-1 min-w-[160px]">
+                  <div className="flex flex-col gap-2 border-t border-[#1a1a1a] pt-3 sm:flex-row sm:flex-wrap sm:items-end">
+                    <div className="flex-1 sm:min-w-[160px]">
                       <p className="text-[10px] text-[#555] mb-1 px-1">Rol técnico</p>
                       <select
                         value={pending.rolId}
@@ -3368,8 +3384,9 @@ function CotizadorForm() {
                         ))}
                       </select>
                     </div>
+                    <div className="flex items-end gap-2">
                     {pendingRol && rolUsaNivel(pendingRol.tipoPago) && (
-                      <div>
+                      <div className="shrink-0">
                         <p className="text-[10px] text-[#555] mb-1 text-center">Nivel</p>
                         <select
                           value={pending.nivel}
@@ -3381,7 +3398,7 @@ function CotizadorForm() {
                       </div>
                     )}
                     {pendingRol && rolUsaJornada(pendingRol.tipoPago) && (
-                      <div>
+                      <div className="shrink-0">
                         <p className="text-[10px] text-[#555] mb-1 text-center">Jornada</p>
                         <select
                           value={pending.jornada}
@@ -3392,12 +3409,12 @@ function CotizadorForm() {
                         </select>
                       </div>
                     )}
-                    <div>
+                    <div className="shrink-0">
                       <p className="text-[10px] text-[#555] mb-1 text-center">Cant.</p>
                       <NumSelect value={pending.cantidad} onChange={v => setPendingSlots(p => ({ ...p, [jornada.id]: { ...pending, cantidad: v } }))} max={50} className="w-16 py-2" />
                     </div>
                     {pendingTarifa > 0 && (
-                      <div className="self-end pb-2">
+                      <div className="self-end pb-2 min-w-0">
                         <span className="text-xs text-[#B3985B] whitespace-nowrap">{formatCurrency(pendingTarifa)}/técnico</span>
                       </div>
                     )}
@@ -3416,8 +3433,9 @@ function CotizadorForm() {
                         }));
                         setPendingSlots(prev => ({ ...prev, [jornada.id]: { rolId: "", nivel: "AAA", jornada: "CORTA", cantidad: "1" } }));
                       }}
-                      className="px-3 py-2 rounded-lg bg-[#333] text-white font-semibold text-sm disabled:opacity-40 hover:bg-[#444] self-end"
+                      className="flex-1 px-3 py-2 rounded-lg bg-[#333] text-white font-semibold text-sm disabled:opacity-40 hover:bg-[#444] self-end sm:flex-none"
                     >+ Agregar</button>
+                    </div>
                   </div>
                 </div>
               );
@@ -3496,10 +3514,10 @@ function CotizadorForm() {
                       placeholder={String(djTarifaDefault)} />
                     <span className="text-gray-600 text-xs">/hr</span>
                   </div>
-                  <div className="flex-1 flex items-center text-gray-500 text-sm">
+                  <div className="w-full flex items-center text-gray-500 text-sm sm:w-auto sm:flex-1">
                     Total: {formatCurrency(djTarifaDisplay * (parseFloat(selDJHoras) || 0))}
                   </div>
-                  <button onClick={agregarDJ} disabled={!djRol} className="px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm disabled:opacity-40">+ Agregar</button>
+                  <button onClick={agregarDJ} disabled={!djRol} className="w-full px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm disabled:opacity-40 sm:w-auto">+ Agregar</button>
                 </div>
               );
             })()}
@@ -3539,25 +3557,32 @@ function CotizadorForm() {
               return (
                 <div key={tipo} className="mb-4 last:mb-0">
                   <p className="text-xs font-semibold text-[#888] mb-2 uppercase tracking-wider inline-flex items-center gap-1.5"><Icon strokeWidth={1.75} className="w-3.5 h-3.5" /> {label}</p>
-                  <div className="flex gap-2 mb-2 flex-wrap items-end">
-                    <Combobox
-                      value={logConcepto[tipo]}
-                      onChange={v => {
-                        const precio = conceptos.find(c => c.label === v)?.precio ?? 0;
-                        setLogConcepto(p => ({ ...p, [tipo]: v }));
-                        setLogPrecio(p => ({ ...p, [tipo]: String(precio) }));
-                      }}
-                      options={conceptos.map(c => ({ value: c.label, label: c.label }))}
-                      className="flex-1 min-w-[160px] bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                    />
-                    <input type="number" value={logPrecio[tipo]} onChange={e => setLogPrecio(p => ({ ...p, [tipo]: e.target.value }))} placeholder="$" className="w-24 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[10px] uppercase tracking-wider text-[#666]">Cantidad</span>
-                      <NumSelect value={logCant[tipo]} onChange={v => setLogCant(p => ({ ...p, [tipo]: v }))} max={50} className="w-16 py-2" title="Cantidad" />
+                  <div className="flex flex-col gap-2 mb-2 sm:flex-row sm:flex-wrap sm:items-end">
+                    <div className="flex-1 sm:min-w-[160px]">
+                      <Combobox
+                        value={logConcepto[tipo]}
+                        onChange={v => {
+                          const precio = conceptos.find(c => c.label === v)?.precio ?? 0;
+                          setLogConcepto(p => ({ ...p, [tipo]: v }));
+                          setLogPrecio(p => ({ ...p, [tipo]: String(precio) }));
+                        }}
+                        options={conceptos.map(c => ({ value: c.label, label: c.label }))}
+                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                      />
                     </div>
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[10px] uppercase tracking-wider text-[#666]">Días</span>
-                      <NumSelect value={logDias[tipo]} onChange={v => setLogDias(p => ({ ...p, [tipo]: v }))} max={10} className="w-16 py-2" title="Días" />
+                    <div className="flex items-end gap-2">
+                      <div className="flex flex-1 flex-col gap-1 sm:flex-none">
+                        <span className="text-[10px] uppercase tracking-wider text-[#666]">Precio</span>
+                        <input type="number" value={logPrecio[tipo]} onChange={e => setLogPrecio(p => ({ ...p, [tipo]: e.target.value }))} placeholder="$" className="w-full sm:w-24 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                      </div>
+                      <div className="flex shrink-0 flex-col gap-1">
+                        <span className="text-[10px] uppercase tracking-wider text-[#666]">Cantidad</span>
+                        <NumSelect value={logCant[tipo]} onChange={v => setLogCant(p => ({ ...p, [tipo]: v }))} max={50} className="w-16 py-2" title="Cantidad" />
+                      </div>
+                      <div className="flex shrink-0 flex-col gap-1">
+                        <span className="text-[10px] uppercase tracking-wider text-[#666]">Días</span>
+                        <NumSelect value={logDias[tipo]} onChange={v => setLogDias(p => ({ ...p, [tipo]: v }))} max={10} className="w-16 py-2" title="Días" />
+                      </div>
                     </div>
                     <button onClick={() => {
                       const precio = parseFloat(logPrecio[tipo]) || 0;
@@ -3566,13 +3591,13 @@ function CotizadorForm() {
                       setLineasLog(prev => [...prev, { id: uid(), tipo, concepto: logConcepto[tipo], precioUnitario: precio, cantidad: cant, dias, subtotal: precio * cant * dias }]);
                       setLogCant(p => ({ ...p, [tipo]: "1" }));
                       setLogDias(p => ({ ...p, [tipo]: "1" }));
-                    }} className="px-3 py-2 rounded-lg bg-[#333] text-white font-semibold text-sm hover:bg-[#444]">+ Agregar</button>
+                    }} className="w-full px-3 py-2 rounded-lg bg-[#333] text-white font-semibold text-sm hover:bg-[#444] sm:w-auto">+ Agregar</button>
                   </div>
                   {lineas.length > 0 && (
                     <div className="border border-[#222] rounded-lg overflow-hidden">
                       {lineas.map(l => (
-                        <div key={l.id} className="flex items-center gap-2 px-3 py-2 border-b border-[#111] last:border-0">
-                          <div className="flex-1 min-w-0">
+                        <div key={l.id} className="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-[#111] last:border-0">
+                          <div className="w-full min-w-0 sm:w-auto sm:flex-1">
                             <p className="text-white text-sm truncate">{l.concepto}</p>
                             <p className="text-gray-500 text-xs">×{l.cantidad} · {l.dias} día(s) · {formatCurrency(l.precioUnitario)}/u</p>
                           </div>
@@ -3582,7 +3607,7 @@ function CotizadorForm() {
                           }} className="w-20 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white text-xs text-right focus:outline-none" />
                           <NumSelect value={l.cantidad} onChange={v => { const c = parseFloat(v) || 1; setLineasLog(pr => pr.map(x => x.id === l.id ? { ...x, cantidad: c, subtotal: x.precioUnitario * c * x.dias } : x)); }} max={50} className="w-14 py-1" />
                           <NumSelect value={l.dias} onChange={v => { const d = parseInt(v) || 1; setLineasLog(pr => pr.map(x => x.id === l.id ? { ...x, dias: d, subtotal: x.precioUnitario * x.cantidad * d } : x)); }} max={10} className="w-14 py-1" />
-                          <span className="w-20 text-right text-white text-sm font-medium shrink-0">{formatCurrency(l.subtotal)}</span>
+                          <span className="ml-auto w-20 text-right text-white text-sm font-medium shrink-0 sm:ml-0">{formatCurrency(l.subtotal)}</span>
                           <button onClick={() => setLineasLog(p => p.filter(x => x.id !== l.id))} className="text-gray-600 hover:text-red-400 text-lg leading-none shrink-0">×</button>
                         </div>
                       ))}

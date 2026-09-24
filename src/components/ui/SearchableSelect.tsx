@@ -62,13 +62,13 @@ export default function SearchableSelect({ options, value, onChange, placeholder
           onClick={() => setOpen(true)}
           className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-sm text-left focus:outline-none hover:border-[#555] flex items-center justify-between"
         >
-          <span className={selected ? "text-white" : "text-gray-500"}>{selected?.label ?? placeholder}</span>
-          <span className="text-gray-600 text-xs ml-2">▾</span>
+          <span className={`truncate ${selected ? "text-white" : "text-gray-500"}`}>{selected?.label ?? placeholder}</span>
+          <span className="text-gray-600 text-xs ml-2 shrink-0">▾</span>
         </button>
       )}
 
       {open && (
-        <div className="absolute z-50 mt-1 w-full bg-[#111] border border-[#333] rounded-lg shadow-xl max-h-64 overflow-y-auto">
+        <div className="absolute z-50 mt-1 w-full bg-[#111] border border-[#333] rounded-lg shadow-xl max-h-64 overflow-y-auto overscroll-contain">
           {filtered.length === 0 ? (
             <p className="text-gray-500 text-xs text-center py-3">Sin resultados</p>
           ) : (
@@ -82,7 +82,7 @@ export default function SearchableSelect({ options, value, onChange, placeholder
                     key={opt.value}
                     type="button"
                     onMouseDown={e => { e.preventDefault(); onChange(opt.value); setOpen(false); setQuery(""); }}
-                    className={`w-full text-left px-3 py-2 text-sm transition-colors ${opt.value === value ? "bg-[#B3985B]/20 text-[#B3985B]" : "text-white hover:bg-[#1a1a1a]"}`}
+                    className={`w-full text-left px-3 py-2.5 text-sm leading-snug transition-colors ${opt.value === value ? "bg-[#B3985B]/20 text-[#B3985B]" : "text-white hover:bg-[#1a1a1a]"}`}
                   >
                     {opt.label}
                   </button>
