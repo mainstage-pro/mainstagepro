@@ -72,9 +72,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         },
         equipos: {
           include: {
-            equipo: { select: { descripcion: true, marca: true, modelo: true, imagenUrl: true, categoria: { select: { nombre: true } }, accesorios: { select: { id: true, nombre: true, categoria: true, accesorioId: true }, orderBy: { createdAt: "asc" } } } },
+            equipo: { select: { descripcion: true, marca: true, modelo: true, imagenUrl: true, amperajeRequerido: true, voltajeRequerido: true, categoria: { select: { nombre: true, disciplina: true } }, accesorios: { select: { id: true, nombre: true, categoria: true, accesorioId: true }, orderBy: { createdAt: "asc" } } } },
             proveedor: { select: { nombre: true, empresa: true, telefono: true } },
             riderAccesorios: { orderBy: { orden: "asc" } },
+            posiciones: { orderBy: { orden: "asc" } },
           },
           orderBy: { id: "asc" },
         },
@@ -162,6 +163,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         equipos: proyecto.equipos.map((e: Record<string, unknown>) => ({
           ...e,
           riderAccesorios: [],
+          posiciones: [],
           equipo: { ...(e.equipo as Record<string, unknown>), accesorios: [] },
         })),
         proveedoresEvento: (proyecto as { proveedoresEvento?: unknown[] }).proveedoresEvento ?? [],

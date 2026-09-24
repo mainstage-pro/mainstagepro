@@ -23,6 +23,8 @@ import ChecklistEventoTab from "./ChecklistEventoTab";
 import { BackButton } from "@/components/BackButton";
 import { Package, AlertTriangle, Smartphone, Truck, Home, Radio, MessageCircle, FileText, Bell, User, Factory, ClipboardList, FileImage } from "lucide-react";
 import { ViabilidadWidget, type ViabilidadActiva, type ViabilidadHistoricoItem } from "@/components/proyectos/ViabilidadWidget";
+import { MontajePosiciones, type Posicion as PosicionMontaje } from "@/components/proyectos/MontajePosiciones";
+import { labelFuncion, labelZona, ordenDisciplina } from "@/lib/montaje-vocabulario";
 import { DISCIPLINA_COLORS, DISCIPLINA_LABELS } from "@/lib/disciplinaColors";
 import { contarRespondidos, contarIncidencias, nivelResultado, getEvalConfig, aplicaEvaluacion, type EvalPostEventoData } from "@/lib/evaluacion-post-evento";
 import { getDireccionConfig, promedioDireccion, type EvaluacionDireccionData } from "@/lib/evaluacion-direccion";
@@ -68,7 +70,7 @@ interface GastoOp { id: string; tipo: string; concepto: string; monto: number; c
 interface Gasto { id: string; fecha: string; concepto: string; monto: number; metodoPago: string; notas: string | null; referencia: string | null; categoriaId?: string | null; categoria: { id?: string; nombre: string } | null; proveedorId?: string | null; proveedor: { id?: string; nombre: string; empresa?: string | null } | null; cuentaOrigenId?: string | null; cuentaOrigen: { id: string; nombre: string; banco: string | null } | null }
 interface EquipoAccesorioLib { id: string; nombre: string; categoria: string | null; accesorioId?: string | null }
 interface RiderAccesorio { id: string; nombre: string; cantidad: number; categoria: string | null; completado: boolean; esSugerencia: boolean; orden: number; origen?: string | null; accesorioId?: string | null }
-interface ProyectoEquipoItem { id: string; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; confirmToken: string | null; confirmDisponible: boolean | null; notas: string | null; necesitaRevision: boolean; equipo: { descripcion: string; marca: string | null; modelo: string | null; imagenUrl: string | null; categoria: { nombre: string }; accesorios: EquipoAccesorioLib[] }; proveedor: { nombre: string; empresa: string | null; telefono: string | null } | null; riderAccesorios: RiderAccesorio[] }
+interface ProyectoEquipoItem { id: string; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; confirmToken: string | null; confirmDisponible: boolean | null; notas: string | null; necesitaRevision: boolean; equipo: { descripcion: string; marca: string | null; modelo: string | null; imagenUrl: string | null; amperajeRequerido?: number | null; voltajeRequerido?: string | null; categoria: { nombre: string; disciplina?: string | null }; accesorios: EquipoAccesorioLib[] }; proveedor: { nombre: string; empresa: string | null; telefono: string | null } | null; riderAccesorios: RiderAccesorio[]; posiciones?: PosicionMontaje[] }
 type FaseCrono = "montaje" | "operacion" | "desmontaje";
 const FASE_ORDEN: Record<FaseCrono, number> = { montaje: 0, operacion: 1, desmontaje: 2 };
 const faseDe = (r: CronoRow): FaseCrono => r.fase ?? "operacion";
@@ -3005,6 +3007,21 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     }
     setGenerandoRider(false);
     if (d.mensaje) toast.info(d.mensaje);
+  }
+
+  // ── Montaje: sembrar una posición sugerida por equipo sin desglosar ──
+  const [generandoMontaje, setGenerandoMontaje] = useState(false);
+  async function generarMontajeSugerido() {
+    setGenerandoMontaje(true);
+    try {
+      const res = await fetch(`/api/proyectos/${id}/posiciones/generar`, { method: "POST" });
+      if (!res.ok) { toast.error("No se pudo generar el montaje"); return; }
+      const d = await res.json();
+      await load();
+      toast.success(d.creadas > 0 ? `${d.creadas} equipo${d.creadas !== 1 ? "s" : ""} con montaje sugerido` : "Todos los equipos ya tienen montaje");
+    } finally {
+      setGenerandoMontaje(false);
+    }
   }
 
   // ── Rider: agregar accesorio persistido ──
@@ -6385,6 +6402,55 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 </div>
               )}
 
+              {/* ── Plan de montaje: cómo se instala cada equipo en sitio ── */}
+              {riderEquipos.length > 0 && (() => {
+                const conMontaje = riderEquipos.filter(e => (e.posiciones?.length ?? 0) > 0).length;
+                const total = riderEquipos.length;
+                const completo = conMontaje === total;
+                return (
+                  <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl px-4 py-3 flex flex-wrap items-center gap-3">
+                    <div className="flex-1 min-w-[200px]">
+                      <p className="text-white text-sm font-semibold">Plan de montaje</p>
+                      <p className="text-gray-500 text-xs mt-0.5">
+                        Función, soporte y zona de cada equipo.{" "}
+                        <span className={completo ? "text-green-500" : "text-amber-500"}>
+                          {conMontaje} de {total} equipos definidos
+                        </span>
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {!completo && (
+                        <button
+                          onClick={generarMontajeSugerido}
+                          disabled={generandoMontaje}
+                          className="flex items-center gap-1.5 text-xs text-gray-400 border border-[#2a2a2a] hover:border-[#B3985B]/40 hover:text-[#B3985B] px-3 py-1.5 rounded-lg transition-all disabled:opacity-40"
+                        >
+                          {generandoMontaje ? "Generando…" : "Generar sugerido"}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => previewPdf(`/api/proyectos/${id}/plan-montaje`, 'Plan de Montaje', `plan-montaje-${proyecto.numeroProyecto}.pdf`)}
+                        disabled={conMontaje === 0}
+                        title={conMontaje === 0 ? "Define al menos un montaje" : undefined}
+                        className="flex items-center gap-1.5 text-xs text-gray-400 border border-[#2a2a2a] hover:border-[#B3985B]/40 hover:text-[#B3985B] px-3 py-1.5 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        Vista previa
+                      </button>
+                      <button
+                        onClick={() => downloadPdf(`/api/proyectos/${id}/plan-montaje`, `plan-montaje-${proyecto.numeroProyecto}.pdf`, 'Plan de montaje')}
+                        disabled={conMontaje === 0}
+                        title={conMontaje === 0 ? "Define al menos un montaje" : undefined}
+                        className="flex items-center gap-1.5 text-xs text-[#B3985B] border border-[#B3985B]/30 hover:border-[#B3985B]/60 hover:bg-[#B3985B]/5 px-3 py-1.5 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Descargar plan
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {(() => {
                 // Compute cotización lines FIRST so empty state is aware of them.
                 // When no inventory is linked (riderEquipos empty) → show ALL cot equipment (PROPIO+EXTERNO+OTRO).
@@ -6406,11 +6472,28 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   );
                 }
 
-                const grupos: Record<string, typeof riderEquipos> = {};
-                for (const e of riderEquipos) { const cat = e.equipo.categoria.nombre; if (!grupos[cat]) grupos[cat] = []; grupos[cat].push(e); }
+                // Agrupado por disciplina → categoría, en orden de montaje real
+                // (rigging y escenario primero, DJ al final).
+                const porDisciplina: Record<string, Record<string, typeof riderEquipos>> = {};
+                for (const e of riderEquipos) {
+                  const disc = e.equipo.categoria.disciplina ?? "PRODUCCION";
+                  const cat = e.equipo.categoria.nombre;
+                  if (!porDisciplina[disc]) porDisciplina[disc] = {};
+                  if (!porDisciplina[disc][cat]) porDisciplina[disc][cat] = [];
+                  porDisciplina[disc][cat].push(e);
+                }
+                const discOrdenadas = Object.keys(porDisciplina).sort((a, b) => ordenDisciplina(a) - ordenDisciplina(b));
                 return (
                   <div className="ms-table-wrapper">
-                    {Object.entries(grupos).map(([cat, items]) => (
+                    {discOrdenadas.map(disc => (
+                      <div key={disc}>
+                        <div className="px-4 py-2 bg-[#0d0d0d] border-b border-[#1a1a1a] flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: DISCIPLINA_COLORS[disc] ?? "#6B7280" }} />
+                          <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: DISCIPLINA_COLORS[disc] ?? "#6B7280" }}>
+                            {DISCIPLINA_LABELS[disc] ?? disc}
+                          </span>
+                        </div>
+                    {Object.entries(porDisciplina[disc]).map(([cat, items]) => (
                       <div key={cat}>
                         <div className="px-4 py-1.5 bg-[#0a0a0a] border-b border-[#1a1a1a]">
                           <span className="text-[10px] text-[#B3985B]/60 font-bold uppercase tracking-widest">{cat}</span>
@@ -6452,6 +6535,19 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                   <p className="text-gray-500 text-xs mt-0.5 leading-snug">{e.equipo.descripcion}</p>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
+                                  {(e.posiciones?.length ?? 0) > 0 && (() => {
+                                    const resumen = (e.posiciones ?? [])
+                                      .map(p => `${p.cantidad} ${labelFuncion(p.funcion, e.equipo.categoria.nombre, e.equipo.categoria.disciplina ?? null) || "sin función"}${p.zona ? ` · ${labelZona(p.zona)}` : ""}`)
+                                      .join("  |  ");
+                                    return (
+                                      <span
+                                        className="hidden md:block text-[10px] text-gray-400 bg-[#161616] border border-[#242424] px-1.5 py-0.5 rounded max-w-[260px] truncate"
+                                        title={resumen}
+                                      >
+                                        {resumen}
+                                      </span>
+                                    );
+                                  })()}
                                   {totalGuardados > 0 && (
                                     <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${completados === totalGuardados ? "text-green-400 bg-green-900/20" : "text-[#B3985B] bg-[#B3985B]/10"}`}>
                                       {completados}/{totalGuardados} acc
@@ -6519,6 +6615,16 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                               {/* Expanded panel */}
                               {isExpanded && (
                                 <div className="bg-[#0a0a0a] border-t border-[#1a1a1a] px-4 py-3 space-y-4">
+
+                                  <MontajePosiciones
+                                    proyectoId={proyecto.id}
+                                    equipoId={e.id}
+                                    cantidadTotal={e.cantidad}
+                                    categoria={e.equipo.categoria.nombre}
+                                    disciplina={e.equipo.categoria.disciplina ?? null}
+                                    posiciones={e.posiciones ?? []}
+                                    onSaved={(pos) => setRiderEquipos(prev => prev.map(x => x.id === e.id ? { ...x, posiciones: pos } : x))}
+                                  />
 
                                   {/* Confirmed accessories */}
                                   {e.riderAccesorios.length > 0 && (
@@ -6650,6 +6756,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             </div>
                           );
                         })}
+                      </div>
+                    ))}
                       </div>
                     ))}
                     {/* ── Equipos adicionales / terceros desde cotización ── */}

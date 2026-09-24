@@ -799,8 +799,30 @@ model ProyectoEquipo {
   notas             String? // Comentarios / instrucciones de carga para este equipo
   necesitaRevision  Boolean          @default(false) // El equipo se quitó/redujo en la cotización — revisar sin borrar (sync)
   riderAccesorios   RiderAccesorio[]
+  posiciones        ProyectoEquipoPosicion[]
 
   @@map("proyecto_equipos")
+}
+
+// Cómo se monta el equipo en sitio. La cantidad de un ProyectoEquipo se parte en
+// posiciones: 8 bafles pueden ser 2 de PA, 2 de monitoreo de cabina DJ y 4 de
+// monitor de piso. Vocabulario en src/lib/montaje-vocabulario.ts.
+model ProyectoEquipoPosicion {
+  id               String         @id @default(cuid())
+  proyectoEquipoId String
+  proyectoEquipo   ProyectoEquipo @relation(fields: [proyectoEquipoId], references: [id], onDelete: Cascade)
+  cantidad         Int            @default(1)
+  funcion          String? // Para qué sirve — depende de la categoría (PA_PRINCIPAL, MONITOR_PISO, BACKLIGHT...)
+  soporte          String? // Cómo se sostiene (TRIPIE, POSTE_SUB, TRUSS_VOLADA, COLGADO_MOTOR...)
+  zona             String? // Dónde va (ESCENARIO, FOH, CABINA_DJ, SALON...) — catálogo universal
+  alturaM          Float? // Altura de montaje en metros (solo soportes volados / torres)
+  notas            String?
+  esSugerencia     Boolean        @default(false) // La generó el sistema y nadie la ha confirmado
+  orden            Int            @default(0)
+  createdAt        DateTime       @default(now())
+
+  @@index([proyectoEquipoId])
+  @@map("proyecto_equipo_posiciones")
 }
 
 // Accesorios de rider para un equipo en un proyecto específico
