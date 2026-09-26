@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { getPerfilMontaje, soportePideAltura, ZONAS } from "@/lib/montaje-vocabulario";
+import { useEffect, useState } from "react";
+import { getPerfilMontaje, soportePideAltura, ZONAS, type OpcionMontaje } from "@/lib/montaje-vocabulario";
 
 export type Posicion = {
   id?: string;
@@ -28,10 +28,94 @@ const selectCls =
 
 function Campo({ label, children, className = "" }: { label: string; children: React.ReactNode; className?: string }) {
   return (
-    <label className={`block min-w-0 ${className}`}>
+    <div className={`min-w-0 ${className}`}>
       <span className="block text-[9px] text-gray-500 uppercase tracking-wider mb-1">{label}</span>
       {children}
-    </label>
+    </div>
+  );
+}
+
+type OpcionGuardada = { id: string; tipo: string; label: string; categoria: string | null };
+
+let cacheOpciones: Promise<OpcionGuardada[]> | null = null;
+
+function cargarOpcionesGuardadas(recargar = false): Promise<OpcionGuardada[]> {
+  if (recargar || !cacheOpciones) {
+    cacheOpciones = fetch("/api/montaje-opciones")
+      .then((r) => (r.ok ? r.json() : { opciones: [] }))
+      .then((d) => d.opciones ?? [])
+      .catch(() => []);
+  }
+  return cacheOpciones;
+}
+
+const OTRA = "__OTRA__";
+
+/** Select del catálogo con escape a texto libre, opcionalmente reutilizable después. */
+function SelectorMontaje({
+  valor,
+  opciones,
+  onChange,
+  guardar,
+  onGuardar,
+}: {
+  valor: string | null;
+  opciones: OpcionMontaje[];
+  onChange: (v: string | null) => void;
+  guardar: boolean;
+  onGuardar: (v: boolean) => void;
+}) {
+  const [libre, setLibre] = useState(false);
+  const escribiendo = libre || (!!valor && !opciones.some((o) => o.id === valor));
+
+  if (escribiendo) {
+    return (
+      <div>
+        <div className="flex items-center gap-1">
+          <input
+            autoFocus
+            type="text"
+            placeholder="Escribe la opción"
+            value={valor ?? ""}
+            onChange={(e) => onChange(e.target.value || null)}
+            className={selectCls}
+          />
+          <button
+            onClick={() => { setLibre(false); onChange(null); onGuardar(false); }}
+            title="Volver al catálogo"
+            className="text-gray-600 hover:text-white text-xs px-1"
+          >
+            ×
+          </button>
+        </div>
+        <label className="flex items-center gap-1 mt-1 text-[9px] text-gray-500 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={guardar}
+            onChange={(e) => onGuardar(e.target.checked)}
+            className="w-3 h-3 accent-[#B3985B]"
+          />
+          Guardar para futuros proyectos
+        </label>
+      </div>
+    );
+  }
+
+  return (
+    <select
+      value={valor ?? ""}
+      onChange={(e) => {
+        if (e.target.value === OTRA) { setLibre(true); onChange(null); }
+        else onChange(e.target.value || null);
+      }}
+      className={selectCls}
+    >
+      <option value="">— Elegir —</option>
+      {opciones.map((o) => (
+        <option key={o.id} value={o.id}>{o.label}</option>
+      ))}
+      <option value={OTRA}>+ Otra…</option>
+    </select>
   );
 }
 
@@ -44,6 +128,22 @@ export function MontajePosiciones({ proyectoId, equipoId, cantidadTotal, categor
   );
   const [dirty, setDirty] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  const [guardadas, setGuardadas] = useState<OpcionGuardada[]>([]);
+  const [porGuardar, setPorGuardar] = useState<Record<string, boolean>>({});
+
+  useEffect(() => { cargarOpcionesGuardadas().then(setGuardadas); }, []);
+
+  const conGuardadas = (tipo: string, base: OpcionMontaje[]): OpcionMontaje[] => {
+    const extra = guardadas
+      .filter((o) => o.tipo === tipo && (tipo === "ZONA" || !o.categoria || o.categoria === categoria))
+      .map((o) => ({ id: o.label, label: o.label }))
+      .filter((o) => !base.some((b) => b.id === o.id));
+    return [...base, ...extra];
+  };
+
+  const configuraciones = conGuardadas("CONFIGURACION", perfil.configuraciones);
+  const soportes = conGuardadas("SOPORTE", perfil.soportes);
+  const zonas = conGuardadas("ZONA", ZONAS);
 
   const asignadas = filas.reduce((s, f) => s + (Number(f.cantidad) || 0), 0);
   const restante = cantidadTotal - asignadas;
@@ -63,12 +163,37 @@ export function MontajePosiciones({ proyectoId, equipoId, cantidadTotal, categor
 
   const quitar = (i: number) => {
     setFilas((prev) => prev.filter((_, idx) => idx !== i));
+    setPorGuardar({}); // las claves van por índice de fila y al quitar una se recorren
     setDirty(true);
   };
 
   const guardar = async () => {
     setGuardando(true);
     try {
+      const nuevas = Object.entries(porGuardar)
+        .filter(([, v]) => v)
+        .map(([clave]) => {
+          const [i, campo] = clave.split("|");
+          const fila = filas[Number(i)];
+          const tipo = campo === "funcion" ? "CONFIGURACION" : campo === "soporte" ? "SOPORTE" : "ZONA";
+          return { tipo, label: fila?.[campo as "funcion" | "soporte" | "zona"] ?? "" };
+        })
+        .filter((o) => o.label.trim() !== "");
+
+      if (nuevas.length > 0) {
+        await Promise.all(
+          nuevas.map((o) =>
+            fetch("/api/montaje-opciones", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ...o, categoria, disciplina }),
+            }),
+          ),
+        );
+        setPorGuardar({});
+        setGuardadas(await cargarOpcionesGuardadas(true));
+      }
+
       const res = await fetch(`/api/proyectos/${proyectoId}/equipos/${equipoId}/posiciones`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -122,40 +247,31 @@ export function MontajePosiciones({ proyectoId, equipoId, cantidadTotal, categor
                   />
                 </Campo>
                 <Campo label="Configuración" className="lg:col-span-4">
-                  <select
-                    value={f.funcion ?? ""}
-                    onChange={(e) => actualizar(i, { funcion: e.target.value || null })}
-                    className={selectCls}
-                  >
-                    <option value="">— Elegir —</option>
-                    {perfil.configuraciones.map((o) => (
-                      <option key={o.id} value={o.id}>{o.label}</option>
-                    ))}
-                  </select>
+                  <SelectorMontaje
+                    valor={f.funcion}
+                    opciones={configuraciones}
+                    onChange={(v) => actualizar(i, { funcion: v })}
+                    guardar={porGuardar[`${i}|funcion`] ?? false}
+                    onGuardar={(v) => setPorGuardar((p) => ({ ...p, [`${i}|funcion`]: v }))}
+                  />
                 </Campo>
                 <Campo label="Soporte" className="lg:col-span-4">
-                  <select
-                    value={f.soporte ?? ""}
-                    onChange={(e) => actualizar(i, { soporte: e.target.value || null })}
-                    className={selectCls}
-                  >
-                    <option value="">— Elegir —</option>
-                    {perfil.soportes.map((o) => (
-                      <option key={o.id} value={o.id}>{o.label}</option>
-                    ))}
-                  </select>
+                  <SelectorMontaje
+                    valor={f.soporte}
+                    opciones={soportes}
+                    onChange={(v) => actualizar(i, { soporte: v })}
+                    guardar={porGuardar[`${i}|soporte`] ?? false}
+                    onGuardar={(v) => setPorGuardar((p) => ({ ...p, [`${i}|soporte`]: v }))}
+                  />
                 </Campo>
                 <Campo label="Zona" className={pideAltura ? "lg:col-span-2" : "lg:col-span-3"}>
-                  <select
-                    value={f.zona ?? ""}
-                    onChange={(e) => actualizar(i, { zona: e.target.value || null })}
-                    className={selectCls}
-                  >
-                    <option value="">— Elegir —</option>
-                    {ZONAS.map((o) => (
-                      <option key={o.id} value={o.id}>{o.label}</option>
-                    ))}
-                  </select>
+                  <SelectorMontaje
+                    valor={f.zona}
+                    opciones={zonas}
+                    onChange={(v) => actualizar(i, { zona: v })}
+                    guardar={porGuardar[`${i}|zona`] ?? false}
+                    onGuardar={(v) => setPorGuardar((p) => ({ ...p, [`${i}|zona`]: v }))}
+                  />
                 </Campo>
                 {pideAltura && (
                   <Campo label="Altura m" className="lg:col-span-1">

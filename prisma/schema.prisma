@@ -831,6 +831,22 @@ model ProyectoEquipoPosicion {
   @@map("proyecto_equipo_posiciones")
 }
 
+// Opciones de montaje escritas a mano que se reutilizan en futuros proyectos.
+// El valor guardado en la posición es el propio texto, así que una opción de un
+// solo uso no necesita registrarse aquí.
+model MontajeOpcion {
+  id         String   @id @default(cuid())
+  tipo       String // CONFIGURACION | SOPORTE | ZONA
+  label      String
+  categoria  String? // categoría de equipo donde se capturó; null = aplica a todas
+  disciplina String?
+  activo     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  @@index([tipo])
+  @@map("montaje_opciones")
+}
+
 // Accesorios de rider para un equipo en un proyecto específico
 model RiderAccesorio {
   id               String         @id @default(cuid())
