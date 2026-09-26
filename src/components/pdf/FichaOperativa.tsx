@@ -141,6 +141,7 @@ export interface FichaOperativaData {
   linkMaps: string | null; indicacionesAcceso: string | null;
   indicacionesCliente: string | null;
   descripcionGeneral: string | null; detallesEspecificos: string | null; comentariosFinales: string | null;
+  briefObjetivo: string | null; briefAcomodo: string | null; briefRestricciones: string | null;
   encargadoNombre: string | null;
   encargadoCliente: string | null; encargadoClienteContacto: string | null;
   encargadoLugar: string | null; encargadoLugarContacto: string | null;
@@ -278,6 +279,31 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
         </View>
 
         <View style={base.body}>
+
+          {/* BRIEF DE PRODUCCIÓN */}
+          {(data.briefObjetivo || data.briefAcomodo || data.briefRestricciones) && (
+            <View style={base.section}>
+              <SecNum num={sec("brief")} titulo="Brief de Producción" />
+              {data.briefObjetivo && (
+                <View style={s.notaBox}>
+                  <Text style={s.notaLabel}>Qué buscamos lograr</Text>
+                  <Text style={s.notaText}>{data.briefObjetivo}</Text>
+                </View>
+              )}
+              {data.briefAcomodo && (
+                <View style={s.notaBox}>
+                  <Text style={s.notaLabel}>Generales del acomodo</Text>
+                  <Text style={s.notaText}>{data.briefAcomodo}</Text>
+                </View>
+              )}
+              {data.briefRestricciones && (
+                <View style={s.notaBox}>
+                  <Text style={s.notaLabel}>Restricciones del venue</Text>
+                  <Text style={s.notaText}>{data.briefRestricciones}</Text>
+                </View>
+              )}
+            </View>
+          )}
 
           {/* 1. CRONOLOGÍA Y LOGÍSTICA */}
           {bloquesCrono.length > 0 && (

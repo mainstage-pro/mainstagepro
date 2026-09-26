@@ -206,9 +206,7 @@ export interface BriefTecnicoData {
     notasBriefTecnico: string | null;
     briefObjetivo: string | null;
     briefAcomodo: string | null;
-    briefCriterioTecnico: string | null;
     briefRestricciones: string | null;
-    briefNoNegociables: string | null;
     cliente: { nombre: string; empresa: string | null };
     encargado: { name: string } | null;
     /** Cronología unificada: montaje, soundcheck, programa, ventanas de proveedor y desmontaje. */
@@ -323,9 +321,7 @@ export function BriefTecnico({ proyecto, logoSrc }: BriefTecnicoData) {
   const brief = [
     { label: "Qué buscamos lograr", value: p.briefObjetivo },
     { label: "Generales del acomodo", value: p.briefAcomodo },
-    { label: "Criterio técnico general", value: p.briefCriterioTecnico },
     { label: "Restricciones del venue", value: p.briefRestricciones },
-    { label: "No negociables", value: p.briefNoNegociables },
   ].filter((b) => b.value);
 
   return (

@@ -255,7 +255,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     "puntoSalidaBodega", "horaSalidaBodega", "indicacionesCliente",
     "notasBriefTecnico", "llamadoBodega", "lugarLlamado",
     // Brief de producción
-    "briefObjetivo", "briefAcomodo", "briefCriterioTecnico", "briefRestricciones", "briefNoNegociables",
+    "briefObjetivo", "briefAcomodo", "briefRestricciones",
     // Día de montaje/desmontaje opcional
     "fechaDesmontaje",
   ];
