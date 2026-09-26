@@ -6412,7 +6412,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             {/* ═══════ ZONA 1.25: EQUIPOS EXTRA AL RIDER ═══════ */}
             <SectionDivider label="Equipos adicionales al rider" />
             <div className="space-y-3">
-              <p className="text-gray-500 text-xs">Equipos que se agregan al rider pero no están en la cotización original. La disponibilidad no se verifica aquí.</p>
+              <p className="text-gray-500 text-xs">Equipos que se agregan al rider pero no están en la cotización original. Si salen del inventario se suman al listado de arriba con todo y disponibilidad; los manuales se quedan aquí como pendientes por conseguir.</p>
 
               {equiposRiderExtra.length > 0 && (
                 <div className="ms-table-wrapper divide-y divide-[#1a1a1a]">
