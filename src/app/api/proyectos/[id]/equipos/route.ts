@@ -17,7 +17,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { id } = await params;
   const body = await req.json();
-  const { equipoId, tipo, cantidad, dias, costoExterno, proveedorId } = body;
+  const { equipoId, tipo, cantidad, dias, costoExterno, proveedorId, notas } = body;
 
   if (!equipoId) return NextResponse.json({ error: "equipoId requerido" }, { status: 400 });
 
@@ -30,6 +30,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       dias: dias ?? 1,
       costoExterno: costoExterno ? parseFloat(costoExterno) : null,
       proveedorId: proveedorId || null,
+      notas: notas || null,
       confirmado: false,
     },
     include: {

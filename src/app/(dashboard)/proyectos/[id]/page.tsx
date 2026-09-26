@@ -71,7 +71,7 @@ interface GastoOp { id: string; tipo: string; concepto: string; monto: number; c
 interface Gasto { id: string; fecha: string; concepto: string; monto: number; metodoPago: string; notas: string | null; referencia: string | null; categoriaId?: string | null; categoria: { id?: string; nombre: string } | null; proveedorId?: string | null; proveedor: { id?: string; nombre: string; empresa?: string | null } | null; cuentaOrigenId?: string | null; cuentaOrigen: { id: string; nombre: string; banco: string | null } | null }
 interface EquipoAccesorioLib { id: string; nombre: string; categoria: string | null; accesorioId?: string | null }
 interface RiderAccesorio { id: string; nombre: string; cantidad: number; categoria: string | null; completado: boolean; esSugerencia: boolean; orden: number; origen?: string | null; accesorioId?: string | null }
-interface ProyectoEquipoItem { id: string; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; confirmToken: string | null; confirmDisponible: boolean | null; notas: string | null; necesitaRevision: boolean; equipo: { descripcion: string; marca: string | null; modelo: string | null; imagenUrl: string | null; amperajeRequerido?: number | null; voltajeRequerido?: string | null; categoria: { nombre: string; disciplina?: string | null }; accesorios: EquipoAccesorioLib[] }; proveedor: { nombre: string; empresa: string | null; telefono: string | null } | null; riderAccesorios: RiderAccesorio[]; posiciones?: PosicionMontaje[] }
+interface ProyectoEquipoItem { id: string; equipoId: string; proveedorId: string | null; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; confirmToken: string | null; confirmDisponible: boolean | null; notas: string | null; necesitaRevision: boolean; equipo: { descripcion: string; marca: string | null; modelo: string | null; imagenUrl: string | null; amperajeRequerido?: number | null; voltajeRequerido?: string | null; categoria: { nombre: string; disciplina?: string | null }; accesorios: EquipoAccesorioLib[] }; proveedor: { nombre: string; empresa: string | null; telefono: string | null } | null; riderAccesorios: RiderAccesorio[]; posiciones?: PosicionMontaje[] }
 type FaseCrono = "montaje" | "soundcheck" | "operacion" | "desmontaje";
 const FASE_ORDEN: Record<FaseCrono, number> = { montaje: 0, soundcheck: 1, operacion: 2, desmontaje: 3 };
 const faseDe = (r: CronoRow): FaseCrono => r.fase ?? "operacion";
@@ -620,90 +620,6 @@ function ProtocoloPanel({ tipo, data, onSave }: {
   );
 }
 
-type EquipoRowProps = {
-  eq: ProyectoEquipoItem;
-  proyectoId: string;
-  fichaCompleta: boolean;
-  fichaTooltip: string;
-  onToggleConfirmado: (id: string, confirmado: boolean) => void;
-  onEliminar: (id: string) => void;
-  onRefresh: () => Promise<void>;
-  onToastInfo: (msg: string) => void;
-};
-
-function EquipoRow({ eq, proyectoId, fichaCompleta, fichaTooltip, onToggleConfirmado, onEliminar, onRefresh, onToastInfo }: EquipoRowProps) {
-  const costo = eq.costoExterno ? eq.costoExterno * eq.cantidad * eq.dias : null;
-  return (
-    <div className={`flex items-center gap-3 px-5 py-3 border-b border-[#1a1a1a] last:border-b-0 hover:bg-[#141414] transition-colors ${eq.confirmado ? "" : "opacity-80"}`}>
-      {/* Equipment image thumbnail */}
-      <div className="w-9 h-9 rounded-sm overflow-hidden bg-black shrink-0 flex items-center justify-center">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={eq.equipo.imagenUrl || "/logo-icon.png"}
-          alt={eq.equipo.descripcion}
-          className="w-full h-full object-contain p-0.5"
-          onError={(e) => { (e.target as HTMLImageElement).src = "/logo-icon.png"; }}
-        />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <p className="text-white text-sm font-medium truncate">{getEquipoDisplayName(eq.equipo)}</p>
-          {eq.necesitaRevision && <span className="shrink-0 px-1.5 py-0.5 rounded border border-amber-700/50 bg-amber-900/20 text-amber-300 text-[10px] font-medium" title="Este equipo se quitó o cambió en la cotización — revísalo (no se borró automáticamente)">Revisar</span>}
-        </div>
-        <p className="text-gray-500 text-xs">{eq.equipo.categoria.nombre}{(eq.equipo.marca || eq.equipo.modelo) ? ` · ${eq.equipo.descripcion}` : ""}</p>
-        {eq.proveedor && <p className="text-[#B3985B] text-xs">{eq.proveedor.empresa || eq.proveedor.nombre}</p>}
-      </div>
-      <div className="text-center shrink-0">
-        <p className="text-white text-sm font-semibold">{eq.cantidad}</p>
-        <p className="text-gray-600 text-[10px]">cant.</p>
-      </div>
-      <div className="text-center shrink-0">
-        <p className="text-white text-sm">{eq.dias}</p>
-        <p className="text-gray-600 text-[10px]">días</p>
-      </div>
-      {costo !== null && (
-        <div className="text-right shrink-0">
-          <p className="text-yellow-400 text-sm font-semibold">{fmt(costo)}</p>
-          <p className="text-gray-600 text-[10px]">costo</p>
-        </div>
-      )}
-      <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-        {eq.confirmDisponible !== null && eq.confirmDisponible !== undefined && (
-          <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${eq.confirmDisponible ? "bg-green-900/40 text-green-300" : "bg-red-900/40 text-red-300"}`}>
-            {eq.confirmDisponible ? "✓ Disponible" : "✗ No disp."}
-          </span>
-        )}
-        <button onClick={() => onToggleConfirmado(eq.id, eq.confirmado)}
-          className={`text-[10px] px-2 py-0.5 rounded-full font-semibold transition-colors ${eq.confirmado ? "bg-green-900/50 text-green-300 hover:bg-green-900/70" : "bg-[#222] text-gray-500 hover:bg-[#2a2a2a] hover:text-white"}`}>
-          {eq.confirmado ? "Confirmado" : "Confirmar"}
-        </button>
-        {eq.tipo === "EXTERNO" && eq.proveedor && (
-          <button
-            disabled={!fichaCompleta}
-            title={fichaCompleta ? "Consultar disponibilidad al proveedor" : fichaTooltip}
-            onClick={async () => {
-              const res = await fetch(`/api/proyectos/${proyectoId}/equipos/${eq.id}/invitar-proveedor`, { method: "POST" });
-              const d = await res.json();
-              if (d.whatsappUrl) {
-                window.open(d.whatsappUrl, "_blank");
-                await onRefresh();
-              } else if (d.token) {
-                const url = `${window.location.origin}/confirmar/proveedor/${d.token}`;
-                await navigator.clipboard.writeText(url).catch(() => {});
-                onToastInfo("Sin número registrado. Link copiado al portapapeles.");
-                await onRefresh();
-              }
-            }}
-            className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium border transition-colors ${fichaCompleta ? "border-blue-800/50 text-blue-400 hover:bg-blue-900/20 hover:border-blue-600 cursor-pointer" : "border-[#333] text-gray-600 cursor-not-allowed opacity-50"}`}>
-            <Smartphone strokeWidth={1.75} className="w-3 h-3" /> Proveedor
-          </button>
-        )}
-        <button onClick={() => onEliminar(eq.id)} className="text-gray-600 hover:text-red-400 text-xs transition-colors">✕</button>
-      </div>
-    </div>
-  );
-}
-
 // ─── Página principal ─────────────────────────────────────────────────────────
 type VehiculoListItem = { id: string; nombre: string; marca: string | null; modelo: string | null; placas: string | null };
 
@@ -830,534 +746,6 @@ function VehiculoIdSelector({
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-// ── EquiposTab ─────────────────────────────────────────────────────────────────────────────────────────
-
-type ClasifEquipo = 'PROPIO_INVENTARIO' | 'PROPIO_MANUAL' | 'EXTERNO_INVENTARIO' | 'EXTERNO_CONFIRMADO' | 'A_CONSEGUIR';
-
-type LineaEquipo = {
-  id: string;
-  tipo: string;
-  descripcion: string;
-  marca: string | null;
-  modelo: string | null;
-  cantidad: number;
-  dias: number;
-  precioUnitario: number;
-  costoExterno: number | null;
-  equipoId: string | null;
-  equipoInventarioTipo: string | null;
-  cantidadTotal: number | null;
-  proveedorId: string | null;
-  proveedor: { id: string; nombre: string; empresa: string | null } | null;
-  clasificacion: ClasifEquipo;
-  disponible: number;
-  comprometido: number;
-  conflictos: Array<{ ref: string; nombre: string; estado: string; fecha: string | null }>;
-  yaConfirmado: boolean;
-  cxp: { id: string; monto: number; estado: string } | null;
-  proveedorEventoId: string | null;
-};
-
-type ProveedorOpt = { id: string; nombre: string; empresa: string | null };
-type BloqueProveedorOpt = { id: string; nombreProveedor: string; servicioEquipo: string | null };
-
-const CLASIF_CFG: Record<ClasifEquipo, { bg: string; text: string; label: string; dot: string }> = {
-  PROPIO_INVENTARIO:  { bg: 'bg-emerald-900/20 border border-emerald-800/30', text: 'text-emerald-400', label: '\u2713 Nuestro', dot: 'bg-emerald-400' },
-  PROPIO_MANUAL:      { bg: 'bg-emerald-900/10 border border-emerald-900/20', text: 'text-emerald-600', label: '\u2713 Nuestro*', dot: 'bg-emerald-700' },
-  EXTERNO_INVENTARIO: { bg: 'bg-blue-900/20 border border-blue-800/30',       text: 'text-blue-400',   label: '\u25cf Catálogo externo', dot: 'bg-blue-400' },
-  EXTERNO_CONFIRMADO: { bg: 'bg-blue-900/20 border border-blue-800/30',       text: 'text-blue-400',   label: '\u2713 Proveedor OK', dot: 'bg-blue-400' },
-  A_CONSEGUIR:        { bg: 'bg-[#1a1a1a] border border-[#2a2a2a]',           text: 'text-[#6b7280]', label: '\u25a1 A conseguir', dot: 'bg-gray-600' },
-};
-
-function fmxEquipo(n: number) {
-  return `$${n.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-}
-
-function EquiposTab({ proyectoId }: { proyectoId: string }) {
-  const [data, setData] = React.useState<{ lineas: LineaEquipo[]; proveedores: ProveedorOpt[]; proveedoresEvento: BloqueProveedorOpt[]; proyecto: { fechaEvento: string; fechaMontaje: string | null } } | null>(null);
-  const [loading, setLoading] = React.useState(true);
-  const [loadError, setLoadError] = React.useState<string | null>(null);
-  const [confirmando, setConfirmando] = React.useState<string | null>(null);
-  const [saving, setSaving] = React.useState(false);
-  const [reclasificando, setReclasificando] = React.useState<string | null>(null);
-  const [menuAbierto, setMenuAbierto] = React.useState<string | null>(null);
-
-  // Formulario de confirmación de proveedor
-  const [confProveedorId, setConfProveedorId] = React.useState('');
-  const [confMonto, setConfMonto] = React.useState('');
-  const [confFecha, setConfFecha] = React.useState('');
-  const [confGenerarCxP, setConfGenerarCxP] = React.useState(true);
-
-  async function load() {
-    setLoading(true);
-    setLoadError(null);
-    try {
-      const res = await fetch(`/api/proyectos/${proyectoId}/equipos-cotizacion`, { cache: 'no-store' });
-      if (!res.ok) {
-        const txt = await res.text().catch(() => '');
-        setLoadError(`Error ${res.status}: ${txt.slice(0, 120) || 'Sin respuesta'}`);
-        return;
-      }
-      setData(await res.json());
-    } catch (e) {
-      setLoadError(`Error de conexión: ${(e as Error).message}`);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  React.useEffect(() => { load(); }, [proyectoId]); // eslint-disable-line
-
-  // Cerrar menú al hacer clic fuera
-  React.useEffect(() => {
-    if (!menuAbierto) return;
-    const handler = () => setMenuAbierto(null);
-    window.addEventListener('click', handler);
-    return () => window.removeEventListener('click', handler);
-  }, [menuAbierto]);
-
-  function abrirConfirmacion(linea: LineaEquipo) {
-    setConfirmando(linea.id);
-    setMenuAbierto(null);
-    setConfProveedorId(linea.proveedorId ?? '');
-    setConfMonto(String(linea.costoExterno ?? linea.precioUnitario));
-    const fe = data?.proyecto.fechaEvento;
-    setConfFecha(fe ? fe.split('T')[0] : '');
-    setConfGenerarCxP(true);
-  }
-
-  async function confirmar() {
-    if (!confirmando || !confProveedorId || !confMonto) return;
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/proyectos/${proyectoId}/equipos-cotizacion`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lineaId: confirmando, proveedorId: confProveedorId, monto: parseFloat(confMonto), fechaCompromiso: confFecha || undefined, generarCxP: confGenerarCxP }),
-      });
-      if (!res.ok) { alert('Error al confirmar'); return; }
-      setConfirmando(null);
-      await load();
-    } finally { setSaving(false); }
-  }
-
-  async function reclasificar(lineaId: string, nuevoTipo: 'EQUIPO_PROPIO' | 'EQUIPO_EXTERNO') {
-    setMenuAbierto(null);
-    setReclasificando(lineaId);
-    try {
-      const res = await fetch(`/api/proyectos/${proyectoId}/equipos-cotizacion`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lineaId, nuevoTipo }),
-      });
-      if (!res.ok) { alert('Error al reclasificar'); return; }
-      await load();
-    } finally { setReclasificando(null); }
-  }
-
-  // Cuelga la línea del bloque fijo del proveedor que se hace cargo de ese concepto.
-  async function asignarBloque(lineaId: string, proveedorEventoId: string | null) {
-    setMenuAbierto(null);
-    setReclasificando(lineaId);
-    try {
-      const res = await fetch(`/api/proyectos/${proyectoId}/equipos-cotizacion`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lineaId, proveedorEventoId }),
-      });
-      if (!res.ok) { alert('Error al asignar el proveedor'); return; }
-      await load();
-    } finally { setReclasificando(null); }
-  }
-
-  if (loading) return (
-    <div className="space-y-3 py-4">
-      <div className="h-4 w-48 bg-[#1a1a1a] rounded animate-pulse" />
-      {[...Array(5)].map((_, i) => <div key={i} className="h-12 bg-[#111] rounded-xl animate-pulse" />)}
-    </div>
-  );
-
-  if (loadError) return (
-    <div className="bg-red-900/10 border border-red-800/30 rounded-xl p-5 text-center">
-      <p className="text-red-400 text-sm font-medium mb-1">Error al cargar equipos</p>
-      <p className="text-[#555] text-xs font-mono">{loadError}</p>
-      <button onClick={load} className="mt-3 text-xs text-[#B3985B] hover:underline">Reintentar</button>
-    </div>
-  );
-
-  if (!data || data.lineas.length === 0) return (
-    <div className="text-center py-16 text-[#333]">
-      <Package strokeWidth={1.75} className="w-9 h-9 mx-auto mb-3" />
-      <p className="text-sm">Este proyecto no tiene equipos cotizados vinculados al inventario.</p>
-      <p className="text-xs text-[#444] mt-1">Agrega equipos desde la cotización para verlos aquí.</p>
-    </div>
-  );
-
-  const propios     = data.lineas.filter(l => l.tipo === 'EQUIPO_PROPIO');
-  const externos    = data.lineas.filter(l => l.tipo === 'EQUIPO_EXTERNO' && l.clasificacion === 'EXTERNO_CONFIRMADO');
-  const aConseguir  = data.lineas.filter(l => l.tipo === 'EQUIPO_EXTERNO' && l.clasificacion !== 'EXTERNO_CONFIRMADO');
-  // Solo es "conflicto" real cuando no alcanzan las unidades disponibles (déficit), no cuando solo hay traslape de fechas.
-  const conflictos  = propios.filter(l => l.cantidadTotal != null && l.disponible < l.cantidad);
-
-  const fmtFechaCorta = (iso: string | null) =>
-    iso ? new Date(iso + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) : '—';
-
-  const fechaRango = data.proyecto.fechaMontaje
-    ? `${fmtFechaCorta(data.proyecto.fechaMontaje.split('T')[0])} → ${fmtFechaCorta(data.proyecto.fechaEvento.split('T')[0])}`
-    : fmtFechaCorta(data.proyecto.fechaEvento.split('T')[0]);
-
-  // Render de una fila de equipo (propios y externos comparten estructura)
-  function FilaEquipo({ linea, mostrarAccion }: { linea: LineaEquipo; mostrarAccion?: boolean }) {
-    const cfg = CLASIF_CFG[linea.clasificacion];
-    // Alertar solo cuando faltan unidades (déficit), no por simple traslape de fechas con inventario aún disponible.
-    const esConflicto = linea.tipo === 'EQUIPO_PROPIO' && linea.cantidadTotal != null && linea.disponible < linea.cantidad;
-    const esConfirmando = confirmando === linea.id;
-    const esReclasificando = reclasificando === linea.id;
-    const menuOpen = menuAbierto === linea.id;
-
-    return (
-      <React.Fragment>
-        <tr className={`border-t border-[#161616] transition-colors ${esConfirmando ? 'bg-[#0d0d0d]' : 'hover:bg-[#0d0d0d]'}`}>
-          {/* Nombre */}
-          <td className="px-4 py-2.5">
-            <p className="text-white font-medium text-sm">
-              {(linea.marca || linea.modelo) ? [linea.marca, linea.modelo].filter(Boolean).join(' · ') : linea.descripcion}
-            </p>
-            {(linea.marca || linea.modelo) && <p className="text-[#555] text-[10px]">{linea.descripcion}</p>}
-            {linea.clasificacion === 'PROPIO_MANUAL' && (
-              <p className="inline-flex items-center gap-1 text-[10px] text-yellow-700 mt-0.5"><AlertTriangle strokeWidth={1.75} className="w-3 h-3" /> Sin vínculo al inventario</p>
-            )}
-          </td>
-          {/* Cantidad */}
-          <td className="px-3 py-2.5 text-center">
-            <span className="text-white font-medium text-sm">{linea.cantidad}</span>
-            <span className="text-[#555] text-[10px] block">{linea.dias}d</span>
-          </td>
-          {/* Badge */}
-          <td className="px-3 py-2.5 text-center">
-            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium ${cfg.bg} ${cfg.text}`}>
-              {esConflicto && linea.tipo === 'EQUIPO_PROPIO'
-                ? <><AlertTriangle strokeWidth={1.75} className="w-3 h-3" /> Conflicto</>
-                : cfg.label
-              }
-            </span>
-          </td>
-          {/* Proveedor / fuente */}
-          <td className="px-3 py-2.5 hidden md:table-cell">
-            {linea.tipo === 'EQUIPO_PROPIO' ? (
-              <span className="text-[11px] text-[#B3985B] font-medium">
-                Mainstage Pro
-                {linea.cantidadTotal != null && (
-                  <span className="text-[#444] font-normal"> · {linea.disponible}/{linea.cantidadTotal} disp.</span>
-                )}
-              </span>
-            ) : (() => {
-              const bloque = (data?.proveedoresEvento ?? []).find(bp => bp.id === linea.proveedorEventoId);
-              if (bloque) return <span className="text-[11px] text-[#B3985B]">{bloque.nombreProveedor}</span>;
-              if (linea.proveedor) return <span className="text-[11px] text-white">{linea.proveedor.nombre}</span>;
-              return <span className="text-[#444] italic text-[11px]">Sin proveedor</span>;
-            })()}
-          </td>
-          {/* Precio */}
-          <td className="px-3 py-2.5 text-right hidden md:table-cell">
-            {linea.cxp ? (
-              <span className="text-[#B3985B] font-semibold tabular-nums text-xs">{fmxEquipo(linea.cxp.monto)}</span>
-            ) : linea.costoExterno != null ? (
-              <span className="text-[#9ca3af] tabular-nums text-xs">{fmxEquipo(linea.costoExterno)}</span>
-            ) : (
-              <span className="text-[#9ca3af] tabular-nums text-xs">{fmxEquipo(linea.precioUnitario * linea.dias)}/d</span>
-            )}
-          </td>
-          {/* Acción */}
-          <td className="px-3 py-2.5 text-center">
-            <div className="flex items-center justify-center gap-1.5">
-              {/* Botón de acción principal */}
-              {linea.tipo === 'EQUIPO_PROPIO' ? (
-                esConflicto
-                  ? <span className="text-yellow-500 text-[10px]">Ver conflicto ↓</span>
-                  : <span className="text-emerald-500 text-[10px]">✓ Listo</span>
-              ) : (
-                mostrarAccion && (
-                  <button
-                    onClick={() => abrirConfirmacion(linea)}
-                    className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg transition-colors ${
-                      linea.yaConfirmado
-                        ? 'text-[#555] hover:text-[#B3985B]'
-                        : 'bg-[#B3985B] hover:bg-[#c9a96a] text-black'
-                    }`}
-                  >
-                    {linea.yaConfirmado ? 'Editar' : 'Confirmar'}
-                  </button>
-                )
-              )}
-              {/* Menú de reclasificación */}
-              <div className="relative">
-                <button
-                  onClick={(e) => { e.stopPropagation(); setMenuAbierto(menuOpen ? null : linea.id); }}
-                  disabled={esReclasificando}
-                  className="text-[#333] hover:text-[#555] text-[10px] px-1 py-0.5 rounded transition-colors disabled:opacity-40"
-                  title="Reclasificar equipo"
-                >
-                  {esReclasificando ? '...' : '⋮'}
-                </button>
-                {menuOpen && (
-                  <div
-                    onClick={(e) => e.stopPropagation()}
-                    className="absolute right-0 top-full mt-1 z-50 bg-[#111] border border-[#2a2a2a] rounded-xl shadow-2xl py-1 min-w-[160px]"
-                  >
-                    <p className="text-[9px] text-[#444] uppercase tracking-wider px-3 pt-1.5 pb-1">Reclasificar como:</p>
-                    <button
-                      onClick={() => reclasificar(linea.id, 'EQUIPO_PROPIO')}
-                      className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-[#1a1a1a] transition-colors ${
-                        linea.tipo === 'EQUIPO_PROPIO' ? 'text-emerald-400' : 'text-[#9ca3af]'
-                      }`}
-                    >
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                      Equipo propio
-                      {linea.tipo === 'EQUIPO_PROPIO' && <span className="ml-auto text-[9px] text-[#444]">✓ actual</span>}
-                    </button>
-                    <button
-                      onClick={() => reclasificar(linea.id, 'EQUIPO_EXTERNO')}
-                      className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-[#1a1a1a] transition-colors ${
-                        linea.tipo === 'EQUIPO_EXTERNO' ? 'text-blue-400' : 'text-[#9ca3af]'
-                      }`}
-                    >
-                      <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
-                      Externo / A conseguir
-                      {linea.tipo === 'EQUIPO_EXTERNO' && <span className="ml-auto text-[9px] text-[#444]">✓ actual</span>}
-                    </button>
-                    <div className="border-t border-[#1f1f1f] mt-1 pt-1">
-                      <p className="text-[9px] text-[#444] uppercase tracking-wider px-3 pb-1">Proveedor del evento:</p>
-                      {(data?.proveedoresEvento ?? []).length === 0 ? (
-                        <p className="px-3 pb-1.5 text-[10px] text-[#444] leading-snug">Agrega proveedores en la pestaña Operación.</p>
-                      ) : (
-                        <>
-                          {(data?.proveedoresEvento ?? []).map(bp => (
-                            <button
-                              key={bp.id}
-                              onClick={() => asignarBloque(linea.id, bp.id)}
-                              className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-[#1a1a1a] transition-colors ${
-                                linea.proveedorEventoId === bp.id ? 'text-[#B3985B]' : 'text-[#9ca3af]'
-                              }`}
-                            >
-                              <span className="truncate">{bp.nombreProveedor}</span>
-                              {linea.proveedorEventoId === bp.id && <span className="ml-auto text-[9px] text-[#444] shrink-0">✓</span>}
-                            </button>
-                          ))}
-                          {linea.proveedorEventoId && (
-                            <button
-                              onClick={() => asignarBloque(linea.id, null)}
-                              className="w-full text-left px-3 py-1.5 text-xs text-[#555] hover:bg-[#1a1a1a] hover:text-[#9ca3af] transition-colors"
-                            >
-                              Quitar asignación
-                            </button>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </td>
-        </tr>
-        {/* Conflicto detalle */}
-        {esConflicto && linea.tipo === 'EQUIPO_PROPIO' && (
-          <tr className="border-t border-yellow-900/20 bg-yellow-900/5">
-            <td colSpan={6} className="px-4 py-2.5">
-              <p className="text-[10px] text-yellow-600 uppercase tracking-widest mb-1.5">Comprometido en:</p>
-              <div className="space-y-1">
-                {linea.conflictos.map((c, i) => (
-                  <div key={i} className="flex items-center gap-2 text-[11px]">
-                    <span className="font-mono text-[#555]">{c.ref}</span>
-                    <span className="text-white">{c.nombre}</span>
-                    <span className="text-[#444] ml-auto">{fmtFechaCorta(c.fecha)}</span>
-                  </div>
-                ))}
-              </div>
-              <p className="text-[10px] text-yellow-700 mt-2">Coordina con el equipo o usa el menú \u22ee para reclasificar como externo.</p>
-            </td>
-          </tr>
-        )}
-        {/* Formulario confirmación proveedor */}
-        {esConfirmando && (
-          <tr className="border-t border-[#B3985B]/20 bg-[#0a0a0a]">
-            <td colSpan={6} className="px-4 py-4">
-              <div className="max-w-xl">
-                <p className="text-xs font-semibold text-white mb-3">
-                  {linea.yaConfirmado ? 'Editar confirmación' : 'Confirmar equipo externo'}: {linea.descripcion}
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
-                  <div>
-                    <label className="text-[10px] text-[#6b7280] uppercase tracking-wider block mb-1">Proveedor *</label>
-                    <select value={confProveedorId} onChange={e => setConfProveedorId(e.target.value)}
-                      className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]/50">
-                      <option value="">— Selecciona —</option>
-                      {(data?.proveedores ?? []).map(p => (
-                        <option key={p.id} value={p.id}>{p.nombre}{p.empresa ? ` · ${p.empresa}` : ''}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-[#6b7280] uppercase tracking-wider block mb-1">Precio confirmado *</label>
-                    <div className="relative">
-                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#555] text-xs">$</span>
-                      <input type="number" value={confMonto} onChange={e => setConfMonto(e.target.value)} min={0}
-                        className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg pl-6 pr-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]/50"
-                        placeholder="0" />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-[#6b7280] uppercase tracking-wider block mb-1">Fecha compromiso pago</label>
-                    <input type="date" value={confFecha} onChange={e => setConfFecha(e.target.value)}
-                      className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]/50" />
-                  </div>
-                </div>
-                <label className="flex items-center gap-2 text-xs text-[#9ca3af] mb-3 cursor-pointer">
-                  <input type="checkbox" checked={confGenerarCxP} onChange={e => setConfGenerarCxP(e.target.checked)}
-                    className="accent-[#B3985B] w-3.5 h-3.5" />
-                  Generar cuenta por pagar al proveedor
-                </label>
-                <div className="flex items-center gap-2">
-                  <button onClick={confirmar} disabled={saving || !confProveedorId || !confMonto}
-                    className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-xs font-semibold px-4 py-2 rounded-lg transition-colors">
-                    {saving ? 'Guardando...' : linea.yaConfirmado ? 'Guardar cambios' : 'Confirmar equipo'}
-                  </button>
-                  <button onClick={() => setConfirmando(null)}
-                    className="border border-[#333] text-[#6b7280] hover:text-white text-xs px-3 py-2 rounded-lg transition-colors">Cancelar</button>
-                </div>
-              </div>
-            </td>
-          </tr>
-        )}
-      </React.Fragment>
-    );
-  }
-
-  return (
-    <div className="space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-semibold text-white">Equipos del proyecto</h2>
-          <p className="text-[#6b7280] text-xs mt-0.5">Disponibilidad verificada para: {fechaRango}</p>
-        </div>
-        <button onClick={load} className="text-xs text-[#555] hover:text-[#B3985B] transition-colors">↻ Actualizar</button>
-      </div>
-
-      {/* KPIs */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="ms-card p-3">
-          <p className="text-[#6b7280] text-[10px] mb-1">Propios</p>
-          <p className="text-white text-xl font-semibold">{propios.length}</p>
-          <p className="text-[#444] text-[10px]">{conflictos.length > 0 ? `${conflictos.length} con faltante` : 'Inventario suficiente'}</p>
-        </div>
-        <div className="ms-card p-3">
-          <p className="text-[#6b7280] text-[10px] mb-1">Externos confirmados</p>
-          <p className="text-emerald-400 text-xl font-semibold">{externos.length}</p>
-          <p className="text-[#444] text-[10px]">Proveedor asignado</p>
-        </div>
-        <div className={`border rounded-xl p-3 ${aConseguir.length > 0 ? 'bg-orange-900/10 border-orange-800/30' : 'bg-[#111] border-[#1e1e1e]'}`}>
-          <p className="text-[#6b7280] text-[10px] mb-1">A conseguir</p>
-          <p className={`text-xl font-semibold ${aConseguir.length > 0 ? 'text-orange-400' : 'text-white'}`}>{aConseguir.length}</p>
-          <p className="text-[#444] text-[10px]">{aConseguir.length > 0 ? 'Requieren atención' : 'Todo resuelto'}</p>
-        </div>
-      </div>
-
-      {/* Sección: A conseguir — siempre primera si hay pendientes */}
-      {aConseguir.length > 0 && (
-        <div className="bg-[#111] border border-orange-900/30 rounded-xl overflow-hidden">
-          <div className="px-4 py-2.5 bg-orange-900/10 border-b border-orange-900/20 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-orange-500" />
-              <span className="text-[10px] text-orange-400 uppercase tracking-widest font-semibold">A conseguir ({aConseguir.length})</span>
-            </div>
-            <span className="text-[10px] text-[#555]">Asigna proveedor + genera CxP</span>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-[#1a1a1a] text-[#6b7280]">
-                  <th className="text-left px-4 py-2 font-medium">Equipo</th>
-                  <th className="text-center px-3 py-2 font-medium w-20">Cant.</th>
-                  <th className="text-center px-3 py-2 font-medium w-32">Estado</th>
-                  <th className="text-left px-3 py-2 font-medium hidden md:table-cell">Proveedor</th>
-                  <th className="text-right px-3 py-2 font-medium hidden md:table-cell w-24">Precio ref.</th>
-                  <th className="text-center px-3 py-2 font-medium w-28">Acción</th>
-                </tr>
-              </thead>
-              <tbody>
-                {aConseguir.map(l => <FilaEquipo key={l.id} linea={l} mostrarAccion />)}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Sección: Externos confirmados */}
-      {externos.length > 0 && (
-        <div className="ms-table-wrapper">
-          <div className="px-4 py-2.5 bg-blue-900/5 border-b border-blue-900/20 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-blue-400" />
-            <span className="text-[10px] text-blue-400 uppercase tracking-widest font-semibold">Proveedor externo ({externos.length})</span>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-[#1a1a1a] text-[#6b7280]">
-                  <th className="text-left px-4 py-2 font-medium">Equipo</th>
-                  <th className="text-center px-3 py-2 font-medium w-20">Cant.</th>
-                  <th className="text-center px-3 py-2 font-medium w-32">Estado</th>
-                  <th className="text-left px-3 py-2 font-medium hidden md:table-cell">Proveedor</th>
-                  <th className="text-right px-3 py-2 font-medium hidden md:table-cell w-24">Monto CxP</th>
-                  <th className="text-center px-3 py-2 font-medium w-28">Acción</th>
-                </tr>
-              </thead>
-              <tbody>
-                {externos.map(l => <FilaEquipo key={l.id} linea={l} mostrarAccion />)}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Sección: Equipos propios */}
-      {propios.length > 0 && (
-        <div className="ms-table-wrapper">
-          <div className="px-4 py-2.5 bg-emerald-900/5 border-b border-emerald-900/20 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            <span className="text-[10px] text-emerald-400 uppercase tracking-widest font-semibold">Equipo propio ({propios.length})</span>
-            {conflictos.length > 0 && (
-              <span className="ml-auto text-[10px] text-yellow-500">{conflictos.length} con faltante de inventario</span>
-            )}
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-[#1a1a1a] text-[#6b7280]">
-                  <th className="text-left px-4 py-2 font-medium">Equipo</th>
-                  <th className="text-center px-3 py-2 font-medium w-20">Cant.</th>
-                  <th className="text-center px-3 py-2 font-medium w-32">Estado</th>
-                  <th className="text-left px-3 py-2 font-medium hidden md:table-cell">Fuente</th>
-                  <th className="text-right px-3 py-2 font-medium hidden md:table-cell w-24">Precio/d</th>
-                  <th className="text-center px-3 py-2 font-medium w-28">Acción</th>
-                </tr>
-              </thead>
-              <tbody>
-                {propios.map(l => <FilaEquipo key={l.id} linea={l} />)}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      <p className="text-[10px] text-[#333] text-right">
-        Usa el menú (⋮) en cada fila para reclasificar entre propio, externo o a conseguir.
-      </p>
     </div>
   );
 }
@@ -1732,6 +1120,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [riderAccEditNombre, setRiderAccEditNombre] = useState("");
   // Cantidad pendiente por sugerencia de accesorio, key = `${proyectoEquipoId}::${nombre}`
   const [sugCantidad, setSugCantidad] = useState<Record<string, number>>({});
+  // Disponibilidad de inventario por equipoId, para marcar faltantes dentro del mismo listado
+  type DispInv = { disponible: number; comprometido: number; total: number; eventos: { ref: string; nombre: string; estado: string }[] };
+  const [dispInventario, setDispInventario] = useState<Record<string, DispInv>>({});
+  const [origenGuardando, setOrigenGuardando] = useState<string | null>(null);
 
   // Proveedores de subarriendo (manuales)
   type ProveedorRenta = { id: string; nombre: string; contacto: string; equipos: string[] };
@@ -1750,8 +1142,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   }
 
   // Equipos extra al rider (fuera de cotización)
-  type EquipoRiderExtra = { id: string; descripcion: string; cantidad: number; notas: string; completado: boolean; accesorios?: { id: string; nombre: string; cantidad: number }[] };
+  type EquipoRiderExtra = { id: string; descripcion: string; cantidad: number; notas: string; completado: boolean; accesorios?: { id: string; nombre: string; cantidad: number }[]; tipo?: "PROPIO" | "EXTERNO"; proveedor?: string; montaje?: string };
   const [equiposRiderExtra, setEquiposRiderExtra] = useState<EquipoRiderExtra[]>([]);
+  const [extraEditTipo, setExtraEditTipo] = useState<"PROPIO" | "EXTERNO">("PROPIO");
+  const [extraEditProveedor, setExtraEditProveedor] = useState("");
+  const [extraEditMontaje, setExtraEditMontaje] = useState("");
   const [addingEquipoExtra, setAddingEquipoExtra] = useState(false);
   const [newExtraEquipoId, setNewExtraEquipoId] = useState("");
   const [newExtraCant, setNewExtraCant] = useState(1);
@@ -1955,6 +1350,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       const p = d.proyecto as Proyecto;
       setProyecto(p);
       setRiderEquipos(p.equipos ?? []);
+      loadDisponibilidadInventario(p.fechaMontaje ?? p.fechaEvento);
       try { setProveedoresRentaData(p.proveedoresRenta ? JSON.parse(p.proveedoresRenta) : []); } catch { /* ignore */ }
       try { setEquiposRiderExtra(p.equiposRiderExtra ? JSON.parse(p.equiposRiderExtra) : []); } catch { /* ignore */ }
       setNotasPortal(p.notasPortal ?? "");
@@ -1970,6 +1366,30 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       setLoadErrorMsg(msg.includes("abort") ? "Tiempo de espera agotado (15s)" : msg);
     } finally {
       setLoading(false);
+    }
+  }
+
+  // Disponibilidad del inventario propio en la fecha del proyecto, excluyendo este mismo
+  // proyecto para que no se cuente contra sí mismo.
+  async function loadDisponibilidadInventario(fechaEvento: string | null) {
+    if (!fechaEvento) return;
+    const fecha = fechaEvento.split("T")[0];
+    const r = await fetch(`/api/equipos/disponibilidad?fecha=${fecha}&excludeProyectoId=${id}`, { cache: "no-store" }).catch(() => null);
+    if (!r?.ok) return;
+    const d = await r.json();
+    setDispInventario(d.disponibilidad ?? {});
+  }
+
+  async function cambiarOrigenEquipo(eqId: string, campos: { tipo?: string; proveedorId?: string | null; costoExterno?: number | null }) {
+    setOrigenGuardando(eqId);
+    try {
+      await fetch(`/api/proyectos/${id}/equipos/${eqId}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(campos),
+      });
+      await load();
+    } finally {
+      setOrigenGuardando(null);
     }
   }
 
@@ -2156,6 +1576,26 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     setSelEquipoDias("1"); setSelEquipoCosto(""); setSelEquipoProveedor("");
     setAgregarACot(false);
     setAddingEquipo(false);
+  }
+
+  // Un extra que sale del inventario no tiene por qué vivir en un JSON aparte:
+  // se crea como equipo real del proyecto y así hereda origen, accesorios y montaje.
+  async function agregarExtraDesdeInventario(equipoId: string, cantidad: number, tipo: "PROPIO" | "EXTERNO", proveedorId: string, notas: string) {
+    await fetch(`/api/proyectos/${id}/equipos`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        equipoId,
+        tipo,
+        cantidad,
+        dias: 1,
+        costoExterno: null,
+        proveedorId: tipo === "EXTERNO" ? (proveedorId || null) : null,
+        notas: notas || null,
+      }),
+    });
+    await fetch(`/api/proyectos/${id}/checklist/generar-rider`, { method: "POST" });
+    await load();
   }
 
   async function toggleConfirmadoEquipo(eqId: string, actual: boolean) {
@@ -6123,144 +5563,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         );
       })()}
 
-      {/* ── Equipos (dentro de Operación) ── */}
-      {(() => {
-        const equiposPropios  = proyecto.equipos.filter(e => e.tipo === "PROPIO");
-        const equiposExternos = proyecto.equipos.filter(e => e.tipo === "EXTERNO");
-        const camposFaltantesEq: string[] = [];
-        if (!proyecto.horaInicioEvento) camposFaltantesEq.push("hora inicio del evento");
-        if (!proyecto.horaFinEvento) camposFaltantesEq.push("hora fin del evento");
-        if (!proyecto.lugarEvento) camposFaltantesEq.push("lugar del evento");
-        const fichaCompletaEq = camposFaltantesEq.length === 0;
-        const fichaTooltipEq = fichaCompletaEq ? "" : `Completa la ficha técnica antes de invitar: falta ${camposFaltantesEq.join(", ")}.`;
-
-        return (
-          <div className="space-y-4">
-            {showAddEquipo && (
-              <div className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 space-y-3">
-                <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">Agregar equipo</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="col-span-2">
-                    <label className="text-xs text-gray-500 mb-1 block">Equipo *</label>
-                    <Combobox
-                      value={selEquipoId}
-                      onChange={v => setSelEquipoId(v)}
-                      options={[{ value: "", label: "Seleccionar equipo..." }, ...equipoCatalogo.map(eq => ({ value: eq.id, label: `${eq.categoria.nombre} — ${getEquipoDisplayName(eq)}` }))]}
-                      className={`w-full bg-[#0d0d0d] border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] ${dispEquipo && !dispEquipo.disponible ? "border-red-500/60" : "border-[#2a2a2a]"}`}
-                    />
-                    {dispEquipo && selEquipoTipo === "PROPIO" && selEquipoId && (
-                      dispEquipo.disponible ? (
-                        <p className="text-green-500 text-xs mt-1">✓ Disponible: {dispEquipo.cantidadDisponible} de {dispEquipo.cantidadTotal} unidades libres</p>
-                      ) : (
-                        <p className="inline-flex items-center gap-1 text-red-400 text-xs mt-1">
-                          <AlertTriangle strokeWidth={1.75} className="w-3 h-3 shrink-0" /> Solo {dispEquipo.cantidadDisponible} disponibles de {dispEquipo.cantidadTotal} · comprometido en: {dispEquipo.conflictos.map(c => c.nombre).join(", ")}
-                        </p>
-                      )
-                    )}
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Tipo</label>
-                    <Combobox
-                      value={selEquipoTipo}
-                      onChange={v => setSelEquipoTipo(v)}
-                      options={[{ value: "PROPIO", label: "Propio" }, { value: "EXTERNO", label: "Externo (renta)" }]}
-                      className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Cantidad</label>
-                    <input type="number" min="1" value={selEquipoCantidad} onChange={e => setSelEquipoCantidad(e.target.value)}
-                      className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Días</label>
-                    <input type="number" min="1" value={selEquipoDias} onChange={e => setSelEquipoDias(e.target.value)}
-                      className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
-                  {selEquipoTipo === "EXTERNO" && (
-                    <>
-                      <div>
-                        <label className="text-xs text-gray-500 mb-1 block">Costo x día x unidad</label>
-                        <input type="number" value={selEquipoCosto} onChange={e => setSelEquipoCosto(e.target.value)}
-                          placeholder="0.00"
-                          className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-500 mb-1 block">Proveedor</label>
-                        <Combobox
-                          value={selEquipoProveedor}
-                          onChange={v => setSelEquipoProveedor(v)}
-                          options={[{ value: "", label: "Sin proveedor" }, ...proveedores.map(p => ({ value: p.id, label: p.nombre }))]}
-                          className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                        />
-                      </div>
-                    </>
-                  )}
-                </div>
-                {proyecto.cotizacion && (
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={agregarACot} onChange={e => setAgregarACot(e.target.checked)}
-                      className="w-4 h-4 rounded accent-[#B3985B]" />
-                    <span className="text-xs text-gray-400">
-                      Agregar también a la cotización <span className="text-[#B3985B]">{proyecto.cotizacion.numeroCotizacion}</span>
-                    </span>
-                  </label>
-                )}
-                {selEquipoTipo === "EXTERNO" && selEquipoCosto && selEquipoProveedor && (
-                  <p className="text-xs text-yellow-400">Se creará CxP: {new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(parseFloat(selEquipoCosto) * (parseInt(selEquipoCantidad) || 1) * (parseInt(selEquipoDias) || 1))} al agregar</p>
-                )}
-                <div className="flex gap-3">
-                  <button onClick={agregarEquipo} disabled={addingEquipo || !selEquipoId}
-                    className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg transition-colors">
-                    {addingEquipo ? "Agregando..." : "Agregar"}
-                  </button>
-                  <button onClick={() => setShowAddEquipo(false)} className="text-gray-500 hover:text-white text-sm transition-colors px-3">Cancelar</button>
-                </div>
-              </div>
-            )}
-
-
-            {/* Externos */}
-            {equiposExternos.length > 0 && (
-              <div className="ms-table-wrapper">
-                <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
-                  <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">Equipo externo / renta ({equiposExternos.length})</p>
-                  <p className="text-xs text-yellow-400 font-semibold">
-                    Total: {fmt(equiposExternos.reduce((s, e) => s + (e.costoExterno ?? 0) * e.cantidad * e.dias, 0))}
-                  </p>
-                </div>
-                {equiposExternos.map(eq => (
-                  <EquipoRow key={eq.id} eq={eq}
-                    proyectoId={id}
-                    fichaCompleta={fichaCompletaEq}
-                    fichaTooltip={fichaTooltipEq}
-                    onToggleConfirmado={toggleConfirmadoEquipo}
-                    onEliminar={eliminarEquipo}
-                    onRefresh={load}
-                    onToastInfo={msg => toast.info(msg)}
-                  />
-                ))}
-              </div>
-            )}
-
-            {proyecto.equipos.length === 0 && (
-              <div className="ms-card py-12 text-center">
-                <p className="text-gray-600 text-sm">Sin equipos asignados</p>
-                <p className="text-gray-700 text-xs mt-1">Agrega equipo propio o externo para este proyecto</p>
-              </div>
-            )}
-          </div>
-        );
-      })()}
           </div>
         )}
 
         {/* ──── EXTRAS tab ──── */}
         {activeTab === 'extras' && (
           <div id="section-extras" className="scroll-mt-14">
-            {/* ── Equipos del proyecto ── */}
-            <EquiposTab proyectoId={proyecto.id} />
-
       {(() => {
         const tipoEvento = (proyecto.tipoEvento || "").toUpperCase();
         const esMusical = tipoEvento.includes("MUSICAL") || tipoEvento.includes("CONCIERTO") || tipoEvento.includes("FESTIVAL");
@@ -6401,6 +5709,24 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             })()}
 
             {/* ══ EQUIPO, ACCESORIOS Y MONTAJE (de aquí sale el rider de carga) ══ */}
+            {(() => {
+            // Este es el único listado de equipo del proyecto: origen, accesorios y montaje en un solo lugar.
+            const camposFaltantesEq: string[] = [];
+            if (!proyecto.horaInicioEvento) camposFaltantesEq.push("hora inicio del evento");
+            if (!proyecto.horaFinEvento) camposFaltantesEq.push("hora fin del evento");
+            if (!proyecto.lugarEvento) camposFaltantesEq.push("lugar del evento");
+            const fichaCompletaEq = camposFaltantesEq.length === 0;
+            const fichaTooltipEq = fichaCompletaEq ? "" : `Completa la ficha técnica antes de invitar: falta ${camposFaltantesEq.join(", ")}.`;
+            const nPropios = riderEquipos.filter(e => e.tipo !== "EXTERNO").length;
+            const nExternos = riderEquipos.length - nPropios;
+            const totalRenta = riderEquipos.reduce((s, e) => s + (e.tipo === "EXTERNO" ? (e.costoExterno ?? 0) * e.cantidad * e.dias : 0), 0);
+            const sinProveedor = riderEquipos.filter(e => e.tipo === "EXTERNO" && !e.proveedorId).length;
+            const conFaltante = riderEquipos.filter(e => {
+              if (e.tipo === "EXTERNO") return false;
+              const d = dispInventario[e.equipoId];
+              return !!d && d.disponible < e.cantidad;
+            }).length;
+            return (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -6408,13 +5734,19 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <p className="text-gray-500 text-xs mt-0.5">
                     {esRenta
                       ? "Listado de equipos con accesorios y herramientas necesarias para montaje"
-                      : "Qué equipo va, con qué accesorios y cómo se monta cada concepto. De aquí sale el rider de carga que se descarga para el traslado."}
+                      : "Qué equipo va, de dónde sale, con qué accesorios y cómo se monta cada concepto. De aquí sale el rider de carga que se descarga para el traslado."}
                   </p>
                 </div>
                 {(() => {
                   const rq = reqDoc('RIDER_CARGA');
                   return (
                     <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setShowAddEquipo(v => !v)}
+                        className="flex items-center gap-1.5 text-xs text-gray-400 border border-[#2a2a2a] hover:border-[#B3985B]/40 hover:text-[#B3985B] px-3 py-1.5 rounded-lg transition-all"
+                      >
+                        {showAddEquipo ? "Cancelar" : "+ Agregar equipo"}
+                      </button>
                       <button
                         onClick={() => previewPdf(`/api/proyectos/${id}/rider-pdf`, 'Rider de Carga', `rider-carga-${proyecto.numeroProyecto}.pdf`)}
                         disabled={!rq.listo}
@@ -6464,6 +5796,101 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl px-4 py-3">
                   <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Observaciones (cotización)</p>
                   <p className="text-gray-300 text-xs whitespace-pre-wrap leading-relaxed">{cotObservaciones}</p>
+                </div>
+              )}
+
+              {/* Alta de equipo directamente en este listado (ya no vive en Operación) */}
+              {showAddEquipo && (
+                <div className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 space-y-3">
+                  <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">Agregar equipo</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="col-span-2">
+                      <label className="text-xs text-gray-500 mb-1 block">Equipo *</label>
+                      <Combobox
+                        value={selEquipoId}
+                        onChange={v => setSelEquipoId(v)}
+                        options={[{ value: "", label: "Seleccionar equipo..." }, ...equipoCatalogo.map(eq => ({ value: eq.id, label: `${eq.categoria.nombre} — ${getEquipoDisplayName(eq)}` }))]}
+                        className={`w-full bg-[#0d0d0d] border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] ${dispEquipo && !dispEquipo.disponible ? "border-red-500/60" : "border-[#2a2a2a]"}`}
+                      />
+                      {dispEquipo && selEquipoTipo === "PROPIO" && selEquipoId && (
+                        dispEquipo.disponible ? (
+                          <p className="text-green-500 text-xs mt-1">✓ Disponible: {dispEquipo.cantidadDisponible} de {dispEquipo.cantidadTotal} unidades libres</p>
+                        ) : (
+                          <p className="inline-flex items-center gap-1 text-red-400 text-xs mt-1">
+                            <AlertTriangle strokeWidth={1.75} className="w-3 h-3 shrink-0" /> Solo {dispEquipo.cantidadDisponible} disponibles de {dispEquipo.cantidadTotal} · comprometido en: {dispEquipo.conflictos.map(c => c.nombre).join(", ")}
+                          </p>
+                        )
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Origen</label>
+                      <Combobox
+                        value={selEquipoTipo}
+                        onChange={v => setSelEquipoTipo(v)}
+                        options={[{ value: "PROPIO", label: "Nuestro (inventario)" }, { value: "EXTERNO", label: "De proveedor (renta)" }]}
+                        className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Cantidad</label>
+                      <input type="number" min="1" value={selEquipoCantidad} onChange={e => setSelEquipoCantidad(e.target.value)}
+                        className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Días</label>
+                      <input type="number" min="1" value={selEquipoDias} onChange={e => setSelEquipoDias(e.target.value)}
+                        className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                    </div>
+                    {selEquipoTipo === "EXTERNO" && (
+                      <>
+                        <div>
+                          <label className="text-xs text-gray-500 mb-1 block">Costo x día x unidad</label>
+                          <input type="number" value={selEquipoCosto} onChange={e => setSelEquipoCosto(e.target.value)}
+                            placeholder="0.00"
+                            className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500 mb-1 block">Proveedor</label>
+                          <Combobox
+                            value={selEquipoProveedor}
+                            onChange={v => setSelEquipoProveedor(v)}
+                            options={[{ value: "", label: "Sin proveedor" }, ...proveedores.map(p => ({ value: p.id, label: p.nombre }))]}
+                            className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  {proyecto.cotizacion && (
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={agregarACot} onChange={e => setAgregarACot(e.target.checked)}
+                        className="w-4 h-4 rounded accent-[#B3985B]" />
+                      <span className="text-xs text-gray-400">
+                        Agregar también a la cotización <span className="text-[#B3985B]">{proyecto.cotizacion.numeroCotizacion}</span>
+                      </span>
+                    </label>
+                  )}
+                  {selEquipoTipo === "EXTERNO" && selEquipoCosto && selEquipoProveedor && (
+                    <p className="text-xs text-yellow-400">Se creará CxP: {fmt(parseFloat(selEquipoCosto) * (parseInt(selEquipoCantidad) || 1) * (parseInt(selEquipoDias) || 1))} al agregar</p>
+                  )}
+                  <div className="flex gap-3">
+                    <button onClick={agregarEquipo} disabled={addingEquipo || !selEquipoId}
+                      className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg transition-colors">
+                      {addingEquipo ? "Agregando..." : "Agregar"}
+                    </button>
+                    <button onClick={() => setShowAddEquipo(false)} className="text-gray-500 hover:text-white text-sm transition-colors px-3">Cancelar</button>
+                  </div>
+                </div>
+              )}
+
+              {/* Resumen de origen: de un vistazo, qué es nuestro, qué se renta y qué falta resolver */}
+              {riderEquipos.length > 0 && (
+                <div className="flex items-center gap-2 flex-wrap text-[11px]">
+                  <span className="px-2 py-1 rounded-lg border border-emerald-800/40 bg-emerald-900/10 text-emerald-300">{nPropios} nuestro{nPropios !== 1 ? "s" : ""}</span>
+                  <span className="px-2 py-1 rounded-lg border border-blue-800/40 bg-blue-900/10 text-blue-300">{nExternos} de proveedor</span>
+                  {totalRenta > 0 && <span className="px-2 py-1 rounded-lg border border-yellow-800/40 bg-yellow-900/10 text-yellow-300">Renta: {fmt(totalRenta)}</span>}
+                  {sinProveedor > 0 && <span className="px-2 py-1 rounded-lg border border-orange-800/40 bg-orange-900/10 text-orange-300">{sinProveedor} sin proveedor asignado</span>}
+                  {conFaltante > 0 && <span className="px-2 py-1 rounded-lg border border-yellow-800/50 bg-yellow-900/10 text-yellow-300">{conFaltante} con faltante de inventario</span>}
                 </div>
               )}
 
@@ -6556,6 +5983,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                           const isAddOpen = riderAddOpen === e.id;
 
                           const isEditingCant = riderEquipoEditId === e.id;
+                          const esExterno = e.tipo === "EXTERNO";
+                          const disp = esExterno ? null : dispInventario[e.equipoId] ?? null;
+                          const faltan = disp ? Math.max(0, e.cantidad - disp.disponible) : 0;
                           return (
                             <div key={e.id} className={`border-b border-[#0d0d0d] last:border-0 ${e.necesitaRevision ? "border-l-2 border-l-amber-700/60 bg-amber-950/10" : ""}`}>
                               {/* Equipo header row */}
@@ -6580,6 +6010,32 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                     )}
                                   </p>
                                   <p className="text-gray-500 text-xs mt-0.5 leading-snug">{e.equipo.descripcion}</p>
+                                  {/* Origen: de dónde sale este equipo y si el inventario alcanza */}
+                                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                    {esExterno ? (
+                                      <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${e.proveedor ? "border-blue-800/40 bg-blue-900/15 text-blue-300" : "border-orange-800/40 bg-orange-900/15 text-orange-300"}`}>
+                                        {e.proveedor ? `Renta · ${e.proveedor.empresa || e.proveedor.nombre}` : "Renta · falta proveedor"}
+                                      </span>
+                                    ) : (
+                                      <span className="text-[10px] px-1.5 py-0.5 rounded border border-emerald-800/40 bg-emerald-900/15 text-emerald-300 font-medium">Nuestro</span>
+                                    )}
+                                    {faltan > 0 && (
+                                      <span
+                                        className="text-[10px] px-1.5 py-0.5 rounded border border-yellow-800/50 bg-yellow-900/15 text-yellow-300 font-medium"
+                                        title={disp!.eventos.length > 0 ? `Comprometido en: ${disp!.eventos.map(ev => `${ev.ref} ${ev.nombre}`).join(" · ")}` : undefined}
+                                      >
+                                        Faltan {faltan} de {e.cantidad} · {disp!.disponible} libres
+                                      </span>
+                                    )}
+                                    {esExterno && e.confirmDisponible != null && (
+                                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${e.confirmDisponible ? "bg-green-900/30 text-green-300" : "bg-red-900/30 text-red-300"}`}>
+                                        {e.confirmDisponible ? "Proveedor confirmó" : "Proveedor no tiene"}
+                                      </span>
+                                    )}
+                                    {e.confirmado && (
+                                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-900/25 text-green-400 font-medium">Confirmado</span>
+                                    )}
+                                  </div>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
                                   {(e.posiciones?.length ?? 0) > 0 && (() => {
@@ -6662,6 +6118,94 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                               {/* Expanded panel */}
                               {isExpanded && (
                                 <div className="bg-[#0a0a0a] border-t border-[#1a1a1a] px-4 py-3 space-y-4">
+
+                                  {/* ── Origen: propio o de proveedor, y estado de disponibilidad ── */}
+                                  <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg p-3 space-y-2.5">
+                                    <div className="flex items-center justify-between flex-wrap gap-2">
+                                      <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold">Origen del equipo</p>
+                                      <div className="flex gap-1 bg-[#111] rounded-lg p-0.5">
+                                        {(["PROPIO", "EXTERNO"] as const).map(t => (
+                                          <button
+                                            key={t}
+                                            type="button"
+                                            disabled={origenGuardando === e.id}
+                                            onClick={() => { if (e.tipo !== t) cambiarOrigenEquipo(e.id, t === "PROPIO" ? { tipo: t, proveedorId: null, costoExterno: null } : { tipo: t }); }}
+                                            className={`px-3 py-1 rounded-md text-[11px] font-medium transition-colors disabled:opacity-40 ${e.tipo === t ? (t === "PROPIO" ? "bg-emerald-600 text-black" : "bg-blue-500 text-black") : "text-gray-500 hover:text-white"}`}
+                                          >
+                                            {t === "PROPIO" ? "Nuestro" : "De proveedor"}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </div>
+
+                                    {esExterno ? (
+                                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                        <div className="sm:col-span-2">
+                                          <label className="text-[10px] text-gray-600 block mb-1">Proveedor</label>
+                                          <Combobox
+                                            value={e.proveedorId ?? ""}
+                                            onChange={v => cambiarOrigenEquipo(e.id, { proveedorId: v || null })}
+                                            options={[{ value: "", label: "Sin proveedor" }, ...proveedores.map(p => ({ value: p.id, label: p.nombre }))]}
+                                            className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]/50"
+                                          />
+                                        </div>
+                                        <div>
+                                          <label className="text-[10px] text-gray-600 block mb-1">Costo x día x unidad</label>
+                                          <input
+                                            type="number"
+                                            defaultValue={e.costoExterno ?? ""}
+                                            placeholder="0.00"
+                                            onBlur={ev => {
+                                              const v = ev.target.value.trim();
+                                              const nuevo = v === "" ? null : parseFloat(v);
+                                              if (nuevo !== (e.costoExterno ?? null)) cambiarOrigenEquipo(e.id, { costoExterno: nuevo });
+                                            }}
+                                            className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]/50 placeholder-gray-700"
+                                          />
+                                        </div>
+                                        <div className="sm:col-span-3 flex items-center gap-2 flex-wrap">
+                                          {e.costoExterno != null && (
+                                            <span className="text-[11px] text-yellow-400 font-semibold">
+                                              Renta: {fmt(e.costoExterno * e.cantidad * e.dias)} <span className="text-gray-600 font-normal">({e.cantidad} × {e.dias} día{e.dias !== 1 ? "s" : ""})</span>
+                                            </span>
+                                          )}
+                                          <button
+                                            onClick={() => toggleConfirmadoEquipo(e.id, e.confirmado)}
+                                            className={`ml-auto text-[10px] px-2 py-1 rounded-full font-semibold transition-colors ${e.confirmado ? "bg-green-900/50 text-green-300 hover:bg-green-900/70" : "bg-[#1a1a1a] text-gray-500 hover:text-white"}`}
+                                          >
+                                            {e.confirmado ? "Confirmado" : "Marcar confirmado"}
+                                          </button>
+                                          {e.proveedor && (
+                                            <button
+                                              disabled={!fichaCompletaEq}
+                                              title={fichaCompletaEq ? "Consultar disponibilidad al proveedor por WhatsApp" : fichaTooltipEq}
+                                              onClick={async () => {
+                                                const res = await fetch(`/api/proyectos/${id}/equipos/${e.id}/invitar-proveedor`, { method: "POST" });
+                                                const d = await res.json();
+                                                if (d.whatsappUrl) { window.open(d.whatsappUrl, "_blank"); await load(); }
+                                                else if (d.token) {
+                                                  await navigator.clipboard.writeText(`${window.location.origin}/confirmar/proveedor/${d.token}`).catch(() => {});
+                                                  toast.info("Sin número registrado. Link copiado al portapapeles.");
+                                                  await load();
+                                                }
+                                              }}
+                                              className={`inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded-full font-medium border transition-colors ${fichaCompletaEq ? "border-blue-800/50 text-blue-400 hover:bg-blue-900/20" : "border-[#333] text-gray-600 cursor-not-allowed opacity-50"}`}
+                                            >
+                                              <Smartphone strokeWidth={1.75} className="w-3 h-3" /> Consultar al proveedor
+                                            </button>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <p className="text-[11px] text-gray-500 leading-relaxed">
+                                        {disp
+                                          ? faltan > 0
+                                            ? <>Inventario insuficiente: <span className="text-yellow-400">{disp.disponible} libres de {disp.total}</span>{disp.eventos.length > 0 && <> · comprometido en {disp.eventos.map(ev => ev.nombre).join(", ")}</>}. Cámbialo a proveedor o libéralo del otro evento.</>
+                                            : <>Sale de nuestro inventario · <span className="text-emerald-400">{disp.disponible} de {disp.total} libres</span> en esta fecha.</>
+                                          : "Sale de nuestro inventario. Sin verificación de disponibilidad para esta fecha."}
+                                      </p>
+                                    )}
+                                  </div>
 
                                   <MontajePosiciones
                                     proyectoId={proyecto.id}
@@ -6862,8 +6406,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 );
               })()}
             </div>
-
-
+            );
+            })()}
 
             {/* ═══════ ZONA 1.25: EQUIPOS EXTRA AL RIDER ═══════ */}
             <SectionDivider label="Equipos adicionales al rider" />
@@ -6896,11 +6440,48 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                               className="flex-1 bg-[#1a1a1a] border border-[#333] rounded px-3 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-[#B3985B]"
                             />
                           </div>
+                          {/* Mismas opciones que el listado principal: origen y montaje */}
+                          <div className="flex gap-2 flex-wrap items-center">
+                            <div className="flex gap-1 bg-[#111] rounded-lg p-0.5 w-fit">
+                              {(["PROPIO", "EXTERNO"] as const).map(t => (
+                                <button
+                                  key={t}
+                                  type="button"
+                                  onClick={() => setExtraEditTipo(t)}
+                                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${extraEditTipo === t ? (t === "PROPIO" ? "bg-emerald-600 text-white" : "bg-blue-600 text-white") : "text-gray-400 hover:text-white"}`}
+                                >
+                                  {t === "PROPIO" ? "Nuestro" : "De proveedor"}
+                                </button>
+                              ))}
+                            </div>
+                            {extraEditTipo === "EXTERNO" && (
+                              <input
+                                value={extraEditProveedor}
+                                onChange={e => setExtraEditProveedor(e.target.value)}
+                                placeholder="¿Quién lo renta o presta?"
+                                className="flex-1 min-w-[160px] bg-[#1a1a1a] border border-[#333] rounded px-3 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-[#B3985B]"
+                              />
+                            )}
+                          </div>
+                          <input
+                            value={extraEditMontaje}
+                            onChange={e => setExtraEditMontaje(e.target.value)}
+                            placeholder="Montaje / zona (ej. a piso en escenario, lado izquierdo)"
+                            className="w-full bg-[#1a1a1a] border border-[#333] rounded px-3 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-[#B3985B]"
+                          />
                           <div className="flex gap-2">
                             <button
                               onClick={() => {
                                 if (!extraEditDesc.trim()) return;
-                                saveEquiposRiderExtra(equiposRiderExtra.map(e => e.id === eq.id ? { ...e, descripcion: extraEditDesc.trim(), cantidad: extraEditCant, notas: extraEditNotas.trim() } : e));
+                                saveEquiposRiderExtra(equiposRiderExtra.map(e => e.id === eq.id ? {
+                                  ...e,
+                                  descripcion: extraEditDesc.trim(),
+                                  cantidad: extraEditCant,
+                                  notas: extraEditNotas.trim(),
+                                  tipo: extraEditTipo,
+                                  proveedor: extraEditTipo === "EXTERNO" ? extraEditProveedor.trim() : "",
+                                  montaje: extraEditMontaje.trim(),
+                                } : e));
                                 setExtraEditId(null);
                               }}
                               className="px-3 py-1.5 bg-[#B3985B] text-black text-xs font-semibold rounded transition-colors"
@@ -6920,11 +6501,24 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             />
                             <div className="flex-1 min-w-0">
                               <p className={`text-sm truncate ${eq.completado ? "line-through text-gray-600" : "text-white"}`}>{eq.descripcion}</p>
+                              {/* Origen y montaje, igual que en el listado principal */}
+                              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                {eq.tipo === "EXTERNO" ? (
+                                  <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${eq.proveedor ? "border-blue-800/40 bg-blue-900/15 text-blue-300" : "border-orange-800/40 bg-orange-900/15 text-orange-300"}`}>
+                                    {eq.proveedor ? `Renta · ${eq.proveedor}` : "Renta · falta proveedor"}
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded border border-emerald-800/40 bg-emerald-900/15 text-emerald-300 font-medium">Nuestro</span>
+                                )}
+                                {eq.montaje && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded border border-[#2a2a2a] text-gray-400">{eq.montaje}</span>
+                                )}
+                              </div>
                               {eq.notas && <p className="text-gray-600 text-xs truncate mt-0.5">{eq.notas}</p>}
                             </div>
                             <span className="text-gray-500 text-xs shrink-0">×{eq.cantidad}</span>
                             <button
-                              onClick={() => { setExtraEditId(eq.id); setExtraEditDesc(eq.descripcion); setExtraEditCant(eq.cantidad); setExtraEditNotas(eq.notas); }}
+                              onClick={() => { setExtraEditId(eq.id); setExtraEditDesc(eq.descripcion); setExtraEditCant(eq.cantidad); setExtraEditNotas(eq.notas); setExtraEditTipo(eq.tipo ?? "PROPIO"); setExtraEditProveedor(eq.proveedor ?? ""); setExtraEditMontaje(eq.montaje ?? ""); }}
                               className="text-xs text-gray-500 hover:text-[#B3985B] transition-colors shrink-0"
                             >Editar</button>
                             <button
@@ -7012,21 +6606,24 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   </div>
 
                   {extraAddMode === "inventario" ? (
-                    <div className="flex gap-2 items-start">
-                      <div className="flex-1">
-                        <Combobox
-                          value={newExtraEquipoId}
-                          onChange={v => setNewExtraEquipoId(v)}
-                          options={[{ value: "", label: "Buscar en inventario…" }, ...equipoCatalogo.map(eq => ({ value: eq.id, label: `${eq.categoria.nombre} — ${getEquipoDisplayName(eq)}` }))]}
-                          className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/50"
-                        />
+                    <>
+                      <p className="text-[11px] text-gray-600">Al salir del inventario se agrega como equipo del proyecto: tendrá origen, accesorios, montaje y disponibilidad igual que el resto del listado.</p>
+                      <div className="flex gap-2 items-start">
+                        <div className="flex-1">
+                          <Combobox
+                            value={newExtraEquipoId}
+                            onChange={v => setNewExtraEquipoId(v)}
+                            options={[{ value: "", label: "Buscar en inventario…" }, ...equipoCatalogo.map(eq => ({ value: eq.id, label: `${eq.categoria.nombre} — ${getEquipoDisplayName(eq)}` }))]}
+                            className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/50"
+                          />
+                        </div>
+                        <div className="flex items-center gap-1 bg-[#111] border border-[#2a2a2a] rounded-lg px-2 py-2 shrink-0">
+                          <button onClick={() => setNewExtraCant(v => Math.max(1, v - 1))} className="text-gray-500 hover:text-white w-5 text-center leading-none text-lg transition-colors">−</button>
+                          <span className="text-white text-sm w-5 text-center">{newExtraCant}</span>
+                          <button onClick={() => setNewExtraCant(v => v + 1)} className="text-gray-500 hover:text-white w-5 text-center leading-none text-lg transition-colors">+</button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1 bg-[#111] border border-[#2a2a2a] rounded-lg px-2 py-2 shrink-0">
-                        <button onClick={() => setNewExtraCant(v => Math.max(1, v - 1))} className="text-gray-500 hover:text-white w-5 text-center leading-none text-lg transition-colors">−</button>
-                        <span className="text-white text-sm w-5 text-center">{newExtraCant}</span>
-                        <button onClick={() => setNewExtraCant(v => v + 1)} className="text-gray-500 hover:text-white w-5 text-center leading-none text-lg transition-colors">+</button>
-                      </div>
-                    </div>
+                    </>
                   ) : (
                     <div className="flex gap-2 items-center">
                       <input
@@ -7043,33 +6640,83 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     </div>
                   )}
 
+                  {/* Origen: mismo criterio que el listado principal */}
+                  <div className="flex gap-2 flex-wrap items-center">
+                    <div className="flex gap-1 bg-[#111] rounded-lg p-0.5 w-fit">
+                      {(["PROPIO", "EXTERNO"] as const).map(t => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => setExtraEditTipo(t)}
+                          className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${extraEditTipo === t ? (t === "PROPIO" ? "bg-emerald-600 text-white" : "bg-blue-600 text-white") : "text-gray-400 hover:text-white"}`}
+                        >
+                          {t === "PROPIO" ? "Nuestro" : "De proveedor"}
+                        </button>
+                      ))}
+                    </div>
+                    {extraEditTipo === "EXTERNO" && (
+                      extraAddMode === "inventario" ? (
+                        <Combobox
+                          value={extraEditProveedor}
+                          onChange={v => setExtraEditProveedor(v)}
+                          options={[{ value: "", label: "Sin proveedor" }, ...proveedores.map(p => ({ value: p.id, label: p.nombre }))]}
+                          className="flex-1 min-w-[180px] bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]/50"
+                        />
+                      ) : (
+                        <input
+                          value={extraEditProveedor}
+                          onChange={e => setExtraEditProveedor(e.target.value)}
+                          placeholder="¿Quién lo renta o presta?"
+                          className="flex-1 min-w-[180px] bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50"
+                        />
+                      )
+                    )}
+                  </div>
+
+                  {extraAddMode === "manual" && (
+                    <input
+                      value={extraEditMontaje}
+                      onChange={e => setExtraEditMontaje(e.target.value)}
+                      placeholder="Montaje / zona (ej. a piso en escenario, lado izquierdo)"
+                      className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50"
+                    />
+                  )}
+
                   <input
                     value={newExtraNotas}
                     onChange={e => setNewExtraNotas(e.target.value)}
-                    placeholder="Notas opcionales (proveedor, condición, etc.)"
+                    placeholder="Notas opcionales (condición, quién lo consigue, etc.)"
                     className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50"
                   />
                   <div className="flex gap-2">
                     <button
                       disabled={extraAddMode === "inventario" ? !newExtraEquipoId : !newExtraManualDesc.trim()}
-                      onClick={() => {
-                        let descripcion = "";
+                      onClick={async () => {
                         if (extraAddMode === "inventario") {
-                          const eq = equipoCatalogo.find(e => e.id === newExtraEquipoId);
-                          if (!eq) return;
-                          descripcion = eq.marca ? `${eq.marca} — ${eq.descripcion}` : eq.descripcion;
+                          if (!newExtraEquipoId) return;
+                          await agregarExtraDesdeInventario(newExtraEquipoId, newExtraCant, extraEditTipo, extraEditProveedor, newExtraNotas.trim());
                         } else {
                           if (!newExtraManualDesc.trim()) return;
-                          descripcion = newExtraManualDesc.trim();
+                          const nuevo: EquipoRiderExtra = {
+                            id: crypto.randomUUID(),
+                            descripcion: newExtraManualDesc.trim(),
+                            cantidad: newExtraCant,
+                            notas: newExtraNotas.trim(),
+                            completado: false,
+                            accesorios: [],
+                            tipo: extraEditTipo,
+                            proveedor: extraEditTipo === "EXTERNO" ? extraEditProveedor.trim() : "",
+                            montaje: extraEditMontaje.trim(),
+                          };
+                          saveEquiposRiderExtra([...equiposRiderExtra, nuevo]);
                         }
-                        const nuevo: EquipoRiderExtra = { id: crypto.randomUUID(), descripcion, cantidad: newExtraCant, notas: newExtraNotas.trim(), completado: false, accesorios: [] };
-                        saveEquiposRiderExtra([...equiposRiderExtra, nuevo]);
                         setNewExtraEquipoId(""); setNewExtraCant(1); setNewExtraNotas(""); setNewExtraManualDesc("");
+                        setExtraEditTipo("PROPIO"); setExtraEditProveedor(""); setExtraEditMontaje("");
                         setAddingEquipoExtra(false);
                       }}
                       className="px-4 py-2 bg-[#B3985B] hover:bg-[#c9ac6a] text-black text-xs font-semibold rounded-lg transition-colors disabled:opacity-40"
                     >Agregar</button>
-                    <button onClick={() => { setAddingEquipoExtra(false); setNewExtraEquipoId(""); setNewExtraCant(1); setNewExtraNotas(""); setNewExtraManualDesc(""); setExtraAddMode("inventario"); }} className="px-4 py-2 bg-[#1a1a1a] hover:bg-[#222] text-gray-400 text-xs rounded-lg transition-colors">Cancelar</button>
+                    <button onClick={() => { setAddingEquipoExtra(false); setNewExtraEquipoId(""); setNewExtraCant(1); setNewExtraNotas(""); setNewExtraManualDesc(""); setExtraAddMode("inventario"); setExtraEditTipo("PROPIO"); setExtraEditProveedor(""); setExtraEditMontaje(""); }} className="px-4 py-2 bg-[#1a1a1a] hover:bg-[#222] text-gray-400 text-xs rounded-lg transition-colors">Cancelar</button>
                   </div>
                 </div>
               ) : (

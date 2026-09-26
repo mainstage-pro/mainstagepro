@@ -4,11 +4,11 @@ import { getSession } from "@/lib/auth";
 import { capacidadOperativa } from "@/lib/equipo-estado";
 
 /**
- * GET /api/equipos/disponibilidad?fecha=YYYY-MM-DD&excludeCotizacionId=X
+ * GET /api/equipos/disponibilidad?fecha=YYYY-MM-DD&excludeCotizacionId=X&excludeProyectoId=Y
  *
  * Devuelve disponibilidad de todos los equipos propios para una fecha específica.
- * excludeCotizacionId: cuando se edita una cotización existente, excluirla del cálculo
- * para no contarla a sí misma.
+ * excludeCotizacionId / excludeProyectoId: cuando se edita una cotización o un proyecto
+ * existente, excluirlo del cálculo para no contarlo contra sí mismo.
  *
  * Respuesta: { disponibilidad: Record<equipoId, { disponible, comprometido, total, eventos[] }> }
  */
@@ -19,6 +19,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const fecha = searchParams.get("fecha");
   const excludeCotizacionId = searchParams.get("excludeCotizacionId") ?? undefined;
+  const excludeProyectoId = searchParams.get("excludeProyectoId") ?? undefined;
 
   if (!fecha) return NextResponse.json({ error: "fecha requerida" }, { status: 400 });
 
@@ -67,6 +68,7 @@ export async function GET(req: NextRequest) {
     where: {
       fechaEvento: { gte: inicio, lte: fin },
       estado: { notIn: ["CANCELADO"] },
+      ...(excludeProyectoId ? { id: { not: excludeProyectoId } } : {}),
     },
     select: {
       id: true,
