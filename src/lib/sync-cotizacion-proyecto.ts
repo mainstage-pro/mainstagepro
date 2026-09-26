@@ -9,8 +9,9 @@ import { sembrarNotasEquiposProyecto } from "@/lib/notas-equipos";
  * operación técnica al proyecto ligado, SIN destruir nunca datos manuales:
  *
  * - Equipos (ProyectoEquipo): agrega los nuevos, ajusta cantidad/días de los que
- *   cambiaron, y marca `necesitaRevision` en los que ya no están en la cotización
- *   (nunca los borra — conserva proveedor, notas, rider y confirmaciones).
+ *   cambiaron, y para los que ya no están en la cotización distingue: si el equipo
+ *   no tiene nada capturado a mano (proveedor, notas, rider, montaje, confirmación)
+ *   lo borra; si sí lo tiene, lo marca `necesitaRevision` para que alguien decida.
  * - Operación técnica (ProyectoPersonal): auto-crea slots VACÍOS para los roles/
  *   fechas nuevos, y marca `necesitaRevision` en los grupos de rol que se quitaron
  *   (nunca borra ni desasigna al técnico; ignora slots `esAdicional`).
@@ -187,15 +188,42 @@ export async function sincronizarProyectoDesdeCotizacion(
       });
     }
 
-    // Equipos que ya no están en la cotización → marcar para revisión (no borrar).
-    const idsARevisar = existentes
-      .filter((pe) => !deseadosMap.has(`${pe.tipo}:${pe.equipoId}`) && !pe.necesitaRevision)
-      .map((pe) => pe.id);
-    if (idsARevisar.length > 0) {
-      await prisma.proyectoEquipo.updateMany({
-        where: { id: { in: idsARevisar } },
-        data: { necesitaRevision: true },
+    // Equipos que ya no están en la cotización. Los que no cargan nada capturado a
+    // mano se borran (si no, quedarían de fantasmas en el rider y en la carga del
+    // camión); los que sí, se marcan para que una persona decida.
+    const sobrantes = existentes.filter((pe) => !deseadosMap.has(`${pe.tipo}:${pe.equipoId}`));
+    if (sobrantes.length > 0) {
+      const conTrabajo = await prisma.proyectoEquipo.findMany({
+        where: {
+          id: { in: sobrantes.map((pe) => pe.id) },
+          OR: [
+            { notas: { not: null } },
+            { confirmado: true },
+            { confirmDisponible: { not: null } },
+            { proveedorId: { not: null } },
+            { costoExterno: { not: null } },
+            { riderAccesorios: { some: {} } },
+            { posiciones: { some: {} } },
+          ],
+        },
+        select: { id: true },
       });
+      const idsConTrabajo = new Set(conTrabajo.map((x) => x.id));
+
+      const idsABorrar = sobrantes.filter((pe) => !idsConTrabajo.has(pe.id)).map((pe) => pe.id);
+      if (idsABorrar.length > 0) {
+        await prisma.proyectoEquipo.deleteMany({ where: { id: { in: idsABorrar } } });
+      }
+
+      const idsARevisar = sobrantes
+        .filter((pe) => idsConTrabajo.has(pe.id) && !pe.necesitaRevision)
+        .map((pe) => pe.id);
+      if (idsARevisar.length > 0) {
+        await prisma.proyectoEquipo.updateMany({
+          where: { id: { in: idsARevisar } },
+          data: { necesitaRevision: true },
+        });
+      }
     }
 
     // ── 3. Operación técnica: auto-crear slots vacíos para roles nuevos ────────

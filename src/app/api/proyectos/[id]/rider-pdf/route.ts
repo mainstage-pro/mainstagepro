@@ -32,6 +32,8 @@ export async function GET(req: NextRequest,
         select: { nombre: true, empresa: true, telefono: true, correo: true },
       },
       equipos: {
+        // Lo que se quitó de la cotización no viaja en el documento de carga.
+        where: { necesitaRevision: false },
         include: {
           equipo: {
             select: {

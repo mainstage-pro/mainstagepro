@@ -1723,6 +1723,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [riderAddCategoria, setRiderAddCategoria] = useState("");
   const [riderAddGuardar, setRiderAddGuardar] = useState(true);
   const [riderAddSaving, setRiderAddSaving] = useState(false);
+  const [riderAccEditId, setRiderAccEditId] = useState<string | null>(null);
+  const [riderAccEditNombre, setRiderAccEditNombre] = useState("");
   // Cantidad pendiente por sugerencia de accesorio, key = `${proyectoEquipoId}::${nombre}`
   const [sugCantidad, setSugCantidad] = useState<Record<string, number>>({});
 
@@ -3143,6 +3145,22 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     ));
   }
 
+  async function riderRenombrarAccesorio(proyectoEquipoId: string, accesorioId: string, nombre: string) {
+    const limpio = nombre.trim();
+    if (!limpio) return;
+    const res = await fetch(`/api/rider-accesorios/${accesorioId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nombre: limpio }),
+    });
+    if (!res.ok) { toast.error("No se pudo cambiar el nombre"); return; }
+    setRiderEquipos(prev => prev.map(e =>
+      e.id === proyectoEquipoId
+        ? { ...e, riderAccesorios: e.riderAccesorios.map(a => a.id === accesorioId ? { ...a, nombre: limpio } : a) }
+        : e
+    ));
+    setRiderAccEditId(null);
+  }
+
   async function riderAgregarSugerencia(proyectoEquipoId: string, nombre: string, cantidad: number = 1, origen: string = "sistema", accesorioId?: string) {
     const res = await fetch(`/api/proyectos/${id}/rider-accesorios`, {
       method: "POST",
@@ -4128,15 +4146,17 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         </div>
       </div>
 
-      {/* ── Two-column layout: left (tabs+content) + right (sidebar) ── */}
-      <div className="flex flex-col md:flex-row gap-5 items-start mt-5">
+      {/* ── Two-column layout: left (tabs+content) + right (sidebar) ──
+          Se parte en dos hasta lg: en iPad vertical (768–834px) la columna de
+          contenido se quedaba en ~410px y todo el interior se apretaba. */}
+      <div className="flex flex-col lg:flex-row gap-5 items-start mt-5">
 
         {/* Left column — 70% — tabs + content */}
         <div className="flex-1 min-w-0 space-y-4">
 
         {/* ──── Sticky tab navigation ──── */}
         <div className="sticky top-0 z-30 -mx-3 md:-mx-6 px-3 md:px-6 bg-[#0a0a0a]/95 backdrop-blur-sm border-b border-[#1e1e1e]">
-          <div className="flex gap-0.5">
+          <div className="flex gap-0.5 overflow-x-auto ms-no-scrollbar">
             {([
               { id: 'resumen',   label: 'Resumen' },
               { id: 'operacion', label: 'Operación' },
@@ -4147,7 +4167,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className={`px-3.5 py-2.5 -mb-px text-xs font-semibold border-b-2 transition-colors ${
+                className={`shrink-0 px-3.5 py-2.5 -mb-px text-xs font-semibold border-b-2 transition-colors ${
                   activeTab === item.id
                     ? 'text-white border-[#B3985B]'
                     : 'text-gray-500 border-transparent hover:text-gray-300'
@@ -6472,7 +6492,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
                           const isEditingCant = riderEquipoEditId === e.id;
                           return (
-                            <div key={e.id} className="border-b border-[#0d0d0d] last:border-0">
+                            <div key={e.id} className={`border-b border-[#0d0d0d] last:border-0 ${e.necesitaRevision ? "border-l-2 border-l-amber-700/60 bg-amber-950/10" : ""}`}>
                               {/* Equipo header row */}
                               <div className="flex items-center gap-3 px-4 py-3 hover:bg-[#1a1a1a] transition-colors group">
                                 <svg
@@ -6487,6 +6507,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                   <p className="text-sm font-medium text-white">
                                     {e.equipo.marca ?? "Sin marca"}
                                     {e.equipo.modelo && <span className="font-normal text-gray-300"> {e.equipo.modelo}</span>}
+                                    {e.necesitaRevision && (
+                                      <span
+                                        className="ml-2 align-middle px-1.5 py-0.5 rounded border border-amber-700/50 bg-amber-900/20 text-amber-300 text-[10px] font-medium"
+                                        title="Este equipo ya no está en la cotización, pero tiene datos capturados a mano — decide si lo quitas del rider"
+                                      >Ya no está en la cotización</span>
+                                    )}
                                   </p>
                                   <p className="text-gray-500 text-xs mt-0.5 leading-snug">{e.equipo.descripcion}</p>
                                 </div>
@@ -6587,21 +6613,40 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                     <div>
                                       <p className="text-[10px] text-[#555] uppercase tracking-widest mb-2 font-semibold">Accesorios confirmados</p>
                                       <div className="space-y-1">
-                                        {e.riderAccesorios.map(a => (
+                                        {e.riderAccesorios.map(a => a.id === riderAccEditId ? (
+                                          <div key={a.id} className="flex items-center gap-2 py-1">
+                                            <input
+                                              autoFocus
+                                              value={riderAccEditNombre}
+                                              onChange={ev => setRiderAccEditNombre(ev.target.value)}
+                                              onKeyDown={ev => {
+                                                if (ev.key === "Enter") riderRenombrarAccesorio(e.id, a.id, riderAccEditNombre);
+                                                if (ev.key === "Escape") setRiderAccEditId(null);
+                                              }}
+                                              className="flex-1 min-w-0 bg-[#1a1a1a] border border-[#333] focus:border-[#B3985B] rounded-lg px-2.5 py-1.5 text-white text-sm focus:outline-none"
+                                            />
+                                            <button onClick={() => riderRenombrarAccesorio(e.id, a.id, riderAccEditNombre)} className="px-2.5 py-1.5 bg-[#B3985B] text-black text-xs font-semibold rounded-lg shrink-0">Guardar</button>
+                                            <button onClick={() => setRiderAccEditId(null)} className="px-2.5 py-1.5 text-gray-500 border border-[#333] text-xs rounded-lg shrink-0">Cancelar</button>
+                                          </div>
+                                        ) : (
                                           <div key={a.id} className="flex items-center gap-2.5 group py-1">
                                             <span className="text-[#B3985B] font-bold text-sm w-8 shrink-0">×{a.cantidad ?? 1}</span>
-                                            <span className="flex-1 text-sm text-gray-200">{a.nombre}</span>
+                                            <span className="flex-1 min-w-0 text-sm text-gray-200">{a.nombre}</span>
                                             {a.origen && a.origen !== "manual" && (
-                                              <span className="text-[9px] text-[#666] border border-[#2a2a2a] px-1.5 rounded uppercase tracking-wide">
+                                              <span className="hidden sm:inline text-[9px] text-[#666] border border-[#2a2a2a] px-1.5 rounded uppercase tracking-wide shrink-0">
                                                 {a.origen === "equipo" ? "biblioteca" : a.origen === "sistema" ? "sistema" : a.origen === "producto" ? "producto" : a.origen}
                                               </span>
                                             )}
-                                            {a.categoria && <span className="text-[9px] text-[#444] bg-[#1a1a1a] px-1.5 rounded">{a.categoria}</span>}
-                                            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
-                                              <button onClick={() => riderActualizarCantidad(e.id, a.id, Math.max(1, (a.cantidad ?? 1) - 1))} className="text-gray-600 hover:text-white w-5 text-center text-sm leading-none transition-colors">−</button>
-                                              <button onClick={() => riderActualizarCantidad(e.id, a.id, (a.cantidad ?? 1) + 1)} className="text-gray-600 hover:text-white w-5 text-center text-sm leading-none transition-colors">+</button>
+                                            {a.categoria && <span className="hidden sm:inline text-[9px] text-[#444] bg-[#1a1a1a] px-1.5 rounded shrink-0">{a.categoria}</span>}
+                                            <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-all">
+                                              <button onClick={() => riderActualizarCantidad(e.id, a.id, Math.max(1, (a.cantidad ?? 1) - 1))} className="text-gray-600 hover:text-white w-6 h-6 text-center text-sm leading-none transition-colors">−</button>
+                                              <button onClick={() => riderActualizarCantidad(e.id, a.id, (a.cantidad ?? 1) + 1)} className="text-gray-600 hover:text-white w-6 h-6 text-center text-sm leading-none transition-colors">+</button>
+                                              <button
+                                                onClick={() => { setRiderAccEditId(a.id); setRiderAccEditNombre(a.nombre); }}
+                                                className="text-[10px] text-gray-600 hover:text-[#B3985B] px-1.5 transition-colors"
+                                              >Editar</button>
+                                              <button onClick={() => riderEliminarAccesorio(e.id, a.id)} className="text-[#333] hover:text-red-500 w-6 h-6 text-center text-xs leading-none transition-colors">×</button>
                                             </div>
-                                            <button onClick={() => riderEliminarAccesorio(e.id, a.id)} className="text-[#333] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all text-xs leading-none">×</button>
                                           </div>
                                         ))}
                                       </div>
@@ -8239,7 +8284,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         </div>{/* /left column */}
 
         {/* Right sidebar — 30% */}
-        <div className="w-full md:w-72 shrink-0 space-y-3 md:sticky md:top-4 md:max-h-[calc(100vh-2rem)] md:overflow-y-auto md:overflow-x-hidden md:pr-1">
+        <div className="w-full lg:w-72 shrink-0 space-y-3 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:overflow-x-hidden lg:pr-1">
 
           {/* Cliente card */}
           <div className="ms-card p-4 space-y-3">

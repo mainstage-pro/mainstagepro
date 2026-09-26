@@ -40,6 +40,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       where: {
         equipoId: id,
         tipo: "PROPIO",
+        // Un equipo que ya se quitó de su cotización no sigue apartando inventario.
+        necesitaRevision: false,
         proyecto: {
           fechaEvento: { gte: diaInicio, lte: diaFin },
           estado: { notIn: ["COMPLETADO", "CANCELADO"] },

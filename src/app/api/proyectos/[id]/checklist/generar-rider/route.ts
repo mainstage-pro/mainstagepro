@@ -28,6 +28,8 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     where: { id },
     include: {
       equipos: {
+        // Lo que se quitó de la cotización no genera pendientes de rider.
+        where: { necesitaRevision: false },
         include: {
           equipo: { select: { descripcion: true, marca: true, categoria: { select: { nombre: true } } } },
         },

@@ -117,7 +117,8 @@ export async function GET(
             { fechaEvento: { gte: fechaInicio, lte: fechaFin } },
             { fechaMontaje: { gte: fechaInicio, lte: fechaFin } },
           ],
-          equipos: { some: { equipoId: { in: propioEquipoIds }, tipo: "PROPIO" } },
+          // Un equipo que ya se quitó de su cotización no sigue apartando inventario.
+          equipos: { some: { equipoId: { in: propioEquipoIds }, tipo: "PROPIO", necesitaRevision: false } },
         },
         select: {
           numeroProyecto: true,
@@ -125,7 +126,7 @@ export async function GET(
           estado: true,
           fechaEvento: true,
           equipos: {
-            where: { equipoId: { in: propioEquipoIds }, tipo: "PROPIO" },
+            where: { equipoId: { in: propioEquipoIds }, tipo: "PROPIO", necesitaRevision: false },
             select: { equipoId: true, cantidad: true },
           },
         },

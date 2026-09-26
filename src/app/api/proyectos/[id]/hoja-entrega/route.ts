@@ -38,6 +38,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         },
       },
       equipos: {
+        // Lo que se quitó de la cotización no se entrega ni se firma.
+        where: { necesitaRevision: false },
         include: {
           equipo: {
             select: {

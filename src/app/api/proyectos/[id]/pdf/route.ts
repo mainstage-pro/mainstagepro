@@ -28,6 +28,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         orderBy: { id: "asc" },
       },
       equipos: {
+        // Lo que se quitó de la cotización no aparece en la ficha técnica.
+        where: { necesitaRevision: false },
         include: {
           equipo: {
             select: {

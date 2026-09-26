@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
-// PATCH — toggle completado, update cantidad
+// PATCH — toggle completado, update nombre/cantidad
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ accesorioId: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -12,6 +12,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ac
   const data: Record<string, unknown> = {};
   if ("completado" in body) data.completado = body.completado;
   if ("cantidad" in body) data.cantidad = Math.max(1, parseInt(body.cantidad) || 1);
+  if ("nombre" in body) {
+    const nombre = String(body.nombre ?? "").trim();
+    if (!nombre) return NextResponse.json({ error: "El nombre no puede quedar vacío" }, { status: 400 });
+    data.nombre = nombre;
+  }
   const accesorio = await prisma.riderAccesorio.update({ where: { id: accesorioId }, data });
   return NextResponse.json({ accesorio });
 }

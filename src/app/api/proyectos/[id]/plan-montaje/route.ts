@@ -36,6 +36,9 @@ export async function GET(
       direccionVenue: true,
       encargado: { select: { name: true } },
       equipos: {
+        // Lo que se quitó de la cotización no cuenta para montaje ni para la
+        // carga eléctrica por zona.
+        where: { necesitaRevision: false },
         select: {
           tipo: true,
           cantidad: true,

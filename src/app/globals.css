@@ -493,8 +493,21 @@ input[type="number"]::-webkit-inner-spin-button {
     @apply bg-[#111] border border-[#1e1e1e] rounded-xl text-center py-16;
   }
 
+  /* Scroll horizontal sin barra visible (barras de pestañas en pantallas angostas) */
+  .ms-no-scrollbar  { scrollbar-width: none; }
+  .ms-no-scrollbar::-webkit-scrollbar { display: none; }
+
   /* ── Modales / Dialogs ───────────────────────────────────────────────────── */
   .ms-modal-overlay { @apply fixed inset-0 z-50 flex items-center justify-center p-4; }
   .ms-modal         { @apply bg-[#111] border border-[#222] rounded-2xl w-full max-h-[90vh] overflow-y-auto; }
 
+}
+
+/* En Tailwind 4 la variante `hover:` sólo existe dentro de `@media (hover: hover)`,
+   así que en iPad y celular los controles que se revelan al pasar el mouse
+   (editar, eliminar, +/−) quedaban invisibles para siempre. Sin mouse no hay nada
+   que revelar: se muestran de entrada. */
+@media (hover: none) {
+  .opacity-0[class*="group-hover"][class*=":opacity-100"] { opacity: 1; }
+  .hidden[class*="group-hover"][class*=":flex"]           { display: flex; }
 }
