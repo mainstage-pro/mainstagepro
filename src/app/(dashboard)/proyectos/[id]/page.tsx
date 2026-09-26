@@ -178,6 +178,11 @@ interface Proyecto {
   llamadoBodega: string | null;
   lugarLlamado: string | null;
   notasBriefTecnico: string | null;
+  briefObjetivo: string | null;
+  briefAcomodo: string | null;
+  briefCriterioTecnico: string | null;
+  briefRestricciones: string | null;
+  briefNoNegociables: string | null;
   proveedoresEvento: { id: string; nombreProveedor: string; servicioEquipo: string | null; telefonoProveedor: string | null }[];
   bloquesTiempo: BloqueTiempo[];
   createdAt: string;
@@ -383,22 +388,23 @@ function HourPicker({ label, value, field, onSave, noLabel = false }:
 }
 
 // ─── Componente campo editable ────────────────────────────────────────────────
-function Campo({ label, value, field, onSave, type = "text", multiline = false, noLabel = false }:
-  { label: string; value: string | null; field: string; onSave: (f: string, v: string) => void; type?: string; multiline?: boolean; noLabel?: boolean }) {
+function Campo({ label, value, field, onSave, type = "text", multiline = false, noLabel = false, guia, rows = 2, placeholder }:
+  { label: string; value: string | null; field: string; onSave: (f: string, v: string) => void; type?: string; multiline?: boolean; noLabel?: boolean; guia?: string; rows?: number; placeholder?: string }) {
   const [val, setVal] = useState(value ?? "");
   const [dirty, setDirty] = useState(false);
   const [saved, setSaved] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const esTexto = multiline || type === "textarea";
 
   useEffect(() => { setVal(value ?? ""); setDirty(false); }, [value]);
 
   useEffect(() => {
-    if (!multiline || !textareaRef.current) return;
+    if (!esTexto || !textareaRef.current) return;
     textareaRef.current.style.height = "auto";
     textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-  }, [val, multiline]);
+  }, [val, esTexto]);
 
   function markSaved() {
     setSaved(true);
@@ -448,12 +454,13 @@ function Campo({ label, value, field, onSave, type = "text", multiline = false, 
           {saved && <span className="text-[10px] text-green-500/70">guardado</span>}
         </div>
       )}
-      {multiline ? (
-        <textarea ref={textareaRef} value={val} rows={2} className={inputCls + " resize-none overflow-hidden"}
+      {guia && <p className="text-[11px] text-gray-600 leading-snug mb-1.5">{guia}</p>}
+      {esTexto ? (
+        <textarea ref={textareaRef} value={val} rows={rows} placeholder={placeholder} className={inputCls + " resize-none overflow-hidden placeholder-gray-700"}
           onChange={e => { setVal(e.target.value); setDirty(true); }}
           onBlur={handleBlur} />
       ) : (
-        <input type={type} value={val} className={inputCls}
+        <input type={type} value={val} placeholder={placeholder} className={inputCls + " placeholder-gray-700"}
           onChange={e => { setVal(e.target.value); setDirty(true); }}
           onBlur={handleBlur} />
       )}
@@ -4839,6 +4846,76 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
 
 
+
+          {/* ── Brief de producción (solo producción) ── */}
+          {!esRenta && (() => {
+            const puntos = [
+              {
+                field: "briefObjetivo",
+                label: "Qué buscamos lograr",
+                value: proyecto.briefObjetivo,
+                guia: "Dos o tres líneas: qué tiene que sentir el invitado y cómo se ve que esto salió bien. Es el criterio para decidir en sitio cuando algo no estaba previsto.",
+                placeholder: "Ej. Boda de 200 personas. El cliente quiere que la pista no baje en toda la noche y que la ceremonia se escuche íntima, sin sensación de bocina.",
+              },
+              {
+                field: "briefAcomodo",
+                label: "Generales del acomodo",
+                value: proyecto.briefAcomodo,
+                guia: "Cómo se reparte el espacio: dónde queda el escenario, el FOH, la pista, las mesas y por dónde se entra. Incluye medidas o referencias del venue que condicionen el montaje.",
+                placeholder: "Ej. Escenario de 6×4 al fondo del salón, pista al centro, FOH a un costado de la pista. Mesas en herradura. Carga por la puerta trasera de servicio.",
+              },
+              {
+                field: "briefCriterioTecnico",
+                label: "Criterio técnico general",
+                value: proyecto.briefCriterioTecnico,
+                guia: "Lo que aplica a todo el evento por disciplina: cobertura y niveles en audio, ambientación vs. show en iluminación, pantallas y contenido en video. El detalle por equipo va en el rider.",
+                placeholder: "Ej. Audio: cobertura pareja en mesas, refuerzo solo en pista. Iluminación: ambientación cálida durante cena, show completo a partir del baile. Video: pantalla solo para el momento del video.",
+              },
+              {
+                field: "briefRestricciones",
+                label: "Restricciones del venue",
+                value: proyecto.briefRestricciones,
+                guia: "Límites que hay que respetar: horarios de acceso y de ruido, corriente disponible, accesos y maniobra, altura de techo, y si es exterior, el riesgo de clima.",
+                placeholder: "Ej. Acceso a partir de las 10 am, no antes. Corte de ruido a las 2 am. Solo hay dos contactos de 20 A, se contrató planta. Techo a 4.5 m, no hay puntos de cuelgue.",
+              },
+              {
+                field: "briefNoNegociables",
+                label: "No negociables",
+                value: proyecto.briefNoNegociables,
+                guia: "Lo que no se puede fallar: peticiones explícitas del cliente, momentos críticos del evento y errores de eventos pasados que no queremos repetir.",
+                placeholder: "Ej. El micrófono de la ceremonia tiene respaldo obligatorio. Nada de humo durante la cena. El cableado a la vista quedó mal en el evento anterior, esta vez va tapado.",
+              },
+            ];
+            const llenos = puntos.filter(p => (p.value ?? "").trim() !== "").length;
+            return (
+              <div className="ms-card p-5">
+                <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
+                  <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">Brief de producción</p>
+                  <span className={`text-[10px] font-semibold ${llenos === puntos.length ? "text-green-500" : "text-gray-600"}`}>
+                    {llenos} de {puntos.length} puntos
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-600 mb-4">
+                  El contexto general del evento, del que cuelgan las indicaciones por equipo del rider. Escríbelo una vez y sirve para todo el equipo: coordinador, técnicos y proveedores.
+                </p>
+                <div className="space-y-4">
+                  {puntos.map(p => (
+                    <Campo
+                      key={p.field}
+                      label={p.label}
+                      guia={p.guia}
+                      placeholder={p.placeholder}
+                      value={p.value}
+                      field={p.field}
+                      multiline
+                      rows={3}
+                      onSave={guardarCampo}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* ── Traslados (solo producción) ── */}
           {!esRenta && <div className="ms-card p-5">

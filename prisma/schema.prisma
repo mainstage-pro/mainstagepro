@@ -716,6 +716,12 @@ model Proyecto {
   llamadoBodega            DateTime? // hora de presentación en bodega (llamado)
   lugarLlamado             String? // lugar de presentación (llamado)
   notasBriefTecnico        String?   @db.Text
+  // ─ Brief de producción: los generales que anteceden al detalle por equipo del rider ─
+  briefObjetivo            String?   @db.Text // qué tiene que lograr la producción
+  briefAcomodo             String?   @db.Text // cómo se distribuye el espacio
+  briefCriterioTecnico     String?   @db.Text // criterio de audio/iluminación/video para todo el evento
+  briefRestricciones       String?   @db.Text // límites del venue que condicionan el montaje
+  briefNoNegociables       String?   @db.Text // lo que no se puede fallar
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
 

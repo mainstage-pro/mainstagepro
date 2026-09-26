@@ -147,6 +147,9 @@ export function MontajePosiciones({ proyectoId, equipoId, cantidadTotal, categor
 
   const asignadas = filas.reduce((s, f) => s + (Number(f.cantidad) || 0), 0);
   const restante = cantidadTotal - asignadas;
+  // Grupal = una sola indicación que cubre todas las unidades del concepto. Es el default.
+  const esGrupal = filas.length === 1;
+  const filaTieneDatos = (f: Posicion) => !!(f.funcion || f.soporte || f.zona || f.alturaM || f.notas);
 
   const actualizar = (i: number, cambios: Partial<Posicion>) => {
     setFilas((prev) => prev.map((f, idx) => (idx === i ? { ...f, ...cambios } : f)));
@@ -154,16 +157,43 @@ export function MontajePosiciones({ proyectoId, equipoId, cantidadTotal, categor
   };
 
   const agregar = () => {
-    setFilas((prev) => [
-      ...prev,
-      { cantidad: Math.max(1, cantidadTotal - prev.reduce((s, f) => s + (Number(f.cantidad) || 0), 0)), funcion: null, soporte: null, zona: null, alturaM: null, notas: null },
-    ]);
+    setFilas((prev) => {
+      // Al salir del modo grupal la fila única representa todas las unidades.
+      const base = prev.length === 1 ? [{ ...prev[0], cantidad: cantidadTotal }] : prev;
+      const libres = cantidadTotal - base.reduce((s, f) => s + (Number(f.cantidad) || 0), 0);
+      const nueva = { cantidad: Math.max(1, libres), funcion: null, soporte: null, zona: null, alturaM: null, notas: null };
+      if (libres > 0) return [...base, nueva];
+      // Sin unidades libres, el grupo nuevo se toma del más grande.
+      const mayor = base.reduce((m, f, i) => ((Number(f.cantidad) || 0) > (Number(base[m].cantidad) || 0) ? i : m), 0);
+      if ((Number(base[mayor].cantidad) || 0) <= 1) return [...base, nueva];
+      return [...base.map((f, i) => (i === mayor ? { ...f, cantidad: f.cantidad - 1 } : f)), nueva];
+    });
     setDirty(true);
   };
 
   const quitar = (i: number) => {
     setFilas((prev) => prev.filter((_, idx) => idx !== i));
     setPorGuardar({}); // las claves van por índice de fila y al quitar una se recorren
+    setDirty(true);
+  };
+
+  // Cada grupo se abre en tantas filas de 1 como unidades tenga, conservando lo capturado.
+  const desglosarPorUnidad = () => {
+    setFilas((prev) => {
+      const base = prev.length === 1 ? [{ ...prev[0], cantidad: cantidadTotal }] : prev;
+      return base.flatMap((f) =>
+        Array.from({ length: Math.max(1, Number(f.cantidad) || 1) }, () => ({ ...f, id: undefined, cantidad: 1 })),
+      );
+    });
+    setPorGuardar({});
+    setDirty(true);
+  };
+
+  const volverAGrupal = () => {
+    const conDatos = filas.filter(filaTieneDatos);
+    if (conDatos.length > 1 && !confirm("Se conservará solo la primera indicación y aplicará a todo el concepto. ¿Continuar?")) return;
+    setFilas([{ ...(conDatos[0] ?? filas[0]), id: undefined, cantidad: cantidadTotal }]);
+    setPorGuardar({});
     setDirty(true);
   };
 
@@ -197,7 +227,7 @@ export function MontajePosiciones({ proyectoId, equipoId, cantidadTotal, categor
       const res = await fetch(`/api/proyectos/${proyectoId}/equipos/${equipoId}/posiciones`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ posiciones: filas }),
+        body: JSON.stringify({ posiciones: esGrupal ? [{ ...filas[0], cantidad: cantidadTotal }] : filas }),
       });
       if (res.ok) {
         const d = await res.json();
@@ -212,14 +242,40 @@ export function MontajePosiciones({ proyectoId, equipoId, cantidadTotal, categor
 
   return (
     <div className="mt-2 rounded-lg bg-[#0a0a0a] border border-[#1a1a1a] p-3">
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
         <span className="text-[10px] text-[#B3985B]/70 font-bold uppercase tracking-widest">Montaje</span>
-        <span className={`text-[10px] font-semibold ${restante === 0 ? "text-green-500" : "text-amber-500"}`}>
-          {asignadas} de {cantidadTotal} asignadas
-          {restante > 0 && ` · faltan ${restante}`}
-          {restante < 0 && ` · sobran ${-restante}`}
-        </span>
+        {!esGrupal && (
+          <span className={`text-[10px] font-semibold ${restante === 0 ? "text-green-500" : "text-amber-500"}`}>
+            {asignadas} de {cantidadTotal} asignadas
+            {restante > 0 && ` · faltan ${restante}`}
+            {restante < 0 && ` · sobran ${-restante}`}
+          </span>
+        )}
       </div>
+
+      {cantidadTotal > 1 && (
+        <div className="flex items-center gap-1 mb-2 p-0.5 rounded-md bg-[#141414] border border-[#1f1f1f] w-fit">
+          <button
+            onClick={() => { if (!esGrupal) volverAGrupal(); }}
+            className={`text-[10px] px-2.5 py-1 rounded transition-colors ${esGrupal ? "bg-[#B3985B] text-black font-semibold" : "text-gray-500 hover:text-gray-300"}`}
+          >
+            Todo el concepto
+          </button>
+          <button
+            onClick={() => { if (esGrupal) desglosarPorUnidad(); }}
+            className={`text-[10px] px-2.5 py-1 rounded transition-colors ${!esGrupal ? "bg-[#B3985B] text-black font-semibold" : "text-gray-500 hover:text-gray-300"}`}
+          >
+            Por unidad
+          </button>
+        </div>
+      )}
+      <p className="text-[10px] text-gray-600 mb-2 leading-snug">
+        {!esGrupal
+          ? "Cada renglón lleva su propia configuración, zona y notas. Puedes agrupar unidades subiendo su cantidad."
+          : cantidadTotal > 1
+            ? `Una sola indicación para las ${cantidadTotal} unidades del concepto.`
+            : "Cómo se monta esta unidad."}
+      </p>
 
       <div className="space-y-2">
         {filas.map((f, i) => {
@@ -227,26 +283,34 @@ export function MontajePosiciones({ proyectoId, equipoId, cantidadTotal, categor
           return (
             <div key={f.id ?? i} className="rounded-md border border-[#1a1a1a] bg-[#101010] p-2">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[9px] text-gray-500 uppercase tracking-wider">Posición {i + 1}</span>
-                <button
-                  onClick={() => quitar(i)}
-                  className="text-[10px] text-gray-500 hover:text-red-400 transition-colors"
-                >
-                  Eliminar
-                </button>
+                <span className="text-[9px] text-gray-500 uppercase tracking-wider">
+                  {esGrupal
+                    ? cantidadTotal > 1 ? `Todo el concepto · ×${cantidadTotal}` : "Montaje"
+                    : f.cantidad === 1 ? `Unidad ${i + 1}` : `Grupo ${i + 1}`}
+                </span>
+                {!esGrupal && (
+                  <button
+                    onClick={() => quitar(i)}
+                    className="text-[10px] text-gray-500 hover:text-red-400 transition-colors"
+                  >
+                    Eliminar
+                  </button>
+                )}
               </div>
 
               <div className="grid grid-cols-2 lg:grid-cols-12 gap-1.5">
-                <Campo label="Cantidad" className="lg:col-span-1">
-                  <input
-                    type="number"
-                    min={1}
-                    value={f.cantidad}
-                    onChange={(e) => actualizar(i, { cantidad: Math.max(1, Number(e.target.value) || 1) })}
-                    className={`${selectCls} text-center`}
-                  />
-                </Campo>
-                <Campo label="Configuración" className="lg:col-span-4">
+                {!esGrupal && (
+                  <Campo label="Cantidad" className="lg:col-span-1">
+                    <input
+                      type="number"
+                      min={1}
+                      value={f.cantidad}
+                      onChange={(e) => actualizar(i, { cantidad: Math.max(1, Number(e.target.value) || 1) })}
+                      className={`${selectCls} text-center`}
+                    />
+                  </Campo>
+                )}
+                <Campo label="Configuración" className={esGrupal ? "lg:col-span-5" : "lg:col-span-4"}>
                   <SelectorMontaje
                     valor={f.funcion}
                     opciones={configuraciones}
@@ -302,7 +366,7 @@ export function MontajePosiciones({ proyectoId, equipoId, cantidadTotal, categor
 
       <div className="flex items-center justify-between mt-2.5">
         <button onClick={agregar} className="text-[11px] text-[#B3985B] hover:text-[#d4b56f] transition-colors">
-          + Agregar posición
+          {esGrupal ? "+ Separar un grupo aparte" : "+ Agregar grupo"}
         </button>
         {dirty && (
           <button
