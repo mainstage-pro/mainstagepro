@@ -13,7 +13,7 @@ import {
 } from "./PdfShared";
 import { CronologiaEvento } from "./CronologiaEvento";
 import { construirCronologia, BloqueTiempo } from "@/lib/cronologia-evento";
-import { cadenaDeMando } from "@/lib/cadena-mando";
+import { cadenaDeMando, parseReglasMando } from "@/lib/cadena-mando";
 
 const s = StyleSheet.create({
   // Sección numerada con badge negro
@@ -171,6 +171,8 @@ export interface FichaOperativaData {
   escenarioNotas: string | null;
   encargadoNombre: string | null;
   encargadoCliente: string | null; encargadoClienteContacto: string | null;
+  /** Reglas de mando reescritas en el proyecto. Lo que falte usa la de la casa. */
+  cadenaMandoReglas?: unknown;
   encargadoLugar: string | null; encargadoLugarContacto: string | null;
   contactosEmergencia: string | null;
   llamadoBodega: string | null;  // ISO datetime string
@@ -248,7 +250,7 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
     encargadoClienteContacto: data.encargadoClienteContacto,
     encargadoLugar: data.encargadoLugar,
     encargadoLugarContacto: data.encargadoLugarContacto,
-  });
+  }, parseReglasMando(data.cadenaMandoReglas));
 
   // El bloque de escenario solo aparece si el evento lleva entarimado.
   const llevaEscenario = Boolean(

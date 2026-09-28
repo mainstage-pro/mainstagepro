@@ -25,10 +25,13 @@ async function main() {
   await sql.query(
     `ALTER TABLE proyecto_personal ADD COLUMN IF NOT EXISTS "coordinaEnSitio" BOOLEAN NOT NULL DEFAULT false`
   );
+  // Reglas de la cadena de mando reescritas por evento.
+  await sql.query(`ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS "cadenaMandoReglas" JSONB`);
 
   const a = await sql.query(
     `SELECT column_name FROM information_schema.columns
-     WHERE table_name='proyectos' AND column_name LIKE 'escenario%' ORDER BY column_name`
+     WHERE table_name='proyectos' AND (column_name LIKE 'escenario%' OR column_name='cadenaMandoReglas')
+     ORDER BY column_name`
   );
   const b = await sql.query(
     `SELECT column_name FROM information_schema.columns

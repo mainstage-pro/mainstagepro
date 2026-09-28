@@ -10,7 +10,7 @@ import {
   agruparPorCategoria, EquipoFlat, TransporteSlot,
 } from "./PdfShared";
 import { PersonalItem, ProveedorEvento } from "./FichaCoordinador";
-import { cadenaDeMando } from "@/lib/cadena-mando";
+import { cadenaDeMando, parseReglasMando } from "@/lib/cadena-mando";
 
 const s = StyleSheet.create({
   // Header
@@ -99,6 +99,8 @@ export interface FichaTecnicosData {
   encargadoNombre: string | null;
   encargadoCliente: string | null;
   encargadoClienteContacto: string | null;
+  /** Reglas de mando reescritas en el proyecto. Lo que falte usa la de la casa. */
+  cadenaMandoReglas?: unknown;
   encargadoLugar: string | null;
   encargadoLugarContacto: string | null;
   comentariosFinales: string | null;
@@ -144,7 +146,7 @@ export function FichaTecnicos({ data }: { data: FichaTecnicosData }) {
     encargadoClienteContacto: data.encargadoClienteContacto,
     encargadoLugar: data.encargadoLugar,
     encargadoLugarContacto: data.encargadoLugarContacto,
-  });
+  }, parseReglasMando(data.cadenaMandoReglas));
 
   return (
     <Document title={`Brief Técnicos ${data.numeroProyecto}`} author="Mainstage Pro">

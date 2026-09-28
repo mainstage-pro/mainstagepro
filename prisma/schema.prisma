@@ -729,6 +729,9 @@ model Proyecto {
   escenarioAccesos         String? // bajadas: "2 escaleras — trasera izq y der" / "rampa lateral"
   escenarioProveedor       String? // "Propio" o el nombre de quien lo pone
   escenarioNotas           String?   @db.Text // faldón, capacidad de carga, puntos de cuelgue
+  // Reglas de la cadena de mando reescritas para este evento: { SITIO, CAMBIOS,
+  // CLIENTE, VENUE } → texto. Lo que no esté aquí usa la regla de la casa.
+  cadenaMandoReglas        Json?
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
 

@@ -16,7 +16,7 @@ import {
 } from "@/lib/cronologia-evento";
 import { resumenMontaje } from "@/lib/montaje-reportes";
 import { avanceCarga, type AvanceCarga } from "@/lib/control-carga";
-import { cadenaDeMando, type EslabonMando } from "@/lib/cadena-mando";
+import { cadenaDeMando, parseReglasMando, type EslabonMando } from "@/lib/cadena-mando";
 
 export type OrdenEquipo = {
   id: string;
@@ -232,7 +232,7 @@ export async function ordenPorToken(token: string) {
     encargadoClienteContacto: p.encargadoClienteContacto ?? null,
     encargadoLugar: p.encargadoLugar ?? null,
     encargadoLugarContacto: p.encargadoLugarContacto ?? null,
-  });
+  }, parseReglasMando(p.cadenaMandoReglas));
 
   // Null cuando el proyecto no lleva entarimado: no se pinta la sección.
   const escenario: OrdenEscenario | null = (

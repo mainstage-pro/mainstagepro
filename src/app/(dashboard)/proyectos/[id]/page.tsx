@@ -35,6 +35,8 @@ import { construirCronologia, VISTAS_CRONOLOGIA, type BloqueTiempo } from "@/lib
 import { checksAvanceProduccion } from "@/lib/proyecto-avance";
 import { requisitosDocumento, type ProyectoDocumentoInput, type RequisitosDocumento, type TipoDocumento } from "@/lib/proyecto-documentos";
 import { preguntasAlCliente, textoSolicitud } from "@/lib/solicitud-cliente";
+import { cadenaDeMando, parseReglasMando, type ReglasMando } from "@/lib/cadena-mando";
+import { PanelCadenaMando } from "@/components/proyectos/PanelCadenaMando";
 import { getEquipoDisplayName } from "@/lib/equipoNombre";
 import { normalizarAmPm, fmt24to12 } from "@/lib/hora";
 
@@ -192,6 +194,8 @@ interface Proyecto {
   escenarioAccesos: string | null;
   escenarioProveedor: string | null;
   escenarioNotas: string | null;
+  /** Reglas de la cadena de mando reescritas para este evento. */
+  cadenaMandoReglas: unknown;
   proveedoresEvento: { id: string; nombreProveedor: string; servicioEquipo: string | null; telefonoProveedor: string | null; responsable: string | null; imprevisto: boolean }[];
   bloquesTiempo: BloqueTiempo[];
   createdAt: string;
@@ -2894,6 +2898,16 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       ...prev,
       personal: prev.personal.map(p => p.id === pId ? { ...p, confirmado: !confirmado } : p),
     } : prev);
+  }
+
+  // ── Reglas de mando reescritas para este evento ──
+  async function guardarReglasMando(reglas: ReglasMando) {
+    const res = await fetch(`/api/proyectos/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cadenaMandoReglas: reglas }),
+    });
+    if (!res.ok) { toast.error("No se pudo guardar la regla"); return; }
+    setProyecto(prev => prev ? { ...prev, cadenaMandoReglas: reglas } : prev);
   }
 
   // ── Coordinador en sitio: uno solo, el servidor releva al anterior ──
@@ -5866,6 +5880,48 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
             {/* ═══════ ZONA 1: BASE — Preproducción · Checklist · Bitácora ═══════ */}
             <><SectionDivider label={esRenta ? "Rider de entrega" : "Preproducción y montaje"} />
+
+            {/* ── Quién manda: los cuatro eslabones juntos y editables en un solo lugar ── */}
+            {!esRenta && (() => {
+              const coordSlot = proyecto.personal.find(p => p.tecnico && p.coordinaEnSitio) ?? null;
+              const eslabones = cadenaDeMando(
+                {
+                  coordinadorSitio: coordSlot?.tecnico
+                    ? {
+                        nombre: coordSlot.tecnico.nombre,
+                        celular: coordSlot.tecnico.celular ?? null,
+                        rol: coordSlot.rolEnEvento ?? coordSlot.rolTecnico?.nombre ?? null,
+                      }
+                    : null,
+                  encargadoNombre: proyecto.encargado?.name ?? null,
+                  encargadoCliente: proyecto.encargadoCliente,
+                  encargadoClienteContacto: proyecto.encargadoClienteContacto,
+                  encargadoLugar: proyecto.encargadoLugar,
+                  encargadoLugarContacto: proyecto.encargadoLugarContacto,
+                },
+                parseReglasMando(proyecto.cadenaMandoReglas)
+              );
+              // Una persona con varios slots (montaje, operación…) aparece una sola vez.
+              const vistos = new Set<string>();
+              const opcionesTecnicos = proyecto.personal
+                .filter(p => p.tecnico && !vistos.has(p.tecnico.id) && vistos.add(p.tecnico.id))
+                .map(p => ({ personalId: p.id, nombre: p.tecnico!.nombre, celular: p.tecnico!.celular ?? null }));
+              return (
+                <PanelCadenaMando
+                  eslabones={eslabones}
+                  tecnicos={opcionesTecnicos}
+                  usuarios={usuariosActivos.map(u => ({ id: u.id, nombre: u.name + (u.area ? ` (${u.area})` : "") }))}
+                  encargadoId={proyecto.encargado?.id ?? ""}
+                  coordinadorPersonalId={coordSlot?.id ?? ""}
+                  onCoordinador={personalId => {
+                    if (personalId) marcarCoordinador(personalId, false);
+                    else if (coordSlot) marcarCoordinador(coordSlot.id, true);
+                  }}
+                  onCampo={guardarCampo}
+                  onReglas={guardarReglasMando}
+                />
+              );
+            })()}
 
             {/* ── Lo que sólo el cliente puede contestar, redactado y listo para mandarse ── */}
             {!esRenta && (() => {

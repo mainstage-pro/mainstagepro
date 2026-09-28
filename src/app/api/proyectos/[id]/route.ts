@@ -8,6 +8,8 @@ import { calcularAvanceProyecto } from "@/lib/proyecto-avance";
 import { ensureOperacionTecnicaColumns } from "@/lib/migraciones-lazy";
 import { sembrarNotasEquiposProyecto } from "@/lib/notas-equipos";
 import { avanceCarga } from "@/lib/control-carga";
+import { parseReglasMando } from "@/lib/cadena-mando";
+import { Prisma } from "@prisma/client";
 
 function proximoMiercolesTraEvento(fecha: Date): Date {
   const d = new Date(fecha);
@@ -289,6 +291,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const textNullableFields = ["choferNombre", "recoleccionStatus", "recoleccionNotas", "protocoloSalida", "protocoloEntrada"];
 
   const data: Record<string, unknown> = {};
+  // Reglas de mando reescritas: se sanean aquí para que el documento no dependa
+  // de que el navegador haya mandado el JSON bien formado.
+  if ("cadenaMandoReglas" in body) {
+    const limpias = parseReglasMando(body.cadenaMandoReglas);
+    data.cadenaMandoReglas = Object.keys(limpias).length ? limpias : Prisma.DbNull;
+  }
   for (const key of allowed) {
     if (key in body) {
       if ((key === "fechaMontaje" || key === "llamadoBodega") && body[key]) {

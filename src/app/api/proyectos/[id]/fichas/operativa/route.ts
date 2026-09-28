@@ -162,6 +162,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     encargadoNombre: proyecto.encargado?.name ?? null,
     encargadoCliente: proyecto.encargadoCliente ?? null,
     encargadoClienteContacto: proyecto.encargadoClienteContacto ?? null,
+    cadenaMandoReglas: proyecto.cadenaMandoReglas ?? null,
     encargadoLugar: proyecto.encargadoLugar ?? null,
     encargadoLugarContacto: proyecto.encargadoLugarContacto ?? null,
     contactosEmergencia: proyecto.contactosEmergencia ?? null,
