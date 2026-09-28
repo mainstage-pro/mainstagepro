@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useOrden } from "../OrdenContext";
 
 export type Verificador = { id: string; nombre: string; tipo: string };
@@ -25,10 +25,40 @@ export function guardarVerificador(token: string, v: Verificador | null) {
   } catch { /* modo privado — se opera sin recordar */ }
 }
 
+/** Fila seleccionable, misma pinta para el equipo del evento y para el padrón. */
+function Opcion({ nombre, detalle, activa, onClick }: { nombre: string; detalle?: string | null; activa: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-colors ${
+        activa ? "bg-[#f7f0e2] border-[#B3985B]" : "bg-white border-[#e0e0e0]"
+      }`}
+    >
+      <span
+        className={`shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+          activa ? "border-[#B3985B] bg-[#B3985B]" : "border-[#c0c0c0]"
+        }`}
+      >
+        {activa && (
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M5 13l4 4L19 7" />
+          </svg>
+        )}
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[#0d0d0d] text-[13.5px] font-bold truncate">{nombre}</span>
+        {detalle && <span className="block text-[#5a5a5a] text-[11.5px] truncate">{detalle}</span>}
+      </span>
+    </button>
+  );
+}
+
 /**
  * Puerta de identificación. El link es uno por proyecto, así que la firma de
- * cada marca viene de aquí: interno = técnico asignado al proyecto; externo =
- * ayudante, chofer o staff del venue, que se registra con nombre y teléfono.
+ * cada marca viene de aquí: interno = cualquiera del padrón de Mainstage —los
+ * del evento se ofrecen de entrada, el resto se busca por nombre, porque quien
+ * revisa la carga no siempre es quien está asignado; externo = ayudante, chofer
+ * o staff del venue, que se registra con nombre y teléfono.
  */
 export default function Identificacion({ onListo }: { onListo: (v: Verificador) => void }) {
   const { orden, token } = useOrden();
@@ -39,6 +69,29 @@ export default function Identificacion({ onListo }: { onListo: (v: Verificador) 
   const [empresa, setEmpresa] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+
+  /* Búsqueda en el padrón, para quien no está asignado a este evento. */
+  const [buscando, setBuscando] = useState(false);
+  const [q, setQ] = useState("");
+  const [hallazgos, setHallazgos] = useState<{ id: string; nombre: string; rol: string | null }[]>([]);
+
+  // Sin equipo asignado no hay lista que ofrecer: se entra directo a buscar.
+  const hayEquipo = (orden?.personal.length ?? 0) > 0;
+  const enBusqueda = buscando || (!!orden && !hayEquipo);
+
+  // El enlace es público: no se entrega el directorio, se responde a lo tecleado.
+  // Casi medio segundo de espera evita una consulta por letra.
+  useEffect(() => {
+    if (!enBusqueda || q.trim().length < 2) { setHallazgos([]); return; }
+    let vivo = true;
+    const id = setTimeout(() => {
+      fetch(`/api/orden/${token}/verificador?q=${encodeURIComponent(q.trim())}`)
+        .then((r) => (r.ok ? r.json() : { tecnicos: [] }))
+        .then((d) => vivo && setHallazgos(d.tecnicos ?? []))
+        .catch(() => {});
+    }, 400);
+    return () => { vivo = false; clearTimeout(id); };
+  }, [q, enBusqueda, token]);
 
   async function registrar() {
     setError(null);
@@ -95,38 +148,53 @@ export default function Identificacion({ onListo }: { onListo: (v: Verificador) 
       </div>
 
       {modo === "INTERNO" ? (
-        orden && orden.personal.length > 0 ? (
+        enBusqueda ? (
           <div className="space-y-2">
-            {orden.personal.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setTecnicoId(t.tecnicoId)}
-                className={`w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-colors ${
-                  tecnicoId === t.tecnicoId ? "bg-[#f7f0e2] border-[#B3985B]" : "bg-white border-[#e0e0e0]"
-                }`}
-              >
-                <span
-                  className={`shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                    tecnicoId === t.tecnicoId ? "border-[#B3985B] bg-[#B3985B]" : "border-[#c0c0c0]"
-                  }`}
-                >
-                  {tecnicoId === t.tecnicoId && (
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-[#0d0d0d] text-[13.5px] font-bold truncate">{t.nombre}</span>
-                  {t.rol && <span className="block text-[#5a5a5a] text-[11.5px] truncate">{t.rol}</span>}
-                </span>
-              </button>
+            {!hayEquipo && (
+              <p className="text-[#5a5a5a] text-[12.5px] pb-1">
+                Este proyecto no tiene técnicos asignados todavía. Busca tu nombre.
+              </p>
+            )}
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Escribe tu nombre"
+              className={input}
+              autoComplete="off"
+            />
+            {hallazgos.map((t) => (
+              <Opcion key={t.id} nombre={t.nombre} detalle={t.rol} activa={tecnicoId === t.id} onClick={() => setTecnicoId(t.id)} />
             ))}
+            {q.trim().length >= 2 && hallazgos.length === 0 && (
+              <p className="text-[#5a5a5a] text-[12.5px] py-2">
+                Nadie con ese nombre en la plataforma. Si no estás dado de alta, regístrate como externo.
+              </p>
+            )}
+            {hayEquipo && (
+              <button
+                onClick={() => { setBuscando(false); setQ(""); setTecnicoId(""); }}
+                className="text-[#9A7A3F] text-[12px] font-semibold underline underline-offset-2 pt-1"
+              >
+                Volver al equipo del evento
+              </button>
+            )}
+          </div>
+        ) : hayEquipo ? (
+          <div className="space-y-2">
+            {orden!.personal.map((t) => (
+              <Opcion key={t.id} nombre={t.nombre} detalle={t.rol} activa={tecnicoId === t.tecnicoId} onClick={() => setTecnicoId(t.tecnicoId)} />
+            ))}
+            {/* Quien revisa la carga no siempre es del evento: el coordinador
+                pasa a verificar, el dueño también. */}
+            <button
+              onClick={() => { setBuscando(true); setTecnicoId(""); }}
+              className="text-[#9A7A3F] text-[12px] font-semibold underline underline-offset-2 pt-1"
+            >
+              No estoy en la lista
+            </button>
           </div>
         ) : (
-          <p className="text-[#5a5a5a] text-[13px] py-3">
-            Este proyecto no tiene técnicos asignados todavía. Regístrate como externo.
-          </p>
+          <p className="text-[#5a5a5a] text-[13px] py-3">Cargando…</p>
         )
       ) : (
         <div className="space-y-3">

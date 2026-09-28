@@ -7,7 +7,7 @@
 
 import { useState } from "react";
 import type { OrdenProduccion } from "@/lib/orden-produccion";
-import { Cantidad, CatHead, Chip, Cuadro, NotaBox, PorConfirmar, Telefono, Vacio } from "./ui";
+import { Cantidad, CatHead, Chip, Cuadro, Miniatura, NotaBox, PorConfirmar, Telefono, Vacio } from "./ui";
 
 /**
  * "6:45 AM" en una sola línea. El AM/PM va en gris y pequeño para que el ojo
@@ -157,6 +157,7 @@ export function Equipo({ orden }: { orden: OrdenProduccion }) {
                 return (
                   <Cuadro key={e.id}>
                     <div className="flex items-center gap-2.5 px-3 py-2.5">
+                      <Miniatura url={e.imagenUrl} alt={titulo} />
                       <div className="min-w-0 flex-1">
                         <p className="text-[#0d0d0d] text-[14px] font-bold leading-snug">{titulo}</p>
                         {subtitulo && <p className="text-[#888] text-[11.5px] leading-snug">{subtitulo}</p>}

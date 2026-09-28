@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logActividad } from "@/lib/actividad";
 import { guardarVersion } from "@/lib/versiones";
-import { createExpiringToken } from "@/lib/tokens";
+import { createExpiringToken, isTokenExpired } from "@/lib/tokens";
 import { calcularAvanceProyecto } from "@/lib/proyecto-avance";
 import { ensureOperacionTecnicaColumns } from "@/lib/migraciones-lazy";
 import { sembrarNotasEquiposProyecto } from "@/lib/notas-equipos";
@@ -178,6 +178,17 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   if (!proyecto) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+
+  // La orden de producción no se "genera": existe. Un proyecto abierto siempre
+  // tiene enlace vigente, para que compartirlo sea un botón y no un trámite.
+  // Se renueva al vencer (180 días) por la misma razón; el enlace viejo muere.
+  if (!proyecto.ordenToken || isTokenExpired(proyecto.ordenToken)) {
+    try {
+      const ordenToken = createExpiringToken(180);
+      await prisma.proyecto.update({ where: { id }, data: { ordenToken } });
+      proyecto = { ...proyecto, ordenToken } as typeof proyecto;
+    } catch { /* leer el proyecto no debe fallar por no poder sellar el enlace */ }
+  }
 
   // Red de seguridad: ingresos ligados al proyecto que nunca se convirtieron en
   // Abono de una CxC (dinero "suelto" que quedaría invisible en el P&L). No es

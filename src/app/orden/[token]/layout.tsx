@@ -1,8 +1,46 @@
 "use client";
 
+import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { OrdenProvider, useOrden } from "./OrdenContext";
 import { ESTADO_LABEL, FONT, SERVICIO_LABEL, fechaCorta, haceCuanto, hora12 } from "./ui";
+
+/**
+ * Regreso al proyecto, solo para quien trae sesión de la plataforma.
+ *
+ * El enlace es público: el técnico que lo abre desde WhatsApp no tiene a dónde
+ * volver y una barra de navegación ahí solo sería una puerta cerrada. Pero
+ * cuando lo abre alguien de adentro, quedarse sin salida es peor.
+ */
+function VolverAlProyecto({ proyectoId }: { proyectoId: string | null }) {
+  const [interno, setInterno] = useState(false);
+
+  useEffect(() => {
+    let vivo = true;
+    // Un 401 aquí es lo normal (visitante con token), no un error que reportar.
+    fetch("/api/auth/me")
+      .then((r) => vivo && r.ok && setInterno(true))
+      .catch(() => {});
+    return () => { vivo = false; };
+  }, []);
+
+  if (!interno || !proyectoId) return null;
+
+  return (
+    <div className="bg-[#080808] border-b border-[#1e1e1e]">
+      <div className="max-w-3xl mx-auto px-5 py-2 flex items-center justify-between gap-3">
+        <Link href={`/proyectos/${proyectoId}`} className="flex items-center gap-1.5 text-[#B3985B] text-[11.5px] font-bold">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 12H5M12 19l-7-7 7-7" />
+          </svg>
+          Volver al proyecto
+        </Link>
+        <span className="text-[#555] text-[10px] uppercase tracking-[0.1em]">Vista del técnico</span>
+      </div>
+    </div>
+  );
+}
 
 /** Celda de la banda dorada. */
 function BandaItem({ label, valor }: { label: string; valor: string | null }) {
@@ -43,6 +81,8 @@ function Cascaron({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-white text-[#0d0d0d]" style={{ fontFamily: FONT }}>
+      <VolverAlProyecto proyectoId={orden?.id ?? null} />
+
       {/* HERO NEGRO — la portada del documento, igual que la Ficha Operativa impresa. */}
       <header className="bg-[#0d0d0d]">
         <div className="max-w-3xl mx-auto px-5 pt-5 pb-4 flex items-start justify-between gap-4">
@@ -89,10 +129,20 @@ function Cascaron({ children }: { children: React.ReactNode }) {
 
       <main className="max-w-3xl mx-auto px-5 pt-6 pb-28">{children}</main>
 
+      {/* Pie con logo y folio, como el del PDF: cierra el documento en vez de
+          dejarlo colgando, y da referencia de qué papel es si se fotografía. */}
       <footer className="max-w-3xl mx-auto px-5 pb-8">
-        <div className="border-t border-[#e8e8e8] pt-3 flex items-center justify-between">
-          <span className="text-[#9a9a9a] text-[9.5px]">Uso interno — Mainstage Pro</span>
-          {orden && <span className="text-[#9a9a9a] text-[9.5px]">{orden.numeroProyecto}</span>}
+        <div className="border-t border-[#e8e8e8] pt-3 flex items-end justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[#9a9a9a] text-[9.5px] leading-tight">Uso interno — Mainstage Pro</p>
+            {orden && (
+              <p className="text-[#c4c4c4] text-[9.5px] leading-tight mt-0.5">
+                {orden.numeroProyecto} · actualizado {haceCuanto(orden.actualizadoEn)}
+              </p>
+            )}
+          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="Mainstage Pro" className="h-3.5 shrink-0 opacity-25" draggable={false} />
         </div>
       </footer>
     </div>

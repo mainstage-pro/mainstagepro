@@ -12,6 +12,7 @@
  * amplias y contraste alto sobre fondo claro (la pantalla se ve de día).
  */
 
+import { useEffect, useState } from "react";
 import { fmt24to12, fmtHoraDate } from "@/lib/hora";
 
 export const FONT = '-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif';
@@ -43,6 +44,73 @@ export function Cargando() {
 
 export function Vacio({ children }: { children: React.ReactNode }) {
   return <p className="text-[#9a9a9a] text-sm py-6 text-center">{children}</p>;
+}
+
+/**
+ * Foto del equipo, como en el rider del PDF. Se toca para verla en grande:
+ * en bodega la duda no es el nombre del modelo, es si la caja que tienes
+ * enfrente es esa. El hueco se reserva aunque no haya foto para que la columna
+ * de nombres no quede serrucho.
+ */
+export function Miniatura({ url, alt }: { url: string | null; alt: string }) {
+  const [abierta, setAbierta] = useState(false);
+
+  // El botón de "atrás" del teléfono debe cerrar el visor, no salirse del
+  // documento; y con el visor abierto el fondo no debe correrse.
+  useEffect(() => {
+    if (!abierta) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setAbierta(false);
+    window.addEventListener("keydown", esc);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", esc);
+    };
+  }, [abierta]);
+
+  if (!url) {
+    return (
+      <span
+        aria-hidden
+        className="shrink-0 w-10 h-10 rounded border border-[#ececec] bg-[#fafafa] flex items-center justify-center"
+      >
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#d4d4d4" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" />
+          <circle cx="8.5" cy="8.5" r="1.5" />
+          <path d="M21 15l-5-5L5 21" />
+        </svg>
+      </span>
+    );
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setAbierta(true)}
+        className="shrink-0 w-10 h-10 rounded border border-[#e4e4e4] bg-white overflow-hidden"
+        aria-label={`Ver foto de ${alt}`}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={url} alt={alt} className="w-full h-full object-contain" draggable={false} loading="lazy" />
+      </button>
+
+      {abierta && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-5"
+          onClick={() => setAbierta(false)}
+          role="dialog"
+          aria-modal="true"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={url} alt={alt} className="max-w-full max-h-[75vh] object-contain" draggable={false} />
+          <p className="text-white text-[13px] font-semibold mt-4 text-center">{alt}</p>
+          <p className="text-white/40 text-[11.5px] mt-1">Toca para cerrar</p>
+        </div>
+      )}
+    </>
+  );
 }
 
 /**

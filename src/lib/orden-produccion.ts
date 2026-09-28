@@ -30,6 +30,8 @@ export type OrdenEquipo = {
   proveedor: string | null;
   notas: string | null;
   montaje: string | null;
+  /** Foto del equipo. En web se sirve tal cual; el PDF la reprocesa a base64. */
+  imagenUrl: string | null;
   accesorios: { nombre: string; cantidad: number }[];
 };
 
@@ -120,7 +122,7 @@ export async function ordenPorToken(token: string) {
         include: {
           equipo: {
             select: {
-              descripcion: true, marca: true, modelo: true,
+              descripcion: true, marca: true, modelo: true, imagenUrl: true,
               categoria: { select: { nombre: true, disciplina: true } },
             },
           },
@@ -201,6 +203,7 @@ export async function ordenPorToken(token: string) {
     proveedor: e.proveedor?.nombre ?? null,
     notas: e.notas ?? null,
     montaje: resumenMontaje(e.posiciones, e.equipo?.categoria?.nombre, e.equipo?.categoria?.disciplina),
+    imagenUrl: e.equipo?.imagenUrl ?? null,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     accesorios: (e.riderAccesorios ?? []).map((a: any) => ({ nombre: a.nombre, cantidad: a.cantidad })),
   }));

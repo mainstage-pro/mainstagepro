@@ -926,55 +926,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     await load();
   }
 
-  // Enlace de confirmación de información (cliente completa el resumen)
-  const [generandoInfoToken, setGenerandoInfoToken] = useState(false);
-  const [revocandoInfoToken, setRevocandoInfoToken] = useState(false);
-
-  async function generarInfoToken() {
-    setGenerandoInfoToken(true);
-    const res = await fetch(`/api/proyectos/${id}/info-token`, { method: "POST" });
-    if (!res.ok) {
-      const d = await res.json().catch(() => ({}));
-      toast.error(d.error ?? "Error al generar enlace");
-      setGenerandoInfoToken(false);
-      return;
-    }
-    const d = await res.json();
-    if (d.token) {
-      const url = `${window.location.origin}/confirmar/proyecto/${d.token}`;
-      await navigator.clipboard.writeText(url).catch(() => {});
-      toast.success("Enlace generado y copiado al portapapeles");
-    }
-    setGenerandoInfoToken(false);
-    await load();
-  }
-
-  async function copiarInfoLink() {
-    if (!proyecto?.infoToken) return;
-    const url = `${window.location.origin}/confirmar/proyecto/${proyecto.infoToken}`;
-    await navigator.clipboard.writeText(url).catch(() => {});
-    toast.success("Enlace copiado");
-  }
-
-  async function revocarInfoToken() {
-    const ok = await confirm({ message: "¿Revocar el enlace de confirmación? El cliente ya no podrá acceder con el enlace anterior.", danger: true, confirmText: "Revocar" });
-    if (!ok) return;
-    setRevocandoInfoToken(true);
-    const res = await fetch(`/api/proyectos/${id}/info-token`, { method: "DELETE" });
-    if (!res.ok) {
-      const d = await res.json().catch(() => ({}));
-      toast.error(d.error ?? "Error al revocar");
-      setRevocandoInfoToken(false);
-      return;
-    }
-    setRevocandoInfoToken(false);
-    toast.success("Enlace revocado");
-    await load();
-  }
-
-  // Enlace de la Orden de Producción (equipo operativo en sitio)
+  // Enlace de la Orden de Producción (equipo operativo en sitio). El proyecto
+  // llega con token vigente desde el GET, así que "generar" es solo el rescate
+  // para cuando ese sellado automático no pudo correr.
   const [generandoOrdenToken, setGenerandoOrdenToken] = useState(false);
-  const [revocandoOrdenToken, setRevocandoOrdenToken] = useState(false);
+  const [renovandoOrdenToken, setRenovandoOrdenToken] = useState(false);
 
   async function generarOrdenToken() {
     setGenerandoOrdenToken(true);
@@ -1000,19 +956,19 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     toast.success("Enlace copiado");
   }
 
-  async function revocarOrdenToken() {
-    const ok = await confirm({ message: "¿Revocar el enlace de la orden de producción? El equipo en sitio dejará de tener acceso.", danger: true, confirmText: "Revocar" });
+  async function renovarOrdenToken() {
+    const ok = await confirm({ message: "¿Renovar el enlace? Quien tenga el anterior dejará de ver la orden y habrá que volver a compartirlo.", danger: true, confirmText: "Renovar" });
     if (!ok) return;
-    setRevocandoOrdenToken(true);
-    const res = await fetch(`/api/proyectos/${id}/orden-token`, { method: "DELETE" });
+    setRenovandoOrdenToken(true);
+    const res = await fetch(`/api/proyectos/${id}/orden-token`, { method: "POST" });
     if (!res.ok) {
       const d = await res.json().catch(() => ({}));
-      toast.error(d.error ?? "Error al revocar");
-      setRevocandoOrdenToken(false);
+      toast.error(d.error ?? "Error al renovar");
+      setRenovandoOrdenToken(false);
       return;
     }
-    setRevocandoOrdenToken(false);
-    toast.success("Enlace revocado");
+    setRenovandoOrdenToken(false);
+    toast.success("Enlace renovado");
     await load();
   }
 
@@ -3840,12 +3796,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             warn: !!(anticipoCxC && !anticipoCobrado),
             txt: anticipoCxC ? (anticipoCobrado ? "Cobrado" : "Pendiente") : "Sin esquema",
           },
-          {
-            label: "Confirmación cliente",
-            ok: !!proyecto.infoRecibidoEn,
-            warn: !proyecto.infoRecibidoEn,
-            txt: proyecto.infoRecibidoEn ? "Recibida" : proyecto.infoToken ? "Enviada" : "Sin enviar",
-          },
         ];
 
         return (
@@ -3923,108 +3873,60 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         );
       })()}
 
-      {/* ── Confirmación de información del cliente ── */}
-      <div className="rounded-xl border border-[#1e1e1e] bg-[#0d0d0d] px-4 py-3.5 space-y-3">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div className="min-w-0">
-            <p className="text-[13px] text-gray-300 font-medium">Confirmación del cliente</p>
-            <p className="text-gray-600 text-[11.5px] mt-0.5">Enlace para que el cliente confirme y complete los datos del evento.</p>
-          </div>
-          {!proyecto.infoToken ? (
-            <button
-              onClick={generarInfoToken}
-              disabled={generandoInfoToken}
-              className="shrink-0 flex items-center gap-1.5 border border-[#2a2a2a] hover:border-[#B3985B]/40 hover:text-[#B3985B] disabled:opacity-50 text-gray-300 text-[11.5px] font-semibold px-3 py-2 rounded-lg transition-colors"
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-              {generandoInfoToken ? "Generando..." : "Generar enlace"}
-            </button>
-          ) : (
-            <span className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full font-semibold ${proyecto.infoRecibidoEn ? "bg-green-900/50 text-green-300" : "bg-yellow-900/50 text-yellow-300"}`}>
-              {proyecto.infoRecibidoEn ? "Recibido" : "Pendiente"}
-            </span>
-          )}
-        </div>
-
-        {!proyecto.infoToken ? null : (
-          <div className="space-y-2">
-            <div className="bg-[#0a0a0a] border border-[#1e1e1e] rounded-lg px-3 py-2.5 flex items-center gap-2">
-              <span className="text-gray-500 text-xs flex-1 truncate font-mono">{`${typeof window !== "undefined" ? window.location.origin : ""}/confirmar/proyecto/${proyecto.infoToken}`}</span>
-              <button onClick={copiarInfoLink} className="text-[10px] text-[#B3985B] hover:text-white shrink-0 transition-colors">Copiar</button>
-              {proyecto.cliente.telefono && (
-                <a
-                  href={`https://wa.me/${proyecto.cliente.telefono.replace(/\D/g, "")}?text=${encodeURIComponent(`Hola ${proyecto.cliente.nombre}, para tu evento "${proyecto.nombre}" nos ayudas confirmando los datos en este enlace: ${window.location.origin}/confirmar/proyecto/${proyecto.infoToken}`)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[10px] text-green-400 hover:text-green-300 shrink-0 transition-colors flex items-center gap-1"
-                >
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.999 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.984-1.31A9.944 9.944 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg>
-                  WhatsApp
-                </a>
-              )}
-            </div>
-            <div className="flex items-center gap-3">
-              {proyecto.infoRecibidoEn && (
-                <span className="text-xs text-gray-500">Recibido {fmtDateTime(proyecto.infoRecibidoEn)}</span>
-              )}
-              <button
-                onClick={revocarInfoToken}
-                disabled={revocandoInfoToken}
-                className="text-[10px] text-red-400/70 hover:text-red-400 disabled:opacity-50 transition-colors ml-auto"
-              >
-                {revocandoInfoToken ? "Revocando..." : "Revocar enlace"}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* ── Orden de producción (enlace del equipo en sitio) ── */}
       <div className="rounded-xl border border-[#1e1e1e] bg-[#0d0d0d] px-4 py-3.5 space-y-3">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="min-w-0">
             <p className="text-[13px] text-gray-300 font-medium">Orden de producción</p>
             <p className="text-gray-600 text-[11.5px] mt-0.5">
-              Enlace para el equipo en sitio: toda la información del evento y el control de carga. Se actualiza solo al editar el proyecto.
+              Todo el evento y el control de carga para el equipo en sitio. Se actualiza solo al editar el proyecto.
             </p>
           </div>
-          {!proyecto.ordenToken ? (
+          {/* El enlace ya existe desde que abre el proyecto: aquí no se genera
+              nada, se abre o se comparte. La URL no se muestra —no se teclea. */}
+          {proyecto.ordenToken ? (
+            <div className="shrink-0 flex items-center gap-2">
+              <a
+                href={`/orden/${proyecto.ordenToken}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 bg-[#B3985B] hover:bg-[#c9a96a] text-black text-[11.5px] font-semibold px-3 py-2 rounded-lg transition-colors"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><path d="M15 3h6v6"/><path d="M10 14L21 3"/></svg>
+                Abrir orden
+              </a>
+              <button
+                onClick={copiarOrdenLink}
+                title="Copiar el enlace para compartirlo"
+                className="flex items-center gap-1.5 border border-[#2a2a2a] hover:border-[#B3985B]/40 hover:text-[#B3985B] text-gray-300 text-[11.5px] font-semibold px-3 py-2 rounded-lg transition-colors"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+                Copiar enlace
+              </button>
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent(`Orden de producción — ${proyecto.nombre}: ${typeof window !== "undefined" ? window.location.origin : ""}/orden/${proyecto.ordenToken}`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Enviar por WhatsApp"
+                className="flex items-center justify-center w-[34px] h-[34px] border border-[#2a2a2a] hover:border-green-500/40 text-green-400 hover:text-green-300 rounded-lg transition-colors"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.999 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.984-1.31A9.944 9.944 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg>
+              </a>
+            </div>
+          ) : (
+            /* Solo si el sellado automático falló (BD caída al abrir). */
             <button
               onClick={generarOrdenToken}
               disabled={generandoOrdenToken}
               className="shrink-0 flex items-center gap-1.5 border border-[#2a2a2a] hover:border-[#B3985B]/40 hover:text-[#B3985B] disabled:opacity-50 text-gray-300 text-[11.5px] font-semibold px-3 py-2 rounded-lg transition-colors"
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-              {generandoOrdenToken ? "Generando..." : "Generar enlace"}
+              {generandoOrdenToken ? "Preparando..." : "Preparar enlace"}
             </button>
-          ) : (
-            <a
-              href={`/orden/${proyecto.ordenToken}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="shrink-0 text-[11px] text-[#B3985B] hover:text-white transition-colors"
-            >
-              Abrir vista del técnico →
-            </a>
           )}
         </div>
 
         {!proyecto.ordenToken ? null : (
           <div className="space-y-2">
-            <div className="bg-[#0a0a0a] border border-[#1e1e1e] rounded-lg px-3 py-2.5 flex items-center gap-2">
-              <span className="text-gray-500 text-xs flex-1 truncate font-mono">{`${typeof window !== "undefined" ? window.location.origin : ""}/orden/${proyecto.ordenToken}`}</span>
-              <button onClick={copiarOrdenLink} className="text-[10px] text-[#B3985B] hover:text-white shrink-0 transition-colors">Copiar</button>
-              <a
-                href={`https://wa.me/?text=${encodeURIComponent(`Orden de producción — ${proyecto.nombre}: ${typeof window !== "undefined" ? window.location.origin : ""}/orden/${proyecto.ordenToken}`)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[10px] text-green-400 hover:text-green-300 shrink-0 transition-colors flex items-center gap-1"
-              >
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.999 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.984-1.31A9.944 9.944 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg>
-                WhatsApp
-              </a>
-            </div>
-
             {/* Avance del control de carga: lo que el coordinador quiere ver de un vistazo. */}
             {(proyecto.cargas ?? []).length > 0 && (
               <div className="space-y-2 pt-1">
@@ -4055,13 +3957,16 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               </div>
             )}
 
+            {/* El enlace nunca se apaga —el proyecto siempre tiene uno— pero sí
+                se puede cambiar por otro cuando el anterior se fue a donde no
+                debía. */}
             <div className="flex items-center gap-3">
               <button
-                onClick={revocarOrdenToken}
-                disabled={revocandoOrdenToken}
-                className="text-[10px] text-red-400/70 hover:text-red-400 disabled:opacity-50 transition-colors ml-auto"
+                onClick={renovarOrdenToken}
+                disabled={renovandoOrdenToken}
+                className="text-[10px] text-gray-600 hover:text-red-400 disabled:opacity-50 transition-colors ml-auto"
               >
-                {revocandoOrdenToken ? "Revocando..." : "Revocar enlace"}
+                {renovandoOrdenToken ? "Renovando..." : "Renovar enlace (invalida el anterior)"}
               </button>
             </div>
           </div>
