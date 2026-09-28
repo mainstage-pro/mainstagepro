@@ -63,13 +63,13 @@ export default function GastosRecurrentesPage() {
         </div>
       </div>
 
-      <div className="bg-[#111] rounded-xl border border-[#222] overflow-hidden">
+      <div className="bg-[#111] rounded-xl border border-[#222]">
         {loading ? (
           <div className="p-8 text-center text-sm text-[#9ca3af]">Cargando...</div>
         ) : gastos.length === 0 ? (
           <div className="p-8 text-center text-sm text-[#9ca3af]">No hay gastos recurrentes configurados.</div>
         ) : (
-          <div className="overflow-x-auto">
+          <div>
             <table className="w-full text-sm text-left text-white">
               <thead className="text-xs text-[#9ca3af] uppercase bg-[#0d0d0d] border-b border-[#222]">
                 <tr>
