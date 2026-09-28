@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
-// ── Tipos de clasificación (5 estados) ─────────────────────────────────────
+// ── Tipos de clasificación ─────────────────────────────────────────────────
 export type ClasifEquipo =
   | "PROPIO_INVENTARIO"   // En nuestro inventario, disponibilidad verificada
   | "PROPIO_MANUAL"       // Marcado como propio pero sin vínculo al inventario
   | "EXTERNO_INVENTARIO"  // En inventario externo/renta catalogado
-  | "EXTERNO_CONFIRMADO"  // Proveedor externo asignado + CxP generada
+  | "EXTERNO_ASIGNADO"    // Ya lo trae un proveedor del evento
   | "A_CONSEGUIR";        // Sin proveedor todavía
 
 export async function GET(
@@ -43,6 +43,7 @@ export async function GET(
               cantidad: true,
               dias: true,
               precioUnitario: true,
+              costoUnitario: true,
               costoExterno: true,
               proveedorId: true,
               proveedorRentaId: true,
@@ -175,19 +176,6 @@ export async function GET(
     });
   }
 
-  // ── CxPs existentes para este proyecto ────────────────────────────────────
-  const cxpsExistentes = await prisma.cuentaPagar.findMany({
-    where: { proyectoId: id },
-    select: {
-      id: true,
-      concepto: true,
-      monto: true,
-      estado: true,
-      notas: true,
-      proveedor: { select: { id: true, nombre: true } },
-    },
-  });
-
   // ── Clasificar cada línea ──────────────────────────────────────────────────
   const lineasClasificadas = proyecto.cotizacion.lineas.map((linea) => {
     let clasificacion: ClasifEquipo;
@@ -213,24 +201,9 @@ export async function GET(
         clasificacion = "PROPIO_MANUAL";
       }
     } else {
-      // EQUIPO_EXTERNO
-      const cxpVinculadaCheck = cxpsExistentes.find((c) => {
-        try { return JSON.parse(c.notas ?? "{}").lineaId === linea.id; } catch { return false; }
-      });
-      const tieneProveedor = !!(linea.proveedorId || linea.proveedorRentaId);
-      if (tieneProveedor && cxpVinculadaCheck) {
-        clasificacion = "EXTERNO_CONFIRMADO";
-      } else {
-        clasificacion = "A_CONSEGUIR";
-      }
+      // EQUIPO_EXTERNO — queda resuelto cuando un proveedor del evento se hace cargo.
+      clasificacion = linea.proveedorEventoId ? "EXTERNO_ASIGNADO" : "A_CONSEGUIR";
     }
-
-    // CxP vinculada (para externos)
-    const cxpVinculada = cxpsExistentes.find((c) => {
-      try { return JSON.parse(c.notas ?? "{}").lineaId === linea.id; } catch { return false; }
-    }) ?? null;
-
-    const yaConfirmado = clasificacion === "EXTERNO_CONFIRMADO";
 
     const allowedNames = ["mauricio", "emiliano", "carlos"];
     const canViewFinances = allowedNames.some(name => session.name.toLowerCase().includes(name));
@@ -246,6 +219,8 @@ export async function GET(
       dias: linea.dias,
       precioUnitario: canViewFinances ? linea.precioUnitario : 0,
       costoExterno: canViewFinances ? linea.costoExterno : null,
+      // Lo que el cotizador estimó que nos cobra el proveedor, por unidad y día.
+      costoUnitario: canViewFinances ? linea.costoUnitario : null,
       equipoId: linea.equipoId,
       equipoInventarioTipo: linea.equipo?.tipo ?? null,
       cantidadTotal: linea.equipo?.cantidadTotal ?? null,
@@ -256,8 +231,6 @@ export async function GET(
       disponible,
       comprometido,
       conflictos,
-      yaConfirmado,
-      cxp: canViewFinances ? cxpVinculada : null,
     };
   });
 
@@ -286,81 +259,6 @@ export async function GET(
     proveedores,
     proveedoresEvento,
   });
-}
-
-// ── POST — Confirmar proveedor externo + generar CxP ─────────────────────────
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-
-  const { id } = await params;
-  const body = await req.json();
-  const { lineaId, proveedorId, monto, fechaCompromiso, generarCxP } = body as {
-    lineaId: string;
-    proveedorId: string;
-    monto: number;
-    fechaCompromiso?: string;
-    generarCxP: boolean;
-  };
-
-  if (!lineaId || !proveedorId || monto == null) {
-    return NextResponse.json({ error: "lineaId, proveedorId y monto son requeridos" }, { status: 400 });
-  }
-
-  const proyecto = await prisma.proyecto.findUnique({
-    where: { id },
-    select: { cotizacion: { select: { id: true } }, nombre: true, fechaEvento: true },
-  });
-  if (!proyecto?.cotizacion) return NextResponse.json({ error: "Proyecto sin cotización" }, { status: 404 });
-
-  const linea = await prisma.cotizacionLinea.findFirst({
-    where: { id: lineaId, cotizacionId: proyecto.cotizacion.id },
-    select: { id: true, descripcion: true, costoExterno: true },
-  });
-  if (!linea) return NextResponse.json({ error: "Línea no encontrada" }, { status: 404 });
-
-  const cxpExistente = await prisma.cuentaPagar.findFirst({
-    where: { proyectoId: id, notas: { contains: lineaId } },
-  });
-
-  if (cxpExistente && generarCxP) {
-    await prisma.cuentaPagar.update({
-      where: { id: cxpExistente.id },
-      data: { monto, proveedorId, fechaCompromiso: fechaCompromiso ? new Date(fechaCompromiso) : undefined },
-    });
-  } else if (generarCxP) {
-    await prisma.cuentaPagar.create({
-      data: {
-        tipoAcreedor: "PROVEEDOR",
-        proyectoId: id,
-        proveedorId,
-        concepto: `Renta equipo externo — ${linea.descripcion} · ${proyecto.nombre}`,
-        monto,
-        montoOriginal: monto,
-        estado: "PENDIENTE",
-        fechaCompromiso: fechaCompromiso ? new Date(fechaCompromiso) : proyecto.fechaEvento,
-        notas: JSON.stringify({ lineaId, tipo: "RENTA_EQUIPO_EXTERNO" }),
-      },
-    });
-  }
-
-  await prisma.cotizacionLinea.update({
-    where: { id: lineaId },
-    data: {
-      costoExterno: monto,
-      notasInternas: JSON.stringify({
-        confirmadoEn: new Date().toISOString(),
-        confirmadoPorId: session.id ?? null,
-        proveedorConfirmadoId: proveedorId,
-        monto,
-      }),
-    },
-  });
-
-  return NextResponse.json({ ok: true });
 }
 
 // ── PATCH — Reclasificar línea (cambiar tipo: EQUIPO_PROPIO ↔ EQUIPO_EXTERNO) ─

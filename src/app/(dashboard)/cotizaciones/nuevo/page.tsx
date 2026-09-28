@@ -373,8 +373,6 @@ function CotizadorForm() {
     equipoId: string; lineaId: string; stockPropio: number; deficit: number;
   } | null>(null);
   const [deficitProveedores, setDeficitProveedores] = useState<{ precio: number; proveedor: { id: string; nombre: string; empresa: string | null; prioridad: number } }[]>([]);
-  const [deficitProveedorId, setDeficitProveedorId] = useState('');
-  const [deficitProveedorTexto, setDeficitProveedorTexto] = useState('');
 
   // Nuevos: modal nuevo equipo proveedor + adicionales
   const [showNuevoEqModal, setShowNuevoEqModal] = useState(false);
@@ -3967,41 +3965,9 @@ function CotizadorForm() {
             <p className="text-gray-400 text-sm mb-4">
               Tienes <strong className="text-white">{deficitInfo.stockPropio}</strong> unidades disponibles. Necesitas <strong className="text-orange-400">{deficitInfo.deficit} más</strong> de un proveedor externo.
             </p>
-            <p className="text-xs text-gray-500 mb-4">Esta información es interna y NO aparece en la cotización al cliente.</p>
-
-            {deficitProveedores.length > 0 && (
-              <div className="mb-4">
-                <p className="text-xs text-gray-400 font-semibold mb-2 uppercase tracking-wider">Proveedores recomendados</p>
-                <div className="space-y-1.5">
-                  {deficitProveedores.map(pp => (
-                    <button key={pp.proveedor.id} type="button"
-                      onClick={() => { setDeficitProveedorId(pp.proveedor.id); setDeficitProveedorTexto(''); }}
-                      className={`w-full text-left flex items-center justify-between px-3 py-2 rounded-xl border transition-all ${
-                        deficitProveedorId === pp.proveedor.id
-                          ? 'border-[#B3985B] bg-[#B3985B]/10'
-                          : 'border-[#2a2a2a] hover:border-[#3a3a3a] bg-[#0d0d0d]'
-                      }`}>
-                      <div>
-                        <span className="text-sm text-white">{pp.proveedor.nombre}</span>
-                        {pp.proveedor.empresa && <span className="text-xs text-gray-500 ml-1">— {pp.proveedor.empresa}</span>}
-                        {pp.proveedor.prioridad > 0 && <span className="ml-2 text-[10px] text-yellow-500">{'⭐'.repeat(pp.proveedor.prioridad).slice(0, pp.proveedor.prioridad)}</span>}
-                      </div>
-                      <span className="text-xs text-[#B3985B] font-semibold">${pp.precio.toLocaleString('es-MX')}/día</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="mb-4">
-              <p className="text-xs text-gray-400 font-semibold mb-2 uppercase tracking-wider">O escribir proveedor</p>
-              <input
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B3985B]/40 placeholder:text-gray-700"
-                placeholder="Nombre del proveedor..."
-                value={deficitProveedorTexto}
-                onChange={e => { setDeficitProveedorTexto(e.target.value); setDeficitProveedorId(''); }}
-              />
-            </div>
+            <p className="text-xs text-gray-500 mb-4">
+              A quién se le renta se decide en el proyecto, no aquí. Esta información es interna y NO aparece en la cotización al cliente.
+            </p>
 
             <div className="flex gap-2">
               <button type="button"
@@ -4010,8 +3976,9 @@ function CotizadorForm() {
                     const deficit = {
                       cantidadPropia: deficitInfo.stockPropio,
                       cantidadExterna: deficitInfo.deficit,
-                      proveedorRentaId: deficitProveedorId || null,
-                      notasInternas: deficitProveedorTexto || null,
+                      // Quien mejor precio nos da queda anotado como sugerencia para el proyecto.
+                      proveedorRentaId: deficitProveedores[0]?.proveedor.id ?? null,
+                      notasInternas: null,
                     };
                     setLineasEquipo(prev => {
                       const idx = [...prev].reverse().findIndex(l => l.equipoId === deficitInfo.equipoId);
@@ -4021,13 +3988,11 @@ function CotizadorForm() {
                     });
                   }
                   setDeficitInfo(null);
-                  setDeficitProveedorId('');
-                  setDeficitProveedorTexto('');
                 }}
                 className="flex-1 bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-bold py-2.5 rounded-xl transition-colors">
                 Confirmar
               </button>
-              <button type="button" onClick={() => { setDeficitInfo(null); setDeficitProveedorId(''); setDeficitProveedorTexto(''); }}
+              <button type="button" onClick={() => setDeficitInfo(null)}
                 className="px-4 text-sm text-gray-500 hover:text-gray-300 border border-[#2a2a2a] rounded-xl transition-colors">
                 Omitir
               </button>

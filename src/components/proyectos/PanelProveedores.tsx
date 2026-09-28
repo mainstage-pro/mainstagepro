@@ -55,16 +55,21 @@ export type ProveedorEventoItem = {
   items: ConceptoManual[];
 };
 
-type ProveedorCatalogo = { id: string; nombre: string; telefono: string | null };
+type ProveedorCatalogo = { id: string; nombre: string; empresa: string | null; telefono: string | null };
 
 /** Línea de la cotización que puede asignarse a un proveedor. */
 type LineaCotizacion = {
   id: string;
+  tipo: string;
   descripcion: string;
   marca: string | null;
   modelo: string | null;
   cantidad: number;
+  dias: number;
   proveedorEventoId: string | null;
+  /** Quién suele rentar este equipo, según el cotizador. Sugerencia, no decisión. */
+  proveedor: { id: string; nombre: string; empresa: string | null } | null;
+  costoUnitario: number | null;
 };
 
 const FASES = FASES_PROVEEDOR;
@@ -187,6 +192,17 @@ export function PanelProveedores({
   const [altaNuevo, setAltaNuevo] = useState(false);
   const [agregando, setAgregando] = useState(false);
 
+  // Asignar proveedor a los equipos de tercero que trae la cotización.
+  const [seleccion, setSeleccion] = useState<string[]>([]);
+  const [asigAbierta, setAsigAbierta] = useState(false);
+  const [asigProveedorId, setAsigProveedorId] = useState("");
+  const [asigNuevo, setAsigNuevo] = useState(false);
+  const [asigNombre, setAsigNombre] = useState("");
+  const [asigEmpresa, setAsigEmpresa] = useState("");
+  const [asigTelefono, setAsigTelefono] = useState("");
+  const [asigCosto, setAsigCosto] = useState("");
+  const [asignando, setAsignando] = useState(false);
+
   useEffect(() => {
     (async () => {
       const [rp, rc, rl] = await Promise.all([
@@ -198,7 +214,11 @@ export function PanelProveedores({
       if (rp.ok) setProveedores((await rp.json()).proveedores ?? []);
       if (rc.ok) {
         const d = await rc.json();
-        setCatalogo((d.proveedores ?? []).map((p: ProveedorCatalogo) => ({ id: p.id, nombre: p.nombre, telefono: p.telefono })));
+        setCatalogo(
+          (d.proveedores ?? []).map((p: ProveedorCatalogo) => ({
+            id: p.id, nombre: p.nombre, empresa: p.empresa, telefono: p.telefono,
+          })),
+        );
       }
       if (rl.ok) setLineasCotizacion((await rl.json()).lineas ?? []);
       setCargando(false);
@@ -206,8 +226,23 @@ export function PanelProveedores({
   }, [proyectoId]);
 
   const opcionesCatalogo = useMemo(
-    () => catalogo.map((p) => ({ value: p.id, label: p.nombre })),
+    () => catalogo.map((p) => ({ value: p.id, label: p.empresa ? `${p.nombre} — ${p.empresa}` : p.nombre })),
     [catalogo],
+  );
+
+  /** Equipos que la cotización marcó de tercero y todavía no trae nadie. */
+  const sinProveedor = useMemo(
+    () => lineasCotizacion.filter((l) => l.tipo === "EQUIPO_EXTERNO" && !l.proveedorEventoId),
+    [lineasCotizacion],
+  );
+  const seleccionadas = useMemo(
+    () => sinProveedor.filter((l) => seleccion.includes(l.id)),
+    [sinProveedor, seleccion],
+  );
+  /** Lo que la cotización estimó que cuestan estos equipos. Referencia, no verdad. */
+  const costoCotizado = useMemo(
+    () => seleccionadas.reduce((s, l) => s + (l.costoUnitario ?? 0) * l.cantidad * (l.dias || 1), 0),
+    [seleccionadas],
   );
 
   const diasSeleccionables = useMemo(
@@ -261,6 +296,86 @@ export function PanelProveedores({
     );
   }
 
+  /** Costo a precargar: el ya acordado con ese proveedor, o lo que estimó la cotización. */
+  function costoParaProveedor(proveedorId: string): string {
+    const bloque = proveedores.find((p) => p.proveedorId === proveedorId);
+    if (bloque?.costoAcordado != null) return String(bloque.costoAcordado);
+    return costoCotizado > 0 ? String(Math.round(costoCotizado)) : "";
+  }
+
+  function abrirAsignacion() {
+    // Si el cotizador sugirió el mismo proveedor para todo lo elegido, se precarga.
+    const sugeridos = new Set(seleccionadas.map((l) => l.proveedor?.id).filter(Boolean));
+    const sugerido = sugeridos.size === 1 ? [...sugeridos][0]! : "";
+    setAsigProveedorId(sugerido);
+    setAsigCosto(sugerido ? costoParaProveedor(sugerido) : costoCotizado > 0 ? String(Math.round(costoCotizado)) : "");
+    setAsigNuevo(false);
+    setAsigNombre(""); setAsigEmpresa(""); setAsigTelefono("");
+    setAsigAbierta(true);
+  }
+
+  function elegirProveedorAsignacion(proveedorId: string) {
+    setAsigProveedorId(proveedorId);
+    if (proveedorId) setAsigCosto(costoParaProveedor(proveedorId));
+  }
+
+  /**
+   * Le pone proveedor a los equipos elegidos. El proveedor nuevo se da de alta en el
+   * directorio con los mismos datos de siempre, para que no nazca como nombre suelto y
+   * pueda cobrársele desde el primer momento.
+   */
+  async function asignar() {
+    const lineaIds = seleccionadas.map((l) => l.id);
+    if (!lineaIds.length) return;
+    setAsignando(true);
+    try {
+      let proveedorId = asigProveedorId;
+
+      if (asigNuevo) {
+        const rAlta = await fetch("/api/proveedores", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            nombre: asigNombre.trim(),
+            empresa: asigEmpresa.trim() || null,
+            telefono: asigTelefono.trim() || null,
+          }),
+        });
+        if (!rAlta.ok) throw new Error((await rAlta.json().catch(() => ({}))).error ?? "No se pudo registrar el proveedor");
+        const nuevo = (await rAlta.json()).proveedor;
+        proveedorId = nuevo.id;
+        setCatalogo((prev) =>
+          [...prev, { id: nuevo.id, nombre: nuevo.nombre, empresa: nuevo.empresa, telefono: nuevo.telefono }]
+            .sort((a, b) => a.nombre.localeCompare(b.nombre)),
+        );
+      }
+
+      const res = await fetch(`/api/proyectos/${proyectoId}/equipos-cotizacion/asignar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lineaIds, proveedorId, costoAcordado: asigCosto === "" ? null : asigCosto }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "No se pudo asignar el proveedor");
+      const { proveedor } = await res.json();
+
+      setProveedores((prev) =>
+        prev.some((p) => p.id === proveedor.id)
+          ? prev.map((p) => (p.id === proveedor.id ? proveedor : p))
+          : [...prev, proveedor],
+      );
+      setBorradores((prev) => ({ ...prev, [proveedor.id]: borradorDe(proveedor) }));
+      setLineasCotizacion((prev) =>
+        prev.map((l) => (lineaIds.includes(l.id) ? { ...l, proveedorEventoId: proveedor.id } : l)),
+      );
+      setSeleccion([]);
+      setAsigAbierta(false);
+      toast.success(`${lineaIds.length} equipo${lineaIds.length === 1 ? "" : "s"} a cargo de ${proveedor.nombreProveedor}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo asignar el proveedor");
+    }
+    setAsignando(false);
+  }
+
   function alternar(prov: ProveedorEventoItem) {
     if (abierto === prov.id) return setAbierto(null);
     setBorradores((prev) => ({ ...prev, [prov.id]: prev[prov.id] ?? borradorDe(prov) }));
@@ -287,7 +402,7 @@ export function PanelProveedores({
       const { proveedor } = await res.json();
       setProveedores((prev) => [...prev, proveedor]);
       if (altaNuevo && proveedor.proveedorId) {
-        setCatalogo((prev) => [...prev, { id: proveedor.proveedorId, nombre, telefono: altaCelular || null }]);
+        setCatalogo((prev) => [...prev, { id: proveedor.proveedorId, nombre, empresa: null, telefono: altaCelular || null }]);
       }
       setAltaCatalogoId(""); setAltaNombre(""); setAltaCelular(""); setAltaServicio(""); setAltaNuevo(false);
       setMostrarAlta(false);
@@ -355,7 +470,7 @@ export function PanelProveedores({
     if (!res.ok) return toast.error("No se pudo registrar en el catálogo");
     const { proveedor } = await res.json();
     reemplazar(proveedor);
-    setCatalogo((prev) => [...prev, { id: proveedor.proveedorId, nombre: proveedor.nombreProveedor, telefono: proveedor.telefonoProveedor }]);
+    setCatalogo((prev) => [...prev, { id: proveedor.proveedorId, nombre: proveedor.nombreProveedor, empresa: null, telefono: proveedor.telefonoProveedor }]);
     toast.success("Proveedor registrado en el catálogo");
   }
 
@@ -424,6 +539,133 @@ export function PanelProveedores({
 
   return (
     <div className="space-y-3">
+      {/* Los equipos que la cotización marcó de tercero, esperando quién los trae. */}
+      {sinProveedor.length > 0 && (
+        <div className="ms-stat-card border-l-2 border-l-orange-500/50">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">
+              Equipo de tercero sin proveedor
+            </p>
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-900/30 text-orange-400">
+              {sinProveedor.length} por asignar
+            </span>
+          </div>
+
+          <div className="mt-3 rounded-lg border border-[#222] divide-y divide-[#1a1a1a]">
+            {sinProveedor.map((l) => (
+              <label key={l.id} className="flex items-center gap-2 px-2.5 py-1.5 text-xs cursor-pointer hover:bg-[#111]">
+                <input
+                  type="checkbox"
+                  checked={seleccion.includes(l.id)}
+                  onChange={() =>
+                    setSeleccion((prev) => (prev.includes(l.id) ? prev.filter((x) => x !== l.id) : [...prev, l.id]))
+                  }
+                  className="accent-[#B3985B]"
+                />
+                <span className="text-gray-300">
+                  {l.cantidad} × {[l.marca, l.modelo].filter(Boolean).join(" ") || l.descripcion}
+                </span>
+                {l.proveedor && (
+                  <span className="text-[10px] text-gray-600 ml-auto shrink-0">
+                    suele rentarlo {l.proveedor.empresa || l.proveedor.nombre}
+                  </span>
+                )}
+              </label>
+            ))}
+          </div>
+
+          {!asigAbierta ? (
+            <div className="flex items-center gap-3 mt-3 flex-wrap">
+              <button
+                disabled={seleccionadas.length === 0}
+                onClick={abrirAsignacion}
+                className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-30 text-black text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
+              >
+                Asignar proveedor
+              </button>
+              <button
+                onClick={() => setSeleccion(seleccion.length === sinProveedor.length ? [] : sinProveedor.map((l) => l.id))}
+                className="text-xs text-gray-500 hover:text-[#B3985B] transition-colors"
+              >
+                {seleccion.length === sinProveedor.length ? "Quitar selección" : "Seleccionar todos"}
+              </button>
+            </div>
+          ) : (
+            <div className="mt-4 space-y-3 border-t border-[#1a1a1a] pt-4">
+              <p className="text-xs text-gray-500">
+                {seleccionadas.length} equipo{seleccionadas.length === 1 ? "" : "s"} a cargo de:
+              </p>
+
+              {asigNuevo ? (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Nombre del contacto *</label>
+                    <input value={asigNombre} onChange={(e) => setAsigNombre(e.target.value)} placeholder="Con quién tratas" className={inputCls} />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Empresa</label>
+                    <input value={asigEmpresa} onChange={(e) => setAsigEmpresa(e.target.value)} placeholder="Razón social o marca" className={inputCls} />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Teléfono</label>
+                    <input value={asigTelefono} onChange={(e) => setAsigTelefono(e.target.value)} placeholder="10 dígitos" className={inputCls} />
+                  </div>
+                </div>
+              ) : (
+                <Combobox
+                  value={asigProveedorId}
+                  onChange={elegirProveedorAsignacion}
+                  options={opcionesCatalogo}
+                  placeholder="Buscar proveedor del directorio..."
+                />
+              )}
+
+              <button
+                onClick={() => setAsigNuevo((v) => !v)}
+                className="text-xs text-gray-500 hover:text-[#B3985B] transition-colors"
+              >
+                {asigNuevo ? "← Elegir uno del directorio" : "¿Es nuevo? Regístralo aquí"}
+              </button>
+
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Costo acordado (total con este proveedor)</label>
+                <input
+                  value={asigCosto}
+                  onChange={(e) => setAsigCosto(e.target.value.replace(/[^\d.]/g, ""))}
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  className={`md:w-48 ${inputCls}`}
+                />
+                {costoCotizado > 0 && (
+                  <p className="text-[11px] text-gray-600 mt-1">
+                    La cotización estimó {money(costoCotizado)} por lo seleccionado.
+                  </p>
+                )}
+              </div>
+
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  disabled={asignando || (asigNuevo ? !asigNombre.trim() : !asigProveedorId)}
+                  onClick={asignar}
+                  className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
+                >
+                  {asignando ? "Asignando..." : "Asignar y capturar costo"}
+                </button>
+                <button
+                  onClick={() => setAsigAbierta(false)}
+                  className="text-xs text-gray-500 hover:text-white px-3 py-2 transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+              <p className="text-[11px] text-gray-600">
+                Queda listo para confirmarse como cuenta por pagar en la pestaña de Finanzas del proyecto.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="ms-stat-card">
         <div className="flex items-center justify-between gap-2">
           <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">Proveedores y subrentas</p>

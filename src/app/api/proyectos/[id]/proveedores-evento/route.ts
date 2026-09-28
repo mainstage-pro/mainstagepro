@@ -3,8 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import {
-  FASES_PROVEEDOR,
-  TITULO_FASE,
+  ventanasIniciales,
   TIPOS_ACREEDOR,
   CAMPO_ACREEDOR,
   esTipoAcreedor,
@@ -141,31 +140,22 @@ export async function POST(
     },
   });
 
-  // Las tres ventanas nacen con el proveedor, ya fechadas con lo que el proyecto sabe.
-  // La recolección es lo que más se queda al aire: que exista desde el inicio la obliga
-  // a aparecer en la cronología aunque nadie la haya llenado.
-  // El imprevisto no las abre: se pide con el evento encima y la cronología ya corrió.
+  // El imprevisto no abre ventanas: se pide con el evento encima y la cronología ya corrió.
   if (!imprevisto) {
     const proyecto = await prisma.proyecto.findUnique({
       where: { id },
       select: { fechaEvento: true, fechaMontaje: true, fechaDesmontaje: true },
     });
-    const fechaPorFase = {
-      INSTALACION: proyecto?.fechaMontaje ?? proyecto?.fechaEvento ?? null,
-      OPERACION: proyecto?.fechaEvento ?? null,
-      RECOLECCION: proyecto?.fechaDesmontaje ?? proyecto?.fechaEvento ?? null,
-    };
     await prisma.proyectoBloqueTiempo.createMany({
-      data: FASES_PROVEEDOR.map((fase, i) => ({
+      data: ventanasIniciales({
         proyectoId: id,
         proveedorEventoId: creado.id,
-        tipo: "PROVEEDOR",
-        fase,
-        fecha: fechaPorFase[fase],
-        titulo: `${TITULO_FASE[fase]} — ${nombre}`,
+        nombreProveedor: nombre,
         responsable: creado.responsable,
-        orden: i * 10,
-      })),
+        fechaMontaje: proyecto?.fechaMontaje ?? null,
+        fechaEvento: proyecto?.fechaEvento ?? null,
+        fechaDesmontaje: proyecto?.fechaDesmontaje ?? null,
+      }),
     });
   }
 

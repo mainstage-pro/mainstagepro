@@ -14,6 +14,37 @@ export const TITULO_FASE: Record<FaseProveedor, string> = {
   RECOLECCION: "Recolección",
 };
 
+/**
+ * Las tres ventanas con que nace un proveedor del evento, ya fechadas con lo que el
+ * proyecto sabe. Que existan desde el alta obliga a la recolección —lo que más se
+ * queda al aire— a aparecer en la cronología aunque nadie la haya llenado.
+ */
+export function ventanasIniciales(opts: {
+  proyectoId: string;
+  proveedorEventoId: string;
+  nombreProveedor: string;
+  responsable: string | null;
+  fechaMontaje: Date | null;
+  fechaEvento: Date | null;
+  fechaDesmontaje: Date | null;
+}) {
+  const fechaPorFase: Record<FaseProveedor, Date | null> = {
+    INSTALACION: opts.fechaMontaje ?? opts.fechaEvento,
+    OPERACION: opts.fechaEvento,
+    RECOLECCION: opts.fechaDesmontaje ?? opts.fechaEvento,
+  };
+  return FASES_PROVEEDOR.map((fase, i) => ({
+    proyectoId: opts.proyectoId,
+    proveedorEventoId: opts.proveedorEventoId,
+    tipo: "PROVEEDOR",
+    fase,
+    fecha: fechaPorFase[fase],
+    titulo: `${TITULO_FASE[fase]} — ${opts.nombreProveedor}`,
+    responsable: opts.responsable,
+    orden: i * 10,
+  }));
+}
+
 /** Cómo llega el equipo. Se captura aparte del regreso porque rara vez coinciden. */
 export const MODALIDADES_ENTREGA = [
   { valor: "DEJA_BODEGA", label: "Nos lo deja en bodega" },
