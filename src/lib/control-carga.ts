@@ -23,6 +23,18 @@ export const PASE_DESCRIPCION: Record<TipoPase, string> = {
   RETORNO: "Marca lo que baja de la camioneta. Lo que no aparezca queda como faltante.",
 };
 
+/**
+ * Cada pase es un lugar del portal, no un estado interno: la salida y el retorno
+ * tienen su propia dirección para que la navegación de abajo pueda llevarte
+ * directo y el botón de "atrás" del teléfono haga lo que se espera.
+ */
+export const RUTA_PASE: Record<TipoPase, string> = { SALIDA: "salida", RETORNO: "retorno" };
+
+export function tipoDesdeRuta(segmento: string): TipoPase | null {
+  const s = segmento.toLowerCase();
+  return s === "salida" ? "SALIDA" : s === "retorno" ? "RETORNO" : null;
+}
+
 export const ESTADOS_ITEM = ["PENDIENTE", "OK", "FALTANTE", "DANADO"] as const;
 export type EstadoItemCarga = (typeof ESTADOS_ITEM)[number];
 
@@ -261,4 +273,40 @@ export function siguientePase(pases: PaseResumen[]): SiguientePase {
     titulo: "Carga cerrada",
     detalle: "Salida y retorno quedaron registrados. Puedes consultarlos o abrir otro viaje.",
   };
+}
+
+/**
+ * Qué enseñar al entrar a "Salida" o a "Retorno".
+ *
+ * Quien llega a una de esas páginas quiere el pase vivo; si ya no hay ninguno
+ * abierto, quiere ver el último —cómo quedó— y no una pantalla vacía que le
+ * pida abrir otro. Los demás se ofrecen aparte, para los viajes repetidos.
+ */
+export type PaseListado = { id: string; tipo: string; estado: string; createdAt: string };
+
+export function paseVisible<T extends PaseListado>(
+  pases: T[],
+  tipo: TipoPase,
+  preferido?: string | null
+): { activo: T | null; delTipo: T[] } {
+  const delTipo = pases
+    .filter((p) => p.tipo === tipo)
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+
+  const elegido =
+    (preferido ? delTipo.find((p) => p.id === preferido) : null) ??
+    [...delTipo].reverse().find((p) => p.estado === "EN_CURSO") ??
+    delTipo[delTipo.length - 1] ??
+    null;
+
+  return { activo: elegido, delTipo };
+}
+
+/** Resumen de una pasada para el rótulo de la navegación: corto, cabe en 375 px. */
+export function estadoCortoDePase(
+  pase: { estado: string; avance: { revisados: number; total: number } } | null
+): string {
+  if (!pase) return "Sin abrir";
+  if (pase.estado === "CERRADA") return "Cerrado";
+  return `${pase.avance.revisados}/${pase.avance.total}`;
 }

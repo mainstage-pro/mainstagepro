@@ -9,7 +9,9 @@ import {
   PorConfirmar, SERVICIO_LABEL, Sec, Telefono, etiqueta, fechaCorta, fechaLarga, hora12, horaCorta, mismoDia,
 } from "./ui";
 import { fmtRango } from "@/lib/hora";
-import { PASE_LABEL, siguientePase, type TipoPase } from "@/lib/control-carga";
+import {
+  PASE_LABEL, RUTA_PASE, TIPOS_PASE, paseVisible, siguientePase, type SiguientePase,
+} from "@/lib/control-carga";
 
 /**
  * La Orden de Producción como un solo documento continuo.
@@ -205,38 +207,31 @@ export default function OrdenPage() {
 
   return (
     <>
+      {/* Saltar de apartado se hace a media lectura, no al principio: por eso el
+          índice viaja pegado arriba en vez de quedarse en la portada. */}
+      <div className="sticky top-0 z-20 -mx-5 px-5 py-2 bg-white/95 backdrop-blur border-b border-[#e8e8e8] mb-5">
+        <button
+          onClick={() => setIndice(true)}
+          className="w-full flex items-center justify-between gap-2 text-left"
+        >
+          <span className="flex items-center gap-2 text-[#0d0d0d] text-[12.5px] font-bold">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+            Ir a una sección
+          </span>
+          <span className="text-[#9a9a9a] text-[11px] tabular-nums">{bloques.length} apartados</span>
+        </button>
+      </div>
+
       {/* La acción del día, antes que el documento. */}
-      <AccionCarga token={token} pases={o.pases} titulo={siguiente.titulo} detalle={siguiente.detalle} />
+      <AccionCarga token={token} pases={o.pases} siguiente={siguiente} />
 
       {bloques.map((b, i) => (
         <Sec key={b.id} id={b.id} num={i + 1} titulo={b.titulo}>
           {b.nodo}
         </Sec>
       ))}
-
-      {/* Barra fija: saltar a cualquier apartado y entrar a la carga, sin scrollear. */}
-      <div className="fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur border-t border-[#e8e8e8] pb-[env(safe-area-inset-bottom)]">
-        <div className="max-w-3xl mx-auto px-5 py-2.5 flex gap-2">
-          <button
-            onClick={() => setIndice(true)}
-            className="flex-1 flex items-center justify-center gap-2 py-3 border border-[#d8d8d8] rounded-lg text-[#0d0d0d] text-[13px] font-bold"
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-            Índice
-          </button>
-          <Link
-            href={`/orden/${token}/carga`}
-            className="flex-1 flex items-center justify-center gap-2 py-3 bg-[#0d0d0d] rounded-lg text-white text-[13px] font-bold"
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
-            </svg>
-            Control de carga
-          </Link>
-        </div>
-      </div>
 
       {indice && (
         <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center">
@@ -269,64 +264,96 @@ export default function OrdenPage() {
 }
 
 /**
- * Tarjeta de control de carga. Un solo botón que dice lo que va a pasar: el
- * sistema ya sabe si toca salida o retorno, así que no lo pregunta.
+ * Las dos pasadas de bodega, a la vista desde que se abre el documento.
+ *
+ * No se pregunta "¿qué quieres hacer?" en abstracto: se enseñan las dos, con lo
+ * que lleva cada una, y se resalta la que toca —el sistema ya sabe cuál es—. Así
+ * quien viene a cargar entra de un toque y quien viene a consultar ve en qué va
+ * la operación sin abrir nada.
  */
 function AccionCarga({
   token,
   pases,
-  titulo,
-  detalle,
+  siguiente,
 }: {
   token: string;
-  pases: { id: string; tipo: string; estado: string; avance: { pct: number; revisados: number; total: number; faltantes: number; danados: number } }[];
-  titulo: string;
-  detalle: string;
+  pases: OrdenPaseUI[];
+  siguiente: SiguientePase;
 }) {
+  const tipoSugerido = siguiente.accion === "COMPLETO" ? null : siguiente.tipo;
+
   return (
     <div className="border border-[#e8e8e8] rounded-lg overflow-hidden mb-8">
       <div className="bg-[#0d0d0d] px-4 py-2.5 flex items-center justify-between gap-2">
         <span className="text-white text-[10px] font-bold uppercase tracking-[0.15em]">Control de carga</span>
-        {pases.length > 0 && (
-          <span className="text-[#aaa] text-[10px] tabular-nums">{pases.length} pase(s)</span>
-        )}
+        <span className="text-[#aaa] text-[10px]">{siguiente.titulo}</span>
       </div>
 
-      {pases.length > 0 && (
-        <div className="divide-y divide-[#f0f0f0]">
-          {pases.map((p) => (
-            <div key={p.id} className="px-4 py-2.5">
-              <div className="flex items-center justify-between gap-2 mb-1.5">
-                <span className="text-[#0d0d0d] text-[12.5px] font-medium">
-                  {PASE_LABEL[p.tipo as TipoPase] ?? p.tipo}
-                </span>
-                <Chip tono={p.estado === "CERRADA" ? "verde" : "ambar"}>
-                  {p.estado === "CERRADA" ? "Cerrado" : "En curso"}
-                </Chip>
-              </div>
-              <Barra pct={p.avance.pct} tono={p.estado === "CERRADA" ? "verde" : "oro"} />
-              <p className="text-[#9a9a9a] text-[10.5px] mt-1 tabular-nums">
-                {p.avance.revisados}/{p.avance.total} revisados
-                {p.avance.faltantes > 0 && ` · ${p.avance.faltantes} faltante(s)`}
-                {p.avance.danados > 0 && ` · ${p.avance.danados} dañado(s)`}
-              </p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div className="p-4">
-        <p className="text-[#5a5a5a] text-[12px] leading-relaxed mb-3">{detalle}</p>
-        <Link
-          href={`/orden/${token}/carga`}
-          className="flex items-center justify-center gap-2 w-full py-3.5 bg-[#B3985B] rounded-lg text-[#0d0d0d] text-[14px] font-bold"
-        >
-          {titulo}
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 18l6-6-6-6" />
-          </svg>
-        </Link>
+      <div className="grid grid-cols-2 divide-x divide-[#e8e8e8]">
+        {TIPOS_PASE.map((tipo) => (
+          <TarjetaPase
+            key={tipo}
+            href={`/orden/${token}/carga/${RUTA_PASE[tipo]}`}
+            titulo={PASE_LABEL[tipo]}
+            pase={paseVisible(pases, tipo).activo}
+            sugerido={tipo === tipoSugerido}
+          />
+        ))}
       </div>
     </div>
+  );
+}
+
+type OrdenPaseUI = {
+  id: string;
+  tipo: string;
+  estado: string;
+  createdAt: string;
+  avance: { pct: number; revisados: number; total: number; faltantes: number; danados: number };
+};
+
+/** Una pasada como destino: qué es, cómo va y si es la que toca. */
+function TarjetaPase({
+  href,
+  titulo,
+  pase,
+  sugerido,
+}: {
+  href: string;
+  titulo: string;
+  pase: OrdenPaseUI | null;
+  sugerido: boolean;
+}) {
+  const cerrada = pase?.estado === "CERRADA";
+  const pendientes = (pase?.avance.faltantes ?? 0) + (pase?.avance.danados ?? 0);
+
+  return (
+    <Link href={href} className={`block p-3.5 active:bg-[#f6f6f6] ${sugerido ? "bg-[#f7f0e2]" : ""}`}>
+      <div className="flex items-start justify-between gap-1.5 mb-2">
+        <span className="text-[#0d0d0d] text-[12.5px] font-bold leading-tight">{titulo}</span>
+        {sugerido && <Chip tono="oro">Ahora</Chip>}
+      </div>
+
+      {pase ? (
+        <>
+          <Barra pct={pase.avance.pct} tono={cerrada ? "verde" : "oro"} />
+          <p className="text-[#5a5a5a] text-[10.5px] mt-1.5 tabular-nums leading-tight">
+            {pase.avance.revisados}/{pase.avance.total} revisados
+          </p>
+          <p className="text-[10.5px] mt-0.5 leading-tight">
+            {cerrada ? (
+              <span className="text-[#2d6e3e] font-bold">Cerrado</span>
+            ) : (
+              <span className="text-[#b45309] font-bold">En curso</span>
+            )}
+            {pendientes > 0 && <span className="text-[#b91c1c]"> · {pendientes} con problema</span>}
+          </p>
+        </>
+      ) : (
+        <p className="text-[#9a9a9a] text-[11px] leading-snug">
+          {sugerido ? "Toca para empezar" : "Sin abrir"}
+        </p>
+      )}
+    </Link>
   );
 }

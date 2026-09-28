@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { agruparPorCategoria, avanceCarga, ESTADO_ITEM_LABEL, PASE_DESCRIPCION, PASE_LABEL, type TipoPase } from "@/lib/control-carga";
 import { SEVERIDADES_FALLA, SEVERIDAD_FALLA_LABEL } from "@/lib/falla-equipo";
-import { Barra, Cargando, Chip } from "../ui";
+import { Barra, Cargando, Chip, Miniatura } from "../ui";
 import type { Verificador } from "./Identificacion";
 
 type Item = {
@@ -12,6 +12,7 @@ type Item = {
   categoria: string | null;
   esAccesorio: boolean;
   equipoId: string | null;
+  imagenUrl: string | null;
   cantidadEsperada: number;
   cantidadVerificada: number;
   estado: string;
@@ -348,12 +349,15 @@ function Renglon({
   const parcial = revisado && item.cantidadVerificada !== item.cantidadEsperada;
 
   return (
-    <div className="flex items-stretch">
-      {/* El área grande marca completo: es el 90% de los toques. */}
+    /* El resaltado va en el renglón entero y no en cada botón: la fila se parte
+       en tres zonas de toque y si cada una se prendiera sola parecería rota. */
+    <div className={`flex items-stretch ${cerrada ? "" : "active:bg-[#f6f6f6]"}`}>
+      {/* La casilla, con su propia zona ancha: es el toque de precisión. */}
       <button
         onClick={onToggle}
         disabled={cerrada}
-        className="flex-1 min-w-0 flex items-center gap-3 p-3.5 text-left active:bg-[#f6f6f6] disabled:active:bg-transparent"
+        aria-label={`Marcar ${item.descripcion}`}
+        className="shrink-0 flex items-center pl-3.5 pr-2.5"
       >
         <span className={`shrink-0 w-6 h-6 rounded border-2 flex items-center justify-center ${TONO_ESTADO[item.estado]}`}>
           {item.estado === "OK" && (
@@ -364,7 +368,25 @@ function Renglon({
           {item.estado === "FALTANTE" && <span className="text-[#b91c1c] text-xs font-black leading-none">!</span>}
           {item.estado === "DANADO" && <span className="text-[#b45309] text-xs font-black leading-none">⚠</span>}
         </span>
+      </button>
 
+      {/* La foto abre la foto, no marca el renglón —por eso vive fuera del
+          botón—. El accesorio no trae la suya pero reserva el hueco: si no,
+          el hijo quedaría menos sangrado que su equipo y se leería al revés. */}
+      <div className="shrink-0 flex items-center pr-3">
+        {item.esAccesorio ? (
+          <span aria-hidden className="block w-10" />
+        ) : (
+          <Miniatura url={item.imagenUrl} alt={item.descripcion} />
+        )}
+      </div>
+
+      {/* El área grande marca completo: es el 90% de los toques. */}
+      <button
+        onClick={onToggle}
+        disabled={cerrada}
+        className="flex-1 min-w-0 flex items-center gap-3 py-3.5 pr-3 text-left"
+      >
         <span className="min-w-0 flex-1">
           <span className={`block text-[13.5px] leading-snug ${item.esAccesorio ? "text-[#5a5a5a]" : "text-[#0d0d0d] font-bold"} ${item.estado === "OK" ? "line-through decoration-[#c0c0c0]" : ""}`}>
             {item.esAccesorio && <span className="text-[#ddc98a] mr-1">└</span>}
@@ -392,7 +414,7 @@ function Renglon({
         <button
           onClick={onDetalle}
           aria-label="Más opciones"
-          className="shrink-0 w-11 flex items-center justify-center border-l border-[#f0f0f0] text-[#c0c0c0] active:bg-[#f6f6f6]"
+          className="shrink-0 w-11 flex items-center justify-center border-l border-[#f0f0f0] text-[#c0c0c0]"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
             <circle cx="12" cy="5" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="12" cy="19" r="1.6" />
@@ -439,11 +461,18 @@ function PanelDetalle({
       <div className="relative w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] max-h-[88vh] overflow-y-auto">
         <div className="w-10 h-1 bg-[#e0e0e0] rounded-full mx-auto mb-4 sm:hidden" />
 
-        <p className="text-[#0d0d0d] font-bold text-[16px] leading-snug">{item.descripcion}</p>
-        <p className="text-[#9a9a9a] text-[11.5px] mt-1 mb-5">
-          Se esperan {item.cantidadEsperada} · {item.categoria ?? "General"}
-          {item.marcadoPor && ` · marcado por ${item.marcadoPor}`}
-        </p>
+        {/* La foto también aquí: este panel es donde se decide "faltante" o
+            "dañado", y conviene estar seguro de qué pieza se está juzgando. */}
+        <div className="flex items-start gap-3 mb-5">
+          {!item.esAccesorio && <Miniatura url={item.imagenUrl} alt={item.descripcion} />}
+          <div className="min-w-0 flex-1">
+            <p className="text-[#0d0d0d] font-bold text-[16px] leading-snug">{item.descripcion}</p>
+            <p className="text-[#9a9a9a] text-[11.5px] mt-1">
+              Se esperan {item.cantidadEsperada} · {item.categoria ?? "General"}
+              {item.marcadoPor && ` · marcado por ${item.marcadoPor}`}
+            </p>
+          </div>
+        </div>
 
         {item.cantidadEsperada > 1 && (
           <div className="mb-4">

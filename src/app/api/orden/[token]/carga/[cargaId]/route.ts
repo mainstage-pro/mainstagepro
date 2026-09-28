@@ -44,6 +44,20 @@ export async function GET(req: NextRequest, ctx: Ctx) {
   });
   if (!carga) return NextResponse.json({ error: "Pase no encontrado" }, { status: 404 });
 
+  // Las fotos no se congelan con el renglón: el snapshot guarda qué se esperaba,
+  // no cómo se ve. Se traen aparte porque ProyectoCargaItem no tiene relación a
+  // Equipo (solo el id, para poder levantar la falla). En bodega la duda no es
+  // el nombre del modelo, es si la caja que tienes enfrente es esa.
+  const equipoIds = [...new Set(carga.items.map((i) => i.equipoId).filter((v): v is string => !!v))];
+  const fotos = new Map<string, string | null>();
+  if (equipoIds.length > 0) {
+    const equipos = await prisma.equipo.findMany({
+      where: { id: { in: equipoIds } },
+      select: { id: true, imagenUrl: true },
+    });
+    for (const e of equipos) fotos.set(e.id, e.imagenUrl);
+  }
+
   return NextResponse.json({
     carga: {
       id: carga.id,
@@ -60,6 +74,7 @@ export async function GET(req: NextRequest, ctx: Ctx) {
         categoria: i.categoria,
         esAccesorio: i.esAccesorio,
         equipoId: i.equipoId,
+        imagenUrl: i.equipoId ? fotos.get(i.equipoId) ?? null : null,
         cantidadEsperada: i.cantidadEsperada,
         cantidadVerificada: i.cantidadVerificada,
         estado: i.estado,

@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import { OrdenProvider, useOrden } from "./OrdenContext";
 import { ESTADO_LABEL, FONT, SERVICIO_LABEL, fechaCorta, haceCuanto, hora12 } from "./ui";
+import { RUTA_PASE, estadoCortoDePase, paseVisible } from "@/lib/control-carga";
 
 /**
  * Regreso al proyecto, solo para quien trae sesión de la plataforma.
@@ -42,6 +43,94 @@ function VolverAlProyecto({ proyectoId }: { proyectoId: string | null }) {
   );
 }
 
+/**
+ * Los tres lugares del portal, siempre a la mano.
+ *
+ * El documento se consulta y se marca al mismo tiempo: se busca una hora en la
+ * ficha, se vuelve a la lista, se checa una caja, se busca un teléfono. Sin esta
+ * barra ese ir y venir eran tres toques y un "atrás" a ciegas; el equipo se
+ * quedaba encerrado en el checklist sin forma obvia de volver a la portada.
+ *
+ * Va abajo porque es donde llega el pulgar con el teléfono en una mano y una
+ * caja en la otra, que es como se usa esto de verdad.
+ */
+function NavPortal({ token }: { token: string }) {
+  const { orden } = useOrden();
+  const pathname = usePathname() ?? "";
+
+  const base = `/orden/${token}`;
+  const salida = orden ? paseVisible(orden.pases, "SALIDA").activo : null;
+  const retorno = orden ? paseVisible(orden.pases, "RETORNO").activo : null;
+
+  const destinos = [
+    {
+      href: base,
+      activo: pathname === base,
+      titulo: "Ficha",
+      detalle: "Todo el evento",
+      icono: (
+        <>
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+          <path d="M14 2v6h6M8 13h8M8 17h5" />
+        </>
+      ),
+    },
+    {
+      href: `${base}/carga/${RUTA_PASE.SALIDA}`,
+      activo: pathname.endsWith(`/carga/${RUTA_PASE.SALIDA}`),
+      titulo: "Salida",
+      detalle: estadoCortoDePase(salida),
+      icono: (
+        <>
+          <path d="M12 16V4M8 8l4-4 4 4" />
+          <path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3" />
+        </>
+      ),
+    },
+    {
+      href: `${base}/carga/${RUTA_PASE.RETORNO}`,
+      activo: pathname.endsWith(`/carga/${RUTA_PASE.RETORNO}`),
+      titulo: "Retorno",
+      detalle: estadoCortoDePase(retorno),
+      icono: (
+        <>
+          <path d="M12 4v12M8 12l4 4 4-4" />
+          <path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3" />
+        </>
+      ),
+    },
+  ];
+
+  return (
+    <nav className="fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur border-t border-[#e8e8e8] pb-[env(safe-area-inset-bottom)]">
+      <div className="max-w-3xl mx-auto flex">
+        {destinos.map((d) => (
+          <Link
+            key={d.href}
+            href={d.href}
+            aria-current={d.activo ? "page" : undefined}
+            className={`flex-1 min-w-0 flex flex-col items-center gap-0.5 pt-2 pb-2.5 border-t-2 transition-colors ${
+              d.activo ? "border-[#B3985B] text-[#0d0d0d]" : "border-transparent text-[#9a9a9a]"
+            }`}
+          >
+            <svg
+              width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"
+              className={d.activo ? "text-[#B3985B]" : ""}
+            >
+              {d.icono}
+            </svg>
+            <span className="text-[11px] font-bold leading-none">{d.titulo}</span>
+            <span className="text-[9.5px] leading-none text-[#9a9a9a] tabular-nums truncate max-w-full px-1">
+              {d.detalle}
+            </span>
+          </Link>
+        ))}
+      </div>
+    </nav>
+  );
+}
+
 /** Celda de la banda dorada. */
 function BandaItem({ label, valor }: { label: string; valor: string | null }) {
   if (!valor) return null;
@@ -54,7 +143,7 @@ function BandaItem({ label, valor }: { label: string; valor: string | null }) {
 }
 
 function Cascaron({ children }: { children: React.ReactNode }) {
-  const { orden, error } = useOrden();
+  const { orden, error, token } = useOrden();
 
   if (error) {
     return (
@@ -127,11 +216,13 @@ function Cascaron({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      <main className="max-w-3xl mx-auto px-5 pt-6 pb-28">{children}</main>
+      <main className="max-w-3xl mx-auto px-5 pt-6 pb-8">{children}</main>
 
       {/* Pie con logo y folio, como el del PDF: cierra el documento en vez de
           dejarlo colgando, y da referencia de qué papel es si se fotografía. */}
-      <footer className="max-w-3xl mx-auto px-5 pb-8">
+      {/* El hueco de abajo lo deja el pie, no el contenido: así la barra fija
+          nunca tapa el último renglón de una lista larga. */}
+      <footer className="max-w-3xl mx-auto px-5 pb-28">
         <div className="border-t border-[#e8e8e8] pt-3 flex items-end justify-between gap-4">
           <div className="min-w-0">
             <p className="text-[#9a9a9a] text-[9.5px] leading-tight">Uso interno — Mainstage Pro</p>
@@ -145,6 +236,8 @@ function Cascaron({ children }: { children: React.ReactNode }) {
           <img src="/logo.png" alt="Mainstage Pro" className="h-3.5 shrink-0 opacity-25" draggable={false} />
         </div>
       </footer>
+
+      <NavPortal token={token} />
     </div>
   );
 }
