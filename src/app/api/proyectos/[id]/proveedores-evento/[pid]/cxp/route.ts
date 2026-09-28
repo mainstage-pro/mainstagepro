@@ -48,8 +48,11 @@ export async function POST(
     ...bloque.items.map((it) => `${it.cantidad}× ${it.descripcion}`),
     ...bloque.lineas.map((l) => `${l.cantidad}× ${l.descripcion}`),
   ].join(", ");
-  const servicio = (bloque.servicioEquipo?.trim() || rentado || "Servicio de proveedor").slice(0, 180);
-  const concepto = `${servicio} — ${bloque.nombreProveedor} · ${bloque.proyecto.numeroProyecto}`;
+  const descrito = bloque.servicioEquipo?.trim() || rentado || "Servicio de proveedor";
+  // El imprevisto lleva su cantidad en `unidades` porque se captura en un solo renglón.
+  const servicio = (bloque.unidades ? `${bloque.unidades}× ${descrito}` : descrito).slice(0, 180);
+  const etiqueta = bloque.imprevisto ? "Imprevisto: " : "";
+  const concepto = `${etiqueta}${servicio} — ${bloque.nombreProveedor} · ${bloque.proyecto.numeroProyecto}`;
   const fechaCompromiso = proximoMiercolesTraEvento(bloque.proyecto.fechaEvento ?? new Date());
 
   if (bloque.cuentaPagarId) {

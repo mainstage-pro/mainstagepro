@@ -4005,6 +4005,15 @@ model ProveedorEvento {
   modalidadRegreso  String?
   // Lo que nos cuesta, capturado a mano: no se deriva de la cotización.
   costoAcordado     Float?
+  // Renta o servicio que salió sobre la marcha, no coordinado en preproducción. El
+  // registro se captura en un renglón (servicioEquipo + unidades + costoAcordado) y no
+  // abre ventanas en la cronología: el evento ya está corriendo cuando se pide.
+  imprevisto        Boolean   @default(false)
+  fechaSolicitud    DateTime?
+  solicitadoPor     String?
+  // Cantidad de la captura rápida del imprevisto; los proveedores planeados llevan
+  // sus cantidades en `items` y `lineas`.
+  unidades          Int?
   cuentaPagarId     String?      @unique
   cuentaPagar       CuentaPagar? @relation(fields: [cuentaPagarId], references: [id])
 

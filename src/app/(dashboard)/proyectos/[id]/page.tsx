@@ -25,6 +25,7 @@ import { Package, AlertTriangle, Smartphone, Truck, Home, Radio, MessageCircle, 
 import { ViabilidadWidget, type ViabilidadActiva, type ViabilidadHistoricoItem } from "@/components/proyectos/ViabilidadWidget";
 import { MontajePosiciones, type Posicion as PosicionMontaje } from "@/components/proyectos/MontajePosiciones";
 import { PanelProveedores } from "@/components/proyectos/PanelProveedores";
+import { PanelImprevistos } from "@/components/proyectos/PanelImprevistos";
 import { labelConfiguracion, labelZona } from "@/lib/montaje-vocabulario";
 import { DISCIPLINA_COLORS, DISCIPLINA_LABELS } from "@/lib/disciplinaColors";
 import { contarRespondidos, contarIncidencias, nivelResultado, getEvalConfig, aplicaEvaluacion, type EvalPostEventoData } from "@/lib/evaluacion-post-evento";
@@ -5325,6 +5326,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               fechaDesmontaje: proyecto.fechaDesmontaje,
             }}
           />
+
+
+          {/* ── Imprevistos: lo que se pidió con el evento ya encima ── */}
+          <PanelImprevistos proyectoId={id} />
 
 
           {/* ── Cronología 1: logística general ── */}

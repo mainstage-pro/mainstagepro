@@ -16,14 +16,15 @@ export const proveedorEventoInclude: Prisma.ProveedorEventoInclude = {
 };
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   const { id } = await params;
+  const filtro = req.nextUrl.searchParams.get("imprevisto");
   const proveedores = await prisma.proveedorEvento.findMany({
-    where: { proyectoId: id },
+    where: { proyectoId: id, ...(filtro != null ? { imprevisto: filtro === "1" } : {}) },
     orderBy: { createdAt: "asc" },
     include: proveedorEventoInclude,
   });
@@ -59,6 +60,8 @@ export async function POST(
     return NextResponse.json({ error: "El nombre del proveedor es requerido" }, { status: 400 });
   }
 
+  const imprevisto = body.imprevisto === true;
+
   const creado = await prisma.proveedorEvento.create({
     data: {
       proyectoId: id,
@@ -71,33 +74,40 @@ export async function POST(
       modalidadEntrega: body.modalidadEntrega?.trim() || null,
       modalidadRegreso: body.modalidadRegreso?.trim() || null,
       costoAcordado: body.costoAcordado != null && body.costoAcordado !== "" ? parseFloat(body.costoAcordado) : null,
+      imprevisto,
+      fechaSolicitud: imprevisto ? (body.fechaSolicitud ? new Date(body.fechaSolicitud) : new Date()) : null,
+      solicitadoPor: body.solicitadoPor?.trim() || (imprevisto ? session.name ?? null : null),
+      unidades: body.unidades != null && body.unidades !== "" ? Math.max(1, Math.round(Number(body.unidades))) : null,
     },
   });
 
   // Las tres ventanas nacen con el proveedor, ya fechadas con lo que el proyecto sabe.
   // La recolección es lo que más se queda al aire: que exista desde el inicio la obliga
   // a aparecer en la cronología aunque nadie la haya llenado.
-  const proyecto = await prisma.proyecto.findUnique({
-    where: { id },
-    select: { fechaEvento: true, fechaMontaje: true, fechaDesmontaje: true },
-  });
-  const fechaPorFase = {
-    INSTALACION: proyecto?.fechaMontaje ?? proyecto?.fechaEvento ?? null,
-    OPERACION: proyecto?.fechaEvento ?? null,
-    RECOLECCION: proyecto?.fechaDesmontaje ?? proyecto?.fechaEvento ?? null,
-  };
-  await prisma.proyectoBloqueTiempo.createMany({
-    data: FASES_PROVEEDOR.map((fase, i) => ({
-      proyectoId: id,
-      proveedorEventoId: creado.id,
-      tipo: "PROVEEDOR",
-      fase,
-      fecha: fechaPorFase[fase],
-      titulo: `${TITULO_FASE[fase]} — ${nombre}`,
-      responsable: creado.responsable,
-      orden: i * 10,
-    })),
-  });
+  // El imprevisto no las abre: se pide con el evento encima y la cronología ya corrió.
+  if (!imprevisto) {
+    const proyecto = await prisma.proyecto.findUnique({
+      where: { id },
+      select: { fechaEvento: true, fechaMontaje: true, fechaDesmontaje: true },
+    });
+    const fechaPorFase = {
+      INSTALACION: proyecto?.fechaMontaje ?? proyecto?.fechaEvento ?? null,
+      OPERACION: proyecto?.fechaEvento ?? null,
+      RECOLECCION: proyecto?.fechaDesmontaje ?? proyecto?.fechaEvento ?? null,
+    };
+    await prisma.proyectoBloqueTiempo.createMany({
+      data: FASES_PROVEEDOR.map((fase, i) => ({
+        proyectoId: id,
+        proveedorEventoId: creado.id,
+        tipo: "PROVEEDOR",
+        fase,
+        fecha: fechaPorFase[fase],
+        titulo: `${TITULO_FASE[fase]} — ${nombre}`,
+        responsable: creado.responsable,
+        orden: i * 10,
+      })),
+    });
+  }
 
   const proveedor = await prisma.proveedorEvento.findUnique({
     where: { id: creado.id },

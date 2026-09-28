@@ -6,7 +6,7 @@ import {
   PenTool, Megaphone, BarChart3, SlidersHorizontal, BadgeDollarSign,
   Package, TrendingUp, Settings, Speaker, BookUser, ClipboardCheck,
   ShieldCheck, ScrollText, Settings2, Building2, LayoutGrid, GraduationCap,
-  Network,
+  Network, Truck,
 } from "lucide-react";
 
 // Dueño de la plataforma. Ciertos módulos (ej. "Inicio") se muestran solo a él.
@@ -85,6 +85,7 @@ export const NAV: NavSection[] = [
     items: [
       { key: "proyectos", label: "Proyectos de eventos", href: "/proyectos", icon: FolderKanban },
       { key: "proyectos-empresa", accessKey: "proyectos", label: "Proyectos de empresa", href: "/proyectos-de-empresa", icon: Building2 },
+      { key: "solicitudes-proveedor", accessKey: "proyectos", label: "Solicitudes a proveedores", href: "/proyectos/solicitudes-proveedor", icon: Truck },
       { key: "plantillas-tareas", label: "Plantillas de tareas", href: "/admin/plantillas-tareas", adminOnly: true, icon: ClipboardList },
     ],
   },

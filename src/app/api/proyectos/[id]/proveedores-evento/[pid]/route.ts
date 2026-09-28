@@ -21,11 +21,19 @@ export async function PATCH(
     "notas",
     "modalidadEntrega",
     "modalidadRegreso",
+    "solicitadoPor",
   ] as const) {
     if (body[campo] !== undefined) data[campo] = body[campo]?.trim() || null;
   }
   if (body.costoAcordado !== undefined) {
     data.costoAcordado = body.costoAcordado === null || body.costoAcordado === "" ? null : parseFloat(body.costoAcordado);
+  }
+  if (body.unidades !== undefined) {
+    data.unidades =
+      body.unidades === null || body.unidades === "" ? null : Math.max(1, Math.round(Number(body.unidades)));
+  }
+  if (body.fechaSolicitud !== undefined) {
+    data.fechaSolicitud = body.fechaSolicitud ? new Date(body.fechaSolicitud) : null;
   }
 
   // Alta rápida al catálogo desde un bloque que nació como nombre suelto.

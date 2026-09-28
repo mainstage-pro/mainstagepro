@@ -184,7 +184,8 @@ export function PanelProveedores({
   useEffect(() => {
     (async () => {
       const [rp, rc, rl] = await Promise.all([
-        fetch(`/api/proyectos/${proyectoId}/proveedores-evento`),
+        // Los imprevistos del día viven en su propia tarjeta, no en la coordinación previa.
+        fetch(`/api/proyectos/${proyectoId}/proveedores-evento?imprevisto=0`),
         fetch("/api/proveedores"),
         fetch(`/api/proyectos/${proyectoId}/equipos-cotizacion`),
       ]);
