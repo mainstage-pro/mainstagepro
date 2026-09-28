@@ -33,6 +33,18 @@ export type OrdenEquipo = {
   accesorios: { nombre: string; cantidad: number }[];
 };
 
+/**
+ * Equipo que sube a la camioneta sin estar en la cotización (se captura a mano
+ * en el proyecto, como JSON). El checklist de carga ya lo incluye, así que el
+ * documento tiene que listarlo o el técnico ve ítems que la ficha no menciona.
+ */
+export type OrdenEquipoExtra = {
+  descripcion: string;
+  cantidad: number;
+  notas: string | null;
+  accesorios: { nombre: string; cantidad: number }[];
+};
+
 export type OrdenPase = {
   id: string;
   tipo: string;
@@ -193,6 +205,30 @@ export async function ordenPorToken(token: string) {
     accesorios: (e.riderAccesorios ?? []).map((a: any) => ({ nombre: a.nombre, cantidad: a.cantidad })),
   }));
 
+  /* JSON capturado a mano en el proyecto: si viene roto se ignora en vez de
+     tumbar todo el documento por un equipo adicional mal guardado. */
+  const equiposExtra: OrdenEquipoExtra[] = (() => {
+    try {
+      const raw = p.equiposRiderExtra ? JSON.parse(p.equiposRiderExtra) : [];
+      if (!Array.isArray(raw)) return [];
+      return raw
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .filter((e: any) => typeof e?.descripcion === "string" && e.descripcion.trim())
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((e: any) => ({
+          descripcion: e.descripcion.trim(),
+          cantidad: Number(e.cantidad) || 1,
+          notas: e.notas?.trim() || null,
+          accesorios: Array.isArray(e.accesorios)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ? e.accesorios.map((a: any) => ({ nombre: String(a?.nombre ?? ""), cantidad: Number(a?.cantidad) || 1 })).filter((a: { nombre: string }) => a.nombre)
+            : [],
+        }));
+    } catch {
+      return [];
+    }
+  })();
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const pases: OrdenPase[] = (p.cargas ?? []).map((c: any) => ({
     id: c.id,
@@ -308,6 +344,7 @@ export async function ordenPorToken(token: string) {
     escenario,
     cronologias,
     equipos,
+    equiposExtra,
     personal,
     proveedores,
     archivos,

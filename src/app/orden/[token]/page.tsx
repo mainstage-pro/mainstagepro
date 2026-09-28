@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useOrden } from "./OrdenContext";
-import { Archivos, Cronologias, Equipo, Notas, Personal, Proveedores } from "./secciones";
+import { Archivos, Cronologias, Equipo, EquipoExtra, Notas, Personal, Proveedores } from "./secciones";
 import {
   Barra, Cargando, Chip, Cuadro, EVENTO_LABEL, KV, KVGrid, NotaBox,
   PorConfirmar, SERVICIO_LABEL, Sec, Telefono, etiqueta, fechaCorta, fechaLarga, hora12, horaCorta, mismoDia,
@@ -183,16 +183,20 @@ export default function OrdenPage() {
   /* 8. Equipo. */
   add("equipo", "Equipo y accesorios", o.equipos.length > 0, <Equipo orden={o} />);
 
-  /* 9. Proveedores. */
+  /* 9. Equipo fuera de cotización: el checklist de carga sí lo pide, así que
+        tiene que estar en el documento o no cuadran las listas. */
+  add("extra", "Equipo adicional (fuera de cotización)", o.equiposExtra.length > 0, <EquipoExtra orden={o} />);
+
+  /* 10. Proveedores. */
   add("proveedores", "Proveedores y subrentas", o.proveedores.length > 0, <Proveedores orden={o} />);
 
-  /* 10. Personal. */
+  /* 11. Personal. */
   add("personal", "Equipo de trabajo", o.personal.length > 0, <Personal orden={o} />);
 
-  /* 11. Archivos. */
+  /* 12. Archivos. */
   add("archivos", "Archivos operativos", o.archivos.length > 0, <Archivos orden={o} />);
 
-  /* 12. Notas. */
+  /* 13. Notas. */
   add("notas", "Notas e indicaciones", !!o.indicacionesCliente, (
     <Notas items={[{ label: "Indicaciones del cliente", texto: o.indicacionesCliente }]} />
   ));

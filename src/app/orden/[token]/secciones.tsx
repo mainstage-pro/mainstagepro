@@ -200,6 +200,47 @@ export function Equipo({ orden }: { orden: OrdenProduccion }) {
   );
 }
 
+/* ─── Equipo adicional ────────────────────────────────────────────────────── */
+
+/**
+ * Equipo fuera de cotización, capturado a mano en el proyecto. Va en su propia
+ * sección —igual que en el PDF— porque no tiene categoría ni ficha de
+ * inventario, y mezclarlo con el rider haría creer que se cotizó.
+ */
+export function EquipoExtra({ orden }: { orden: OrdenProduccion }) {
+  return (
+    <div className="space-y-2">
+      {orden.equiposExtra.map((e, i) => (
+        <Cuadro key={i}>
+          <div className="flex items-center gap-2.5 px-3 py-2.5">
+            <p className="min-w-0 flex-1 text-[#0d0d0d] text-[14px] font-bold leading-snug">{e.descripcion}</p>
+            <Cantidad n={e.cantidad} />
+          </div>
+
+          {e.notas && (
+            <p className="px-3 py-2 bg-[#f8f8f8] border-t border-[#e8e8e8] text-[#5a5a5a] text-[11.5px] italic leading-snug">
+              Nota: {e.notas}
+            </p>
+          )}
+
+          {e.accesorios.length > 0 && (
+            <div className="grid grid-cols-2 gap-1.5 p-2 bg-[#f8f8f8] border-t border-[#e8e8e8]">
+              {e.accesorios.map((a, j) => (
+                <div key={j} className="flex items-center gap-1.5 bg-[#f0f0f0] rounded px-2 py-1.5 min-w-0">
+                  <span className="flex-1 min-w-0 text-[#5a5a5a] text-[11.5px] truncate">{a.nombre}</span>
+                  {a.cantidad > 1 && (
+                    <span className="shrink-0 text-[#9A7A3F] text-[10px] font-bold tabular-nums">×{a.cantidad}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </Cuadro>
+      ))}
+    </div>
+  );
+}
+
 /* ─── Personal ────────────────────────────────────────────────────────────── */
 
 const PARTICIPACION: Record<string, string> = {
