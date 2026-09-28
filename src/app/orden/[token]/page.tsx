@@ -51,6 +51,42 @@ export default function ResumenPage() {
         <Dato label="Indicaciones de acceso" valor={o.indicacionesAcceso} />
       </Seccion>
 
+      {/* Antes que cualquier dato operativo: a quién le hago caso y quién autoriza. */}
+      <Seccion titulo="Quién manda" descripcion="Las tres preguntas que en sitio se resuelven a gritos.">
+        <div className="space-y-3">
+          {o.mando.map((e, i) => (
+            <div key={i} className="py-2 border-b border-white/5 last:border-0">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-white/30 text-[11px] uppercase tracking-wide shrink-0">{e.rol}</span>
+                <span className={`text-sm font-semibold text-right ${e.nombre ? "text-white/85" : "text-amber-400"}`}>
+                  {e.nombre ?? "Sin asignar"}
+                </span>
+              </div>
+              {e.contacto && <p className="text-xs text-right mt-0.5"><Telefono numero={e.contacto} /></p>}
+              <p className="text-white/30 text-xs mt-1">{e.regla}</p>
+            </div>
+          ))}
+        </div>
+      </Seccion>
+
+      {/* Entarimado: dónde van las bajadas es lo que nadie trae anotado. */}
+      {o.escenario && (
+        <Seccion titulo="Escenario y entarimado">
+          <Dato label="Medidas" valor={o.escenario.medidas} />
+          <Dato label="Altura" valor={o.escenario.alturaM != null ? `${o.escenario.alturaM} m` : null} />
+          <Dato label="Lo pone" valor={o.escenario.proveedor} />
+          <Dato
+            label="Bajadas / escaleras"
+            valor={
+              o.escenario.accesos ?? (
+                <span className="text-amber-400">Por confirmar con el cliente</span>
+              )
+            }
+          />
+          <Dato label="Notas" valor={o.escenario.notas} />
+        </Seccion>
+      )}
+
       {/* Salida de bodega: la hora que determina si el día arranca bien. */}
       {(o.llamadoBodega || o.horaSalidaBodega || o.lugarLlamado || o.choferNombre || o.transportes.length > 0) && (
         <Seccion titulo="Salida de bodega">
@@ -147,10 +183,16 @@ export default function ResumenPage() {
             {o.personal.map((t) => (
               <div key={t.id} className="flex items-center justify-between gap-3 py-2 border-b border-white/5 last:border-0">
                 <div className="min-w-0">
-                  <p className="text-white/80 text-sm font-medium truncate">{t.nombre}</p>
+                  <p className="text-white/80 text-sm font-medium truncate">
+                    {t.coordinaEnSitio && <span className="text-[#B3985B]">★ </span>}
+                    {t.nombre}
+                  </p>
                   <p className="text-white/30 text-xs truncate">
                     {[t.rol, t.participacion].filter(Boolean).join(" · ") || "Sin rol asignado"}
                   </p>
+                  {t.responsabilidad && (
+                    <p className="text-white/40 text-xs mt-0.5">{t.responsabilidad}</p>
+                  )}
                 </div>
                 <div className="shrink-0 text-right">
                   {t.celular && <p className="text-xs"><Telefono numero={t.celular} /></p>}
@@ -169,7 +211,16 @@ export default function ResumenPage() {
               <div key={i} className="flex items-center justify-between gap-3 py-2 border-b border-white/5 last:border-0">
                 <div className="min-w-0">
                   <p className="text-white/80 text-sm font-medium truncate">{pv.nombre}</p>
-                  <p className="text-white/30 text-xs truncate">{[pv.servicio, pv.responsable].filter(Boolean).join(" · ")}</p>
+                  <p className="text-white/30 text-xs truncate">
+                    {pv.servicio}
+                    {/* Sin dueño nadie lo recibe ni lo revisa: se ve como pendiente. */}
+                    {pv.responsable
+                      ? `${pv.servicio ? " · " : ""}Lo atiende ${pv.responsable}`
+                      : null}
+                  </p>
+                  {!pv.responsable && (
+                    <p className="text-amber-400/80 text-xs mt-0.5">Sin responsable asignado</p>
+                  )}
                 </div>
                 {pv.telefono && <p className="shrink-0 text-xs"><Telefono numero={pv.telefono} /></p>}
               </div>

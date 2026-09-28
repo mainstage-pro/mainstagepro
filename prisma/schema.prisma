@@ -721,6 +721,14 @@ model Proyecto {
   briefObjetivo            String?   @db.Text // qué tiene que lograr la producción
   briefAcomodo             String?   @db.Text // cómo se distribuye el espacio
   briefRestricciones       String?   @db.Text // límites del venue que condicionan el montaje
+  // ─ Escenario / entarimado ─
+  // No es un plano: son los datos que cambian el montaje y que nadie pregunta
+  // hasta que el camión ya está en el venue.
+  escenarioMedidas         String? // "8 x 6 m" — tal cual lo dice el cliente o el proveedor
+  escenarioAlturaM         Float? // altura del entarimado en metros
+  escenarioAccesos         String? // bajadas: "2 escaleras — trasera izq y der" / "rampa lateral"
+  escenarioProveedor       String? // "Propio" o el nombre de quien lo pone
+  escenarioNotas           String?   @db.Text // faldón, capacidad de carga, puntos de cuelgue
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
 
@@ -870,6 +878,9 @@ model ProyectoPersonal {
   movimiento       MovimientoFinanciero? @relation(fields: [movimientoId], references: [id])
   notas            String?
   rolEnEvento      String? // Rol específico en este evento (ej: Operador de audio, Iluminación)
+  // Quién manda en sitio. Uno solo por proyecto: es la persona que decide los
+  // cambios de montaje y la única que habla con el cliente y con el venue.
+  coordinaEnSitio  Boolean               @default(false)
   esAdicional      Boolean               @default(false) // Técnico agregado fuera de lo cotizado (marcador interno; NO afecta PDFs)
   necesitaRevision Boolean               @default(false) // El rol se quitó de la cotización — revisar sin borrar (sync)
 

@@ -13,6 +13,7 @@ import {
 } from "./PdfShared";
 import { CronologiaEvento } from "./CronologiaEvento";
 import { construirCronologia, BloqueTiempo } from "@/lib/cronologia-evento";
+import { cadenaDeMando } from "@/lib/cadena-mando";
 
 const s = StyleSheet.create({
   // Sección numerada con badge negro
@@ -90,6 +91,26 @@ const s = StyleSheet.create({
   riderNotaTxt:    { fontSize: 8, color: "#555555", fontStyle: "italic" },
   riderMontajeRow: { paddingHorizontal: 10, paddingVertical: 4 },
   riderMontajeTxt: { fontSize: 7.5, color: "#9A7A3F" },
+  // ── Cadena de mando: encabeza la ficha porque es lo que se pregunta primero ──
+  mandoTable: { width: "100%", borderWidth: 0.5, borderColor: C.grisLinea, borderStyle: "solid", borderRadius: 4 },
+  mandoRow: {
+    flexDirection: "row", alignItems: "flex-start", paddingVertical: 6, paddingHorizontal: 10,
+    borderBottomWidth: 0.5, borderBottomColor: C.grisLinea, borderBottomStyle: "solid",
+  },
+  mandoRowLast: { flexDirection: "row", alignItems: "flex-start", paddingVertical: 6, paddingHorizontal: 10 },
+  mandoRol: { width: 96, fontSize: 6.5, fontFamily: "Helvetica-Bold", color: C.dorado, textTransform: "uppercase", letterSpacing: 0.6, paddingTop: 2 },
+  mandoCol: { flex: 1 },
+  mandoNombre: { fontSize: 9.5, fontFamily: "Helvetica-Bold", color: C.negro },
+  mandoNombreVacio: { fontSize: 9.5, fontFamily: "Helvetica-Bold", color: "#b45309" },
+  mandoRegla: { fontSize: 7, color: C.grisMedio, marginTop: 1.5, lineHeight: 1.45 },
+  mandoContacto: { width: 82, fontSize: 8.5, color: C.negro, textAlign: "right", paddingTop: 1 },
+  // ── Escenario / entarimado ──
+  escGrid: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  escCell: { width: "31%", backgroundColor: C.grisFondo, borderRadius: 3, padding: 8 },
+  escCellWide: { width: "64%", backgroundColor: C.grisFondo, borderRadius: 3, padding: 8 },
+  escLabel: { fontSize: 6.5, fontFamily: "Helvetica-Bold", color: C.grisClaro, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 3 },
+  escVal: { fontSize: 9, fontFamily: "Helvetica-Bold", color: C.negro },
+  escValFalta: { fontSize: 8.5, fontFamily: "Helvetica-Bold", color: "#b45309" },
 });
 
 function SecNum({ num, titulo }: { num: string; titulo: string }) {
@@ -115,6 +136,9 @@ export interface PersonalItem {
   nombre: string; rolEnEvento: string | null; rolTecnico: string | null;
   celular: string | null; confirmado: boolean;
   fechaJornada: string | null; participacion: string | null;
+  /** Lo que le toca hacer a esta persona en concreto. Se captura y hasta ahora no se imprimía. */
+  responsabilidad: string | null;
+  coordinaEnSitio: boolean;
 }
 export interface ProveedorEvento {
   nombreProveedor: string; servicioEquipo: string | null; telefonoProveedor: string | null;
@@ -142,6 +166,9 @@ export interface FichaOperativaData {
   indicacionesCliente: string | null;
   descripcionGeneral: string | null; detallesEspecificos: string | null; comentariosFinales: string | null;
   briefObjetivo: string | null; briefAcomodo: string | null; briefRestricciones: string | null;
+  escenarioMedidas: string | null; escenarioAlturaM: number | null;
+  escenarioAccesos: string | null; escenarioProveedor: string | null;
+  escenarioNotas: string | null;
   encargadoNombre: string | null;
   encargadoCliente: string | null; encargadoClienteContacto: string | null;
   encargadoLugar: string | null; encargadoLugarContacto: string | null;
@@ -209,6 +236,25 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
     fechaDesmontaje: data.fechaDesmontaje,
     llamadoBodega: data.llamadoBodega, lugarLlamado: data.lugarLlamado, lugarEvento: data.lugarEvento,
   }, { bloques: data.bloquesTiempo, nombresProveedor: data.nombresProveedor });
+
+  // Quién manda: el coordinador sale del personal, el resto de los contactos ya capturados.
+  const coord = data.personal.find(p => p.coordinaEnSitio) ?? null;
+  const eslabones = cadenaDeMando({
+    coordinadorSitio: coord
+      ? { nombre: coord.nombre, celular: coord.celular, rol: coord.rolEnEvento ?? coord.rolTecnico }
+      : null,
+    encargadoNombre: data.encargadoNombre,
+    encargadoCliente: data.encargadoCliente,
+    encargadoClienteContacto: data.encargadoClienteContacto,
+    encargadoLugar: data.encargadoLugar,
+    encargadoLugarContacto: data.encargadoLugarContacto,
+  });
+
+  // El bloque de escenario solo aparece si el evento lleva entarimado.
+  const llevaEscenario = Boolean(
+    data.escenarioMedidas || data.escenarioAlturaM != null ||
+    data.escenarioAccesos || data.escenarioProveedor || data.escenarioNotas
+  );
 
   let seccion = 0;
   const sec = (titulo: string) => { seccion++; return String(seccion); };
@@ -279,6 +325,64 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
         </View>
 
         <View style={base.body}>
+
+          {/* QUIÉN MANDA — va primero a propósito: es la duda que más cuesta en sitio. */}
+          <View style={base.section}>
+            <SecNum num={sec("mando")} titulo="Quién manda en este evento" />
+            <View style={s.mandoTable}>
+              {eslabones.map((e, i) => (
+                <View key={e.rol} style={i < eslabones.length - 1 ? s.mandoRow : s.mandoRowLast} wrap={false}>
+                  <Text style={s.mandoRol}>{e.rol}</Text>
+                  <View style={s.mandoCol}>
+                    <Text style={e.nombre ? s.mandoNombre : s.mandoNombreVacio}>
+                      {e.nombre ?? "Sin asignar"}
+                    </Text>
+                    <Text style={s.mandoRegla}>{e.regla}</Text>
+                  </View>
+                  <Text style={s.mandoContacto}>{e.contacto ?? ""}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          {/* ESCENARIO / ENTARIMADO */}
+          {llevaEscenario && (
+            <View style={base.section}>
+              <SecNum num={sec("escenario")} titulo="Escenario y entarimado" />
+              <View style={s.escGrid}>
+                <View style={s.escCell}>
+                  <Text style={s.escLabel}>Medidas</Text>
+                  <Text style={data.escenarioMedidas ? s.escVal : s.escValFalta}>
+                    {data.escenarioMedidas ?? "Por confirmar"}
+                  </Text>
+                </View>
+                <View style={s.escCell}>
+                  <Text style={s.escLabel}>Altura</Text>
+                  <Text style={data.escenarioAlturaM != null ? s.escVal : s.escValFalta}>
+                    {data.escenarioAlturaM != null ? `${data.escenarioAlturaM} m` : "Por confirmar"}
+                  </Text>
+                </View>
+                <View style={s.escCell}>
+                  <Text style={s.escLabel}>Lo pone</Text>
+                  <Text style={data.escenarioProveedor ? s.escVal : s.escValFalta}>
+                    {data.escenarioProveedor ?? "Por confirmar"}
+                  </Text>
+                </View>
+                <View style={s.escCellWide}>
+                  <Text style={s.escLabel}>Bajadas / escaleras</Text>
+                  <Text style={data.escenarioAccesos ? s.escVal : s.escValFalta}>
+                    {data.escenarioAccesos ?? "Por confirmar — preguntar antes del montaje"}
+                  </Text>
+                </View>
+              </View>
+              {data.escenarioNotas && (
+                <View style={[s.notaBox, { marginTop: 6 }]}>
+                  <Text style={s.notaLabel}>Notas del escenario</Text>
+                  <Text style={s.notaText}>{data.escenarioNotas}</Text>
+                </View>
+              )}
+            </View>
+          )}
 
           {/* BRIEF DE PRODUCCIÓN */}
           {(data.briefObjetivo || data.briefAcomodo || data.briefRestricciones) && (
@@ -626,7 +730,16 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                               </View>
                               {items.map((p, i) => (
                                 <View key={i} style={i < items.length - 1 ? base.tableRow : base.tableRowLast} wrap={false}>
-                                  <Text style={[base.tdTxt, { flex: 1, fontFamily: "Helvetica-Bold" }]}>{p.nombre}</Text>
+                                  <View style={{ flex: 1 }}>
+                                    <Text style={[base.tdTxt, { fontFamily: "Helvetica-Bold" }]}>
+                                      {p.nombre}{p.coordinaEnSitio ? "  ★ coordina" : ""}
+                                    </Text>
+                                    {p.responsabilidad ? (
+                                      <Text style={{ fontSize: 7, color: C.grisMedio, marginTop: 1.5 }}>
+                                        {p.responsabilidad}
+                                      </Text>
+                                    ) : null}
+                                  </View>
                                   <Text style={[base.tdMuted, { flex: 1 }]}>{p.rolEnEvento ?? p.rolTecnico ?? "—"}</Text>
                                   <Text style={[base.tdTxt, { width: 95 }]}>{p.celular ?? "—"}</Text>
                                   <Text style={p.confirmado ? base.chipOk : base.chipPend}>

@@ -26,10 +26,16 @@ const SELECT = {
   encargadoCliente: true,
   contactosEmergencia: true,
   logisticaRenta: true,
+  escenarioMedidas: true,
+  escenarioAlturaM: true,
+  escenarioAccesos: true,
+  escenarioProveedor: true,
+  escenarioNotas: true,
   encargado: { select: { name: true } },
   trato: { select: { ideasReferencias: true } },
   equipos: { select: { confirmado: true } },
-  personal: { select: { tecnicoId: true, rolTecnicoId: true, rolEnEvento: true } },
+  personal: { select: { tecnicoId: true, rolTecnicoId: true, rolEnEvento: true, coordinaEnSitio: true } },
+  proveedoresEvento: { select: { responsable: true, imprevisto: true } },
   bloquesTiempo: { select: { id: true } },
 } as const;
 
@@ -65,6 +71,23 @@ export async function bloqueoDocumento(
     personalSinAsignar: p.personal.filter(x => !x.tecnicoId).length,
     personalSinRol: p.personal.filter(x => x.tecnicoId && !x.rolTecnicoId && !x.rolEnEvento?.trim()).length,
     equiposSinConfirmar: p.equipos.filter(e => !e.confirmado).length,
+    coordinadoresEnSitio: p.personal.filter(x => x.tecnicoId && x.coordinaEnSitio).length,
+    // Los imprevistos se piden con el evento ya corriendo: no hay preproducción
+    // que los asigne, así que no cuentan para el candado.
+    proveedoresSinResponsable: p.proveedoresEvento.filter(
+      pv => !pv.imprevisto && !pv.responsable?.trim()
+    ).length,
+    escenarioMedidas: p.escenarioMedidas,
+    escenarioAccesos: p.escenarioAccesos,
+    // El bloque solo aplica si alguien ya dijo que hay entarimado. Sin esa
+    // señal no damos lata: hay eventos que sencillamente no llevan escenario.
+    llevaEscenario: Boolean(
+      p.escenarioMedidas?.trim() ||
+        p.escenarioAlturaM ||
+        p.escenarioAccesos?.trim() ||
+        p.escenarioProveedor?.trim() ||
+        p.escenarioNotas?.trim()
+    ),
   };
 
   const { bloqueos } = requisitosDocumento(tipo, input);

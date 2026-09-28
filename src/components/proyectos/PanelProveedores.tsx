@@ -148,10 +148,16 @@ export function PanelProveedores({
   proyectoId,
   dias,
   evento,
+  equipo = [],
 }: {
   proyectoId: string;
   /** Días del evento en "YYYY-MM-DD". La operación siempre cae en uno de ellos. */
   dias: string[];
+  /**
+   * Personal del proyecto, para elegir quién atiende a cada proveedor.
+   * Un proveedor sin dueño es un proveedor que nadie recibe ni revisa.
+   */
+  equipo?: { nombre: string; coordinaEnSitio: boolean }[];
   evento: {
     numeroProyecto: string;
     nombre: string;
@@ -495,6 +501,10 @@ export function PanelProveedores({
                         {prov.cuentaPagar && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-900/40 text-green-400">CxP {money(prov.cuentaPagar.monto)}</span>
                         )}
+                        {/* Sin dueño nadie lo recibe ni lo revisa: bloquea la orden de producción. */}
+                        {!prov.responsable?.trim() && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-900/30 text-amber-400">sin responsable</span>
+                        )}
                       </div>
                       <p className="text-gray-500 text-xs mt-0.5">
                         {[
@@ -525,8 +535,27 @@ export function PanelProveedores({
                           <input value={b.servicioEquipo} onChange={(e) => editar(prov.id, { servicioEquipo: e.target.value })} className={inputCls} />
                         </div>
                         <div>
-                          <label className="text-xs text-gray-500 block mb-1">Responsable</label>
-                          <input value={b.responsable} onChange={(e) => editar(prov.id, { responsable: e.target.value })} placeholder="Quién responde" className={inputCls} />
+                          <label className="text-xs text-gray-500 block mb-1">Quién lo atiende</label>
+                          {equipo.length > 0 ? (
+                            <select
+                              value={b.responsable}
+                              onChange={(e) => editar(prov.id, { responsable: e.target.value })}
+                              className={inputCls}
+                            >
+                              <option value="">— Sin asignar —</option>
+                              {equipo.map((t) => (
+                                <option key={t.nombre} value={t.nombre}>
+                                  {t.coordinaEnSitio ? `★ ${t.nombre}` : t.nombre}
+                                </option>
+                              ))}
+                              {/* Lo capturado antes puede no estar en el equipo: no se pierde. */}
+                              {b.responsable && !equipo.some((t) => t.nombre === b.responsable) && (
+                                <option value={b.responsable}>{b.responsable}</option>
+                              )}
+                            </select>
+                          ) : (
+                            <input value={b.responsable} onChange={(e) => editar(prov.id, { responsable: e.target.value })} placeholder="Quién responde" className={inputCls} />
+                          )}
                         </div>
                         <div>
                           <label className="text-xs text-gray-500 block mb-1">Teléfono</label>

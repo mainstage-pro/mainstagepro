@@ -147,6 +147,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       rolTecnico: p.rolTecnico?.nombre ?? p.tecnico?.rol?.nombre ?? null,
       celular: p.tecnico.celular ?? null,
       confirmado: p.confirmado,
+      responsabilidad: p.responsabilidad ?? null,
+      coordinaEnSitio: p.coordinaEnSitio ?? false,
     })),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     proveedoresEvento: (proyecto.proveedoresEvento ?? []).map((p: any) => ({

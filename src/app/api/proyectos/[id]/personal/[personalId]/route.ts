@@ -40,6 +40,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if ("notas" in body) data.notas = body.notas || null;
   if ("rolEnEvento" in body) data.rolEnEvento = body.rolEnEvento || null;
   if ("fechaJornada" in body) data.fechaJornada = body.fechaJornada || null;
+  if ("coordinaEnSitio" in body) data.coordinaEnSitio = body.coordinaEnSitio === true;
 
   // Leer el registro previo para detectar transiciones (técnico nuevo / estado de pago)
   const previo = await prisma.proyectoPersonal.findUnique({
@@ -56,6 +57,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const pasaAPendiente = nuevoEstado === "PENDIENTE" && previo?.estadoPago === "PAGADO";
 
   const personal = await prisma.$transaction(async (tx) => {
+    // El coordinador en sitio es uno solo: al nombrar a alguien se releva al
+    // anterior. Si no, dos personas creerían mandar y volvemos al problema.
+    if (data.coordinaEnSitio === true && previo?.proyectoId) {
+      await tx.proyectoPersonal.updateMany({
+        where: { proyectoId: previo.proyectoId, id: { not: personalId } },
+        data: { coordinaEnSitio: false },
+      });
+    }
     // Aplicar primero los cambios de campos (tarifa, estado, rol, etc.) para
     // que el helper vea los valores efectivos al construir el movimiento.
     await tx.proyectoPersonal.update({ where: { id: personalId }, data });

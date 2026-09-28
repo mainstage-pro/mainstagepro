@@ -16,6 +16,7 @@ import {
 } from "@/lib/cronologia-evento";
 import { resumenMontaje } from "@/lib/montaje-reportes";
 import { avanceCarga, type AvanceCarga } from "@/lib/control-carga";
+import { cadenaDeMando, type EslabonMando } from "@/lib/cadena-mando";
 
 export type OrdenEquipo = {
   id: string;
@@ -56,6 +57,19 @@ export type OrdenPersonal = {
   participacion: string | null;
   fechaJornada: string | null;
   confirmado: boolean;
+  /** El encargo concreto de esta persona en el evento. */
+  responsabilidad: string | null;
+  /** Manda en sitio. Uno solo por proyecto. */
+  coordinaEnSitio: boolean;
+};
+
+/** Entarimado: lo que cambia el montaje y nadie pregunta hasta estar en el venue. */
+export type OrdenEscenario = {
+  medidas: string | null;
+  alturaM: number | null;
+  accesos: string | null;
+  proveedor: string | null;
+  notas: string | null;
 };
 
 export type OrdenProveedor = {
@@ -205,7 +219,34 @@ export async function ordenPorToken(token: string) {
     participacion: x.participacion ?? null,
     fechaJornada: x.fechaJornada ?? null,
     confirmado: !!x.confirmado,
+    responsabilidad: x.responsabilidad ?? null,
+    coordinaEnSitio: !!x.coordinaEnSitio,
   }));
+
+  // Quién manda: se arma aquí para que la app en sitio no tenga que deducirlo.
+  const coord = personal.find((x) => x.coordinaEnSitio) ?? null;
+  const mando: EslabonMando[] = cadenaDeMando({
+    coordinadorSitio: coord ? { nombre: coord.nombre, celular: coord.celular, rol: coord.rol } : null,
+    encargadoNombre: p.encargado?.name ?? null,
+    encargadoCliente: p.encargadoCliente ?? null,
+    encargadoClienteContacto: p.encargadoClienteContacto ?? null,
+    encargadoLugar: p.encargadoLugar ?? null,
+    encargadoLugarContacto: p.encargadoLugarContacto ?? null,
+  });
+
+  // Null cuando el proyecto no lleva entarimado: no se pinta la sección.
+  const escenario: OrdenEscenario | null = (
+    p.escenarioMedidas?.trim() || p.escenarioAlturaM != null || p.escenarioAccesos?.trim() ||
+    p.escenarioProveedor?.trim() || p.escenarioNotas?.trim()
+  )
+    ? {
+        medidas: p.escenarioMedidas ?? null,
+        alturaM: p.escenarioAlturaM ?? null,
+        accesos: p.escenarioAccesos ?? null,
+        proveedor: p.escenarioProveedor ?? null,
+        notas: p.escenarioNotas ?? null,
+      }
+    : null;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const proveedores: OrdenProveedor[] = (p.proveedoresEvento ?? []).map((pv: any) => ({
@@ -263,6 +304,8 @@ export async function ordenPorToken(token: string) {
     aplicaCatering: p.aplicaCatering ?? false,
     proveedorCatering: p.proveedorCatering ?? null,
     transportes,
+    mando,
+    escenario,
     cronologias,
     equipos,
     personal,

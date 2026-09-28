@@ -10,6 +10,7 @@ import {
   agruparPorCategoria, EquipoFlat, TransporteSlot,
 } from "./PdfShared";
 import { PersonalItem, ProveedorEvento } from "./FichaCoordinador";
+import { cadenaDeMando } from "@/lib/cadena-mando";
 
 const s = StyleSheet.create({
   // Header
@@ -69,6 +70,15 @@ const s = StyleSheet.create({
   // Footer
   footer: { position: "absolute", bottom: 18, left: 40, right: 40, flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderTopWidth: 0.5, borderTopColor: C.grisLinea, borderTopStyle: "solid", paddingTop: 5 },
   footerTxt: { fontSize: 6.5, color: C.grisClaro },
+  // Cadena de mando
+  mandoTable: { width: "100%", borderWidth: 0.5, borderColor: C.grisLinea, borderStyle: "solid", borderRadius: 4 },
+  mandoRow: { flexDirection: "row", alignItems: "flex-start", paddingVertical: 6, paddingHorizontal: 9, borderBottomWidth: 0.5, borderBottomColor: C.grisLinea, borderBottomStyle: "solid" },
+  mandoRowLast: { flexDirection: "row", alignItems: "flex-start", paddingVertical: 6, paddingHorizontal: 9 },
+  mandoRol: { width: 92, fontSize: 6.5, fontFamily: "Helvetica-Bold", color: C.dorado, textTransform: "uppercase", letterSpacing: 0.6, paddingTop: 2 },
+  mandoNombre: { fontSize: 9.5, fontFamily: "Helvetica-Bold", color: C.negro },
+  mandoNombreVacio: { fontSize: 9.5, fontFamily: "Helvetica-Bold", color: "#b45309" },
+  mandoRegla: { fontSize: 7, color: C.grisMedio, marginTop: 1.5, lineHeight: 1.45 },
+  mandoContacto: { width: 80, fontSize: 8.5, color: C.negro, textAlign: "right", paddingTop: 1 },
 });
 
 export interface FichaTecnicosData {
@@ -87,6 +97,8 @@ export interface FichaTecnicosData {
   linkMaps: string | null;
   indicacionesAcceso: string | null;
   encargadoNombre: string | null;
+  encargadoCliente: string | null;
+  encargadoClienteContacto: string | null;
   encargadoLugar: string | null;
   encargadoLugarContacto: string | null;
   comentariosFinales: string | null;
@@ -120,8 +132,19 @@ export function FichaTecnicos({ data }: { data: FichaTecnicosData }) {
     { icon: "📦", label: "Fin / desmontaje y salida", hora: horaFin, ref: data.lugarEvento ?? "" },
   ].filter(h => h.hora);
 
-  // Rol en el evento (primer técnico asignado con rolEnEvento, o fallback a rolTecnico)
-  const primerTecRol = data.personal.find(p => p.rolEnEvento)?.rolEnEvento ?? null;
+  // Quién manda: el coordinador en sitio sale del personal marcado, no del
+  // encargado interno (que autoriza, pero no está parado en el venue).
+  const coord = data.personal.find(p => p.coordinaEnSitio) ?? null;
+  const eslabones = cadenaDeMando({
+    coordinadorSitio: coord
+      ? { nombre: coord.nombre, celular: coord.celular, rol: coord.rolEnEvento ?? coord.rolTecnico }
+      : null,
+    encargadoNombre: data.encargadoNombre,
+    encargadoCliente: data.encargadoCliente,
+    encargadoClienteContacto: data.encargadoClienteContacto,
+    encargadoLugar: data.encargadoLugar,
+    encargadoLugarContacto: data.encargadoLugarContacto,
+  });
 
   return (
     <Document title={`Brief Técnicos ${data.numeroProyecto}`} author="Mainstage Pro">
@@ -194,21 +217,48 @@ export function FichaTecnicos({ data }: { data: FichaTecnicosData }) {
           </View>
         )}
 
-        {/* TU ROL */}
-        {(primerTecRol || data.encargadoNombre) && (
+        {/* QUIÉN MANDA — antes de los roles: primero a quién le haces caso. */}
+        <View style={s.secWrap}>
+          <Text style={s.secTitle}>Quién manda en este evento</Text>
+          <View style={s.mandoTable}>
+            {eslabones.map((e, i) => (
+              <View key={e.rol} style={i < eslabones.length - 1 ? s.mandoRow : s.mandoRowLast} wrap={false}>
+                <Text style={s.mandoRol}>{e.rol}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={e.nombre ? s.mandoNombre : s.mandoNombreVacio}>{e.nombre ?? "Sin asignar"}</Text>
+                  <Text style={s.mandoRegla}>{e.regla}</Text>
+                </View>
+                <Text style={s.mandoContacto}>{e.contacto ?? ""}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* QUIÉN HACE QUÉ — cada técnico con su rol y su encargo concreto. */}
+        {data.personal.length > 0 && (
           <View style={s.secWrap}>
-            <Text style={s.secTitle}>Tu Rol en Este Evento</Text>
-            <View style={s.rolBox}>
-              {primerTecRol && (
-                <>
-                  <Text style={s.rolLabel}>Tu rol asignado</Text>
-                  <Text style={s.rolVal}>{primerTecRol}</Text>
-                </>
-              )}
-              {data.encargadoNombre && (
-                <Text style={s.rolCoord}>Coordinador en sitio: {data.encargadoNombre}</Text>
-              )}
+            <Text style={s.secTitle}>Quién hace qué</Text>
+            <View style={s.contactosTable}>
+              <View style={s.contactoHd}>
+                <Text style={[s.contactoHdTxt, { flex: 1 }]}>Técnico</Text>
+                <Text style={[s.contactoHdTxt, { width: 110 }]}>Rol en el evento</Text>
+                <Text style={[s.contactoHdTxt, { flex: 1 }]}>Su encargo</Text>
+              </View>
+              {data.personal.map((p, i) => (
+                <View key={i} style={i < data.personal.length - 1 ? s.contactoRow : s.contactoRowLast} wrap={false}>
+                  <Text style={[s.contactoTxt, { flex: 1 }]}>
+                    {p.nombre}{p.coordinaEnSitio ? "  ★" : ""}
+                  </Text>
+                  <Text style={[s.contactoMuted, { width: 110 }]}>
+                    {p.rolEnEvento ?? p.rolTecnico ?? "—"}
+                  </Text>
+                  <Text style={[s.contactoMuted, { flex: 1 }]}>{p.responsabilidad ?? "—"}</Text>
+                </View>
+              ))}
             </View>
+            <Text style={{ fontSize: 6.5, color: C.grisClaro, marginTop: 4 }}>
+              ★ coordina en sitio
+            </Text>
           </View>
         )}
 

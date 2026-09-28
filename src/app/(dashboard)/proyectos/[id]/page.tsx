@@ -34,6 +34,7 @@ import { diasEvento, parseHorariosEvento, horarioDeDia, parseFechasEvento } from
 import { construirCronologia, VISTAS_CRONOLOGIA, type BloqueTiempo } from "@/lib/cronologia-evento";
 import { checksAvanceProduccion } from "@/lib/proyecto-avance";
 import { requisitosDocumento, type ProyectoDocumentoInput, type RequisitosDocumento, type TipoDocumento } from "@/lib/proyecto-documentos";
+import { preguntasAlCliente, textoSolicitud } from "@/lib/solicitud-cliente";
 import { getEquipoDisplayName } from "@/lib/equipoNombre";
 import { normalizarAmPm, fmt24to12 } from "@/lib/hora";
 
@@ -55,6 +56,7 @@ interface Personal {
   tarifaAcordada: number | null; notas: string | null;
   confirmToken: string | null; confirmRespuesta: string | null;
   rolEnEvento: string | null;
+  coordinaEnSitio: boolean;
   esAdicional: boolean;
   necesitaRevision: boolean;
   tecnico: { id: string; nombre: string; celular: string | null; rol: { nombre: string } | null } | null;
@@ -185,7 +187,12 @@ interface Proyecto {
   briefObjetivo: string | null;
   briefAcomodo: string | null;
   briefRestricciones: string | null;
-  proveedoresEvento: { id: string; nombreProveedor: string; servicioEquipo: string | null; telefonoProveedor: string | null }[];
+  escenarioMedidas: string | null;
+  escenarioAlturaM: number | null;
+  escenarioAccesos: string | null;
+  escenarioProveedor: string | null;
+  escenarioNotas: string | null;
+  proveedoresEvento: { id: string; nombreProveedor: string; servicioEquipo: string | null; telefonoProveedor: string | null; responsable: string | null; imprevisto: boolean }[];
   bloquesTiempo: BloqueTiempo[];
   createdAt: string;
   updatedAt: string;
@@ -2889,6 +2896,20 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     } : prev);
   }
 
+  // ── Coordinador en sitio: uno solo, el servidor releva al anterior ──
+  async function marcarCoordinador(pId: string, yaEs: boolean) {
+    const res = await fetch(`/api/proyectos/${id}/personal/${pId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ coordinaEnSitio: !yaEs }),
+    });
+    if (!res.ok) { toast.error("No se pudo marcar al coordinador"); return; }
+    // Se refleja igual que en la BD: nombrar a uno desmarca a todos los demás.
+    setProyecto(prev => prev ? {
+      ...prev,
+      personal: prev.personal.map(p => ({ ...p, coordinaEnSitio: !yaEs && p.id === pId })),
+    } : prev);
+  }
+
   // ── Confirmar todos los de un grupo ──
   async function confirmarGrupo(grupo: NonNullable<typeof proyecto>["personal"]) {
     const pendientes = grupo.filter(p => !p.confirmado && p.tecnico);
@@ -3562,6 +3583,19 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     personalSinAsignar: proyecto.personal.filter(p => !p.tecnico).length,
     personalSinRol: proyecto.personal.filter(p => p.tecnico && !p.rolTecnico && !p.rolEnEvento?.trim()).length,
     equiposSinConfirmar: proyecto.equipos.filter(e => !e.confirmado).length,
+    coordinadoresEnSitio: proyecto.personal.filter(p => p.tecnico && p.coordinaEnSitio).length,
+    proveedoresSinResponsable: proyecto.proveedoresEvento.filter(
+      pv => !pv.imprevisto && !pv.responsable?.trim()
+    ).length,
+    escenarioMedidas: proyecto.escenarioMedidas,
+    escenarioAccesos: proyecto.escenarioAccesos,
+    llevaEscenario: Boolean(
+      proyecto.escenarioMedidas?.trim() ||
+        proyecto.escenarioAlturaM ||
+        proyecto.escenarioAccesos?.trim() ||
+        proyecto.escenarioProveedor?.trim() ||
+        proyecto.escenarioNotas?.trim()
+    ),
   };
   const reqDoc = (tipo: TipoDocumento) => requisitosDocumento(tipo, docInput);
 
@@ -5263,6 +5297,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                           ) : (
                             <div className="flex items-center gap-2 flex-wrap">
                               <p className="text-white text-sm font-medium">{p.tecnico.nombre}</p>
+                              {p.coordinaEnSitio && (
+                                <span className="px-1.5 py-0.5 rounded border border-[#B3985B]/50 bg-[#B3985B]/10 text-[#B3985B] text-[10px] font-medium" title="Manda en sitio: decide los cambios de montaje y es el único que trata con cliente y venue">★ Coordina en sitio</span>
+                              )}
                               <span className={`px-1.5 py-0.5 rounded border text-[10px] font-medium ${badge.cls}`}>{badge.label}</span>
                               {p.esAdicional && <span className="px-1.5 py-0.5 rounded border border-fuchsia-800/40 bg-fuchsia-900/20 text-fuchsia-300 text-[10px] font-medium" title="Agregado fuera de lo cotizado — solo visible internamente">Adicional</span>}
                               {p.necesitaRevision && <span className="px-1.5 py-0.5 rounded border border-amber-700/50 bg-amber-900/20 text-amber-300 text-[10px] font-medium" title="Este rol se quitó o cambió en la cotización — revísalo (no se borró automáticamente)">Revisar</span>}
@@ -5277,6 +5314,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                         {p.responsabilidad && <p className="text-gray-400 text-xs mt-1 leading-relaxed">{p.responsabilidad}</p>}
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
+                        {p.tecnico && (
+                          <button
+                            onClick={() => marcarCoordinador(p.id, p.coordinaEnSitio)}
+                            title={p.coordinaEnSitio ? "Quitarle la coordinación en sitio" : "Marcar como quien manda en sitio"}
+                            className={`text-xs px-1.5 py-0.5 rounded border transition-colors ${p.coordinaEnSitio ? "border-[#B3985B]/60 text-[#B3985B]" : "border-transparent text-gray-700 hover:text-[#B3985B] hover:border-[#333]"}`}>
+                            ★
+                          </button>
+                        )}
                         {asignandoId !== p.id && (
                           <button onClick={() => { abrirEditPersonal(p); setAsignandoId(null); }}
                             className={`text-xs px-1.5 py-0.5 rounded border transition-colors ${editandoPersonalId === p.id ? "border-[#B3985B]/60 text-[#B3985B]" : "border-transparent text-gray-600 hover:text-gray-300 hover:border-[#333]"}`}>
@@ -5461,6 +5506,20 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               fechaMontaje: proyecto.fechaMontaje,
               fechaDesmontaje: proyecto.fechaDesmontaje,
             }}
+            equipo={(() => {
+              // Una persona puede tener varios slots (montaje, operación…): se lista una vez,
+              // y coordina si lo marca cualquiera de sus slots.
+              const m = new Map<string, { nombre: string; coordinaEnSitio: boolean }>();
+              for (const p of proyecto.personal) {
+                if (!p.tecnico) continue;
+                const prev = m.get(p.tecnico.nombre);
+                m.set(p.tecnico.nombre, {
+                  nombre: p.tecnico.nombre,
+                  coordinaEnSitio: (prev?.coordinaEnSitio ?? false) || p.coordinaEnSitio,
+                });
+              }
+              return Array.from(m.values());
+            })()}
           />
 
 
@@ -5789,6 +5848,74 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             {/* ═══════ ZONA 1: BASE — Preproducción · Checklist · Bitácora ═══════ */}
             <><SectionDivider label={esRenta ? "Rider de entrega" : "Preproducción y montaje"} />
 
+            {/* ── Lo que sólo el cliente puede contestar, redactado y listo para mandarse ── */}
+            {!esRenta && (() => {
+              const preguntas = preguntasAlCliente({
+                lugarEvento: proyecto.lugarEvento,
+                direccionVenue: proyecto.direccionVenue,
+                horaInicioEvento: proyecto.horaInicioEvento,
+                horaFinEvento: proyecto.horaFinEvento,
+                indicacionesAcceso: proyecto.indicacionesAcceso,
+                encargadoCliente: proyecto.encargadoCliente,
+                encargadoClienteContacto: proyecto.encargadoClienteContacto,
+                encargadoLugar: proyecto.encargadoLugar,
+                encargadoLugarContacto: proyecto.encargadoLugarContacto,
+                briefAcomodo: proyecto.briefAcomodo,
+                briefRestricciones: proyecto.briefRestricciones,
+                llevaEscenario: Boolean(
+                  (proyecto.escenarioMedidas ?? "").trim() || proyecto.escenarioAlturaM != null ||
+                  (proyecto.escenarioAccesos ?? "").trim() || (proyecto.escenarioProveedor ?? "").trim() ||
+                  (proyecto.escenarioNotas ?? "").trim()
+                ),
+                escenarioMedidas: proyecto.escenarioMedidas,
+                escenarioAccesos: proyecto.escenarioAccesos,
+              });
+              if (preguntas.length === 0) return null;
+              const texto = textoSolicitud(
+                {
+                  nombre: proyecto.nombre,
+                  numeroProyecto: proyecto.numeroProyecto,
+                  fechaTexto: proyecto.fechaEvento
+                    ? new Date(proyecto.fechaEvento).toLocaleDateString("es-MX", { day: "numeric", month: "long", timeZone: "UTC" })
+                    : null,
+                },
+                preguntas
+              );
+              const tel = (proyecto.cliente.telefono ?? "").replace(/\D/g, "");
+              return (
+                <div className="ms-card p-5 border-amber-800/30">
+                  <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
+                    <p className="text-[10.5px] text-amber-500 font-semibold uppercase tracking-[0.09em]">
+                      Falta pedirle {preguntas.length} dato{preguntas.length === 1 ? "" : "s"} al cliente
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={async () => { await navigator.clipboard.writeText(texto).catch(() => {}); toast.success("Mensaje copiado"); }}
+                        className="text-[11px] px-2 py-1 rounded border border-[#333] text-gray-400 hover:text-white hover:border-[#555] transition-colors">
+                        Copiar mensaje
+                      </button>
+                      {tel && (
+                        <a
+                          href={`https://wa.me/${tel.length === 10 ? `52${tel}` : tel}?text=${encodeURIComponent(texto)}`}
+                          target="_blank" rel="noopener noreferrer"
+                          className="text-[11px] px-2 py-1 rounded border border-green-800/50 text-green-400 hover:border-green-600 transition-colors">
+                          WhatsApp
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-gray-600 mb-3">
+                    Pregúntalo ahora: cada uno de estos huecos se convierte en una decisión improvisada el día del montaje.
+                  </p>
+                  <ul className="space-y-1">
+                    {preguntas.map(q => (
+                      <li key={q.campo} className="text-gray-400 text-xs leading-relaxed">· {q.pregunta}</li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })()}
+
             {/* ── Brief de producción: el contexto del que cuelga todo lo de abajo ── */}
             {!esRenta && (() => {
               const puntos = [
@@ -5840,6 +5967,74 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                         onSave={guardarCampo}
                       />
                     ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* ── Escenario: no es un plano, son los cinco datos que cambian el montaje ── */}
+            {!esRenta && (() => {
+              const llevaEscenario = Boolean(
+                (proyecto.escenarioMedidas ?? "").trim() || proyecto.escenarioAlturaM != null ||
+                (proyecto.escenarioAccesos ?? "").trim() || (proyecto.escenarioProveedor ?? "").trim() ||
+                (proyecto.escenarioNotas ?? "").trim()
+              );
+              return (
+                <div className="ms-card p-5">
+                  <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
+                    <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">Escenario y entarimado</p>
+                    {llevaEscenario && !(proyecto.escenarioAccesos ?? "").trim() && (
+                      <span className="text-[10px] font-semibold text-amber-500">Faltan las bajadas</span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-gray-600 mb-4">
+                    Si el evento lleva entarimado, llénalo. Déjalo vacío si no aplica: la sección no sale en los documentos.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <Campo
+                      label="Medidas"
+                      placeholder="8 x 6 m"
+                      value={proyecto.escenarioMedidas}
+                      field="escenarioMedidas"
+                      onSave={guardarCampo}
+                    />
+                    <Campo
+                      label="Altura (m)"
+                      type="number"
+                      placeholder="0.60"
+                      value={proyecto.escenarioAlturaM != null ? String(proyecto.escenarioAlturaM) : null}
+                      field="escenarioAlturaM"
+                      onSave={guardarCampo}
+                    />
+                    <Campo
+                      label="Lo pone"
+                      placeholder="Propio / nombre del proveedor"
+                      value={proyecto.escenarioProveedor}
+                      field="escenarioProveedor"
+                      onSave={guardarCampo}
+                    />
+                  </div>
+                  <div className="mt-4 space-y-4">
+                    <Campo
+                      label="Bajadas y salidas"
+                      guia="Cuántas escaleras o rampas y en qué lado del escenario van. Es lo que nadie trae anotado cuando el camión ya está en el venue."
+                      placeholder="Ej. 2 escaleras: trasera izquierda y trasera derecha. Rampa lateral para backline."
+                      value={proyecto.escenarioAccesos}
+                      field="escenarioAccesos"
+                      multiline
+                      rows={2}
+                      onSave={guardarCampo}
+                    />
+                    <Campo
+                      label="Notas"
+                      guia="Faldón, capacidad de carga, puntos de cuelgue: lo que condiciona cómo se monta encima."
+                      placeholder="Ej. Faldón negro en los tres frentes. Carga máx. 500 kg/m². Sin puntos de cuelgue sobre el escenario."
+                      value={proyecto.escenarioNotas}
+                      field="escenarioNotas"
+                      multiline
+                      rows={2}
+                      onSave={guardarCampo}
+                    />
                   </div>
                 </div>
               );

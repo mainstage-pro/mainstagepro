@@ -74,6 +74,10 @@ export interface PersonalItem {
   fechaJornada: string | null;  // YYYY-MM-DD — fecha específica de jornada
   participacion: string | null; // OPERACION | MONTAJE | DESMONTAJE | TRANSPORTE | OTRO
   jornada: string | null;       // CORTA | MEDIA | LARGA
+  /** El encargo concreto de esta persona en el evento. */
+  responsabilidad: string | null;
+  /** Manda en sitio. Uno solo por proyecto. */
+  coordinaEnSitio: boolean;
 }
 export interface ProveedorEvento {
   nombreProveedor: string;
@@ -541,11 +545,21 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
                       </View>
                       {items.map((p, i) => (
                         <View key={i} style={i < items.length - 1 ? s.tblRow : s.tblRowLast} wrap={false}>
-                          <Text style={[s.tblTxt, { flex: 1, fontFamily: 'Helvetica-Bold' }]}>{p.nombre}</Text>
-                          <Text style={[s.tblTxtMuted, { flex: 1 }]}>
-                            {p.rolEnEvento ?? p.rolTecnico ?? '—'}
-                            {p.participacion && p.participacion !== 'OPERACION' ? ` · ${PART[p.participacion] ?? p.participacion}` : ''}
+                          <Text style={[s.tblTxt, { flex: 1, fontFamily: 'Helvetica-Bold' }]}>
+                            {p.coordinaEnSitio ? '★ ' : ''}{p.nombre}
                           </Text>
+                          <View style={{ flex: 1 }}>
+                            <Text style={s.tblTxtMuted}>
+                              {p.rolEnEvento ?? p.rolTecnico ?? '—'}
+                              {p.participacion && p.participacion !== 'OPERACION' ? ` · ${PART[p.participacion] ?? p.participacion}` : ''}
+                            </Text>
+                            {/* El encargo concreto: lo que esta persona tiene que resolver. */}
+                            {p.responsabilidad && (
+                              <Text style={[s.tblTxtMuted, { fontSize: 6.5, color: '#6b6b6b' }]}>
+                                {p.responsabilidad}
+                              </Text>
+                            )}
+                          </View>
                           {tieneMultiplesFechas && (
                             <Text style={[s.tblTxtMuted, { width: 70 }]}>{p.jornada ?? '—'}</Text>
                           )}
@@ -559,6 +573,11 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
                   </View>
                 );
               })}
+              {data.personal.some(p => p.coordinaEnSitio) && (
+                <Text style={{ fontSize: 6.5, color: '#6b6b6b', marginTop: 3 }}>
+                  ★ coordina en sitio — decide los cambios de montaje y es el único que trata con cliente y venue.
+                </Text>
+              )}
             </View>
           );
         })()}

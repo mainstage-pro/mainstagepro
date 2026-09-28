@@ -277,13 +277,15 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     "notasBriefTecnico", "llamadoBodega", "lugarLlamado",
     // Brief de producción
     "briefObjetivo", "briefAcomodo", "briefRestricciones",
+    // Escenario / entarimado
+    "escenarioMedidas", "escenarioAccesos", "escenarioProveedor", "escenarioNotas",
     // Día de montaje/desmontaje opcional
     "fechaDesmontaje",
   ];
   const relationFields = ["encargadoId"];
   // Campos con tipos especiales (boolean/number/fecha) que no deben pasar por `|| null`
   const booleanFields = ["choferExterno", "aplicaCatering", "montajeDiaAparte", "desmontajeDiaAparte"];
-  const numberFields = ["choferCosto", "duracionDesmontajeHrs"];
+  const numberFields = ["choferCosto", "duracionDesmontajeHrs", "escenarioAlturaM"];
   const textNullableFields = ["choferNombre", "recoleccionStatus", "recoleccionNotas", "protocoloSalida", "protocoloEntrada"];
 
   const data: Record<string, unknown> = {};
@@ -318,7 +320,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (key in body) data[key] = Boolean(body[key]);
   }
   for (const key of numberFields) {
-    if (key in body) data[key] = body[key] != null ? Number(body[key]) : null;
+    // Cadena vacía = el campo se dejó en blanco, no un cero.
+    if (key in body) data[key] = body[key] != null && body[key] !== "" ? Number(body[key]) : null;
   }
   for (const key of textNullableFields) {
     if (key in body) data[key] = body[key] || null;

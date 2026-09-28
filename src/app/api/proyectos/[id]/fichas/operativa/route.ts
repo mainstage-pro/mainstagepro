@@ -154,6 +154,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     briefObjetivo: proyecto.briefObjetivo ?? null,
     briefAcomodo: proyecto.briefAcomodo ?? null,
     briefRestricciones: proyecto.briefRestricciones ?? null,
+    escenarioMedidas: proyecto.escenarioMedidas ?? null,
+    escenarioAlturaM: proyecto.escenarioAlturaM ?? null,
+    escenarioAccesos: proyecto.escenarioAccesos ?? null,
+    escenarioProveedor: proyecto.escenarioProveedor ?? null,
+    escenarioNotas: proyecto.escenarioNotas ?? null,
     encargadoNombre: proyecto.encargado?.name ?? null,
     encargadoCliente: proyecto.encargadoCliente ?? null,
     encargadoClienteContacto: proyecto.encargadoClienteContacto ?? null,
@@ -181,6 +186,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       fechaJornada: p.fechaJornada ?? null,
       participacion: p.participacion ?? null,
       jornada: p.jornada ?? null,
+      responsabilidad: p.responsabilidad ?? null,
+      coordinaEnSitio: p.coordinaEnSitio ?? false,
     })),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     proveedoresEvento: (proyecto.proveedoresEvento ?? []).map((p: any) => ({

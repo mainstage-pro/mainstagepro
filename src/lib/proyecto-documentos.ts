@@ -44,6 +44,15 @@ export interface ProyectoDocumentoInput {
   personalSinAsignar: number;
   personalSinRol: number;
   equiposSinConfirmar: number;
+  /** Técnicos marcados como coordinador en sitio. Debe ser exactamente uno. */
+  coordinadoresEnSitio: number;
+  /** Proveedores del evento que nadie de la casa tiene asignados. */
+  proveedoresSinResponsable: number;
+  /** Lo que el cliente todavía no nos dice del entarimado. */
+  escenarioMedidas: string | null;
+  escenarioAccesos: string | null;
+  /** true cuando el proyecto lleva entarimado y por tanto aplican los campos de escenario. */
+  llevaEscenario: boolean;
 }
 
 export interface RequisitosDocumento {
@@ -108,6 +117,16 @@ export function requisitosDocumento(
       if (sinComoLlegar) bloqueos.push("Falta dirección del venue o link de Maps");
       if (sinMontaje) bloqueos.push("Falta fecha u hora de montaje");
       if (sinContactoEnSitio) advertencias.push("Sin encargado del lugar ni del cliente");
+      if (p.coordinadoresEnSitio === 0)
+        bloqueos.push("Nadie está marcado como coordinador en sitio: el equipo no sabría a quién obedecer");
+      if (p.coordinadoresEnSitio > 1)
+        bloqueos.push(`${p.coordinadoresEnSitio} técnicos marcados como coordinador en sitio: debe ser uno solo`);
+      if (p.proveedoresSinResponsable > 0)
+        bloqueos.push(`${p.proveedoresSinResponsable} proveedor(es) sin responsable asignado de la casa`);
+      if (p.llevaEscenario && falta(p.escenarioAccesos))
+        advertencias.push("Escenario sin bajadas definidas: no sabemos cuántas escaleras ni dónde van");
+      if (p.llevaEscenario && falta(p.escenarioMedidas))
+        advertencias.push("Escenario sin medidas");
       if (p.bloquesCronologia === 0) advertencias.push("Cronología vacía");
       if (p.personalSinAsignar > 0)
         advertencias.push(`${p.personalSinAsignar} lugar(es) de personal sin técnico`);
@@ -127,6 +146,8 @@ export function requisitosDocumento(
       if (p.personalCount === 0) advertencias.push("No hay técnicos asignados a quién enviárselo");
       if (p.personalSinAsignar > 0)
         advertencias.push(`${p.personalSinAsignar} lugar(es) de personal sin técnico`);
+      if (p.coordinadoresEnSitio === 0)
+        advertencias.push("Sin coordinador en sitio: el brief no dice con quién dirigirse");
       if (sinContactoEnSitio) advertencias.push("Sin encargado del lugar ni del cliente");
       if (falta(p.contactosEmergencia)) advertencias.push("Sin contactos de emergencia");
       break;
