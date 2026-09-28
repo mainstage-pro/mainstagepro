@@ -192,9 +192,8 @@ export function PanelProveedores({
   const [altaNuevo, setAltaNuevo] = useState(false);
   const [agregando, setAgregando] = useState(false);
 
-  // Asignar proveedor a los equipos de tercero que trae la cotización.
-  const [seleccion, setSeleccion] = useState<string[]>([]);
-  const [asigAbierta, setAsigAbierta] = useState(false);
+  // Asignar proveedor a los equipos de tercero que trae la cotización, uno por uno.
+  const [asigLineaId, setAsigLineaId] = useState<string | null>(null);
   const [asigProveedorId, setAsigProveedorId] = useState("");
   const [asigNuevo, setAsigNuevo] = useState(false);
   const [asigNombre, setAsigNombre] = useState("");
@@ -230,20 +229,12 @@ export function PanelProveedores({
     [catalogo],
   );
 
-  /** Equipos que la cotización marcó de tercero y todavía no trae nadie. */
-  const sinProveedor = useMemo(
-    () => lineasCotizacion.filter((l) => l.tipo === "EQUIPO_EXTERNO" && !l.proveedorEventoId),
+  /** Equipos que la cotización marcó de tercero: los trae alguien de fuera. */
+  const equiposExternos = useMemo(
+    () => lineasCotizacion.filter((l) => l.tipo === "EQUIPO_EXTERNO"),
     [lineasCotizacion],
   );
-  const seleccionadas = useMemo(
-    () => sinProveedor.filter((l) => seleccion.includes(l.id)),
-    [sinProveedor, seleccion],
-  );
-  /** Lo que la cotización estimó que cuestan estos equipos. Referencia, no verdad. */
-  const costoCotizado = useMemo(
-    () => seleccionadas.reduce((s, l) => s + (l.costoUnitario ?? 0) * l.cantidad * (l.dias || 1), 0),
-    [seleccionadas],
-  );
+  const pendientes = equiposExternos.filter((l) => !l.proveedorEventoId).length;
 
   const diasSeleccionables = useMemo(
     () => rangoDias(dias, aDiaISO(evento.fechaMontaje ?? null) || null, aDiaISO(evento.fechaDesmontaje ?? null) || null),
@@ -296,37 +287,47 @@ export function PanelProveedores({
     );
   }
 
-  /** Costo a precargar: el ya acordado con ese proveedor, o lo que estimó la cotización. */
-  function costoParaProveedor(proveedorId: string): string {
+  /** Lo que la cotización estimó que cuesta este equipo. Referencia, no verdad. */
+  function costoCotizado(l: LineaCotizacion) {
+    return (l.costoUnitario ?? 0) * l.cantidad * (l.dias || 1);
+  }
+
+  /** Lo ya acordado con ese proveedor para el evento, o lo que estimó la cotización. */
+  function costoParaProveedor(proveedorId: string, linea: LineaCotizacion): string {
     const bloque = proveedores.find((p) => p.proveedorId === proveedorId);
     if (bloque?.costoAcordado != null) return String(bloque.costoAcordado);
-    return costoCotizado > 0 ? String(Math.round(costoCotizado)) : "";
+    const est = costoCotizado(linea);
+    return est > 0 ? String(Math.round(est)) : "";
   }
 
-  function abrirAsignacion() {
-    // Si el cotizador sugirió el mismo proveedor para todo lo elegido, se precarga.
-    const sugeridos = new Set(seleccionadas.map((l) => l.proveedor?.id).filter(Boolean));
-    const sugerido = sugeridos.size === 1 ? [...sugeridos][0]! : "";
+  function abrirAsignacion(linea: LineaCotizacion) {
+    // El proveedor que ya trae el equipo, o el que el cotizador dejó anotado como sugerencia.
+    const actual = proveedores.find((p) => p.id === linea.proveedorEventoId)?.proveedorId ?? "";
+    const sugerido = actual || linea.proveedor?.id || "";
     setAsigProveedorId(sugerido);
-    setAsigCosto(sugerido ? costoParaProveedor(sugerido) : costoCotizado > 0 ? String(Math.round(costoCotizado)) : "");
+    setAsigCosto(sugerido ? costoParaProveedor(sugerido, linea) : "");
     setAsigNuevo(false);
     setAsigNombre(""); setAsigEmpresa(""); setAsigTelefono("");
-    setAsigAbierta(true);
+    setAsigLineaId(linea.id);
   }
 
-  function elegirProveedorAsignacion(proveedorId: string) {
+  function elegirProveedorAsignacion(proveedorId: string, linea: LineaCotizacion) {
+    if (proveedorId === "__nuevo__") {
+      setAsigNuevo(true);
+      setAsigProveedorId("");
+      return;
+    }
     setAsigProveedorId(proveedorId);
-    if (proveedorId) setAsigCosto(costoParaProveedor(proveedorId));
+    if (proveedorId) setAsigCosto(costoParaProveedor(proveedorId, linea));
   }
 
   /**
-   * Le pone proveedor a los equipos elegidos. El proveedor nuevo se da de alta en el
-   * directorio con los mismos datos de siempre, para que no nazca como nombre suelto y
-   * pueda cobrársele desde el primer momento.
+   * Le pone proveedor a un equipo. El proveedor nuevo se da de alta en el directorio con
+   * los mismos datos de siempre, para que no nazca como nombre suelto y pueda cobrársele
+   * desde el primer momento.
    */
-  async function asignar() {
-    const lineaIds = seleccionadas.map((l) => l.id);
-    if (!lineaIds.length) return;
+  async function asignar(linea: LineaCotizacion) {
+    const lineaIds = [linea.id];
     setAsignando(true);
     try {
       let proveedorId = asigProveedorId;
@@ -358,18 +359,19 @@ export function PanelProveedores({
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "No se pudo asignar el proveedor");
       const { proveedor } = await res.json();
 
-      setProveedores((prev) =>
-        prev.some((p) => p.id === proveedor.id)
-          ? prev.map((p) => (p.id === proveedor.id ? proveedor : p))
-          : [...prev, proveedor],
-      );
+      setProveedores((prev) => {
+        // Al cambiar de proveedor, el anterior deja de traer el equipo.
+        const lista = prev.map((p) =>
+          p.id === proveedor.id ? proveedor : { ...p, lineas: p.lineas.filter((x) => x.id !== linea.id) },
+        );
+        return prev.some((p) => p.id === proveedor.id) ? lista : [...lista, proveedor];
+      });
       setBorradores((prev) => ({ ...prev, [proveedor.id]: borradorDe(proveedor) }));
       setLineasCotizacion((prev) =>
-        prev.map((l) => (lineaIds.includes(l.id) ? { ...l, proveedorEventoId: proveedor.id } : l)),
+        prev.map((l) => (l.id === linea.id ? { ...l, proveedorEventoId: proveedor.id } : l)),
       );
-      setSeleccion([]);
-      setAsigAbierta(false);
-      toast.success(`${lineaIds.length} equipo${lineaIds.length === 1 ? "" : "s"} a cargo de ${proveedor.nombreProveedor}`);
+      setAsigLineaId(null);
+      toast.success(`Lo trae ${proveedor.nombreProveedor}`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "No se pudo asignar el proveedor");
     }
@@ -539,130 +541,127 @@ export function PanelProveedores({
 
   return (
     <div className="space-y-3">
-      {/* Los equipos que la cotización marcó de tercero, esperando quién los trae. */}
-      {sinProveedor.length > 0 && (
-        <div className="ms-stat-card border-l-2 border-l-orange-500/50">
+      {/* Los equipos que la cotización marcó de tercero: uno por renglón, cada quien su dueño. */}
+      {equiposExternos.length > 0 && (
+        <div className={`ms-stat-card border-l-2 ${pendientes > 0 ? "border-l-orange-500/50" : "border-l-green-700/60"}`}>
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">
-              Equipo de tercero sin proveedor
+              Equipo de tercero
             </p>
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-900/30 text-orange-400">
-              {sinProveedor.length} por asignar
-            </span>
+            {pendientes > 0 ? (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-900/30 text-orange-400">
+                {pendientes} sin proveedor
+              </span>
+            ) : (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-900/30 text-green-400">
+                Todo asignado
+              </span>
+            )}
           </div>
 
           <div className="mt-3 rounded-lg border border-[#222] divide-y divide-[#1a1a1a]">
-            {sinProveedor.map((l) => (
-              <label key={l.id} className="flex items-center gap-2 px-2.5 py-1.5 text-xs cursor-pointer hover:bg-[#111]">
-                <input
-                  type="checkbox"
-                  checked={seleccion.includes(l.id)}
-                  onChange={() =>
-                    setSeleccion((prev) => (prev.includes(l.id) ? prev.filter((x) => x !== l.id) : [...prev, l.id]))
-                  }
-                  className="accent-[#B3985B]"
-                />
-                <span className="text-gray-300">
-                  {l.cantidad} × {[l.marca, l.modelo].filter(Boolean).join(" ") || l.descripcion}
-                </span>
-                {l.proveedor && (
-                  <span className="text-[10px] text-gray-600 ml-auto shrink-0">
-                    suele rentarlo {l.proveedor.empresa || l.proveedor.nombre}
-                  </span>
-                )}
-              </label>
-            ))}
+            {equiposExternos.map((l) => {
+              const bloque = proveedores.find((p) => p.id === l.proveedorEventoId);
+              const est = costoCotizado(l);
+              return (
+                <div
+                  key={l.id}
+                  className={`px-3 py-2.5 border-l-2 ${bloque ? "border-l-green-700/60" : "border-l-[#1e1e1e]"}`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white text-sm font-medium">
+                        {l.cantidad} × {[l.marca, l.modelo].filter(Boolean).join(" ") || l.descripcion}
+                      </p>
+                      {bloque ? (
+                        <p className="text-gray-500 text-xs mt-0.5">
+                          {bloque.nombreProveedor}
+                          {bloque.costoAcordado != null && ` · ${money(bloque.costoAcordado)} acordado`}
+                        </p>
+                      ) : (
+                        <p className="text-gray-600 text-xs mt-0.5">
+                          Pendiente de asignar
+                          {l.proveedor && ` · suele rentarlo ${l.proveedor.empresa || l.proveedor.nombre}`}
+                        </p>
+                      )}
+                    </div>
+                    {asigLineaId !== l.id && (
+                      <button
+                        onClick={() => abrirAsignacion(l)}
+                        className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-2 py-0.5 rounded transition-colors shrink-0"
+                      >
+                        {bloque ? "Cambiar" : "Asignar"}
+                      </button>
+                    )}
+                  </div>
+
+                  {asigLineaId === l.id && (
+                    <div className="mt-3 space-y-3">
+                      {asigNuevo ? (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                          <input value={asigNombre} onChange={(e) => setAsigNombre(e.target.value)} placeholder="Nombre del contacto *" className={inputCls} />
+                          <input value={asigEmpresa} onChange={(e) => setAsigEmpresa(e.target.value)} placeholder="Empresa" className={inputCls} />
+                          <input value={asigTelefono} onChange={(e) => setAsigTelefono(e.target.value)} placeholder="Teléfono" className={inputCls} />
+                        </div>
+                      ) : (
+                        <Combobox
+                          value={asigProveedorId}
+                          onChange={(v) => elegirProveedorAsignacion(v, l)}
+                          options={[{ value: "__nuevo__", label: "＋ Registrar nuevo proveedor" }, ...opcionesCatalogo]}
+                          placeholder="Buscar proveedor..."
+                        />
+                      )}
+
+                      {asigNuevo && (
+                        <button
+                          onClick={() => setAsigNuevo(false)}
+                          className="text-xs text-gray-500 hover:text-[#B3985B] transition-colors"
+                        >
+                          ← Elegir uno del directorio
+                        </button>
+                      )}
+
+                      <div>
+                        <label className="text-xs text-gray-500 block mb-1">
+                          Costo acordado con el proveedor (todo el evento)
+                        </label>
+                        <input
+                          value={asigCosto}
+                          onChange={(e) => setAsigCosto(e.target.value.replace(/[^\d.]/g, ""))}
+                          inputMode="decimal"
+                          placeholder="0.00"
+                          className={`md:w-48 ${inputCls}`}
+                        />
+                        {est > 0 && (
+                          <p className="text-[11px] text-gray-600 mt-1">La cotización estimó {money(est)} por este equipo.</p>
+                        )}
+                      </div>
+
+                      <div className="flex gap-2 flex-wrap items-center">
+                        <button
+                          disabled={asignando || (asigNuevo ? !asigNombre.trim() : !asigProveedorId)}
+                          onClick={() => asignar(l)}
+                          className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
+                        >
+                          {asignando ? "Guardando..." : "Guardar"}
+                        </button>
+                        <button
+                          onClick={() => setAsigLineaId(null)}
+                          className="text-xs text-gray-500 hover:text-white px-2 transition-colors"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
-          {!asigAbierta ? (
-            <div className="flex items-center gap-3 mt-3 flex-wrap">
-              <button
-                disabled={seleccionadas.length === 0}
-                onClick={abrirAsignacion}
-                className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-30 text-black text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
-              >
-                Asignar proveedor
-              </button>
-              <button
-                onClick={() => setSeleccion(seleccion.length === sinProveedor.length ? [] : sinProveedor.map((l) => l.id))}
-                className="text-xs text-gray-500 hover:text-[#B3985B] transition-colors"
-              >
-                {seleccion.length === sinProveedor.length ? "Quitar selección" : "Seleccionar todos"}
-              </button>
-            </div>
-          ) : (
-            <div className="mt-4 space-y-3 border-t border-[#1a1a1a] pt-4">
-              <p className="text-xs text-gray-500">
-                {seleccionadas.length} equipo{seleccionadas.length === 1 ? "" : "s"} a cargo de:
-              </p>
-
-              {asigNuevo ? (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div>
-                    <label className="text-xs text-gray-500 block mb-1">Nombre del contacto *</label>
-                    <input value={asigNombre} onChange={(e) => setAsigNombre(e.target.value)} placeholder="Con quién tratas" className={inputCls} />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-500 block mb-1">Empresa</label>
-                    <input value={asigEmpresa} onChange={(e) => setAsigEmpresa(e.target.value)} placeholder="Razón social o marca" className={inputCls} />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-500 block mb-1">Teléfono</label>
-                    <input value={asigTelefono} onChange={(e) => setAsigTelefono(e.target.value)} placeholder="10 dígitos" className={inputCls} />
-                  </div>
-                </div>
-              ) : (
-                <Combobox
-                  value={asigProveedorId}
-                  onChange={elegirProveedorAsignacion}
-                  options={opcionesCatalogo}
-                  placeholder="Buscar proveedor del directorio..."
-                />
-              )}
-
-              <button
-                onClick={() => setAsigNuevo((v) => !v)}
-                className="text-xs text-gray-500 hover:text-[#B3985B] transition-colors"
-              >
-                {asigNuevo ? "← Elegir uno del directorio" : "¿Es nuevo? Regístralo aquí"}
-              </button>
-
-              <div>
-                <label className="text-xs text-gray-500 block mb-1">Costo acordado (total con este proveedor)</label>
-                <input
-                  value={asigCosto}
-                  onChange={(e) => setAsigCosto(e.target.value.replace(/[^\d.]/g, ""))}
-                  inputMode="decimal"
-                  placeholder="0.00"
-                  className={`md:w-48 ${inputCls}`}
-                />
-                {costoCotizado > 0 && (
-                  <p className="text-[11px] text-gray-600 mt-1">
-                    La cotización estimó {money(costoCotizado)} por lo seleccionado.
-                  </p>
-                )}
-              </div>
-
-              <div className="flex gap-2 flex-wrap">
-                <button
-                  disabled={asignando || (asigNuevo ? !asigNombre.trim() : !asigProveedorId)}
-                  onClick={asignar}
-                  className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
-                >
-                  {asignando ? "Asignando..." : "Asignar y capturar costo"}
-                </button>
-                <button
-                  onClick={() => setAsigAbierta(false)}
-                  className="text-xs text-gray-500 hover:text-white px-3 py-2 transition-colors"
-                >
-                  Cancelar
-                </button>
-              </div>
-              <p className="text-[11px] text-gray-600">
-                Queda listo para confirmarse como cuenta por pagar en la pestaña de Finanzas del proyecto.
-              </p>
-            </div>
-          )}
+          <p className="text-[11px] text-gray-600 mt-3">
+            Cada proveedor queda listo para confirmarse como cuenta por pagar en la pestaña de Finanzas del proyecto.
+          </p>
         </div>
       )}
 
