@@ -66,24 +66,27 @@ export default function Identificacion({ onListo }: { onListo: (v: Verificador) 
   }
 
   const puede = modo === "INTERNO" ? !!tecnicoId : nombre.trim().length >= 3 && telefono.replace(/\D/g, "").length >= 10;
-  const input = "w-full bg-white/[0.04] border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/25 outline-none focus:border-[#B3985B]/40";
+  const input = "w-full border border-[#e0e0e0] rounded-md px-3 py-2.5 text-[13.5px] outline-none focus:border-[#B3985B]";
 
   return (
-    <div className="bg-white/[0.025] border border-white/8 rounded-2xl p-5">
-      <h2 className="text-white font-bold text-base mb-1">¿Quién está revisando?</h2>
-      <p className="text-white/35 text-xs mb-5 leading-relaxed">
+    <div className="border border-[#e8e8e8] rounded-md overflow-hidden">
+      <div className="bg-[#0d0d0d] px-4 py-2.5">
+        <span className="text-white text-[10px] font-bold uppercase tracking-[0.15em]">¿Quién está revisando?</span>
+      </div>
+      <div className="p-4">
+      <p className="text-[#5a5a5a] text-[12px] mb-4 leading-relaxed">
         Cada casilla queda firmada con tu nombre. Solo se pide una vez en este dispositivo.
       </p>
 
-      <div className="flex gap-2 mb-5">
+      <div className="flex gap-2 mb-4">
         {(["INTERNO", "EXTERNO"] as const).map((m) => (
           <button
             key={m}
             onClick={() => { setModo(m); setError(null); }}
-            className={`flex-1 py-2.5 rounded-xl text-xs font-semibold border transition-colors ${
+            className={`flex-1 py-2.5 rounded-lg text-[12.5px] font-bold border transition-colors ${
               modo === m
-                ? "bg-[#B3985B]/15 border-[#B3985B]/40 text-[#B3985B]"
-                : "bg-white/[0.025] border-white/8 text-white/40"
+                ? "bg-[#0d0d0d] border-[#0d0d0d] text-white"
+                : "bg-white border-[#e0e0e0] text-[#5a5a5a]"
             }`}
           >
             {m === "INTERNO" ? "Soy del equipo" : "Soy externo"}
@@ -98,32 +101,30 @@ export default function Identificacion({ onListo }: { onListo: (v: Verificador) 
               <button
                 key={t.id}
                 onClick={() => setTecnicoId(t.tecnicoId)}
-                className={`w-full flex items-center gap-3 p-3.5 rounded-xl border text-left transition-colors ${
-                  tecnicoId === t.tecnicoId
-                    ? "bg-[#B3985B]/10 border-[#B3985B]/40"
-                    : "bg-white/[0.02] border-white/8"
+                className={`w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-colors ${
+                  tecnicoId === t.tecnicoId ? "bg-[#f7f0e2] border-[#B3985B]" : "bg-white border-[#e0e0e0]"
                 }`}
               >
                 <span
                   className={`shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                    tecnicoId === t.tecnicoId ? "border-[#B3985B] bg-[#B3985B]" : "border-white/20"
+                    tecnicoId === t.tecnicoId ? "border-[#B3985B] bg-[#B3985B]" : "border-[#c0c0c0]"
                   }`}
                 >
                   {tecnicoId === t.tecnicoId && (
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M5 13l4 4L19 7" />
                     </svg>
                   )}
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-white/85 text-sm font-medium truncate">{t.nombre}</span>
-                  {t.rol && <span className="block text-white/30 text-xs truncate">{t.rol}</span>}
+                  <span className="block text-[#0d0d0d] text-[13.5px] font-bold truncate">{t.nombre}</span>
+                  {t.rol && <span className="block text-[#5a5a5a] text-[11.5px] truncate">{t.rol}</span>}
                 </span>
               </button>
             ))}
           </div>
         ) : (
-          <p className="text-white/30 text-sm py-4">
+          <p className="text-[#5a5a5a] text-[13px] py-3">
             Este proyecto no tiene técnicos asignados todavía. Regístrate como externo.
           </p>
         )
@@ -135,15 +136,16 @@ export default function Identificacion({ onListo }: { onListo: (v: Verificador) 
         </div>
       )}
 
-      {error && <p className="text-red-400 text-xs mt-4">{error}</p>}
+      {error && <p className="text-[#b91c1c] text-[12px] mt-4">{error}</p>}
 
       <button
         onClick={registrar}
         disabled={!puede || enviando}
-        className="w-full mt-5 py-3.5 bg-[#B3985B] text-black rounded-xl text-sm font-bold disabled:opacity-25 disabled:cursor-not-allowed"
+        className="w-full mt-4 py-3.5 bg-[#B3985B] text-[#0d0d0d] rounded-lg text-[14px] font-bold disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {enviando ? "Registrando…" : "Continuar"}
       </button>
+      </div>
     </div>
   );
 }

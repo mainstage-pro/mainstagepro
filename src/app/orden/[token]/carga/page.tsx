@@ -1,18 +1,27 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useOrden } from "../OrdenContext";
-import { Barra, Cargando, Chip } from "../ui";
+import { Barra, Cargando, Chip, Cuadro } from "../ui";
 import Identificacion, { guardarVerificador, leerVerificador, type Verificador } from "./Identificacion";
 import Checklist from "./Checklist";
-import { PASE_DESCRIPCION, PASE_LABEL, TIPOS_PASE, type TipoPase } from "@/lib/control-carga";
+import { PASE_LABEL, siguientePase, type TipoPase } from "@/lib/control-carga";
 
+/**
+ * Entrada al control de carga.
+ *
+ * Nadie elige entre "salida" y "retorno": el orden físico es siempre el mismo y
+ * el sistema ya sabe en cuál va. Si hay un pase a medias entra directo; si no,
+ * ofrece un solo botón con el que toca. Los pases cerrados quedan abajo, para
+ * consulta.
+ */
 export default function CargaPage() {
   const { orden, cargando, token, recargar } = useOrden();
   const [verificador, setVerificador] = useState<Verificador | null>(null);
   const [listo, setListo] = useState(false);
   const [cargaId, setCargaId] = useState<string | null>(null);
-  const [abriendo, setAbriendo] = useState<TipoPase | null>(null);
+  const [abriendo, setAbriendo] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -20,7 +29,14 @@ export default function CargaPage() {
     setListo(true);
   }, [token]);
 
-  if (cargando || !orden || !listo) return <Cargando />;
+  const siguiente = orden ? siguientePase(orden.pases) : null;
+
+  // Un pase a medias es trabajo que alguien dejó abierto: se entra sin preguntar.
+  useEffect(() => {
+    if (siguiente?.accion === "CONTINUAR" && !cargaId) setCargaId(siguiente.cargaId);
+  }, [siguiente, cargaId]);
+
+  if (cargando || !orden || !listo || !siguiente) return <Cargando />;
 
   if (!verificador) return <Identificacion onListo={setVerificador} />;
 
@@ -29,19 +45,14 @@ export default function CargaPage() {
       <>
         <button
           onClick={() => { setCargaId(null); void recargar(); }}
-          className="flex items-center gap-1.5 text-white/35 text-xs font-semibold mb-3"
+          className="flex items-center gap-1.5 text-[#5a5a5a] text-[12px] font-bold mb-3"
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M15 18l-6-6 6-6" />
           </svg>
-          Todos los pases
+          Control de carga
         </button>
-        <Checklist
-          token={token}
-          cargaId={cargaId}
-          verificador={verificador}
-          onCerrada={() => void recargar()}
-        />
+        <Checklist token={token} cargaId={cargaId} verificador={verificador} onCerrada={() => void recargar()} />
       </>
     );
   }
@@ -49,7 +60,7 @@ export default function CargaPage() {
   async function abrir(tipo: TipoPase) {
     if (!verificador) return;
     setError(null);
-    setAbriendo(tipo);
+    setAbriendo(true);
     try {
       const res = await fetch(`/api/orden/${token}/carga`, {
         method: "POST",
@@ -68,90 +79,106 @@ export default function CargaPage() {
     } catch {
       setError("Sin conexión. Conéctate para abrir el pase.");
     } finally {
-      setAbriendo(null);
+      setAbriendo(false);
     }
   }
 
+  const completo = siguiente.accion === "COMPLETO";
+
   return (
     <>
-      <div className="flex items-center justify-between gap-3 mb-5">
-        <p className="text-white/35 text-xs">
-          Marcando como <span className="text-white/70 font-medium">{verificador.nombre}</span>
+      <Link href={`/orden/${token}`} className="flex items-center gap-1.5 text-[#5a5a5a] text-[12px] font-bold mb-4">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M15 18l-6-6 6-6" />
+        </svg>
+        Orden de producción
+      </Link>
+
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <p className="text-[#5a5a5a] text-[12px]">
+          Marcando como <span className="text-[#0d0d0d] font-bold">{verificador.nombre}</span>
         </p>
         <button
           onClick={() => { guardarVerificador(token, null); setVerificador(null); }}
-          className="shrink-0 text-white/25 text-xs underline underline-offset-2"
+          className="shrink-0 text-[#9a9a9a] text-[12px] underline underline-offset-2"
         >
           No soy yo
         </button>
       </div>
 
-      {orden.pases.length > 0 && (
-        <section className="mb-6">
-          <h2 className="text-[#B3985B] text-[10px] font-semibold uppercase tracking-widest mb-2">Pases de este proyecto</h2>
-          <div className="bg-white/[0.025] border border-white/8 rounded-2xl divide-y divide-white/5 overflow-hidden">
-            {orden.pases.map((p) => (
+      {/* Lo que toca ahora — un solo botón, sin elegir tipo de pase. */}
+      <Cuadro className="mb-5">
+        <div className="bg-[#0d0d0d] px-4 py-2.5">
+          <span className="text-white text-[10px] font-bold uppercase tracking-[0.15em]">
+            {completo ? "Carga cerrada" : "Lo que sigue"}
+          </span>
+        </div>
+        <div className="p-4">
+          <p className="text-[#0d0d0d] text-[15px] font-bold leading-snug mb-1">{siguiente.titulo}</p>
+          <p className="text-[#5a5a5a] text-[12px] leading-relaxed mb-4">{siguiente.detalle}</p>
+
+          {siguiente.accion === "ABRIR" ? (
+            <button
+              onClick={() => void abrir(siguiente.tipo)}
+              disabled={abriendo}
+              className="w-full py-3.5 bg-[#B3985B] rounded-lg text-[#0d0d0d] text-[14px] font-bold disabled:opacity-40"
+            >
+              {abriendo ? "Abriendo…" : siguiente.titulo}
+            </button>
+          ) : (
+            <div className="flex gap-2">
               <button
-                key={p.id}
-                onClick={() => setCargaId(p.id)}
-                className="w-full p-4 text-left active:bg-white/[0.04]"
+                onClick={() => void abrir("SALIDA")}
+                disabled={abriendo}
+                className="flex-1 py-3 border border-[#d8d8d8] rounded-lg text-[#0d0d0d] text-[12.5px] font-bold disabled:opacity-40"
               >
-                <div className="flex items-center justify-between gap-3 mb-2">
-                  <span className="text-white/85 text-sm font-medium truncate">
-                    {PASE_LABEL[p.tipo as TipoPase] ?? p.tipo}
-                    {p.etiqueta ? ` · ${p.etiqueta}` : ""}
-                  </span>
-                  <Chip tono={p.estado === "CERRADA" ? "verde" : "ambar"}>
-                    {p.estado === "CERRADA" ? "Cerrado" : "En curso"}
-                  </Chip>
-                </div>
-                <Barra pct={p.avance.pct} tono={p.estado === "CERRADA" ? "verde" : "oro"} />
-                <p className="text-white/30 text-[11px] mt-1.5">
-                  {p.avance.revisados}/{p.avance.total} revisados
-                  {p.avance.faltantes > 0 && ` · ${p.avance.faltantes} faltante(s)`}
-                  {p.avance.danados > 0 && ` · ${p.avance.danados} dañado(s)`}
-                  {p.abiertoPor && ` · abrió ${p.abiertoPor}`}
-                </p>
+                Otra salida
               </button>
-            ))}
-          </div>
-        </section>
+              <button
+                onClick={() => void abrir("RETORNO")}
+                disabled={abriendo}
+                className="flex-1 py-3 border border-[#d8d8d8] rounded-lg text-[#0d0d0d] text-[12.5px] font-bold disabled:opacity-40"
+              >
+                Otro retorno
+              </button>
+            </div>
+          )}
+
+          {error && <p className="text-[#b91c1c] text-[12px] mt-3">{error}</p>}
+        </div>
+      </Cuadro>
+
+      {orden.pases.length > 0 && (
+        <>
+          <p className="text-[#B3985B] text-[10px] font-bold uppercase tracking-[0.13em] mb-2">Pases de este proyecto</p>
+          <Cuadro>
+            <div className="divide-y divide-[#f0f0f0]">
+              {orden.pases.map((p) => (
+                <button key={p.id} onClick={() => setCargaId(p.id)} className="w-full px-4 py-3 text-left active:bg-[#f6f6f6]">
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <span className="text-[#0d0d0d] text-[13px] font-medium truncate">
+                      {PASE_LABEL[p.tipo as TipoPase] ?? p.tipo}
+                      {p.etiqueta ? ` · ${p.etiqueta}` : ""}
+                    </span>
+                    <Chip tono={p.estado === "CERRADA" ? "verde" : "ambar"}>
+                      {p.estado === "CERRADA" ? "Cerrado" : "En curso"}
+                    </Chip>
+                  </div>
+                  <Barra pct={p.avance.pct} tono={p.estado === "CERRADA" ? "verde" : "oro"} />
+                  <p className="text-[#9a9a9a] text-[10.5px] mt-1 tabular-nums">
+                    {p.avance.revisados}/{p.avance.total} revisados
+                    {p.avance.faltantes > 0 && ` · ${p.avance.faltantes} faltante(s)`}
+                    {p.avance.danados > 0 && ` · ${p.avance.danados} dañado(s)`}
+                    {p.abiertoPor && ` · abrió ${p.abiertoPor}`}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </Cuadro>
+        </>
       )}
 
-      <h2 className="text-[#B3985B] text-[10px] font-semibold uppercase tracking-widest mb-2">Abrir un pase nuevo</h2>
-      <div className="space-y-2">
-        {TIPOS_PASE.map((tipo) => {
-          const enCurso = orden.pases.find((p) => p.tipo === tipo && p.estado === "EN_CURSO");
-          return (
-            <button
-              key={tipo}
-              onClick={() => void abrir(tipo)}
-              disabled={abriendo !== null}
-              className="w-full flex items-center gap-3 p-4 bg-white/[0.025] border border-white/8 rounded-2xl text-left active:bg-white/[0.04] disabled:opacity-40"
-            >
-              <span className="shrink-0 w-10 h-10 rounded-xl bg-[#B3985B]/10 border border-[#B3985B]/25 flex items-center justify-center text-[#B3985B]">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  {tipo === "SALIDA"
-                    ? <><path d="M12 19V5" /><path d="M5 12l7-7 7 7" /></>
-                    : <><path d="M12 5v14" /><path d="M19 12l-7 7-7-7" /></>}
-                </svg>
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-white/85 text-sm font-semibold">
-                  {abriendo === tipo ? "Abriendo…" : PASE_LABEL[tipo]}
-                </span>
-                <span className="block text-white/30 text-xs mt-0.5 leading-relaxed">
-                  {enCurso ? "Ya hay uno en curso: continúa ahí." : PASE_DESCRIPCION[tipo]}
-                </span>
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      {error && <p className="text-red-400 text-xs mt-4">{error}</p>}
-
-      <p className="text-white/20 text-[11px] mt-6 leading-relaxed">
+      <p className="text-[#9a9a9a] text-[11px] mt-5 leading-relaxed">
         Los renglones se congelan al abrir el pase: un cambio posterior en el listado del proyecto no
         reescribe lo que ya verificaste con el equipo en la mano.
       </p>

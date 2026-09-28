@@ -206,3 +206,59 @@ export function agruparPorCategoria<T extends { categoria: string | null; orden:
 export function origenFallaDePase(tipo: string): string {
   return tipo === "SALIDA" ? "BODEGA" : "EVENTO";
 }
+
+/** Lo mínimo que necesita el portal para saber en qué punto va la carga. */
+export type PaseResumen = { id: string; tipo: string; estado: string };
+
+/**
+ * Qué toca hacer ahora con la carga.
+ *
+ * Nadie en la camioneta debería elegir entre "salida" y "retorno": el orden es
+ * el mismo siempre y el sistema ya sabe en cuál va. Esto colapsa esa decisión en
+ * un solo botón que dice lo que va a pasar al tocarlo.
+ */
+export type SiguientePase =
+  | { accion: "CONTINUAR"; cargaId: string; tipo: TipoPase; titulo: string; detalle: string }
+  | { accion: "ABRIR"; tipo: TipoPase; titulo: string; detalle: string }
+  | { accion: "COMPLETO"; titulo: string; detalle: string };
+
+export function siguientePase(pases: PaseResumen[]): SiguientePase {
+  // Un pase a medias gana sobre todo lo demás: es trabajo que alguien dejó abierto.
+  const enCurso = [...pases].reverse().find((p) => p.estado === "EN_CURSO");
+  if (enCurso) {
+    const tipo = (enCurso.tipo === "RETORNO" ? "RETORNO" : "SALIDA") as TipoPase;
+    return {
+      accion: "CONTINUAR",
+      cargaId: enCurso.id,
+      tipo,
+      titulo: tipo === "SALIDA" ? "Seguir cargando la camioneta" : "Seguir revisando el regreso",
+      detalle: PASE_DESCRIPCION[tipo],
+    };
+  }
+
+  const salidas = pases.filter((p) => p.tipo === "SALIDA");
+  if (salidas.length === 0) {
+    return {
+      accion: "ABRIR",
+      tipo: "SALIDA",
+      titulo: "Empezar la carga",
+      detalle: PASE_DESCRIPCION.SALIDA,
+    };
+  }
+
+  const retornos = pases.filter((p) => p.tipo === "RETORNO");
+  if (retornos.length === 0) {
+    return {
+      accion: "ABRIR",
+      tipo: "RETORNO",
+      titulo: "Revisar el regreso",
+      detalle: PASE_DESCRIPCION.RETORNO,
+    };
+  }
+
+  return {
+    accion: "COMPLETO",
+    titulo: "Carga cerrada",
+    detalle: "Salida y retorno quedaron registrados. Puedes consultarlos o abrir otro viaje.",
+  };
+}

@@ -1,85 +1,181 @@
 "use client";
 
 /**
- * Piezas visuales compartidas de la Orden de Producción.
+ * Piezas visuales de la Orden de Producción.
  *
- * El portal se usa en la camioneta y en el venue: tipografía grande, áreas de
- * toque amplias y contraste alto. Mismo lenguaje que los demás portales
- * públicos (negro, oro #B3985B, tarjetas translúcidas).
+ * El portal es la versión web de la Ficha Operativa en PDF, así que usa el mismo
+ * lenguaje: papel blanco, hero negro, banda dorada y secciones numeradas con
+ * badge. La referencia viva es `src/components/pdf/PdfShared.tsx` — si allá
+ * cambia la paleta, aquí también.
+ *
+ * Se lee en la camioneta y en el venue: tipografía cómoda, áreas de toque
+ * amplias y contraste alto sobre fondo claro (la pantalla se ve de día).
  */
 
+import { fmt24to12, fmtHoraDate } from "@/lib/hora";
+
 export const FONT = '-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif';
-export const ORO = "#B3985B";
+
+/** Misma paleta que el PDF. */
+export const C = {
+  negro: "#0d0d0d",
+  grisOscuro: "#1a1a1a",
+  grisMedio: "#5a5a5a",
+  grisClaro: "#9a9a9a",
+  linea: "#e8e8e8",
+  fondo: "#f6f6f6",
+  oro: "#B3985B",
+  oroClaro: "#f7f0e2",
+  oroBorde: "#ddc98a",
+  verde: "#2d6e3e",
+  rojo: "#b91c1c",
+  ambar: "#b45309",
+};
+export const ORO = C.oro;
 
 export function Cargando() {
   return (
-    <div className="min-h-[60vh] flex items-center justify-center">
-      <div className="w-6 h-6 border-2 border-[#B3985B]/30 border-t-[#B3985B] rounded-full animate-spin" />
+    <div className="min-h-[50vh] flex items-center justify-center">
+      <div className="w-6 h-6 border-2 border-[#B3985B]/25 border-t-[#B3985B] rounded-full animate-spin" />
     </div>
   );
 }
 
 export function Vacio({ children }: { children: React.ReactNode }) {
-  return <p className="text-white/25 text-sm py-8 text-center">{children}</p>;
+  return <p className="text-[#9a9a9a] text-sm py-6 text-center">{children}</p>;
 }
 
-/** Tarjeta con encabezado en oro. El bloque base de todas las secciones. */
-export function Seccion({
+/**
+ * Sección numerada. El badge negro con número y la regla dorada son la firma
+ * visual del documento impreso; el `id` es el ancla del índice de salto.
+ */
+export function Sec({
+  id,
+  num,
   titulo,
   descripcion,
   accion,
   children,
 }: {
+  id: string;
+  num: number;
   titulo: string;
   descripcion?: string | null;
   accion?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
-    <section className="bg-white/[0.025] border border-white/8 rounded-2xl p-5 mb-4">
-      <div className="flex items-start justify-between gap-3 mb-4">
-        <div>
-          <h2 className="text-[#B3985B] text-[10px] font-semibold uppercase tracking-widest">{titulo}</h2>
-          {descripcion && <p className="text-white/30 text-xs mt-1 leading-relaxed">{descripcion}</p>}
-        </div>
+    <section id={id} className="mb-8 scroll-mt-4">
+      <div className="flex items-center gap-2.5 mb-3 pb-1.5 border-b border-[#ddc98a]">
+        <span className="shrink-0 w-[22px] h-[22px] rounded-full bg-[#0d0d0d] text-white text-[10px] font-bold flex items-center justify-center tabular-nums">
+          {num}
+        </span>
+        <h2 className="flex-1 text-[#B3985B] text-[11px] font-bold uppercase tracking-[0.13em] leading-tight">
+          {titulo}
+        </h2>
         {accion}
       </div>
+      {descripcion && <p className="text-[#9a9a9a] text-xs mb-3 leading-relaxed">{descripcion}</p>}
       {children}
     </section>
   );
 }
 
+/** Rejilla de pares etiqueta/valor. Dos columnas, igual que el PDF. */
+export function KVGrid({ children }: { children: React.ReactNode }) {
+  return <div className="grid grid-cols-2 gap-x-4 gap-y-3">{children}</div>;
+}
+
 /** Par etiqueta/valor. Se omite solo cuando no hay valor: evita renglones vacíos. */
-export function Dato({ label, valor }: { label: string; valor: React.ReactNode }) {
+export function KV({
+  label,
+  valor,
+  full,
+  fuerte,
+}: {
+  label: string;
+  valor: React.ReactNode;
+  full?: boolean;
+  fuerte?: boolean;
+}) {
   if (valor === null || valor === undefined || valor === "" || valor === false) return null;
   return (
-    <div className="py-2.5 border-b border-white/5 last:border-0">
-      <p className="text-white/30 text-[11px] uppercase tracking-wider mb-1">{label}</p>
-      <div className="text-white/80 text-sm leading-relaxed">{valor}</div>
+    <div className={full ? "col-span-2" : ""}>
+      <p className="text-[#9a9a9a] text-[9.5px] font-medium uppercase tracking-[0.09em] mb-0.5">{label}</p>
+      <div className={`text-[#0d0d0d] text-[13.5px] leading-snug ${fuerte ? "font-bold" : ""}`}>{valor}</div>
     </div>
   );
 }
 
-export function Chip({ children, tono = "neutro" }: { children: React.ReactNode; tono?: "neutro" | "oro" | "verde" | "rojo" | "ambar" }) {
+/** Caja gris con etiqueta: notas, brief, indicaciones. */
+export function NotaBox({ label, children }: { label?: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-[#f6f6f6] border-l-2 border-[#B3985B] rounded-r-md p-3.5 mb-2">
+      {label && (
+        <p className="text-[#9a9a9a] text-[9.5px] font-bold uppercase tracking-[0.09em] mb-1.5">{label}</p>
+      )}
+      <div className="text-[#0d0d0d] text-[13.5px] leading-relaxed whitespace-pre-line">{children}</div>
+    </div>
+  );
+}
+
+/** Contenedor con borde fino: el equivalente web de las tablas del PDF. */
+export function Cuadro({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={`border border-[#e8e8e8] rounded-md overflow-hidden bg-white ${className}`}>{children}</div>
+  );
+}
+
+/** Barra negra de categoría — igual que el rider impreso. */
+export function CatHead({ children, extra }: { children: React.ReactNode; extra?: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-2 bg-[#111] px-3 py-1.5">
+      <span className="text-white text-[10px] font-bold uppercase tracking-[0.15em] truncate">{children}</span>
+      {extra}
+    </div>
+  );
+}
+
+export function Chip({
+  children,
+  tono = "neutro",
+}: {
+  children: React.ReactNode;
+  tono?: "neutro" | "oro" | "verde" | "rojo" | "ambar";
+}) {
   const tonos: Record<string, string> = {
-    neutro: "bg-white/5 text-white/50 border-white/10",
-    oro: "bg-[#B3985B]/10 text-[#B3985B] border-[#B3985B]/25",
-    verde: "bg-green-500/10 text-green-400 border-green-500/25",
-    rojo: "bg-red-500/10 text-red-400 border-red-500/25",
-    ambar: "bg-amber-500/10 text-amber-400 border-amber-500/25",
+    neutro: "bg-[#f1f1f1] text-[#5a5a5a] border-[#e0e0e0]",
+    oro: "bg-[#f7f0e2] text-[#8a6d2b] border-[#ddc98a]",
+    verde: "bg-[#edf6f0] text-[#2d6e3e] border-[#bcdcc7]",
+    rojo: "bg-[#fef2f2] text-[#b91c1c] border-[#f3c4c4]",
+    ambar: "bg-[#fffbeb] text-[#b45309] border-[#f0ddb0]",
   };
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-md border text-[10px] font-semibold uppercase tracking-wider ${tonos[tono]}`}>
+    <span
+      className={`inline-flex items-center shrink-0 px-1.5 py-0.5 rounded border text-[9.5px] font-bold uppercase tracking-[0.06em] ${tonos[tono]}`}
+    >
       {children}
     </span>
   );
 }
 
-export function Barra({ pct, tono = "oro" }: { pct: number; tono?: "oro" | "verde" }) {
-  const color = tono === "verde" ? "bg-green-500" : "bg-[#B3985B]";
+/** Badge dorado de cantidad — el ×N de las tarjetas del rider. */
+export function Cantidad({ n }: { n: number }) {
   return (
-    <div className="h-1.5 bg-white/8 rounded-full overflow-hidden">
-      <div className={`h-full ${color} rounded-full transition-all duration-500`} style={{ width: `${Math.min(100, pct)}%` }} />
+    <span className="shrink-0 px-2 py-0.5 rounded-full border border-[#9A7A3F] bg-[#f8f8f8] text-[#9A7A3F] text-[11px] font-bold tabular-nums">
+      ×{n}
+    </span>
+  );
+}
+
+export function Barra({ pct, tono = "oro" }: { pct: number; tono?: "oro" | "verde" }) {
+  const color = tono === "verde" ? "bg-[#2d6e3e]" : "bg-[#B3985B]";
+  return (
+    <div className="h-1.5 bg-[#e8e8e8] rounded-full overflow-hidden">
+      <div
+        className={`h-full ${color} rounded-full transition-all duration-500`}
+        style={{ width: `${Math.min(100, pct)}%` }}
+      />
     </div>
   );
 }
@@ -88,10 +184,43 @@ export function Barra({ pct, tono = "oro" }: { pct: number; tono?: "oro" | "verd
 export function Telefono({ numero }: { numero: string | null }) {
   if (!numero) return null;
   return (
-    <a href={`tel:${numero.replace(/\s/g, "")}`} className="text-[#B3985B] hover:underline">
+    <a
+      href={`tel:${numero.replace(/\s/g, "")}`}
+      className="text-[#0d0d0d] underline decoration-[#ddc98a] decoration-2 underline-offset-2 font-medium"
+    >
       {numero}
     </a>
   );
+}
+
+/** Falta un dato que en sitio cuesta caro. Mismo ámbar del PDF. */
+export function PorConfirmar({ children = "Por confirmar" }: { children?: React.ReactNode }) {
+  return <span className="text-[#b45309] font-bold">{children}</span>;
+}
+
+/**
+ * Mismas etiquetas que el PDF (`MAPS` en PdfShared). Se duplican aquí porque
+ * aquel módulo arrastra `@react-pdf/renderer` al bundle del cliente.
+ */
+export const ESTADO_LABEL: Record<string, string> = {
+  PLANEACION: "En preparación", CONFIRMADO: "Confirmado",
+  EN_CURSO: "En evento", COMPLETADO: "Finalizado", CANCELADO: "Cancelado",
+};
+export const SERVICIO_LABEL: Record<string, string> = {
+  PRODUCCION_TECNICA: "Producción técnica integral",
+  RENTA: "Renta de equipo",
+  DIRECCION_TECNICA: "Dirección técnica",
+};
+export const EVENTO_LABEL: Record<string, string> = {
+  MUSICAL: "Musical", SOCIAL: "Social", EMPRESARIAL: "Empresarial", OTRO: "Otro",
+};
+export const ZONA_LABEL: Record<string, string> = {
+  LOCAL: "Local (Querétaro)", BAJIO: "Bajío", NACIONAL: "Nacional",
+};
+
+/** Traduce un enum a su etiqueta; si no la conoce deja el valor crudo. */
+export function etiqueta(mapa: Record<string, string>, v: string | null): string | null {
+  return v ? (mapa[v] ?? v) : null;
 }
 
 export function fechaLarga(iso: string | null): string | null {
@@ -101,11 +230,31 @@ export function fechaLarga(iso: string | null): string | null {
   });
 }
 
-export function horaCorta(iso: string | null): string | null {
+export function fechaCorta(iso: string | null): string | null {
   if (!iso) return null;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
+  return new Date(iso.substring(0, 10) + "T12:00:00Z").toLocaleDateString("es-MX", {
+    timeZone: "UTC", weekday: "short", day: "numeric", month: "short",
+  });
+}
+
+/**
+ * Las horas se guardan como hora de pared (un DateTime a las 06:45Z significa
+ * "seis cuarenta y cinco de la mañana", no un instante en UTC): se lee en UTC o
+ * la camioneta sale seis horas antes en pantalla. El formato de 12 horas es el
+ * mismo del PDF — en sitio nadie traduce "15:00" a las 3 de la tarde.
+ */
+export function horaCorta(iso: string | null): string | null {
+  return iso ? fmtHoraDate(iso, "UTC") || null : null;
+}
+
+/** ¿Dos ISO caen el mismo día? Se compara la fecha de pared, sin zona. */
+export function mismoDia(a: string | null, b: string | null): boolean {
+  return !!a && !!b && a.substring(0, 10) === b.substring(0, 10);
+}
+
+/** "HH:MM" de pared → "3:00 PM", igual que `fmtHora` del PDF. */
+export function hora12(hhmm: string | null | undefined): string | null {
+  return hhmm ? fmt24to12(hhmm) || hhmm : null;
 }
 
 export function haceCuanto(iso: string): string {

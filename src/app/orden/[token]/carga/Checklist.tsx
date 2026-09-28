@@ -197,14 +197,14 @@ export default function Checklist({
   return (
     <>
       {/* Resumen pegajoso: el avance es lo que se consulta a cada rato. */}
-      <div className="sticky top-[61px] sm:top-[101px] z-10 -mx-4 sm:-mx-5 px-4 sm:px-5 py-3 bg-black/90 backdrop-blur-xl border-b border-white/8 mb-4">
+      <div className="sticky top-0 z-20 -mx-5 px-5 py-3 bg-white/95 backdrop-blur border-b border-[#e8e8e8] mb-4">
         <div className="flex items-center justify-between gap-3 mb-2">
           <div className="min-w-0">
-            <p className="text-white font-bold text-sm truncate">
+            <p className="text-[#0d0d0d] font-bold text-[14px] truncate">
               {PASE_LABEL[carga.tipo as TipoPase] ?? carga.tipo}
               {carga.etiqueta ? ` · ${carga.etiqueta}` : ""}
             </p>
-            <p className="text-white/30 text-[11px]">
+            <p className="text-[#9a9a9a] text-[11px] tabular-nums">
               {avance.revisados}/{avance.total} revisados
               {avance.faltantes > 0 && ` · ${avance.faltantes} faltante(s)`}
               {avance.danados > 0 && ` · ${avance.danados} dañado(s)`}
@@ -219,8 +219,9 @@ export default function Checklist({
       </div>
 
       {!cerrada && (
-        <p className="text-white/35 text-xs mb-4 leading-relaxed">
-          {PASE_DESCRIPCION[carga.tipo as TipoPase]} Marcando como <span className="text-white/60">{verificador.nombre}</span>.
+        <p className="text-[#5a5a5a] text-[12px] mb-4 leading-relaxed">
+          {PASE_DESCRIPCION[carga.tipo as TipoPase]} Marcando como{" "}
+          <span className="text-[#0d0d0d] font-bold">{verificador.nombre}</span>.
         </p>
       )}
 
@@ -228,26 +229,27 @@ export default function Checklist({
         const listos = items.filter((i) => i.estado !== "PENDIENTE").length;
         const colapsado = abiertos[categoria] === false;
         return (
-          <section key={categoria} className="mb-3">
-            <div className="flex items-center gap-2 mb-2">
+          <section key={categoria} className="mb-4">
+            {/* Barra negra de categoría — igual que el rider impreso. */}
+            <div className="flex items-center gap-2 bg-[#111] px-3 py-1.5">
               <button
                 onClick={() => setAbiertos((a) => ({ ...a, [categoria]: colapsado }))}
-                className="flex-1 flex items-center gap-2 text-left"
+                className="flex-1 min-w-0 flex items-center gap-2 text-left"
               >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
                      strokeLinecap="round" strokeLinejoin="round"
-                     className={`text-white/25 transition-transform ${colapsado ? "" : "rotate-90"}`}>
+                     className={`shrink-0 text-white/40 transition-transform ${colapsado ? "" : "rotate-90"}`}>
                   <path d="M9 18l6-6-6-6" />
                 </svg>
-                <span className="text-[#B3985B] text-[10px] font-semibold uppercase tracking-widest">{categoria}</span>
-                <span className={`text-[11px] tabular-nums ${listos === items.length ? "text-green-400" : "text-white/25"}`}>
+                <span className="text-white text-[10px] font-bold uppercase tracking-[0.15em] truncate">{categoria}</span>
+                <span className={`text-[10px] tabular-nums shrink-0 ${listos === items.length ? "text-[#7dd3a0]" : "text-white/40"}`}>
                   {listos}/{items.length}
                 </span>
               </button>
               {!cerrada && listos < items.length && (
                 <button
                   onClick={() => void marcarGrupo(items)}
-                  className="shrink-0 px-2.5 py-1 bg-white/5 border border-white/10 rounded-lg text-white/50 text-[10px] font-semibold"
+                  className="shrink-0 px-2 py-0.5 border border-white/25 rounded text-white/70 text-[10px] font-bold"
                 >
                   Marcar todo
                 </button>
@@ -255,7 +257,7 @@ export default function Checklist({
             </div>
 
             {!colapsado && (
-              <div className="bg-white/[0.025] border border-white/8 rounded-2xl divide-y divide-white/5 overflow-hidden">
+              <div className="border border-t-0 border-[#e8e8e8] rounded-b-md divide-y divide-[#f0f0f0] overflow-hidden bg-white">
                 {items.map((it) => (
                   <Renglon
                     key={it.id}
@@ -273,16 +275,16 @@ export default function Checklist({
       })}
 
       {cerrada ? (
-        <div className="bg-white/[0.025] border border-white/8 rounded-2xl p-5 mt-6">
-          <p className="text-white/60 text-sm">
+        <div className="border border-[#e8e8e8] rounded-md p-4 mt-6 bg-[#f6f6f6]">
+          <p className="text-[#0d0d0d] text-[13.5px] font-medium">
             Pase cerrado{carga.cerradaPor ? ` por ${carga.cerradaPor}` : ""}.
           </p>
-          {carga.notaCierre && <p className="text-white/35 text-xs mt-2 leading-relaxed">{carga.notaCierre}</p>}
+          {carga.notaCierre && <p className="text-[#5a5a5a] text-[12px] mt-2 leading-relaxed">{carga.notaCierre}</p>}
         </div>
       ) : (
-        <div className="bg-white/[0.025] border border-white/8 rounded-2xl p-5 mt-6">
-          <h3 className="text-white font-bold text-sm mb-1">Cerrar el pase</h3>
-          <p className="text-white/35 text-xs mb-4 leading-relaxed">
+        <div className="border border-[#e8e8e8] rounded-md p-4 mt-6">
+          <h3 className="text-[#0d0d0d] font-bold text-[14px] mb-1">Cerrar el pase</h3>
+          <p className="text-[#5a5a5a] text-[12px] mb-4 leading-relaxed">
             {sinRevisar > 0
               ? `Quedan ${sinRevisar} renglón(es) sin revisar. Al cerrar se registran como faltantes, así que explica por qué.`
               : "Todo está revisado. Al cerrar queda el registro firmado."}
@@ -293,14 +295,14 @@ export default function Checklist({
               onChange={(e) => setNotaCierre(e.target.value)}
               rows={3}
               placeholder="¿Por qué se cierra con renglones sin revisar?"
-              className="w-full bg-white/[0.04] border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/25 outline-none focus:border-[#B3985B]/40 mb-3 resize-none"
+              className="w-full border border-[#e0e0e0] rounded-md px-3 py-2.5 text-[13.5px] outline-none focus:border-[#B3985B] mb-3 resize-none"
             />
           )}
-          {errorCierre && <p className="text-red-400 text-xs mb-3">{errorCierre}</p>}
+          {errorCierre && <p className="text-[#b91c1c] text-[12px] mb-3">{errorCierre}</p>}
           <button
             onClick={() => void cerrar()}
             disabled={cerrando || enCola > 0}
-            className="w-full py-3.5 bg-[#B3985B] text-black rounded-xl text-sm font-bold disabled:opacity-25"
+            className="w-full py-3.5 bg-[#B3985B] text-[#0d0d0d] rounded-lg text-[14px] font-bold disabled:opacity-40"
           >
             {cerrando ? "Cerrando…" : enCola > 0 ? "Esperando marcas por enviar…" : "Cerrar pase"}
           </button>
@@ -323,10 +325,10 @@ export default function Checklist({
 }
 
 const TONO_ESTADO: Record<string, string> = {
-  OK: "bg-green-500 border-green-500",
-  FALTANTE: "bg-red-500/20 border-red-500",
-  DANADO: "bg-amber-500/20 border-amber-500",
-  PENDIENTE: "border-white/20",
+  OK: "bg-[#2d6e3e] border-[#2d6e3e]",
+  FALTANTE: "bg-[#fef2f2] border-[#b91c1c]",
+  DANADO: "bg-[#fffbeb] border-[#b45309]",
+  PENDIENTE: "border-[#bbb]",
 };
 
 function Renglon({
@@ -351,25 +353,25 @@ function Renglon({
       <button
         onClick={onToggle}
         disabled={cerrada}
-        className="flex-1 min-w-0 flex items-center gap-3 p-3.5 text-left active:bg-white/[0.04] disabled:active:bg-transparent"
+        className="flex-1 min-w-0 flex items-center gap-3 p-3.5 text-left active:bg-[#f6f6f6] disabled:active:bg-transparent"
       >
-        <span className={`shrink-0 w-6 h-6 rounded-md border-2 flex items-center justify-center ${TONO_ESTADO[item.estado]}`}>
+        <span className={`shrink-0 w-6 h-6 rounded border-2 flex items-center justify-center ${TONO_ESTADO[item.estado]}`}>
           {item.estado === "OK" && (
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
               <path d="M5 13l4 4L19 7" />
             </svg>
           )}
-          {item.estado === "FALTANTE" && <span className="text-red-400 text-xs font-black leading-none">!</span>}
-          {item.estado === "DANADO" && <span className="text-amber-400 text-xs font-black leading-none">⚠</span>}
+          {item.estado === "FALTANTE" && <span className="text-[#b91c1c] text-xs font-black leading-none">!</span>}
+          {item.estado === "DANADO" && <span className="text-[#b45309] text-xs font-black leading-none">⚠</span>}
         </span>
 
         <span className="min-w-0 flex-1">
-          <span className={`block text-sm leading-snug ${item.esAccesorio ? "text-white/55" : "text-white/85 font-medium"} ${item.estado === "OK" ? "line-through decoration-white/20" : ""}`}>
-            {item.esAccesorio && <span className="text-[#B3985B]/40 mr-1">└</span>}
+          <span className={`block text-[13.5px] leading-snug ${item.esAccesorio ? "text-[#5a5a5a]" : "text-[#0d0d0d] font-bold"} ${item.estado === "OK" ? "line-through decoration-[#c0c0c0]" : ""}`}>
+            {item.esAccesorio && <span className="text-[#ddc98a] mr-1">└</span>}
             {item.descripcion}
           </span>
           {(revisado || item.nota) && (
-            <span className="block text-white/30 text-[11px] mt-0.5 truncate">
+            <span className="block text-[#9a9a9a] text-[11px] mt-0.5 truncate">
               {[
                 item.estado !== "OK" ? ESTADO_ITEM_LABEL[item.estado] : null,
                 parcial ? `${item.cantidadVerificada} de ${item.cantidadEsperada}` : null,
@@ -381,8 +383,8 @@ function Renglon({
         </span>
 
         <span className="shrink-0 flex items-center gap-1.5">
-          {pendienteDeEnvio && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" title="Pendiente de enviar" />}
-          <span className="text-white/30 text-xs font-bold tabular-nums">×{item.cantidadEsperada}</span>
+          {pendienteDeEnvio && <span className="w-1.5 h-1.5 rounded-full bg-[#b45309]" title="Pendiente de enviar" />}
+          <span className="text-[#9A7A3F] text-[11px] font-bold tabular-nums">×{item.cantidadEsperada}</span>
         </span>
       </button>
 
@@ -390,7 +392,7 @@ function Renglon({
         <button
           onClick={onDetalle}
           aria-label="Más opciones"
-          className="shrink-0 w-11 flex items-center justify-center border-l border-white/5 text-white/25 active:bg-white/[0.04]"
+          className="shrink-0 w-11 flex items-center justify-center border-l border-[#f0f0f0] text-[#c0c0c0] active:bg-[#f6f6f6]"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
             <circle cx="12" cy="5" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="12" cy="19" r="1.6" />
@@ -429,37 +431,37 @@ function PanelDetalle({
     setGuardando(false);
   }
 
-  const input = "w-full bg-white/[0.04] border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/25 outline-none focus:border-[#B3985B]/40";
+  const input = "w-full border border-[#e0e0e0] rounded-md px-3 py-2.5 text-[13.5px] outline-none focus:border-[#B3985B]";
 
   return (
     <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onCerrar} />
-      <div className="relative w-full sm:max-w-md bg-[#0c0c0c] border-t sm:border border-white/10 rounded-t-3xl sm:rounded-3xl p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] max-h-[88vh] overflow-y-auto">
-        <div className="w-10 h-1 bg-white/15 rounded-full mx-auto mb-4 sm:hidden" />
+      <div className="absolute inset-0 bg-black/40" onClick={onCerrar} />
+      <div className="relative w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] max-h-[88vh] overflow-y-auto">
+        <div className="w-10 h-1 bg-[#e0e0e0] rounded-full mx-auto mb-4 sm:hidden" />
 
-        <p className="text-white font-bold text-base leading-snug">{item.descripcion}</p>
-        <p className="text-white/30 text-xs mt-1 mb-5">
+        <p className="text-[#0d0d0d] font-bold text-[16px] leading-snug">{item.descripcion}</p>
+        <p className="text-[#9a9a9a] text-[11.5px] mt-1 mb-5">
           Se esperan {item.cantidadEsperada} · {item.categoria ?? "General"}
           {item.marcadoPor && ` · marcado por ${item.marcadoPor}`}
         </p>
 
         {item.cantidadEsperada > 1 && (
           <div className="mb-4">
-            <p className="text-white/30 text-[11px] uppercase tracking-wider mb-2">Cuántas hay</p>
+            <p className="text-[#9a9a9a] text-[9.5px] font-bold uppercase tracking-[0.09em] mb-2">Cuántas hay</p>
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setCantidad((c) => Math.max(0, c - 1))}
-                className="w-11 h-11 bg-white/5 border border-white/10 rounded-xl text-white text-lg font-bold"
+                className="w-11 h-11 border border-[#d8d8d8] rounded-lg text-[#0d0d0d] text-lg font-bold"
               >
                 −
               </button>
-              <span className="flex-1 text-center text-white text-xl font-bold tabular-nums">
+              <span className="flex-1 text-center text-[#0d0d0d] text-xl font-bold tabular-nums">
                 {cantidad}
-                <span className="text-white/25 text-sm font-normal"> / {item.cantidadEsperada}</span>
+                <span className="text-[#9a9a9a] text-sm font-normal"> / {item.cantidadEsperada}</span>
               </span>
               <button
                 onClick={() => setCantidad((c) => Math.min(item.cantidadEsperada, c + 1))}
-                className="w-11 h-11 bg-white/5 border border-white/10 rounded-xl text-white text-lg font-bold"
+                className="w-11 h-11 border border-[#d8d8d8] rounded-lg text-[#0d0d0d] text-lg font-bold"
               >
                 +
               </button>
@@ -469,7 +471,7 @@ function PanelDetalle({
 
         {item.equipoId && (
           <div className="mb-4">
-            <p className="text-white/30 text-[11px] uppercase tracking-wider mb-2">
+            <p className="text-[#9a9a9a] text-[9.5px] font-bold uppercase tracking-[0.09em] mb-2">
               Si está dañado, ¿qué tan grave?
             </p>
             <div className="flex gap-2">
@@ -477,10 +479,10 @@ function PanelDetalle({
                 <button
                   key={s}
                   onClick={() => setSeveridad(s)}
-                  className={`flex-1 py-2.5 rounded-xl text-xs font-semibold border transition-colors ${
+                  className={`flex-1 py-2.5 rounded-lg text-[12px] font-bold border transition-colors ${
                     severidad === s
-                      ? "bg-amber-500/15 border-amber-500/40 text-amber-400"
-                      : "bg-white/[0.025] border-white/8 text-white/40"
+                      ? "bg-[#fffbeb] border-[#b45309] text-[#b45309]"
+                      : "bg-white border-[#e0e0e0] text-[#5a5a5a]"
                   }`}
                 >
                   {SEVERIDAD_FALLA_LABEL[s]}
@@ -502,7 +504,7 @@ function PanelDetalle({
           <button
             onClick={() => void aplicar("OK")}
             disabled={guardando || cerrada}
-            className="w-full py-3.5 bg-green-500 text-black rounded-xl text-sm font-bold disabled:opacity-25"
+            className="w-full py-3.5 bg-[#2d6e3e] text-white rounded-lg text-[14px] font-bold disabled:opacity-40"
           >
             Completo
           </button>
@@ -510,14 +512,14 @@ function PanelDetalle({
             <button
               onClick={() => void aplicar("FALTANTE")}
               disabled={guardando || cerrada}
-              className="flex-1 py-3.5 bg-red-500/15 border border-red-500/30 text-red-400 rounded-xl text-sm font-bold disabled:opacity-25"
+              className="flex-1 py-3.5 bg-[#fef2f2] border border-[#b91c1c] text-[#b91c1c] rounded-lg text-[14px] font-bold disabled:opacity-40"
             >
               Faltante
             </button>
             <button
               onClick={() => void aplicar("DANADO")}
               disabled={guardando || cerrada}
-              className="flex-1 py-3.5 bg-amber-500/15 border border-amber-500/30 text-amber-400 rounded-xl text-sm font-bold disabled:opacity-25"
+              className="flex-1 py-3.5 bg-[#fffbeb] border border-[#b45309] text-[#b45309] rounded-lg text-[14px] font-bold disabled:opacity-40"
             >
               Dañado
             </button>
@@ -526,7 +528,7 @@ function PanelDetalle({
             <button
               onClick={() => void aplicar("PENDIENTE")}
               disabled={guardando || cerrada}
-              className="w-full py-3 text-white/35 text-xs font-semibold disabled:opacity-25"
+              className="w-full py-3 text-[#9a9a9a] text-[12px] font-bold disabled:opacity-40"
             >
               Quitar la marca
             </button>
@@ -534,7 +536,7 @@ function PanelDetalle({
         </div>
 
         {item.equipoId && (
-          <p className="text-white/20 text-[11px] mt-4 leading-relaxed">
+          <p className="text-[#9a9a9a] text-[11px] mt-4 leading-relaxed">
             Marcar como dañado levanta automáticamente un reporte de falla del equipo.
           </p>
         )}
