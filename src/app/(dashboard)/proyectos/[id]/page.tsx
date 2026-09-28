@@ -3646,7 +3646,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       {/* ── Two-column layout: left (tabs+content) + right (sidebar) ──
           Se parte en dos hasta lg: en iPad vertical (768–834px) la columna de
           contenido se quedaba en ~410px y todo el interior se apretaba. */}
-      <div className="flex flex-col lg:flex-row gap-5 items-start mt-5">
+      <div className="flex flex-col lg:flex-row gap-5 lg:items-start mt-5">
 
         {/* Left column — 70% — tabs + content */}
         <div className="flex-1 min-w-0 space-y-4">
