@@ -34,7 +34,7 @@ export default function GastosRecurrentesPage() {
   const totalVariable = gastos.filter(g => g.estado === "ACTIVO" && g.tipoMonto === "VARIABLE").reduce((acc, g) => acc + (g.montoBase || 0), 0);
 
   return (
-    <div className="space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-white">Gastos Recurrentes</h1>
