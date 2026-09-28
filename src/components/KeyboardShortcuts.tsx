@@ -17,6 +17,16 @@ const SHORTCUTS: Shortcut[] = [
   { keys: ["G", "T"], description: "Ir a Pipeline de Ventas", category: "Navegación" },
   { keys: ["G", "Q"], description: "Ir a Cotizaciones", category: "Navegación" },
   { keys: ["G", "P"], description: "Ir a Proyectos", category: "Navegación" },
+  // Finanzas
+  { keys: ["G", "F", "C"], description: "Ir a Cobros y pagos", category: "Finanzas" },
+  { keys: ["G", "F", "F"], description: "Ir a Flujo de cuentas", category: "Finanzas" },
+  { keys: ["G", "F", "P"], description: "Ir a Pagos a personal", category: "Finanzas" },
+  { keys: ["G", "F", "M"], description: "Ir a Movimientos", category: "Finanzas" },
+  { keys: ["G", "F", "A"], description: "Ir a Caja chica", category: "Finanzas" },
+  { keys: ["G", "F", "B"], description: "Ir a Cuentas bancarias", category: "Finanzas" },
+  { keys: ["G", "F", "R"], description: "Ir a Gastos recurrentes", category: "Finanzas" },
+  { keys: ["G", "F", "D"], description: "Ir a Pasivos y deudas", category: "Finanzas" },
+  { keys: ["G", "F", "U"], description: "Ir a Reparto utilidades", category: "Finanzas" },
   // Acciones
   { keys: ["?"], description: "Mostrar atajos de teclado", category: "General" },
   { keys: ["Esc"], description: "Cerrar modal / panel", category: "General" },
@@ -28,6 +38,15 @@ const NAV_SEQUENCES: Record<string, string> = {
   "gt": "/crm/tratos",
   "gq": "/cotizaciones",
   "gp": "/proyectos",
+  "gfc": "/finanzas/cobros-pagos",
+  "gff": "/finanzas/flujo-cuentas",
+  "gfp": "/finanzas/pagos-personal",
+  "gfm": "/finanzas/movimientos",
+  "gfa": "/finanzas/caja-chica",
+  "gfb": "/finanzas/cuentas",
+  "gfr": "/finanzas/gastos-recurrentes",
+  "gfd": "/finanzas/pasivos",
+  "gfu": "/finanzas/repartos",
 };
 
 export function KeyboardShortcuts() {
