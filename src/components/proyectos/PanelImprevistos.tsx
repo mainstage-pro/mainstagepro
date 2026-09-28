@@ -4,18 +4,28 @@ import { useEffect, useMemo, useState } from "react";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
+import {
+  TIPOS_ACREEDOR,
+  CAMPO_ACREEDOR,
+  tipoAcreedorLabel,
+  type TipoAcreedor,
+} from "@/lib/proveedor-evento";
 
 /**
- * Rentas y servicios que salieron sobre la marcha, con el evento ya encima. Se capturan
- * en un renglón (proveedor, qué, unidades, cuánto) y de ahí salen las cuentas por pagar
- * que administración revisa el lunes. Comparte modelo con los proveedores coordinados en
- * preproducción (ProveedorEvento, marcados con `imprevisto`), para que la deuda con el
- * proveedor se vea en una sola lista.
+ * Rentas, compras y servicios que salieron sobre la marcha, con el evento ya encima. Se
+ * capturan en un renglón (quién lo puso, qué, unidades, cuánto) y de ahí salen las
+ * cuentas por pagar que administración revisa el lunes. Lo puede poner un proveedor, un
+ * técnico o alguien de casa que lo pagó de su bolsa: a los tres se les debe igual.
+ * Comparte modelo con los proveedores coordinados en preproducción (ProveedorEvento,
+ * marcados con `imprevisto`), para que la deuda se vea en una sola lista.
  */
 
 type Imprevisto = {
   id: string;
+  tipoAcreedor: string;
   proveedorId: string | null;
+  tecnicoId: string | null;
+  personalId: string | null;
   nombreProveedor: string;
   servicioEquipo: string | null;
   unidades: number | null;
@@ -26,7 +36,10 @@ type Imprevisto = {
   cuentaPagar: { id: string; monto: number; montoPagado: number; estado: string; fechaCompromiso: string } | null;
 };
 
-type ProveedorCatalogo = { id: string; nombre: string; telefono: string | null };
+type Persona = { id: string; nombre: string; telefono: string | null };
+
+/** El id del catálogo del que salió el registro, sea cual sea la categoría. */
+const acreedorId = (f: Imprevisto): string | null => f.proveedorId ?? f.tecnicoId ?? f.personalId;
 
 const money = (n: number) => n.toLocaleString("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 });
 
@@ -55,11 +68,16 @@ export function PanelImprevistos({ proyectoId }: { proyectoId: string }) {
   const confirm = useConfirm();
 
   const [filas, setFilas] = useState<Imprevisto[]>([]);
-  const [catalogo, setCatalogo] = useState<ProveedorCatalogo[]>([]);
+  const [catalogos, setCatalogos] = useState<Record<TipoAcreedor, Persona[]>>({
+    PROVEEDOR: [],
+    TECNICO: [],
+    PERSONAL_INTERNO: [],
+  });
   const [cargando, setCargando] = useState(true);
   const [mostrarAlta, setMostrarAlta] = useState(false);
   const [guardando, setGuardando] = useState<string | null>(null);
 
+  const [tipo, setTipo] = useState<TipoAcreedor>("PROVEEDOR");
   const [nuevoEnCatalogo, setNuevoEnCatalogo] = useState(false);
   const [catalogoId, setCatalogoId] = useState("");
   const [nombre, setNombre] = useState("");
@@ -71,26 +89,53 @@ export function PanelImprevistos({ proyectoId }: { proyectoId: string }) {
 
   useEffect(() => {
     (async () => {
-      const [ri, rc] = await Promise.all([
+      const [ri, rp, rt, rn] = await Promise.all([
         fetch(`/api/proyectos/${proyectoId}/proveedores-evento?imprevisto=1`),
         fetch("/api/proveedores"),
+        fetch("/api/tecnicos"),
+        fetch("/api/rrhh/personal"),
       ]);
       if (ri.ok) setFilas((await ri.json()).proveedores ?? []);
-      if (rc.ok) setCatalogo((await rc.json()).proveedores ?? []);
+      const proveedores: Persona[] = rp.ok ? (await rp.json()).proveedores ?? [] : [];
+      const tecnicos = rt.ok ? (await rt.json()).tecnicos ?? [] : [];
+      const personal = rn.ok ? (await rn.json()).personal ?? [] : [];
+      setCatalogos({
+        PROVEEDOR: proveedores,
+        TECNICO: tecnicos.map((t: { id: string; nombre: string; celular: string | null }) => ({
+          id: t.id,
+          nombre: t.nombre,
+          telefono: t.celular,
+        })),
+        PERSONAL_INTERNO: personal
+          .filter((p: { activo: boolean }) => p.activo)
+          .map((p: { id: string; nombre: string; telefono: string | null }) => ({
+            id: p.id,
+            nombre: p.nombre,
+            telefono: p.telefono,
+          })),
+      });
       setCargando(false);
     })();
   }, [proyectoId]);
 
   const opcionesCatalogo = useMemo(
-    () => catalogo.map((c) => ({ value: c.id, label: c.nombre })),
-    [catalogo],
+    () => catalogos[tipo].map((c) => ({ value: c.id, label: c.nombre })),
+    [catalogos, tipo],
   );
+
+  const vocabulario = TIPOS_ACREEDOR.find((t) => t.valor === tipo)!;
 
   const total = filas.reduce((s, f) => s + (f.costoAcordado ?? 0), 0);
   const sinCxP = filas.filter((f) => !f.cuentaPagar && (f.costoAcordado ?? 0) > 0);
 
+  function cambiarTipo(nuevo: TipoAcreedor) {
+    setTipo(nuevo);
+    setCatalogoId("");
+    setNuevoEnCatalogo(false);
+  }
+
   async function agregar() {
-    const delCatalogo = catalogo.find((c) => c.id === catalogoId);
+    const delCatalogo = catalogos[tipo].find((c) => c.id === catalogoId);
     const nom = (nuevoEnCatalogo ? nombre : delCatalogo?.nombre ?? "").trim();
     if (!nom) return;
     setAgregando(true);
@@ -99,7 +144,8 @@ export function PanelImprevistos({ proyectoId }: { proyectoId: string }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         imprevisto: true,
-        proveedorId: nuevoEnCatalogo ? null : catalogoId || null,
+        tipoAcreedor: tipo,
+        [CAMPO_ACREEDOR[tipo]]: nuevoEnCatalogo ? null : catalogoId || null,
         crearEnCatalogo: nuevoEnCatalogo,
         nombreProveedor: nom,
         telefonoProveedor: nuevoEnCatalogo ? celular : delCatalogo?.telefono ?? null,
@@ -111,8 +157,12 @@ export function PanelImprevistos({ proyectoId }: { proyectoId: string }) {
     if (res.ok) {
       const { proveedor } = await res.json();
       setFilas((prev) => [...prev, proveedor]);
-      if (nuevoEnCatalogo && proveedor.proveedorId) {
-        setCatalogo((prev) => [...prev, { id: proveedor.proveedorId, nombre: nom, telefono: celular || null }]);
+      const creadoId = acreedorId(proveedor);
+      if (nuevoEnCatalogo && creadoId) {
+        setCatalogos((prev) => ({
+          ...prev,
+          [tipo]: [...prev[tipo], { id: creadoId, nombre: nom, telefono: celular || null }],
+        }));
       }
       setCatalogoId(""); setNombre(""); setCelular(""); setServicio(""); setUnidades("1"); setMonto("");
       setNuevoEnCatalogo(false);
@@ -188,11 +238,29 @@ export function PanelImprevistos({ proyectoId }: { proyectoId: string }) {
 
         {mostrarAlta && (
           <div className="mt-4 space-y-3">
+            <div>
+              <label className="text-xs text-gray-500 block mb-1.5">¿Quién lo puso?</label>
+              <div className="flex gap-1.5 flex-wrap">
+                {TIPOS_ACREEDOR.map((t) => (
+                  <button
+                    key={t.valor}
+                    onClick={() => cambiarTipo(t.valor)}
+                    className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+                      tipo === t.valor
+                        ? "border-[#B3985B] bg-[#B3985B]/10 text-[#B3985B]"
+                        : "border-[#333] text-gray-500 hover:text-white"
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             {nuevoEnCatalogo ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-gray-500 block mb-1">Proveedor *</label>
-                  <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre del proveedor" className={inputCls} />
+                  <label className="text-xs text-gray-500 block mb-1">Nombre *</label>
+                  <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder={`Nombre del ${vocabulario.singular}`} className={inputCls} />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 block mb-1">Celular</label>
@@ -201,15 +269,17 @@ export function PanelImprevistos({ proyectoId }: { proyectoId: string }) {
               </div>
             ) : (
               <div>
-                <label className="text-xs text-gray-500 block mb-1">Proveedor del catálogo *</label>
-                <Combobox value={catalogoId} onChange={setCatalogoId} options={opcionesCatalogo} placeholder="Buscar proveedor..." />
+                <label className="text-xs text-gray-500 block mb-1">{vocabulario.label} *</label>
+                <Combobox value={catalogoId} onChange={setCatalogoId} options={opcionesCatalogo} placeholder={vocabulario.buscar} />
               </div>
             )}
             <button
               onClick={() => setNuevoEnCatalogo((v) => !v)}
               className="text-xs text-gray-500 hover:text-[#B3985B] transition-colors"
             >
-              {nuevoEnCatalogo ? "← Elegir uno del catálogo" : "¿No está en el catálogo? Regístralo con nombre y celular"}
+              {nuevoEnCatalogo
+                ? "← Elegir uno de la lista"
+                : `¿No aparece? Da de alta un ${vocabulario.singular} con nombre y celular`}
             </button>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="col-span-2">
@@ -255,6 +325,11 @@ export function PanelImprevistos({ proyectoId }: { proyectoId: string }) {
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm text-white font-medium">{f.nombreProveedor}</span>
+                    {f.tipoAcreedor !== "PROVEEDOR" && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#1f1f1f] text-gray-400">
+                        {tipoAcreedorLabel(f.tipoAcreedor)}
+                      </span>
+                    )}
                     {f.cuentaPagar ? (
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-900/40 text-green-400">
                         CxP {money(f.cuentaPagar.monto)} · {f.cuentaPagar.estado.toLowerCase()}
@@ -333,9 +408,9 @@ export function PanelImprevistos({ proyectoId }: { proyectoId: string }) {
                   </div>
                 </div>
 
-                {!f.proveedorId && (
+                {!acreedorId(f) && (
                   <p className="text-[11px] text-amber-600">
-                    Este proveedor no está en el catálogo: regístralo para poder generarle la cuenta por pagar.
+                    No está en ningún catálogo: regístralo para poder generarle la cuenta por pagar.
                   </p>
                 )}
               </div>

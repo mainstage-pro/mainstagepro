@@ -1418,6 +1418,7 @@ model Tecnico {
 
   roles               TecnicoRol[]
   proyectoPersonal    ProyectoPersonal[]
+  imprevistosEvento   ProveedorEvento[]
   cuentasPagar        CuentaPagar[]
   pagosNomina         PagoNomina[]
   cargaVerificaciones ProyectoCargaVerificador[]
@@ -2154,6 +2155,7 @@ model PersonalInterno {
   encuestasSatisfaccion EncuestaSatisfaccionEquipo[]
   capacitaciones        CapacitacionParticipante[]
   onboarding            OnboardingPlan?              @relation("PersonalOnboarding")
+  imprevistosEvento     ProveedorEvento[]
 
   @@map("personal_interno")
 }
@@ -4088,9 +4090,17 @@ model ProveedorEvento {
   updatedAt         DateTime     @updatedAt
   proyectoId        String
   proyecto          Proyecto     @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  // Quién puso lo que se ocupó. El proveedor es el caso normal y el único posible en lo
+  // coordinado en preproducción; el técnico y la gente de casa aparecen en imprevistos,
+  // cuando lo pagaron de su bolsa y hay que reembolsarles.
+  tipoAcreedor      String       @default("PROVEEDOR") // PROVEEDOR | TECNICO | PERSONAL_INTERNO
   // Null mientras el proveedor solo exista como nombre suelto; el alta rápida lo liga.
   proveedorId       String?
   proveedor         Proveedor?   @relation(fields: [proveedorId], references: [id])
+  tecnicoId         String?
+  tecnico           Tecnico?     @relation(fields: [tecnicoId], references: [id])
+  personalId        String?
+  personal          PersonalInterno? @relation(fields: [personalId], references: [id])
   nombreProveedor   String
   servicioEquipo    String?
   telefonoProveedor String?

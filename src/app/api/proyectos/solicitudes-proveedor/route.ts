@@ -56,7 +56,8 @@ export async function GET(req: NextRequest) {
     coordinador: f.proyecto.encargado?.name ?? null,
     proveedor: f.nombreProveedor,
     telefono: f.telefonoProveedor,
-    enCatalogo: f.proveedorId != null,
+    tipoAcreedor: f.tipoAcreedor,
+    enCatalogo: (f.proveedorId ?? f.tecnicoId ?? f.personalId) != null,
     // El imprevisto describe todo en un renglón; el coordinado reparte sus conceptos
     // entre items manuales y líneas de la cotización.
     detalle:

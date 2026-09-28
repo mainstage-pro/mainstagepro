@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logActividad } from "@/lib/actividad";
+import { TIPOS_ACREEDOR, CAMPO_ACREEDOR, esTipoAcreedor } from "@/lib/proveedor-evento";
 
 // Mismo criterio de pago que el resto del proyecto: el miércoles siguiente al evento.
 function proximoMiercolesTraEvento(fecha: Date): Date {
@@ -33,11 +34,18 @@ export async function POST(
     return NextResponse.json({ error: "No encontrado" }, { status: 404 });
   }
   if (!bloque.costoAcordado || bloque.costoAcordado <= 0) {
-    return NextResponse.json({ error: "Captura primero el costo acordado con el proveedor" }, { status: 400 });
+    return NextResponse.json({ error: "Captura primero el costo acordado" }, { status: 400 });
   }
-  if (!bloque.proveedorId) {
+
+  // Al técnico y a la gente de casa se les debe igual que a un proveedor: lo pagaron de
+  // su bolsa. CuentaPagar solo tiene llave para proveedor y técnico; el reembolso al
+  // personal interno se identifica por tipo y lleva el nombre en el concepto.
+  const tipoAcreedor = esTipoAcreedor(bloque.tipoAcreedor) ? bloque.tipoAcreedor : "PROVEEDOR";
+  const acreedorId = bloque[CAMPO_ACREEDOR[tipoAcreedor]];
+  if (!acreedorId) {
+    const { singular } = TIPOS_ACREEDOR.find((t) => t.valor === tipoAcreedor)!;
     return NextResponse.json(
-      { error: "Registra al proveedor en el catálogo para poder generarle la cuenta por pagar" },
+      { error: `Registra al ${singular} en el catálogo para poder generarle la cuenta por pagar` },
       { status: 400 },
     );
   }
@@ -48,25 +56,30 @@ export async function POST(
     ...bloque.items.map((it) => `${it.cantidad}× ${it.descripcion}`),
     ...bloque.lineas.map((l) => `${l.cantidad}× ${l.descripcion}`),
   ].join(", ");
-  const descrito = bloque.servicioEquipo?.trim() || rentado || "Servicio de proveedor";
+  const descrito = bloque.servicioEquipo?.trim() || rentado || "Servicio del evento";
   // El imprevisto lleva su cantidad en `unidades` porque se captura en un solo renglón.
   const servicio = (bloque.unidades ? `${bloque.unidades}× ${descrito}` : descrito).slice(0, 180);
   const etiqueta = bloque.imprevisto ? "Imprevisto: " : "";
   const concepto = `${etiqueta}${servicio} — ${bloque.nombreProveedor} · ${bloque.proyecto.numeroProyecto}`;
   const fechaCompromiso = proximoMiercolesTraEvento(bloque.proyecto.fechaEvento ?? new Date());
 
+  const llaves = {
+    tipoAcreedor,
+    proveedorId: bloque.proveedorId,
+    tecnicoId: bloque.tecnicoId,
+  };
+
   if (bloque.cuentaPagarId) {
     const cuentaPagar = await prisma.cuentaPagar.update({
       where: { id: bloque.cuentaPagarId },
-      data: { concepto, monto: bloque.costoAcordado, proveedorId: bloque.proveedorId, fechaCompromiso },
+      data: { ...llaves, concepto, monto: bloque.costoAcordado, fechaCompromiso },
     });
     return NextResponse.json({ cuentaPagar, creada: false });
   }
 
   const cuentaPagar = await prisma.cuentaPagar.create({
     data: {
-      tipoAcreedor: "PROVEEDOR",
-      proveedorId: bloque.proveedorId,
+      ...llaves,
       proyectoId: id,
       concepto,
       monto: bloque.costoAcordado,
@@ -76,7 +89,7 @@ export async function POST(
     },
   });
   await prisma.proveedorEvento.update({ where: { id: pid }, data: { cuentaPagarId: cuentaPagar.id } });
-  await logActividad(session.id, "CREAR", "cuenta_pagar", cuentaPagar.id, `CxP a proveedor del evento: ${concepto}`);
+  await logActividad(session.id, "CREAR", "cuenta_pagar", cuentaPagar.id, `CxP del evento: ${concepto}`);
 
   return NextResponse.json({ cuentaPagar, creada: true });
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { tipoAcreedorLabel } from "@/lib/proveedor-evento";
 
 type Solicitud = {
   id: string;
@@ -14,6 +15,7 @@ type Solicitud = {
   venue: string | null;
   coordinador: string | null;
   proveedor: string;
+  tipoAcreedor: string;
   telefono: string | null;
   enCatalogo: boolean;
   detalle: string | null;
@@ -216,6 +218,11 @@ export default function SolicitudesProveedorPage() {
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="text-white">{f.proveedor}</span>
+                      {f.tipoAcreedor !== "PROVEEDOR" && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#1f1f1f] text-gray-400">
+                          {tipoAcreedorLabel(f.tipoAcreedor)}
+                        </span>
+                      )}
                       {f.imprevisto && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-900/30 text-amber-500">imprevisto</span>
                       )}

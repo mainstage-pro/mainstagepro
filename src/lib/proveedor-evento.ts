@@ -30,3 +30,34 @@ export const MODALIDADES_REGRESO = [
 
 export const labelModalidad = (valor: string | null | undefined): string | null =>
   [...MODALIDADES_ENTREGA, ...MODALIDADES_REGRESO].find((m) => m.valor === valor)?.label ?? null;
+
+/**
+ * De qué catálogo salió quien puso lo que se ocupó. Lo coordinado en preproducción
+ * siempre es un proveedor; el imprevisto también lo pone un técnico o alguien de casa
+ * que lo pagó de su bolsa, y a los tres se les genera la misma cuenta por pagar.
+ */
+export const TIPOS_ACREEDOR = [
+  { valor: "PROVEEDOR", label: "Proveedor", singular: "proveedor", buscar: "Buscar proveedor..." },
+  { valor: "TECNICO", label: "Técnico", singular: "técnico", buscar: "Buscar técnico..." },
+  {
+    valor: "PERSONAL_INTERNO",
+    label: "Mainstage Pro",
+    singular: "compañero",
+    buscar: "Buscar a quien lo puso...",
+  },
+] as const;
+
+export type TipoAcreedor = (typeof TIPOS_ACREEDOR)[number]["valor"];
+
+/** Columna de ProveedorEvento que liga el registro con su catálogo. */
+export const CAMPO_ACREEDOR = {
+  PROVEEDOR: "proveedorId",
+  TECNICO: "tecnicoId",
+  PERSONAL_INTERNO: "personalId",
+} as const satisfies Record<TipoAcreedor, string>;
+
+export const esTipoAcreedor = (v: unknown): v is TipoAcreedor =>
+  TIPOS_ACREEDOR.some((t) => t.valor === v);
+
+export const tipoAcreedorLabel = (v: string): string =>
+  TIPOS_ACREEDOR.find((t) => t.valor === v)?.label ?? "Proveedor";
