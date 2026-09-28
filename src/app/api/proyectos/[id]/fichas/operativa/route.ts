@@ -20,7 +20,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { id } = await params;
 
-  const bloqueo = await bloqueoDocumento(id, "FICHA_OPERATIVA");
+  const bloqueo = await bloqueoDocumento(id, "ORDEN_PRODUCCION");
   if (bloqueo) return bloqueo;
 
   // Auto-siembra notas de equipo desde la cotización (solo rellena vacías).

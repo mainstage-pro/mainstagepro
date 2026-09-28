@@ -174,6 +174,9 @@ interface Proyecto {
   portalToken: string | null;
   infoToken: string | null;
   infoRecibidoEn: string | null;
+  ordenToken: string | null;
+  /** Avance de los pases de control de carga, para el panel de la orden. */
+  cargas?: { id: string; tipo: string; etiqueta: string | null; estado: string; cerradaEn: string | null; avance: { total: number; revisados: number; faltantes: number; danados: number; pct: number } }[];
   notasPortal: string | null;
   responsables: string | null;
   llamadoBodega: string | null;
@@ -958,6 +961,50 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     await load();
   }
 
+  // Enlace de la Orden de Producción (equipo operativo en sitio)
+  const [generandoOrdenToken, setGenerandoOrdenToken] = useState(false);
+  const [revocandoOrdenToken, setRevocandoOrdenToken] = useState(false);
+
+  async function generarOrdenToken() {
+    setGenerandoOrdenToken(true);
+    const res = await fetch(`/api/proyectos/${id}/orden-token`, { method: "POST" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al generar enlace");
+      setGenerandoOrdenToken(false);
+      return;
+    }
+    const d = await res.json();
+    if (d.token) {
+      await navigator.clipboard.writeText(`${window.location.origin}/orden/${d.token}`).catch(() => {});
+      toast.success("Enlace generado y copiado al portapapeles");
+    }
+    setGenerandoOrdenToken(false);
+    await load();
+  }
+
+  async function copiarOrdenLink() {
+    if (!proyecto?.ordenToken) return;
+    await navigator.clipboard.writeText(`${window.location.origin}/orden/${proyecto.ordenToken}`).catch(() => {});
+    toast.success("Enlace copiado");
+  }
+
+  async function revocarOrdenToken() {
+    const ok = await confirm({ message: "¿Revocar el enlace de la orden de producción? El equipo en sitio dejará de tener acceso.", danger: true, confirmText: "Revocar" });
+    if (!ok) return;
+    setRevocandoOrdenToken(true);
+    const res = await fetch(`/api/proyectos/${id}/orden-token`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al revocar");
+      setRevocandoOrdenToken(false);
+      return;
+    }
+    setRevocandoOrdenToken(false);
+    toast.success("Enlace revocado");
+    await load();
+  }
+
   async function guardarNotasPortal() {
     setSavingNotasPortal(true);
     const res = await fetch(`/api/proyectos/${id}`, {
@@ -1157,7 +1204,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [extraEditCant, setExtraEditCant] = useState(1);
   const [extraEditNotas, setExtraEditNotas] = useState("");
   const [extraAddMode, setExtraAddMode] = useState<"inventario" | "manual">("inventario");
-  // Edición de cantidad en rider de carga
+  // Edición de cantidad en control de carga
   const [riderEquipoEditId, setRiderEquipoEditId] = useState<string | null>(null);
   const [riderEquipoEditCant, setRiderEquipoEditCant] = useState(1);
   const [riderNotasEditId, setRiderNotasEditId] = useState<string | null>(null);
@@ -3884,6 +3931,95 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         )}
       </div>
 
+      {/* ── Orden de producción (enlace del equipo en sitio) ── */}
+      <div className="rounded-xl border border-[#1e1e1e] bg-[#0d0d0d] px-4 py-3.5 space-y-3">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="min-w-0">
+            <p className="text-[13px] text-gray-300 font-medium">Orden de producción</p>
+            <p className="text-gray-600 text-[11.5px] mt-0.5">
+              Enlace para el equipo en sitio: toda la información del evento y el control de carga. Se actualiza solo al editar el proyecto.
+            </p>
+          </div>
+          {!proyecto.ordenToken ? (
+            <button
+              onClick={generarOrdenToken}
+              disabled={generandoOrdenToken}
+              className="shrink-0 flex items-center gap-1.5 border border-[#2a2a2a] hover:border-[#B3985B]/40 hover:text-[#B3985B] disabled:opacity-50 text-gray-300 text-[11.5px] font-semibold px-3 py-2 rounded-lg transition-colors"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+              {generandoOrdenToken ? "Generando..." : "Generar enlace"}
+            </button>
+          ) : (
+            <a
+              href={`/orden/${proyecto.ordenToken}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 text-[11px] text-[#B3985B] hover:text-white transition-colors"
+            >
+              Abrir vista del técnico →
+            </a>
+          )}
+        </div>
+
+        {!proyecto.ordenToken ? null : (
+          <div className="space-y-2">
+            <div className="bg-[#0a0a0a] border border-[#1e1e1e] rounded-lg px-3 py-2.5 flex items-center gap-2">
+              <span className="text-gray-500 text-xs flex-1 truncate font-mono">{`${typeof window !== "undefined" ? window.location.origin : ""}/orden/${proyecto.ordenToken}`}</span>
+              <button onClick={copiarOrdenLink} className="text-[10px] text-[#B3985B] hover:text-white shrink-0 transition-colors">Copiar</button>
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent(`Orden de producción — ${proyecto.nombre}: ${typeof window !== "undefined" ? window.location.origin : ""}/orden/${proyecto.ordenToken}`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[10px] text-green-400 hover:text-green-300 shrink-0 transition-colors flex items-center gap-1"
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.999 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.984-1.31A9.944 9.944 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg>
+                WhatsApp
+              </a>
+            </div>
+
+            {/* Avance del control de carga: lo que el coordinador quiere ver de un vistazo. */}
+            {(proyecto.cargas ?? []).length > 0 && (
+              <div className="space-y-2 pt-1">
+                {(proyecto.cargas ?? []).map((c) => (
+                  <div key={c.id}>
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span className="text-[11.5px] text-gray-400">
+                        {c.tipo === "SALIDA" ? "Salida de bodega" : "Retorno a bodega"}
+                        {c.etiqueta ? ` · ${c.etiqueta}` : ""}
+                      </span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${c.estado === "CERRADA" ? "bg-green-900/50 text-green-300" : "bg-yellow-900/50 text-yellow-300"}`}>
+                        {c.estado === "CERRADA" ? "Cerrado" : "En curso"}
+                      </span>
+                    </div>
+                    <div className="h-[3px] bg-[#1c1c1c] rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-700"
+                        style={{ width: `${c.avance.pct}%`, backgroundColor: c.estado === "CERRADA" ? "#10b981" : "#B3985B" }}
+                      />
+                    </div>
+                    <p className="text-[10.5px] text-gray-600 mt-1">
+                      {c.avance.revisados}/{c.avance.total} revisados
+                      {c.avance.faltantes > 0 && <span className="text-red-400/70"> · {c.avance.faltantes} faltante(s)</span>}
+                      {c.avance.danados > 0 && <span className="text-amber-400/70"> · {c.avance.danados} dañado(s)</span>}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={revocarOrdenToken}
+                disabled={revocandoOrdenToken}
+                className="text-[10px] text-red-400/70 hover:text-red-400 disabled:opacity-50 transition-colors ml-auto"
+              >
+                {revocandoOrdenToken ? "Revocando..." : "Revocar enlace"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
             {/* ── Datos de la sección Resumen ── */}
       {(() => {
         const fichaCamposFaltantes: string[] = [];
@@ -5206,7 +5342,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                         </button>
                       )}
                       {p.tecnico && (
-                        <button type="button" onClick={() => downloadPdf(`/api/proyectos/${proyecto.id}/personal/${p.id}/carta`, `Carta-responsiva-${proyecto.numeroProyecto}-${p.id.slice(0, 6)}.pdf`, "Carta responsiva")} title="Descargar carta responsiva freelance" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border border-[#333] text-gray-500 hover:border-[#B3985B]/50 hover:text-[#B3985B] transition-colors"><FileText strokeWidth={1.75} className="w-3 h-3" /> Carta</button>
+                        <button type="button" onClick={() => downloadPdf(`/api/proyectos/${proyecto.id}/personal/${p.id}/carta`, `carta-responsiva-tecnico-freelance-${proyecto.numeroProyecto}-${p.id.slice(0, 6)}.pdf`, "Carta responsiva técnico freelance")} title="Descargar carta responsiva de técnico freelance" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border border-[#333] text-gray-500 hover:border-[#B3985B]/50 hover:text-[#B3985B] transition-colors"><FileText strokeWidth={1.75} className="w-3 h-3" /> Carta</button>
                       )}
                     </div>
                   </div>
@@ -5326,10 +5462,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               fechaDesmontaje: proyecto.fechaDesmontaje,
             }}
           />
-
-
-          {/* ── Imprevistos: lo que se pidió con el evento ya encima ── */}
-          <PanelImprevistos proyectoId={id} />
 
 
           {/* ── Cronología 1: logística general ── */}
@@ -5529,7 +5661,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           {!esRenta && (() => {
             const DIRECTORIO = [
               { nombre: "Mauricio Hernández",  cargo: "Dirección General",              tel: "4461432565", desc: "Liderazgo estratégico, cierre de tratos y decisiones críticas" },
-              { nombre: "Carlos Luna",          cargo: "Coordinador de Producción",      tel: "4428633023", desc: "Dirección técnica en campo, rider de carga y coordinación de equipo" },
+              { nombre: "Carlos Luna",          cargo: "Coordinador de Producción",      tel: "4428633023", desc: "Dirección técnica en campo, control de carga y coordinación de equipo" },
               { nombre: "Daniel Guarneros",     cargo: "Atención a Clientes y Ventas",   tel: "4428078646", desc: "Contacto con cliente, seguimiento comercial y ventas" },
               { nombre: "Emiliano Pérez",       cargo: "Coordinador Administrativo",     tel: "4428635398", desc: "Finanzas, CxC, CxP, nómina y administración general" },
               { nombre: "Sebastián Pérez",      cargo: "Community Manager",              tel: "4428159359", desc: "Contenido, redes sociales y levantamientos foto/video" },
@@ -5692,7 +5824,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     </span>
                   </div>
                   <p className="text-[11px] text-gray-600 mb-4">
-                    Escríbelo antes de armar el equipo: es el contexto del que cuelgan las indicaciones de cada concepto. Sale completo en la Ficha Operativa.
+                    Escríbelo antes de armar el equipo: es el contexto del que cuelgan las indicaciones de cada concepto. Sale completo en la Orden de Producción.
                   </p>
                   <div className="space-y-4">
                     {puntos.map(p => (
@@ -5713,7 +5845,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               );
             })()}
 
-            {/* ══ EQUIPO, ACCESORIOS Y MONTAJE (de aquí sale el rider de carga) ══ */}
+            {/* ══ EQUIPO, ACCESORIOS Y MONTAJE (de aquí sale el control de carga) ══ */}
             {(() => {
             // Este es el único listado de equipo del proyecto: origen, accesorios y montaje en un solo lugar.
             const camposFaltantesEq: string[] = [];
@@ -5735,15 +5867,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-white font-semibold">{esRenta ? "Rider de carga" : "Equipo, accesorios y montaje"}</p>
+                  <p className="text-white font-semibold">{esRenta ? "Control de carga" : "Equipo, accesorios y montaje"}</p>
                   <p className="text-gray-500 text-xs mt-0.5">
                     {esRenta
                       ? "Listado de equipos con accesorios y herramientas necesarias para montaje"
-                      : "Qué equipo va, de dónde sale, con qué accesorios y cómo se monta cada concepto. De aquí sale el rider de carga que se descarga para el traslado."}
+                      : "Qué equipo va, de dónde sale, con qué accesorios y cómo se monta cada concepto. De aquí sale el control de carga que se descarga para el traslado."}
                   </p>
                 </div>
                 {(() => {
-                  const rq = reqDoc('RIDER_CARGA');
+                  const rq = reqDoc('CONTROL_CARGA');
                   return (
                     <div className="flex items-center gap-2">
                       <button
@@ -5753,7 +5885,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                         {showAddEquipo ? "Cancelar" : "+ Agregar equipo"}
                       </button>
                       <button
-                        onClick={() => previewPdf(`/api/proyectos/${id}/rider-pdf`, 'Rider de Carga', `rider-carga-${proyecto.numeroProyecto}.pdf`)}
+                        onClick={() => previewPdf(`/api/proyectos/${id}/rider-pdf`, 'Control de Carga', `control-carga-${proyecto.numeroProyecto}.pdf`)}
                         disabled={!rq.listo}
                         title={rq.bloqueos.join(" · ") || undefined}
                         className="flex items-center gap-1.5 text-xs text-gray-400 border border-[#2a2a2a] hover:border-[#B3985B]/40 hover:text-[#B3985B] px-3 py-1.5 rounded-lg transition-all disabled:opacity-40 disabled:hover:border-[#2a2a2a] disabled:hover:text-gray-400 disabled:cursor-not-allowed"
@@ -5762,13 +5894,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                         Vista previa
                       </button>
                       <button
-                        onClick={() => downloadPdf(`/api/proyectos/${id}/rider-pdf`, `rider-carga-${proyecto.numeroProyecto}.pdf`, 'Rider de carga')}
+                        onClick={() => downloadPdf(`/api/proyectos/${id}/rider-pdf`, `control-carga-${proyecto.numeroProyecto}.pdf`, 'Control de carga')}
                         disabled={!rq.listo}
                         title={rq.bloqueos.join(" · ") || undefined}
                         className="flex items-center gap-1.5 text-xs text-[#B3985B] border border-[#B3985B]/30 hover:border-[#B3985B]/60 hover:bg-[#B3985B]/5 px-3 py-1.5 rounded-lg transition-all disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed"
                       >
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                        Descargar rider
+                        Descargar control de carga
                       </button>
                     </div>
                   );
@@ -5784,14 +5916,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 return (
                   <div className={`rounded-xl px-4 py-3 border ${entregamos ? "bg-[#B3985B]/5 border-[#B3985B]/30" : "bg-yellow-900/10 border-yellow-800/30"}`}>
                     <p className={`text-xs font-semibold ${entregamos ? "text-[#B3985B]" : "text-yellow-500"}`}>
-                      {entregamos ? "Aplica el rider de carga" : "El rider de carga no aplica para este servicio"}
+                      {entregamos ? "Aplica el control de carga" : "El control de carga no aplica para este servicio"}
                     </p>
                     <p className="text-gray-400 text-xs mt-1 leading-relaxed">
                       {entregamos
-                        ? `El rider de carga solo aplica en renta cuando nosotros entregamos el equipo. En este servicio llevamos el equipo a ${destino}, así que úsalo como lista de carga.`
+                        ? `El control de carga solo aplica en renta cuando nosotros entregamos el equipo. En este servicio llevamos el equipo a ${destino}, así que úsalo como lista de carga.`
                         : modalidad === "RECOGE_BODEGA"
-                          ? "El cliente recoge el equipo en bodega (Querétaro), por lo que no se realiza entrega de nuestra parte. Genera el rider de carga únicamente cuando nosotros vayamos a entregar el equipo."
-                          : "Define la modalidad de entrega en la logística. El rider de carga solo aplica cuando nosotros entregamos el equipo (a su bodega o al venue)."}
+                          ? "El cliente recoge el equipo en bodega (Querétaro), por lo que no se realiza entrega de nuestra parte. Genera el control de carga únicamente cuando nosotros vayamos a entregar el equipo."
+                          : "Define la modalidad de entrega en la logística. El control de carga solo aplica cuando nosotros entregamos el equipo (a su bodega o al venue)."}
                     </p>
                   </div>
                 );
@@ -6010,7 +6142,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                     {e.necesitaRevision && (
                                       <span
                                         className="ml-2 align-middle px-1.5 py-0.5 rounded border border-amber-700/50 bg-amber-900/20 text-amber-300 text-[10px] font-medium"
-                                        title="Este equipo ya no está en la cotización, pero tiene datos capturados a mano — decide si lo quitas del rider"
+                                        title="Este equipo ya no está en la cotización, pero tiene datos capturados a mano — decide si lo quitas del listado"
                                       >Ya no está en la cotización</span>
                                     )}
                                   </p>
@@ -6730,6 +6862,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 </button>
               )}
             </div></>
+
+            {/* ── Imprevistos: lo que se pidió con el evento ya encima ── */}
+            <div className="mt-5">
+              <PanelImprevistos proyectoId={id} />
+            </div>
 
             {/* ═══════ ZONA 3: CIERRE — Protocolo · Evaluación ═══════ */}
             <SectionDivider label="Cierre & Evaluación" />
@@ -8070,14 +8207,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   onDescargar={() => downloadPdf(`/api/proyectos/${proyecto.id}/hoja-entrega`, `hoja-entrega-${proyecto.numeroProyecto}.pdf`)}
                 />
               )}
-              <BotonDocumento
-                label="Confirmación Cliente"
-                icono={<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>}
-                requisitos={reqDoc('FICHA_CLIENTE')}
-                cargando={downloading === `confirmacion-cliente-${proyecto.numeroProyecto}.pdf`}
-                deshabilitado={!!downloading}
-                onDescargar={() => downloadPdf(`/api/proyectos/${proyecto.id}/fichas/cliente`, `confirmacion-cliente-${proyecto.numeroProyecto}.pdf`)}
-              />
               {esRenta && (() => {
                 let rd: Record<string, string> = {};
                 try { if (proyecto.logisticaRenta) rd = JSON.parse(proyecto.logisticaRenta); } catch {}
@@ -8086,23 +8215,23 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 if (!entregamos) return null;
                 return (
                   <BotonDocumento
-                    label="Rider de Carga"
+                    label="Control de Carga"
                     icono={<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>}
-                    requisitos={reqDoc('RIDER_CARGA')}
-                    cargando={downloading === `rider-carga-${proyecto.numeroProyecto}.pdf`}
+                    requisitos={reqDoc('CONTROL_CARGA')}
+                    cargando={downloading === `control-carga-${proyecto.numeroProyecto}.pdf`}
                     deshabilitado={!!downloading}
-                    onDescargar={() => downloadPdf(`/api/proyectos/${proyecto.id}/rider-pdf`, `rider-carga-${proyecto.numeroProyecto}.pdf`, 'Rider de carga')}
+                    onDescargar={() => downloadPdf(`/api/proyectos/${proyecto.id}/rider-pdf`, `control-carga-${proyecto.numeroProyecto}.pdf`, 'Control de carga')}
                   />
                 );
               })()}
               {!esRenta && (
                 <BotonDocumento
-                  label="Ficha Operativa"
+                  label="Orden de Producción"
                   icono={<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="11" y2="16"/></svg>}
-                  requisitos={reqDoc('FICHA_OPERATIVA')}
-                  cargando={downloading === `ficha-operativa-${proyecto.numeroProyecto}.pdf`}
+                  requisitos={reqDoc('ORDEN_PRODUCCION')}
+                  cargando={downloading === `orden-produccion-${proyecto.numeroProyecto}.pdf`}
                   deshabilitado={!!downloading}
-                  onDescargar={() => downloadPdf(`/api/proyectos/${proyecto.id}/fichas/operativa`, `ficha-operativa-${proyecto.numeroProyecto}.pdf`)}
+                  onDescargar={() => downloadPdf(`/api/proyectos/${proyecto.id}/fichas/operativa`, `orden-produccion-${proyecto.numeroProyecto}.pdf`)}
                 />
               )}
               {proyecto.tipoServicio === 'PRODUCCION_TECNICA' && (
@@ -8121,7 +8250,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   className="w-full flex items-center gap-2.5 py-[7px] text-left text-gray-400 hover:text-[#B3985B] text-[12.5px] transition-colors"
                 >
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="11" y2="16"/></svg>
-                  Carta Responsiva
+                  Carta Responsiva Protección Civil
                 </Link>
               )}
               <div className="border-t border-[#1e1e1e] my-1" />

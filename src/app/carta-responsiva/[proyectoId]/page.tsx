@@ -103,7 +103,7 @@ export default function CartaResponsivaPage({ params }: { params: Promise<{ proy
             ← Volver
           </button>
           <span className="text-white/10">|</span>
-          <span className="text-white/40 text-sm">Carta Responsiva — {proyecto.nombre}</span>
+          <span className="text-white/40 text-sm">Carta Responsiva Protección Civil — {proyecto.nombre}</span>
         </div>
         <a
           href={buildDownloadUrl()}
@@ -216,7 +216,7 @@ export default function CartaResponsivaPage({ params }: { params: Promise<{ proy
                 <p className="text-white/30 text-[10px] tracking-widest mt-1">PRODUCCIÓN TÉCNICA · AUDIO · ILUMINACIÓN · VIDEO</p>
               </div>
               <div className="text-right">
-                <p className="text-white font-bold tracking-wider text-sm">CARTA RESPONSIVA</p>
+                <p className="text-white font-bold tracking-wider text-sm">CARTA RESPONSIVA PROTECCIÓN CIVIL</p>
                 <p className="text-white/30 text-xs mt-1">Proyecto {proyecto.numeroProyecto}</p>
               </div>
             </div>

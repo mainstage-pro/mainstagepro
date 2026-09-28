@@ -7,6 +7,7 @@ import { createExpiringToken } from "@/lib/tokens";
 import { calcularAvanceProyecto } from "@/lib/proyecto-avance";
 import { ensureOperacionTecnicaColumns } from "@/lib/migraciones-lazy";
 import { sembrarNotasEquiposProyecto } from "@/lib/notas-equipos";
+import { avanceCarga } from "@/lib/control-carga";
 
 function proximoMiercolesTraEvento(fecha: Date): Date {
   const d = new Date(fecha);
@@ -185,6 +186,26 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     orderBy: { fecha: "desc" },
   });
   proyecto = { ...proyecto, movimientosIngresoSueltos } as unknown as typeof proyecto;
+
+  // Avance del control de carga. Va aparte y tolerando el fallo a propósito: si
+  // las tablas del pase todavía no existen, la ficha del proyecto debe abrir igual.
+  let cargas: unknown[] = [];
+  try {
+    const filas = await prisma.proyectoCarga.findMany({
+      where: { proyectoId: id },
+      orderBy: { createdAt: "asc" },
+      include: { items: { select: { estado: true } } },
+    });
+    cargas = filas.map((c) => ({
+      id: c.id,
+      tipo: c.tipo,
+      etiqueta: c.etiqueta,
+      estado: c.estado,
+      cerradaEn: c.cerradaEn,
+      avance: avanceCarga(c.items),
+    }));
+  } catch { /* tablas de carga aún no desplegadas */ }
+  proyecto = { ...proyecto, cargas } as unknown as typeof proyecto;
 
   const avance = calcularAvanceProyecto({
     tipoServicio: proyecto.tipoServicio ?? null,

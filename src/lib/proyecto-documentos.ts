@@ -6,17 +6,15 @@
 // sería peligroso operarlo); `advertencias` deja descargar pero avisa.
 
 export type TipoDocumento =
-  | "FICHA_OPERATIVA"
-  | "FICHA_CLIENTE"
+  | "ORDEN_PRODUCCION"
   | "HOJA_ENTREGA"
-  | "RIDER_CARGA"
+  | "CONTROL_CARGA"
   | "BRIEF_TECNICO";
 
 export const DOCUMENTO_LABELS: Record<TipoDocumento, string> = {
-  FICHA_OPERATIVA: "Ficha operativa",
-  FICHA_CLIENTE: "Confirmación al cliente",
+  ORDEN_PRODUCCION: "Orden de producción",
   HOJA_ENTREGA: "Hoja de entrega",
-  RIDER_CARGA: "Rider de carga",
+  CONTROL_CARGA: "Control de carga",
   BRIEF_TECNICO: "Info para técnicos",
 };
 
@@ -93,7 +91,7 @@ export function requisitosDocumento(
       break;
     }
 
-    case "RIDER_CARGA": {
+    case "CONTROL_CARGA": {
       if (p.equiposCount === 0) bloqueos.push("No hay equipo cargado: no hay nada que cargar");
       if (sinVenue) advertencias.push("Falta el lugar del evento");
       if (sinMontaje) advertencias.push("Falta fecha u hora de montaje");
@@ -102,17 +100,7 @@ export function requisitosDocumento(
       break;
     }
 
-    case "FICHA_CLIENTE": {
-      if (sinVenue) bloqueos.push("Falta el lugar del evento");
-      if (p.equiposCount === 0) bloqueos.push("No hay equipo cargado: el cliente no vería qué contrató");
-      if (falta(p.horaInicioEvento) && falta(p.horaInicio))
-        bloqueos.push("Falta la hora de inicio del evento");
-      if (sinComoLlegar) advertencias.push("Falta dirección del venue o link de Maps");
-      if (falta(p.encargadoNombre)) advertencias.push("Sin coordinador asignado");
-      break;
-    }
-
-    case "FICHA_OPERATIVA": {
+    case "ORDEN_PRODUCCION": {
       if (sinVenue) bloqueos.push("Falta el lugar del evento");
       if (p.equiposCount === 0) bloqueos.push("No hay equipo cargado");
       if (p.personalCount === 0) bloqueos.push("No hay técnicos asignados al proyecto");

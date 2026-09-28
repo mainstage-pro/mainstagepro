@@ -47,6 +47,14 @@ const s = StyleSheet.create({
     color: WHITE,
     letterSpacing: 1,
   },
+  docSubtipo: {
+    fontSize: 8,
+    fontFamily: "Helvetica-Bold",
+    color: GOLD,
+    letterSpacing: 1,
+    marginTop: 2,
+    textAlign: "right",
+  },
   docFecha: {
     fontSize: 8,
     color: LIGHT,
@@ -174,7 +182,7 @@ export interface CartaResponsivaProps {
 
 export function CartaResponsivaPDF(p: CartaResponsivaProps) {
   return (
-    <Document title={`Carta Responsiva — ${p.nombreEvento}`}>
+    <Document title={`Carta Responsiva Protección Civil — ${p.nombreEvento}`}>
       <Page size="LETTER" style={s.page}>
         {/* Header */}
         <View style={s.header}>
@@ -184,6 +192,7 @@ export function CartaResponsivaPDF(p: CartaResponsivaProps) {
           </View>
           <View style={{ alignItems: "flex-end" }}>
             <Text style={s.docTipo}>CARTA RESPONSIVA</Text>
+            <Text style={s.docSubtipo}>PROTECCIÓN CIVIL</Text>
             <Text style={s.docFecha}>Proyecto {p.numeroProyecto}</Text>
           </View>
         </View>

@@ -217,7 +217,7 @@ export function CartaFreelancePDF(p: CartaFreelanceProps) {
   const clausula1 = CLAUSULA1[p.categoria] ?? CLAUSULA1.OTRO;
 
   return (
-    <Document title={`Carta Responsiva Freelance — ${p.tecnicoNombre}`}>
+    <Document title={`Carta Responsiva Técnico Freelance — ${p.tecnicoNombre}`}>
       <Page size="LETTER" style={s.page}>
 
         {/* ── Header ── */}
@@ -227,7 +227,7 @@ export function CartaFreelancePDF(p: CartaFreelanceProps) {
             <Text style={s.tagline}>PRODUCCIÓN TÉCNICA · AUDIO · ILUMINACIÓN · VIDEO</Text>
           </View>
           <View style={{ alignItems: "flex-end" }}>
-            <Text style={s.docTipo}>CARTA RESPONSIVA – STAFF FREELANCE</Text>
+            <Text style={s.docTipo}>CARTA RESPONSIVA – TÉCNICO FREELANCE</Text>
             <Text style={s.docSub}>Proyecto {p.numeroProyecto}</Text>
           </View>
         </View>
@@ -401,7 +401,7 @@ export function CartaFreelancePDF(p: CartaFreelanceProps) {
         {/* ── Footer ── */}
         <View style={s.footer} fixed>
           <Text style={s.footerBrand}>MAINSTAGE PRODUCCIONES</Text>
-          <Text style={s.footerNote}>Carta responsiva freelance · {p.nombreEvento} · {p.numeroProyecto}</Text>
+          <Text style={s.footerNote}>Carta responsiva técnico freelance · {p.nombreEvento} · {p.numeroProyecto}</Text>
         </View>
 
       </Page>

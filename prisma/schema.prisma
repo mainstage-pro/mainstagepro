@@ -702,6 +702,7 @@ model Proyecto {
   protocoloSalida          String? // JSON: protocolo de entrega al cliente (responsable, condicion, items[], timestamp)
   protocoloEntrada         String? // JSON: protocolo de recepción en bodega (responsable, condicion, danios, items[], timestamp)
   portalToken              String?   @unique // Token público para portal de cliente
+  ordenToken               String?   @unique // Token público de la Orden de Producción (equipo operativo en sitio)
   infoToken                String?   @unique // Token público para que el cliente confirme/complete la info del resumen
   infoRecibidoEn           DateTime? // Timestamp en que el cliente envió la confirmación de información
   notasPortal              String? // Mensaje visible al cliente en su portal
@@ -723,28 +724,111 @@ model Proyecto {
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
 
-  personal          ProyectoPersonal[]
-  equipos           ProyectoEquipo[]
-  checklist         ProyectoChecklist[]
-  archivos          ProyectoArchivo[]
-  bitacora          ProyectoBitacora[]
-  cuentasCobrar     CuentaCobrar[]
-  cuentasPagar      CuentaPagar[]
-  movimientos       MovimientoFinanciero[]
-  evaluacionInterna EvaluacionInterna?
-  evaluacionCliente EvaluacionCliente?
-  reportePostEvento ReportePostEvento?
-  gastosOperativos  GastoOperativo[]
-  ordenesCompra     OrdenCompra[]
-  cierreFinanciero  CierreFinanciero?
-  tareas            Tarea[]                @relation("TareasDeProyecto")
-  proveedoresEvento ProveedorEvento[]
-  bloquesTiempo     ProyectoBloqueTiempo[]
-  actasEvento       ActaAdministrativa[]   @relation("ActaEventoProyecto")
-  gastosRecurrentes GastoRecurrente[]
-  fallasEquipo      FallaEquipo[]          @relation("FallasDeProyecto")
+  personal           ProyectoPersonal[]
+  equipos            ProyectoEquipo[]
+  checklist          ProyectoChecklist[]
+  archivos           ProyectoArchivo[]
+  bitacora           ProyectoBitacora[]
+  cuentasCobrar      CuentaCobrar[]
+  cuentasPagar       CuentaPagar[]
+  movimientos        MovimientoFinanciero[]
+  evaluacionInterna  EvaluacionInterna?
+  evaluacionCliente  EvaluacionCliente?
+  reportePostEvento  ReportePostEvento?
+  gastosOperativos   GastoOperativo[]
+  ordenesCompra      OrdenCompra[]
+  cierreFinanciero   CierreFinanciero?
+  tareas             Tarea[]                    @relation("TareasDeProyecto")
+  proveedoresEvento  ProveedorEvento[]
+  bloquesTiempo      ProyectoBloqueTiempo[]
+  actasEvento        ActaAdministrativa[]       @relation("ActaEventoProyecto")
+  gastosRecurrentes  GastoRecurrente[]
+  fallasEquipo       FallaEquipo[]              @relation("FallasDeProyecto")
+  cargas             ProyectoCarga[]
+  cargaVerificadores ProyectoCargaVerificador[]
 
   @@map("proyectos")
+}
+
+// ─── CONTROL DE CARGA ────────────────────────────────────────────────────────
+// Un pase es una pasada física de verificación del equipo: SALIDA (bodega →
+// evento) o RETORNO (evento → bodega). Un evento puede tener varios de cada uno
+// cuando el traslado se parte en viajes. Los items se congelan al abrir el pase
+// para que un cambio posterior en el listado no reescriba lo ya verificado.
+model ProyectoCarga {
+  id         String    @id @default(cuid())
+  proyectoId String
+  proyecto   Proyecto  @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  tipo       String // SALIDA | RETORNO
+  etiqueta   String? // "Primer viaje", "Camioneta 2" — cuando hay más de un pase del mismo tipo
+  estado     String    @default("EN_CURSO") // EN_CURSO | CERRADA
+  notaCierre String?   @db.Text
+  cerradaEn  DateTime?
+
+  abiertoPorId String?
+  abiertoPor   ProyectoCargaVerificador? @relation("CargaAbiertaPor", fields: [abiertoPorId], references: [id])
+  cerradaPorId String?
+  cerradaPor   ProyectoCargaVerificador? @relation("CargaCerradaPor", fields: [cerradaPorId], references: [id])
+
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+  items     ProyectoCargaItem[]
+
+  @@index([proyectoId, tipo])
+  @@map("proyecto_cargas")
+}
+
+model ProyectoCargaItem {
+  id      String        @id @default(cuid())
+  cargaId String
+  carga   ProyectoCarga @relation(fields: [cargaId], references: [id], onDelete: Cascade)
+
+  // Origen del renglón. Se guarda el snapshot de descripción/cantidad porque el
+  // listado del proyecto puede cambiar después de abrir el pase.
+  proyectoEquipoId String?
+  riderAccesorioId String?
+  equipoId         String? // Equipo.id — necesario para poder levantar una FallaEquipo
+  esAccesorio      Boolean @default(false)
+  descripcion      String
+  categoria        String?
+
+  cantidadEsperada   Int       @default(1)
+  cantidadVerificada Int       @default(0)
+  estado             String    @default("PENDIENTE") // PENDIENTE | OK | FALTANTE | DANADO
+  nota               String?   @db.Text
+  fotoUrl            String?
+  marcadoEn          DateTime?
+  fallaId            String? // FallaEquipo levantada al marcar DANADO
+  orden              Int       @default(0)
+
+  marcadoPorId String?
+  marcadoPor   ProyectoCargaVerificador? @relation(fields: [marcadoPorId], references: [id])
+
+  @@index([cargaId])
+  @@map("proyecto_carga_items")
+}
+
+// Quién verifica. Interno = técnico del proyecto; externo = ayudante, chofer de
+// tercero o staff del venue, que se registra con un par de datos y queda ligado
+// a cada casilla que marca.
+model ProyectoCargaVerificador {
+  id         String   @id @default(cuid())
+  proyectoId String
+  proyecto   Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  tipo       String // INTERNO | EXTERNO
+  nombre     String
+  tecnicoId  String? // cuando es interno
+  tecnico    Tecnico? @relation(fields: [tecnicoId], references: [id])
+  empresa    String? // externos
+  telefono   String?
+  createdAt  DateTime @default(now())
+
+  itemsMarcados  ProyectoCargaItem[]
+  cargasAbiertas ProyectoCarga[]     @relation("CargaAbiertaPor")
+  cargasCerradas ProyectoCarga[]     @relation("CargaCerradaPor")
+
+  @@index([proyectoId])
+  @@map("proyecto_carga_verificadores")
 }
 
 // Bandeja de entrada de proyectos: ideas capturadas antes de convertirse en un
@@ -793,22 +877,22 @@ model ProyectoPersonal {
 }
 
 model ProyectoEquipo {
-  id                String           @id @default(cuid())
+  id                String                   @id @default(cuid())
   proyectoId        String
-  proyecto          Proyecto         @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  proyecto          Proyecto                 @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
   equipoId          String
-  equipo            Equipo           @relation(fields: [equipoId], references: [id])
-  tipo              String           @default("PROPIO") // PROPIO | EXTERNO
-  cantidad          Int              @default(1)
-  dias              Int              @default(1)
+  equipo            Equipo                   @relation(fields: [equipoId], references: [id])
+  tipo              String                   @default("PROPIO") // PROPIO | EXTERNO
+  cantidad          Int                      @default(1)
+  dias              Int                      @default(1)
   costoExterno      Float?
   proveedorId       String?
-  proveedor         Proveedor?       @relation(fields: [proveedorId], references: [id])
-  confirmado        Boolean          @default(false)
+  proveedor         Proveedor?               @relation(fields: [proveedorId], references: [id])
+  confirmado        Boolean                  @default(false)
   confirmDisponible Boolean? // Respuesta del proveedor sobre disponibilidad
-  confirmToken      String?          @unique // Token para link de confirmación al proveedor
+  confirmToken      String?                  @unique // Token para link de confirmación al proveedor
   notas             String? // Comentarios / instrucciones de carga para este equipo
-  necesitaRevision  Boolean          @default(false) // El equipo se quitó/redujo en la cotización — revisar sin borrar (sync)
+  necesitaRevision  Boolean                  @default(false) // El equipo se quitó/redujo en la cotización — revisar sin borrar (sync)
   riderAccesorios   RiderAccesorio[]
   posiciones        ProyectoEquipoPosicion[]
 
@@ -1318,10 +1402,11 @@ model Tecnico {
   disciplina         String[]    @default([]) // derivado de los roles asignados
   createdAt          DateTime    @default(now())
 
-  roles            TecnicoRol[]
-  proyectoPersonal ProyectoPersonal[]
-  cuentasPagar     CuentaPagar[]
-  pagosNomina      PagoNomina[]
+  roles               TecnicoRol[]
+  proyectoPersonal    ProyectoPersonal[]
+  cuentasPagar        CuentaPagar[]
+  pagosNomina         PagoNomina[]
+  cargaVerificaciones ProyectoCargaVerificador[]
 
   @@map("tecnicos")
 }
@@ -2525,34 +2610,34 @@ model VariacionContenido {
 }
 
 model Publicacion {
-  id                String         @id @default(cuid())
+  id                String              @id @default(cuid())
   fecha             DateTime
   tipoId            String?
-  tipo              TipoContenido? @relation(fields: [tipoId], references: [id])
+  tipo              TipoContenido?      @relation(fields: [tipoId], references: [id])
   formato           String?
   objetivo          String?
   descripcion       String?
   copy              String?
-  enFacebook        Boolean        @default(false)
-  enInstagram       Boolean        @default(false)
-  enTiktok          Boolean        @default(false)
-  enYoutube         Boolean        @default(false)
+  enFacebook        Boolean             @default(false)
+  enInstagram       Boolean             @default(false)
+  enTiktok          Boolean             @default(false)
+  enYoutube         Boolean             @default(false)
   materialLink      String?
   portadaUrl        String? // URL de imagen de portada opción A (feed IG)
   portadaUrlB       String? // URL de imagen de portada opción B (A/B test)
   colaboradores     String?
-  estado            String         @default("PENDIENTE")
+  estado            String              @default("PENDIENTE")
   comentarios       String?
   alcance           Int?
   impresiones       Int?
   interacciones     Int?
   seguidoresGanados Int?
   pruebaPubUrl      String? // URL del archivo de prueba de publicación (apelación)
-  oculta            Boolean        @default(false) // Fuera de las vistas, pero sigue contando en métricas
+  oculta            Boolean             @default(false) // Fuera de las vistas, pero sigue contando en métricas
   variacionId       String?
   variacion         VariacionContenido? @relation(fields: [variacionId], references: [id], onDelete: SetNull)
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
 
   @@index([variacionId])
   @@map("publicaciones")
@@ -3984,19 +4069,19 @@ model ReportePostEvento {
 // responde, cuánto nos cuesta y sus ventanas de instalación/operación/recolección
 // (filas de ProyectoBloqueTiempo con tipo PROVEEDOR).
 model ProveedorEvento {
-  id                String     @id @default(cuid())
-  createdAt         DateTime   @default(now())
-  updatedAt         DateTime   @updatedAt
+  id                String       @id @default(cuid())
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
   proyectoId        String
-  proyecto          Proyecto   @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  proyecto          Proyecto     @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
   // Null mientras el proveedor solo exista como nombre suelto; el alta rápida lo liga.
   proveedorId       String?
-  proveedor         Proveedor? @relation(fields: [proveedorId], references: [id])
+  proveedor         Proveedor?   @relation(fields: [proveedorId], references: [id])
   nombreProveedor   String
   servicioEquipo    String?
   telefonoProveedor String?
   responsable       String?
-  notas             String?    @db.Text
+  notas             String?      @db.Text
   // Cómo llega el equipo y cómo se regresa. Se capturan por separado porque
   // muchas veces no coinciden (nos lo deja en bodega pero lo recoge en el venue).
   // Entrega: DEJA_BODEGA | LLEVA_VENUE | RECOGEMOS_NOSOTROS
@@ -4008,7 +4093,7 @@ model ProveedorEvento {
   // Renta o servicio que salió sobre la marcha, no coordinado en preproducción. El
   // registro se captura en un renglón (servicioEquipo + unidades + costoAcordado) y no
   // abre ventanas en la cronología: el evento ya está corriendo cuando se pide.
-  imprevisto        Boolean   @default(false)
+  imprevisto        Boolean      @default(false)
   fechaSolicitud    DateTime?
   solicitadoPor     String?
   // Cantidad de la captura rápida del imprevisto; los proveedores planeados llevan

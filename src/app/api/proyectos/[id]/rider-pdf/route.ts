@@ -19,7 +19,7 @@ export async function GET(req: NextRequest,
 
   const { id } = await params
 
-  const bloqueo = await bloqueoDocumento(id, 'RIDER_CARGA')
+  const bloqueo = await bloqueoDocumento(id, 'CONTROL_CARGA')
   if (bloqueo) return bloqueo
 
   // Auto-siembra notas de equipo desde la cotización antes de armar el rider.

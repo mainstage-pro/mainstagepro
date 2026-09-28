@@ -99,7 +99,7 @@ export async function GET(
 
   const pdf = Buffer.concat(chunks);
   const nombre = (pp.tecnico?.nombre ?? "freelance").replace(/\s+/g, "-");
-  const filename = `Carta-Freelance-${proy.numeroProyecto}-${nombre}.pdf`;
+  const filename = `Carta-Responsiva-Tecnico-Freelance-${proy.numeroProyecto}-${nombre}.pdf`;
 
   const isPreview = req.nextUrl?.searchParams?.get("preview") === "1";
   return new NextResponse(pdf, {
