@@ -4131,6 +4131,25 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     <Campo label="Encargado del lugar" noLabel value={proyecto.encargadoLugar} field="encargadoLugar" onSave={guardarCampo} />
                   </div>
                   <Campo label="Contacto del lugar" value={proyecto.encargadoLugarContacto} field="encargadoLugarContacto" onSave={guardarCampo} />
+                  {/* Con quién se entiende el coordinador el día del evento. Nadie
+                      más del equipo trata con él: por eso tiene que estar por escrito. */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-gray-500 text-xs">Encargado del cliente</p>
+                      <button
+                        onClick={async () => {
+                          await guardarCampo("encargadoCliente", proyecto.cliente.nombre);
+                          if (proyecto.cliente.telefono) await guardarCampo("encargadoClienteContacto", proyecto.cliente.telefono);
+                        }}
+                        className="text-[10px] text-[#B3985B]/70 hover:text-[#B3985B] transition-colors"
+                        title="Usar datos del cliente"
+                      >
+                        → usar cliente
+                      </button>
+                    </div>
+                    <Campo label="Encargado del cliente" noLabel value={proyecto.encargadoCliente} field="encargadoCliente" onSave={guardarCampo} />
+                  </div>
+                  <Campo label="Contacto del cliente" value={proyecto.encargadoClienteContacto} field="encargadoClienteContacto" onSave={guardarCampo} />
                   <Campo label="Fecha del evento" value={proyecto.fechaEvento?.substring(0, 10) ?? null} field="fechaEvento" type="date" onSave={guardarCampo} />
                   <div className="col-span-2 rounded-lg border border-[#1e1e1e] bg-[#141414] p-3">
                     <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
