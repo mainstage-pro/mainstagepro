@@ -122,6 +122,9 @@ export default function NuevaTareaModal({
   const [faseId, setFaseId]       = useState<string | null>(null);
   const [error, setError]         = useState<string | null>(null);
   const [saving, setSaving]       = useState(false);
+  // Pegado multilínea: cada renglón se vuelve una tarea independiente (null = una sola tarea).
+  const [lineasLote, setLineasLote] = useState<string[] | null>(null);
+  const [creadasLote, setCreadasLote] = useState(0);
 
   // ── Adjuntos: archivos/URLs que se suben tras crear o guardar la tarea ──
   const [adjuntos, setAdjuntos]   = useState<Adjunto[]>([]);
@@ -154,6 +157,7 @@ export default function NuevaTareaModal({
       setTratoId(tratoIdInicial ?? null);
       setClienteId(clienteIdInicial ?? null);
       setError(null); setSaving(false);
+      setLineasLote(null); setCreadasLote(0);
       setAdjuntos([]); setArchivosExistentes([]); setAddingUrl(false); setUrlManual(""); setNombreManual("");
     }
   }, [open, tipoInicial, tituloInicial, defaultArea, defaultAsignadoId, fechaInicial, proyectoTareaId, seccionId, proyectoEventoIdInicial, tratoIdInicial, clienteIdInicial, proyectoInternoIdInicial, faseInicialId]);
@@ -287,7 +291,10 @@ export default function NuevaTareaModal({
 
   async function submit() {
     if (!tipo) return;
-    if (!titulo.trim()) { setError("El título es obligatorio"); return; }
+    const titulos = lineasLote
+      ? lineasLote.map(l => l.trim()).filter(Boolean)
+      : [titulo.trim()].filter(Boolean);
+    if (titulos.length === 0) { setError("El título es obligatorio"); return; }
     if (tipo === "PLAN" && !recurrencia) { setError("Un compromiso de plan de trabajo debe ser recurrente."); return; }
     if (tipo === "EVENTO" && !proyectoEventoId) { setError("Selecciona el evento correspondiente."); return; }
     if (tipo === "PROYECTO" && !proyectoInternoId) { setError("Selecciona el proyecto de empresa."); return; }
@@ -333,8 +340,7 @@ export default function NuevaTareaModal({
       return;
     }
 
-    const payload = {
-      titulo: titulo.trim(),
+    const payloadBase = {
       descripcion: descripcion.trim() || null,
       prioridad,
       area,
@@ -365,42 +371,44 @@ export default function NuevaTareaModal({
         setSaving(false);
         return;
       }
-      const nuevoId = "off-" + (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`);
       const asignado = asignadoId ? (usuarios.find(u => u.id === asignadoId) ?? { id: asignadoId, name: "—" }) : null;
       const proyOp   = proyectoSel ? (proyectos.find(p => p.id === proyectoSel) ?? null) : null;
-      const optimista = {
-        id: nuevoId,
-        titulo: titulo.trim(),
-        descripcion: descripcion.trim() || null,
-        prioridad,
-        area,
-        estado: "PENDIENTE",
-        fecha: recurrencia ? null : (fecha || null),
-        recurrencia: recurrencia || null,
-        proyectoTarea: proyOp ? { id: proyOp.id, nombre: proyOp.nombre, color: null } : null,
-        seccion: null,
-        asignadoA: asignado ? { id: asignado.id, name: asignado.name } : null,
-        colaboradores: [],
-        tipoOrigen: tipo,
-        requiereEvidencia: !!comprobacion,
-        tipoEvidencia: comprobacion || null,
-        moduloDestino: moduloDestino || null,
-        moduloTexto: moduloTexto || null,
-        moduloDisponible: true,
-        estadoVerificacion: "NO_REQUIERE",
-        _count: { subtareas: 0, comentarios: 0, archivos: 0 },
-        createdAt: new Date().toISOString(),
-      };
       try {
-        await enqueueRequest({
-          url: "/api/tareas",
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...payload, id: nuevoId }),
-          kind: "tarea",
-          optimistic: optimista,
-        });
-        onCreated(optimista);
+        for (const t of titulos) {
+          const nuevoId = "off-" + (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+          const optimista = {
+            id: nuevoId,
+            titulo: t,
+            descripcion: descripcion.trim() || null,
+            prioridad,
+            area,
+            estado: "PENDIENTE",
+            fecha: recurrencia ? null : (fecha || null),
+            recurrencia: recurrencia || null,
+            proyectoTarea: proyOp ? { id: proyOp.id, nombre: proyOp.nombre, color: null } : null,
+            seccion: null,
+            asignadoA: asignado ? { id: asignado.id, name: asignado.name } : null,
+            colaboradores: [],
+            tipoOrigen: tipo,
+            requiereEvidencia: !!comprobacion,
+            tipoEvidencia: comprobacion || null,
+            moduloDestino: moduloDestino || null,
+            moduloTexto: moduloTexto || null,
+            moduloDisponible: true,
+            estadoVerificacion: "NO_REQUIERE",
+            _count: { subtareas: 0, comentarios: 0, archivos: 0 },
+            createdAt: new Date().toISOString(),
+          };
+          await enqueueRequest({
+            url: "/api/tareas",
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...payloadBase, titulo: t, id: nuevoId }),
+            kind: "tarea",
+            optimistic: optimista,
+          });
+          onCreated(optimista);
+        }
         onClose();
       } catch {
         setError("No se pudo guardar la tarea sin conexión.");
@@ -410,18 +418,32 @@ export default function NuevaTareaModal({
     }
 
     try {
-      const res = await fetch("/api/tareas", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) { setError(json.error ?? "No se pudo crear la tarea"); setSaving(false); return; }
-      if (json.tarea?.id) await subirAdjuntos(json.tarea.id);
-      onCreated(json.tarea);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const creadas: any[] = [];
+      for (const t of titulos) {
+        const res = await fetch("/api/tareas", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...payloadBase, titulo: t }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          creadas.forEach(onCreated);
+          setError(creadas.length > 0
+            ? `Se crearon ${creadas.length} de ${titulos.length} tareas. Falló «${t}»: ${json.error ?? "error del servidor"}`
+            : (json.error ?? "No se pudo crear la tarea"));
+          setSaving(false); setCreadasLote(0);
+          setLineasLote(titulos.slice(creadas.length));
+          return;
+        }
+        creadas.push(json.tarea);
+        setCreadasLote(creadas.length);
+      }
+      if (titulos.length === 1 && creadas[0]?.id) await subirAdjuntos(creadas[0].id);
+      creadas.forEach(onCreated);
       onClose();
     } catch {
       setError("Error de red. Intenta de nuevo.");
-      setSaving(false);
+      setSaving(false); setCreadasLote(0);
     }
   }
 
@@ -481,11 +503,57 @@ export default function NuevaTareaModal({
 
             {/* Título */}
             <div>
+              {lineasLote ? (
+                <div className="rounded-xl border border-[#B3985B]/25 bg-[#B3985B]/5 p-3 space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[12px] text-white">
+                      Se crearán <span className="font-semibold text-[#B3985B]">{lineasLote.length} tareas</span>, una por renglón
+                    </p>
+                    <button type="button"
+                      onClick={() => { setTitulo(lineasLote.join(" ")); setLineasLote(null); }}
+                      className="text-[11px] text-[#888] hover:text-white underline underline-offset-2 shrink-0">
+                      Pegar como una sola
+                    </button>
+                  </div>
+                  <ul className="max-h-52 overflow-y-auto space-y-0.5 pr-1">
+                    {lineasLote.map((linea, i) => (
+                      <li key={i} className="group flex items-center gap-2 rounded-lg px-1.5 py-1 hover:bg-black/30">
+                        <span className="w-5 text-right text-[10.5px] text-[#555] shrink-0">{i + 1}</span>
+                        <input value={linea}
+                          onChange={e => setLineasLote(prev => prev!.map((l, j) => j === i ? e.target.value : l))}
+                          className="flex-1 min-w-0 bg-transparent text-[13.5px] text-white focus:outline-none" />
+                        <button type="button"
+                          onClick={() => {
+                            const resto = lineasLote.filter((_, j) => j !== i);
+                            if (resto.length > 1) { setLineasLote(resto); return; }
+                            setTitulo(resto[0] ?? ""); setLineasLote(null);
+                          }}
+                          className="text-[#333] hover:text-red-400 transition-colors shrink-0">
+                          <X size={13} />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-[10.5px] text-[#555]">
+                    Todas comparten responsable, fecha, área y demás campos de abajo.
+                  </p>
+                </div>
+              ) : (
               <textarea autoFocus value={titulo} rows={1}
                 onChange={e => { setTitulo(e.target.value); setError(null); }}
                 onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit(); }}
+                onPaste={e => {
+                  if (modoEdicion) return;
+                  const lineas = dividirEnTareas(e.clipboardData.getData("text"));
+                  if (lineas.length < 2) return;
+                  e.preventDefault();
+                  const previo = titulo.trim();
+                  setLineasLote(previo ? [previo, ...lineas] : lineas);
+                  setTitulo(""); setAdjuntos([]); setError(null);
+                }}
                 placeholder="¿Qué hay que hacer?"
                 className="w-full bg-transparent text-[16px] text-white placeholder-[#333] focus:outline-none leading-snug resize-none" />
+              )}
               <textarea value={descripcion}
                 onChange={e => { setDescripcion(e.target.value); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
                 placeholder="Descripción (opcional)"
@@ -728,6 +796,7 @@ export default function NuevaTareaModal({
             />
 
             {/* Archivos adjuntos */}
+            {!lineasLote && (
             <Campo label="Archivos">
               <div className="flex gap-3 mb-2">
                 <label className="cursor-pointer inline-flex items-center gap-1.5 text-[12px] text-[#888] hover:text-[#B3985B] transition-colors">
@@ -784,6 +853,7 @@ export default function NuevaTareaModal({
                 <p className="text-[11px] text-[#444]">Sin archivos adjuntos</p>
               )}
             </Campo>
+            )}
 
             {error && (
               <p className="text-[12px] text-red-400 flex items-center gap-1.5">
@@ -799,9 +869,13 @@ export default function NuevaTareaModal({
             <button onClick={onClose} className="text-[12px] text-[#555] hover:text-white px-3 py-1.5 rounded-lg transition-colors">
               Cancelar
             </button>
-            <button onClick={submit} disabled={saving || subiendoAdjuntos || !titulo.trim()}
+            <button onClick={submit}
+              disabled={saving || subiendoAdjuntos || (lineasLote ? lineasLote.every(l => !l.trim()) : !titulo.trim())}
               className="text-[12px] font-semibold px-4 py-1.5 rounded-lg bg-[#B3985B] hover:bg-[#c9aa6a] text-[#080808] transition-all disabled:opacity-30 disabled:cursor-not-allowed">
-              {subiendoAdjuntos ? "Subiendo archivos…" : modoEdicion ? (saving ? "Guardando…" : "Guardar cambios") : (saving ? "Creando…" : "Crear tarea")}
+              {subiendoAdjuntos ? "Subiendo archivos…"
+                : modoEdicion ? (saving ? "Guardando…" : "Guardar cambios")
+                : lineasLote ? (saving ? `Creando ${creadasLote + 1} de ${lineasLote.length}…` : `Crear ${lineasLote.length} tareas`)
+                : (saving ? "Creando…" : "Crear tarea")}
             </button>
           </div>
         )}
@@ -821,6 +895,15 @@ function Campo({ label, children }: { label: string; children: React.ReactNode }
 }
 function Cargando() {
   return <div className="h-9 rounded-lg bg-[#0f0f0f] border border-[#1a1a1a] animate-pulse" />;
+}
+
+// Convierte un texto pegado en una lista de títulos: un renglón = una tarea,
+// quitando viñetas, numeración y casillas para que no ensucien el título.
+function dividirEnTareas(texto: string): string[] {
+  return texto
+    .split(/\r?\n/)
+    .map(l => l.replace(/^\s*(?:[-*•·–—]|\d+[.)]|\[[ xX]?\])\s+/, "").trim())
+    .filter(Boolean);
 }
 
 function fechaCorta(iso: string | null): string {
