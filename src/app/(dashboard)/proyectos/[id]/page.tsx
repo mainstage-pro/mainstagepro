@@ -26,6 +26,7 @@ import { ViabilidadWidget, type ViabilidadActiva, type ViabilidadHistoricoItem }
 import { MontajePosiciones, type Posicion as PosicionMontaje } from "@/components/proyectos/MontajePosiciones";
 import { PanelProveedores } from "@/components/proyectos/PanelProveedores";
 import { PanelImprevistos } from "@/components/proyectos/PanelImprevistos";
+import ModalRegistrarPago, { type GrupoPago, type PagoCapturado } from "@/components/finanzas/ModalRegistrarPago";
 import { labelConfiguracion, labelZona } from "@/lib/montaje-vocabulario";
 import { DISCIPLINA_COLORS, DISCIPLINA_LABELS } from "@/lib/disciplinaColors";
 import { contarRespondidos, contarIncidencias, nivelResultado, getEvalConfig, aplicaEvaluacion, type EvalPostEventoData } from "@/lib/evaluacion-post-evento";
@@ -70,7 +71,7 @@ interface CheckItem { id: string; item: string; completado: boolean; orden: numb
 interface Archivo { id: string; tipo: string; nombre: string; url: string; createdAt: string }
 interface AjusteEntry { fecha: string; de: number; a: number; motivo: string; usuario: string }
 interface CxC { id: string; concepto: string; tipoPago: string; monto: number; montoCobrado: number; estado: string; fechaCompromiso: string; montoOriginal: number | null; ajustesLog: string | null }
-interface CxP { id: string; concepto: string; monto: number; estado: string; fechaCompromiso: string; tipoAcreedor: string; montoOriginal: number | null; ajustesLog: string | null; notas: string | null }
+interface CxP { id: string; concepto: string; monto: number; montoPagado?: number; montoCompensado?: number; estado: string; fechaCompromiso: string; tipoAcreedor: string; montoOriginal: number | null; ajustesLog: string | null; notas: string | null; esNomina?: boolean; esDeuda?: boolean; esReparto?: boolean; gastoRecurrenteId?: string | null; proveedorId?: string | null; tecnicoId?: string | null }
 interface Bitacora { id: string; tipo: string; contenido: string; createdAt: string; usuario: { name: string } | null }
 interface GastoOp { id: string; tipo: string; concepto: string; monto: number; cantidad: number; entregado: boolean; fechaEntrega: string | null; notas: string | null; cxpId: string | null }
 interface Gasto { id: string; fecha: string; concepto: string; monto: number; metodoPago: string; notas: string | null; referencia: string | null; categoriaId?: string | null; categoria: { id?: string; nombre: string } | null; proveedorId?: string | null; proveedor: { id?: string; nombre: string; empresa?: string | null } | null; cuentaOrigenId?: string | null; cuentaOrigen: { id: string; nombre: string; banco: string | null } | null }
@@ -196,7 +197,7 @@ interface Proyecto {
   escenarioNotas: string | null;
   /** Reglas de la cadena de mando reescritas para este evento. */
   cadenaMandoReglas: unknown;
-  proveedoresEvento: { id: string; nombreProveedor: string; servicioEquipo: string | null; telefonoProveedor: string | null; responsable: string | null; imprevisto: boolean }[];
+  proveedoresEvento: { id: string; nombreProveedor: string; servicioEquipo: string | null; telefonoProveedor: string | null; responsable: string | null; imprevisto: boolean; tipoAcreedor: string; proveedorId: string | null; tecnicoId: string | null; personalId: string | null; costoAcordado: number | null; unidades: number | null; cuentaPagarId: string | null; solicitadoPor: string | null; fechaSolicitud: string | null }[];
   bloquesTiempo: BloqueTiempo[];
   createdAt: string;
   updatedAt: string;
@@ -2931,6 +2932,119 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     setMarcandoPago(new Set());
   }
 
+  // ── Registrar pago con método/cuenta/referencia, igual que en el módulo ──
+  // El proyecto y el módulo del ciclo golpean el mismo endpoint, así que el
+  // ledger queda idéntico sin importar desde dónde se capture el pago.
+  const [pagoPersonalTarget, setPagoPersonalTarget] = useState<GrupoPago[] | null>(null);
+  const [guardandoPagoPersonal, setGuardandoPagoPersonal] = useState(false);
+
+  function abrirPagoPersonal(slots: Personal[]) {
+    const pendientes = slots.filter(p => p.tecnico && p.estadoPago !== "PAGADO" && (p.tarifaAcordada ?? 0) > 0);
+    if (!pendientes.length) {
+      toast.error("No hay tarifas pendientes que pagar");
+      return;
+    }
+    const porTecnico = new Map<string, Personal[]>();
+    for (const p of pendientes) {
+      const key = p.tecnico!.id;
+      if (!porTecnico.has(key)) porTecnico.set(key, []);
+      porTecnico.get(key)!.push(p);
+    }
+    setPagoPersonalTarget(
+      Array.from(porTecnico.entries()).map(([tecnicoId, filas]) => ({
+        id: tecnicoId,
+        titulo: filas[0].tecnico!.nombre,
+        lineas: filas.map(p => ({
+          id: p.id,
+          etiqueta: p.rolTecnico?.nombre ?? p.tecnico?.rol?.nombre ?? "Participación",
+          detalle: p.participacion ?? null,
+          monto: p.tarifaAcordada ?? 0,
+        })),
+      })),
+    );
+  }
+
+  async function confirmarPagoPersonal(pago: PagoCapturado) {
+    if (!pagoPersonalTarget) return;
+    setGuardandoPagoPersonal(true);
+    try {
+      for (const grupo of pagoPersonalTarget) {
+        const filas = pago.seleccion[grupo.id] ?? [];
+        if (!filas.length) continue;
+        const total = pago.totalPorGrupo[grupo.id] ?? 0;
+        const entradas = pagoPersonalTarget.length === 1
+          ? pago.desembolsos
+          : [{ ...pago.desembolsos[0], monto: total }];
+        await fetch("/api/pagos-personal", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tecnicoId: grupo.id,
+            proyectoIds: [id],
+            fecha: pago.fecha,
+            notas: pago.notas,
+            totalOwed: total,
+            entradas,
+          }),
+        });
+      }
+      setPagoPersonalTarget(null);
+      await load();
+      toast.success("Pago registrado");
+    } finally {
+      setGuardandoPagoPersonal(false);
+    }
+  }
+
+  // ── Pagos a proveedores del evento (coordinados, imprevistos y directos) ──
+  const [pagoProvTarget, setPagoProvTarget] = useState<GrupoPago[] | null>(null);
+  const [guardandoPagoProv, setGuardandoPagoProv] = useState(false);
+  const [formalizandoProv, setFormalizandoProv] = useState(false);
+
+  async function confirmarPagoProveedor(pago: PagoCapturado) {
+    if (!pagoProvTarget) return;
+    setGuardandoPagoProv(true);
+    try {
+      for (const grupo of pagoProvTarget) {
+        const ids = pago.seleccion[grupo.id] ?? [];
+        if (!ids.length) continue;
+        const total = pago.totalPorGrupo[grupo.id] ?? 0;
+        if (total <= 0) continue;
+        const entradas = pagoProvTarget.length === 1
+          ? pago.desembolsos
+          : [{ ...pago.desembolsos[0], monto: total }];
+        await fetch("/api/pagos-proveedores", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cuentasPagarIds: ids, fecha: pago.fecha, notas: pago.notas, entradas }),
+        });
+      }
+      setPagoProvTarget(null);
+      await load();
+      toast.success("Pago registrado");
+    } finally {
+      setGuardandoPagoProv(false);
+    }
+  }
+
+  async function formalizarProveedores(proveedorEventoIds: string[]) {
+    if (!proveedorEventoIds.length) return;
+    setFormalizandoProv(true);
+    try {
+      const res = await fetch("/api/pagos-proveedores/cxp", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ proveedorEventoIds }),
+      });
+      const d = await res.json();
+      if (res.ok) {
+        toast.success(`${d.creadas} cuenta(s) por pagar generada(s)`);
+        await load();
+      } else {
+        toast.error(d.error ?? "No se pudo generar la cuenta por pagar");
+      }
+    } finally {
+      setFormalizandoProv(false);
+    }
+  }
+
   // ── Eliminar personal ──
   async function eliminarPersonal(pId: string) {
     await fetch(`/api/proyectos/${id}/personal/${pId}`, { method: "DELETE" });
@@ -3055,7 +3169,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         if (res.ok && d.cxp) {
           setProyecto(prev => prev ? {
             ...prev,
-            cuentasPagar: [...prev.cuentasPagar, { id: d.cxp.id, concepto: d.cxp.concepto, monto: d.cxp.monto, estado: d.cxp.estado, fechaCompromiso: d.cxp.fechaCompromiso, tipoAcreedor: d.cxp.tipoAcreedor, montoOriginal: null, ajustesLog: null, notas: d.cxp.notas ?? null }],
+            cuentasPagar: [...prev.cuentasPagar, { id: d.cxp.id, concepto: d.cxp.concepto, monto: d.cxp.monto, montoPagado: d.cxp.montoPagado ?? 0, montoCompensado: d.cxp.montoCompensado ?? 0, estado: d.cxp.estado, fechaCompromiso: d.cxp.fechaCompromiso, tipoAcreedor: d.cxp.tipoAcreedor, montoOriginal: null, ajustesLog: null, notas: d.cxp.notas ?? null, proveedorId: d.cxp.proveedorId ?? null }],
           } : prev);
           toast.success("Gasto registrado");
         } else {
@@ -3201,7 +3315,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             setProyecto(prev => prev ? {
               ...prev,
               movimientos: prev.movimientos.filter(m => m.id !== editGasto.id),
-              cuentasPagar: [...prev.cuentasPagar, { id: d.cxp.id, concepto: d.cxp.concepto, monto: d.cxp.monto, estado: d.cxp.estado, fechaCompromiso: d.cxp.fechaCompromiso, tipoAcreedor: d.cxp.tipoAcreedor, montoOriginal: null, ajustesLog: null, notas: d.cxp.notas ?? null }],
+              cuentasPagar: [...prev.cuentasPagar, { id: d.cxp.id, concepto: d.cxp.concepto, monto: d.cxp.monto, montoPagado: d.cxp.montoPagado ?? 0, montoCompensado: d.cxp.montoCompensado ?? 0, estado: d.cxp.estado, fechaCompromiso: d.cxp.fechaCompromiso, tipoAcreedor: d.cxp.tipoAcreedor, montoOriginal: null, ajustesLog: null, notas: d.cxp.notas ?? null, proveedorId: d.cxp.proveedorId ?? null }],
             } : prev);
           }
         }
@@ -7795,10 +7909,16 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                           )}
                         </div>
                         {hayPendientes && (
-                          <button onClick={marcarTodosPagado}
-                            className="text-xs bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold px-3 py-1.5 rounded-lg transition-colors">
-                            Marcar todos pagado
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => abrirPagoPersonal(personal)}
+                              className="text-xs bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold px-3 py-1.5 rounded-lg transition-colors">
+                              Registrar pago
+                            </button>
+                            <button onClick={marcarTodosPagado}
+                              className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-3 py-1.5 rounded-lg transition-colors">
+                              Marcar todos pagado
+                            </button>
+                          </div>
                         )}
                       </div>
                     );
@@ -7807,6 +7927,224 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               );
             })()}
           </div>
+
+          {/* Pagos a proveedores — todo lo que el evento debe fuera de su nómina */}
+          {(() => {
+            const cxpPorId = new Map(proyecto.cuentasPagar.map(c => [c.id, c]));
+            const yaEnRenglon = new Set(
+              proyecto.proveedoresEvento.map(pe => pe.cuentaPagarId).filter((x): x is string => !!x),
+            );
+
+            const saldoDe = (c: CxP) =>
+              Math.max(0, Math.round((c.monto - (c.montoPagado ?? 0) - (c.montoCompensado ?? 0)) * 100) / 100);
+            type EstadoProv = "SIN_CXP" | "PENDIENTE" | "PARCIAL" | "PAGADO";
+            const estadoDe = (c: CxP): EstadoProv =>
+              c.estado === "LIQUIDADO" ? "PAGADO" : c.estado === "PARCIAL" ? "PARCIAL" : "PENDIENTE";
+
+            interface FilaProv {
+              key: string; origen: "COORDINADO" | "IMPREVISTO" | "DIRECTO";
+              proveedorEventoId: string | null; cxp: CxP | null;
+              acreedorKey: string; acreedorNombre: string; tipoAcreedor: string;
+              concepto: string; unidades: number | null; monto: number; saldo: number; estado: EstadoProv;
+            }
+
+            const filas: FilaProv[] = [];
+            for (const pe of proyecto.proveedoresEvento) {
+              const cxp = pe.cuentaPagarId ? cxpPorId.get(pe.cuentaPagarId) ?? null : null;
+              const monto = cxp?.monto ?? pe.costoAcordado ?? 0;
+              const acreedorId = pe.proveedorId ?? pe.tecnicoId ?? pe.personalId;
+              filas.push({
+                key: `pe:${pe.id}`,
+                origen: pe.imprevisto ? "IMPREVISTO" : "COORDINADO",
+                proveedorEventoId: pe.id,
+                cxp,
+                acreedorKey: acreedorId ? `${pe.tipoAcreedor}:${acreedorId}` : `SUELTO:${pe.id}`,
+                acreedorNombre: pe.nombreProveedor,
+                tipoAcreedor: pe.tipoAcreedor,
+                concepto: pe.servicioEquipo?.trim() || "Servicio del evento",
+                unidades: pe.unidades,
+                monto,
+                saldo: cxp ? saldoDe(cxp) : monto,
+                estado: cxp ? estadoDe(cxp) : "SIN_CXP",
+              });
+            }
+            // Gastos capturados a mano aquí mismo: no nacieron de un renglón de
+            // proveedor, pero son deuda del evento igual que los demás.
+            for (const c of proyecto.cuentasPagar) {
+              if (yaEnRenglon.has(c.id) || c.tipoAcreedor === "TECNICO") continue;
+              if (c.esNomina || c.esDeuda || c.esReparto || c.gastoRecurrenteId) continue;
+              const prov = c.proveedorId ? proveedores.find(p => p.id === c.proveedorId) : null;
+              filas.push({
+                key: `cxp:${c.id}`,
+                origen: "DIRECTO",
+                proveedorEventoId: null,
+                cxp: c,
+                acreedorKey: c.proveedorId ? `PROVEEDOR:${c.proveedorId}` : `SUELTO:${c.id}`,
+                acreedorNombre: prov ? prov.empresa || prov.nombre : "Sin acreedor",
+                tipoAcreedor: c.tipoAcreedor,
+                concepto: c.concepto,
+                unidades: null,
+                monto: c.monto,
+                saldo: saldoDe(c),
+                estado: estadoDe(c),
+              });
+            }
+
+            if (filas.length === 0) return null;
+
+            const ORDEN_ORIGEN = ["COORDINADO", "IMPREVISTO", "DIRECTO"] as const;
+            const ORIGEN_LABEL: Record<string, string> = {
+              COORDINADO: "Coordinado en preproducción",
+              IMPREVISTO: "Imprevisto del evento",
+              DIRECTO: "Gasto directo",
+            };
+            const ORIGEN_COLOR: Record<string, string> = {
+              COORDINADO: "text-[#B3985B]", IMPREVISTO: "text-orange-400", DIRECTO: "text-cyan-400",
+            };
+            const ACREEDOR_LABEL: Record<string, string> = {
+              PROVEEDOR: "Proveedor", TECNICO: "Técnico", PERSONAL_INTERNO: "Mainstage",
+              OTRO: "Otro", EMPRESA: "Empresa", SOCIO: "Socio",
+            };
+
+            const grupos = ORDEN_ORIGEN
+              .map(o => [o, filas.filter(f => f.origen === o)] as const)
+              .filter(([, fs]) => fs.length > 0);
+
+            const total = filas.reduce((s, f) => s + f.monto, 0);
+            const presupuesto = proyecto.cotizacion?.subtotalTerceros ?? 0;
+            const diff = presupuesto - total;
+            const sinFormalizar = filas.filter(f => f.estado === "SIN_CXP" && f.monto > 0);
+            const pagables = filas.filter(f => f.cxp && f.estado !== "PAGADO" && f.saldo > 0);
+            const porPagar = Math.round(pagables.reduce((s, f) => s + f.saldo, 0) * 100) / 100;
+
+            function abrirPago(objetivo: FilaProv[]) {
+              const porAcreedor = new Map<string, FilaProv[]>();
+              for (const f of objetivo) {
+                if (!porAcreedor.has(f.acreedorKey)) porAcreedor.set(f.acreedorKey, []);
+                porAcreedor.get(f.acreedorKey)!.push(f);
+              }
+              setPagoProvTarget(
+                Array.from(porAcreedor.entries()).map(([key, fs]) => ({
+                  id: key,
+                  titulo: fs[0].acreedorNombre,
+                  lineas: fs.map(f => ({ id: f.cxp!.id, etiqueta: f.concepto, detalle: null, monto: f.saldo })),
+                })),
+              );
+            }
+
+            return (
+              <div className="ms-table-wrapper">
+                <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Pagos a proveedores</h3>
+                    <span className="text-xs text-gray-500">{fmt(total)}</span>
+                  </div>
+                  <Link href="/finanzas/pagos-proveedores"
+                    className="text-xs text-gray-600 hover:text-[#B3985B] transition-colors">
+                    Ver ciclo semanal →
+                  </Link>
+                </div>
+
+                <div className="grid grid-cols-[1fr_1fr_52px_88px_74px_56px] gap-2 px-5 py-1.5 border-b border-[#0d0d0d]">
+                  {["Acreedor", "Concepto", "Unid.", "Monto", "Estado", ""].map((h, i) => (
+                    <p key={i} className="text-[10px] text-gray-600 uppercase tracking-wider font-semibold">{h}</p>
+                  ))}
+                </div>
+
+                {grupos.map(([origen, fs]) => (
+                  <div key={origen}>
+                    <div className="px-5 py-1.5 bg-[#0d0d0d] flex items-center gap-2">
+                      <span className={`text-[10px] font-semibold uppercase tracking-wider ${ORIGEN_COLOR[origen]}`}>
+                        {ORIGEN_LABEL[origen]}
+                      </span>
+                      <span className="text-[10px] text-gray-700 ml-auto">
+                        {fs.length} renglón{fs.length !== 1 ? "es" : ""} · {fmt(fs.reduce((s, f) => s + f.monto, 0))}
+                      </span>
+                    </div>
+                    {fs.map(f => (
+                      <div key={f.key} className="grid grid-cols-[1fr_1fr_52px_88px_74px_56px] gap-2 px-5 py-2.5 border-b border-[#0d0d0d] last:border-0 items-center">
+                        <div className="min-w-0">
+                          <p className="text-sm text-white truncate">{f.acreedorNombre}</p>
+                          <p className="text-[10px] text-gray-600">{ACREEDOR_LABEL[f.tipoAcreedor] ?? f.tipoAcreedor}</p>
+                        </div>
+                        <p className="text-xs text-gray-400 truncate">{f.concepto}</p>
+                        <p className="text-xs text-gray-500">{f.unidades ?? "—"}</p>
+                        <div className="text-right">
+                          <p className={`text-sm font-medium ${f.monto > 0 ? "text-white" : "text-gray-600"}`}>
+                            {f.monto > 0 ? fmt(f.monto) : "—"}
+                          </p>
+                          {f.estado === "PARCIAL" && <p className="text-[10px] text-yellow-500">resta {fmt(f.saldo)}</p>}
+                        </div>
+                        <div className="flex justify-end">
+                          {f.estado === "SIN_CXP" && f.monto > 0 ? (
+                            <button onClick={() => formalizarProveedores([f.proveedorEventoId!])}
+                              disabled={formalizandoProv}
+                              className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-orange-900/20 text-orange-400 hover:bg-[#B3985B]/20 hover:text-[#B3985B] transition-colors disabled:opacity-40">
+                              Generar CxP
+                            </button>
+                          ) : (
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                              f.estado === "PAGADO" ? "bg-green-900/40 text-green-400"
+                                : f.estado === "PARCIAL" ? "bg-yellow-900/30 text-yellow-400"
+                                : f.estado === "PENDIENTE" ? "bg-yellow-900/20 text-yellow-500"
+                                : "text-gray-700"
+                            }`}>
+                              {f.estado === "PAGADO" ? "Pagado" : f.estado === "PARCIAL" ? "Parcial"
+                                : f.estado === "PENDIENTE" ? "Pend." : "—"}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-end gap-1.5">
+                          {f.cxp && (
+                            <>
+                              <button onClick={() => abrirEditarCxP(f.cxp!)}
+                                className="text-gray-600 hover:text-[#B3985B] text-xs transition-colors" title="Editar cuenta por pagar">✎</button>
+                              {f.estado !== "PAGADO" && (
+                                <button onClick={() => eliminarCxP(f.cxp!.id)}
+                                  className="text-gray-700 hover:text-red-400 text-xs transition-colors" title="Eliminar cuenta por pagar">✕</button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+
+                <div className="px-5 py-3 bg-[#0d0d0d] border-t border-[#111] flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-5 flex-wrap">
+                    {presupuesto > 0 ? (
+                      <>
+                        <span className="text-xs text-gray-500">Presupuesto: <span className="text-gray-300">{fmt(presupuesto)}</span></span>
+                        <span className="text-xs text-gray-500">Real: <span className="text-white font-semibold">{fmt(total)}</span></span>
+                        <span className={`text-xs font-semibold ${diff >= 0 ? "text-green-400" : "text-red-400"}`}>
+                          {diff >= 0 ? `+${fmt(diff)}` : fmt(diff)}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-xs text-gray-500">Total terceros: <span className="text-white font-semibold">{fmt(total)}</span></span>
+                    )}
+                    {porPagar > 0 && <span className="text-xs text-yellow-500">{fmt(porPagar)} por pagar</span>}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {pagables.length > 0 && (
+                      <button onClick={() => abrirPago(pagables)}
+                        className="text-xs bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold px-3 py-1.5 rounded-lg transition-colors">
+                        Registrar pago
+                      </button>
+                    )}
+                    {sinFormalizar.length > 0 && (
+                      <button onClick={() => formalizarProveedores(sinFormalizar.map(f => f.proveedorEventoId!))}
+                        disabled={formalizandoProv}
+                        className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40">
+                        {formalizandoProv ? "Generando..." : `Generar ${sinFormalizar.length} CxP`}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* ── Gastos del proyecto ── */}
           {(() => {
@@ -7835,9 +8173,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               : 0;
 
             // Bloque 2: Gastos registrados
-            const cxpGastos = proyecto.cuentasPagar.filter(c => c.tipoAcreedor !== "TECNICO" && c.estado !== "LIQUIDADO");
+            const cxpPendientes = proyecto.cuentasPagar.filter(c => c.tipoAcreedor !== "TECNICO" && c.estado !== "LIQUIDADO");
+            // Lo que ya vive en la tabla de "Pagos a proveedores" no se repite
+            // aquí: en este bloque solo quedan deudas, repartos y recurrentes.
+            const cxpGastos = cxpPendientes.filter(c =>
+              c.esNomina || c.esDeuda || c.esReparto || !!c.gastoRecurrenteId
+            );
             const pagados = proyecto.movimientos;
-            const totalPendiente = cxpGastos.reduce((s, c) => s + c.monto, 0);
+            const totalPendiente = cxpPendientes.reduce((s, c) => s + c.monto, 0);
             const totalPagado = pagados.reduce((s, m) => s + m.monto, 0);
             // Equipos externos con costo registrado (fuente: campo costoExterno en rider)
             const costoEquipExt = (proyecto.equipos ?? []).reduce(
@@ -7913,7 +8256,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <div>
                     <div className="px-5 pt-3 pb-1 flex items-center justify-between border-b border-[#1a1a1a]">
                       <p className="text-[10px] text-yellow-600/90 uppercase tracking-[0.12em] font-semibold">Por pagar</p>
-                      <span className="text-xs text-yellow-400 font-semibold">{fmt(totalPendiente)}</span>
+                      <span className="text-xs text-yellow-400 font-semibold">{fmt(cxpGastos.reduce((s, c) => s + c.monto, 0))}</span>
                     </div>
                     {cxpGastos.map(c => (
                       <div key={c.id} className="px-5 py-3 border-b border-[#1a1a1a]">
@@ -8910,6 +9253,30 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         </div>
       );
     })()}
+
+    {pagoPersonalTarget && (
+      <ModalRegistrarPago
+        titulo="Registrar pago a personal"
+        subtitulo={proyecto?.nombre}
+        grupos={pagoPersonalTarget}
+        cuentas={cuentasBancarias}
+        guardando={guardandoPagoPersonal}
+        onCerrar={() => { if (!guardandoPagoPersonal) setPagoPersonalTarget(null); }}
+        onConfirmar={confirmarPagoPersonal}
+      />
+    )}
+
+    {pagoProvTarget && (
+      <ModalRegistrarPago
+        titulo="Registrar pago a proveedores"
+        subtitulo={proyecto?.nombre}
+        grupos={pagoProvTarget}
+        cuentas={cuentasBancarias}
+        guardando={guardandoPagoProv}
+        onCerrar={() => { if (!guardandoPagoProv) setPagoProvTarget(null); }}
+        onConfirmar={confirmarPagoProveedor}
+      />
+    )}
 
     {/* ── PDF Preview Modal ── */}
     {pdfPreview && (

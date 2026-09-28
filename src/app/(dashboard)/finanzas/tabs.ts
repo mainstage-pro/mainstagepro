@@ -6,6 +6,7 @@ export const finanzasTabs: ModuleNavTab[] = [
   { href: "/finanzas/flujo-cuentas", label: "Flujo de cuentas", accessKey: "finanzas-flujo" },
   { href: "/finanzas/programacion", label: "Programación semanal", accessKey: "finanzas-cobros" },
   { href: "/finanzas/pagos-personal", label: "Pagos a personal", accessKey: "finanzas-pagos-personal" },
+  { href: "/finanzas/pagos-proveedores", label: "Pagos a proveedores", accessKey: "finanzas-pagos-proveedores" },
   { href: "/finanzas/movimientos", label: "Movimientos", accessKey: "finanzas-movimientos" },
   { href: "/finanzas/caja-chica", label: "Caja chica", accessKey: "finanzas-caja-chica" },
   { href: "/finanzas/cuentas", label: "Cuentas bancarias", accessKey: "finanzas-movimientos" },

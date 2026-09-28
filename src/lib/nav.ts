@@ -138,6 +138,7 @@ export const NAV: NavSection[] = [
           { key: "finanzas-gastos-recurrentes", label: "Gastos recurrentes", href: "/finanzas/gastos-recurrentes" },
           { key: "finanzas-flujo", label: "Flujo de cuentas", href: "/finanzas/flujo-cuentas" },
           { key: "finanzas-pagos-personal", label: "Pagos a personal", href: "/finanzas/pagos-personal" },
+          { key: "finanzas-pagos-proveedores", label: "Pagos a proveedores", href: "/finanzas/pagos-proveedores" },
           { key: "finanzas-movimientos", label: "Movimientos", href: "/finanzas/movimientos" },
           { key: "finanzas-caja-chica", label: "Caja chica", href: "/finanzas/caja-chica" },
           { key: "finanzas-cuentas", accessKey: "finanzas-movimientos", label: "Cuentas bancarias", href: "/finanzas/cuentas" },
@@ -308,6 +309,7 @@ const MODULE_META: Record<string, { label?: string; desc?: string }> = {
   "finanzas-gastos-recurrentes": { desc: "Gastos fijos y variables recurrentes" },
   "finanzas-flujo":      { desc: "Flujo de cuentas proyectado" },
   "finanzas-pagos-personal": { desc: "Pagos a personal" },
+  "finanzas-pagos-proveedores": { desc: "Pagos a proveedores del evento" },
   "finanzas-movimientos":    { desc: "Movimientos financieros" },
   "finanzas-caja-chica":     { desc: "Caja chica" },
   "inv-analisis":        { desc: "Análisis de uso de equipo" },
@@ -408,7 +410,7 @@ export const ALL_MODULE_KEYS: string[] = MODULOS_POR_SECCION.flatMap(s => s.item
 export const AREA_MODULE_PRESETS: Record<string, string[]> = {
   ADMINISTRACION: [
     "plan-trabajo", "operaciones", "calendario", "vision-semanal", "reporte-area-mensual",
-    "finanzas-cobros", "finanzas-gastos-recurrentes", "finanzas-flujo", "finanzas-pagos-personal", "finanzas-movimientos", "finanzas-caja-chica", "inv-analisis",
+    "finanzas-cobros", "finanzas-gastos-recurrentes", "finanzas-flujo", "finanzas-pagos-personal", "finanzas-pagos-proveedores", "finanzas-movimientos", "finanzas-caja-chica", "inv-analisis",
     "rrhh-personal", "rrhh-nomina", "rrhh-asistencia", "rrhh-evaluaciones", "rrhh-satisfaccion",
     "rrhh-candidatos",
     "socios-constitutivos", "tabulador",
