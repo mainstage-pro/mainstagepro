@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { RefreshCw, Gauge, Zap, CalendarRange, Plus, X } from "lucide-react";
 import { KPI_OPCIONES, UNIDADES_META, formatValorMeta } from "@/lib/estrategia";
+import { fmtDate } from "@/lib/dates";
 import {
   useEstrategia,
   inputCls,
@@ -245,8 +246,8 @@ export default function MetaPage() {
               </span>
               <span className="text-[11px] text-gray-600 flex items-center gap-1.5">
                 <CalendarRange strokeWidth={1.7} className="w-3.5 h-3.5" />
-                {new Date(m.fechaInicio).toLocaleDateString("es-MX", { dateStyle: "medium" })} —{" "}
-                {new Date(m.fechaFin).toLocaleDateString("es-MX", { dateStyle: "medium" })}
+                {fmtDate(m.fechaInicio, { dateStyle: "medium" })} —{" "}
+                {fmtDate(m.fechaFin, { dateStyle: "medium" })}
               </span>
             </div>
             <h2 className="text-2xl sm:text-[32px] font-semibold text-white mt-4 leading-[1.15] tracking-tight">

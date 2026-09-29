@@ -28,6 +28,7 @@ import {
   UNIDADES_META,
   formatValorMeta,
 } from "@/lib/estrategia";
+import { fmtDate } from "@/lib/dates";
 import {
   useEstrategia,
   inputCls,
@@ -332,7 +333,7 @@ function Objetivo({
             {objetivo.fechaLimite && (
               <span className="flex items-center gap-1.5">
                 <CalendarClock strokeWidth={1.7} className="w-3 h-3" />
-                {new Date(objetivo.fechaLimite).toLocaleDateString("es-MX", { dateStyle: "medium" })}
+                {fmtDate(objetivo.fechaLimite, { dateStyle: "medium" })}
               </span>
             )}
             {objetivo.tacticas.length > 0 && (
@@ -457,7 +458,7 @@ function Tactica({
             <span className="text-[11px] text-gray-600 ml-2">
               {responsable?.name}
               {responsable && tactica.fechaEjecucion && " · "}
-              {tactica.fechaEjecucion && new Date(tactica.fechaEjecucion).toLocaleDateString("es-MX")}
+              {tactica.fechaEjecucion && fmtDate(tactica.fechaEjecucion)}
               {tactica.vencida && <span className="text-red-400"> · vencida</span>}
             </span>
           )}

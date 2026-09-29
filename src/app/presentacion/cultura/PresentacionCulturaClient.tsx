@@ -15,6 +15,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { ESTADO_OBJETIVO_META, formatValorMeta, type EstadoObjetivo } from "@/lib/estrategia";
+import { fmtDate } from "@/lib/dates";
 
 /* ── Design tokens: los mismos de las presentaciones actuales ── */
 const G = "#AA9040";
@@ -773,9 +774,9 @@ function SlideNoNegociables({ lista }: { lista: string[] }) {
 }
 
 function SlideMeta({ meta }: { meta: NonNullable<DeckData["meta"]> }) {
-  const rango = `${new Date(meta.fechaInicio).toLocaleDateString("es-MX", { dateStyle: "long" })} — ${new Date(
-    meta.fechaFin
-  ).toLocaleDateString("es-MX", { dateStyle: "long" })}`;
+  const rango = `${fmtDate(meta.fechaInicio, { dateStyle: "long" })} — ${fmtDate(meta.fechaFin, {
+    dateStyle: "long",
+  })}`;
   return (
     <div
       style={{
@@ -1071,7 +1072,7 @@ function SlideArea({ area }: { area: DeckData["areas"][number] }) {
                       <span style={{ color: G_A(0.9) }}>{formatValorMeta(o.valorMeta, o.unidad)}</span>
                       {o.tacticas > 0 && ` · ${o.hechas} de ${o.tacticas} tácticas`}
                       {o.fechaLimite &&
-                        ` · ${new Date(o.fechaLimite).toLocaleDateString("es-MX", { dateStyle: "medium" })}`}
+                        ` · ${fmtDate(o.fechaLimite, { dateStyle: "medium" })}`}
                     </p>
                   </div>
                   <span
