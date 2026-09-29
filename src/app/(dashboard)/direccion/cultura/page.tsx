@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Compass, Crosshair, Telescope, ShieldOff, History, BadgeCheck, Presentation } from "lucide-react";
 import { useEstrategia, inputCls, labelCls, btnPrimary, btnGhost } from "./useEstrategia";
-import { Lienzo, Encabezado, Panel, Cita, Rotulo, FONDOS, GOLD, oro } from "./ui";
+import { Lienzo, Encabezado, Panel, Cita, Rotulo, GOLD, oro } from "./ui";
 
 const CAMPOS = [
   {
@@ -83,10 +83,8 @@ export default function IdentidadPage() {
   const editando = modo !== "ver";
 
   return (
-    <Lienzo foto={FONDOS.identidad}>
+    <Lienzo>
       <Encabezado
-        icono={Compass}
-        antetitulo="Cultura y estrategia"
         titulo="Identidad institucional"
         bajada="La base de la que cuelga todo lo demás. Se imprime en el acuerdo de alineación, en la oferta de trabajo y en el onboarding, así que cambiarla cambia lo que firma el equipo."
         acciones={

@@ -28,7 +28,7 @@ import {
   btnGhost,
   type ValorDTO,
 } from "../useEstrategia";
-import { Lienzo, Encabezado, Panel, Cita, Vacio, FONDOS, GOLD, oro } from "../ui";
+import { Lienzo, Encabezado, Panel, Cita, Vacio, GOLD, oro } from "../ui";
 
 // Los valores los captura el usuario, así que el icono se deduce del nombre.
 // Es un gesto visual, no una taxonomía: si no hay coincidencia, cae en Gem.
@@ -118,10 +118,8 @@ export default function ValoresPage() {
   const sinConductas = valores.filter(v => parseConductas(v.conductas).length === 0);
 
   return (
-    <Lienzo foto={FONDOS.valores}>
+    <Lienzo>
       <Encabezado
-        icono={Gem}
-        antetitulo="Cultura y estrategia"
         titulo="Valores y conductas"
         bajada="Un valor sin conducta observable no sirve para contratar ni para evaluar. Lo que se captura aquí es lo que el puesto selecciona, lo que se filtra en la contratación y lo que se imprime en el acuerdo de alineación."
         acciones={

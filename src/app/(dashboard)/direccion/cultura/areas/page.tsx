@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import {
-  Layers,
   Target,
   Megaphone,
   Wrench,
@@ -40,7 +39,7 @@ import {
   type TacticaDTO,
   type UsuarioLite,
 } from "../useEstrategia";
-import { Lienzo, Encabezado, Panel, Anillo, Vacio, FONDOS, GOLD, oro } from "../ui";
+import { Lienzo, Encabezado, Panel, Anillo, Vacio, GOLD, oro } from "../ui";
 
 const ICONO_AREA: Record<string, LucideIcon> = {
   DIRECCION: Crown,
@@ -63,10 +62,8 @@ export default function AreasPage() {
   const usuarios = data?.usuarios ?? [];
 
   return (
-    <Lienzo foto={FONDOS.areas} ancho="max-w-5xl">
+    <Lienzo ancho="max-w-5xl">
       <Encabezado
-        icono={Layers}
-        antetitulo="Cultura y estrategia"
         titulo="Áreas, objetivos y tácticas"
         bajada="El propósito dice por qué existe el equipo. Los objetivos dicen qué tiene que lograr, con número y fecha. Las tácticas son lo que alguien hace el lunes — y son las únicas que mueven el avance."
       />

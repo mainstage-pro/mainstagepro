@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Presentation, Users, RefreshCw, Compass, Gem, Flag, Layers, Lock } from "lucide-react";
 import { useEstrategia } from "../useEstrategia";
-import { Lienzo, Encabezado, Panel, Rotulo, FONDOS, GOLD, oro } from "../ui";
+import { Lienzo, Encabezado, Panel, Rotulo, GOLD, oro } from "../ui";
 
 const BASE_URL =
   typeof window !== "undefined" ? window.location.origin : "https://mainstagepro.vercel.app";
@@ -56,10 +56,8 @@ export default function PresentacionTab() {
   ];
 
   return (
-    <Lienzo foto={FONDOS.presentacion} ancho="max-w-5xl">
+    <Lienzo ancho="max-w-5xl">
       <Encabezado
-        icono={Presentation}
-        antetitulo="Cultura y estrategia"
         titulo="Presentación"
         bajada="El mazo se genera con lo que está capturado en este módulo. No hay una copia que mantener: si corriges la visión o cierras una táctica, la siguiente vez que se abra ya sale corregido."
       />

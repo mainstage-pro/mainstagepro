@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { ESTADOS_TACTICA, ESTADO_OBJETIVO_META, formatValorMeta } from "@/lib/estrategia";
 import { useEstrategia } from "../useEstrategia";
-import { Lienzo, Encabezado, Panel, Metrica, Anillo, Rotulo, FONDOS, GOLD, oro } from "../ui";
+import { Lienzo, Encabezado, Panel, Metrica, Anillo, Rotulo, GOLD, oro } from "../ui";
 
 export default function CascadaPage() {
   const { data, cargando, error } = useEstrategia();
@@ -40,10 +40,8 @@ export default function CascadaPage() {
   );
 
   return (
-    <Lienzo foto={FONDOS.cascada} ancho="max-w-5xl">
+    <Lienzo ancho="max-w-5xl">
       <Encabezado
-        icono={GitBranch}
-        antetitulo="Cultura y estrategia"
         titulo="Cascada"
         bajada="De la meta del periodo hasta la táctica que alguien tiene que hacer. El avance sube solo: se calcula desde las tácticas completadas, nunca se captura a mano."
       />

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Flag, RefreshCw, Gauge, Zap, CalendarRange, Plus, X } from "lucide-react";
+import { RefreshCw, Gauge, Zap, CalendarRange, Plus, X } from "lucide-react";
 import { KPI_OPCIONES, UNIDADES_META, formatValorMeta } from "@/lib/estrategia";
 import {
   useEstrategia,
@@ -11,7 +11,7 @@ import {
   btnGhost,
   type IndicadorDTO,
 } from "../useEstrategia";
-import { Lienzo, Encabezado, Panel, Anillo, Rotulo, FONDOS, GOLD, oro } from "../ui";
+import { Lienzo, Encabezado, Panel, Anillo, Rotulo, GOLD, oro } from "../ui";
 
 type IndicadorForm = Omit<IndicadorDTO, "id" | "orden"> & { id?: string };
 
@@ -69,10 +69,8 @@ export default function MetaPage() {
   const m = data.meta;
 
   return (
-    <Lienzo foto={FONDOS.meta}>
+    <Lienzo>
       <Encabezado
-        icono={Flag}
-        antetitulo="Cultura y estrategia"
         titulo="Meta global del periodo"
         bajada="El norte cuantitativo del año. Todo objetivo de área debe poder explicarse contra esta meta; si no, sobra."
         acciones={
