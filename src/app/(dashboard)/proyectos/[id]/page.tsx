@@ -5585,6 +5585,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           <PanelProveedores
             proyectoId={id}
             dias={diasDelEvento}
+            onIrAEquipos={() => setActiveTab('extras')}
             evento={{
               numeroProyecto: proyecto.numeroProyecto,
               nombre: proyecto.nombre,

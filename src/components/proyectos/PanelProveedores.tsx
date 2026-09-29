@@ -57,19 +57,18 @@ export type ProveedorEventoItem = {
 
 type ProveedorCatalogo = { id: string; nombre: string; empresa: string | null; telefono: string | null };
 
-/** Línea de la cotización que puede asignarse a un proveedor. */
-type LineaCotizacion = {
+/**
+ * Equipo de tercero tal como quedó en el rider del proyecto. Aquí es de lectura:
+ * quién lo trae y a cómo se captura en la pestaña de producción, junto al equipo.
+ */
+type EquipoTercero = {
   id: string;
-  tipo: string;
   descripcion: string;
-  marca: string | null;
-  modelo: string | null;
   cantidad: number;
   dias: number;
-  proveedorEventoId: string | null;
-  /** Quién suele rentar este equipo, según el cotizador. Sugerencia, no decisión. */
+  costoExterno: number | null;
+  confirmado: boolean;
   proveedor: { id: string; nombre: string; empresa: string | null } | null;
-  costoUnitario: number | null;
 };
 
 const FASES = FASES_PROVEEDOR;
@@ -154,8 +153,11 @@ export function PanelProveedores({
   dias,
   evento,
   equipo = [],
+  onIrAEquipos,
 }: {
   proyectoId: string;
+  /** Lleva al rider del proyecto, que es donde se captura el equipo de tercero. */
+  onIrAEquipos?: () => void;
   /** Días del evento en "YYYY-MM-DD". La operación siempre cae en uno de ellos. */
   dias: string[];
   /**
@@ -178,7 +180,7 @@ export function PanelProveedores({
 
   const [proveedores, setProveedores] = useState<ProveedorEventoItem[]>([]);
   const [catalogo, setCatalogo] = useState<ProveedorCatalogo[]>([]);
-  const [lineasCotizacion, setLineasCotizacion] = useState<LineaCotizacion[]>([]);
+  const [equiposTercero, setEquiposTercero] = useState<EquipoTercero[]>([]);
   const [cargando, setCargando] = useState(true);
   const [abierto, setAbierto] = useState<string | null>(null);
   const [guardando, setGuardando] = useState<string | null>(null);
@@ -191,16 +193,6 @@ export function PanelProveedores({
   const [altaServicio, setAltaServicio] = useState("");
   const [altaNuevo, setAltaNuevo] = useState(false);
   const [agregando, setAgregando] = useState(false);
-
-  // Asignar proveedor a los equipos de tercero que trae la cotización, uno por uno.
-  const [asigLineaId, setAsigLineaId] = useState<string | null>(null);
-  const [asigProveedorId, setAsigProveedorId] = useState("");
-  const [asigNuevo, setAsigNuevo] = useState(false);
-  const [asigNombre, setAsigNombre] = useState("");
-  const [asigEmpresa, setAsigEmpresa] = useState("");
-  const [asigTelefono, setAsigTelefono] = useState("");
-  const [asigCosto, setAsigCosto] = useState("");
-  const [asignando, setAsignando] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -219,7 +211,7 @@ export function PanelProveedores({
           })),
         );
       }
-      if (rl.ok) setLineasCotizacion((await rl.json()).lineas ?? []);
+      if (rl.ok) setEquiposTercero((await rl.json()).equiposTercero ?? []);
       setCargando(false);
     })();
   }, [proyectoId]);
@@ -229,12 +221,11 @@ export function PanelProveedores({
     [catalogo],
   );
 
-  /** Equipos que la cotización marcó de tercero: los trae alguien de fuera. */
-  const equiposExternos = useMemo(
-    () => lineasCotizacion.filter((l) => l.tipo === "EQUIPO_EXTERNO"),
-    [lineasCotizacion],
-  );
-  const pendientes = equiposExternos.filter((l) => !l.proveedorEventoId).length;
+  const pendientes = equiposTercero.filter((e) => !e.proveedor).length;
+
+  /** Lo que trae cada proveedor, según el rider. */
+  const equiposDe = (proveedorId: string | null) =>
+    proveedorId ? equiposTercero.filter((e) => e.proveedor?.id === proveedorId) : [];
 
   const diasSeleccionables = useMemo(
     () => rangoDias(dias, aDiaISO(evento.fechaMontaje ?? null) || null, aDiaISO(evento.fechaDesmontaje ?? null) || null),
@@ -262,120 +253,6 @@ export function PanelProveedores({
       ...prev,
       [pid]: { ...prev[pid], conceptos: prev[pid].conceptos.map((c, j) => (j === i ? { ...c, ...patch } : c)) },
     }));
-  }
-
-  /** Asigna o libera una línea de la cotización para este proveedor. */
-  async function alternarLinea(prov: ProveedorEventoItem, linea: LineaCotizacion) {
-    const asignada = linea.proveedorEventoId === prov.id;
-    const res = await fetch(`/api/proyectos/${proyectoId}/equipos-cotizacion`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lineaId: linea.id, proveedorEventoId: asignada ? null : prov.id }),
-    });
-    if (!res.ok) return toast.error("No se pudo asignar el concepto");
-    setLineasCotizacion((prev) =>
-      prev.map((l) => (l.id === linea.id ? { ...l, proveedorEventoId: asignada ? null : prov.id } : l)),
-    );
-    setProveedores((prev) =>
-      prev.map((p) => {
-        if (p.id !== prov.id) return { ...p, lineas: p.lineas.filter((l) => l.id !== linea.id) };
-        const lineas = asignada
-          ? p.lineas.filter((l) => l.id !== linea.id)
-          : [...p.lineas, { ...linea, dias: 1, tipo: "EQUIPO_EXTERNO" }];
-        return { ...p, lineas };
-      }),
-    );
-  }
-
-  /** Lo que la cotización estimó que cuesta este equipo. Referencia, no verdad. */
-  function costoCotizado(l: LineaCotizacion) {
-    return (l.costoUnitario ?? 0) * l.cantidad * (l.dias || 1);
-  }
-
-  /** Lo ya acordado con ese proveedor para el evento, o lo que estimó la cotización. */
-  function costoParaProveedor(proveedorId: string, linea: LineaCotizacion): string {
-    const bloque = proveedores.find((p) => p.proveedorId === proveedorId);
-    if (bloque?.costoAcordado != null) return String(bloque.costoAcordado);
-    const est = costoCotizado(linea);
-    return est > 0 ? String(Math.round(est)) : "";
-  }
-
-  function abrirAsignacion(linea: LineaCotizacion) {
-    // El proveedor que ya trae el equipo, o el que el cotizador dejó anotado como sugerencia.
-    const actual = proveedores.find((p) => p.id === linea.proveedorEventoId)?.proveedorId ?? "";
-    const sugerido = actual || linea.proveedor?.id || "";
-    setAsigProveedorId(sugerido);
-    setAsigCosto(sugerido ? costoParaProveedor(sugerido, linea) : "");
-    setAsigNuevo(false);
-    setAsigNombre(""); setAsigEmpresa(""); setAsigTelefono("");
-    setAsigLineaId(linea.id);
-  }
-
-  function elegirProveedorAsignacion(proveedorId: string, linea: LineaCotizacion) {
-    if (proveedorId === "__nuevo__") {
-      setAsigNuevo(true);
-      setAsigProveedorId("");
-      return;
-    }
-    setAsigProveedorId(proveedorId);
-    if (proveedorId) setAsigCosto(costoParaProveedor(proveedorId, linea));
-  }
-
-  /**
-   * Le pone proveedor a un equipo. El proveedor nuevo se da de alta en el directorio con
-   * los mismos datos de siempre, para que no nazca como nombre suelto y pueda cobrársele
-   * desde el primer momento.
-   */
-  async function asignar(linea: LineaCotizacion) {
-    const lineaIds = [linea.id];
-    setAsignando(true);
-    try {
-      let proveedorId = asigProveedorId;
-
-      if (asigNuevo) {
-        const rAlta = await fetch("/api/proveedores", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            nombre: asigNombre.trim(),
-            empresa: asigEmpresa.trim() || null,
-            telefono: asigTelefono.trim() || null,
-          }),
-        });
-        if (!rAlta.ok) throw new Error((await rAlta.json().catch(() => ({}))).error ?? "No se pudo registrar el proveedor");
-        const nuevo = (await rAlta.json()).proveedor;
-        proveedorId = nuevo.id;
-        setCatalogo((prev) =>
-          [...prev, { id: nuevo.id, nombre: nuevo.nombre, empresa: nuevo.empresa, telefono: nuevo.telefono }]
-            .sort((a, b) => a.nombre.localeCompare(b.nombre)),
-        );
-      }
-
-      const res = await fetch(`/api/proyectos/${proyectoId}/equipos-cotizacion/asignar`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lineaIds, proveedorId, costoAcordado: asigCosto === "" ? null : asigCosto }),
-      });
-      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "No se pudo asignar el proveedor");
-      const { proveedor } = await res.json();
-
-      setProveedores((prev) => {
-        // Al cambiar de proveedor, el anterior deja de traer el equipo.
-        const lista = prev.map((p) =>
-          p.id === proveedor.id ? proveedor : { ...p, lineas: p.lineas.filter((x) => x.id !== linea.id) },
-        );
-        return prev.some((p) => p.id === proveedor.id) ? lista : [...lista, proveedor];
-      });
-      setBorradores((prev) => ({ ...prev, [proveedor.id]: borradorDe(proveedor) }));
-      setLineasCotizacion((prev) =>
-        prev.map((l) => (l.id === linea.id ? { ...l, proveedorEventoId: proveedor.id } : l)),
-      );
-      setAsigLineaId(null);
-      toast.success(`Lo trae ${proveedor.nombreProveedor}`);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "No se pudo asignar el proveedor");
-    }
-    setAsignando(false);
   }
 
   function alternar(prov: ProveedorEventoItem) {
@@ -541,8 +418,9 @@ export function PanelProveedores({
 
   return (
     <div className="space-y-3">
-      {/* Los equipos que la cotización marcó de tercero: uno por renglón, cada quien su dueño. */}
-      {equiposExternos.length > 0 && (
+      {/* El equipo de tercero se captura junto al equipo, en producción. Aquí solo se lee:
+          que la operación sepa quién trae qué sin volver a preguntarlo. */}
+      {equiposTercero.length > 0 && (
         <div className={`ms-stat-card border-l-2 ${pendientes > 0 ? "border-l-orange-500/50" : "border-l-green-700/60"}`}>
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">
@@ -560,108 +438,52 @@ export function PanelProveedores({
           </div>
 
           <div className="mt-3 rounded-lg border border-[#222] divide-y divide-[#1a1a1a]">
-            {equiposExternos.map((l) => {
-              const bloque = proveedores.find((p) => p.id === l.proveedorEventoId);
-              const est = costoCotizado(l);
+            {equiposTercero.map((e) => {
+              const total = (e.costoExterno ?? 0) * e.cantidad * Math.max(1, e.dias);
               return (
                 <div
-                  key={l.id}
-                  className={`px-3 py-2.5 border-l-2 ${bloque ? "border-l-green-700/60" : "border-l-[#1e1e1e]"}`}
+                  key={e.id}
+                  className={`px-3 py-2.5 border-l-2 ${e.proveedor ? "border-l-green-700/60" : "border-l-[#1e1e1e]"}`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <p className="text-white text-sm font-medium">
-                        {l.cantidad} × {[l.marca, l.modelo].filter(Boolean).join(" ") || l.descripcion}
+                        {e.cantidad} × {e.descripcion}
                       </p>
-                      {bloque ? (
+                      {e.proveedor ? (
                         <p className="text-gray-500 text-xs mt-0.5">
-                          {bloque.nombreProveedor}
-                          {bloque.costoAcordado != null && ` · ${money(bloque.costoAcordado)} acordado`}
+                          {e.proveedor.empresa || e.proveedor.nombre}
+                          {total > 0 && ` · ${money(total)}`}
                         </p>
                       ) : (
-                        <p className="text-gray-600 text-xs mt-0.5">
-                          Pendiente de asignar
-                          {l.proveedor && ` · suele rentarlo ${l.proveedor.empresa || l.proveedor.nombre}`}
-                        </p>
+                        <p className="text-orange-400/80 text-xs mt-0.5">Sin proveedor asignado</p>
                       )}
                     </div>
-                    {asigLineaId !== l.id && (
-                      <button
-                        onClick={() => abrirAsignacion(l)}
-                        className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-2 py-0.5 rounded transition-colors shrink-0"
-                      >
-                        {bloque ? "Cambiar" : "Asignar"}
-                      </button>
+                    {e.confirmado && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-900/30 text-green-400 shrink-0">
+                        Confirmado
+                      </span>
                     )}
                   </div>
-
-                  {asigLineaId === l.id && (
-                    <div className="mt-3 space-y-3">
-                      {asigNuevo ? (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                          <input value={asigNombre} onChange={(e) => setAsigNombre(e.target.value)} placeholder="Nombre del contacto *" className={inputCls} />
-                          <input value={asigEmpresa} onChange={(e) => setAsigEmpresa(e.target.value)} placeholder="Empresa" className={inputCls} />
-                          <input value={asigTelefono} onChange={(e) => setAsigTelefono(e.target.value)} placeholder="Teléfono" className={inputCls} />
-                        </div>
-                      ) : (
-                        <Combobox
-                          value={asigProveedorId}
-                          onChange={(v) => elegirProveedorAsignacion(v, l)}
-                          options={[{ value: "__nuevo__", label: "＋ Registrar nuevo proveedor" }, ...opcionesCatalogo]}
-                          placeholder="Buscar proveedor..."
-                        />
-                      )}
-
-                      {asigNuevo && (
-                        <button
-                          onClick={() => setAsigNuevo(false)}
-                          className="text-xs text-gray-500 hover:text-[#B3985B] transition-colors"
-                        >
-                          ← Elegir uno del directorio
-                        </button>
-                      )}
-
-                      <div>
-                        <label className="text-xs text-gray-500 block mb-1">
-                          Costo acordado con el proveedor (todo el evento)
-                        </label>
-                        <input
-                          value={asigCosto}
-                          onChange={(e) => setAsigCosto(e.target.value.replace(/[^\d.]/g, ""))}
-                          inputMode="decimal"
-                          placeholder="0.00"
-                          className={`md:w-48 ${inputCls}`}
-                        />
-                        {est > 0 && (
-                          <p className="text-[11px] text-gray-600 mt-1">La cotización estimó {money(est)} por este equipo.</p>
-                        )}
-                      </div>
-
-                      <div className="flex gap-2 flex-wrap items-center">
-                        <button
-                          disabled={asignando || (asigNuevo ? !asigNombre.trim() : !asigProveedorId)}
-                          onClick={() => asignar(l)}
-                          className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
-                        >
-                          {asignando ? "Guardando..." : "Guardar"}
-                        </button>
-                        <button
-                          onClick={() => setAsigLineaId(null)}
-                          className="text-xs text-gray-500 hover:text-white px-2 transition-colors"
-                        >
-                          Cancelar
-                        </button>
-                      </div>
-                    </div>
-                  )}
                 </div>
               );
             })}
           </div>
 
-          <p className="text-[11px] text-gray-600 mt-3">
-            Cada proveedor queda listo para confirmarse como cuenta por pagar en la pestaña de Finanzas del proyecto.
-          </p>
+          <div className="flex items-center justify-between gap-2 flex-wrap mt-3">
+            <p className="text-[11px] text-gray-600">
+              Quién lo trae y a cómo se captura junto al equipo, en producción. De ahí sale
+              la cuenta por pagar de cada proveedor.
+            </p>
+            {onIrAEquipos && (
+              <button
+                onClick={onIrAEquipos}
+                className="text-[11px] text-[#B3985B] hover:text-white transition-colors shrink-0"
+              >
+                Ir al equipo del proyecto →
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -881,37 +703,23 @@ export function PanelProveedores({
 
                       <div>
                         <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em] mb-2">Qué nos renta</p>
-                        {lineasCotizacion.length > 0 ? (
-                          <div className="max-h-52 overflow-y-auto rounded-lg border border-[#222] divide-y divide-[#1a1a1a]">
-                            {lineasCotizacion.map((l) => {
-                              const mio = l.proveedorEventoId === prov.id;
-                              const deOtro = !!l.proveedorEventoId && !mio;
-                              return (
-                                <label
-                                  key={l.id}
-                                  className={`flex items-center gap-2 px-2.5 py-1.5 text-xs ${deOtro ? "opacity-40" : "cursor-pointer hover:bg-[#111]"}`}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={mio}
-                                    disabled={deOtro}
-                                    onChange={() => alternarLinea(prov, l)}
-                                    className="accent-[#B3985B]"
-                                  />
-                                  <span className="text-gray-300">
-                                    {l.cantidad} × {[l.marca, l.modelo].filter(Boolean).join(" ") || l.descripcion}
+                        {equiposDe(prov.proveedorId).length > 0 ? (
+                          <div className="rounded-lg border border-[#222] divide-y divide-[#1a1a1a]">
+                            {equiposDe(prov.proveedorId).map((e) => (
+                              <div key={e.id} className="flex items-center gap-2 px-2.5 py-1.5 text-xs">
+                                <span className="text-gray-300">{e.cantidad} × {e.descripcion}</span>
+                                {(e.costoExterno ?? 0) > 0 && (
+                                  <span className="text-[10px] text-gray-600 ml-auto">
+                                    {money((e.costoExterno ?? 0) * e.cantidad * Math.max(1, e.dias))}
                                   </span>
-                                  {deOtro && (
-                                    <span className="text-[10px] text-gray-600 ml-auto">
-                                      {proveedores.find((p) => p.id === l.proveedorEventoId)?.nombreProveedor ?? "otro proveedor"}
-                                    </span>
-                                  )}
-                                </label>
-                              );
-                            })}
+                                )}
+                              </div>
+                            ))}
                           </div>
                         ) : (
-                          <p className="text-xs text-gray-600">El proyecto no tiene conceptos de cotización que asignar.</p>
+                          <p className="text-xs text-gray-600">
+                            Sin equipo asignado en el rider del proyecto.
+                          </p>
                         )}
 
                         <p className="text-xs text-gray-500 mt-3 mb-1.5">Y lo que renta sin estar en la cotización:</p>
@@ -950,13 +758,24 @@ export function PanelProveedores({
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 items-end">
                         <div>
                           <label className="text-xs text-gray-500 block mb-1">Costo acordado (lo que nos cuesta)</label>
-                          <input
-                            value={b.costoAcordado}
-                            onChange={(e) => editar(prov.id, { costoAcordado: e.target.value.replace(/[^\d.]/g, "") })}
-                            inputMode="decimal"
-                            placeholder="0.00"
-                            className={inputCls}
-                          />
+                          {/* Con equipo en el rider, el costo sale de ahí: un solo lugar donde
+                              corregir el precio, y nunca dos cifras que no cuadran. */}
+                          {equiposDe(prov.proveedorId).length > 0 ? (
+                            <div className="text-sm text-[#B3985B] font-semibold py-1.5">
+                              {money(prov.costoAcordado ?? 0)}
+                              <span className="block text-[10px] text-gray-600 font-normal">
+                                Sale del costo de sus equipos
+                              </span>
+                            </div>
+                          ) : (
+                            <input
+                              value={b.costoAcordado}
+                              onChange={(e) => editar(prov.id, { costoAcordado: e.target.value.replace(/[^\d.]/g, "") })}
+                              inputMode="decimal"
+                              placeholder="0.00"
+                              className={inputCls}
+                            />
+                          )}
                         </div>
                         <div className="col-span-2 md:col-span-2 text-xs text-gray-500">
                           {prov.cuentaPagar ? (

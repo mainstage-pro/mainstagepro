@@ -248,6 +248,23 @@ export async function GET(
     orderBy: { createdAt: "asc" },
   });
 
+  // El equipo de tercero se captura en el rider del proyecto. Se expone aquí para
+  // que la pestaña de operación lo lea sin volver a preguntarlo.
+  const verCostos = ["mauricio", "emiliano", "carlos"].some((n) =>
+    session.name.toLowerCase().includes(n),
+  );
+  const equiposTercero = proyecto.equipos
+    .filter((e) => e.tipo === "EXTERNO")
+    .map((e) => ({
+      id: e.id,
+      descripcion: [e.equipo.marca, e.equipo.modelo].filter(Boolean).join(" ") || e.equipo.descripcion,
+      cantidad: e.cantidad,
+      dias: e.dias,
+      costoExterno: verCostos ? e.costoExterno : null,
+      confirmado: e.confirmado,
+      proveedor: e.proveedor,
+    }));
+
   return NextResponse.json({
     proyecto: {
       id: proyecto.id,
@@ -256,63 +273,8 @@ export async function GET(
       fechaMontaje: proyecto.fechaMontaje,
     },
     lineas: lineasClasificadas,
+    equiposTercero,
     proveedores,
     proveedoresEvento,
   });
-}
-
-// ── PATCH — Reclasificar línea (cambiar tipo: EQUIPO_PROPIO ↔ EQUIPO_EXTERNO) ─
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-
-  const { id } = await params;
-  const { lineaId, nuevoTipo, proveedorEventoId } = await req.json() as {
-    lineaId: string;
-    nuevoTipo?: "EQUIPO_PROPIO" | "EQUIPO_EXTERNO";
-    proveedorEventoId?: string | null;
-  };
-
-  const asignaProveedor = proveedorEventoId !== undefined;
-  if (!lineaId || (!nuevoTipo && !asignaProveedor)) {
-    return NextResponse.json({ error: "lineaId y nuevoTipo o proveedorEventoId son requeridos" }, { status: 400 });
-  }
-
-  const proyecto = await prisma.proyecto.findUnique({
-    where: { id },
-    select: { cotizacion: { select: { id: true } } },
-  });
-  if (!proyecto?.cotizacion) return NextResponse.json({ error: "Proyecto sin cotización" }, { status: 404 });
-
-  const linea = await prisma.cotizacionLinea.findFirst({
-    where: { id: lineaId, cotizacionId: proyecto.cotizacion.id },
-    select: { id: true, tipo: true },
-  });
-  if (!linea) return NextResponse.json({ error: "Línea no encontrada" }, { status: 404 });
-
-  // El bloque de proveedor tiene que ser de este mismo proyecto.
-  if (proveedorEventoId) {
-    const bloque = await prisma.proveedorEvento.findFirst({
-      where: { id: proveedorEventoId, proyectoId: id },
-      select: { id: true },
-    });
-    if (!bloque) return NextResponse.json({ error: "El proveedor no es de este proyecto" }, { status: 400 });
-  }
-
-  await prisma.cotizacionLinea.update({
-    where: { id: lineaId },
-    data: {
-      ...(nuevoTipo ? { tipo: nuevoTipo } : {}),
-      // Si se mueve a externo, limpiar vínculo al inventario propio
-      ...(nuevoTipo === "EQUIPO_EXTERNO" ? { equipoId: null } : {}),
-      // Un equipo que vuelve a ser propio ya no lo lleva ningún proveedor.
-      ...(nuevoTipo === "EQUIPO_PROPIO" ? { proveedorEventoId: null } : {}),
-      ...(asignaProveedor ? { proveedorEventoId: proveedorEventoId || null } : {}),
-    },
-  });
-
-  return NextResponse.json({ ok: true });
 }

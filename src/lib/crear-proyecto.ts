@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { notaVisibleDeCotizacion } from "@/lib/notas-equipos";
+import { sincronizarProveedoresDeEquipos } from "@/lib/proveedor-equipos";
 
 // Migración lazy: hasta hoy un trato tenía a lo más un proyecto (índice único en
 // proyectos.tratoId). Ahora un trato puede generar varios proyectos (uno por
@@ -21,15 +22,6 @@ function proximoLunesTraEvento(fecha: Date): Date {
   d.setDate(d.getDate() + 1);
   const dow = d.getDay();
   d.setDate(d.getDate() + (8 - dow) % 7);
-  return d;
-}
-
-function proximoMiercolesTraEvento(fecha: Date): Date {
-  const d = new Date(fecha);
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() + 1);
-  const dow = d.getDay();
-  d.setDate(d.getDate() + (dow <= 3 ? 3 - dow : 10 - dow));
   return d;
 }
 
@@ -275,25 +267,15 @@ export async function crearProyectoDesdeCotizacion(
     await tx.proyectoEquipo.createMany({ data: [...equiposAgrupados.values()] });
   }
 
-  // 2b. Crear CxP para cada equipo externo con costo
-  const lineasExternas = lineasEquipo.filter(
-    (l) => l.tipo === "EQUIPO_EXTERNO" && (l.costoUnitario ?? 0) > 0,
+  // 2b. El equipo de tercero llega al proyecto con el proveedor y el costo que la
+  // cotización ya traía: cada proveedor abre su renglón, con su cronología y su
+  // monto, listo para volverse cuenta por pagar de un clic en finanzas. La deuda
+  // no se formaliza sola —eso lo decide finanzas— pero tampoco se vuelve a teclear.
+  await sincronizarProveedoresDeEquipos(
+    tx,
+    proy.id,
+    [...equiposAgrupados.values()].filter((e) => e.tipo === "EXTERNO").map((e) => e.proveedorId),
   );
-  if (lineasExternas.length > 0) {
-    const fechaCxP = proximoMiercolesTraEvento(fechaEvento);
-    await tx.cuentaPagar.createMany({
-      data: lineasExternas.map((l) => ({
-        tipoAcreedor: l.proveedorId ? "PROVEEDOR" : "OTRO",
-        proveedorId: l.proveedorId ?? null,
-        proyectoId: proy.id,
-        concepto: `${l.descripcion} (x${Math.round(l.cantidad)} × ${l.dias}d)${!l.proveedorId ? " — ⚠ Asignar proveedor" : ""}`,
-        monto: l.costoUnitario * Math.round(l.cantidad) * l.dias,
-        fechaCompromiso: fechaCxP,
-        estado: "PENDIENTE",
-        notas: !l.proveedorId ? "Proveedor no asignado en la cotización. Asignar manualmente en CxP." : null,
-      })),
-    });
-  }
 
   // 4. Crear checklist base según tipo de servicio
   const tipoServicio = cot.tipoServicio || cot.trato?.tipoServicio;

@@ -1,15 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-
-function proximoMiercolesTraEvento(fecha: Date): Date {
-  const d = new Date(fecha);
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() + 1);
-  const dow = d.getDay();
-  d.setDate(d.getDate() + (dow <= 3 ? 3 - dow : 10 - dow));
-  return d;
-}
+import { sincronizarProveedoresDeEquipos } from "@/lib/proveedor-equipos";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -21,47 +13,30 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   if (!equipoId) return NextResponse.json({ error: "equipoId requerido" }, { status: 400 });
 
-  const item = await prisma.proyectoEquipo.create({
-    data: {
-      proyectoId: id,
-      equipoId,
-      tipo: tipo ?? "PROPIO",
-      cantidad: cantidad ?? 1,
-      dias: dias ?? 1,
-      costoExterno: costoExterno ? parseFloat(costoExterno) : null,
-      proveedorId: proveedorId || null,
-      notas: notas || null,
-      confirmado: false,
-    },
-    include: {
-      equipo: { include: { categoria: { select: { nombre: true } } } },
-      proveedor: { select: { nombre: true } },
-    },
-  });
-
-  // ── Auto-crear CxP cuando es equipo externo con proveedor y costo ──────────
-  const costo = item.costoExterno;
-  if (tipo === "EXTERNO" && proveedorId && costo && costo > 0) {
-    const proyecto = await prisma.proyecto.findUnique({
-      where: { id },
-      select: { nombre: true, fechaEvento: true },
-    });
-    const equipoNombre = item.equipo.descripcion;
-    const proveedorNombre = item.proveedor?.nombre ?? "Proveedor";
-    const fechaCompromiso = proximoMiercolesTraEvento(proyecto?.fechaEvento ?? new Date());
-
-    await prisma.cuentaPagar.create({
+  const item = await prisma.$transaction(async (tx) => {
+    const creado = await tx.proyectoEquipo.create({
       data: {
-        tipoAcreedor: "PROVEEDOR",
-        proveedorId,
         proyectoId: id,
-        concepto: `${equipoNombre} (x${cantidad ?? 1}) — ${proveedorNombre} | ${proyecto?.nombre ?? "Proyecto"}`,
-        monto: costo * (cantidad ?? 1) * (dias ?? 1),
-        fechaCompromiso,
-        estado: "PENDIENTE",
+        equipoId,
+        tipo: tipo ?? "PROPIO",
+        cantidad: cantidad ?? 1,
+        dias: dias ?? 1,
+        costoExterno: costoExterno ? parseFloat(costoExterno) : null,
+        proveedorId: proveedorId || null,
+        notas: notas || null,
+        confirmado: false,
+      },
+      include: {
+        equipo: { include: { categoria: { select: { nombre: true } } } },
+        proveedor: { select: { nombre: true } },
       },
     });
-  }
+
+    // El equipo de tercero abre el renglón de su proveedor; la cuenta por pagar
+    // se confirma después en finanzas, no al vuelo desde el rider.
+    await sincronizarProveedoresDeEquipos(tx, id, [creado.proveedorId]);
+    return creado;
+  });
 
   return NextResponse.json({ item });
 }
