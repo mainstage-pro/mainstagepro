@@ -9,7 +9,7 @@ import { normalizarAmPm, fmt24to12 } from "@/lib/hora";
 
 interface Equipo {
   id: string; tipo: string; cantidad: number;
-  equipo: { descripcion: string; marca: string | null; modelo: string | null; categoria: { nombre: string } };
+  equipo: { descripcion: string; marca: string | null; modelo: string | null; imagenUrl: string | null; categoria: { nombre: string } };
 }
 interface Proyecto {
   id: string; numeroProyecto: string; nombre: string; estado: string;
@@ -615,9 +615,16 @@ function ProtocoloViewer({ data, equipos, label, color }: {
             const checked = data.itemsVerificados?.includes(eq.id);
             return (
               <div key={eq.id} className="flex items-center gap-2">
-                <span className={`w-4 h-4 rounded flex items-center justify-center text-xs ${checked ? "bg-green-700/50 text-green-400" : "bg-red-900/40 text-red-400"}`}>
+                <span className={`w-4 h-4 rounded flex items-center justify-center text-xs shrink-0 ${checked ? "bg-green-700/50 text-green-400" : "bg-red-900/40 text-red-400"}`}>
                   {checked ? "✓" : "✗"}
                 </span>
+                {eq.equipo.imagenUrl ? (
+                  <img src={eq.equipo.imagenUrl} alt="" className="w-7 h-7 object-contain rounded bg-[#0a0a0a] p-0.5 shrink-0" />
+                ) : (
+                  <span className="w-7 h-7 rounded bg-[#141414] shrink-0 flex items-center justify-center">
+                    <Package className="w-3 h-3 text-gray-700" />
+                  </span>
+                )}
                 <span className={`text-xs ${checked ? "text-gray-300" : "text-gray-500 line-through"}`}>
                   ×{eq.cantidad} {getEquipoDisplayName(eq.equipo)}
                 </span>

@@ -19,6 +19,7 @@ import { CopyButton } from "@/components/CopyButton";
 import { SkeletonPage } from "@/components/Skeleton";
 import VersionHistorial from "@/components/VersionHistorial";
 import { Combobox } from "@/components/Combobox";
+import SelectorEquipoCascada, { agruparEquiposPorCategoria } from "@/components/SelectorEquipoCascada";
 import ChecklistEventoTab from "./ChecklistEventoTab";
 import { BackButton } from "@/components/BackButton";
 import { Package, AlertTriangle, Smartphone, Truck, Home, Radio, MessageCircle, FileText, Bell, User, Factory, ClipboardList, FileImage } from "lucide-react";
@@ -1066,7 +1067,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
   // Estados para equipos
   const [showAddEquipo, setShowAddEquipo] = useState(false);
-  const [equipoCatalogo, setEquipoCatalogo] = useState<{ id: string; descripcion: string; marca: string | null; modelo: string | null; categoria: { nombre: string } }[]>([]);
+  const [equipoCatalogo, setEquipoCatalogo] = useState<{ id: string; descripcion: string; marca: string | null; modelo: string | null; imagenUrl: string | null; categoria: { nombre: string; orden?: number } }[]>([]);
+  const equipoCatalogoPorCategoria = useMemo(() => agruparEquiposPorCategoria(equipoCatalogo), [equipoCatalogo]);
   const [selEquipoId, setSelEquipoId] = useState("");
   const [selEquipoTipo, setSelEquipoTipo] = useState("PROPIO");
   const [selEquipoCantidad, setSelEquipoCantidad] = useState("1");
@@ -6267,11 +6269,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <div className="grid grid-cols-2 gap-3">
                     <div className="col-span-2">
                       <label className="text-xs text-gray-500 mb-1 block">Equipo *</label>
-                      <Combobox
+                      <SelectorEquipoCascada
                         value={selEquipoId}
                         onChange={v => setSelEquipoId(v)}
-                        options={[{ value: "", label: "Seleccionar equipo..." }, ...equipoCatalogo.map(eq => ({ value: eq.id, label: `${eq.categoria.nombre} — ${getEquipoDisplayName(eq)}` }))]}
-                        className={`w-full bg-[#0d0d0d] border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] ${dispEquipo && !dispEquipo.disponible ? "border-red-500/60" : "border-[#2a2a2a]"}`}
+                        grupos={equipoCatalogoPorCategoria}
+                        placeholder="Seleccionar equipo..."
                       />
                       {dispEquipo && selEquipoTipo === "PROPIO" && selEquipoId && (
                         dispEquipo.disponible ? (
@@ -7071,11 +7073,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       <p className="text-[11px] text-gray-600">Al salir del inventario se agrega como equipo del proyecto: tendrá origen, accesorios, montaje y disponibilidad igual que el resto del listado.</p>
                       <div className="flex gap-2 items-start">
                         <div className="flex-1">
-                          <Combobox
+                          <SelectorEquipoCascada
                             value={newExtraEquipoId}
                             onChange={v => setNewExtraEquipoId(v)}
-                            options={[{ value: "", label: "Buscar en inventario…" }, ...equipoCatalogo.map(eq => ({ value: eq.id, label: `${eq.categoria.nombre} — ${getEquipoDisplayName(eq)}` }))]}
-                            className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/50"
+                            grupos={equipoCatalogoPorCategoria}
+                            placeholder="Buscar en inventario…"
                           />
                         </div>
                         <div className="flex items-center gap-1 bg-[#111] border border-[#2a2a2a] rounded-lg px-2 py-2 shrink-0">

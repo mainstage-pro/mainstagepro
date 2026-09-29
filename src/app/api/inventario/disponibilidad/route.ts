@@ -158,6 +158,7 @@ export async function GET(req: NextRequest) {
       descripcion: eq.descripcion,
       marca: eq.marca,
       modelo: eq.modelo,
+      imagenUrl: eq.imagenUrl,
       categoria: eq.categoria.nombre,
       cantidadTotal: eq.cantidadTotal,
       fueraDeStock,

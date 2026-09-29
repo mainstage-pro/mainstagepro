@@ -10,6 +10,7 @@ interface EquipoDisp {
   descripcion: string;
   marca: string | null;
   modelo: string | null;
+  imagenUrl: string | null;
   categoria: string;
   cantidadTotal: number;
   comprometido: number;
@@ -262,10 +263,21 @@ export default function DisponibilidadPage() {
                               } ${esConflicto ? "bg-red-950/10" : ""}`}
                             >
                               <td className="px-5 py-3">
-                                <p className="text-white font-medium leading-tight">{getEquipoDisplayName(eq)}</p>
-                                {(eq.marca || eq.modelo) && (
-                                  <p className="text-gray-600 text-xs">{eq.descripcion}</p>
-                                )}
+                                <div className="flex items-center gap-2.5">
+                                  {eq.imagenUrl ? (
+                                    <img src={eq.imagenUrl} alt="" className="w-9 h-9 object-contain rounded bg-[#0a0a0a] p-0.5 shrink-0" />
+                                  ) : (
+                                    <span className="w-9 h-9 rounded bg-[#141414] shrink-0 flex items-center justify-center">
+                                      <Package className="w-4 h-4 text-gray-700" />
+                                    </span>
+                                  )}
+                                  <div className="min-w-0">
+                                    <p className="text-white font-medium leading-tight">{getEquipoDisplayName(eq)}</p>
+                                    {(eq.marca || eq.modelo) && (
+                                      <p className="text-gray-600 text-xs">{eq.descripcion}</p>
+                                    )}
+                                  </div>
+                                </div>
                               </td>
                               <td className="px-3 py-3 text-center text-gray-300">{eq.cantidadTotal}</td>
                               <td className="px-3 py-3 text-center">

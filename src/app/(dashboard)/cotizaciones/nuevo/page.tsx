@@ -11,11 +11,12 @@ import { agruparRolesTecnicos, tarifaRol, nivelEfectivo, rolUsaNivel, rolUsaJorn
 import { diasEvento } from "@/lib/fechas-evento";
 import VenuePicker from "@/components/ui/VenuePicker";
 import NumSelect from "@/components/ui/NumSelect";
-import SearchableSelect from "@/components/ui/SearchableSelect";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
 import { Sparkles, Package, SlidersHorizontal, AlertTriangle, Ban, Utensils, Bus, BedDouble, File, FileText, BarChart3, Paperclip, type LucideIcon } from "lucide-react";
 import { getEquipoDisplayName } from "@/lib/equipoNombre";
+import { coincide } from "@/lib/buscar";
+import SelectorEquipoCascada, { agruparEquiposPorCategoria } from "@/components/SelectorEquipoCascada";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Equipo {
@@ -774,20 +775,10 @@ function CotizadorForm() {
   }, [deficitInfo]);
 
   // Equipos propios agrupados por categoría
-  const equiposPorCategoria = useMemo(() => {
-    const propios = equipos.filter(e => e.tipo === "PROPIO");
-    const map = new Map<string, Equipo[]>();
-    for (const eq of propios) {
-      const cat = eq.categoria.nombre;
-      if (!map.has(cat)) map.set(cat, []);
-      map.get(cat)!.push(eq);
-    }
-    return Array.from(map.entries()).sort((a, b) => {
-      const oa = propios.find(e => e.categoria.nombre === a[0])?.categoria.orden ?? 99;
-      const ob = propios.find(e => e.categoria.nombre === b[0])?.categoria.orden ?? 99;
-      return oa - ob;
-    });
-  }, [equipos]);
+  const equiposPorCategoria = useMemo(
+    () => agruparEquiposPorCategoria(equipos.filter(e => e.tipo === "PROPIO")),
+    [equipos]
+  );
 
   // Productos armados agrupados por categoría (string) para el selector en cascada.
   const productosPorCategoria = useMemo<[string, CascadeItem[]][]>(() => {
@@ -839,6 +830,8 @@ function CotizadorForm() {
 
   // Equipos externos (de terceros)
   const equiposExternos = useMemo(() => equipos.filter(e => e.tipo === "EXTERNO"), [equipos]);
+
+  const equiposExternosPorCategoria = useMemo(() => agruparEquiposPorCategoria(equiposExternos), [equiposExternos]);
 
   // Categorías únicas derivadas del catálogo cargado
   const categoriasList = useMemo(() => {
@@ -2510,14 +2503,32 @@ function CotizadorForm() {
               {/* Cascade selector */}
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] text-[#555] mb-1 px-1">Equipo</p>
-                <CascadeEquipoSelect
+                <SelectorEquipoCascada
                   value={selEq}
                   onChange={setSelEq}
-                  equiposPorCategoria={equiposPorCategoria}
-                  dispMap={dispMap}
-                  loadingDisp={loadingDisp}
-                  preciosCliente={preciosCliente}
-                  fechaEvento={evento.fechaEvento}
+                  grupos={equiposPorCategoria}
+                  placeholder={loadingDisp ? "Cargando disponibilidad..." : "— Seleccionar equipo —"}
+                  renderMeta={eq => {
+                    const precio = preciosCliente[eq.id] ?? eq.precioRenta;
+                    const d = dispMap[eq.id];
+                    let dispText: string;
+                    let dispColor: string;
+                    if (evento.fechaEvento && d !== undefined) {
+                      if (d.disponible === 0) { dispText = "Sin disponibilidad"; dispColor = "#ef4444"; }
+                      else if (d.disponible < d.total) { dispText = `${d.disponible} de ${d.total} disp.`; dispColor = "#f59e0b"; }
+                      else { dispText = `${d.disponible} disponibles`; dispColor = "#22c55e"; }
+                    } else if (loadingDisp) {
+                      dispText = "Verificando..."; dispColor = "#555";
+                    } else {
+                      dispText = `${eq.cantidadTotal} en inventario`; dispColor = "#555";
+                    }
+                    return (
+                      <>
+                        <span className="text-gray-600">{precio > 0 ? formatCurrency(precio) : "INCLUYE"}</span>
+                        <span style={{ color: dispColor }}>{dispText}</span>
+                      </>
+                    );
+                  }}
                 />
               </div>
               <div className="flex items-end gap-2">
@@ -3046,14 +3057,17 @@ function CotizadorForm() {
             <div className="flex flex-col gap-2 mb-4 sm:flex-row sm:items-end">
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] text-[#555] mb-1 px-1">Equipo del catálogo</p>
-                <SearchableSelect
-                  options={equiposExternos.map(eq => ({
-                    value: eq.id,
-                    label: `${getEquipoDisplayName(eq)}${(eq.marca || eq.modelo) ? ` — ${eq.descripcion}` : ""} — cliente: ${formatCurrency(eq.precioRenta)} / costo: ${formatCurrency(eq.costoProveedor ?? 0)}`,
-                  }))}
+                <SelectorEquipoCascada
                   value={selExt}
                   onChange={setSelExt}
-                  placeholder="— Buscar equipo externo —"
+                  grupos={equiposExternosPorCategoria}
+                  placeholder="— Seleccionar equipo de tercero —"
+                  renderMeta={eq => (
+                    <>
+                      <span className="text-gray-600">cliente {formatCurrency(preciosCliente[eq.id] ?? eq.precioRenta)}</span>
+                      <span className="text-[#555]">costo {formatCurrency(eq.costoProveedor ?? 0)}</span>
+                    </>
+                  )}
                 />
               </div>
               <div className="flex items-end gap-2">
@@ -4061,242 +4075,9 @@ function CotizadorForm() {
   );
 }
 
-// ── Cascade Equipment Selector ────────────────────────────────────────────────
-function CascadeEquipoSelect({
-  value, onChange, equiposPorCategoria, dispMap, loadingDisp, preciosCliente, fechaEvento,
-}: {
-  value: string;
-  onChange: (id: string) => void;
-  equiposPorCategoria: [string, Equipo[]][];
-  dispMap: Record<string, { disponible: number; total: number }>;
-  loadingDisp: boolean;
-  preciosCliente: Record<string, number>;
-  fechaEvento: string | null;
-}) {
-  const [open, setOpen] = useState(false);
-  const [activeCat, setActiveCat] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
-  const containerRef = useRef<HTMLDivElement>(null);
-  const searchRef = useRef<HTMLInputElement>(null);
-
-  // Close on outside click
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
-
-  // Auto-select first category on open
-  useEffect(() => {
-    if (open && !activeCat && equiposPorCategoria.length > 0) {
-      setActiveCat(equiposPorCategoria[0][0]);
-    }
-  }, [open, activeCat, equiposPorCategoria]);
-
-  // Focus search when category changes
-  useEffect(() => {
-    if (activeCat && searchRef.current) {
-      setSearch('');
-      searchRef.current.focus();
-    }
-  }, [activeCat]);
-
-  const allEquipos = equiposPorCategoria.flatMap(([, eqs]) => eqs);
-  const selected = allEquipos.find(e => e.id === value);
-
-  // Etiqueta principal: Marca + Modelo (o descripcion si no hay)
-  const selectedLabel = selected
-    ? [selected.marca, selected.modelo].filter(Boolean).join(' ') || selected.descripcion
-    : null;
-  const selectedSubLabel = (selectedLabel && selectedLabel !== selected?.descripcion)
-    ? (selected?.descripcion ?? null)
-    : null;
-
-  // Cuando hay búsqueda: busca en TODAS las categorías e incluye modelo
-  const q = search.toLowerCase().trim();
-  const catEquipos = q
-    ? allEquipos.filter(eq =>
-        eq.descripcion.toLowerCase().includes(q) ||
-        (eq.marca ?? '').toLowerCase().includes(q) ||
-        (eq.modelo ?? '').toLowerCase().includes(q)
-      )
-    : activeCat
-    ? (equiposPorCategoria.find(([cat]) => cat === activeCat)?.[1] ?? [])
-    : [];
-
-  function handleOpen() {
-    setOpen(v => !v);
-  }
-
-  function handleSelect(id: string) {
-    onChange(id);
-    setOpen(false);
-    setSearch('');
-  }
-
-  function handleClear(e: React.MouseEvent) {
-    e.stopPropagation();
-    onChange('');
-  }
-
-  return (
-    <div ref={containerRef} className="relative w-full">
-      {/* Trigger */}
-      <button
-        type="button"
-        onClick={handleOpen}
-        className={`w-full flex items-center justify-between bg-[#1a1a1a] border ${
-          open ? 'border-[#B3985B]/60' : 'border-[#2a2a2a]'
-        } rounded-lg px-3 py-2 text-sm text-left focus:outline-none hover:border-[#B3985B]/60 transition-colors`}
-      >
-        <span className={selected ? 'text-white truncate flex-1' : 'text-gray-500 flex-1'}>
-          {selectedLabel
-            ? (selectedSubLabel ? `${selectedLabel}  ·  ${selectedSubLabel}` : selectedLabel)
-            : loadingDisp ? 'Cargando disponibilidad...' : '— Seleccionar equipo —'}
-        </span>
-        <div className="flex items-center gap-1 shrink-0 ml-2">
-          {value && (
-            <span
-              role="button"
-              tabIndex={0}
-              onClick={handleClear}
-              onKeyDown={e => e.key === 'Enter' && handleClear(e as unknown as React.MouseEvent)}
-              className="text-gray-600 hover:text-gray-300 text-sm leading-none px-0.5 cursor-pointer transition-colors"
-            >×</span>
-          )}
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-            className={`text-gray-600 transition-transform ${open ? 'rotate-180' : ''}`}>
-            <path d="M6 9l6 6 6-6"/>
-          </svg>
-        </div>
-      </button>
-
-      {/* Dropdown panel */}
-      {open && (
-        <div
-          className="absolute z-50 top-full mt-1 left-0 bg-[#0d0d0d] border border-[#222] rounded-xl shadow-2xl overflow-hidden flex"
-          style={{ minWidth: Math.max(460, containerRef.current?.offsetWidth ?? 460) }}
-        >
-          {/* Left: categories */}
-          <div className="w-44 shrink-0 border-r border-[#1a1a1a] py-1 overflow-y-auto" style={{ maxHeight: 260 }}>
-            {equiposPorCategoria.map(([cat, eqs]) => (
-              <button
-                key={cat}
-                type="button"
-                onMouseEnter={() => setActiveCat(cat)}
-                onClick={() => setActiveCat(cat)}
-                className={`w-full text-left px-3 py-1.5 text-xs transition-colors flex items-center justify-between ${
-                  activeCat === cat
-                    ? 'bg-[#1a1a1a] text-white'
-                    : 'text-gray-500 hover:text-gray-300 hover:bg-[#111]'
-                }`}
-              >
-                <span className="truncate">{cat}</span>
-                <span className="text-gray-700 text-[10px] shrink-0 ml-1">({eqs.length})</span>
-              </button>
-            ))}
-          </div>
-
-          {/* Right: equipment */}
-          <div className="flex-1 flex flex-col min-w-0" style={{ maxHeight: 260 }}>
-            {activeCat ? (
-              <>
-                {/* Search */}
-                <div className="px-3 py-2 border-b border-[#1a1a1a] shrink-0">
-                  <input
-                    ref={searchRef}
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    placeholder="Buscar equipo..."
-                    className="w-full bg-[#111] border border-[#1a1a1a] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]/50"
-                  />
-                </div>
-                {/* Equipment list */}
-                <div className="overflow-y-auto flex-1">
-                  {catEquipos.length === 0 ? (
-                    <p className="text-gray-600 text-xs px-3 py-4 text-center">Sin resultados</p>
-                  ) : (
-                    catEquipos.map(eq => {
-                      const d = dispMap[eq.id];
-                      const precio = preciosCliente[eq.id] ?? eq.precioRenta;
-
-                      // Availability badge — readable text with semantic color
-                      let dispText: string;
-                      let dispColor: string;
-                      if (fechaEvento && d !== undefined) {
-                        if (d.disponible === 0) {
-                          dispText = 'Sin disponibilidad';
-                          dispColor = '#ef4444';
-                        } else if (d.disponible < d.total) {
-                          dispText = `${d.disponible} de ${d.total} disp.`;
-                          dispColor = '#f59e0b';
-                        } else {
-                          dispText = `${d.disponible} disponibles`;
-                          dispColor = '#22c55e';
-                        }
-                      } else if (loadingDisp) {
-                        dispText = 'Verificando...';
-                        dispColor = '#555';
-                      } else {
-                        dispText = `${eq.cantidadTotal} en inventario`;
-                        dispColor = '#555';
-                      }
-
-                      const isSelected = value === eq.id;
-                      return (
-                        <button
-                          key={eq.id}
-                          type="button"
-                          onClick={() => handleSelect(eq.id)}
-                          className={`w-full text-left px-3 py-2 text-xs transition-colors flex items-center gap-2 ${
-                            isSelected
-                              ? 'bg-[#B3985B]/10 text-[#B3985B]'
-                              : 'text-gray-400 hover:bg-[#111] hover:text-white'
-                          }`}
-                        >
-                          {eq.imagenUrl ? (
-                            <img src={eq.imagenUrl} alt="" className="w-8 h-8 object-contain rounded bg-[#0a0a0a] p-0.5 shrink-0" />
-                          ) : (
-                            <span className="w-8 h-8 rounded bg-[#141414] shrink-0 flex items-center justify-center">
-                              <Package className="w-3.5 h-3.5 text-gray-700" />
-                            </span>
-                          )}
-                          <span className="flex-1 min-w-0">
-                            <span className="block font-medium truncate">
-                              {getEquipoDisplayName(eq)}
-                            </span>
-                            {(eq.marca || eq.modelo) && (
-                              <span className="block text-[10px] text-gray-500 truncate">{eq.descripcion}</span>
-                            )}
-                          </span>
-                          <span className="shrink-0 text-[10px] whitespace-nowrap flex items-center gap-1.5">
-                            {q && <span className="text-[9px] text-gray-600 max-w-[60px] truncate font-normal">{eq.categoria.nombre}</span>}
-                            <span className="text-gray-600">{precio > 0 ? formatCurrency(precio) : 'INCLUYE'}</span>
-                            <span style={{ color: dispColor }}>{dispText}</span>
-                          </span>
-                        </button>
-                      );
-                    })
-                  )}
-                </div>
-              </>
-            ) : (
-              <p className="text-gray-600 text-xs px-4 py-6 text-center">Pasa el cursor sobre una categoría</p>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ── Cascade Catalog Selector (productos / paquetes) ───────────────────────────
-// Misma vista que CascadeEquipoSelect (categorías a la izquierda, búsqueda +
+// Misma vista que SelectorEquipoCascada (categorías a la izquierda, búsqueda +
 // lista con miniaturas a la derecha), pero genérica sobre CascadeItem.
 function CascadeCatalogSelect({
   value, onChange, grupos, placeholder, categoriaLabel,
@@ -4335,7 +4116,7 @@ function CascadeCatalogSelect({
 
   const q = search.toLowerCase().trim();
   const items = q
-    ? allItems.filter(i => i.nombre.toLowerCase().includes(q) || (i.sub ?? '').toLowerCase().includes(q))
+    ? allItems.filter(i => coincide(search, i.nombre, i.sub))
     : activeCat
     ? (grupos.find(([cat]) => cat === activeCat)?.[1] ?? [])
     : [];

@@ -35,7 +35,7 @@ export async function GET() {
         equipos: {
           select: {
             id: true, tipo: true, cantidad: true,
-            equipo: { select: { descripcion: true, marca: true, modelo: true, categoria: { select: { nombre: true } } } },
+            equipo: { select: { descripcion: true, marca: true, modelo: true, imagenUrl: true, categoria: { select: { nombre: true } } } },
           },
         },
         trato: { select: { ideasReferencias: true, tipoServicio: true } },
