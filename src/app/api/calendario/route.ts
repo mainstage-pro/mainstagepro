@@ -2,13 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { ensureProcesoVentaColumns, ensureMultidiaColumns, ensureCotizacionEventoConfirmadoColumn, ensureTratoFechaApartadaColumn } from "@/lib/migraciones-lazy";
-import { diasEvento } from "@/lib/fechas-evento";
+import { diasEvento, fechaISOaDia } from "@/lib/fechas-evento";
 
 // El color del calendario deriva de la cotización, no del estado del proyecto:
 //   'confirmado'    → cotización APROBADA (auto-confirmada) o ya hay proyecto (verde)
 //   'por_confirmar' → evento apartado manualmente (eventoConfirmado) con cotización sin aprobar (ámbar)
 //   'apartado'      → el trato aún no tiene cotización; solo se reservó la fecha (gris)
-type Nivel = 'apartado' | 'por_confirmar' | 'confirmado';
+// Montaje y desmontaje no son niveles de confirmación sino días de logística del
+// proyecto; comparten el campo porque el calendario lo usa solo para colorear.
+type Nivel = 'apartado' | 'por_confirmar' | 'confirmado' | 'montaje' | 'desmontaje';
 
 // Expande un evento (posiblemente de varios días) en las celdas que caen dentro del
 // mes consultado. Devuelve el número de día del mes, el índice (0-based) y el total.
@@ -172,11 +174,55 @@ export async function GET(req: NextRequest) {
     }));
   });
 
+  // ── 4. Montajes y desmontajes de día aparte ───────────────────────────────
+  // Cuando el proyecto marca el montaje (o el desmontaje) como día adicional, ese
+  // día ocupa la agenda igual que el evento y se pinta con su propio color. Se
+  // consulta por la fecha de la fase, no por la del evento, para que el montaje de
+  // un evento de enero aparezca en diciembre.
+  const proyectosLogistica = await prisma.proyecto.findMany({
+    where: {
+      estado: { not: "CANCELADO" },
+      OR: [
+        { montajeDiaAparte: true, fechaMontaje: { gte: inicio, lte: fin } },
+        { desmontajeDiaAparte: true, fechaDesmontaje: { gte: inicio, lte: fin } },
+      ],
+    },
+    include: { cliente: { select: { nombre: true } } },
+  });
+
+  const eventosLogistica = proyectosLogistica.flatMap(p => {
+    const fases: { clave: Nivel; etiqueta: string; fecha: Date | null; hora: string | null }[] = [
+      { clave: 'montaje',    etiqueta: 'Montaje',    fecha: p.montajeDiaAparte ? p.fechaMontaje : null,       hora: p.horaInicioMontaje },
+      { clave: 'desmontaje', etiqueta: 'Desmontaje', fecha: p.desmontajeDiaAparte ? p.fechaDesmontaje : null, hora: p.horaDesmontaje },
+    ];
+    return fases.flatMap(f => {
+      if (!f.fecha) return [];
+      const [y, m, d] = fechaISOaDia(f.fecha).split("-").map(Number);
+      if (y !== year || (month != null && m - 1 !== month)) return [];
+      return [{
+        id: `${f.clave}-${p.id}`,
+        dia: d,
+        mes: m - 1,
+        titulo: `${f.etiqueta} · ${p.nombre}`,
+        subtitulo: p.cliente.nombre,
+        estado: f.etiqueta.toUpperCase(),
+        nivel: f.clave,
+        sinProyecto: false,
+        url: `/proyectos/${p.id}`,
+        tipoEvento: p.tipoEvento,
+        tipoServicio: p.tipoServicio,
+        lugarEvento: p.lugarEvento,
+        horaInicioEvento: f.hora,
+      }];
+    });
+  });
+
   // ── Merge y ordenar por día ───────────────────────────────────────────────
   const eventos = [
     ...eventosProyecto,
     ...eventosTratoGanado,
     ...eventosApartados,
+    ...eventosLogistica,
   ].sort((a, b) => a.dia - b.dia);
 
   return NextResponse.json({ eventos });

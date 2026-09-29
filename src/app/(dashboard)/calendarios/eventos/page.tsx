@@ -38,13 +38,21 @@ interface ReporteData {
   porMes: { mes: string; count: number }[];
 }
 
-type Nivel = 'apartado' | 'por_confirmar' | 'confirmado';
+type Nivel = 'apartado' | 'por_confirmar' | 'confirmado' | 'montaje' | 'desmontaje';
 const NIVEL_COLOR: Record<Nivel, { bar: string; dot: string; text: string }> = {
   apartado:      { bar: 'border-l-gray-500',    dot: 'bg-gray-400',    text: 'text-gray-400'    },
   por_confirmar: { bar: 'border-l-amber-600',   dot: 'bg-amber-500',   text: 'text-amber-300'   },
   confirmado:    { bar: 'border-l-emerald-500', dot: 'bg-emerald-500', text: 'text-emerald-300' },
+  montaje:       { bar: 'border-l-sky-500',     dot: 'bg-sky-500',     text: 'text-sky-300'     },
+  desmontaje:    { bar: 'border-l-violet-500',  dot: 'bg-violet-500',  text: 'text-violet-300'  },
 };
-const NIVEL_LABEL: Record<Nivel, string> = { apartado: 'Apartado', por_confirmar: 'Por confirmar', confirmado: 'Confirmado' };
+const NIVEL_LABEL: Record<Nivel, string> = {
+  apartado: 'Apartado', por_confirmar: 'Por confirmar', confirmado: 'Confirmado',
+  montaje: 'Montaje', desmontaje: 'Desmontaje',
+};
+// Los días de montaje/desmontaje ocupan la agenda pero no son eventos vendidos:
+// se muestran en el calendario y se excluyen de los conteos.
+const esLogistica = (e: Evento) => e.nivel === 'montaje' || e.nivel === 'desmontaje';
 
 interface Evento {
   id: string; dia: number; mes: number; titulo: string; subtitulo: string;
@@ -149,9 +157,10 @@ export default function CalendarioEventosPage() {
         })()
       : `${MESES_LARGO[month]} ${year}`;
 
-  const totalPeriodo = vista === "anio" ? eventos.length
-    : vista === "mes" ? eventosDelMes.length
+  const totalPeriodo = vista === "anio" ? eventos.filter(e => !esLogistica(e)).length
+    : vista === "mes" ? eventosDelMes.filter(e => !esLogistica(e)).length
     : eventos.filter(e => {
+        if (esLogistica(e)) return false;
         const d = new Date(year, e.mes, e.dia);
         const fin = new Date(weekStart); fin.setDate(fin.getDate() + 6); fin.setHours(23,59,59);
         return d >= weekStart && d <= fin;
@@ -201,10 +210,13 @@ export default function CalendarioEventosPage() {
       </div>
 
       {/* Leyenda */}
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-gray-400"/><span className="text-xs text-gray-400">Apartado</span></div>
-        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-amber-500"/><span className="text-xs text-gray-400">Por confirmar</span></div>
-        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500"/><span className="text-xs text-gray-400">Confirmado</span></div>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        {(['apartado','por_confirmar','confirmado','montaje','desmontaje'] as Nivel[]).map(n => (
+          <div key={n} className="flex items-center gap-1.5">
+            <div className={`w-2.5 h-2.5 rounded-full ${NIVEL_COLOR[n].dot}`} />
+            <span className="text-xs text-gray-400">{NIVEL_LABEL[n]}</span>
+          </div>
+        ))}
       </div>
 
       {vista === "mes" && <VistaMes {...{ year, month, ahora, eventos: eventosDelMes, loading, esMesActual, diaSeleccionado, setDiaSeleccionado }} />}
@@ -333,7 +345,10 @@ function VistaMes({ year, month, ahora, eventos, loading, esMesActual, diaSelecc
   diaSeleccionado: number | null; setDiaSeleccionado: (d: number | null) => void;
 }) {
   const eventosPorDia: Record<number, Evento[]> = {};
-  for (const e of eventos) (eventosPorDia[e.dia] ??= []).push(e);
+  // Los eventos van primero: la celda solo alcanza a mostrar 3 y un montaje no debe tapar una venta.
+  for (const e of [...eventos].sort((a, b) => Number(esLogistica(a)) - Number(esLogistica(b)))) {
+    (eventosPorDia[e.dia] ??= []).push(e);
+  }
   const { offset, diasEnMes } = getMesData(year, month);
   const totalCeldas = Math.ceil((offset + diasEnMes) / 7) * 7;
   const eventosPanel = diaSeleccionado !== null ? eventos.filter(e => e.dia === diaSeleccionado) : null;
@@ -475,7 +490,7 @@ function VistaAnio({ year, ahora, eventos, onMes }: {
       {MESES_LARGO.map((nombre, m) => {
         const { offset, diasEnMes } = getMesData(year, m);
         const celdas = Math.ceil((offset + diasEnMes) / 7) * 7;
-        const count = eventos.filter(e => e.mes === m).length;
+        const count = eventos.filter(e => e.mes === m && !esLogistica(e)).length;
         return (
           <button key={m} onClick={() => onMes(m)} className="ms-card p-3 text-left hover:border-[#B3985B]/40 transition-colors">
             <div className="flex items-center justify-between mb-2">
