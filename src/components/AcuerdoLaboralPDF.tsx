@@ -198,6 +198,40 @@ export function AcuerdoLaboralPDF(raw: DocLaboralSnapshot) {
           <Text style={s.texto}>
             <Text style={s.bold}>{p.adnTitulo}: </Text>{p.adnTexto}
           </Text>
+          {p.marco && (
+            <>
+              <Text style={s.campoLabel}>PROPÓSITO</Text>
+              <Text style={s.texto}>{p.marco.proposito}</Text>
+              <Text style={s.campoLabel}>MISIÓN</Text>
+              <Text style={s.texto}>{p.marco.mision}</Text>
+              <Text style={s.campoLabel}>VISIÓN</Text>
+              <Text style={s.texto}>{p.marco.vision}</Text>
+              {p.marco.valores.length > 0 && (
+                <>
+                  <Text style={s.campoLabel}>VALORES Y CONDUCTAS ESPERADAS</Text>
+                  {p.marco.valores.map((v, i) => (
+                    <View key={i} style={s.bullet}>
+                      <Text style={s.bulletDot}>•</Text>
+                      <Text style={s.bulletText}>
+                        <Text style={s.bold}>{v.nombre}</Text>
+                        {v.comoSeVive ? `: ${v.comoSeVive}` : ""}
+                        {v.esperadas.length > 0 && <Text style={{ color: LIGHT }}> — {v.esperadas.join("; ")}</Text>}
+                      </Text>
+                    </View>
+                  ))}
+                </>
+              )}
+              {p.marco.noNegociables.length > 0 && (
+                <View style={s.aviso}>
+                  <Text style={s.avisoTxt}>
+                    <Text style={s.bold}>Conductas no negociables. </Text>
+                    Las siguientes conductas dan por terminada la relación de colaboración de forma inmediata:{" "}
+                    {p.marco.noNegociables.join("; ")}.
+                  </Text>
+                </View>
+              )}
+            </>
+          )}
           {(p.valores.length > 0 || p.aptitudes.length > 0 || p.conocimientos.length > 0) && (
             <>
               {p.valores.length > 0 && (

@@ -64,7 +64,8 @@ export const ONBOARDING_PASOS: OnboardingPasoDef[] = [
   {
     key: "sesion-cultura",
     titulo: "Sesión de cultura de la empresa",
-    descripcion: "Presentación de la cultura, valores e identidad de Mainstage.",
+    descripcion:
+      "Recorrer propósito, misión, visión, valores y conductas no negociables como están publicados en Dirección › Cultura (/direccion/cultura): esa es la fuente única, el discurso no se improvisa.",
     tipo: "ALINEACION",
     tareaTipo: "REUNION",
   },

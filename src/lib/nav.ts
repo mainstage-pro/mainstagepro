@@ -6,7 +6,7 @@ import {
   PenTool, Megaphone, BarChart3, SlidersHorizontal, BadgeDollarSign,
   Package, TrendingUp, Settings, Speaker, BookUser, ClipboardCheck,
   ShieldCheck, ScrollText, Settings2, Building2, LayoutGrid, GraduationCap,
-  Network, Truck,
+  Network, Truck, Compass,
 } from "lucide-react";
 
 // Dueño de la plataforma. Ciertos módulos (ej. "Inicio") se muestran solo a él.
@@ -95,6 +95,19 @@ export const NAV: NavSection[] = [
     key: "seccion-direccion",
     section: "Dirección",
     items: [
+      {
+        key: "cultura",
+        label: "Cultura y estrategia",
+        href: "/direccion/cultura",
+        icon: Compass,
+        children: [
+          { key: "cultura", label: "Identidad", href: "/direccion/cultura" },
+          { key: "cultura", label: "Valores y conductas", href: "/direccion/cultura/valores" },
+          { key: "cultura", label: "Meta global", href: "/direccion/cultura/meta" },
+          { key: "cultura", label: "Áreas, objetivos y tácticas", href: "/direccion/cultura/areas" },
+          { key: "cultura", label: "Cascada", href: "/direccion/cultura/cascada" },
+        ],
+      },
       { key: "centro-reportes", label: "Centro de Reportes", href: "/direccion/reportes", adminOnly: true, icon: FileBarChart },
       { key: "dir-estado-resultados", label: "Estado de Resultados", href: "/direccion/estado-resultados", adminOnly: true, icon: LineChart },
       {
@@ -313,6 +326,7 @@ const MODULE_META: Record<string, { label?: string; desc?: string }> = {
   "finanzas-movimientos":    { desc: "Movimientos financieros" },
   "finanzas-caja-chica":     { desc: "Caja chica" },
   "inv-analisis":        { desc: "Análisis de uso de equipo" },
+  cultura:               { label: "Cultura y estrategia", desc: "Identidad, valores, meta global, objetivos y tácticas por área" },
   "rrhh-personal":       { desc: "Personal interno" },
   "rrhh-nomina":         { desc: "Nómina" },
   "rrhh-asistencia":     { desc: "Asistencia" },
@@ -409,7 +423,7 @@ export const ALL_MODULE_KEYS: string[] = MODULOS_POR_SECCION.flatMap(s => s.item
 // derivan del NAV) para que el acceso otorgado sea funcional.
 export const AREA_MODULE_PRESETS: Record<string, string[]> = {
   ADMINISTRACION: [
-    "plan-trabajo", "operaciones", "calendario", "vision-semanal", "reporte-area-mensual",
+    "plan-trabajo", "operaciones", "calendario", "vision-semanal", "reporte-area-mensual", "cultura",
     "finanzas-cobros", "finanzas-gastos-recurrentes", "finanzas-flujo", "finanzas-pagos-personal", "finanzas-pagos-proveedores", "finanzas-movimientos", "finanzas-caja-chica", "inv-analisis",
     "rrhh-personal", "rrhh-nomina", "rrhh-asistencia", "rrhh-evaluaciones", "rrhh-satisfaccion",
     "rrhh-candidatos",
@@ -418,34 +432,34 @@ export const AREA_MODULE_PRESETS: Record<string, string[]> = {
     "tareas-administracion",
   ],
   MARKETING: [
-    "plan-trabajo", "operaciones", "calendario", "vision-semanal", "reporte-area-mensual",
+    "plan-trabajo", "operaciones", "calendario", "vision-semanal", "reporte-area-mensual", "cultura",
     "mkt-contenido", "mkt-publicidad", "mkt-config",
     "tareas-marketing",
   ],
   VENTAS: [
-    "plan-trabajo", "operaciones", "calendario", "vision-semanal", "reporte-area-mensual",
+    "plan-trabajo", "operaciones", "calendario", "vision-semanal", "reporte-area-mensual", "cultura",
     "ventas-seguimientos", "crm-tratos", "crm-base-de-datos", "comercial-productos", "ventas-reporte",
     "tareas-ventas",
   ],
   PRODUCCION: [
-    "plan-trabajo", "operaciones", "calendario", "vision-semanal", "reporte-area-mensual",
+    "plan-trabajo", "operaciones", "calendario", "vision-semanal", "reporte-area-mensual", "cultura",
     "proyectos", "produccion-tablero", "inventario", "inv-maestro", "catalogo", "bd-proveedores", "bd-tecnicos",
     "tareas-produccion",
   ],
   RRHH: [
-    "plan-trabajo", "operaciones", "calendario", "vision-semanal", "reporte-area-mensual",
+    "plan-trabajo", "operaciones", "calendario", "vision-semanal", "reporte-area-mensual", "cultura",
     "rrhh-personal", "rrhh-nomina", "rrhh-asistencia", "rrhh-evaluaciones", "rrhh-satisfaccion",
     "rrhh-candidatos",
     "tareas-rrhh",
   ],
   DIRECCION: [
-    "plan-trabajo", "operaciones", "calendario", "vision-semanal", "reporte-area-mensual",
+    "plan-trabajo", "operaciones", "calendario", "vision-semanal", "reporte-area-mensual", "cultura",
     "juntas", "presentaciones", "capacitacion", "organizacion", "rrhh-candidatos",
     "verificacion",
     "tareas-direccion",
   ],
   GENERAL: [
-    "plan-trabajo", "operaciones", "calendario", "vision-semanal", "reporte-area-mensual",
+    "plan-trabajo", "operaciones", "calendario", "vision-semanal", "reporte-area-mensual", "cultura",
   ],
 };
 

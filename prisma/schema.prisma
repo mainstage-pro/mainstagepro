@@ -2508,11 +2508,14 @@ model CatalogoPrestacion {
   @@map("catalogo_prestaciones")
 }
 
-// Valores de la empresa (§5). Único origen de los valores que un puesto puede seleccionar.
+// Valores de la empresa (§5). Único origen de los valores que un puesto puede seleccionar
+// y de las conductas que se filtran al contratar, se firman en el acuerdo y se evalúan.
 model ValorEmpresa {
   id          String   @id @default(cuid())
   nombre      String
   descripcion String?  @db.Text
+  comoSeVive  String?  @map("como_se_vive") @db.Text // la conducta observable, en una frase
+  conductas   String?  @db.Text // JSON [{ texto, tipo: "ESPERADA"|"INACEPTABLE", bajaInmediata }]
   orden       Int      @default(0)
   activo      Boolean  @default(true)
   createdAt   DateTime @default(now())
@@ -4628,6 +4631,134 @@ model KeyResult {
   updatedAt    DateTime           @updatedAt
 
   @@map("key_results")
+}
+
+// ─── CULTURA Y ESTRATEGIA ────────────────────────────────────────────────────
+//
+// Cascada: Identidad (propósito/misión/visión + ValorEmpresa) → MetaGlobal del
+// periodo → ObjetivoArea (SMART) → Tactica. El avance de un objetivo NO se
+// captura: se calcula desde el estado de sus tácticas (src/lib/estrategia.ts).
+// La identidad es la fuente única que consumen puesto, acuerdo laboral, oferta
+// de trabajo y onboarding; cada publicación sube `version` para poder detectar
+// documentos firmados con una identidad anterior.
+
+model Identidad {
+  id               String    @id @default(cuid())
+  proposito        String    @db.Text // el porqué — permanente
+  mision           String    @db.Text // el qué, hoy
+  vision           String    @db.Text // el hacia dónde, 3–5 años
+  frase            String? // promesa de marca en una línea
+  aQuienNoServimos String?   @map("a_quien_no_servimos") @db.Text
+  version          Int       @default(1)
+  vigente          Boolean   @default(false) // solo una fila vigente a la vez
+  notaCambio       String?   @map("nota_cambio") @db.Text // por qué cambió respecto a la anterior
+  publicadaEn      DateTime? @map("publicada_en")
+  autorId          String?   @map("autor_id")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  @@index([vigente])
+  @@map("identidad_institucional")
+}
+
+// El norte cuantitativo del periodo. Todo objetivo de área cuelga de aquí.
+model MetaGlobal {
+  id          String   @id @default(cuid())
+  periodo     String // "2027" — etiqueta del año fiscal
+  titulo      String
+  descripcion String?  @db.Text
+  fechaInicio DateTime @map("fecha_inicio")
+  fechaFin    DateTime @map("fecha_fin")
+  vigente     Boolean  @default(false)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  indicadores MetaGlobalIndicador[]
+  objetivos   ObjetivoArea[]
+
+  @@index([vigente])
+  @@map("meta_global")
+}
+
+model MetaGlobalIndicador {
+  id           String     @id @default(cuid())
+  metaGlobalId String     @map("meta_global_id")
+  metaGlobal   MetaGlobal @relation(fields: [metaGlobalId], references: [id], onDelete: Cascade)
+  nombre       String
+  unidad       String     @default("%") // % | $ | número | días | ratio
+  lineaBase    Float?     @map("linea_base")
+  valorMeta    Float?     @map("valor_meta")
+  valorActual  Float?     @map("valor_actual")
+  kpiSlug      String?    @map("kpi_slug") // slug de src/lib/kpi-calculators.ts para lectura automática
+  orden        Int        @default(0)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  @@index([metaGlobalId])
+  @@map("meta_global_indicadores")
+}
+
+// Las 5 áreas del despliegue operativo. `areaPermiso` es el puente con las llaves
+// de acceso que ya usa la plataforma (AREA_MODULE_PRESETS, Puesto.area).
+model AreaEstrategica {
+  id            String   @id @default(cuid())
+  codigo        String   @unique // DIRECCION | ADMINISTRACION | MARKETING | COMERCIAL | OPERACIONES
+  nombre        String
+  proposito     String?  @db.Text // por qué existe el equipo y qué aporta al propósito general
+  areaPermiso   String   @map("area_permiso") // DIRECCION | ADMINISTRACION | MARKETING | VENTAS | PRODUCCION
+  responsableId String?  @map("responsable_id")
+  orden         Int      @default(0)
+  activo        Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  objetivos ObjetivoArea[]
+
+  @@map("areas_estrategicas")
+}
+
+model ObjetivoArea {
+  id           String      @id @default(cuid())
+  areaId       String      @map("area_id")
+  area         AreaEstrategica @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  metaGlobalId String?     @map("meta_global_id")
+  metaGlobal   MetaGlobal? @relation(fields: [metaGlobalId], references: [id], onDelete: SetNull)
+  descripcion  String      @db.Text
+  metrica      String // el KPI con el que se declara el éxito
+  unidad       String      @default("número") // % | $ | número | días | ratio
+  lineaBase    Float?      @map("linea_base")
+  valorMeta    Float?      @map("valor_meta")
+  valorActual  Float?      @map("valor_actual")
+  kpiSlug      String?     @map("kpi_slug")
+  fechaLimite  DateTime?   @map("fecha_limite")
+  orden        Int         @default(0)
+  activo       Boolean     @default(true)
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  tacticas Tactica[]
+
+  @@index([areaId])
+  @@index([metaGlobalId])
+  @@map("objetivos_area")
+}
+
+model Tactica {
+  id             String       @id @default(cuid())
+  objetivoId     String       @map("objetivo_id")
+  objetivo       ObjetivoArea @relation(fields: [objetivoId], references: [id], onDelete: Cascade)
+  descripcion    String       @db.Text
+  responsableId  String?      @map("responsable_id")
+  fechaEjecucion DateTime?    @map("fecha_ejecucion")
+  estado         String       @default("PENDIENTE") // PENDIENTE | EN_PROCESO | BLOQUEADO | COMPLETADO
+  notas          String?      @db.Text
+  completadoEn   DateTime?    @map("completado_en")
+  orden          Int          @default(0)
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  @@index([objetivoId])
+  @@map("tacticas")
 }
 
 // ─── CAPACITACIÓN CON IA ─────────────────────────────────────────────────────

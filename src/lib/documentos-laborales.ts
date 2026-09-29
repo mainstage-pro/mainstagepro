@@ -8,6 +8,7 @@ import {
   type JornadaDia, type CriterioCalidad, type ValorPerfil,
   type AptitudPerfil, type ConocimientoPerfil, type ReportePuesto,
 } from "@/lib/puesto";
+import type { MarcoIdentidadSnapshot } from "@/lib/identidad";
 
 export interface Estandar { subarea: string; responsabilidad: string; estandar: string }
 export interface NoNegociable { enunciado: string; frecuencia: string; evidencia: string }
@@ -52,6 +53,8 @@ export interface DocLaboralSnapshot {
   // Base común a todos los puestos, congelada al firmar por si el texto cambia después.
   adnTitulo?: string;
   adnTexto?: string;
+  // Identidad vigente al generar el documento (§ /direccion/cultura).
+  marco?: MarcoIdentidadSnapshot;
   valores: ValorPerfil[];
   aptitudes: AptitudPerfil[];
   conocimientos: ConocimientoPerfil[];
@@ -116,6 +119,7 @@ export function buildSnapshot(
   persona: PersonaLike,
   puesto: PuestoLike,
   responsableNombre: string,
+  marco?: MarcoIdentidadSnapshot,
 ): DocLaboralSnapshot {
   const fecha = persona.fechaIngreso
     ? (typeof persona.fechaIngreso === "string" ? persona.fechaIngreso : persona.fechaIngreso.toISOString()).slice(0, 10)
@@ -144,6 +148,7 @@ export function buildSnapshot(
     reportes: jparse<ReportePuesto[]>(puesto?.reportes ?? null, []),
     adnTitulo: ADN_MAINSTAGE.titulo,
     adnTexto: ADN_MAINSTAGE.texto,
+    marco: marco ?? undefined,
     valores: jparse<ValorPerfil[]>(puesto?.valores ?? null, []),
     aptitudes: jparse<AptitudPerfil[]>(puesto?.aptitudes ?? null, []),
     conocimientos: jparse<ConocimientoPerfil[]>(puesto?.conocimientos ?? null, []),

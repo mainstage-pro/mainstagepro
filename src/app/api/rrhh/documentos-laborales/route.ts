@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { buildSnapshot, ensureDocLaboralSchema } from "@/lib/documentos-laborales";
 import { createExpiringToken } from "@/lib/tokens";
+import { getMarcoIdentidad } from "@/lib/identidad";
 
 export async function GET(req: NextRequest) {
   const session = await getSession();
@@ -41,7 +42,8 @@ export async function POST(req: NextRequest) {
     });
     if (!persona) return NextResponse.json({ error: "Persona no encontrada" }, { status: 404 });
 
-    const snapshot = buildSnapshot(tipo, persona, persona.puestoRef, session.name ?? "Dirección");
+    const marco = await getMarcoIdentidad();
+    const snapshot = buildSnapshot(tipo, persona, persona.puestoRef, session.name ?? "Dirección", marco ?? undefined);
 
     const doc = await prisma.documentoLaboral.create({
       data: {

@@ -33,6 +33,8 @@ const s = StyleSheet.create({
   campo: { flex: 1 },
   campoLabel: { fontSize: 7, color: LIGHT, marginBottom: 2 },
   campoValue: { fontSize: 9, fontFamily: "Helvetica-Bold", color: BLACK },
+  noNego: { backgroundColor: CREAM, borderLeftWidth: 2, borderLeftColor: GOLD, borderRadius: 3, padding: 10, marginTop: 4, marginBottom: 6 },
+  noNegoTxt: { fontSize: 8, color: GRAY, lineHeight: 1.6 },
   bullet: { flexDirection: "row", marginBottom: 3 },
   bulletDot: { width: 10, fontSize: 8.5, color: GOLD },
   bulletText: { flex: 1, fontSize: 8.5, color: BLACK, lineHeight: 1.5 },
@@ -114,6 +116,50 @@ export function OfertaTrabajoPDF(p: DocLaboralSnapshot) {
 
           <Text style={s.seccionTitulo}>{p.adnTitulo ?? ADN_MAINSTAGE.titulo}</Text>
           <Text style={s.texto}>{p.adnTexto ?? ADN_MAINSTAGE.texto}</Text>
+
+          {p.marco && (
+            <>
+              <Text style={s.seccionTitulo}>Quiénes somos</Text>
+              {p.marco.frase && <Text style={[s.texto, s.bold]}>{p.marco.frase}</Text>}
+              <Text style={s.campoLabel}>PROPÓSITO</Text>
+              <Text style={s.texto}>{p.marco.proposito}</Text>
+              <Text style={s.campoLabel}>MISIÓN</Text>
+              <Text style={s.texto}>{p.marco.mision}</Text>
+              <Text style={s.campoLabel}>VISIÓN</Text>
+              <Text style={s.texto}>{p.marco.vision}</Text>
+
+              {p.marco.valores.length > 0 && (
+                <>
+                  <Text style={s.seccionTitulo}>Cómo trabajamos</Text>
+                  {p.marco.valores.map((v, i) => (
+                    <View key={i} style={s.bullet}>
+                      <Text style={s.bulletDot}>•</Text>
+                      <Text style={s.bulletText}>
+                        <Text style={s.bold}>{v.nombre}</Text>
+                        {v.comoSeVive ? `: ${v.comoSeVive}` : ""}
+                        {v.esperadas.length > 0 && <Text style={{ color: LIGHT }}> — {v.esperadas.join("; ")}</Text>}
+                      </Text>
+                    </View>
+                  ))}
+                </>
+              )}
+
+              {p.marco.noNegociables.length > 0 && (
+                <>
+                  <Text style={s.seccionTitulo}>No negociables</Text>
+                  <View style={s.noNego}>
+                    <Text style={s.noNegoTxt}>
+                      Para que nadie las conozca por sorpresa: las siguientes conductas terminan la relación de
+                      colaboración de forma inmediata.
+                    </Text>
+                  </View>
+                  {p.marco.noNegociables.map((n, i) => (
+                    <View key={i} style={s.bullet}><Text style={s.bulletDot}>•</Text><Text style={s.bulletText}>{n}</Text></View>
+                  ))}
+                </>
+              )}
+            </>
+          )}
 
           <Text style={s.seccionTitulo}>Condiciones</Text>
           <View style={s.row2}>
