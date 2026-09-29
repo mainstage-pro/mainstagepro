@@ -148,6 +148,7 @@ export function Fila({
   valor,
   valorNota,
   tono = "neutro",
+  tonoValor,
   badge,
 }: {
   href?: string;
@@ -156,6 +157,8 @@ export function Fila({
   valor?: ReactNode;
   valorNota?: ReactNode;
   tono?: Tono;
+  /** Color sólo de la cifra, cuando no debe heredar la alarma de la barra. */
+  tonoValor?: Tono;
   badge?: ReactNode;
 }) {
   const cuerpo = (
@@ -168,7 +171,7 @@ export function Fila({
       {badge && <div className="shrink-0">{badge}</div>}
       {valor !== undefined && (
         <div className="text-right shrink-0">
-          <p className={`text-[13px] font-semibold tabular-nums ${TEXTO[tono]}`}>{valor}</p>
+          <p className={`text-[13px] font-semibold tabular-nums ${TEXTO[tonoValor ?? tono]}`}>{valor}</p>
           {valorNota && <p className="ms-micro mt-0.5">{valorNota}</p>}
         </div>
       )}

@@ -104,6 +104,7 @@ export default async function ResumenProyectosPage() {
                       ) : undefined
                     }
                     valor={relativo(p.dias)}
+                    tonoValor={p.dias <= 7 ? "verde" : undefined}
                     valorNota={`${p.personalConfirmado}/${p.personal} pers.`}
                     acciones={accionesProyecto(p.id, p.estado)}
                   />
@@ -147,6 +148,7 @@ export default async function ResumenProyectosPage() {
                       .join(" · ")
                   }
                   valor={relativo(p.dias)}
+                  tonoValor="verde"
                 />
               ))
             )}
