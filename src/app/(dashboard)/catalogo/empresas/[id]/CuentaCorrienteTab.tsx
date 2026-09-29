@@ -93,7 +93,7 @@ export default function CuentaCorrienteTab({ empresaId }: { empresaId: string })
         </div>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <h3 className="text-sm font-medium text-white mb-3">Pendiente por Cobrar</h3>
           <div className="space-y-2">

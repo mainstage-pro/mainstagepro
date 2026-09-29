@@ -90,7 +90,7 @@ export default function PresentacionTab() {
       <div className="space-y-4">
         <Rotulo icono={Presentation}>Mazos disponibles</Rotulo>
 
-        <div className="grid sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {MAZOS.map(m => {
             const url = `${BASE_URL}${m.href}`;
             return (

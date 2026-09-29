@@ -75,7 +75,7 @@ export default function CoberturaPage() {
       ) : !data ? (
         <p className="text-sm text-red-400">No se pudo cargar la cobertura.</p>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {data.cubetas.map(c => {
             const vacio = c.items.length === 0;
             const open = abierta === c.clave;

@@ -151,7 +151,7 @@ export default async function DashboardAdminPage() {
         <KpiCard label="Nómina pendiente" value={fmt(nominaTotal)} sub={`${personalCount} colaboradores activos`} color={nominaTotal > 0 ? "text-yellow-400" : "text-white"} href="/rrhh/nomina" />
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Cuentas por cobrar */}
         <div className="ms-table-wrapper">
           <div className="flex items-center justify-between px-4 py-3 border-b border-[#1a1a1a]">

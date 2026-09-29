@@ -124,7 +124,7 @@ export default function BandejaProspectosPage() {
       ) : (
         <div className="space-y-6">
           {pendientes.length > 0 && (
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {pendientes.map((e) => (
                 <EntradaCard key={e.id} entrada={e} custom={custom} onCustomCreated={agregar}
                   onTrasladar={(form) => trasladar(e, form)} onEliminar={() => eliminar(e)} />

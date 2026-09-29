@@ -83,7 +83,7 @@ export default async function ResumenCalendarioPage({
         />
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Panel titulo={`Agenda — ${VISTAS.find(v => v.key === vista)!.label.toLowerCase()}`} nota={rango} href="/calendarios/eventos" className="lg:col-span-2">
           {r.total === 0 ? (
             <Vacio texto="No hay eventos en este periodo" />

@@ -63,7 +63,7 @@ export default async function ResumenEquiposPage() {
         />
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Panel
           titulo="Disponibilidad comprometida — 21 días"
           nota="pico de demanda por día, no suma del periodo"
@@ -205,7 +205,7 @@ export default async function ResumenEquiposPage() {
           href="/equipos/tablero"
           className="mt-4"
         >
-          <div className="grid md:grid-cols-2">
+          <div className="grid grid-cols-1 md:grid-cols-2">
             {[...r.enMantenimiento, ...r.dadosDeBaja].slice(0, 12).map(e => (
               <Fila
                 key={e.id}

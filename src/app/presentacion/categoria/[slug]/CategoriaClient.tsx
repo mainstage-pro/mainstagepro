@@ -279,7 +279,7 @@ export default function CategoriaClient({ cfg }: { cfg: PresentacionCategoria })
 
       {/* PUNTOS */}
       <section className="max-w-6xl mx-auto px-5 sm:px-8 pb-20 sm:pb-28">
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {cfg.puntos.map((pt, i) => (
             <R key={i} delay={i * 80}>
               <div className="h-full rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">

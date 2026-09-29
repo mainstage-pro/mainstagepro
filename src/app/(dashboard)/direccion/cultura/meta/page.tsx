@@ -95,7 +95,7 @@ export default function MetaPage() {
 
       {editando ? (
         <Panel acento className="space-y-3">
-          <div className="grid sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className={labelCls}>Periodo</label>
               <input className={inputCls} value={periodo} onChange={e => setPeriodo(e.target.value)} />
@@ -262,7 +262,7 @@ export default function MetaPage() {
 
           <div className="space-y-4">
             <Rotulo icono={Gauge}>Indicadores que miden el periodo</Rotulo>
-            <div className="grid sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {m.indicadores.map(ind => {
                 const pct =
                   ind.valorMeta && ind.valorActual != null

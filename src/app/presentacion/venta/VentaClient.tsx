@@ -202,7 +202,7 @@ export default function VentaClient({ categorias, totalPiezas }: { categorias: C
 
       {/* Por qué comprarnos */}
       <section className="px-6 py-20" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-        <div className="max-w-6xl mx-auto grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             { t: "Equipo de trabajo, no de bodega", d: "Todo lo que vendemos salió a eventos con nosotros y se mantuvo con el uso al día." },
             { t: "Lo revisas antes de pagar", d: "Agenda una cita, préndelo, escúchalo y pruébalo con nuestro equipo técnico." },
@@ -258,7 +258,7 @@ export default function VentaClient({ categorias, totalPiezas }: { categorias: C
                       <span className="text-white/30 text-xs">{cat.items.length}</span>
                     </div>
                   </Reveal>
-                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                     {cat.items.map((item, i) => (
                       <ItemCard key={item.id} item={item} onFotos={abrir} delay={i * 70} />
                     ))}
@@ -279,7 +279,7 @@ export default function VentaClient({ categorias, totalPiezas }: { categorias: C
               <h2 className="font-bold mt-4" style={{ fontSize: "clamp(1.8rem,4vw,2.8rem)", letterSpacing: "-0.03em" }}>Comprar es simple</h2>
             </div>
           </Reveal>
-          <div className="grid sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[
               { n: "01", t: "Nos escribes", d: "Dinos qué pieza te interesa. Te confirmamos disponibilidad y respondemos lo técnico." },
               { n: "02", t: "Lo pruebas", d: "Agendamos una cita en nuestras instalaciones para que lo veas funcionando." },

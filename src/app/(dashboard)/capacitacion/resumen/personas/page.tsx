@@ -62,7 +62,7 @@ export default function PersonasPage() {
                 {abierto && (
                   <tr style={{ background: "#0d0d0d" }}>
                     <td colSpan={6} className="px-4 py-4">
-                      <div className="grid md:grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                           <p className="text-[11px] font-semibold uppercase tracking-widest mb-2" style={{ color: "#6b7280" }}>Cursos tomados ({cursos.length})</p>
                           {cursos.length === 0 ? <p className="text-xs" style={{ color: "#4b5563" }}>Ninguno todavía.</p> : (

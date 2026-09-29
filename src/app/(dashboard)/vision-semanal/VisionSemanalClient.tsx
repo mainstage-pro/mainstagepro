@@ -260,7 +260,7 @@ function IndexView({
           {loading ? (
             <div className="text-center text-[#555] text-sm py-20">Cargando documentos…</div>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {areas.map((a) => {
                 const m = AREA_META[a];
                 const r = porArea.get(a);

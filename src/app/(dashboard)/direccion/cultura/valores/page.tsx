@@ -255,7 +255,7 @@ export default function ValoresPage() {
               </div>
 
               {conductas.length > 0 ? (
-                <div className="grid sm:grid-cols-2 gap-5 mt-5 pt-5" style={{ borderTop: `1px solid ${oro(0.1)}` }}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-5 pt-5" style={{ borderTop: `1px solid ${oro(0.1)}` }}>
                   <div>
                     <p className="text-[10px] uppercase mb-2.5 flex items-center gap-1.5" style={{ color: "rgba(74,222,128,0.65)", letterSpacing: "0.18em" }}>
                       <Check strokeWidth={2.4} className="w-3 h-3" />

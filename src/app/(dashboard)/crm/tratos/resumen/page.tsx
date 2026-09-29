@@ -42,7 +42,7 @@ export default async function ResumenVentasPage() {
         <Kpi label="Tasa de cierre" valor={`${r.tasaGanadas}%`} nota="últimos 90 días" tono={r.tasaGanadas >= 50 ? "verde" : "ambar"} />
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Panel
           titulo="Acciones vencidas"
           nota={`${r.accionVencida.length} tratos · ${r.sinAccion} más sin próxima acción definida`}

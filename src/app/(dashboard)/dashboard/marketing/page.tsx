@@ -105,7 +105,7 @@ export default async function DashboardMarketingPage() {
         <KpiCard label="Campañas activas" value={String(campanasActivas)} sub="Meta Ads en curso" href="/marketing/campanas" />
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Publicaciones próximas 7 días */}
         <div className="ms-stat-card">
           <div className="flex items-center justify-between mb-3">

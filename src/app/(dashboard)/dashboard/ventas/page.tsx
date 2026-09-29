@@ -148,7 +148,7 @@ export default async function DashboardVentasPage() {
         <KpiCard label="Sin respuesta" value={String(cotizacionesSinRespuesta.length)} sub="cotizaciones enviadas" color={cotizacionesSinRespuesta.length > 3 ? "text-yellow-400" : "text-white"} href="/cotizaciones" alert={cotizacionesSinRespuesta.length > 3} />
       </div>
 
-      <div className="grid md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Pipeline por etapa */}
         <div className="ms-stat-card">
           <div className="flex items-center justify-between mb-3">

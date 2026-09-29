@@ -689,7 +689,7 @@ export default function PresentacionClient({ cotizacion, tradeNiveles , token, g
               <GoldLabel>Personal Técnico</GoldLabel>
               <Heading>El equipo humano<br /><span className="text-white/30">detrás del resultado.</span></Heading>
             </R>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
               {staff.map((l, i) => (
                 <R key={l.id} delay={i * 45}>
                   <div className="flex items-center gap-3 px-4 py-3.5 rounded-xl border border-white/6 bg-white/[0.02] hover:border-white/10 transition-colors">
@@ -763,7 +763,7 @@ export default function PresentacionClient({ cotizacion, tradeNiveles , token, g
             <GoldLabel>Por qué Mainstage Pro</GoldLabel>
             <Heading>Cuatro compromisos.<br /><span className="text-white/30">Cada evento, sin excepción.</span></Heading>
           </R>
-          <div className="grid sm:grid-cols-2 gap-px bg-white/[0.04] rounded-2xl overflow-hidden">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-white/[0.04] rounded-2xl overflow-hidden">
             {ev.whyPoints.map((item, i) => (
               <R key={i} delay={i * 65}>
                 <div className="bg-[#060606] p-8 sm:p-10 lg:p-12">

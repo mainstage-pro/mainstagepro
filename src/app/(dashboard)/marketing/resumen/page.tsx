@@ -68,7 +68,7 @@ export default async function ResumenMarketingPage() {
         />
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Panel
           titulo="Próximas publicaciones"
           nota={`${r.listasParaSalir} listas · ${r.sinProducir} sin producir`}

@@ -80,7 +80,7 @@ export default function CentroReportesPage() {
             <h2 className="text-sm font-semibold uppercase tracking-wide text-white/70">{grupo.titulo}</h2>
             <p className="text-xs text-white/40 mt-0.5">{grupo.desc}</p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {grupo.reportes.map((r) => {
               const Icon = r.icon;
               return (

@@ -124,7 +124,7 @@ export default async function ResumenFinanzasPage() {
         />
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Panel titulo="Saldo por cuenta" nota={fmtMoneda(r.totalBancos)} href="/finanzas/cuentas">
           {r.cuentas.length === 0 ? (
             <Vacio texto="Sin cuentas activas" />
@@ -152,7 +152,7 @@ export default async function ResumenFinanzasPage() {
         </Panel>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-4 mt-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
         <PanelAgrupado
           titulo="Cobranza vencida"
           bucket={r.cxcVencida}

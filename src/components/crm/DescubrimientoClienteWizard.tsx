@@ -285,7 +285,7 @@ export default function DescubrimientoClienteWizard({
           {huerfano && (
             <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 space-y-3">
               <p className="text-sm text-white font-semibold">Tus datos de contacto</p>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="text-xs text-gray-400 block mb-1">Nombre *</label>
                   <input type="text" value={contacto?.nombre || ""}
@@ -346,7 +346,7 @@ export default function DescubrimientoClienteWizard({
             </div>
           )}
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="text-xs text-gray-400 block mb-1">Nombre del evento (opcional)</label>
               <input type="text" value={nombreEvento} onChange={e => setNombreEvento(e.target.value)}

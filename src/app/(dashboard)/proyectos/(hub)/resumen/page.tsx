@@ -34,7 +34,7 @@ export default async function ResumenProyectosPage() {
         <Kpi label="Sin cierre financiero" valor={r.sinCierre.length} nota="eventos ya realizados" tono={r.sinCierre.length > 0 ? "ambar" : "neutro"} />
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Panel
           titulo="Agenda de los próximos 30 días"
           nota={`${r.lista.length} eventos`}
@@ -137,7 +137,7 @@ export default async function ResumenProyectosPage() {
 
       {r.pendientes.length > 0 && (
         <Panel titulo="Lo que falta por hacer" nota="derivado de la operación, no de una bandeja" className="mt-4">
-          <div className="grid md:grid-cols-2">
+          <div className="grid grid-cols-1 md:grid-cols-2">
             {r.pendientes.slice(0, 10).map(p => (
               <Fila
                 key={p.id}

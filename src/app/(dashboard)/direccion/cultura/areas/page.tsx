@@ -479,7 +479,7 @@ function Tactica({
 
       {abierto && (
         <div
-          className="grid sm:grid-cols-2 gap-2 mt-2.5 pt-2.5"
+          className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2.5 pt-2.5"
           style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
         >
           <div>

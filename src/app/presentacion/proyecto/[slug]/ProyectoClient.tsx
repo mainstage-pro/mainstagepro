@@ -161,7 +161,7 @@ function Editor({ p, onSaved, onDeleted }: { p: Proyecto; onSaved: (p: Proyecto)
         </div>
       </div>
 
-      <div className="grid sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="sm:col-span-2">
           <label className={labelCls}>Título</label>
           <input className={inputCls} value={f.titulo} onChange={e => set("titulo", e.target.value)} />
