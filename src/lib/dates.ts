@@ -1,3 +1,9 @@
+/**
+ * Fechas-calendario (fechaInicio, fechaLimite, fechaEjecucion…): no tienen hora
+ * significativa y se guardan a medianoche UTC. Formatearlas en la zona local
+ * (UTC-6) las retrasa un día, así que se anclan a mediodía UTC y se imprimen en UTC.
+ * Para timestamps reales (createdAt, publicadaEn) NO uses esto: la hora local es la correcta.
+ */
 export function parseDate(str: string | null | undefined): Date | null {
   if (!str) return null;
   return new Date(str.substring(0, 10) + "T12:00:00Z");
@@ -9,5 +15,5 @@ export function fmtDate(
   locale = "es-MX"
 ): string {
   if (!str) return "";
-  return parseDate(str)!.toLocaleDateString(locale, opts ?? { timeZone: "UTC" });
+  return parseDate(str)!.toLocaleDateString(locale, { timeZone: "UTC", ...opts });
 }

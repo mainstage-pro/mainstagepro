@@ -14,6 +14,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { ESTADOS_TACTICA, ESTADO_OBJETIVO_META, formatValorMeta } from "@/lib/estrategia";
+import { fmtDate } from "@/lib/dates";
 import { useEstrategia } from "../useEstrategia";
 import { Lienzo, Encabezado, Panel, Metrica, Anillo, Rotulo, FONDOS, GOLD, oro } from "../ui";
 
@@ -82,9 +83,7 @@ export default function CascadaPage() {
                     <span className="flex items-center gap-1.5">
                       <AlarmClock strokeWidth={1.7} className="w-3 h-3" />
                       vencía el{" "}
-                      {new Date(a.tactica.fechaEjecucion).toLocaleDateString("es-MX", {
-                        dateStyle: "medium",
-                      })}
+                      {fmtDate(a.tactica.fechaEjecucion, { dateStyle: "medium" })}
                     </span>
                   )}
                   {a.tactica.responsableId && (
@@ -212,7 +211,7 @@ export default function CascadaPage() {
                                   {formatValorMeta(o.valorMeta, o.unidad)}
                                 </span>
                                 {o.fechaLimite &&
-                                  ` · ${new Date(o.fechaLimite).toLocaleDateString("es-MX", { dateStyle: "medium" })}`}
+                                  ` · ${fmtDate(o.fechaLimite, { dateStyle: "medium" })}`}
                               </p>
                             </button>
 
