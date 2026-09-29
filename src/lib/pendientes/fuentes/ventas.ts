@@ -18,6 +18,9 @@ export const FUENTES_VENTAS: DefinicionFuente[] = [
     criterio: "Trato en descubrimiento u oportunidad cuya fecha de próxima acción ya pasó",
     activa: true,
     anticipa: false,
+    // Un mes sin tocarse ya no es seguimiento tarde: es pipeline muerto que hay que recalificar.
+    ventana: 30,
+    hrefLista: "/crm/tratos",
     async computar({ ahora, limite }) {
       const tratos = await prisma.trato.findMany({
         where: {
@@ -135,6 +138,9 @@ export const FUENTES_VENTAS: DefinicionFuente[] = [
     criterio: "Cotización APROBADA que todavía no tiene proyecto — la venta está cerrada y nadie la ha operado",
     activa: false,
     anticipa: false,
+    // A los dos meses el evento ya pasó o se cayó; lo viejo se audita una vez, no a diario.
+    ventana: 60,
+    hrefLista: "/cotizaciones",
     async computar({ ahora, limite }) {
       const cotizaciones = await prisma.cotizacion.findMany({
         where: { estado: "APROBADA", proyecto: { is: null } },

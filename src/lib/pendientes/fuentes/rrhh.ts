@@ -58,6 +58,9 @@ export const FUENTES_RRHH: DefinicionFuente[] = [
     criterio: "Evaluación abierta hace más de 7 días que nunca se cerró",
     activa: false,
     anticipa: false,
+    // Un borrador de hace tres semanas ya perdió el contexto: se rehace o se descarta.
+    ventana: 21,
+    hrefLista: "/rrhh/evaluaciones",
     async computar({ ahora, limite }) {
       const evaluaciones = await prisma.evaluacionEmpleado.findMany({
         where: { estado: "BORRADOR", createdAt: { lt: sumarDias(ahora, -7) } },

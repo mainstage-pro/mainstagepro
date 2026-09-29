@@ -77,6 +77,15 @@ export interface DefinicionFuente {
   activa: boolean;
   /** Avisa ANTES de que algo se venza, en vez de reportar el daño hecho. */
   anticipa: boolean;
+  /**
+   * Días tras los cuales un pendiente deja de ser tarea y pasa a ser rezago.
+   * Lo que lleva meses atorado no se resuelve recordándolo todos los días: se
+   * resuelve con una depuración. Todo lo que cruza la ventana se colapsa en un
+   * solo renglón. Sin ventana = nunca caduca (el dinero no deja de importar).
+   */
+  ventana?: number;
+  /** Lista a dónde manda el renglón de rezago. Sin ella se usa el href del más viejo. */
+  hrefLista?: string;
   computar: (ctx: Contexto) => Promise<Pendiente[]>;
 }
 
@@ -90,17 +99,26 @@ export function diasHasta(fecha: Date, ahora: Date): number {
   return Math.ceil((fecha.getTime() - ahora.getTime()) / 86400000);
 }
 
-/** Severidad por retraso acumulado. */
+/**
+ * Severidad por retraso acumulado.
+ *
+ * URGENTE se reserva para lo que ya se rompió de verdad. Si algo lleva dos días
+ * tarde todavía se recupera solo; marcarlo en rojo gasta la única señal fuerte
+ * que tenemos. El techo lo pone `ventana`: pasado ese punto ya no es urgencia,
+ * es rezago, y se agrupa en un solo renglón.
+ */
 export function sevVencido(dias: number): Severidad {
-  if (dias >= 7) return "URGENTE";
-  if (dias >= 1) return "ALTA";
+  if (dias >= 15) return "URGENTE";
+  if (dias >= 5) return "ALTA";
   return "MEDIA";
 }
 
-/** Severidad por cercanía: mientras menos días falten, más urgente. */
+/**
+ * Severidad por cercanía. Tope ALTA a propósito: lo que todavía no se vence no
+ * puede ser urgente. Si anticipar pinta rojo, el rojo deja de querer decir algo.
+ */
 export function sevProximo(dias: number): Severidad {
-  if (dias <= 2) return "URGENTE";
-  if (dias <= 5) return "ALTA";
+  if (dias <= 1) return "ALTA";
   return "MEDIA";
 }
 

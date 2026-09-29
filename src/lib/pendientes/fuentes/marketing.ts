@@ -59,6 +59,9 @@ export const FUENTES_MARKETING: DefinicionFuente[] = [
     criterio: "Publicación programada cuya fecha ya pasó y sigue en pendiente",
     activa: false,
     anticipa: false,
+    // Contenido de hace más de dos semanas ya perdió su momento: se replantea, no se publica tarde.
+    ventana: 14,
+    hrefLista: "/marketing/contenido/parrilla",
     async computar({ ahora, inicioDeHoy, limite }) {
       const publicaciones = await prisma.publicacion.findMany({
         where: {
@@ -70,7 +73,8 @@ export const FUENTES_MARKETING: DefinicionFuente[] = [
           id: true, fecha: true, descripcion: true, formato: true,
           tipo: { select: { nombre: true } },
         },
-        orderBy: { fecha: "asc" },
+        // Más recientes primero: si el tope recorta, que recorte arqueología y no lo accionable.
+        orderBy: { fecha: "desc" },
         take: limite,
       });
 
