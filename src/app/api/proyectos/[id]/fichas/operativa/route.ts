@@ -31,7 +31,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     where: { id },
     include: {
       cliente: { select: { nombre: true, empresa: true, telefono: true } },
-      encargado: { select: { name: true } },
+      encargado: { select: { name: true, personalInterno: { select: { telefono: true } } } },
       trato: { select: { notas: true } },
       personal: {
         include: {
@@ -160,6 +160,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     escenarioProveedor: proyecto.escenarioProveedor ?? null,
     escenarioNotas: proyecto.escenarioNotas ?? null,
     encargadoNombre: proyecto.encargado?.name ?? null,
+    encargadoContacto: proyecto.encargado?.personalInterno?.telefono ?? null,
     encargadoCliente: proyecto.encargadoCliente ?? null,
     encargadoClienteContacto: proyecto.encargadoClienteContacto ?? null,
     cadenaMandoReglas: proyecto.cadenaMandoReglas ?? null,
@@ -181,7 +182,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     personal: (proyecto.personal ?? []).filter((p: any) => p.tecnico).map((p: any) => ({
       nombre: p.tecnico.nombre,
       rolEnEvento: p.rolEnEvento ?? null,
-      rolTecnico: p.rolTecnico?.nombre ?? p.tecnico?.rol?.nombre ?? null,
+      rolTecnico: p.rolTecnico?.nombre ?? null,
       celular: p.tecnico.celular ?? null,
       confirmado: p.confirmado,
       fechaJornada: p.fechaJornada ?? null,

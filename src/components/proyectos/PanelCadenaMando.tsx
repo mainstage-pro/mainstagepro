@@ -169,11 +169,14 @@ function Renglon({
           />
         )}
 
-        {/* Contacto: el del técnico viene de su expediente y no se edita aquí. */}
-        {e.clave === "SITIO" ? (
-          <p className="text-gray-500 text-xs truncate">{e.contacto ?? "—"}</p>
-        ) : e.clave === "CAMBIOS" ? (
-          <p className="text-gray-700 text-xs">interno</p>
+        {/* Los de casa traen su teléfono del expediente: se ve, pero se corrige allá. */}
+        {e.clave === "SITIO" || e.clave === "CAMBIOS" ? (
+          <p
+            className={`text-xs truncate ${e.contacto ? "text-gray-500" : "text-gray-700"}`}
+            title={e.contacto ? "Sale de su expediente de personal" : "No tiene teléfono en su expediente de personal"}
+          >
+            {e.contacto ?? "sin teléfono"}
+          </p>
         ) : (
           <CampoTexto
             valor={e.contacto}

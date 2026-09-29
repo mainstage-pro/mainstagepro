@@ -18,7 +18,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const proyecto = await (prisma.proyecto.findUnique as any)({
     where: { id },
     include: {
-      encargado: { select: { id: true, name: true } }, // User model has no phone field
+      encargado: { select: { id: true, name: true, personalInterno: { select: { telefono: true } } } },
       personal: {
         include: {
           tecnico: { select: { nombre: true, celular: true, rol: { select: { nombre: true } } } },
@@ -78,11 +78,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       .map((p: any) => ({
         nombre: p.tecnico.nombre,
         rolEnEvento: p.rolEnEvento ?? null,
-        rolTecnico: p.rolTecnico?.nombre ?? p.tecnico?.rol?.nombre ?? null,
+        rolTecnico: p.rolTecnico?.nombre ?? null,
         celular: p.tecnico.celular ?? null,
       })),
     encargadoNombre: proyecto.encargado?.name ?? null,
-    encargadoCelular: null, // User model has no phone field
+    encargadoCelular: proyecto.encargado?.personalInterno?.telefono ?? null,
     encargadoCliente: proyecto.encargadoCliente ?? null,
     encargadoClienteContacto: proyecto.encargadoClienteContacto ?? null,
     logoSrc,

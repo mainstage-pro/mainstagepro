@@ -125,7 +125,7 @@ export async function marcarFilaNominaPagada(
   }
 
   const tecNombre = fila.tecnico?.nombre ?? "Técnico";
-  const rolNombre = fila.rolEnEvento ?? fila.rolTecnico?.nombre ?? fila.tecnico?.rol?.nombre ?? "Técnico";
+  const rolNombre = fila.rolEnEvento ?? fila.rolTecnico?.nombre ?? "Técnico";
   const concepto = `Nómina — ${tecNombre} · ${rolNombre} | ${fila.proyecto?.nombre ?? "Proyecto"}`;
 
   // Reusar un movimiento de nómina huérfano (creado por un flujo previo que no

@@ -69,7 +69,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         personal: {
           include: {
             tecnico: { select: { id: true, nombre: true, celular: true, rol: { select: { nombre: true } } } },
-            rolTecnico: { select: { nombre: true } },
+            rolTecnico: { select: { id: true, nombre: true } },
           },
           orderBy: { id: "asc" },
         },
@@ -127,7 +127,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         personal: {
           include: {
             tecnico: { select: { id: true, nombre: true, celular: true, rol: { select: { nombre: true } } } },
-            rolTecnico: { select: { nombre: true } },
+            rolTecnico: { select: { id: true, nombre: true } },
           },
           orderBy: { id: "asc" },
         },

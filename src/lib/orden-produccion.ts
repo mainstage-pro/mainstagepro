@@ -110,7 +110,7 @@ export async function ordenPorToken(token: string) {
     where: { ordenToken: token },
     include: {
       cliente: { select: { nombre: true, empresa: true } },
-      encargado: { select: { name: true } },
+      encargado: { select: { name: true, personalInterno: { select: { telefono: true } } } },
       personal: {
         include: {
           tecnico: { select: { id: true, nombre: true, celular: true } },
@@ -267,6 +267,7 @@ export async function ordenPorToken(token: string) {
   const mando: EslabonMando[] = cadenaDeMando({
     coordinadorSitio: coord ? { nombre: coord.nombre, celular: coord.celular, rol: coord.rol } : null,
     encargadoNombre: p.encargado?.name ?? null,
+    encargadoContacto: p.encargado?.personalInterno?.telefono ?? null,
     encargadoCliente: p.encargadoCliente ?? null,
     encargadoClienteContacto: p.encargadoClienteContacto ?? null,
     encargadoLugar: p.encargadoLugar ?? null,

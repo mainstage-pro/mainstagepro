@@ -169,7 +169,7 @@ export interface FichaOperativaData {
   escenarioMedidas: string | null; escenarioAlturaM: number | null;
   escenarioAccesos: string | null; escenarioProveedor: string | null;
   escenarioNotas: string | null;
-  encargadoNombre: string | null;
+  encargadoNombre: string | null; encargadoContacto: string | null;
   encargadoCliente: string | null; encargadoClienteContacto: string | null;
   /** Reglas de mando reescritas en el proyecto. Lo que falte usa la de la casa. */
   cadenaMandoReglas?: unknown;
@@ -246,6 +246,7 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
       ? { nombre: coord.nombre, celular: coord.celular, rol: coord.rolEnEvento ?? coord.rolTecnico }
       : null,
     encargadoNombre: data.encargadoNombre,
+    encargadoContacto: data.encargadoContacto,
     encargadoCliente: data.encargadoCliente,
     encargadoClienteContacto: data.encargadoClienteContacto,
     encargadoLugar: data.encargadoLugar,
@@ -440,6 +441,7 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
               {data.encargadoLugar && <KV label="Encargado del venue" value={data.encargadoLugar} bold />}
               {data.encargadoLugarContacto && <KV label="Contacto del venue" value={data.encargadoLugarContacto} />}
               {data.encargadoNombre && <KV label="Coordinador Mainstage" value={data.encargadoNombre} bold />}
+              {data.encargadoContacto && <KV label="Contacto directo" value={data.encargadoContacto} />}
             </View>
             {data.contactosEmergencia && (
               <View style={[base.textBox, { marginTop: 6 }]}>

@@ -139,6 +139,7 @@ export interface FichaCoordinadorData {
   detallesEspecificos: string | null;
   comentariosFinales: string | null;
   encargadoNombre: string | null;
+  encargadoContacto: string | null;
   encargadoCliente: string | null;
   encargadoClienteContacto: string | null;
   encargadoLugar: string | null;
@@ -311,6 +312,7 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
             {data.encargadoLugar && <KVRow label="Encargado del venue" value={data.encargadoLugar} />}
             {data.encargadoLugarContacto && <KVRow label="Contacto del venue" value={data.encargadoLugarContacto} />}
             {data.encargadoNombre && <KVRow label="Coordinador Mainstage" value={data.encargadoNombre} bold />}
+            {data.encargadoContacto && <KVRow label="Contacto directo" value={data.encargadoContacto} />}
           </View>
         </View>
 

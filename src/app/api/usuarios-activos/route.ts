@@ -8,9 +8,20 @@ export async function GET() {
 
   const usuarios = await prisma.user.findMany({
     where: { active: true },
-    select: { id: true, name: true, area: true },
+    select: {
+      id: true,
+      name: true,
+      area: true,
+      // El teléfono vive en el expediente, no en el usuario.
+      personalInterno: { select: { telefono: true } },
+    },
     orderBy: { name: "asc" },
   });
 
-  return NextResponse.json({ usuarios });
+  return NextResponse.json({
+    usuarios: usuarios.map(({ personalInterno, ...u }) => ({
+      ...u,
+      telefono: personalInterno?.telefono?.trim() || null,
+    })),
+  });
 }

@@ -1329,7 +1329,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     viabilidadActiva: ViabilidadActiva | null;
     historico: ViabilidadHistoricoItem[];
   } | null>(null);
-  const [usuariosActivos, setUsuariosActivos] = useState<{ id: string; name: string; area: string | null }[]>([]);
+  const [usuariosActivos, setUsuariosActivos] = useState<{ id: string; name: string; area: string | null; telefono: string | null }[]>([]);
   type Responsables = { produccion: string; logistica: string; finanzas: string; marketing: string };
   const [responsables, setResponsables] = useState<Responsables>({ produccion: "", logistica: "", finanzas: "", marketing: "" });
   const [savingResp, setSavingResp] = useState(false);
@@ -5578,6 +5578,31 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           </div>
 
 
+          {/* ── Cronología 1: logística general ── */}
+          {!esRenta && (
+            <div className="ms-card p-5">
+              <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
+                <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">
+                  {VISTAS_CRONOLOGIA.LOGISTICA.titulo}
+                </p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {savingCrono && <span className="text-xs text-gray-600">Guardando...</span>}
+                  {cronoRows.length > 0 && (
+                    <button onClick={() => guardarCronograma(cronoRows)} disabled={savingCrono}
+                      className="text-xs bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black font-semibold px-3 py-1 rounded-lg transition-colors">
+                      Guardar
+                    </button>
+                  )}
+                </div>
+              </div>
+              <p className="text-[11px] text-gray-600 mb-4">{VISTAS_CRONOLOGIA.LOGISTICA.descripcion}</p>
+              <div className="space-y-8">
+                {renderFaseExtra("montaje")}
+                {renderFaseExtra("desmontaje")}
+              </div>
+            </div>
+          )}
+
           {/* ── Proveedores y Subrentas ── */}
           <PanelProveedores
             proyectoId={id}
@@ -5606,31 +5631,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             })()}
           />
 
-
-          {/* ── Cronología 1: logística general ── */}
-          {!esRenta && (
-            <div className="ms-card p-5">
-              <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
-                <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">
-                  {VISTAS_CRONOLOGIA.LOGISTICA.titulo}
-                </p>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {savingCrono && <span className="text-xs text-gray-600">Guardando...</span>}
-                  {cronoRows.length > 0 && (
-                    <button onClick={() => guardarCronograma(cronoRows)} disabled={savingCrono}
-                      className="text-xs bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black font-semibold px-3 py-1 rounded-lg transition-colors">
-                      Guardar
-                    </button>
-                  )}
-                </div>
-              </div>
-              <p className="text-[11px] text-gray-600 mb-4">{VISTAS_CRONOLOGIA.LOGISTICA.descripcion}</p>
-              <div className="space-y-8">
-                {renderFaseExtra("montaje")}
-                {renderFaseExtra("desmontaje")}
-              </div>
-            </div>
-          )}
 
           {/* ── Cronología 2: proveedores (se captura en el panel de arriba) ── */}
           {!esRenta && (() => {
@@ -5945,6 +5945,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       }
                     : null,
                   encargadoNombre: proyecto.encargado?.name ?? null,
+                  encargadoContacto:
+                    usuariosActivos.find(u => u.id === proyecto.encargado?.id)?.telefono ?? null,
                   encargadoCliente: proyecto.encargadoCliente,
                   encargadoClienteContacto: proyecto.encargadoClienteContacto,
                   encargadoLugar: proyecto.encargadoLugar,

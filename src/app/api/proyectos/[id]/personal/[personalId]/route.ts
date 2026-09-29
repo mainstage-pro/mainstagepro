@@ -80,7 +80,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       where: { id: personalId },
       include: {
         tecnico: { include: { rol: { select: { nombre: true } } } },
-        rolTecnico: { select: { nombre: true } },
+        rolTecnico: { select: { id: true, nombre: true } },
       },
     });
   });
@@ -93,7 +93,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       where: { id: personal.proyectoId },
       select: { nombre: true, fechaEvento: true },
     });
-    const rolNombre = personal.rolTecnico?.nombre ?? personal.tecnico?.rol?.nombre ?? "Técnico";
+    const rolNombre = personal.rolTecnico?.nombre ?? "Técnico";
     const tecNombre = personal.tecnico?.nombre ?? "Sin nombre";
     const fechaCompromiso = proximoMiercolesTraEvento(proyecto?.fechaEvento ?? new Date());
 

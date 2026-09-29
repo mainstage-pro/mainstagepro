@@ -97,6 +97,7 @@ export interface FichaTecnicosData {
   linkMaps: string | null;
   indicacionesAcceso: string | null;
   encargadoNombre: string | null;
+  encargadoContacto: string | null;
   encargadoCliente: string | null;
   encargadoClienteContacto: string | null;
   /** Reglas de mando reescritas en el proyecto. Lo que falte usa la de la casa. */
@@ -142,6 +143,7 @@ export function FichaTecnicos({ data }: { data: FichaTecnicosData }) {
       ? { nombre: coord.nombre, celular: coord.celular, rol: coord.rolEnEvento ?? coord.rolTecnico }
       : null,
     encargadoNombre: data.encargadoNombre,
+    encargadoContacto: data.encargadoContacto,
     encargadoCliente: data.encargadoCliente,
     encargadoClienteContacto: data.encargadoClienteContacto,
     encargadoLugar: data.encargadoLugar,
@@ -418,7 +420,7 @@ export function FichaTecnicos({ data }: { data: FichaTecnicosData }) {
                 <View style={s.contactoRow}>
                   <Text style={[s.contactoMuted, { width: 140 }]}>Coordinador Mainstage</Text>
                   <Text style={[s.contactoTxt, { flex: 1 }]}>{data.encargadoNombre}</Text>
-                  <Text style={[s.contactoMuted, { width: 110 }]}>—</Text>
+                  <Text style={[s.contactoMuted, { width: 110 }]}>{data.encargadoContacto ?? "—"}</Text>
                 </View>
               )}
               {data.encargadoLugar && (

@@ -24,6 +24,8 @@ export type CadenaMandoInput = {
   coordinadorSitio: { nombre: string; celular: string | null; rol: string | null } | null;
   /** Coordinador interno del proyecto (User.name). */
   encargadoNombre: string | null;
+  /** Su celular, del expediente de personal interno. En sitio se necesita igual. */
+  encargadoContacto: string | null;
   encargadoCliente: string | null;
   encargadoClienteContacto: string | null;
   encargadoLugar: string | null;
@@ -83,7 +85,7 @@ export function cadenaDeMando(p: CadenaMandoInput, reglas: ReglasMando = {}): Es
   const coord = p.coordinadorSitio;
   const ocupantes: Record<ClaveMando, { nombre: string | null; contacto: string | null; critico: boolean }> = {
     SITIO: { nombre: coord?.nombre ?? null, contacto: coord?.celular ?? null, critico: !coord },
-    CAMBIOS: { nombre: p.encargadoNombre, contacto: null, critico: !p.encargadoNombre },
+    CAMBIOS: { nombre: p.encargadoNombre, contacto: p.encargadoContacto, critico: !p.encargadoNombre },
     CLIENTE: { nombre: p.encargadoCliente, contacto: p.encargadoClienteContacto, critico: false },
     VENUE: { nombre: p.encargadoLugar, contacto: p.encargadoLugarContacto, critico: false },
   };

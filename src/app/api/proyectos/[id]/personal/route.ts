@@ -41,7 +41,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     },
     include: {
       tecnico: { include: { rol: { select: { nombre: true } } } },
-      rolTecnico: { select: { nombre: true } },
+      rolTecnico: { select: { id: true, nombre: true } },
     },
   });
 
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       select: { nombre: true, fechaEvento: true },
     });
 
-    const rolNombre = personal.rolTecnico?.nombre ?? personal.tecnico?.rol?.nombre ?? "Técnico";
+    const rolNombre = personal.rolTecnico?.nombre ?? "Técnico";
     const tecNombre = personal.tecnico ? personal.tecnico.nombre ?? "Sin nombre" : "Por asignar";
 
     // Fecha compromiso = día siguiente al evento
