@@ -96,6 +96,7 @@ export function Panel({
   hrefLabel = "Ver todo",
   children,
   className = "",
+  scroll = false,
 }: {
   titulo: string;
   nota?: ReactNode;
@@ -103,6 +104,8 @@ export function Panel({
   hrefLabel?: string;
   children: ReactNode;
   className?: string;
+  /** Altura fija con desplazamiento: el panel no crece, se recorre. */
+  scroll?: boolean;
 }) {
   return (
     <section className={`ms-card flex flex-col ${className}`}>
@@ -117,7 +120,7 @@ export function Panel({
           </Link>
         )}
       </div>
-      <div className="flex-1">{children}</div>
+      <div className={scroll ? "flex-1 max-h-72 overflow-y-auto" : "flex-1"}>{children}</div>
     </section>
   );
 }
@@ -165,6 +168,36 @@ export function Fila({
   return cuerpo;
 }
 
+/** Encabezado de un grupo (cliente, proveedor) con sus documentos dentro. */
+export function Grupo({
+  titulo,
+  meta,
+  valor,
+  tono = "neutro",
+  children,
+}: {
+  titulo: ReactNode;
+  meta?: ReactNode;
+  valor?: ReactNode;
+  tono?: Tono;
+  children: ReactNode;
+}) {
+  return (
+    <div>
+      <div className="flex items-center gap-3 px-4 py-2 border-t border-[#1a1a1a] bg-[#141414] sticky top-0 z-10">
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-semibold text-white truncate leading-tight">{titulo}</p>
+          {meta && <p className="ms-meta truncate mt-0.5">{meta}</p>}
+        </div>
+        {valor !== undefined && (
+          <p className={`text-[13px] font-semibold tabular-nums shrink-0 ${TEXTO[tono]}`}>{valor}</p>
+        )}
+      </div>
+      <div className="pl-3">{children}</div>
+    </div>
+  );
+}
+
 export function Vacio({ texto = "Nada pendiente aquí" }: { texto?: string }) {
   return (
     <div className="px-4 py-6 border-t border-[#1a1a1a] text-center">
@@ -205,6 +238,63 @@ export function BarraDistribucion({
               <b className={`tabular-nums ${TEXTO[s.tono]}`}>{s.valor}</b>
             </span>
           ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Ingreso y gasto pareados por mes, como en el tablero de dirección.
+ * Las dos series comparten escala: si cada una se normalizara por su propio
+ * máximo, un mes con gasto mayor que el ingreso se vería igual de alto y la
+ * gráfica mentiría justo donde importa.
+ */
+export function BarrasPareadas({
+  datos,
+  formato = (n: number) => String(n),
+  etiquetaA = "Ingreso",
+  etiquetaB = "Gasto",
+}: {
+  datos: { label: string; a: number; b: number }[];
+  formato?: (n: number) => string;
+  etiquetaA?: string;
+  etiquetaB?: string;
+}) {
+  if (datos.length === 0) return <Vacio texto="Sin datos" />;
+  const max = Math.max(...datos.flatMap(d => [Math.abs(d.a), Math.abs(d.b)]), 1);
+  const alto = (v: number) => `${Math.max(2, (Math.abs(v) / max) * 128)}px`;
+
+  return (
+    <div className="px-4 pb-4 pt-1">
+      <div className="flex items-end gap-2 md:gap-4 h-40">
+        {datos.map(d => (
+          <div key={d.label} className="flex-1 flex flex-col justify-end items-center gap-1 min-w-0">
+            <div className="flex items-end justify-center gap-[3px] w-full">
+              <span className="rounded-t bg-[#4ade80]/85 w-1/2 max-w-[30px]" style={{ height: alto(d.a) }} />
+              <span className="rounded-t bg-[#f87171]/75 w-1/2 max-w-[30px]" style={{ height: alto(d.b) }} />
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="flex gap-2 md:gap-4 mt-1.5">
+        {datos.map(d => (
+          <div key={d.label} className="flex-1 min-w-0 text-center">
+            <p className="ms-micro truncate">{d.label}</p>
+            <p className="ms-micro tabular-nums text-green-400 truncate">{formato(d.a)}</p>
+            <p className="ms-micro tabular-nums text-red-400 truncate">{formato(d.b)}</p>
+          </div>
+        ))}
+      </div>
+      <div className="flex gap-4 mt-2.5">
+        {[
+          { color: "bg-[#4ade80]/85", label: etiquetaA },
+          { color: "bg-[#f87171]/75", label: etiquetaB },
+        ].map(l => (
+          <span key={l.label} className="flex items-center gap-1.5 ms-micro">
+            <span className={`w-2.5 h-2.5 rounded-sm ${l.color}`} aria-hidden />
+            {l.label}
+          </span>
+        ))}
       </div>
     </div>
   );

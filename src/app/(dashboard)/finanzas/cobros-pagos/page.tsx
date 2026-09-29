@@ -367,6 +367,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
   const [pageTabState, setPageTab] = useState<"cobros" | "programacion">("cobros");
   const pageTab = view ?? pageTabState;
   const [tab, setTab] = useState<"cobrar" | "pagar" | "directos">("cobrar");
+  const [resaltado, setResaltado] = useState<string | null>(null);
   const [movDirectos, setMovDirectos] = useState<MovDirecto[]>([]);
   // Programación semanal
   const [semanasOp, setSemanasOp] = useState<SemanaOpLocal[]>([]);
@@ -640,6 +641,26 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
       setGuardandoNuevo(false);
     }
   }
+
+  // Enlace profundo desde los resúmenes: ?tab=cobrar|pagar|directos&id=<cuenta>.
+  // Se lee en efecto y no en el estado inicial porque el servidor no ve la query
+  // y el render no coincidiría al hidratar.
+  useEffect(() => {
+    if (view) return;
+    const q = new URLSearchParams(window.location.search);
+    const t = q.get("tab");
+    if (t === "cobrar" || t === "pagar" || t === "directos") setTab(t);
+    setResaltado(q.get("id"));
+  }, [view]);
+
+  useEffect(() => {
+    if (!resaltado || loading) return;
+    const el = document.getElementById(`cuenta-${resaltado}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    const t = setTimeout(() => setResaltado(null), 4000);
+    return () => clearTimeout(t);
+  }, [resaltado, loading]);
 
   // Compare YYYY-MM-DD strings to avoid UTC-vs-local timezone mismatch.
   // Dates from DB come as ISO strings (UTC midnight). Using < hoyStr means
@@ -1323,7 +1344,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
               )}
               <div className="space-y-2">
                 {grupo.items.map(c => (
-            <div key={c.id} className={`relative hover:z-50 focus-within:z-50 bg-[#111] border rounded-xl px-4 py-3 ${c.esVencida ? "border-red-900/40" : "border-[#1e1e1e]"}`}>
+            <div key={c.id} id={`cuenta-${c.id}`} className={`relative hover:z-50 focus-within:z-50 bg-[#111] border rounded-xl px-4 py-3 ${resaltado === c.id ? "border-[#B3985B] ring-2 ring-[#B3985B]/40" : c.esVencida ? "border-red-900/40" : "border-[#1e1e1e]"}`}>
               <div className="flex items-start gap-3">
                 {/* Info principal */}
                 <div className="flex-1 min-w-0">
@@ -1598,7 +1619,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
             const beneficiario = c.socio?.nombre ?? c.empresa?.nombre ?? c.proveedor?.nombre ?? c.tecnico?.nombre ?? "—";
             const telefono = c.empresa?.telefono ?? c.proveedor?.telefono ?? c.tecnico?.celular ?? null;
             return (
-              <div key={c.id} className={`relative hover:z-50 focus-within:z-50 bg-[#111] border rounded-xl px-4 py-3 ${c.esVencida ? "border-red-900/40" : "border-[#1e1e1e]"}`}>
+              <div key={c.id} id={`cuenta-${c.id}`} className={`relative hover:z-50 focus-within:z-50 bg-[#111] border rounded-xl px-4 py-3 ${resaltado === c.id ? "border-[#B3985B] ring-2 ring-[#B3985B]/40" : c.esVencida ? "border-red-900/40" : "border-[#1e1e1e]"}`}>
                 <div className="flex items-start gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">

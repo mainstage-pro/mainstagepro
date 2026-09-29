@@ -2,9 +2,88 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { resumenFinanzas } from "@/lib/resumen/finanzas";
 import { fmtMoneda, fmtMonedaCorta, relativo } from "@/lib/resumen/base";
-import { EncabezadoResumen, Fila, Kpi, Panel, Badge, Vacio, MiniBarras } from "@/components/resumen/ui";
+import {
+  EncabezadoResumen,
+  Fila,
+  Kpi,
+  Panel,
+  Badge,
+  Vacio,
+  BarrasPareadas,
+  Grupo,
+  type Tono,
+} from "@/components/resumen/ui";
 
 export const dynamic = "force-dynamic";
+
+type Bucket = {
+  total: number;
+  n: number;
+  grupos: {
+    quien: string;
+    total: number;
+    n: number;
+    diasMax: number;
+    docs: { id: string; concepto: string; proyecto: string | null; saldo: number; dias: number }[];
+  }[];
+};
+
+/**
+ * Un panel de cartera: agrupado por contraparte y con alto fijo. El "Ver todo"
+ * y cada documento apuntan a su pestaña y a su cuenta, no al listado entero.
+ */
+function PanelAgrupado({
+  titulo,
+  bucket,
+  destino,
+  vacio,
+  vencido = false,
+}: {
+  titulo: string;
+  bucket: Bucket;
+  destino: "cobrar" | "pagar";
+  vacio: string;
+  vencido?: boolean;
+}) {
+  return (
+    <Panel
+      titulo={titulo}
+      nota={`${bucket.n} documentos · ${bucket.grupos.length} ${destino === "cobrar" ? "clientes" : "acreedores"} · ${fmtMoneda(bucket.total)}`}
+      href={`/finanzas/cobros-pagos?tab=${destino}`}
+      scroll
+    >
+      {bucket.grupos.length === 0 ? (
+        <Vacio texto={vacio} />
+      ) : (
+        bucket.grupos.map(g => {
+          const tonoGrupo: Tono = vencido ? (g.diasMax >= 30 ? "rojo" : "ambar") : destino === "cobrar" ? "azul" : "neutro";
+          return (
+            <Grupo
+              key={g.quien}
+              titulo={g.quien}
+              meta={`${g.n} ${g.n === 1 ? "documento" : "documentos"}`}
+              valor={fmtMoneda(g.total)}
+              tono={tonoGrupo}
+            >
+              {g.docs.map(d => (
+                <Fila
+                  key={d.id}
+                  href={`/finanzas/cobros-pagos?tab=${destino}&id=${d.id}`}
+                  tono={tonoGrupo}
+                  titulo={d.concepto}
+                  meta={d.proyecto ?? undefined}
+                  badge={vencido ? <Badge tono={d.dias >= 30 ? "rojo" : "ambar"}>{d.dias}d</Badge> : undefined}
+                  valor={fmtMoneda(d.saldo)}
+                  valorNota={vencido ? undefined : relativo(-d.dias)}
+                />
+              ))}
+            </Grupo>
+          );
+        })
+      )}
+    </Panel>
+  );
+}
 
 export default async function ResumenFinanzasPage() {
   const session = await getSession();
@@ -66,107 +145,43 @@ export default async function ResumenFinanzasPage() {
         </Panel>
 
         <Panel titulo="Ingreso vs gasto — 6 meses" nota="movimiento real registrado" href="/finanzas/movimientos" className="lg:col-span-2">
-          <div className="grid grid-cols-2 gap-0">
-            <div>
-              <p className="ms-micro px-4 pt-1 text-green-400">Ingreso</p>
-              <MiniBarras datos={r.meses.map(m => ({ label: m.label, valor: m.ingreso }))} formato={fmtMonedaCorta} tono="verde" />
-            </div>
-            <div>
-              <p className="ms-micro px-4 pt-1 text-red-400">Gasto</p>
-              <MiniBarras datos={r.meses.map(m => ({ label: m.label, valor: m.gasto }))} formato={fmtMonedaCorta} tono="rojo" />
-            </div>
-          </div>
+          <BarrasPareadas
+            datos={r.meses.map(m => ({ label: m.label, a: m.ingreso, b: m.gasto }))}
+            formato={fmtMonedaCorta}
+          />
         </Panel>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4 mt-4">
-        <Panel
+        <PanelAgrupado
           titulo="Cobranza vencida"
-          nota={`${r.cxcVencida.n} documentos · ${fmtMoneda(r.cxcVencida.total)}`}
-          href="/finanzas/cobros-pagos"
-        >
-          {r.cxcVencida.top.length === 0 ? (
-            <Vacio texto="Nada vencido por cobrar" />
-          ) : (
-            r.cxcVencida.top.map(c => (
-              <Fila
-                key={c.id}
-                href="/finanzas/cobros-pagos"
-                tono={c.dias >= 30 ? "rojo" : "ambar"}
-                titulo={c.quien}
-                meta={`${c.concepto}${c.proyecto ? ` · ${c.proyecto}` : ""}`}
-                badge={<Badge tono={c.dias >= 30 ? "rojo" : "ambar"}>{c.dias}d</Badge>}
-                valor={fmtMoneda(c.saldo)}
-              />
-            ))
-          )}
-        </Panel>
+          bucket={r.cxcVencida}
+          destino="cobrar"
+          vacio="Nada vencido por cobrar"
+          vencido
+        />
 
-        <Panel
+        <PanelAgrupado
           titulo="Pagos vencidos"
-          nota={`${r.cxpVencida.n} documentos · ${fmtMoneda(r.cxpVencida.total)}`}
-          href="/finanzas/cobros-pagos"
-        >
-          {r.cxpVencida.top.length === 0 ? (
-            <Vacio texto="Nada vencido por pagar" />
-          ) : (
-            r.cxpVencida.top.map(c => (
-              <Fila
-                key={c.id}
-                href="/finanzas/cobros-pagos"
-                tono={c.dias >= 30 ? "rojo" : "ambar"}
-                titulo={c.quien}
-                meta={`${c.concepto}${c.proyecto ? ` · ${c.proyecto}` : ""}`}
-                badge={<Badge tono={c.dias >= 30 ? "rojo" : "ambar"}>{c.dias}d</Badge>}
-                valor={fmtMoneda(c.saldo)}
-              />
-            ))
-          )}
-        </Panel>
+          bucket={r.cxpVencida}
+          destino="pagar"
+          vacio="Nada vencido por pagar"
+          vencido
+        />
 
-        <Panel
+        <PanelAgrupado
           titulo="Por cobrar — próximos 15 días"
-          nota={`${r.cxcPorCobrar15.n} · ${fmtMoneda(r.cxcPorCobrar15.total)}`}
-          href="/finanzas/cobros-pagos"
-        >
-          {r.cxcPorCobrar15.top.length === 0 ? (
-            <Vacio texto="Sin cobros programados" />
-          ) : (
-            r.cxcPorCobrar15.top.map(c => (
-              <Fila
-                key={c.id}
-                href="/finanzas/cobros-pagos"
-                tono="azul"
-                titulo={c.quien}
-                meta={c.concepto}
-                valor={fmtMoneda(c.saldo)}
-                valorNota={relativo(-c.dias)}
-              />
-            ))
-          )}
-        </Panel>
+          bucket={r.cxcPorCobrar15}
+          destino="cobrar"
+          vacio="Sin cobros programados"
+        />
 
-        <Panel
+        <PanelAgrupado
           titulo="Por pagar — próximos 15 días"
-          nota={`${r.cxpPorVencer.n} · ${fmtMoneda(r.cxpPorVencer.total)}`}
-          href="/finanzas/cobros-pagos"
-        >
-          {r.cxpPorVencer.top.length === 0 ? (
-            <Vacio texto="Sin pagos programados" />
-          ) : (
-            r.cxpPorVencer.top.map(c => (
-              <Fila
-                key={c.id}
-                href="/finanzas/cobros-pagos"
-                tono={-c.dias <= 3 ? "ambar" : "neutro"}
-                titulo={c.quien}
-                meta={c.concepto}
-                valor={fmtMoneda(c.saldo)}
-                valorNota={relativo(-c.dias)}
-              />
-            ))
-          )}
-        </Panel>
+          bucket={r.cxpPorVencer}
+          destino="pagar"
+          vacio="Sin pagos programados"
+        />
       </div>
     </div>
   );

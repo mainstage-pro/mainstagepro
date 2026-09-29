@@ -43,6 +43,16 @@ async function saldosPorCuenta() {
 
 const ABIERTAS = ["PENDIENTE", "PARCIAL", "VENCIDA"];
 
+type Documento = {
+  id: string;
+  concepto: string;
+  quien: string;
+  proyecto: string | null;
+  saldo: number;
+  /** Positivo = vencida hace N días; negativo = vence en N días. */
+  dias: number;
+};
+
 export async function resumenFinanzas() {
   const { hoy, finDeHoy } = ventana();
   const desde6Meses = inicioDeMes(sumarDias(hoy, -160));
@@ -63,7 +73,7 @@ export async function resumenFinanzas() {
         proyecto: { select: { numeroProyecto: true } },
       },
       orderBy: { fechaCompromiso: "asc" },
-      take: 200,
+      take: 500,
     }),
     prisma.cuentaPagar.findMany({
       where: { estado: { in: ABIERTAS } },
@@ -81,7 +91,7 @@ export async function resumenFinanzas() {
         proyecto: { select: { numeroProyecto: true } },
       },
       orderBy: { fechaCompromiso: "asc" },
-      take: 200,
+      take: 500,
     }),
     prisma.movimientoFinanciero.findMany({
       where: { fecha: { gte: desde6Meses, lte: finDeHoy } },
@@ -123,6 +133,27 @@ export async function resumenFinanzas() {
 
   const suma = (xs: { saldo: number }[]) => xs.reduce((s, x) => s + x.saldo, 0);
 
+  // La cobranza se persigue por contraparte, no por documento suelto: tres
+  // facturas del mismo cliente son una sola llamada, no tres.
+  const agrupar = (docs: Documento[]) => {
+    const porQuien = new Map<string, Documento[]>();
+    for (const d of docs) {
+      const k = d.quien || "—";
+      if (!porQuien.has(k)) porQuien.set(k, []);
+      porQuien.get(k)!.push(d);
+    }
+    return [...porQuien.entries()]
+      .map(([quien, xs]) => ({
+        quien,
+        total: suma(xs),
+        n: xs.length,
+        // El documento más viejo manda el color del grupo.
+        diasMax: Math.max(...xs.map(x => x.dias)),
+        docs: xs.slice().sort((a, b) => b.saldo - a.saldo),
+      }))
+      .sort((a, b) => b.total - a.total);
+  };
+
   // Serie mensual de ingreso vs gasto: la única forma de ver si el saldo de hoy
   // es una racha o un accidente.
   const meses: { label: string; ingreso: number; gasto: number }[] = [];
@@ -150,10 +181,10 @@ export async function resumenFinanzas() {
     porPagar,
     // Lo que realmente queda si todo se cobra y todo se paga.
     posicion: totalBancos + porCobrar - porPagar,
-    cxcVencida: { total: suma(cxcVencida), n: cxcVencida.length, top: cxcVencida.sort((a, b) => b.saldo - a.saldo).slice(0, 6) },
-    cxpVencida: { total: suma(cxpVencida), n: cxpVencida.length, top: cxpVencida.sort((a, b) => b.saldo - a.saldo).slice(0, 6) },
-    cxpPorVencer: { total: suma(cxpPorVencer), n: cxpPorVencer.length, top: cxpPorVencer.slice(0, 5) },
-    cxcPorCobrar15: { total: suma(cxcPorCobrar15), n: cxcPorCobrar15.length, top: cxcPorCobrar15.slice(0, 5) },
+    cxcVencida: { total: suma(cxcVencida), n: cxcVencida.length, grupos: agrupar(cxcVencida) },
+    cxpVencida: { total: suma(cxpVencida), n: cxpVencida.length, grupos: agrupar(cxpVencida) },
+    cxpPorVencer: { total: suma(cxpPorVencer), n: cxpPorVencer.length, grupos: agrupar(cxpPorVencer) },
+    cxcPorCobrar15: { total: suma(cxcPorCobrar15), n: cxcPorCobrar15.length, grupos: agrupar(cxcPorCobrar15) },
     meses,
   };
 }
