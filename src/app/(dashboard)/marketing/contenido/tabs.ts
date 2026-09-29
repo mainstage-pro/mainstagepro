@@ -1,6 +1,7 @@
 import type { ModuleNavTab } from "@/components/ModuleTabsLayout";
 
 export const contenidoTabs: ModuleNavTab[] = [
+  { href: "/marketing/contenido/resumen", label: "Resumen", accessKey: "mkt-contenido" },
   { href: "/marketing/contenido/parrilla", label: "Parrilla", accessKey: "mkt-contenido" },
   { href: "/marketing/contenido/feed", label: "Feed IG", accessKey: "mkt-contenido" },
   { href: "/marketing/contenido/tipos", label: "Tipos", accessKey: "mkt-contenido" },

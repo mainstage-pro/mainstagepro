@@ -90,7 +90,7 @@ export const NAV: NavSection[] = [
         icon: FolderKanban,
         children: [
           { key: "proyectos-resumen", accessKey: "proyectos", label: "Resumen", href: "/proyectos/resumen" },
-          { key: "proyectos-lista", accessKey: "proyectos", label: "Proyectos", href: "/proyectos" },
+          { key: "proyectos-lista", accessKey: "proyectos", label: "Proyectos", href: "/proyectos/lista" },
         ],
       },
       { key: "proyectos-empresa", accessKey: "proyectos", label: "Proyectos de empresa", href: "/proyectos-de-empresa", icon: Building2 },
@@ -214,7 +214,7 @@ export const NAV: NavSection[] = [
         href: "/marketing/contenido",
         icon: PenTool,
         children: [
-          { key: "mkt-resumen", accessKey: "mkt-contenido", label: "Resumen", href: "/marketing/resumen" },
+          { key: "mkt-resumen", accessKey: "mkt-contenido", label: "Resumen", href: "/marketing/contenido/resumen" },
           { key: "mkt-parrilla", accessKey: "mkt-contenido", label: "Parrilla", href: "/marketing/contenido/parrilla" },
         ],
       },
