@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getTipoMovimientoMap, naturalezaDe } from "@/lib/tipos-movimiento";
-import { diasEntre, fmtMes, inicioDeMes, num, sumarDias, ventana } from "./base";
+import { diasEntre, fmtDiaAnio, fmtMes, inicioDeMes, num, sumarDias, ventana } from "./base";
 
 /**
  * El saldo de una cuenta no está almacenado en ningún campo: se deriva del
@@ -48,6 +48,10 @@ type Documento = {
   concepto: string;
   quien: string;
   proyecto: string | null;
+  /** Fecha del evento del proyecto ligado, ya formateada. */
+  proyectoFecha: string | null;
+  /** Fecha compromiso, ya formateada. */
+  fecha: string;
   saldo: number;
   /** Positivo = vencida hace N días; negativo = vence en N días. */
   dias: number;
@@ -70,10 +74,9 @@ export async function resumenFinanzas() {
         fechaCompromiso: true,
         estado: true,
         cliente: { select: { nombre: true, empresa: true } },
-        proyecto: { select: { numeroProyecto: true } },
+        proyecto: { select: { numeroProyecto: true, fechaEvento: true } },
       },
       orderBy: { fechaCompromiso: "asc" },
-      take: 500,
     }),
     prisma.cuentaPagar.findMany({
       where: { estado: { in: ABIERTAS } },
@@ -88,10 +91,9 @@ export async function resumenFinanzas() {
         tipoAcreedor: true,
         proveedor: { select: { nombre: true } },
         tecnico: { select: { nombre: true } },
-        proyecto: { select: { numeroProyecto: true } },
+        proyecto: { select: { numeroProyecto: true, fechaEvento: true } },
       },
       orderBy: { fechaCompromiso: "asc" },
-      take: 500,
     }),
     prisma.movimientoFinanciero.findMany({
       where: { fecha: { gte: desde6Meses, lte: finDeHoy } },
@@ -101,6 +103,8 @@ export async function resumenFinanzas() {
   ]);
 
   const dia = (f: Date) => new Date(f.toISOString().slice(0, 10));
+  const anio = hoy.getUTCFullYear();
+  const fmtF = (f: Date | null | undefined) => (f ? fmtDiaAnio(dia(f), anio) : null);
 
   const cxc = cxcAbiertas.map(c => {
     const saldo = num(c.monto) - num(c.montoCobrado) - num(c.montoCompensado);
@@ -109,6 +113,8 @@ export async function resumenFinanzas() {
       concepto: c.concepto,
       quien: c.cliente?.empresa || c.cliente?.nombre || "—",
       proyecto: c.proyecto?.numeroProyecto ?? null,
+      proyectoFecha: fmtF(c.proyecto?.fechaEvento),
+      fecha: fmtF(c.fechaCompromiso)!,
       saldo,
       dias: diasEntre(dia(c.fechaCompromiso), hoy), // positivo = vencida
     };
@@ -121,6 +127,8 @@ export async function resumenFinanzas() {
       concepto: c.concepto,
       quien: c.proveedor?.nombre || c.tecnico?.nombre || c.tipoAcreedor,
       proyecto: c.proyecto?.numeroProyecto ?? null,
+      proyectoFecha: fmtF(c.proyecto?.fechaEvento),
+      fecha: fmtF(c.fechaCompromiso)!,
       saldo,
       dias: diasEntre(dia(c.fechaCompromiso), hoy),
     };

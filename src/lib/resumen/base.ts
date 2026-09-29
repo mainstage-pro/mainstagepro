@@ -46,6 +46,16 @@ export function fmtDia(fecha: Date): string {
   return fecha.toLocaleDateString("es-MX", { day: "numeric", month: "short", timeZone: "UTC" });
 }
 
+/** "12 oct", con año solo cuando no es el del año en curso: ahí sí confunde. */
+export function fmtDiaAnio(fecha: Date, anioActual: number): string {
+  return fecha.toLocaleDateString("es-MX", {
+    day: "numeric",
+    month: "short",
+    ...(fecha.getUTCFullYear() === anioActual ? {} : { year: "numeric" }),
+    timeZone: "UTC",
+  });
+}
+
 export function fmtDiaSemana(fecha: Date): string {
   return fecha.toLocaleDateString("es-MX", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
 }

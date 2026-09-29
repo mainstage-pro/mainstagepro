@@ -25,8 +25,13 @@ export async function resumenVentas() {
         },
       }),
       prisma.trato.count({ where: { etapa: { in: ABIERTAS }, fechaProximaAccion: null } }),
+      // El corte de "15 días" se hace en la consulta: traer todas las vivas para
+      // luego descartarlas en memoria arriesga perder las que sí urgen.
       prisma.cotizacion.findMany({
-        where: { estado: { in: COTIZACION_VIVA }, fechaVencimiento: { not: null } },
+        where: {
+          estado: { in: COTIZACION_VIVA },
+          fechaVencimiento: { not: null, lte: sumarDias(hoy, 15) },
+        },
         select: {
           id: true,
           numeroCotizacion: true,
@@ -37,7 +42,6 @@ export async function resumenVentas() {
           cliente: { select: { nombre: true, empresa: true } },
         },
         orderBy: { fechaVencimiento: "asc" },
-        take: 60,
       }),
       prisma.trato.findMany({
         where: { etapa: "VENTA_CERRADA", fechaCierre: { gte: hace90, lte: finDeHoy } },
@@ -52,7 +56,6 @@ export async function resumenVentas() {
           cliente: { select: { nombre: true, empresa: true } },
         },
         orderBy: { fechaCierre: "desc" },
-        take: 40,
       }),
       prisma.trato.findMany({
         where: { etapa: "VENTA_PERDIDA", fechaCierre: { gte: hace90 } },
@@ -69,7 +72,6 @@ export async function resumenVentas() {
           cliente: { select: { nombre: true, empresa: true } },
         },
         orderBy: { fechaEvento: "asc" },
-        take: 20,
       }),
       prisma.trato.groupBy({ by: ["etapa"], where: { etapa: { in: ABIERTAS } }, _count: { _all: true } }),
     ]);
@@ -129,7 +131,7 @@ export async function resumenVentas() {
       n: cerradasMes.length,
       monto: cerradasMes.reduce((s, t) => s + num(t.montoFinal || t.presupuestoEstimado), 0),
     },
-    ultimasCerradas: cerradasRecientes.slice(0, 6).map(t => ({
+    cerradas90: cerradasRecientes.map(t => ({
       id: t.id,
       titulo: t.nombreEvento ?? "Trato",
       cliente: nombre(t.cliente),

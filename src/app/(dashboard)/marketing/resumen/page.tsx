@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { resumenMarketing } from "@/lib/resumen/marketing";
 import { fmtMoneda, fmtMonedaCorta, relativo } from "@/lib/resumen/base";
 import { EncabezadoResumen, Fila, Kpi, Panel, Badge, Vacio, type Tono } from "@/components/resumen/ui";
+import { FilaOperable, type Accion } from "@/components/resumen/acciones";
 
 export const dynamic = "force-dynamic";
 
@@ -23,12 +24,51 @@ function miles(n: number): string {
   return String(n);
 }
 
+/**
+ * Mover la parrilla desde el resumen: una publicación atrasada casi siempre ya
+ * salió y nadie la marcó, o hay que recorrerle la fecha. "Lista" sólo aparece
+ * mientras se está produciendo.
+ */
+function accionesPublicacion(id: string, estado: string, hoy: string): Accion[] {
+  const publicar: Accion = {
+    clave: "publicada",
+    label: "Ya se publicó",
+    endpoint: `/api/marketing/publicaciones/${id}`,
+    metodo: "PATCH",
+    tono: "verde",
+    hecho: "Publicación marcada como publicada",
+    confirmar: "Sale de la parrilla pendiente y cuenta en el alcance del mes.",
+    cuerpo: { estado: "PUBLICADO" },
+  };
+  const reprogramar: Accion = {
+    clave: "reprogramar",
+    label: "Reprogramar",
+    endpoint: `/api/marketing/publicaciones/${id}`,
+    metodo: "PATCH",
+    tono: "ambar",
+    hecho: "Fecha actualizada",
+    campos: [{ nombre: "fecha", etiqueta: "Nueva fecha", tipo: "fecha", requerido: true, inicial: hoy }],
+  };
+  const lista: Accion = {
+    clave: "lista",
+    label: "Marcar lista",
+    endpoint: `/api/marketing/publicaciones/${id}`,
+    metodo: "PATCH",
+    tono: "azul",
+    hecho: "Publicación lista para salir",
+    confirmar: "El material ya está producido y sólo falta que salga.",
+    cuerpo: { estado: "LISTO" },
+  };
+  return estado === "LISTO" ? [publicar, reprogramar] : [lista, publicar, reprogramar];
+}
+
 export default async function ResumenMarketingPage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
   const r = await resumenMarketing();
   const cpl = r.leads30 > 0 ? r.gasto30 / r.leads30 : 0;
+  const hoy = new Date().toISOString().slice(0, 10);
 
   return (
     <div className="ms-page">
@@ -73,12 +113,13 @@ export default async function ResumenMarketingPage() {
           titulo="Próximas publicaciones"
           nota={`${r.listasParaSalir} listas · ${r.sinProducir} sin producir`}
           href="/marketing/contenido/parrilla"
+          scroll
         >
           {r.proximas.length === 0 ? (
             <Vacio texto="Nada programado en los próximos 14 días" />
           ) : (
-            r.proximas.slice(0, 8).map(p => (
-              <Fila
+            r.proximas.map(p => (
+              <FilaOperable
                 key={p.id}
                 href="/marketing/contenido/parrilla"
                 tono={p.estado === "LISTO" ? "verde" : p.dias <= 2 ? "ambar" : "neutro"}
@@ -86,6 +127,7 @@ export default async function ResumenMarketingPage() {
                 meta={[p.detalle, p.redes.join(" · ")].filter(Boolean).join(" — ")}
                 badge={<Badge tono={ESTADO_TONO[p.estado] ?? "neutro"}>{ESTADO_LABEL[p.estado] ?? p.estado}</Badge>}
                 valor={relativo(p.dias)}
+                acciones={accionesPublicacion(p.id, p.estado, hoy)}
               />
             ))
           )}
@@ -95,12 +137,13 @@ export default async function ResumenMarketingPage() {
           titulo="Publicaciones no realizadas"
           nota="fecha pasada y siguen sin publicarse"
           href="/marketing/contenido/parrilla"
+          scroll
         >
           {r.atrasadas.length === 0 ? (
             <Vacio texto="La parrilla está al día" />
           ) : (
-            r.atrasadas.slice(0, 8).map(p => (
-              <Fila
+            r.atrasadas.map(p => (
+              <FilaOperable
                 key={p.id}
                 href="/marketing/contenido/parrilla"
                 tono={-p.dias >= 14 ? "rojo" : "ambar"}
@@ -109,6 +152,7 @@ export default async function ResumenMarketingPage() {
                 badge={<Badge tono={ESTADO_TONO[p.estado] ?? "neutro"}>{ESTADO_LABEL[p.estado] ?? p.estado}</Badge>}
                 valor={`${-p.dias}d`}
                 valorNota="de atraso"
+                acciones={accionesPublicacion(p.id, p.estado, hoy)}
               />
             ))
           )}
@@ -118,11 +162,12 @@ export default async function ResumenMarketingPage() {
           titulo="Campañas"
           nota={`${r.activas.length} en el aire · ${r.campanas.length} vivas`}
           href="/marketing/publicidad/campanas"
+          scroll
         >
           {r.campanas.length === 0 ? (
             <Vacio texto="Sin campañas programadas" />
           ) : (
-            r.campanas.slice(0, 8).map(c => (
+            r.campanas.map(c => (
               <Fila
                 key={c.id}
                 href="/marketing/publicidad/campanas"
@@ -164,15 +209,15 @@ export default async function ResumenMarketingPage() {
             </div>
           </Panel>
 
-          <Panel titulo="Huecos que cuestan dinero" nota="campañas sin control de gasto o sin brief">
+          <Panel titulo="Huecos que cuestan dinero" nota="campañas sin control de gasto o sin brief" scroll>
             {r.sinPresupuesto.length === 0 && r.sinBrief.length === 0 ? (
               <Vacio texto="Todas las campañas están completas" />
             ) : (
               <>
-                {r.sinPresupuesto.slice(0, 4).map(c => (
+                {r.sinPresupuesto.map(c => (
                   <Fila key={`p-${c.id}`} href="/marketing/publicidad/campanas" tono="ambar" titulo={c.nombre} meta="Sin presupuesto definido" />
                 ))}
-                {r.sinBrief.slice(0, 4).map(c => (
+                {r.sinBrief.map(c => (
                   <Fila
                     key={`b-${c.id}`}
                     href="/marketing/publicidad/campanas"

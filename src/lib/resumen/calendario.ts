@@ -60,7 +60,6 @@ export async function resumenCalendario(vista: Vista) {
       where: { estado: { in: PROYECTO_VIVO }, fechaEvento: { gt: hasta } },
       select: { id: true, numeroProyecto: true, nombre: true, fechaEvento: true, cliente: { select: { nombre: true, empresa: true } } },
       orderBy: { fechaEvento: "asc" },
-      take: 5,
     }),
   ]);
 
@@ -116,7 +115,6 @@ export async function resumenCalendario(vista: Vista) {
       fecha: proximaOcurrencia(e.mes_inicio, e.dia_inicio ?? 1, hoy),
     }))
     .sort((a, b) => a.fecha.getTime() - b.fecha.getTime())
-    .slice(0, 5)
     .map(e => ({ ...e, dias: diasEntre(hoy, e.fecha) }));
 
   const finTemporada = temporadaActual

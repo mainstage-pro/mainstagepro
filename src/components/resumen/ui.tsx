@@ -1,14 +1,17 @@
 // Primitivas de los dashboards de resumen.
 //
-// Todo es server component: cero JavaScript en el cliente. Un resumen se lee,
-// no se opera — cada renglón es un enlace a donde sí se ejecuta la acción.
+// La lectura es server component: cero JavaScript para pintar cifras y renglones.
+// Operar sí requiere cliente — las acciones por renglón viven en `acciones.tsx`.
+//
+// Un panel con lista nunca recorta filas: se le fija el alto y se desplaza. Si
+// el panel truncara, el resumen mentiría sobre el tamaño del pendiente.
 
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 export type Tono = "neutro" | "oro" | "verde" | "ambar" | "rojo" | "azul";
 
-const TEXTO: Record<Tono, string> = {
+export const TEXTO: Record<Tono, string> = {
   neutro: "text-white",
   oro: "text-[#B3985B]",
   verde: "text-green-400",
@@ -26,7 +29,7 @@ const BADGE: Record<Tono, string> = {
   azul: "ms-badge ms-badge-blue",
 };
 
-const BARRA: Record<Tono, string> = {
+export const BARRA: Record<Tono, string> = {
   neutro: "bg-[#3a3a3a]",
   oro: "bg-[#B3985B]",
   verde: "bg-green-500",
@@ -104,8 +107,11 @@ export function Panel({
   hrefLabel?: string;
   children: ReactNode;
   className?: string;
-  /** Altura fija con desplazamiento: el panel no crece, se recorre. */
-  scroll?: boolean;
+  /**
+   * Altura fija con desplazamiento: el panel no crece, se recorre. `"alto"` para
+   * los paneles anchos (agenda, calendario) que ya venían con más aire.
+   */
+  scroll?: boolean | "alto";
 }) {
   return (
     <section className={`ms-card flex flex-col ${className}`}>
@@ -120,7 +126,17 @@ export function Panel({
           </Link>
         )}
       </div>
-      <div className={scroll ? "flex-1 max-h-72 overflow-y-auto" : "flex-1"}>{children}</div>
+      <div
+        className={
+          scroll === "alto"
+            ? "flex-1 max-h-[420px] overflow-y-auto overscroll-contain"
+            : scroll
+              ? "flex-1 max-h-72 overflow-y-auto overscroll-contain"
+              : "flex-1"
+        }
+      >
+        {children}
+      </div>
     </section>
   );
 }

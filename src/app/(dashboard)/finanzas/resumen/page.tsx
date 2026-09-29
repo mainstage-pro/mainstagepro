@@ -13,8 +13,61 @@ import {
   Grupo,
   type Tono,
 } from "@/components/resumen/ui";
+import { FilaOperable, type Accion } from "@/components/resumen/acciones";
 
 export const dynamic = "force-dynamic";
+
+const METODOS = [
+  { value: "TRANSFERENCIA", label: "Transferencia" },
+  { value: "EFECTIVO", label: "Efectivo" },
+  { value: "TARJETA", label: "Tarjeta" },
+  { value: "CHEQUE", label: "Cheque" },
+];
+
+/**
+ * Cobrar, pagar y reprogramar desde el propio renglón. El monto arranca en el
+ * saldo: lo normal es liquidar completo y el abono parcial solo lo corrige.
+ */
+function accionesDoc(
+  id: string,
+  saldo: number,
+  destino: "cobrar" | "pagar",
+  cuentas: { value: string; label: string }[],
+  hoy: string,
+): Accion[] {
+  const esCobro = destino === "cobrar";
+  const base = `/api/cuentas-${esCobro ? "cobrar" : "pagar"}/${id}`;
+  return [
+    {
+      clave: "abonar",
+      label: esCobro ? "Registrar cobro" : "Registrar pago",
+      endpoint: `${base}/pagar`,
+      metodo: "POST",
+      tono: esCobro ? "verde" : "ambar",
+      hecho: esCobro ? "Cobro registrado" : "Pago registrado",
+      campos: [
+        { nombre: "monto", etiqueta: "Monto", tipo: "monto", requerido: true, inicial: String(saldo) },
+        { nombre: "fecha", etiqueta: "Fecha", tipo: "fecha", inicial: hoy },
+        {
+          nombre: "cuentaId",
+          etiqueta: esCobro ? "Cuenta destino" : "Cuenta origen",
+          tipo: "opcion",
+          opciones: cuentas,
+        },
+        { nombre: "metodoPago", etiqueta: "Método", tipo: "opcion", inicial: "TRANSFERENCIA", opciones: METODOS },
+      ],
+    },
+    {
+      clave: "reprogramar",
+      label: "Reprogramar",
+      endpoint: base,
+      metodo: "PATCH",
+      tono: "neutro",
+      hecho: "Fecha compromiso actualizada",
+      campos: [{ nombre: "fechaCompromiso", etiqueta: "Nueva fecha", tipo: "fecha", requerido: true, inicial: hoy }],
+    },
+  ];
+}
 
 type Bucket = {
   total: number;
@@ -24,7 +77,15 @@ type Bucket = {
     total: number;
     n: number;
     diasMax: number;
-    docs: { id: string; concepto: string; proyecto: string | null; saldo: number; dias: number }[];
+    docs: {
+      id: string;
+      concepto: string;
+      proyecto: string | null;
+      proyectoFecha: string | null;
+      fecha: string;
+      saldo: number;
+      dias: number;
+    }[];
   }[];
 };
 
@@ -37,12 +98,16 @@ function PanelAgrupado({
   bucket,
   destino,
   vacio,
+  cuentas,
+  hoy,
   vencido = false,
 }: {
   titulo: string;
   bucket: Bucket;
   destino: "cobrar" | "pagar";
   vacio: string;
+  cuentas: { value: string; label: string }[];
+  hoy: string;
   vencido?: boolean;
 }) {
   return (
@@ -66,15 +131,20 @@ function PanelAgrupado({
               tono={tonoGrupo}
             >
               {g.docs.map(d => (
-                <Fila
+                <FilaOperable
                   key={d.id}
                   href={`/finanzas/cobros-pagos?tab=${destino}&id=${d.id}`}
                   tono={tonoGrupo}
                   titulo={d.concepto}
-                  meta={d.proyecto ?? undefined}
+                  meta={
+                    [d.proyecto, d.proyectoFecha && `evento ${d.proyectoFecha}`]
+                      .filter(Boolean)
+                      .join(" · ") || undefined
+                  }
                   badge={vencido ? <Badge tono={d.dias >= 30 ? "rojo" : "ambar"}>{d.dias}d</Badge> : undefined}
                   valor={fmtMoneda(d.saldo)}
-                  valorNota={vencido ? undefined : relativo(-d.dias)}
+                  valorNota={vencido ? d.fecha : `${d.fecha} · ${relativo(-d.dias)}`}
+                  acciones={accionesDoc(d.id, d.saldo, destino, cuentas, hoy)}
                 />
               ))}
             </Grupo>
@@ -92,6 +162,8 @@ export default async function ResumenFinanzasPage() {
   const r = await resumenFinanzas();
   const ultimoMes = r.meses[r.meses.length - 1];
   const resultadoMes = ultimoMes ? ultimoMes.ingreso - ultimoMes.gasto : 0;
+  const hoy = new Date().toISOString().slice(0, 10);
+  const opcionesCuenta = r.cuentas.map(c => ({ value: c.id, label: c.nombre }));
 
   return (
     <div className="ms-page">
@@ -158,6 +230,8 @@ export default async function ResumenFinanzasPage() {
           bucket={r.cxcVencida}
           destino="cobrar"
           vacio="Nada vencido por cobrar"
+          cuentas={opcionesCuenta}
+          hoy={hoy}
           vencido
         />
 
@@ -166,6 +240,8 @@ export default async function ResumenFinanzasPage() {
           bucket={r.cxpVencida}
           destino="pagar"
           vacio="Nada vencido por pagar"
+          cuentas={opcionesCuenta}
+          hoy={hoy}
           vencido
         />
 
@@ -174,6 +250,8 @@ export default async function ResumenFinanzasPage() {
           bucket={r.cxcPorCobrar15}
           destino="cobrar"
           vacio="Sin cobros programados"
+          cuentas={opcionesCuenta}
+          hoy={hoy}
         />
 
         <PanelAgrupado
@@ -181,6 +259,8 @@ export default async function ResumenFinanzasPage() {
           bucket={r.cxpPorVencer}
           destino="pagar"
           vacio="Sin pagos programados"
+          cuentas={opcionesCuenta}
+          hoy={hoy}
         />
       </div>
     </div>

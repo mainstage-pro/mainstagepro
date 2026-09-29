@@ -84,11 +84,17 @@ export default async function ResumenCalendarioPage({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Panel titulo={`Agenda — ${VISTAS.find(v => v.key === vista)!.label.toLowerCase()}`} nota={rango} href="/calendarios/eventos" className="lg:col-span-2">
+        <Panel
+          titulo={`Agenda — ${VISTAS.find(v => v.key === vista)!.label.toLowerCase()}`}
+          nota={rango}
+          href="/calendarios/eventos"
+          className="lg:col-span-2"
+          scroll="alto"
+        >
           {r.total === 0 ? (
             <Vacio texto="No hay eventos en este periodo" />
           ) : (
-            <div className="max-h-[460px] overflow-y-auto ms-no-scrollbar">
+            <>
               {r.dias
                 .filter(d => d.eventos.length > 0)
                 .map(d => {
@@ -121,7 +127,7 @@ export default async function ResumenCalendarioPage({
                     </div>
                   );
                 })}
-            </div>
+            </>
           )}
         </Panel>
 
@@ -152,7 +158,7 @@ export default async function ResumenCalendarioPage({
             )}
           </Panel>
 
-          <Panel titulo="Próximas fechas clave" nota="festivos y fechas especiales" href="/calendarios/festividades">
+          <Panel titulo="Próximas fechas clave" nota="festivos y fechas especiales" href="/calendarios/festividades" scroll>
             {r.festivos.length === 0 ? (
               <Vacio texto="Sin fechas registradas" />
             ) : (
@@ -169,7 +175,7 @@ export default async function ResumenCalendarioPage({
             )}
           </Panel>
 
-          <Panel titulo="Lo que viene después" nota="siguientes eventos fuera del periodo" href="/proyectos">
+          <Panel titulo="Lo que viene después" nota="siguientes eventos fuera del periodo" href="/proyectos" scroll>
             {r.siguientes.length === 0 ? (
               <Vacio texto="Sin eventos posteriores agendados" />
             ) : (

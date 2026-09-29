@@ -3,11 +3,77 @@ import { getSession } from "@/lib/auth";
 import { resumenEquipos } from "@/lib/resumen/equipos";
 import { relativo } from "@/lib/resumen/base";
 import { EncabezadoResumen, Fila, Kpi, Panel, Badge, Vacio, BarraDistribucion } from "@/components/resumen/ui";
+import { FilaOperable, type Accion } from "@/components/resumen/acciones";
 
 export const dynamic = "force-dynamic";
 
 function fmtFecha(iso: string): string {
   return new Date(iso).toLocaleDateString("es-MX", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+}
+
+/** Una falla se cierra, se manda a taller o se descarta; nada de eso mueve el estado del equipo. */
+function accionesFalla(id: string): Accion[] {
+  return [
+    {
+      clave: "resolver",
+      label: "Resolver",
+      endpoint: `/api/fallas/${id}`,
+      metodo: "PATCH",
+      tono: "verde",
+      hecho: "Falla resuelta",
+      cuerpo: { estado: "RESUELTA" },
+      campos: [{ nombre: "notaCierre", etiqueta: "Qué se hizo", tipo: "texto", placeholder: "Cambio de cable, ajuste…" }],
+    },
+    {
+      clave: "atender",
+      label: "En atención",
+      endpoint: `/api/fallas/${id}`,
+      metodo: "PATCH",
+      tono: "ambar",
+      hecho: "Falla en atención",
+      confirmar: "Marca la falla como ya tomada por alguien.",
+      cuerpo: { estado: "EN_ATENCION" },
+    },
+    {
+      clave: "descartar",
+      label: "Descartar",
+      endpoint: `/api/fallas/${id}`,
+      metodo: "PATCH",
+      tono: "neutro",
+      hecho: "Falla descartada",
+      cuerpo: { estado: "DESCARTADA" },
+      campos: [{ nombre: "notaCierre", etiqueta: "Por qué", tipo: "texto", placeholder: "No se reprodujo, error de reporte…" }],
+    },
+  ];
+}
+
+/** La recolección se cierra desde aquí: el equipo ya está en bodega o va en camino. */
+function accionesRecoleccion(id: string, hoy: string): Accion[] {
+  return [
+    {
+      clave: "completada",
+      label: "Ya en bodega",
+      endpoint: `/api/proyectos/${id}`,
+      metodo: "PATCH",
+      tono: "verde",
+      hecho: "Recolección cerrada",
+      cuerpo: { recoleccionStatus: "COMPLETADA" },
+      campos: [
+        { nombre: "recoleccionFechaReal", etiqueta: "Cuándo llegó", tipo: "fecha", requerido: true, inicial: hoy },
+        { nombre: "recoleccionNotas", etiqueta: "Observaciones", tipo: "texto", placeholder: "Faltantes, daños…" },
+      ],
+    },
+    {
+      clave: "camino",
+      label: "En camino",
+      endpoint: `/api/proyectos/${id}`,
+      metodo: "PATCH",
+      tono: "azul",
+      hecho: "Recolección en camino",
+      confirmar: "El equipo ya salió del venue pero aún no está en bodega.",
+      cuerpo: { recoleccionStatus: "EN_CAMINO" },
+    },
+  ];
 }
 
 export default async function ResumenEquiposPage() {
@@ -17,6 +83,7 @@ export default async function ResumenEquiposPage() {
   const r = await resumenEquipos();
   const fallasCriticas = r.fallas.filter(f => f.severidad === "CRITICA");
   const merma = r.totalUnidades - r.operativas;
+  const hoy = new Date().toISOString().slice(0, 10);
 
   return (
     <div className="ms-page">
@@ -68,6 +135,7 @@ export default async function ResumenEquiposPage() {
           titulo="Disponibilidad comprometida — 21 días"
           nota="pico de demanda por día, no suma del periodo"
           href="/equipos/disponibilidad"
+          scroll
         >
           {r.conflictos.length === 0 && r.tension.length === 0 ? (
             <Vacio texto="Todo lo agendado cabe en el inventario" />
@@ -99,12 +167,12 @@ export default async function ResumenEquiposPage() {
           )}
         </Panel>
 
-        <Panel titulo="Recolecciones pendientes" nota="eventos ya realizados con equipo fuera" href="/equipos/recolecciones">
+        <Panel titulo="Recolecciones pendientes" nota="eventos ya realizados con equipo fuera" href="/equipos/recolecciones" scroll>
           {r.recolecciones.length === 0 ? (
             <Vacio texto="Todo el equipo está de regreso" />
           ) : (
-            r.recolecciones.slice(0, 8).map(p => (
-              <Fila
+            r.recolecciones.map(p => (
+              <FilaOperable
                 key={p.id}
                 href={`/proyectos/${p.id}`}
                 tono={p.dias >= 7 ? "rojo" : "ambar"}
@@ -113,17 +181,18 @@ export default async function ResumenEquiposPage() {
                 badge={p.estado === "EN_CAMINO" ? <Badge tono="azul">En camino</Badge> : undefined}
                 valor={`${p.dias}d`}
                 valorNota="desde el evento"
+                acciones={accionesRecoleccion(p.id, hoy)}
               />
             ))
           )}
         </Panel>
 
-        <Panel titulo="Fallas abiertas" nota={`${r.fallas.length} sin resolver`} href="/equipos/mantenimiento">
+        <Panel titulo="Fallas abiertas" nota={`${r.fallas.length} sin resolver`} href="/equipos/mantenimiento" scroll>
           {r.fallas.length === 0 ? (
             <Vacio texto="Sin fallas reportadas" />
           ) : (
-            r.fallas.slice(0, 8).map(f => (
-              <Fila
+            r.fallas.map(f => (
+              <FilaOperable
                 key={f.id}
                 href={`/equipos/maestro?equipo=${f.equipoId}`}
                 tono={f.severidad === "CRITICA" ? "rojo" : f.severidad === "MODERADA" ? "ambar" : "neutro"}
@@ -135,6 +204,7 @@ export default async function ResumenEquiposPage() {
                   </Badge>
                 }
                 valor={`${f.dias}d`}
+                acciones={accionesFalla(f.id)}
               />
             ))
           )}
@@ -150,11 +220,11 @@ export default async function ResumenEquiposPage() {
             />
           </Panel>
 
-          <Panel titulo="Unidades caídas en equipos activos" nota="merma que no aparece en ningún estado" href="/equipos/tablero">
+          <Panel titulo="Unidades caídas en equipos activos" nota="merma que no aparece en ningún estado" href="/equipos/tablero" scroll>
             {r.unidadesCaidas.length === 0 ? (
               <Vacio texto="Todas las unidades responden" />
             ) : (
-              r.unidadesCaidas.slice(0, 5).map(e => (
+              r.unidadesCaidas.map(e => (
                 <Fila
                   key={e.id}
                   href={`/equipos/maestro?equipo=${e.id}`}
@@ -167,12 +237,12 @@ export default async function ResumenEquiposPage() {
             )}
           </Panel>
 
-          <Panel titulo="Servicios próximos" nota="mantenimiento y vehículos en 21 días" href="/equipos/vehiculos">
+          <Panel titulo="Servicios próximos" nota="mantenimiento y vehículos en 21 días" href="/equipos/vehiculos" scroll>
             {r.mantenimientos.length === 0 && r.serviciosVehiculo.length === 0 ? (
               <Vacio texto="Sin servicios programados" />
             ) : (
               <>
-                {r.mantenimientos.slice(0, 4).map(m => (
+                {r.mantenimientos.map(m => (
                   <Fila
                     key={m.id}
                     href="/equipos/mantenimiento"
@@ -182,7 +252,7 @@ export default async function ResumenEquiposPage() {
                     valor={relativo(m.dias)}
                   />
                 ))}
-                {r.serviciosVehiculo.slice(0, 3).map(v => (
+                {r.serviciosVehiculo.map(v => (
                   <Fila
                     key={v.id}
                     href="/equipos/vehiculos"
@@ -204,9 +274,10 @@ export default async function ResumenEquiposPage() {
           nota={`${r.enMantenimiento.length} en taller · ${r.dadosDeBaja.length} dados de baja`}
           href="/equipos/tablero"
           className="mt-4"
+          scroll="alto"
         >
           <div className="grid grid-cols-1 md:grid-cols-2">
-            {[...r.enMantenimiento, ...r.dadosDeBaja].slice(0, 12).map(e => (
+            {[...r.enMantenimiento, ...r.dadosDeBaja].map(e => (
               <Fila
                 key={e.id}
                 href={`/equipos/maestro?equipo=${e.id}`}

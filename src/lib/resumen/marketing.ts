@@ -26,7 +26,6 @@ export async function resumenMarketing() {
         tipo: { select: { nombre: true } },
       },
       orderBy: { fecha: "asc" },
-      take: 30,
     }),
     prisma.publicacion.findMany({
       where: { oculta: false, fecha: { gte: hace60, lt: hoy }, estado: { in: NO_PUBLICADA } },
@@ -36,7 +35,6 @@ export async function resumenMarketing() {
         tipo: { select: { nombre: true } },
       },
       orderBy: { fecha: "asc" },
-      take: 60,
     }),
     prisma.publicacion.findMany({
       where: { oculta: false, estado: "PUBLICADO", fecha: { gte: sumarDias(hoy, -30), lte: finDeHoy } },

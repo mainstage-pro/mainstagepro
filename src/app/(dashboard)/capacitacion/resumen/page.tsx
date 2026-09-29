@@ -19,7 +19,6 @@ export default function PanoramaPage() {
   const tasaAprob = historial.length ? Math.round((aprobados / historial.length) * 100) : null;
   const sinContenido = porCurso.filter((c) => !c.tieneContenido).length;
 
-  const recientes = registros.slice(0, 12);
 
   return (
     <div className="space-y-8">
@@ -69,20 +68,23 @@ export default function PanoramaPage() {
       </div>
 
       <div>
-        <h2 className="text-sm font-semibold text-white mb-3">Actividad reciente</h2>
+        <h2 className="text-sm font-semibold text-white mb-3">
+          Actividad <span style={{ color: "#6b7280" }} className="text-xs font-normal">· {registros.length} registros</span>
+        </h2>
         <div className="rounded-xl border overflow-hidden" style={{ background: "#111", borderColor: "#1e1e1e" }}>
-          <table className="w-full text-sm">
-            <thead>
-              <tr style={{ color: "#6b7280" }} className="text-xs text-left">
-                <th className="px-4 py-3 font-medium">Persona</th>
-                <th className="px-4 py-3 font-medium">Capacitación</th>
-                <th className="px-4 py-3 font-medium">Estado</th>
-                <th className="px-4 py-3 font-medium text-right">Tiempo</th>
-                <th className="px-4 py-3 font-medium text-right">Calif.</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recientes.map((r, i) => (
+          <div className="max-h-[420px] overflow-y-auto overscroll-contain">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 z-10" style={{ background: "#111" }}>
+                <tr style={{ color: "#6b7280" }} className="text-xs text-left">
+                  <th className="px-4 py-3 font-medium">Persona</th>
+                  <th className="px-4 py-3 font-medium">Capacitación</th>
+                  <th className="px-4 py-3 font-medium">Estado</th>
+                  <th className="px-4 py-3 font-medium text-right">Tiempo</th>
+                  <th className="px-4 py-3 font-medium text-right">Calif.</th>
+                </tr>
+              </thead>
+              <tbody>
+                {registros.map((r, i) => (
                 <tr key={i} className="border-t" style={{ borderColor: "#1a1a1a" }}>
                   <td className="px-4 py-3 text-white whitespace-nowrap">{r.usuario.name}</td>
                   <td className="px-4 py-3" style={{ color: "#d1d5db" }}>
@@ -102,9 +104,10 @@ export default function PanoramaPage() {
                   </td>
                 </tr>
               ))}
-              {recientes.length === 0 && <tr><td colSpan={5} className="px-4 py-6 text-center text-xs" style={{ color: "#4b5563" }}>Sin actividad todavía.</td></tr>}
-            </tbody>
-          </table>
+                {registros.length === 0 && <tr><td colSpan={5} className="px-4 py-6 text-center text-xs" style={{ color: "#4b5563" }}>Sin actividad todavía.</td></tr>}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

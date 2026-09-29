@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { resumenProyectos } from "@/lib/resumen/proyectos";
 import { fmtDiaSemana, relativo } from "@/lib/resumen/base";
 import { BarraDistribucion, EncabezadoResumen, Fila, Kpi, Panel, Badge, Vacio, type Tono } from "@/components/resumen/ui";
+import { FilaOperable, type Accion } from "@/components/resumen/acciones";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,38 @@ const ESTADO_TONO: Record<string, Tono> = {
   EN_CURSO: "oro",
   COMPLETADO: "neutro",
 };
+
+/**
+ * Sólo el siguiente paso del proyecto, no el menú completo de estados: desde la
+ * agenda lo que se hace es empujar el evento adelante. El cierre financiero no
+ * está aquí porque necesita los números calculados de la ficha.
+ */
+function accionesProyecto(id: string, estado: string): Accion[] {
+  const paso = (label: string, siguiente: string, tono: Tono, confirmar: string): Accion => ({
+    clave: siguiente,
+    label,
+    endpoint: `/api/proyectos/${id}`,
+    metodo: "PATCH",
+    tono,
+    hecho: "Proyecto actualizado",
+    confirmar,
+    cuerpo: { estado: siguiente },
+  });
+
+  if (estado === "PLANEACION") {
+    return [paso("Confirmar", "CONFIRMADO", "verde", "El cliente ya confirmó y el evento va.")];
+  }
+  if (estado === "CONFIRMADO") {
+    return [
+      paso("Arrancar", "EN_CURSO", "oro", "El montaje ya empezó."),
+      paso("Volver a planeación", "PLANEACION", "neutro", "Regresa el proyecto a planeación."),
+    ];
+  }
+  if (estado === "EN_CURSO") {
+    return [paso("Marcar terminado", "COMPLETADO", "neutro", "El evento ya terminó; queda pendiente el cierre financiero.")];
+  }
+  return [];
+}
 
 export default async function ResumenProyectosPage() {
   const session = await getSession();
@@ -40,17 +73,18 @@ export default async function ResumenProyectosPage() {
           nota={`${r.lista.length} eventos`}
           href="/proyectos"
           className="lg:col-span-2"
+          scroll="alto"
         >
           {r.lista.length === 0 ? (
             <Vacio texto="No hay eventos agendados en los próximos 30 días" />
           ) : (
-            <div className="max-h-[420px] overflow-y-auto ms-no-scrollbar">
-              {r.lista.slice(0, 18).map(p => {
+            <>
+              {r.lista.map(p => {
                 const faltaPersonal = p.personal === 0 || p.personalConfirmado < p.personal;
                 const faltaExterno = p.equiposExternosConfirmados < p.equiposExternos;
                 const enRiesgo = p.dias <= 7 && (faltaPersonal || faltaExterno || !p.planAprobado);
                 return (
-                  <Fila
+                  <FilaOperable
                     key={p.id}
                     href={`/proyectos/${p.id}`}
                     tono={enRiesgo ? "rojo" : ESTADO_TONO[p.estado] ?? "neutro"}
@@ -71,10 +105,11 @@ export default async function ResumenProyectosPage() {
                     }
                     valor={relativo(p.dias)}
                     valorNota={`${p.personalConfirmado}/${p.personal} pers.`}
+                    acciones={accionesProyecto(p.id, p.estado)}
                   />
                 );
               })}
-            </div>
+            </>
           )}
         </Panel>
 
@@ -90,11 +125,11 @@ export default async function ResumenProyectosPage() {
             />
           </Panel>
 
-          <Panel titulo="Riesgos con fecha" nota="eventos a ≤7 días con huecos">
+          <Panel titulo="Riesgos con fecha" nota="eventos a ≤7 días con huecos" scroll>
             {r.enRiesgo.length === 0 ? (
               <Vacio texto="Todo lo inmediato está completo" />
             ) : (
-              r.enRiesgo.slice(0, 6).map(p => (
+              r.enRiesgo.map(p => (
                 <Fila
                   key={p.id}
                   href={`/proyectos/${p.id}`}
@@ -117,7 +152,7 @@ export default async function ResumenProyectosPage() {
             )}
           </Panel>
 
-          <Panel titulo="Cierre financiero pendiente" nota="eventos realizados sin cerrar" href="/finanzas/resumen">
+          <Panel titulo="Cierre financiero pendiente" nota="eventos realizados sin cerrar" href="/finanzas/resumen" scroll>
             {r.sinCierre.length === 0 ? (
               <Vacio texto="Sin eventos por cerrar" />
             ) : (
@@ -136,9 +171,14 @@ export default async function ResumenProyectosPage() {
       </div>
 
       {r.pendientes.length > 0 && (
-        <Panel titulo="Lo que falta por hacer" nota="derivado de la operación, no de una bandeja" className="mt-4">
+        <Panel
+          titulo="Lo que falta por hacer"
+          nota={`${r.pendientes.length} pendientes derivados de la operación, no de una bandeja`}
+          className="mt-4"
+          scroll="alto"
+        >
           <div className="grid grid-cols-1 md:grid-cols-2">
-            {r.pendientes.slice(0, 10).map(p => (
+            {r.pendientes.map(p => (
               <Fila
                 key={p.id}
                 href={p.href}

@@ -25,7 +25,6 @@ export async function resumenEquipos() {
         equipo: { select: { id: true, descripcion: true, marca: true } },
       },
       orderBy: { fecha: "asc" },
-      take: 40,
     }),
     prisma.mantenimientoEquipo.findMany({
       where: { proximoMantenimiento: { not: null, lte: en21 } },
@@ -34,7 +33,6 @@ export async function resumenEquipos() {
         equipo: { select: { id: true, descripcion: true, marca: true } },
       },
       orderBy: { proximoMantenimiento: "asc" },
-      take: 20,
     }),
     prisma.proyecto.findMany({
       where: { recoleccionStatus: { in: ["PENDIENTE", "EN_CAMINO"] }, fechaEvento: { lte: finDeHoy } },
@@ -43,7 +41,6 @@ export async function resumenEquipos() {
         cliente: { select: { nombre: true, empresa: true } },
       },
       orderBy: { fechaEvento: "asc" },
-      take: 20,
     }),
     // Lo que ya está apalabrado en eventos próximos: sin esto, "disponible" miente.
     prisma.proyectoEquipo.findMany({
@@ -162,8 +159,8 @@ export async function resumenEquipos() {
       estado: p.recoleccionStatus,
       dias: diasEntre(dia(p.fechaEvento), hoy),
     })),
-    conflictos: conflictos.sort((a, b) => b.requerido - b.disponible - (a.requerido - a.disponible)).slice(0, 8),
-    tension: tension.sort((a, b) => a.fecha.localeCompare(b.fecha)).slice(0, 6),
+    conflictos: conflictos.sort((a, b) => b.requerido - b.disponible - (a.requerido - a.disponible)),
+    tension: tension.sort((a, b) => a.fecha.localeCompare(b.fecha)),
     serviciosVehiculo,
     equiposExternosProximos: comprometidos.filter(c => c.tipo === "EXTERNO").length,
   };

@@ -43,7 +43,6 @@ export async function resumenProyectos() {
         equipos: { select: { tipo: true, confirmado: true } },
       },
       orderBy: { fechaEvento: "asc" },
-      take: 40,
     }),
     prisma.proyecto.groupBy({
       by: ["estado"],
@@ -60,7 +59,6 @@ export async function resumenProyectos() {
       where: { estado: "COMPLETADO", fechaEvento: { lt: hoy }, cierreFinanciero: { is: null } },
       select: { id: true, numeroProyecto: true, nombre: true, fechaEvento: true },
       orderBy: { fechaEvento: "desc" },
-      take: 6,
     }),
     prisma.proyecto.count({
       where: { recoleccionStatus: { in: ["PENDIENTE", "EN_CAMINO"] }, fechaEvento: { lte: finDeHoy } },
