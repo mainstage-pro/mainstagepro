@@ -7339,7 +7339,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             <ChecklistEventoTab
               proyectoId={proyecto.id}
               proyectoNombre={proyecto.nombre}
-              tipoServicio={proyecto.tipoServicio ?? null}
               usuarios={usuariosActivos}
             />
           </div>

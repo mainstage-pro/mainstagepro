@@ -95,7 +95,6 @@ export const NAV: NavSection[] = [
       },
       { key: "proyectos-empresa", accessKey: "proyectos", label: "Proyectos de empresa", href: "/proyectos-de-empresa", icon: Building2 },
       { key: "solicitudes-proveedor", accessKey: "proyectos", label: "Solicitudes a proveedores", href: "/proyectos/solicitudes-proveedor", icon: Truck },
-      { key: "plantillas-tareas", label: "Plantillas de tareas", href: "/admin/plantillas-tareas", adminOnly: true, icon: ClipboardList },
     ],
   },
 

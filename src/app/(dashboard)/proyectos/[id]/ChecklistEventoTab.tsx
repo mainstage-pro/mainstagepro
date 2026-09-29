@@ -1,14 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Calendar, User, ClipboardList, Plus } from "lucide-react";
+import { Calendar, User, ClipboardList } from "lucide-react";
 import NuevaTareaModal from "../../operaciones/components/NuevaTareaModal";
-import {
-  PLANTILLAS_DEFAULT,
-  agruparPlantilla,
-  type GrupoChecklist,
-  type PlantillaItem,
-} from "@/lib/plantillas-tareas-evento";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 export interface TareaProyecto {
@@ -33,81 +27,22 @@ const PRIO_COLOR: Record<string, string> = {
   URGENTE: "#f87171", ALTA: "#fb923c", MEDIA: "#B3985B", BAJA: "#555",
 };
 
-function norm(s: string): string {
-  return s.trim().toLowerCase().replace(/\s+/g, " ").replace(/[.,;:()]/g, "");
-}
-
 function fechaCorta(iso: string): string {
   return new Date(iso.substring(0, 10) + "T00:00:00").toLocaleDateString("es-MX", { month: "short", day: "numeric" });
 }
 
 // ─── Componente principal ───────────────────────────────────────────────────────
 export default function ChecklistEventoTab({
-  proyectoId, proyectoNombre, tipoServicio, usuarios,
+  proyectoId, proyectoNombre, usuarios,
 }: {
   proyectoId: string;
   proyectoNombre: string;
-  tipoServicio: string | null;
   usuarios: Usuario[];
 }) {
-  // Plantilla viva desde la BD (editable en /admin/plantillas-tareas). Arranca con
-  // los valores por defecto como fallback mientras carga o si el fetch falla.
-  const [plantilla, setPlantilla] = useState<GrupoChecklist[] | undefined>(
-    tipoServicio ? PLANTILLAS_DEFAULT[tipoServicio] : undefined
-  );
-
-  const cargarPlantilla = useCallback(async () => {
-    if (!tipoServicio) { setPlantilla(undefined); return; }
-    try {
-      const res = await fetch(`/api/plantillas-tareas-evento?tipoServicio=${encodeURIComponent(tipoServicio)}`, { cache: "no-store" });
-      if (!res.ok) return;
-      const d: { items?: PlantillaItem[] } = await res.json();
-      if (!d?.items) return;
-      const grupos = agruparPlantilla(d.items);
-      setPlantilla(grupos.length ? grupos : PLANTILLAS_DEFAULT[tipoServicio]);
-    } catch { /* mantiene fallback */ }
-  }, [tipoServicio]);
-
-  useEffect(() => { cargarPlantilla(); }, [cargarPlantilla]);
-
-  // Solo los administradores pueden editar la plantilla (agregar tareas por defecto).
-  const [esAdmin, setEsAdmin] = useState(false);
-  useEffect(() => {
-    let cancel = false;
-    fetch("/api/auth/me", { cache: "no-store" })
-      .then(r => (r.ok ? r.json() : null))
-      .then((d: { user?: { role?: string } } | null) => { if (!cancel) setEsAdmin(d?.user?.role === "ADMIN"); })
-      .catch(() => {});
-    return () => { cancel = true; };
-  }, []);
-
-  // Alta inline de una tarea nueva a la plantilla (grupo → texto en edición).
-  const [nuevoItem, setNuevoItem] = useState<Record<string, string>>({});
-  const [guardandoItem, setGuardandoItem] = useState(false);
-
-  async function agregarItemPlantilla(grupo: string, area: string) {
-    const titulo = (nuevoItem[grupo] ?? "").trim();
-    if (!titulo || guardandoItem || !tipoServicio) return;
-    setGuardandoItem(true);
-    try {
-      const res = await fetch(`/api/plantillas-tareas-evento`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tipoServicio, grupo, area, titulo }),
-      });
-      if (res.ok) { setNuevoItem(p => ({ ...p, [grupo]: "" })); await cargarPlantilla(); }
-      else { const d = await res.json().catch(() => ({})); alert(d?.error ?? "No se pudo agregar la tarea"); }
-    } finally { setGuardandoItem(false); }
-  }
-
   const [tareas, setTareas]   = useState<TareaProyecto[]>([]);
   const [loading, setLoading] = useState(true);
-  // Modal: crear (título + área opcionalmente precargados) o editar (tarea existente).
   // Mismo modal "Tarea de proyecto de evento" que en Gestión Operativa.
-  const [modal, setModal] = useState<
-    | { mode: "crear"; item: string | null; area: string | null }
-    | { mode: "editar"; tareaId: string }
-    | null
-  >(null);
+  const [modal, setModal] = useState<{ mode: "crear" } | { mode: "editar"; tareaId: string } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -119,36 +54,7 @@ export default function ChecklistEventoTab({
 
   useEffect(() => { load(); }, [load]);
 
-  // Mapa título normalizado → tarea (primera coincidencia)
-  const porTitulo = useMemo(() => {
-    const m = new Map<string, TareaProyecto>();
-    for (const t of tareas) { const k = norm(t.titulo); if (!m.has(k)) m.set(k, t); }
-    return m;
-  }, [tareas]);
-
-  // Títulos que pertenecen al checklist de plantilla (para separar tareas manuales)
-  const titulosPlantilla = useMemo(() => {
-    const s = new Set<string>();
-    if (plantilla) for (const g of plantilla) for (const it of g.items) s.add(norm(it));
-    return s;
-  }, [plantilla]);
-
-  // Tareas manuales/extra: las que no corresponden a un ítem del checklist
-  const extras = useMemo(
-    () => tareas.filter(t => !titulosPlantilla.has(norm(t.titulo))),
-    [tareas, titulosPlantilla]
-  );
-
-  const stats = useMemo(() => {
-    if (!plantilla) return { total: 0, creadas: 0, completadas: 0 };
-    let total = 0, creadas = 0, completadas = 0;
-    for (const g of plantilla) for (const it of g.items) {
-      total++;
-      const t = porTitulo.get(norm(it));
-      if (t) { creadas++; if (t.estado === "COMPLETADA") completadas++; }
-    }
-    return { total, creadas, completadas };
-  }, [plantilla, porTitulo]);
+  const completadas = useMemo(() => tareas.filter(t => t.estado === "COMPLETADA").length, [tareas]);
 
   async function toggle(e: React.MouseEvent, t: TareaProyecto) {
     e.stopPropagation();
@@ -165,14 +71,6 @@ export default function ChecklistEventoTab({
     }
   }
 
-  // Click en la fila: abre el mismo modal de "Tarea de proyecto de evento". Si la
-  // tarea ya existe se abre en modo edición; si no, en modo creación con el título y
-  // el área precargados (el evento queda fijo a este proyecto).
-  function abrirFila(item: string, area: string, existente?: TareaProyecto) {
-    if (existente) setModal({ mode: "editar", tareaId: existente.id });
-    else setModal({ mode: "crear", item, area });
-  }
-
   // Alta/edición confirmada en el modal → refleja la tarea en la lista.
   function upsertTarea(t: TareaProyecto) {
     setTareas(prev => {
@@ -182,13 +80,13 @@ export default function ChecklistEventoTab({
     });
   }
 
-  const pct = stats.total > 0 ? Math.round((stats.completadas / stats.total) * 100) : 0;
+  const pct = tareas.length > 0 ? Math.round((completadas / tareas.length) * 100) : 0;
 
   return (
     <div className="space-y-4">
       {/* ── Nuevo registro (idéntico a Gestión Operativa) ── */}
       <button
-        onClick={() => setModal({ mode: "crear", item: null, area: null })}
+        onClick={() => setModal({ mode: "crear" })}
         className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl bg-[#0d0d0d] border border-[#1a1a1a] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/30 transition-all text-sm font-medium"
       >
         <span className="w-5 h-5 rounded-full bg-[#B3985B]/15 flex items-center justify-center">
@@ -197,203 +95,81 @@ export default function ChecklistEventoTab({
         Nuevo registro
       </button>
 
-      {/* ── Tareas manuales / extra (no pertenecen al checklist guiado) ── */}
-      {extras.length > 0 && (
-        <div className="ms-card rounded-2xl overflow-hidden">
-          <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
-            <h4 className="text-sm font-semibold text-[#60a5fa] uppercase tracking-wider">Tareas manuales</h4>
-            <span className="text-[11px] text-gray-600">{extras.length}</span>
-          </div>
-          <div className="divide-y divide-[#141414]">
-            {extras.map(t => {
-              const done = t.estado === "COMPLETADA";
-              return (
-                <div
-                  key={t.id}
-                  onClick={() => setModal({ mode: "editar", tareaId: t.id })}
-                  className="group flex items-start gap-3 px-5 py-3 cursor-pointer hover:bg-[#0f0f0f] transition-colors"
-                >
-                  <button
-                    onClick={(e) => toggle(e, t)}
-                    title={done ? "Marcar como pendiente" : "Marcar como completada"}
-                    className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
-                      done ? "border-green-500 bg-green-500/20 text-green-400 text-[10px]"
-                           : "border-[#333] hover:border-[#B3985B] text-transparent"
-                    }`}
-                  >
-                    {done ? "✓" : ""}
-                  </button>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm leading-snug ${done ? "line-through text-gray-600" : "text-white"} transition-colors`}>
-                      {t.titulo}
-                    </p>
-                    <div className="flex items-center flex-wrap gap-1.5 mt-1.5">
-                      <span
-                        className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-md max-w-[180px] truncate"
-                        style={{ color: "#60a5fa", backgroundColor: "rgba(59,130,246,0.14)", border: "1px solid rgba(59,130,246,0.35)" }}
-                        title={proyectoNombre}
-                      >
-                        {proyectoNombre}
-                      </span>
-                      <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium"
-                        style={{ color: PRIO_COLOR[t.prioridad] ?? "#555", background: (PRIO_COLOR[t.prioridad] ?? "#555") + "18" }}>
-                        {t.prioridad.charAt(0) + t.prioridad.slice(1).toLowerCase()}
-                      </span>
-                      {t.asignadoA ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] text-gray-400 px-2 py-0.5 rounded-full bg-[#1a1a1a] font-medium">
-                          <User strokeWidth={1.75} className="w-3 h-3" /> {t.asignadoA.name}
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-yellow-500/70 px-2 py-0.5 rounded-full bg-yellow-950/20 font-medium">Sin asignar</span>
-                      )}
-                      {t.fecha && (
-                        <span className="inline-flex items-center gap-1 text-[10px] text-gray-500 px-2 py-0.5 rounded-full bg-[#111] font-medium">
-                          <Calendar strokeWidth={1.75} className="w-3 h-3" /> {fechaCorta(t.fecha)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <span className="shrink-0 self-center text-[11px] text-[#555] opacity-0 group-hover:opacity-100 transition-opacity">Abrir →</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ── Aviso cuando no hay checklist guiado para este tipo de servicio ── */}
-      {!plantilla && (
-        <div className="ms-card rounded-2xl p-8 text-center text-gray-500">
-          <ClipboardList strokeWidth={1.5} className="w-9 h-9 mx-auto mb-2 text-gray-600" />
-          <p className="text-sm">El checklist guiado está disponible por ahora para proyectos de <span className="text-[#B3985B]">Producción Técnica</span> y <span className="text-[#B3985B]">Renta de Equipo</span>. Puedes agregar tareas manuales con el recuadro de arriba.</p>
-        </div>
-      )}
-
-      {/* ── Checklist guiado (solo con plantilla) ── */}
-      {plantilla && (
-      <>
       {/* ── Encabezado + progreso ── */}
       <div className="ms-card rounded-2xl p-5">
         <div className="mb-3">
           <h3 className="text-white font-semibold text-base">Tareas del proyecto</h3>
           <p className="text-gray-500 text-xs mt-0.5">
-            Checklist del proceso de producción técnica. Haz clic en una tarea para abrirla y editarla (responsable, fecha, evidencia). Aparece para su responsable en Gestión Operativa por proyecto.
+            Haz clic en una tarea para abrirla y editarla (responsable, fecha, evidencia). Aparece para su responsable en Gestión Operativa por proyecto.
           </p>
         </div>
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs text-gray-500">
-            <span>{stats.completadas}/{stats.total} completadas · {stats.creadas} asignadas</span>
-            <span className={pct === 100 ? "text-green-400 font-semibold" : "text-[#B3985B]"}>{pct}%</span>
+            <span>{completadas}/{tareas.length} completadas</span>
+            <span className={pct === 100 && tareas.length > 0 ? "text-green-400 font-semibold" : "text-[#B3985B]"}>{pct}%</span>
           </div>
           <div className="w-full h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
-            <div className={`h-full rounded-full transition-all duration-500 ${pct === 100 ? "bg-green-500" : "bg-[#B3985B]"}`} style={{ width: `${pct}%` }} />
+            <div className={`h-full rounded-full transition-all duration-500 ${pct === 100 && tareas.length > 0 ? "bg-green-500" : "bg-[#B3985B]"}`} style={{ width: `${pct}%` }} />
           </div>
         </div>
       </div>
 
-      {/* ── Grupos ── */}
+      {/* ── Lista ── */}
       {loading ? (
         <div className="space-y-2">{[1, 2, 3].map(i => <div key={i} className="h-16 ms-card animate-pulse rounded-2xl" />)}</div>
+      ) : tareas.length === 0 ? (
+        <div className="ms-card rounded-2xl p-8 text-center text-gray-500">
+          <ClipboardList strokeWidth={1.5} className="w-9 h-9 mx-auto mb-2 text-gray-600" />
+          <p className="text-sm">Este proyecto todavía no tiene tareas. Agrega la primera con el recuadro de arriba.</p>
+        </div>
       ) : (
-        plantilla.map(grupo => {
-          const creadasGrupo = grupo.items.filter(it => porTitulo.has(norm(it))).length;
-          return (
-            <div key={grupo.grupo} className="ms-card rounded-2xl overflow-hidden">
-              <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">{grupo.grupo}</h4>
-                <span className="text-[11px] text-gray-600">{creadasGrupo}/{grupo.items.length}</span>
-              </div>
-              <div className="divide-y divide-[#141414]">
-                {grupo.items.map(item => {
-                  const tarea = porTitulo.get(norm(item));
-                  const done  = tarea?.estado === "COMPLETADA";
-                  return (
-                    <div
-                      key={item}
-                      onClick={() => abrirFila(item, grupo.area, tarea)}
-                      className="group flex items-start gap-3 px-5 py-3 cursor-pointer hover:bg-[#0f0f0f] transition-colors"
-                    >
-                      {/* Casilla */}
-                      {tarea ? (
-                        <button
-                          onClick={(e) => toggle(e, tarea)}
-                          title={done ? "Marcar como pendiente" : "Marcar como completada"}
-                          className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
-                            done ? "border-green-500 bg-green-500/20 text-green-400 text-[10px]"
-                                 : "border-[#333] hover:border-[#B3985B] text-transparent"
-                          }`}
-                        >
-                          {done ? "✓" : ""}
-                        </button>
-                      ) : (
-                        <span className="mt-0.5 w-5 h-5 rounded-full border-2 border-dashed shrink-0 border-[#2a2a2a] group-hover:border-[#B3985B]/50 transition-colors" />
-                      )}
-
-                      {/* Contenido */}
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm leading-snug ${done ? "line-through text-gray-600" : tarea ? "text-white" : "text-gray-300 group-hover:text-white"} transition-colors`}>
-                          {item}
-                        </p>
-                        {tarea && (
-                          <div className="flex items-center flex-wrap gap-1.5 mt-1.5">
-                            <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium"
-                              style={{ color: PRIO_COLOR[tarea.prioridad] ?? "#555", background: (PRIO_COLOR[tarea.prioridad] ?? "#555") + "18" }}>
-                              {tarea.prioridad.charAt(0) + tarea.prioridad.slice(1).toLowerCase()}
-                            </span>
-                            {tarea.asignadoA ? (
-                              <span className="inline-flex items-center gap-1 text-[10px] text-gray-400 px-2 py-0.5 rounded-full bg-[#1a1a1a] font-medium">
-                                <User strokeWidth={1.75} className="w-3 h-3" /> {tarea.asignadoA.name}
-                              </span>
-                            ) : (
-                              <span className="text-[10px] text-yellow-500/70 px-2 py-0.5 rounded-full bg-yellow-950/20 font-medium">Sin asignar</span>
-                            )}
-                            {tarea.fecha && (
-                              <span className="inline-flex items-center gap-1 text-[10px] text-gray-500 px-2 py-0.5 rounded-full bg-[#111] font-medium">
-                                <Calendar strokeWidth={1.75} className="w-3 h-3" /> {fechaCorta(tarea.fecha)}
-                              </span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Hint de acción */}
-                      <span className="shrink-0 self-center text-[11px] text-[#555] opacity-0 group-hover:opacity-100 transition-opacity">
-                        {tarea ? "Abrir →" : "Asignar →"}
+        <div className="ms-card rounded-2xl overflow-hidden divide-y divide-[#141414]">
+          {tareas.map(t => {
+            const done = t.estado === "COMPLETADA";
+            return (
+              <div
+                key={t.id}
+                onClick={() => setModal({ mode: "editar", tareaId: t.id })}
+                className="group flex items-start gap-3 px-5 py-3 cursor-pointer hover:bg-[#0f0f0f] transition-colors"
+              >
+                <button
+                  onClick={(e) => toggle(e, t)}
+                  title={done ? "Marcar como pendiente" : "Marcar como completada"}
+                  className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
+                    done ? "border-green-500 bg-green-500/20 text-green-400 text-[10px]"
+                         : "border-[#333] hover:border-[#B3985B] text-transparent"
+                  }`}
+                >
+                  {done ? "✓" : ""}
+                </button>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm leading-snug ${done ? "line-through text-gray-600" : "text-white"} transition-colors`}>
+                    {t.titulo}
+                  </p>
+                  <div className="flex items-center flex-wrap gap-1.5 mt-1.5">
+                    <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium"
+                      style={{ color: PRIO_COLOR[t.prioridad] ?? "#555", background: (PRIO_COLOR[t.prioridad] ?? "#555") + "18" }}>
+                      {t.prioridad.charAt(0) + t.prioridad.slice(1).toLowerCase()}
+                    </span>
+                    {t.asignadoA ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] text-gray-400 px-2 py-0.5 rounded-full bg-[#1a1a1a] font-medium">
+                        <User strokeWidth={1.75} className="w-3 h-3" /> {t.asignadoA.name}
                       </span>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* ── Agregar tarea a la plantilla (solo admin). Se guarda para todos los proyectos ── */}
-              {esAdmin && (
-                <div className="flex items-center gap-3 px-5 py-3 border-t border-[#141414] bg-[#0a0a0a]">
-                  <span className="w-5 h-5 rounded-full border-2 border-dashed border-[#2a2a2a] flex items-center justify-center shrink-0">
-                    <Plus strokeWidth={2.5} className="w-3 h-3 text-[#B3985B]" />
-                  </span>
-                  <input
-                    value={nuevoItem[grupo.grupo] ?? ""}
-                    onChange={e => setNuevoItem(p => ({ ...p, [grupo.grupo]: e.target.value }))}
-                    onKeyDown={e => { if (e.key === "Enter") agregarItemPlantilla(grupo.grupo, grupo.area); }}
-                    placeholder="Agregar tarea…"
-                    className="flex-1 bg-transparent text-sm text-gray-300 placeholder:text-[#555] outline-none"
-                  />
-                  {(nuevoItem[grupo.grupo] ?? "").trim() && (
-                    <button
-                      onClick={() => agregarItemPlantilla(grupo.grupo, grupo.area)}
-                      disabled={guardandoItem}
-                      className="shrink-0 text-[11px] font-medium text-[#B3985B] hover:text-[#c9ad6a] disabled:opacity-50"
-                    >
-                      Agregar →
-                    </button>
-                  )}
+                    ) : (
+                      <span className="text-[10px] text-yellow-500/70 px-2 py-0.5 rounded-full bg-yellow-950/20 font-medium">Sin asignar</span>
+                    )}
+                    {t.fecha && (
+                      <span className="inline-flex items-center gap-1 text-[10px] text-gray-500 px-2 py-0.5 rounded-full bg-[#111] font-medium">
+                        <Calendar strokeWidth={1.75} className="w-3 h-3" /> {fechaCorta(t.fecha)}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              )}
-            </div>
-          );
-        })
-      )}
-      </>
+                <span className="shrink-0 self-center text-[11px] text-[#555] opacity-0 group-hover:opacity-100 transition-opacity">Abrir →</span>
+              </div>
+            );
+          })}
+        </div>
       )}
 
       {/* ── Mismo modal "Tarea de proyecto de evento" de Gestión Operativa ── */}
@@ -405,8 +181,6 @@ export default function ChecklistEventoTab({
           tipoInicial="EVENTO"
           proyectoEventoIdInicial={proyectoId}
           proyectoEventoNombre={proyectoNombre}
-          tituloInicial={modal.mode === "crear" ? modal.item : null}
-          defaultArea={modal.mode === "crear" ? modal.area : null}
           tareaIdEdicion={modal.mode === "editar" ? modal.tareaId : null}
           onCreated={(t) => upsertTarea(t as TareaProyecto)}
         />
