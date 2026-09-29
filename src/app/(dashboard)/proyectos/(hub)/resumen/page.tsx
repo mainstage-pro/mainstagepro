@@ -87,7 +87,7 @@ export default async function ResumenProyectosPage() {
                   <FilaOperable
                     key={p.id}
                     href={`/proyectos/${p.id}`}
-                    tono={enRiesgo ? "rojo" : ESTADO_TONO[p.estado] ?? "neutro"}
+                    tono={p.dias <= 7 ? "verde" : ESTADO_TONO[p.estado] ?? "neutro"}
                     titulo={`${p.numero} · ${p.nombre}`}
                     meta={
                       <>
