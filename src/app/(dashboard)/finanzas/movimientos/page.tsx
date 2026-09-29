@@ -7,6 +7,8 @@ import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
 import { badgeClass, buttonClass } from "@/lib/tipo-colores";
+import { EncabezadoResumen, Kpi } from "@/components/resumen/ui";
+import { fmtMonedaCorta, TZ } from "@/lib/resumen/base";
 
 interface Categoria { id: string; nombre: string; tipo: string; }
 interface TipoMov { clave: string; nombre: string; naturaleza: string; afectaResultado: boolean; color: string; }
@@ -177,12 +179,24 @@ export default function MovimientosPage() {
 
   // Cuando hay filtro de cuenta: entradas/salidas por flujo real en esa cuenta (incluye transferencias)
   // Sin filtro: visión general ingresos vs gastos del negocio (solo tipos que afectan resultado)
-  const ingresos = cuentaFiltro
-    ? movimientosFiltrados.filter(m => m.cuentaDestino?.id === cuentaFiltro).reduce((s, m) => s + m.monto, 0)
-    : movimientosFiltrados.filter(m => tNaturaleza(m.tipo) === "ENTRADA" && tAfectaResultado(m.tipo)).reduce((s, m) => s + m.monto, 0);
-  const gastos = cuentaFiltro
-    ? movimientosFiltrados.filter(m => m.cuentaOrigen?.id === cuentaFiltro).reduce((s, m) => s + m.monto, 0)
-    : movimientosFiltrados.filter(m => tNaturaleza(m.tipo) === "SALIDA" && tAfectaResultado(m.tipo)).reduce((s, m) => s + m.monto, 0);
+  const esEntrada = (m: Movimiento) => cuentaFiltro
+    ? m.cuentaDestino?.id === cuentaFiltro
+    : tNaturaleza(m.tipo) === "ENTRADA" && tAfectaResultado(m.tipo);
+  const esSalida = (m: Movimiento) => cuentaFiltro
+    ? m.cuentaOrigen?.id === cuentaFiltro
+    : tNaturaleza(m.tipo) === "SALIDA" && tAfectaResultado(m.tipo);
+
+  const entradas = movimientosFiltrados.filter(esEntrada);
+  const salidas = movimientosFiltrados.filter(esSalida);
+  const ingresos = entradas.reduce((s, m) => s + m.monto, 0);
+  const gastos = salidas.reduce((s, m) => s + m.monto, 0);
+
+  const mesActual = new Date().toLocaleDateString("en-CA", { timeZone: TZ }).slice(0, 7);
+  const nombreMes = new Date().toLocaleDateString("es-MX", { month: "long", timeZone: TZ });
+  const delMes = movimientosFiltrados.filter(m => m.fecha.slice(0, 7) === mesActual);
+  const netoMes = delMes.filter(esEntrada).reduce((s, m) => s + m.monto, 0)
+    - delMes.filter(esSalida).reduce((s, m) => s + m.monto, 0);
+  const sinCategoria = movimientosFiltrados.filter(m => !m.categoria).length;
 
   const movimientosOrdenados = [...movimientosFiltrados].sort((a, b) => {
     let diff = 0;
@@ -211,30 +225,29 @@ export default function MovimientosPage() {
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-        <div>
-          <h1 className="ms-h1">Movimientos</h1>
-          <p className="ms-subtitle">{movimientosFiltrados.length} movimientos{cuentaFiltro ? ` · ${cuentas.find(c => c.id === cuentaFiltro)?.nombre}` : " · todas las cuentas"}</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <select
-            value={orden}
-            onChange={(e) => setOrden(e.target.value as OrdenOption)}
-            className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-xs text-[#b3b3b3] focus:outline-none focus:border-[#B3985B]"
-          >
-            <option value="fecha">Ordenar por: Fecha</option>
-            <option value="monto">Ordenar por: Monto (mayor a menor)</option>
-            <option value="categoria">Ordenar por: Categoría</option>
-            <option value="tipo">Ordenar por: Tipo de mov.</option>
-            <option value="az">Ordenar por: A-Z (Concepto)</option>
-          </select>
-          
-          <a href="/finanzas/movimientos/nuevo"
-            className="ms-btn-primary whitespace-nowrap">
-            + Registrar movimiento
-          </a>
-        </div>
-      </div>
+      <EncabezadoResumen
+        titulo="Movimientos"
+        subtitulo={`Cada peso que entró y salió · ${cuentaFiltro ? cuentas.find(c => c.id === cuentaFiltro)?.nombre : "todas las cuentas"}`}
+        acciones={
+          <>
+            <select
+              value={orden}
+              onChange={(e) => setOrden(e.target.value as OrdenOption)}
+              className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-xs text-[#b3b3b3] focus:outline-none focus:border-[#B3985B]"
+            >
+              <option value="fecha">Ordenar por: Fecha</option>
+              <option value="monto">Ordenar por: Monto (mayor a menor)</option>
+              <option value="categoria">Ordenar por: Categoría</option>
+              <option value="tipo">Ordenar por: Tipo de mov.</option>
+              <option value="az">Ordenar por: A-Z (Concepto)</option>
+            </select>
+
+            <a href="/finanzas/movimientos/nuevo" className="ms-btn-primary whitespace-nowrap">
+              + Registrar movimiento
+            </a>
+          </>
+        }
+      />
 
       {/* Filtros por cuenta */}
       {cuentas.length > 0 && (
@@ -272,21 +285,37 @@ export default function MovimientosPage() {
       )}
 
       {/* Resumen */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="ms-stat-card">
-          <p className="text-[#6b7280] text-xs uppercase tracking-wider mb-1">{cuentaFiltro ? "Entradas" : "Ingresos"}</p>
-          <p className="text-green-400 text-xl font-semibold">{formatCurrency(ingresos)}</p>
-        </div>
-        <div className="ms-stat-card">
-          <p className="text-[#6b7280] text-xs uppercase tracking-wider mb-1">{cuentaFiltro ? "Salidas" : "Gastos"}</p>
-          <p className="text-red-400 text-xl font-semibold">{formatCurrency(gastos)}</p>
-        </div>
-        <div className="ms-stat-card">
-          <p className="text-[#6b7280] text-xs uppercase tracking-wider mb-1">{cuentaFiltro ? "Saldo neto" : "Balance"}</p>
-          <p className={`text-xl font-semibold ${ingresos - gastos >= 0 ? "text-white" : "text-red-400"}`}>
-            {formatCurrency(ingresos - gastos)}
-          </p>
-        </div>
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
+        <Kpi
+          label={cuentaFiltro ? "Entradas" : "Ingresos"}
+          valor={fmtMonedaCorta(ingresos)}
+          nota={`${entradas.length} movimientos`}
+          tono="verde"
+        />
+        <Kpi
+          label={cuentaFiltro ? "Salidas" : "Gastos"}
+          valor={fmtMonedaCorta(gastos)}
+          nota={`${salidas.length} movimientos`}
+          tono="rojo"
+        />
+        <Kpi
+          label={cuentaFiltro ? "Saldo neto" : "Balance"}
+          valor={fmtMonedaCorta(ingresos - gastos)}
+          nota={`${movimientosFiltrados.length} movimientos en total`}
+          tono={ingresos - gastos >= 0 ? "oro" : "rojo"}
+        />
+        <Kpi
+          label={`Neto de ${nombreMes}`}
+          valor={fmtMonedaCorta(netoMes)}
+          nota={`${delMes.length} movimientos este mes`}
+          tono={netoMes >= 0 ? "verde" : "rojo"}
+        />
+        <Kpi
+          label="Sin clasificar"
+          valor={sinCategoria}
+          nota="movimientos sin categoría"
+          tono={sinCategoria > 0 ? "ambar" : "verde"}
+        />
       </div>
 
       <div className="ms-card overflow-x-auto">
