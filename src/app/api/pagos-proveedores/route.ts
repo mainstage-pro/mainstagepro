@@ -246,6 +246,11 @@ export async function GET(req: NextRequest) {
     orderBy: { nombre: "asc" },
   });
 
+  const proveedores = await prisma.proveedor.findMany({
+    select: { id: true, nombre: true, empresa: true },
+    orderBy: { nombre: "asc" },
+  });
+
   return NextResponse.json({
     ciclo: cicloDate.toISOString().slice(0, 10),
     desde: desde.toISOString().slice(0, 10),
@@ -253,6 +258,7 @@ export async function GET(req: NextRequest) {
     proyectos: proyectosData,
     cartera,
     cuentas,
+    proveedores,
   });
 }
 
