@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { crearProyectoDesdeCotizacion, ensureTratoIndiceSoltado } from "@/lib/crear-proyecto";
+import { sincronizarProyectoDesdeCotizacion } from "@/lib/sync-cotizacion-proyecto";
 import { ensureCotizacionHorarioColumns } from "@/lib/migraciones-lazy";
 
 const ESTADOS_ACTIVOS = ["BORRADOR", "ENVIADA", "EN_REVISION", "AJUSTE_SOLICITADO", "REENVIADA"];
@@ -90,6 +91,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[cerrar-venta]", msg);
     return NextResponse.json({ error: msg }, { status: 500 });
+  }
+
+  for (const cot of seleccionadas) {
+    await sincronizarProyectoDesdeCotizacion(cot.id);
   }
 
   // ── Levantamiento de contenido: crear orden si aplica (fuera de la transacción) ──

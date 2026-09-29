@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { crearProyectoDesdeCotizacion, ensureTratoIndiceSoltado } from "@/lib/crear-proyecto";
 import { ensureCotizacionHorarioColumns } from "@/lib/migraciones-lazy";
+import { sincronizarProyectoDesdeCotizacion } from "@/lib/sync-cotizacion-proyecto";
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -55,6 +56,8 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     console.error("[aprobar]", msg);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
+
+  await sincronizarProyectoDesdeCotizacion(cot.id);
 
   return NextResponse.json({ proyectoId: proyecto!.id, numeroProyecto: proyecto!.numeroProyecto });
 }

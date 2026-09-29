@@ -61,6 +61,7 @@ type SlotDeseado = {
   nivel: string | null;
   jornada: string | null;
   responsabilidad: string | null;
+  tarifa: number | null;
   cantidad: number;
 };
 
@@ -233,8 +234,10 @@ export async function sincronizarProyectoDesdeCotizacion(
       const key = `${l.rolTecnicoId ?? "sinrol"}:${fechaJornada ?? "sinfecha"}:${participacion}`;
       const prev = slotsDeseados.get(key);
       const cantidad = Math.max(1, Math.round(l.cantidad));
+      const tarifa = l.precioUnitario > 0 ? l.precioUnitario : null;
       if (prev) {
         prev.cantidad += cantidad;
+        if (prev.tarifa == null) prev.tarifa = tarifa;
       } else {
         slotsDeseados.set(key, {
           key,
@@ -244,6 +247,7 @@ export async function sincronizarProyectoDesdeCotizacion(
           nivel: l.nivel ?? null,
           jornada: l.jornada ?? null,
           responsabilidad: l.descripcion ?? null,
+          tarifa,
           cantidad,
         });
       }
@@ -268,6 +272,7 @@ export async function sincronizarProyectoDesdeCotizacion(
       nivel: string | null;
       jornada: string | null;
       responsabilidad: string | null;
+      tarifaAcordada: number | null;
     }[] = [];
     for (const [key, d] of slotsDeseados) {
       const existentesN = conteoExistente.get(key) ?? 0;
@@ -281,11 +286,28 @@ export async function sincronizarProyectoDesdeCotizacion(
           nivel: d.nivel,
           jornada: d.jornada,
           responsabilidad: d.responsabilidad,
+          tarifaAcordada: d.tarifa,
         });
       }
     }
     if (slotsACrear.length > 0) {
       await prisma.proyectoPersonal.createMany({ data: slotsACrear });
+    }
+
+    // Slots creados antes de que el sync copiara la tarifa: heredarla de su
+    // línea cotizada. Solo rellena nulos — una tarifa negociada a mano manda.
+    const porTarifa = new Map<number, string[]>();
+    for (const p of personal) {
+      if (p.esAdicional || p.tarifaAcordada != null) continue;
+      const tarifa = slotsDeseados.get(keyDeSlot(p))?.tarifa;
+      if (tarifa == null) continue;
+      porTarifa.set(tarifa, [...(porTarifa.get(tarifa) ?? []), p.id]);
+    }
+    for (const [tarifa, ids] of porTarifa) {
+      await prisma.proyectoPersonal.updateMany({
+        where: { id: { in: ids } },
+        data: { tarifaAcordada: tarifa },
+      });
     }
 
     // Roles cuyo grupo desapareció de la cotización → marcar para revisión
