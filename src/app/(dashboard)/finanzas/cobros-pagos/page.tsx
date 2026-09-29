@@ -3,12 +3,14 @@
 import { useEffect, useState, useCallback, Fragment } from "react";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/cotizador";
+import { fmtFechaCorta } from "@/lib/dates";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
 import RowActions from "@/components/ui/RowActions";
 import { usePdfDownload } from "@/hooks/usePdfDownload";
 import { Calendar } from "lucide-react";
+import { coincide } from "@/lib/buscar";
 
 // Test de despliegue automático en Vercel
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -398,7 +400,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
   const [clientes, setClientes] = useState<Array<{ id: string; nombre: string; empresa: string | null }>>([]);
   const [proveedores, setProveedores] = useState<Array<{ id: string; nombre: string; empresa: string | null }>>([]);
   const [empresas, setEmpresas] = useState<EmpresaItem[]>([]);
-  const [proyectos, setProyectos] = useState<Array<{ id: string; nombre: string; numeroProyecto: string; estado: string }>>([]);
+  const [proyectos, setProyectos] = useState<Array<{ id: string; nombre: string; numeroProyecto: string; estado: string; fechaEvento: string | null }>>([]);
   const [tecnicos, setTecnicos] = useState<Array<{ id: string; nombre: string; celular: string | null }>>([]);
   const [empresaQuery, setEmpresaQuery] = useState("");
   const [tecnicoQuery, setTecnicoQuery] = useState("");
@@ -2296,11 +2298,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
                             className="absolute z-10 left-0 right-0 mt-1 bg-[#1c1c1c] border border-[#333] rounded-lg shadow-xl max-h-52 overflow-y-auto"
                           >
                             {clientes
-                              .filter(c => {
-                                if (!empresaQuery) return true;
-                                const q = empresaQuery.toLowerCase();
-                                return c.nombre.toLowerCase().includes(q) || (c.empresa ?? "").toLowerCase().includes(q);
-                              })
+                              .filter(c => coincide(empresaQuery, c.nombre, c.empresa))
                               .map(c => (
                                 <button key={`cli-${c.id}`}
                                   onMouseDown={e => e.preventDefault()}
@@ -2310,11 +2308,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
                                   {c.empresa && <p className="text-[10px] text-gray-500">{c.empresa}</p>}
                                 </button>
                               ))}
-                            {clientes.filter(c => {
-                              if (!empresaQuery) return true;
-                              const q = empresaQuery.toLowerCase();
-                              return c.nombre.toLowerCase().includes(q) || (c.empresa ?? "").toLowerCase().includes(q);
-                            }).length === 0 && (
+                            {clientes.filter(c => coincide(empresaQuery, c.nombre, c.empresa)).length === 0 && (
                               <p className="px-3 py-2.5 text-xs text-gray-600">Sin resultados</p>
                             )}
                           </div>
@@ -2378,7 +2372,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
                               className="absolute z-10 left-0 right-0 mt-1 bg-[#1c1c1c] border border-[#333] rounded-lg shadow-xl max-h-44 overflow-y-auto"
                             >
                               {tecnicos
-                                .filter(t => !tecnicoQuery || t.nombre.toLowerCase().includes(tecnicoQuery.toLowerCase()))
+                                .filter(t => coincide(tecnicoQuery, t.nombre))
                                 .map(t => (
                                   <button key={t.id}
                                     onMouseDown={e => e.preventDefault()}
@@ -2394,7 +2388,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
                                   </button>
                                 ))}
                               {/* No encontrado → registrar nuevo */}
-                              {tecnicoQuery && tecnicos.filter(t => t.nombre.toLowerCase().includes(tecnicoQuery.toLowerCase())).length === 0 && (
+                              {tecnicoQuery && tecnicos.filter(t => coincide(tecnicoQuery, t.nombre)).length === 0 && (
                                 <button
                                   onMouseDown={e => e.preventDefault()}
                                   onClick={() => { setShowNuevoTecnico(true); setDropdownOpen(null); }}
@@ -2497,11 +2491,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
                           {dropdownOpen === "cxp_emp" && (
                             <div className="absolute z-10 left-0 right-0 mt-1 bg-[#1c1c1c] border border-[#333] rounded-lg shadow-xl max-h-52 overflow-y-auto">
                               {proveedores
-                                .filter(p => {
-                                  if (!empresaQuery) return true;
-                                  const q = empresaQuery.toLowerCase();
-                                  return p.nombre.toLowerCase().includes(q) || (p.empresa ?? "").toLowerCase().includes(q);
-                                })
+                                .filter(p => coincide(empresaQuery, p.nombre, p.empresa))
                                 .map(p => (
                                   <button key={`prov-${p.id}`}
                                     onMouseDown={e => e.preventDefault()}
@@ -2513,7 +2503,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
                                 ))}
                               {empresas
                                 .filter(e => e.contactosProveedor.length === 0)
-                                .filter(e => !empresaQuery || e.nombre.toLowerCase().includes(empresaQuery.toLowerCase()))
+                                .filter(e => coincide(empresaQuery, e.nombre))
                                 .map(e => (
                                   <button key={`emp-${e.id}`}
                                     onMouseDown={e => e.preventDefault()}
@@ -2523,8 +2513,8 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
                                     {e.giro && <p className="text-[10px] text-gray-500">{e.giro}</p>}
                                   </button>
                                 ))}
-                              {proveedores.filter(p => !empresaQuery || p.nombre.toLowerCase().includes(empresaQuery.toLowerCase())).length === 0 &&
-                               empresas.filter(e => e.contactosProveedor.length === 0 && (!empresaQuery || e.nombre.toLowerCase().includes(empresaQuery.toLowerCase()))).length === 0 && (
+                              {proveedores.filter(p => coincide(empresaQuery, p.nombre)).length === 0 &&
+                               empresas.filter(e => e.contactosProveedor.length === 0 && coincide(empresaQuery, e.nombre)).length === 0 && (
                                 <p className="px-3 py-2.5 text-xs text-gray-600">Sin resultados</p>
                               )}
                             </div>
@@ -2588,7 +2578,10 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
                 <Combobox
                   value={nuevoForm.proyectoId}
                   onChange={v => setNuevoForm(p => ({ ...p, proyectoId: v }))}
-                  options={[{ value: "", label: "— Sin proyecto —" }, ...proyectos.map(p => ({ value: p.id, label: `${p.numeroProyecto} · ${p.nombre}` }))]}
+                  options={[{ value: "", label: "— Sin proyecto —" }, ...proyectos.map(p => ({
+                    value: p.id,
+                    label: [p.nombre, fmtFechaCorta(p.fechaEvento), p.numeroProyecto].filter(Boolean).join(" · "),
+                  }))]}
                   className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
                 />
               </div>

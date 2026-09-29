@@ -43,6 +43,7 @@ import { cadenaDeMando, parseReglasMando, type ReglasMando } from "@/lib/cadena-
 import { PanelCadenaMando } from "@/components/proyectos/PanelCadenaMando";
 import { getEquipoDisplayName } from "@/lib/equipoNombre";
 import { normalizarAmPm, fmt24to12 } from "@/lib/hora";
+import { coincide } from "@/lib/buscar";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Tecnico { id: string; nombre: string; nivel: string; rol: { nombre: string } | null; banco?: string | null; titularCuenta?: string | null; cuentaBancaria?: string | null; clabe?: string | null; noTarjeta?: string | null; datosFiscales?: string | null }
@@ -666,13 +667,7 @@ function VehiculoIdSelector({
     ? selected.nombre + (selected.marca ? ` · ${selected.marca}` : "") + (selected.placas ? ` (${selected.placas})` : "")
     : "— Seleccionar vehículo —";
 
-  const filtered = vehiculos.filter(v => {
-    const q = search.toLowerCase();
-    return !q ||
-      v.nombre.toLowerCase().includes(q) ||
-      (v.marca ?? "").toLowerCase().includes(q) ||
-      (v.placas ?? "").toLowerCase().includes(q);
-  });
+  const filtered = vehiculos.filter(v => coincide(search, v.nombre, v.marca, v.placas));
 
   async function handleCrear() {
     if (!newNombre.trim()) return;

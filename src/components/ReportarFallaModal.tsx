@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Modal } from "@/components/Modal";
+import { fmtFechaCorta } from "@/lib/dates";
+import { coincide } from "@/lib/buscar";
 import {
   ORIGENES_FALLA,
   ORIGEN_FALLA_LABEL,
@@ -16,6 +18,7 @@ type ProyectoOpcion = {
   id: string;
   numeroProyecto: string;
   nombre: string;
+  fechaEvento: string | null;
   cliente: string | null;
   empresa: string | null;
   numeroCotizacion: string | null;
@@ -111,12 +114,14 @@ export function ReportarFallaModal({
               id: string;
               numeroProyecto: string;
               nombre: string;
+              fechaEvento?: string | null;
               cliente?: { nombre?: string | null; empresa?: string | null } | null;
               numeroCotizacion?: string | null;
             }) => ({
               id: p.id,
               numeroProyecto: p.numeroProyecto,
               nombre: p.nombre,
+              fechaEvento: p.fechaEvento ?? null,
               cliente: p.cliente?.nombre ?? null,
               empresa: p.cliente?.empresa ?? null,
               numeroCotizacion: p.numeroCotizacion ?? null,
@@ -198,8 +203,7 @@ export function ReportarFallaModal({
                     <p className="text-[#555] text-xs px-3 py-3">Cargando equipos…</p>
                   ) : (
                     (() => {
-                      const q = busqueda.trim().toLowerCase();
-                      const filtrados = (q ? equipos.filter((e) => e.label.toLowerCase().includes(q)) : equipos).slice(0, 40);
+                      const filtrados = equipos.filter((e) => coincide(busqueda, e.label)).slice(0, 40);
                       if (filtrados.length === 0) {
                         return <p className="text-[#555] text-xs px-3 py-3">Ningún equipo coincide con “{busqueda}”</p>;
                       }
@@ -258,7 +262,9 @@ export function ReportarFallaModal({
                 return (
                   <div className="flex items-center justify-between gap-2 bg-[#0d0d0d] border border-[#B3985B]/40 rounded-lg px-3 py-2">
                     <span className="text-white text-sm truncate">
-                      {sel ? `${sel.numeroProyecto} · ${sel.nombre}` : "Evento seleccionado"}
+                      {sel
+                        ? [sel.nombre, fmtFechaCorta(sel.fechaEvento), sel.numeroProyecto].filter(Boolean).join(" · ")
+                        : "Evento seleccionado"}
                     </span>
                     <button
                       type="button"
@@ -283,18 +289,21 @@ export function ReportarFallaModal({
                     <p className="text-[#555] text-xs px-3 py-3">Cargando eventos…</p>
                   ) : (
                     (() => {
-                      const q = busquedaProyecto.trim().toLowerCase();
                       // Se busca contra todo lo que el coordinador recuerda del evento:
-                      // el cliente, el nombre, y los dos folios (proyecto y cotización).
-                      const filtrados = (
-                        q
-                          ? proyectos.filter((p) =>
-                              [p.numeroProyecto, p.nombre, p.cliente, p.empresa, p.numeroCotizacion]
-                                .filter(Boolean)
-                                .some((campo) => campo!.toLowerCase().includes(q)),
-                            )
-                          : proyectos
-                      ).slice(0, 40);
+                      // el cliente, el nombre, la fecha y los dos folios (proyecto y cotización).
+                      const filtrados = proyectos
+                        .filter((p) =>
+                          coincide(
+                            busquedaProyecto,
+                            p.numeroProyecto,
+                            p.nombre,
+                            p.cliente,
+                            p.empresa,
+                            p.numeroCotizacion,
+                            fmtFechaCorta(p.fechaEvento),
+                          ),
+                        )
+                        .slice(0, 40);
                       if (filtrados.length === 0) {
                         return (
                           <p className="text-[#555] text-xs px-3 py-3">
@@ -309,11 +318,16 @@ export function ReportarFallaModal({
                           onClick={() => setProyectoId(p.id)}
                           className="w-full text-left px-3 py-2 hover:bg-[#1a1a1a] transition-colors"
                         >
-                          <span className="block text-sm text-white truncate">
-                            {p.numeroProyecto} · {p.nombre}
+                          <span className="flex items-baseline gap-2">
+                            <span className="flex-1 text-sm text-white truncate">{p.nombre}</span>
+                            {p.fechaEvento && (
+                              <span className="text-[11px] text-[#B3985B] shrink-0 tabular-nums">
+                                {fmtFechaCorta(p.fechaEvento)}
+                              </span>
+                            )}
                           </span>
                           <span className="block text-[10px] text-[#555] truncate">
-                            {[p.empresa || p.cliente, p.numeroCotizacion].filter(Boolean).join(" · ") || "Sin cliente"}
+                            {[p.numeroProyecto, p.empresa || p.cliente, p.numeroCotizacion].filter(Boolean).join(" · ")}
                           </span>
                         </button>
                       ));

@@ -17,3 +17,8 @@ export function fmtDate(
   if (!str) return "";
   return parseDate(str)!.toLocaleDateString(locale, { timeZone: "UTC", ...opts });
 }
+
+/** "15 mar 2026" — para etiquetas de selectores y listas, donde la fecha acompaña al nombre. */
+export function fmtFechaCorta(str: string | null | undefined): string {
+  return fmtDate(str, { day: "2-digit", month: "short", year: "numeric" });
+}

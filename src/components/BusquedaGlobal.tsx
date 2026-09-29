@@ -3,6 +3,8 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
+import { fmtFechaCorta } from "@/lib/dates";
+import { normalizar } from "@/lib/buscar";
 
 type TipoResultado = "cliente" | "trato" | "cotizacion" | "proyecto" | "tecnico" | "proveedor" | "modulo";
 
@@ -11,6 +13,8 @@ interface Resultado {
   id: string;
   titulo: string;
   subtitulo?: string;
+  /** Fecha del evento del registro (trato, cotización, proyecto), en ISO. */
+  fecha?: string | null;
   href: string;
 }
 
@@ -40,11 +44,6 @@ const TIPO_COLORS: Record<TipoResultado, string> = {
   proveedor:  "bg-gray-800 text-gray-400",
   modulo:     "bg-[#B3985B]/20 text-[#B3985B]",
 };
-
-// Normaliza para buscar sin acentos ni mayúsculas ("Cotización" ≈ "cotizacion").
-function normalizar(s: string): string {
-  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-}
 
 export default function BusquedaGlobal({
   modulos,
@@ -223,6 +222,11 @@ export default function BusquedaGlobal({
                     <p className="text-white text-sm font-medium truncate">{r.titulo}</p>
                     {r.subtitulo && <p className="text-gray-500 text-xs truncate">{r.subtitulo}</p>}
                   </div>
+                  {r.fecha && (
+                    <span className="text-[11px] text-gray-400 shrink-0 tabular-nums">
+                      {fmtFechaCorta(r.fecha)}
+                    </span>
+                  )}
                   <svg className="w-3.5 h-3.5 text-gray-600 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 18l6-6-6-6" />
                   </svg>
