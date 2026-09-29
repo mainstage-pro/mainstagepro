@@ -1,16 +1,52 @@
 "use client";
 
 import { useState } from "react";
+import {
+  Gem,
+  Scale,
+  TrendingUp,
+  Users,
+  Handshake,
+  Flame,
+  Award,
+  Anchor,
+  ShieldCheck,
+  Clock,
+  Check,
+  X,
+  ShieldAlert,
+  ListChecks,
+  Plus,
+  type LucideIcon,
+} from "lucide-react";
 import { parseConductas, type Conducta } from "@/lib/estrategia";
 import {
   useEstrategia,
   inputCls,
   labelCls,
-  cardCls,
   btnPrimary,
   btnGhost,
   type ValorDTO,
 } from "../useEstrategia";
+import { Lienzo, Encabezado, Panel, Cita, Vacio, FONDOS, GOLD, oro } from "../ui";
+
+// Los valores los captura el usuario, así que el icono se deduce del nombre.
+// Es un gesto visual, no una taxonomía: si no hay coincidencia, cae en Gem.
+const PISTAS: [RegExp, LucideIcon][] = [
+  [/honest|verdad|transparen/i, Scale],
+  [/mejora|crec|aprend|evoluc/i, TrendingUp],
+  [/equipo|juntos|colabor|compañer/i, Users],
+  [/respeto|dignidad|trato/i, Handshake],
+  [/pasi[óo]n|amor|entrega/i, Flame],
+  [/calidad|excelencia|est[áa]ndar|impecab/i, Award],
+  [/compromiso|responsab|palabra/i, Anchor],
+  [/segurid|cuidado|protec/i, ShieldCheck],
+  [/puntual|tiempo|anticip/i, Clock],
+];
+
+function iconoValor(nombre: string): LucideIcon {
+  return PISTAS.find(([re]) => re.test(nombre))?.[1] ?? Gem;
+}
 
 interface Borrador {
   nombre: string;
@@ -65,6 +101,11 @@ export default function ValoresPage() {
     setBorrador({ ...borrador, conductas });
   }
 
+  function editarValor(v: ValorDTO) {
+    setEditId(v.id);
+    setBorrador(aBorrador(v));
+  }
+
   if (cargando) return <div className="p-6 text-gray-500 text-sm">Cargando…</div>;
   if (error) return <div className="p-6 text-red-400 text-sm">{error}</div>;
 
@@ -74,49 +115,66 @@ export default function ValoresPage() {
       .filter(c => c.tipo === "INACEPTABLE" && c.bajaInmediata)
       .map(c => ({ valor: v.nombre, texto: c.texto }))
   );
+  const sinConductas = valores.filter(v => parseConductas(v.conductas).length === 0);
 
   return (
-    <div className="p-6 space-y-6 max-w-4xl">
-      <div className="flex items-start gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-white">Valores y conductas</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Un valor sin conducta observable no sirve para contratar ni para evaluar. Lo que se captura
-            aquí es lo que el puesto selecciona, lo que se filtra en el proceso de contratación y lo que
-            se imprime en el acuerdo de alineación.
-          </p>
-        </div>
-        <button
-          className={`${btnPrimary} ml-auto shrink-0`}
-          onClick={() => {
-            setEditId("nuevo");
-            setBorrador({ nombre: "", descripcion: "", comoSeVive: "", conductas: [] });
-          }}
-        >
-          Nuevo valor
-        </button>
-      </div>
+    <Lienzo foto={FONDOS.valores}>
+      <Encabezado
+        icono={Gem}
+        antetitulo="Cultura y estrategia"
+        titulo="Valores y conductas"
+        bajada="Un valor sin conducta observable no sirve para contratar ni para evaluar. Lo que se captura aquí es lo que el puesto selecciona, lo que se filtra en la contratación y lo que se imprime en el acuerdo de alineación."
+        acciones={
+          <button
+            className={btnPrimary}
+            onClick={() => {
+              setEditId("nuevo");
+              setBorrador({ nombre: "", descripcion: "", comoSeVive: "", conductas: [] });
+            }}
+          >
+            Nuevo valor
+          </button>
+        }
+      />
 
       {msg && <div className="text-sm text-red-400">{msg}</div>}
 
       {noNegociables.length > 0 && (
-        <div className="bg-red-950/20 border border-red-900/40 rounded-xl p-5">
-          <h2 className="text-base font-semibold text-red-300">No negociables</h2>
-          <p className="text-xs text-red-400/70 mt-0.5 mb-3">
-            Conductas que terminan la relación laboral de inmediato. Se muestran en la vacante y en el
-            acuerdo para que nadie las conozca por sorpresa.
-          </p>
-          <ul className="space-y-1.5">
-            {noNegociables.map((n, i) => (
-              <li key={i} className="text-sm text-gray-300 flex gap-2">
-                <span className="text-red-500">✕</span>
-                <span>
-                  {n.texto} <span className="text-gray-600">· {n.valor}</span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <Panel peligro>
+          <div className="flex items-start gap-3">
+            <ShieldAlert strokeWidth={1.6} className="w-4 h-4 mt-0.5 shrink-0 text-red-400" />
+            <div className="min-w-0 flex-1">
+              <h2 className="text-[15px] font-semibold text-red-200">No negociables</h2>
+              <p className="text-xs text-red-400/60 mt-0.5 mb-3.5 leading-relaxed">
+                Conductas que terminan la relación laboral de inmediato. Se muestran en la vacante y en el
+                acuerdo para que nadie las conozca por sorpresa.
+              </p>
+              <ul className="space-y-2">
+                {noNegociables.map((n, i) => (
+                  <li key={i} className="text-sm text-gray-300 flex gap-2.5 items-start">
+                    <X strokeWidth={2.4} className="w-3.5 h-3.5 mt-0.5 shrink-0 text-red-500" />
+                    <span>
+                      {n.texto} <span className="text-gray-600">· {n.valor}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </Panel>
+      )}
+
+      {sinConductas.length > 0 && editId === null && (
+        <Vacio
+          icono={ListChecks}
+          titulo={`${sinConductas.length} de ${valores.length} valores todavía no tienen conductas`}
+          texto="Mientras estén vacíos, la lista de no negociables sale en blanco en la oferta de trabajo y en el acuerdo de alineación, y el puesto no tiene con qué filtrar a un candidato."
+          accion={
+            <button className={btnGhost} onClick={() => editarValor(sinConductas[0])}>
+              Empezar por “{sinConductas[0].nombre}”
+            </button>
+          }
+        />
       )}
 
       {editId === "nuevo" && borrador && (
@@ -134,9 +192,8 @@ export default function ValoresPage() {
       )}
 
       <div className="space-y-4">
-        {valores.map(v => {
-          const enEdicion = editId === v.id;
-          if (enEdicion && borrador) {
+        {valores.map((v, idx) => {
+          if (editId === v.id && borrador) {
             return (
               <EditorValor
                 key={v.id}
@@ -153,78 +210,108 @@ export default function ValoresPage() {
             );
           }
           const conductas = parseConductas(v.conductas);
+          const esperadas = conductas.filter(c => c.tipo === "ESPERADA");
+          const inaceptables = conductas.filter(c => c.tipo === "INACEPTABLE");
+          const Icono = iconoValor(v.nombre);
           return (
-            <div key={v.id} className={cardCls}>
-              <div className="flex items-start gap-3">
-                <div className="flex-1">
-                  <h2 className="text-base font-semibold text-white">{v.nombre}</h2>
+            <Panel key={v.id}>
+              <div className="flex items-start gap-4">
+                <div className="shrink-0 flex flex-col items-center gap-2 w-10">
+                  <span
+                    className="text-[11px] font-semibold tabular-nums"
+                    style={{ color: oro(0.5), letterSpacing: "0.1em" }}
+                  >
+                    {String(idx + 1).padStart(2, "0")}
+                  </span>
+                  <div
+                    className="w-10 h-10 rounded-lg flex items-center justify-center"
+                    style={{ background: oro(0.08), border: `1px solid ${oro(0.24)}` }}
+                  >
+                    <Icono strokeWidth={1.5} className="w-[18px] h-[18px]" style={{ color: GOLD }} />
+                  </div>
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-lg font-semibold text-white tracking-tight">{v.nombre}</h2>
                   {v.comoSeVive && (
-                    <p className="text-sm text-[#B3985B] mt-0.5 italic">{v.comoSeVive}</p>
+                    <div className="mt-2.5">
+                      <Cita tam="chica">{v.comoSeVive}</Cita>
+                    </div>
                   )}
                   {v.descripcion && (
-                    <p className="text-sm text-gray-400 mt-2 leading-relaxed">{v.descripcion}</p>
+                    <p className="text-sm text-gray-400 mt-3 leading-relaxed">{v.descripcion}</p>
                   )}
                 </div>
+
                 <div className="flex gap-2 shrink-0">
-                  <button
-                    className={btnGhost}
-                    onClick={() => {
-                      setEditId(v.id);
-                      setBorrador(aBorrador(v));
-                    }}
-                  >
+                  <button className={btnGhost} onClick={() => editarValor(v)}>
                     Editar
                   </button>
                   <button
-                    className="px-3 py-2 rounded-lg border border-[#222] text-gray-600 text-sm hover:text-red-400"
+                    className="px-3 py-2 rounded-lg border border-white/[0.07] text-gray-600 text-sm hover:text-red-400 hover:border-red-900/40 transition-colors"
                     onClick={() => quitar(v.id, v.nombre)}
                   >
                     Baja
                   </button>
                 </div>
               </div>
-              {conductas.length > 0 && (
-                <div className="grid sm:grid-cols-2 gap-4 mt-4 pt-4 border-t border-[#1a1a1a]">
+
+              {conductas.length > 0 ? (
+                <div className="grid sm:grid-cols-2 gap-5 mt-5 pt-5" style={{ borderTop: `1px solid ${oro(0.1)}` }}>
                   <div>
-                    <p className="text-xs text-gray-500 mb-1.5">Así se ve cuando se cumple</p>
-                    <ul className="space-y-1">
-                      {conductas
-                        .filter(c => c.tipo === "ESPERADA")
-                        .map((c, i) => (
-                          <li key={i} className="text-sm text-gray-300 flex gap-2">
-                            <span className="text-green-500">✓</span>
-                            {c.texto}
-                          </li>
-                        ))}
+                    <p className="text-[10px] uppercase mb-2.5 flex items-center gap-1.5" style={{ color: "rgba(74,222,128,0.65)", letterSpacing: "0.18em" }}>
+                      <Check strokeWidth={2.4} className="w-3 h-3" />
+                      Así se ve cuando se cumple
+                    </p>
+                    <ul className="space-y-2">
+                      {esperadas.map((c, i) => (
+                        <li key={i} className="text-sm text-gray-300 flex gap-2.5 items-start leading-relaxed">
+                          <Check strokeWidth={2.4} className="w-3.5 h-3.5 mt-[3px] shrink-0 text-green-500" />
+                          {c.texto}
+                        </li>
+                      ))}
+                      {esperadas.length === 0 && <li className="text-xs text-gray-700">Sin capturar</li>}
                     </ul>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 mb-1.5">Así se ve cuando no</p>
-                    <ul className="space-y-1">
-                      {conductas
-                        .filter(c => c.tipo === "INACEPTABLE")
-                        .map((c, i) => (
-                          <li key={i} className="text-sm text-gray-300 flex gap-2">
-                            <span className={c.bajaInmediata ? "text-red-500" : "text-yellow-600"}>
-                              ✕
-                            </span>
-                            <span>
-                              {c.texto}
-                              {c.bajaInmediata && (
-                                <span className="text-red-400/70 text-xs"> · baja inmediata</span>
-                              )}
-                            </span>
-                          </li>
-                        ))}
+                    <p className="text-[10px] uppercase mb-2.5 flex items-center gap-1.5" style={{ color: "rgba(248,113,113,0.6)", letterSpacing: "0.18em" }}>
+                      <X strokeWidth={2.4} className="w-3 h-3" />
+                      Así se ve cuando no
+                    </p>
+                    <ul className="space-y-2">
+                      {inaceptables.map((c, i) => (
+                        <li key={i} className="text-sm text-gray-300 flex gap-2.5 items-start leading-relaxed">
+                          <X
+                            strokeWidth={2.4}
+                            className={`w-3.5 h-3.5 mt-[3px] shrink-0 ${c.bajaInmediata ? "text-red-500" : "text-yellow-600"}`}
+                          />
+                          <span>
+                            {c.texto}
+                            {c.bajaInmediata && (
+                              <span className="text-red-400/70 text-xs"> · baja inmediata</span>
+                            )}
+                          </span>
+                        </li>
+                      ))}
+                      {inaceptables.length === 0 && <li className="text-xs text-gray-700">Sin capturar</li>}
                     </ul>
                   </div>
                 </div>
+              ) : (
+                <button
+                  onClick={() => editarValor(v)}
+                  className="mt-5 pt-4 w-full flex items-center justify-center gap-2 text-xs text-gray-600 hover:text-white transition-colors"
+                  style={{ borderTop: `1px solid ${oro(0.1)}` }}
+                >
+                  <Plus strokeWidth={2} className="w-3.5 h-3.5" />
+                  Este valor todavía no se puede observar — agregar conductas
+                </button>
               )}
-            </div>
+            </Panel>
           );
         })}
       </div>
-    </div>
+    </Lienzo>
   );
 }
 
@@ -244,7 +331,7 @@ function EditorValor({
   guardando: boolean;
 }) {
   return (
-    <div className={`${cardCls} border-[#B3985B]/40 space-y-3`}>
+    <Panel acento className="space-y-3.5">
       <div>
         <label className={labelCls}>Nombre del valor</label>
         <input
@@ -272,9 +359,10 @@ function EditorValor({
       </div>
       <div>
         <div className="flex items-center gap-2 mb-2">
-          <label className={labelCls + " mb-0"}>Conductas</label>
+          <label className={labelCls + " mb-0"}>Conductas observables</label>
           <button
-            className="text-xs text-[#B3985B] hover:underline"
+            className="text-xs hover:underline flex items-center gap-1"
+            style={{ color: GOLD }}
             onClick={() =>
               setBorrador({
                 ...borrador,
@@ -282,7 +370,8 @@ function EditorValor({
               })
             }
           >
-            + agregar
+            <Plus strokeWidth={2.2} className="w-3 h-3" />
+            agregar
           </button>
         </div>
         <div className="space-y-2">
@@ -321,7 +410,7 @@ function EditorValor({
                 baja
               </label>
               <button
-                className="text-gray-600 hover:text-red-400 text-sm shrink-0 px-1"
+                className="text-gray-600 hover:text-red-400 shrink-0 px-1"
                 onClick={() =>
                   setBorrador({
                     ...borrador,
@@ -329,7 +418,7 @@ function EditorValor({
                   })
                 }
               >
-                ✕
+                <X strokeWidth={2} className="w-3.5 h-3.5" />
               </button>
             </div>
           ))}
@@ -343,6 +432,6 @@ function EditorValor({
           Cancelar
         </button>
       </div>
-    </div>
+    </Panel>
   );
 }

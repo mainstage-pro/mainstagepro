@@ -19,6 +19,7 @@ import {
   Globe,
   Sparkles,
   Tag,
+  Presentation,
   type LucideIcon,
 } from "lucide-react";
 import { PRESENTACION_CATEGORIAS } from "@/lib/presentacion-categorias";
@@ -253,6 +254,14 @@ export const PRESENTACIONES_COMERCIAL: PresentacionItem[] = [
 // Presentaciones para uso interno (equipo, agencias, candidatos). Nunca se
 // listan en el índice público.
 export const PRESENTACIONES_INTERNO: PresentacionItem[] = [
+  {
+    key: "cultura",
+    label: "Cultura y estrategia",
+    desc: "Identidad, valores con sus conductas, meta del periodo y cascada por área. Se arma en vivo con lo capturado en Dirección.",
+    href: "/presentacion/cultura",
+    icon: Presentation,
+    audience: "Equipo interno",
+  },
   {
     key: "alineacion",
     label: "Alineación de equipo 2026",

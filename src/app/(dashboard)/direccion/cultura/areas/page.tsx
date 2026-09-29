@@ -2,6 +2,27 @@
 
 import { useState } from "react";
 import {
+  Layers,
+  Target,
+  Megaphone,
+  Wrench,
+  Users,
+  Landmark,
+  Compass,
+  Crown,
+  ChevronDown,
+  ChevronRight,
+  Plus,
+  Pencil,
+  Trash2,
+  User,
+  CalendarClock,
+  Zap,
+  AlertTriangle,
+  Check,
+  type LucideIcon,
+} from "lucide-react";
+import {
   ESTADOS_TACTICA,
   ESTADO_OBJETIVO_META,
   KPI_OPCIONES,
@@ -12,7 +33,6 @@ import {
   useEstrategia,
   inputCls,
   labelCls,
-  cardCls,
   btnPrimary,
   btnGhost,
   type AreaDTO,
@@ -20,6 +40,17 @@ import {
   type TacticaDTO,
   type UsuarioLite,
 } from "../useEstrategia";
+import { Lienzo, Encabezado, Panel, Anillo, Vacio, FONDOS, GOLD, oro } from "../ui";
+
+const ICONO_AREA: Record<string, LucideIcon> = {
+  DIRECCION: Crown,
+  ADMINISTRACION: Landmark,
+  MARKETING: Megaphone,
+  VENTAS: Target,
+  PRODUCCION: Wrench,
+  RRHH: Users,
+  GENERAL: Compass,
+};
 
 export default function AreasPage() {
   const { data, cargando, error, recargar } = useEstrategia();
@@ -32,26 +63,27 @@ export default function AreasPage() {
   const usuarios = data?.usuarios ?? [];
 
   return (
-    <div className="p-6 space-y-5 max-w-5xl">
-      <div>
-        <h1 className="text-xl font-semibold text-white">Áreas, objetivos y tácticas</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          El propósito dice por qué existe el equipo. Los objetivos dicen qué tiene que lograr, con número
-          y fecha. Las tácticas son lo que alguien hace el lunes — y son las únicas que mueven el avance.
-        </p>
-      </div>
+    <Lienzo foto={FONDOS.areas} ancho="max-w-5xl">
+      <Encabezado
+        icono={Layers}
+        antetitulo="Cultura y estrategia"
+        titulo="Áreas, objetivos y tácticas"
+        bajada="El propósito dice por qué existe el equipo. Los objetivos dicen qué tiene que lograr, con número y fecha. Las tácticas son lo que alguien hace el lunes — y son las únicas que mueven el avance."
+      />
 
-      {areas.map(a => (
-        <TarjetaArea
-          key={a.id}
-          area={a}
-          usuarios={usuarios}
-          abierta={abierta === a.id}
-          alternar={() => setAbierta(abierta === a.id ? null : a.id)}
-          recargar={recargar}
-        />
-      ))}
-    </div>
+      <div className="space-y-4">
+        {areas.map(a => (
+          <TarjetaArea
+            key={a.id}
+            area={a}
+            usuarios={usuarios}
+            abierta={abierta === a.id}
+            alternar={() => setAbierta(abierta === a.id ? null : a.id)}
+            recargar={recargar}
+          />
+        ))}
+      </div>
+    </Lienzo>
   );
 }
 
@@ -84,46 +116,70 @@ function TarjetaArea({
   }
 
   const responsable = usuarios.find(u => u.id === area.responsableId);
+  const Icono = ICONO_AREA[area.areaPermiso] ?? Compass;
 
   return (
-    <div className={cardCls}>
-      <div className="flex items-start gap-3">
-        <button onClick={alternar} className="flex-1 text-left">
-          <h2 className="text-lg font-semibold text-white">
-            {area.nombre}
-            <span className="text-gray-600 text-sm font-normal ml-2">
-              {area.objetivos.length} objetivos
-            </span>
-          </h2>
-          <p className="text-xs text-gray-500 mt-0.5">
-            Dueño: {responsable?.name ?? "sin asignar"} · avance {area.progreso}%
-            {area.enRiesgo > 0 && (
-              <span className="text-red-400"> · {area.enRiesgo} en riesgo</span>
-            )}
-          </p>
-        </button>
-        <button className={btnGhost} onClick={alternar}>
-          {abierta ? "Cerrar" : "Abrir"}
-        </button>
-      </div>
-
-      <div className="h-1.5 bg-[#1a1a1a] rounded-full mt-3 overflow-hidden">
+    <Panel acento={abierta}>
+      <div className="flex items-center gap-4">
         <div
-          className="h-full bg-[#B3985B] rounded-full transition-all"
-          style={{ width: `${area.progreso}%` }}
-        />
+          className="shrink-0 w-10 h-10 rounded-lg flex items-center justify-center"
+          style={{ background: oro(0.08), border: `1px solid ${oro(0.24)}` }}
+        >
+          <Icono strokeWidth={1.6} className="w-[18px] h-[18px]" style={{ color: GOLD }} />
+        </div>
+
+        <button onClick={alternar} className="min-w-0 flex-1 text-left">
+          <h2 className="text-[17px] font-semibold text-white tracking-tight">{area.nombre}</h2>
+          <div className="flex items-center gap-2.5 mt-1 text-[11px] flex-wrap">
+            <span className="text-gray-500 flex items-center gap-1.5">
+              <User strokeWidth={1.7} className="w-3 h-3" />
+              {responsable?.name ?? "sin dueño"}
+            </span>
+            <span className="text-gray-700">·</span>
+            <span className="text-gray-500">
+              {area.objetivos.length} {area.objetivos.length === 1 ? "objetivo" : "objetivos"}
+            </span>
+            {area.enRiesgo > 0 && (
+              <span className="text-red-400 flex items-center gap-1.5">
+                <AlertTriangle strokeWidth={1.8} className="w-3 h-3" />
+                {area.enRiesgo} en riesgo
+              </span>
+            )}
+          </div>
+        </button>
+
+        <Anillo pct={area.progreso} tam={44} />
+
+        <button
+          className="shrink-0 text-gray-600 hover:text-white transition-colors p-1"
+          onClick={alternar}
+          aria-label={abierta ? "Cerrar" : "Abrir"}
+        >
+          {abierta ? (
+            <ChevronDown strokeWidth={1.8} className="w-4 h-4" />
+          ) : (
+            <ChevronRight strokeWidth={1.8} className="w-4 h-4" />
+          )}
+        </button>
       </div>
 
       {abierta && (
-        <div className="mt-5 space-y-5">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <label className={labelCls + " mb-0"}>Propósito del área</label>
+        <div className="mt-6 space-y-6">
+          <div className="pt-1" style={{ borderTop: `1px solid ${oro(0.12)}` }}>
+            <div className="flex items-center gap-2 mt-4 mb-1.5">
+              <span
+                className="text-[10px] font-medium uppercase"
+                style={{ color: oro(0.75), letterSpacing: "0.2em" }}
+              >
+                Propósito del área
+              </span>
               {!editandoProp && (
                 <button
-                  className="text-xs text-[#B3985B] hover:underline"
+                  className="text-[11px] hover:underline flex items-center gap-1"
+                  style={{ color: GOLD }}
                   onClick={() => setEditandoProp(true)}
                 >
+                  <Pencil strokeWidth={1.9} className="w-2.5 h-2.5" />
                   editar
                 </button>
               )}
@@ -161,32 +217,48 @@ function TarjetaArea({
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-line">
-                {area.proposito || "—"}
+              <p className="text-[14px] text-gray-300 leading-[1.75] whitespace-pre-line">
+                {area.proposito || "Todavía sin redactar."}
               </p>
             )}
           </div>
 
-          <div className="space-y-4">
-            {area.objetivos.map(o => (
-              <Objetivo key={o.id} objetivo={o} usuarios={usuarios} recargar={recargar} />
-            ))}
-          </div>
+          {area.objetivos.length > 0 ? (
+            <div className="space-y-3">
+              {area.objetivos.map(o => (
+                <Objetivo key={o.id} objetivo={o} usuarios={usuarios} recargar={recargar} />
+              ))}
+            </div>
+          ) : (
+            !nuevoAbierto && (
+              <Vacio
+                icono={Target}
+                titulo="Esta área no tiene objetivos"
+                texto="Sin objetivos no hay forma de saber si el área avanza. Un objetivo es un número con fecha, no una intención."
+                accion={
+                  <button className={btnPrimary} onClick={() => setNuevoAbierto(true)}>
+                    Escribir el primer objetivo
+                  </button>
+                }
+              />
+            )
+          )}
 
           {nuevoAbierto ? (
-            <FormObjetivo
-              areaId={area.id}
-              cerrar={() => setNuevoAbierto(false)}
-              recargar={recargar}
-            />
+            <FormObjetivo areaId={area.id} cerrar={() => setNuevoAbierto(false)} recargar={recargar} />
           ) : (
-            <button className={btnGhost} onClick={() => setNuevoAbierto(true)}>
-              + Nuevo objetivo
-            </button>
+            area.objetivos.length > 0 && (
+              <button className={btnGhost} onClick={() => setNuevoAbierto(true)}>
+                <span className="flex items-center gap-1.5">
+                  <Plus strokeWidth={2} className="w-3.5 h-3.5" />
+                  Nuevo objetivo
+                </span>
+              </button>
+            )
           )}
         </div>
       )}
-    </div>
+    </Panel>
   );
 }
 
@@ -232,57 +304,89 @@ function Objetivo({
     );
   }
 
+  const hechas = objetivo.tacticas.filter(t => t.estado === "COMPLETADO").length;
+
   return (
-    <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg p-4">
-      <div className="flex items-start gap-3">
-        <div className="flex-1">
-          <p className="text-sm text-gray-200 leading-relaxed">{objetivo.descripcion}</p>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-gray-500">
-            <span>{objetivo.metrica}</span>
-            <span>
-              {formatValorMeta(objetivo.lineaBase, objetivo.unidad)} →{" "}
-              <span className="text-[#B3985B]">{formatValorMeta(objetivo.valorMeta, objetivo.unidad)}</span>
+    <div
+      className="rounded-xl p-4 sm:p-5"
+      style={{ background: "rgba(255,255,255,0.02)", borderLeft: `2px solid ${est.color}` }}
+    >
+      <div className="flex items-start gap-4">
+        <div className="min-w-0 flex-1">
+          <p className="text-[14px] text-gray-100 leading-[1.6]">{objetivo.descripcion}</p>
+
+          <div className="flex items-baseline gap-2.5 mt-3 flex-wrap">
+            <span className="text-[11px] text-gray-600">{objetivo.metrica}</span>
+            <span className="text-[11px] text-gray-600 tabular-nums">
+              {formatValorMeta(objetivo.lineaBase, objetivo.unidad)}
             </span>
+            <span className="text-gray-700 text-[11px]">→</span>
+            <span className="text-lg font-semibold tabular-nums tracking-tight" style={{ color: GOLD }}>
+              {formatValorMeta(objetivo.valorMeta, objetivo.unidad)}
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-[11px] text-gray-600">
             {objetivo.valorActual != null && (
-              <span>Actual: {formatValorMeta(objetivo.valorActual, objetivo.unidad)}</span>
+              <span className="tabular-nums">
+                Actual {formatValorMeta(objetivo.valorActual, objetivo.unidad)}
+              </span>
             )}
             {objetivo.fechaLimite && (
-              <span>Límite: {new Date(objetivo.fechaLimite).toLocaleDateString("es-MX")}</span>
+              <span className="flex items-center gap-1.5">
+                <CalendarClock strokeWidth={1.7} className="w-3 h-3" />
+                {new Date(objetivo.fechaLimite).toLocaleDateString("es-MX", { dateStyle: "medium" })}
+              </span>
             )}
-            {objetivo.kpiSlug && <span className="text-[#B3985B]/70">automático</span>}
+            {objetivo.tacticas.length > 0 && (
+              <span className="flex items-center gap-1.5">
+                <Check strokeWidth={2.2} className="w-3 h-3" />
+                {hechas} de {objetivo.tacticas.length} tácticas
+              </span>
+            )}
+            {objetivo.kpiSlug && (
+              <span className="flex items-center gap-1.5" style={{ color: oro(0.6) }}>
+                <Zap strokeWidth={2} className="w-3 h-3" />
+                automático
+              </span>
+            )}
           </div>
         </div>
-        <div className="shrink-0 text-right space-y-1.5">
+
+        <div className="shrink-0 flex flex-col items-end gap-2">
+          <Anillo pct={objetivo.progreso} tam={40} color={est.color} />
           <span
-            className="text-xs px-2 py-0.5 rounded-full block"
-            style={{ background: `${est.color}22`, color: est.color }}
+            className="text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap"
+            style={{ background: `${est.color}1f`, color: est.color }}
           >
             {est.label}
           </span>
-          <span className="text-xs text-gray-500 block">{objetivo.progreso}%</span>
-          <div className="flex gap-1 justify-end">
-            <button className="text-xs text-gray-600 hover:text-white" onClick={() => setEditando(true)}>
-              editar
+          <div className="flex gap-1.5">
+            <button
+              className="text-gray-700 hover:text-white transition-colors"
+              onClick={() => setEditando(true)}
+              aria-label="Editar objetivo"
+            >
+              <Pencil strokeWidth={1.8} className="w-3 h-3" />
             </button>
-            <button className="text-xs text-gray-700 hover:text-red-400" onClick={borrar}>
-              baja
+            <button
+              className="text-gray-700 hover:text-red-400 transition-colors"
+              onClick={borrar}
+              aria-label="Dar de baja"
+            >
+              <Trash2 strokeWidth={1.8} className="w-3 h-3" />
             </button>
           </div>
         </div>
       </div>
 
-      <div className="h-1 bg-[#1a1a1a] rounded-full mt-3 overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all"
-          style={{ width: `${objetivo.progreso}%`, background: est.color }}
-        />
-      </div>
-
-      <div className="mt-3 space-y-1.5">
-        {objetivo.tacticas.map(t => (
-          <Tactica key={t.id} tactica={t} usuarios={usuarios} recargar={recargar} />
-        ))}
-      </div>
+      {objetivo.tacticas.length > 0 && (
+        <div className="mt-4 space-y-1.5">
+          {objetivo.tacticas.map(t => (
+            <Tactica key={t.id} tactica={t} usuarios={usuarios} recargar={recargar} />
+          ))}
+        </div>
+      )}
 
       <div className="flex gap-2 mt-3">
         <input
@@ -293,7 +397,10 @@ function Objetivo({
           onKeyDown={e => e.key === "Enter" && agregarTactica()}
         />
         <button className={btnGhost} onClick={agregarTactica}>
-          Agregar
+          <span className="flex items-center gap-1.5">
+            <Plus strokeWidth={2} className="w-3.5 h-3.5" />
+            Agregar
+          </span>
         </button>
       </div>
     </div>
@@ -329,32 +436,37 @@ function Tactica({
 
   return (
     <div
-      className={`rounded-md px-3 py-2 border ${
-        tactica.vencida ? "border-red-900/50 bg-red-950/10" : "border-[#1a1a1a] bg-[#111]"
-      }`}
+      className="rounded-lg px-3 py-2"
+      style={
+        tactica.vencida
+          ? { background: "rgba(69,10,10,0.18)", border: "1px solid rgba(153,27,27,0.38)" }
+          : { background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.05)" }
+      }
     >
-      <div className="flex items-center gap-2">
-        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: meta?.color }} />
-        <button onClick={() => setAbierto(!abierto)} className="flex-1 text-left">
+      <div className="flex items-center gap-2.5">
+        <span
+          className="w-1.5 h-1.5 rounded-full shrink-0"
+          style={{ background: meta?.color, boxShadow: `0 0 6px ${meta?.color}66` }}
+        />
+        <button onClick={() => setAbierto(!abierto)} className="min-w-0 flex-1 text-left">
           <span
-            className={`text-sm ${
-              tactica.estado === "COMPLETADO" ? "text-gray-500 line-through" : "text-gray-300"
+            className={`text-[13px] ${
+              tactica.estado === "COMPLETADO" ? "text-gray-600 line-through" : "text-gray-300"
             }`}
           >
             {tactica.descripcion}
           </span>
           {(responsable || tactica.fechaEjecucion) && (
-            <span className="text-xs text-gray-600 ml-2">
+            <span className="text-[11px] text-gray-600 ml-2">
               {responsable?.name}
               {responsable && tactica.fechaEjecucion && " · "}
-              {tactica.fechaEjecucion &&
-                new Date(tactica.fechaEjecucion).toLocaleDateString("es-MX")}
+              {tactica.fechaEjecucion && new Date(tactica.fechaEjecucion).toLocaleDateString("es-MX")}
               {tactica.vencida && <span className="text-red-400"> · vencida</span>}
             </span>
           )}
         </button>
         <select
-          className="bg-[#0d0d0d] border border-[#222] text-xs rounded px-1.5 py-1 shrink-0"
+          className="bg-[#0d0d0d] border border-[#222] text-[11px] rounded px-1.5 py-1 shrink-0"
           style={{ color: meta?.color }}
           value={tactica.estado}
           onChange={e => patch({ estado: e.target.value })}
@@ -368,7 +480,10 @@ function Tactica({
       </div>
 
       {abierto && (
-        <div className="grid sm:grid-cols-2 gap-2 mt-2 pt-2 border-t border-[#1a1a1a]">
+        <div
+          className="grid sm:grid-cols-2 gap-2 mt-2.5 pt-2.5"
+          style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
+        >
           <div>
             <label className={labelCls}>Responsable</label>
             <select
@@ -394,7 +509,11 @@ function Tactica({
             />
           </div>
           <div className="sm:col-span-2">
-            <button className="text-xs text-gray-700 hover:text-red-400" onClick={borrar}>
+            <button
+              className="text-[11px] text-gray-700 hover:text-red-400 flex items-center gap-1.5"
+              onClick={borrar}
+            >
+              <Trash2 strokeWidth={1.8} className="w-3 h-3" />
               Eliminar táctica
             </button>
           </div>
@@ -442,7 +561,10 @@ function FormObjetivo({
   }
 
   return (
-    <div className="bg-[#0d0d0d] border border-[#B3985B]/40 rounded-lg p-4 space-y-3">
+    <div
+      className="rounded-xl p-4 space-y-3"
+      style={{ background: oro(0.04), border: `1px solid ${oro(0.34)}` }}
+    >
       <div>
         <label className={labelCls}>Objetivo (qué se logra, medible y con fecha)</label>
         <textarea

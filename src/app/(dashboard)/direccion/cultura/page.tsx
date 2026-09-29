@@ -1,32 +1,39 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useEstrategia, inputCls, labelCls, cardCls, btnPrimary, btnGhost } from "./useEstrategia";
+import { Compass, Crosshair, Telescope, ShieldOff, History, BadgeCheck, Presentation } from "lucide-react";
+import { useEstrategia, inputCls, labelCls, btnPrimary, btnGhost } from "./useEstrategia";
+import { Lienzo, Encabezado, Panel, Cita, Rotulo, FONDOS, GOLD, oro } from "./ui";
 
 const CAMPOS = [
   {
     key: "proposito" as const,
+    icono: Compass,
     titulo: "Propósito",
     ayuda: "El porqué. La razón de ser humana de la empresa — permanente, no cambia con el mercado.",
     filas: 6,
   },
   {
     key: "mision" as const,
+    icono: Crosshair,
     titulo: "Misión",
     ayuda: "El qué, hoy: a qué se dedica el negocio, a quién sirve y cuál es su ventaja.",
     filas: 5,
   },
   {
     key: "vision" as const,
+    icono: Telescope,
     titulo: "Visión",
     ayuda: "El hacia dónde, a 3–5 años. Debe poderse reconocer cuando ya se cumplió.",
     filas: 5,
   },
   {
     key: "aQuienNoServimos" as const,
+    icono: ShieldOff,
     titulo: "A quién no servimos",
     ayuda: "El filo de la misión. Sirve para decidir a qué evento decir no y a quién no contratar.",
     filas: 4,
+    filo: true,
   },
 ];
 
@@ -76,40 +83,51 @@ export default function IdentidadPage() {
   const editando = modo !== "ver";
 
   return (
-    <div className="p-6 space-y-6 max-w-4xl">
-      <div>
-        <h1 className="text-xl font-semibold text-white">Identidad institucional</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          La base de la que cuelga todo lo demás. Se imprime en el acuerdo de alineación, en la oferta
-          de trabajo y en el onboarding, así que cambiarla cambia lo que firma el equipo.
-        </p>
-      </div>
+    <Lienzo foto={FONDOS.identidad}>
+      <Encabezado
+        icono={Compass}
+        antetitulo="Cultura y estrategia"
+        titulo="Identidad institucional"
+        bajada="La base de la que cuelga todo lo demás. Se imprime en el acuerdo de alineación, en la oferta de trabajo y en el onboarding, así que cambiarla cambia lo que firma el equipo."
+        acciones={
+          !editando ? (
+            <>
+              <a className={btnGhost} href="/presentacion/cultura" target="_blank" rel="noopener noreferrer">
+                <span className="flex items-center gap-1.5">
+                  <Presentation strokeWidth={1.7} className="w-3.5 h-3.5" />
+                  Presentar
+                </span>
+              </a>
+              <button className={btnGhost} onClick={() => setModo("corregir")}>
+                Corregir redacción
+              </button>
+              <button className={btnPrimary} onClick={() => setModo("publicar")}>
+                Publicar nueva versión
+              </button>
+            </>
+          ) : undefined
+        }
+      />
 
       <div className="flex items-center gap-3 flex-wrap">
-        <span className="text-xs px-2.5 py-1 rounded-full bg-[#B3985B]/15 text-[#B3985B] border border-[#B3985B]/30">
+        <span
+          className="text-[11px] px-2.5 py-1 rounded-full flex items-center gap-1.5"
+          style={{ background: oro(0.12), color: GOLD, border: `1px solid ${oro(0.3)}` }}
+        >
+          <BadgeCheck strokeWidth={2} className="w-3 h-3" />
           Versión {i.version} vigente
         </span>
         {i.publicadaEn && (
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-gray-600">
             Publicada el {new Date(i.publicadaEn).toLocaleDateString("es-MX", { dateStyle: "long" })}
           </span>
         )}
-        {!editando && (
-          <div className="flex gap-2 ml-auto">
-            <button className={btnGhost} onClick={() => setModo("corregir")}>
-              Corregir redacción
-            </button>
-            <button className={btnPrimary} onClick={() => setModo("publicar")}>
-              Publicar nueva versión
-            </button>
-          </div>
-        )}
       </div>
 
-      {msg && <div className="text-sm text-[#B3985B]">{msg}</div>}
+      {msg && <div className="text-sm" style={{ color: GOLD }}>{msg}</div>}
 
       {modo === "publicar" && (
-        <div className={`${cardCls} border-[#B3985B]/40`}>
+        <Panel acento>
           <label className={labelCls}>
             Por qué cambia la identidad (obligatorio — queda en el historial)
           </label>
@@ -120,40 +138,56 @@ export default function IdentidadPage() {
             onChange={e => setNota(e.target.value)}
             placeholder="Ej. La visión se actualizó tras abrir cobertura nacional."
           />
-        </div>
+        </Panel>
       )}
 
-      <div className={cardCls}>
-        <label className={labelCls}>Frase de marca</label>
-        {editando ? (
+      {/* Frase de marca: es la declaración, no un campo más de formulario. */}
+      {editando ? (
+        <Panel>
+          <label className={labelCls}>Frase de marca</label>
           <input
             className={inputCls}
             value={form.frase ?? ""}
             onChange={e => setForm({ ...form, frase: e.target.value })}
           />
-        ) : (
-          <p className="text-lg text-[#B3985B] font-medium">{i.frase || "—"}</p>
-        )}
-      </div>
+        </Panel>
+      ) : (
+        i.frase && (
+          <div className="py-2">
+            <Cita>{i.frase}</Cita>
+          </div>
+        )
+      )}
 
-      {CAMPOS.map(c => (
-        <div key={c.key} className={cardCls}>
-          <h2 className="text-base font-semibold text-white">{c.titulo}</h2>
-          <p className="text-xs text-gray-500 mt-0.5 mb-3">{c.ayuda}</p>
-          {editando ? (
-            <textarea
-              className={inputCls}
-              rows={c.filas}
-              value={form[c.key] ?? ""}
-              onChange={e => setForm({ ...form, [c.key]: e.target.value })}
-            />
-          ) : (
-            <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-line">
-              {i[c.key] || "—"}
-            </p>
-          )}
-        </div>
-      ))}
+      <div className="space-y-4">
+        {CAMPOS.map(c => (
+          <Panel key={c.key} peligro={c.filo && !editando}>
+            <div className="flex items-start gap-3">
+              <c.icono
+                strokeWidth={1.6}
+                className="w-4 h-4 mt-0.5 shrink-0"
+                style={{ color: c.filo ? "rgba(248,113,113,0.85)" : oro(0.8) }}
+              />
+              <div className="min-w-0 flex-1">
+                <h2 className="text-[15px] font-semibold text-white">{c.titulo}</h2>
+                <p className="text-xs text-gray-600 mt-0.5 mb-3.5 leading-relaxed">{c.ayuda}</p>
+                {editando ? (
+                  <textarea
+                    className={inputCls}
+                    rows={c.filas}
+                    value={form[c.key] ?? ""}
+                    onChange={e => setForm({ ...form, [c.key]: e.target.value })}
+                  />
+                ) : (
+                  <p className="text-[15px] text-gray-300 leading-[1.75] whitespace-pre-line">
+                    {i[c.key] || "—"}
+                  </p>
+                )}
+              </div>
+            </div>
+          </Panel>
+        ))}
+      </div>
 
       {editando && (
         <div className="flex gap-2">
@@ -174,21 +208,42 @@ export default function IdentidadPage() {
       )}
 
       {data.historial.length > 1 && (
-        <div className={cardCls}>
-          <h2 className="text-base font-semibold text-white mb-3">Historial de versiones</h2>
-          <ul className="space-y-2">
+        <div className="space-y-4 pt-2">
+          <Rotulo icono={History}>Historial de versiones</Rotulo>
+          <ol className="relative pl-5" style={{ borderLeft: `1px solid ${oro(0.16)}` }}>
             {data.historial.map(h => (
-              <li key={h.id} className="flex gap-3 text-sm border-b border-[#1a1a1a] pb-2 last:border-0">
-                <span className="text-gray-500 w-16 shrink-0">v{h.version}</span>
-                <span className="text-gray-400 flex-1">{h.notaCambio ?? "Versión inicial"}</span>
-                <span className="text-gray-600 text-xs shrink-0">
-                  {new Date(h.publicadaEn ?? h.createdAt).toLocaleDateString("es-MX")}
-                </span>
+              <li key={h.id} className="relative pb-5 last:pb-0">
+                <span
+                  className="absolute -left-[26px] top-1 w-2.5 h-2.5 rounded-full"
+                  style={{
+                    background: h.vigente ? GOLD : "#1c1c1c",
+                    border: `1px solid ${h.vigente ? GOLD : oro(0.3)}`,
+                  }}
+                />
+                <div className="flex items-baseline gap-2.5 flex-wrap">
+                  <span
+                    className="text-xs font-semibold tabular-nums"
+                    style={{ color: h.vigente ? GOLD : "rgba(255,255,255,0.35)" }}
+                  >
+                    v{h.version}
+                  </span>
+                  {h.vigente && (
+                    <span className="text-[10px] uppercase" style={{ color: oro(0.6), letterSpacing: "0.16em" }}>
+                      Vigente
+                    </span>
+                  )}
+                  <span className="text-[11px] text-gray-600 ml-auto">
+                    {new Date(h.publicadaEn ?? h.createdAt).toLocaleDateString("es-MX", { dateStyle: "medium" })}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-400 mt-1 leading-relaxed">
+                  {h.notaCambio ?? "Versión inicial"}
+                </p>
               </li>
             ))}
-          </ul>
+          </ol>
         </div>
       )}
-    </div>
+    </Lienzo>
   );
 }

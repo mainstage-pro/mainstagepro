@@ -2,11 +2,20 @@
 
 import { useState } from "react";
 import {
-  ESTADOS_TACTICA,
-  ESTADO_OBJETIVO_META,
-  formatValorMeta,
-} from "@/lib/estrategia";
-import { useEstrategia, cardCls } from "../useEstrategia";
+  GitBranch,
+  Gauge,
+  Target,
+  ListChecks,
+  AlarmClock,
+  Flag,
+  ChevronDown,
+  ChevronRight,
+  User,
+  AlertTriangle,
+} from "lucide-react";
+import { ESTADOS_TACTICA, ESTADO_OBJETIVO_META, formatValorMeta } from "@/lib/estrategia";
+import { useEstrategia } from "../useEstrategia";
+import { Lienzo, Encabezado, Panel, Metrica, Anillo, Rotulo, FONDOS, GOLD, oro } from "../ui";
 
 export default function CascadaPage() {
   const { data, cargando, error } = useEstrategia();
@@ -26,166 +35,238 @@ export default function CascadaPage() {
   const { meta, areas, resumen, usuarios } = data;
   const alertas = areas.flatMap(a =>
     a.objetivos.flatMap(o =>
-      o.tacticas
-        .filter(t => t.vencida)
-        .map(t => ({ area: a.nombre, objetivo: o.descripcion, tactica: t }))
+      o.tacticas.filter(t => t.vencida).map(t => ({ area: a.nombre, objetivo: o.descripcion, tactica: t }))
     )
   );
 
   return (
-    <div className="p-6 space-y-5 max-w-5xl">
-      <div>
-        <h1 className="text-xl font-semibold text-white">Cascada</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          De la meta del periodo hasta la táctica que alguien tiene que hacer. El avance sube solo: se
-          calcula desde las tácticas completadas, nunca se captura a mano.
-        </p>
-      </div>
+    <Lienzo foto={FONDOS.cascada} ancho="max-w-5xl">
+      <Encabezado
+        icono={GitBranch}
+        antetitulo="Cultura y estrategia"
+        titulo="Cascada"
+        bajada="De la meta del periodo hasta la táctica que alguien tiene que hacer. El avance sube solo: se calcula desde las tácticas completadas, nunca se captura a mano."
+      />
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          { label: "Avance del periodo", valor: `${resumen.progreso}%` },
-          { label: "Objetivos", valor: resumen.objetivos },
-          { label: "Tácticas", valor: resumen.tacticas },
-          {
-            label: "Tácticas vencidas",
-            valor: resumen.tacticasVencidas,
-            alerta: resumen.tacticasVencidas > 0,
-          },
-        ].map(k => (
-          <div key={k.label} className={cardCls}>
-            <p className="text-xs text-gray-500">{k.label}</p>
-            <p className={`text-2xl font-semibold mt-1 ${k.alerta ? "text-red-400" : "text-white"}`}>
-              {k.valor}
-            </p>
-          </div>
-        ))}
+        <Metrica icono={Gauge} label="Avance del periodo" valor={`${resumen.progreso}%`} />
+        <Metrica icono={Target} label="Objetivos" valor={resumen.objetivos} />
+        <Metrica icono={ListChecks} label="Tácticas" valor={resumen.tacticas} />
+        <Metrica
+          icono={AlarmClock}
+          label="Tácticas vencidas"
+          valor={resumen.tacticasVencidas}
+          alerta={resumen.tacticasVencidas > 0}
+        />
       </div>
 
       {alertas.length > 0 && (
-        <div className="bg-red-950/20 border border-red-900/40 rounded-xl p-5">
-          <h2 className="text-base font-semibold text-red-300 mb-3">
-            Desviaciones ({alertas.length})
-          </h2>
-          <ul className="space-y-2">
+        <Panel peligro>
+          <div className="flex items-center gap-2.5 mb-4">
+            <AlertTriangle strokeWidth={1.8} className="w-4 h-4 shrink-0 text-red-400" />
+            <h2 className="text-[15px] font-semibold text-red-300">
+              Lo que ya se pasó de fecha ({alertas.length})
+            </h2>
+          </div>
+          <ul className="space-y-2.5">
             {alertas.map(a => (
-              <li key={a.tactica.id} className="text-sm border-b border-red-900/20 pb-2 last:border-0">
-                <span className="text-gray-200">{a.tactica.descripcion}</span>
-                <div className="text-xs text-gray-500 mt-0.5">
-                  {a.area} ·{" "}
-                  {a.tactica.fechaEjecucion &&
-                    `vencía el ${new Date(a.tactica.fechaEjecucion).toLocaleDateString("es-MX")}`}
+              <li
+                key={a.tactica.id}
+                className="pb-2.5 last:pb-0"
+                style={{ borderBottom: "1px solid rgba(153,27,27,0.22)" }}
+              >
+                <span className="text-[13px] text-gray-200">{a.tactica.descripcion}</span>
+                <div className="text-[11px] text-gray-500 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span>{a.area}</span>
+                  {a.tactica.fechaEjecucion && (
+                    <span className="flex items-center gap-1.5">
+                      <AlarmClock strokeWidth={1.7} className="w-3 h-3" />
+                      vencía el{" "}
+                      {new Date(a.tactica.fechaEjecucion).toLocaleDateString("es-MX", {
+                        dateStyle: "medium",
+                      })}
+                    </span>
+                  )}
                   {a.tactica.responsableId && (
-                    <> · {usuarios.find(u => u.id === a.tactica.responsableId)?.name ?? "—"}</>
+                    <span className="flex items-center gap-1.5">
+                      <User strokeWidth={1.7} className="w-3 h-3" />
+                      {usuarios.find(u => u.id === a.tactica.responsableId)?.name ?? "—"}
+                    </span>
                   )}
                 </div>
               </li>
             ))}
           </ul>
-        </div>
+        </Panel>
       )}
 
       {meta && (
-        <div className={`${cardCls} border-[#B3985B]/30`}>
-          <p className="text-xs text-[#B3985B]">Meta global {meta.periodo}</p>
-          <h2 className="text-lg font-semibold text-white mt-1">{meta.titulo}</h2>
-          <div className="flex flex-wrap gap-x-6 gap-y-1 mt-2 text-xs text-gray-500">
-            {meta.indicadores.map(i => (
-              <span key={i.id}>
-                {i.nombre}: <span className="text-[#B3985B]">{formatValorMeta(i.valorMeta, i.unidad)}</span>
-              </span>
-            ))}
+        <Panel acento>
+          <div className="flex items-start gap-3">
+            <Flag strokeWidth={1.6} className="w-4 h-4 mt-1 shrink-0" style={{ color: GOLD }} />
+            <div className="min-w-0 flex-1">
+              <p
+                className="text-[10px] font-medium uppercase"
+                style={{ color: GOLD, letterSpacing: "0.22em" }}
+              >
+                Meta global {meta.periodo}
+              </p>
+              <h2 className="text-xl font-semibold text-white mt-2 leading-snug tracking-tight">
+                {meta.titulo}
+              </h2>
+              <div className="flex flex-wrap gap-x-7 gap-y-2 mt-4">
+                {meta.indicadores.map(i => (
+                  <div key={i.id}>
+                    <p className="text-[10px] text-gray-600">{i.nombre}</p>
+                    <p
+                      className="text-[15px] font-semibold tabular-nums tracking-tight"
+                      style={{ color: i.valorMeta == null ? "rgba(255,255,255,0.28)" : GOLD }}
+                    >
+                      {i.valorMeta == null ? "Sin meta" : formatValorMeta(i.valorMeta, i.unidad)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <Anillo pct={resumen.progreso} tam={52} />
           </div>
-        </div>
+        </Panel>
       )}
 
-      <div className="space-y-3 pl-4 border-l border-[#222]">
-        {areas.map(a => (
-          <div key={a.id}>
-            <div className={cardCls}>
-              <button onClick={() => alternar(a.id)} className="w-full text-left">
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-semibold text-white flex-1">{a.nombre}</span>
-                  {a.enRiesgo > 0 && (
-                    <span className="text-xs text-red-400">{a.enRiesgo} en riesgo</span>
-                  )}
-                  <span className="text-xs text-gray-500">{a.progreso}%</span>
-                  <span className="text-gray-600 text-xs">{abiertas.has(a.id) ? "▾" : "▸"}</span>
-                </div>
-                <div className="h-1 bg-[#1a1a1a] rounded-full mt-2 overflow-hidden">
-                  <div className="h-full bg-[#B3985B]" style={{ width: `${a.progreso}%` }} />
-                </div>
-              </button>
+      <div className="space-y-4">
+        <Rotulo icono={GitBranch}>Cómo baja la meta hasta el lunes</Rotulo>
 
-              {abiertas.has(a.id) && (
-                <div className="mt-4 space-y-3 pl-4 border-l border-[#222]">
-                  {a.objetivos.map(o => {
-                    const est = ESTADO_OBJETIVO_META[o.estadoCalc];
-                    return (
-                      <div key={o.id}>
-                        <button onClick={() => alternar(o.id)} className="w-full text-left">
-                          <div className="flex items-start gap-3">
-                            <span className="text-sm text-gray-300 flex-1">{o.descripcion}</span>
+        <div className="space-y-3 pl-5" style={{ borderLeft: `1px solid ${oro(0.16)}` }}>
+          {areas.map(a => {
+            const areaAbierta = abiertas.has(a.id);
+            return (
+              <div key={a.id} className="relative">
+                <span
+                  className="absolute -left-[26px] top-6 w-2.5 h-2.5 rounded-full"
+                  style={{
+                    background: a.progreso > 0 ? GOLD : "#1c1c1c",
+                    border: `1px solid ${a.progreso > 0 ? GOLD : oro(0.3)}`,
+                  }}
+                />
+                <Panel acento={areaAbierta}>
+                  <button onClick={() => alternar(a.id)} className="w-full text-left">
+                    <div className="flex items-center gap-3">
+                      <span className="text-[15px] font-semibold text-white flex-1 tracking-tight">
+                        {a.nombre}
+                      </span>
+                      {a.enRiesgo > 0 && (
+                        <span className="text-[11px] text-red-400 flex items-center gap-1.5 shrink-0">
+                          <AlertTriangle strokeWidth={1.8} className="w-3 h-3" />
+                          {a.enRiesgo} en riesgo
+                        </span>
+                      )}
+                      <Anillo pct={a.progreso} tam={38} />
+                      {areaAbierta ? (
+                        <ChevronDown strokeWidth={1.8} className="w-4 h-4 text-gray-600 shrink-0" />
+                      ) : (
+                        <ChevronRight strokeWidth={1.8} className="w-4 h-4 text-gray-600 shrink-0" />
+                      )}
+                    </div>
+                  </button>
+
+                  {areaAbierta && (
+                    <div
+                      className="mt-5 space-y-4 pl-5"
+                      style={{ borderLeft: `1px solid ${oro(0.14)}` }}
+                    >
+                      {a.objetivos.map(o => {
+                        const est = ESTADO_OBJETIVO_META[o.estadoCalc];
+                        const objAbierto = abiertas.has(o.id);
+                        return (
+                          <div key={o.id} className="relative">
                             <span
-                              className="text-xs px-2 py-0.5 rounded-full shrink-0"
-                              style={{ background: `${est.color}22`, color: est.color }}
-                            >
-                              {o.progreso}%
-                            </span>
-                            <span className="text-gray-600 text-xs shrink-0">
-                              {abiertas.has(o.id) ? "▾" : "▸"}
-                            </span>
-                          </div>
-                          <p className="text-xs text-gray-600 mt-0.5">
-                            {o.metrica} · meta {formatValorMeta(o.valorMeta, o.unidad)}
-                            {o.fechaLimite &&
-                              ` · ${new Date(o.fechaLimite).toLocaleDateString("es-MX")}`}
-                          </p>
-                        </button>
-
-                        {abiertas.has(o.id) && (
-                          <ul className="mt-2 space-y-1 pl-4 border-l border-[#222]">
-                            {o.tacticas.map(t => {
-                              const em = ESTADOS_TACTICA.find(e => e.value === t.estado);
-                              return (
-                                <li key={t.id} className="flex items-center gap-2 text-sm">
-                                  <span
-                                    className="w-1.5 h-1.5 rounded-full shrink-0"
-                                    style={{ background: em?.color }}
+                              className="absolute -left-[26px] top-2 w-2 h-2 rounded-full"
+                              style={{ background: est.color }}
+                            />
+                            <button onClick={() => alternar(o.id)} className="w-full text-left">
+                              <div className="flex items-start gap-3">
+                                <span className="text-[13px] text-gray-200 flex-1 leading-relaxed">
+                                  {o.descripcion}
+                                </span>
+                                <span
+                                  className="text-[11px] px-2 py-0.5 rounded-full shrink-0 tabular-nums"
+                                  style={{ background: `${est.color}1f`, color: est.color }}
+                                >
+                                  {o.progreso}%
+                                </span>
+                                {objAbierto ? (
+                                  <ChevronDown
+                                    strokeWidth={1.8}
+                                    className="w-3.5 h-3.5 text-gray-600 shrink-0 mt-0.5"
                                   />
-                                  <span
-                                    className={
-                                      t.estado === "COMPLETADO"
-                                        ? "text-gray-600 line-through"
-                                        : t.vencida
-                                          ? "text-red-300"
-                                          : "text-gray-400"
-                                    }
-                                  >
-                                    {t.descripcion}
-                                  </span>
-                                  <span className="text-xs text-gray-700 ml-auto shrink-0">
-                                    {usuarios.find(u => u.id === t.responsableId)?.name ?? ""}
-                                  </span>
-                                </li>
-                              );
-                            })}
-                            {o.tacticas.length === 0 && (
-                              <li className="text-xs text-gray-600">
-                                Sin tácticas — este objetivo no avanza solo.
-                              </li>
+                                ) : (
+                                  <ChevronRight
+                                    strokeWidth={1.8}
+                                    className="w-3.5 h-3.5 text-gray-600 shrink-0 mt-0.5"
+                                  />
+                                )}
+                              </div>
+                              <p className="text-[11px] text-gray-600 mt-1">
+                                {o.metrica} · meta{" "}
+                                <span style={{ color: oro(0.85) }}>
+                                  {formatValorMeta(o.valorMeta, o.unidad)}
+                                </span>
+                                {o.fechaLimite &&
+                                  ` · ${new Date(o.fechaLimite).toLocaleDateString("es-MX", { dateStyle: "medium" })}`}
+                              </p>
+                            </button>
+
+                            {objAbierto && (
+                              <ul
+                                className="mt-2.5 space-y-1.5 pl-5"
+                                style={{ borderLeft: `1px solid rgba(255,255,255,0.07)` }}
+                              >
+                                {o.tacticas.map(t => {
+                                  const em = ESTADOS_TACTICA.find(e => e.value === t.estado);
+                                  return (
+                                    <li key={t.id} className="flex items-center gap-2.5 text-[13px]">
+                                      <span
+                                        className="w-1.5 h-1.5 rounded-full shrink-0"
+                                        style={{
+                                          background: em?.color,
+                                          boxShadow: `0 0 6px ${em?.color}66`,
+                                        }}
+                                      />
+                                      <span
+                                        className={
+                                          t.estado === "COMPLETADO"
+                                            ? "text-gray-600 line-through"
+                                            : t.vencida
+                                              ? "text-red-300"
+                                              : "text-gray-400"
+                                        }
+                                      >
+                                        {t.descripcion}
+                                      </span>
+                                      <span className="text-[11px] text-gray-700 ml-auto shrink-0">
+                                        {usuarios.find(u => u.id === t.responsableId)?.name ?? ""}
+                                      </span>
+                                    </li>
+                                  );
+                                })}
+                                {o.tacticas.length === 0 && (
+                                  <li className="text-[11px] text-gray-600">
+                                    Sin tácticas — este objetivo no avanza solo.
+                                  </li>
+                                )}
+                              </ul>
                             )}
-                          </ul>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </Panel>
+              </div>
+            );
+          })}
+        </div>
       </div>
-    </div>
+    </Lienzo>
   );
 }
