@@ -3,6 +3,8 @@ import {
   type DefinicionFuente,
   diasDesde,
   diasHasta,
+  plural,
+  sevInminente,
   sevProximo,
   sevVencido,
   sumarDias,
@@ -138,8 +140,8 @@ export const FUENTES_VENTAS: DefinicionFuente[] = [
     criterio: "Cotización APROBADA que todavía no tiene proyecto — la venta está cerrada y nadie la ha operado",
     activa: false,
     anticipa: false,
-    // A los dos meses el evento ya pasó o se cayó; lo viejo se audita una vez, no a diario.
-    ventana: 60,
+    // Lo que ya pasó hace dos semanas se audita de una vez; no es trabajo de hoy.
+    ventana: 14,
     hrefLista: "/cotizaciones",
     async computar({ ahora, limite }) {
       const cotizaciones = await prisma.cotizacion.findMany({
@@ -149,27 +151,36 @@ export const FUENTES_VENTAS: DefinicionFuente[] = [
           fechaEvento: true, aprobacionFecha: true, updatedAt: true,
           cliente: { select: { nombre: true } },
         },
-        orderBy: { updatedAt: "asc" },
+        orderBy: { fechaEvento: "asc" },
         take: limite,
       });
 
       return cotizaciones.map(c => {
+        // Lo que apura es cuándo es el evento, no hace cuánto se aprobó. Una venta
+        // aprobada ayer para el sábado quema; una de hace cinco meses cuyo evento ya
+        // pasó no es urgencia, es un cierre contable que alguien nunca hizo.
+        const faltan = c.fechaEvento ? diasHasta(c.fechaEvento, ahora) : null;
+        const porVenir = faltan !== null && faltan >= 0;
         const desde = c.aprobacionFecha ?? c.updatedAt;
-        const dias = diasDesde(desde, ahora);
+
         return {
           id: `COTIZACION_APROBADA_SIN_PROYECTO_${c.id}`,
           fuente: "COTIZACION_APROBADA_SIN_PROYECTO" as const,
-          titulo: `Abrir proyecto — ${c.cliente.nombre}`,
+          titulo: porVenir
+            ? `Abrir proyecto — ${c.cliente.nombre} (evento en ${plural(faltan!, "día")})`
+            : `Cerrar venta sin proyecto — ${c.cliente.nombre}`,
           descripcion: `${c.numeroCotizacion} aprobada${c.nombreEvento ? ` · ${c.nombreEvento}` : ""}`,
           area: "VENTAS" as const,
           entidadId: c.id,
           href: `/cotizaciones/${c.id}`,
-          severidad: dias >= 1 ? "URGENTE" : "ALTA",
-          etiqueta: "Sin proyecto",
-          diasVencido: dias,
+          // La fecha del evento no se mueve: si falta poco y no hay proyecto, no hay a quién avisarle.
+          severidad: porVenir ? sevInminente(faltan! - 10) : "MEDIA",
+          etiqueta: porVenir ? "Sin proyecto" : "Evento ya pasado",
+          // Sólo lo ya vencido cuenta para la ventana; lo por venir nunca es rezago.
+          diasVencido: porVenir ? undefined : c.fechaEvento ? -faltan! : diasDesde(desde, ahora),
           cliente: c.cliente.nombre,
           monto: c.granTotal,
-          fechaRef: desde.toISOString(),
+          fechaRef: (c.fechaEvento ?? desde).toISOString(),
         };
       });
     },

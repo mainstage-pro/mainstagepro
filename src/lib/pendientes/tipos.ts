@@ -122,6 +122,19 @@ export function sevProximo(dias: number): Severidad {
   return "MEDIA";
 }
 
+/**
+ * Severidad para fechas que NO se pueden recorrer.
+ *
+ * Un pago se puede hacer un día tarde; un evento no se puede mover. Si la
+ * cobertura de contenido no se hace el día del evento, no se hace nunca: ahí
+ * sí vale gastar el rojo, porque mañana ya no hay nada que hacer.
+ */
+export function sevInminente(dias: number): Severidad {
+  if (dias <= 0) return "URGENTE";
+  if (dias <= 2) return "ALTA";
+  return "MEDIA";
+}
+
 export function sumarDias(fecha: Date, dias: number): Date {
   return new Date(fecha.getTime() + dias * 86400000);
 }
