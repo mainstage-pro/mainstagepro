@@ -2552,6 +2552,32 @@ model ItemTemplateBodega {
   @@map("items_template_bodega")
 }
 
+// Consumibles de operación (cinta, gaffer, líquido de humo, baterías…). Viven
+// aparte de Equipo: no se cotizan ni se asignan a un rider, y la pregunta no es
+// "¿está?" sino "¿cuánto queda contra el mínimo?".
+model Insumo {
+  id             String    @id @default(cuid())
+  nombre         String
+  descripcion    String?
+  usoPrincipal   String?
+  porQueNecesario String?
+  categoria      String    @default("GENERAL")
+  unidad         String    @default("pieza") // pieza | rollo | litro | paquete | caja
+  cantidadActual Int       @default(0)
+  minimo         Int       @default(1)
+  dondeSeCompra  String?
+  costoAprox     Float?
+  notas          String?
+  orden          Int       @default(0)
+  activo         Boolean   @default(true)
+  revisadoEn     DateTime?
+  revisadoPor    String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@map("insumos")
+}
+
 model ChecklistBodega {
   id          String    @id @default(cuid())
   semana      String // "2026-W15" (ISO año + semana)

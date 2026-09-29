@@ -83,7 +83,16 @@ export const NAV: NavSection[] = [
     key: "seccion-proyectos",
     section: "Proyectos",
     items: [
-      { key: "proyectos", label: "Proyectos de eventos", href: "/proyectos", icon: FolderKanban },
+      {
+        key: "proyectos",
+        label: "Proyectos de eventos",
+        href: "/proyectos",
+        icon: FolderKanban,
+        children: [
+          { key: "proyectos-resumen", accessKey: "proyectos", label: "Resumen", href: "/proyectos/resumen" },
+          { key: "proyectos-lista", accessKey: "proyectos", label: "Proyectos", href: "/proyectos" },
+        ],
+      },
       { key: "proyectos-empresa", accessKey: "proyectos", label: "Proyectos de empresa", href: "/proyectos-de-empresa", icon: Building2 },
       { key: "solicitudes-proveedor", accessKey: "proyectos", label: "Solicitudes a proveedores", href: "/proyectos/solicitudes-proveedor", icon: Truck },
       { key: "plantillas-tareas", label: "Plantillas de tareas", href: "/admin/plantillas-tareas", adminOnly: true, icon: ClipboardList },
@@ -199,7 +208,16 @@ export const NAV: NavSection[] = [
     key: "seccion-marketing",
     section: "Marketing",
     items: [
-      { key: "mkt-contenido",   label: "Contenido",        href: "/marketing/contenido", icon: PenTool },
+      {
+        key: "mkt-contenido",
+        label: "Contenido",
+        href: "/marketing/contenido",
+        icon: PenTool,
+        children: [
+          { key: "mkt-resumen", accessKey: "mkt-contenido", label: "Resumen", href: "/marketing/resumen" },
+          { key: "mkt-parrilla", accessKey: "mkt-contenido", label: "Parrilla", href: "/marketing/contenido/parrilla" },
+        ],
+      },
       { key: "mkt-publicidad",  label: "Publicidad",        href: "/marketing/publicidad", icon: Megaphone },
       { key: "mkt-resultados",  label: "Reporte de marketing", href: "/marketing/resultados", adminOnly: true, icon: BarChart3 },
       { key: "mkt-config",      label: "Configuración",        href: "/marketing/configuracion", icon: SlidersHorizontal },
@@ -257,6 +275,7 @@ export const NAV: NavSection[] = [
           { key: "inv-recolecciones", accessKey: "inventario", label: "Recolecciones", href: "/inventario/recolecciones" },
           { key: "inv-mantenimiento", accessKey: "inventario", label: "Mantenimiento", href: "/inventario/mantenimiento" },
           { key: "inv-checklist", accessKey: "inventario", label: "Checklist semanal", href: "/inventario/checklist" },
+          { key: "inv-insumos", accessKey: "inventario", label: "Insumos", href: "/inventario/insumos" },
           { key: "inv-vehiculos", accessKey: "inventario", label: "Vehículos", href: "/inventario/vehiculos" },
         ],
       },
