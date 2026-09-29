@@ -6,10 +6,15 @@ export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
+  // No se recoge lo que todavía no sucede: el corte es el final del día en curso.
+  const hoy = new Date(new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" }));
+  const finDeHoy = new Date(hoy.getTime() + 86400000 - 1);
+
   try {
     const proyectos = await prisma.proyecto.findMany({
       where: {
         recoleccionStatus: { in: ["PENDIENTE", "EN_CAMINO", "COMPLETADA"] },
+        fechaEvento: { lte: finDeHoy },
       },
       select: {
         id: true,

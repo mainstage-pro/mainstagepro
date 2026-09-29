@@ -1,6 +1,7 @@
 import ModuleTabsLayout, { type ModuleNavTab } from "@/components/ModuleTabsLayout";
 
 const TABS: ModuleNavTab[] = [
+  { href: "/calendarios/resumen", label: "Resumen", accessKey: "calendario" },
   { href: "/calendarios/eventos", label: "Eventos", accessKey: "calendario" },
   { href: "/calendarios/administrativo", label: "Administrativo", accessKey: "calendario" },
   { href: "/calendarios/comercial", label: "Comercial", accessKey: "calendario" },
