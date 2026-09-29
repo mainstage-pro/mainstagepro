@@ -253,7 +253,10 @@ export async function crearProyectoDesdeCotizacion(
       cantidad: Math.round(l.cantidad),
       dias: l.dias,
       costoExterno: l.tipo === "EQUIPO_EXTERNO" ? l.costoUnitario : null,
-      proveedorId: l.tipo === "EQUIPO_EXTERNO" ? (l.proveedorId ?? null) : null,
+      // Cuando la cotización cubre un faltante de inventario propio, el proveedor
+      // queda en proveedorRentaId; es el mismo dato y el rider lo necesita igual.
+      proveedorId:
+        l.tipo === "EQUIPO_EXTERNO" ? (l.proveedorId ?? l.proveedorRentaId ?? null) : null,
       // Copia la nota del concepto de la cotización como semilla editable
       // (sin el prefijo interno "cat:…" que codifica la categoría).
       notas: notaVisibleDeCotizacion(l.notas),
