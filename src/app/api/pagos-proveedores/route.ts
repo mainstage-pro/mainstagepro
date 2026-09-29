@@ -9,6 +9,13 @@ import {
   type EstadoGasto,
   type OrigenGasto,
 } from "@/lib/pagos-proveedor";
+import {
+  datosBancarios,
+  SELECT_BANCARIOS_PERSONAL,
+  SELECT_BANCARIOS_PROVEEDOR,
+  SELECT_BANCARIOS_TECNICO,
+  type DatosBancarios,
+} from "@/lib/datos-bancarios";
 
 // Lo que el módulo considera una deuda a proveedor: todo lo que el proyecto
 // debe fuera de su nómina. Las CxP de deuda, reparto y nómina interna tienen sus
@@ -27,8 +34,10 @@ interface GastoProveedor {
   proveedorEventoId: string | null;
   cuentaPagarId: string | null;
   acreedorKey: string;
+  acreedorId: string | null;
   acreedorNombre: string;
   tipoAcreedor: string;
+  datosBancarios: DatosBancarios | null;
   concepto: string;
   unidades: number | null;
   monto: number;
@@ -71,6 +80,9 @@ export async function GET(req: NextRequest) {
           id: true, nombreProveedor: true, servicioEquipo: true, tipoAcreedor: true,
           proveedorId: true, tecnicoId: true, personalId: true, costoAcordado: true,
           unidades: true, imprevisto: true, solicitadoPor: true, fechaSolicitud: true,
+          proveedor: { select: SELECT_BANCARIOS_PROVEEDOR },
+          tecnico: { select: SELECT_BANCARIOS_TECNICO },
+          personal: { select: SELECT_BANCARIOS_PERSONAL },
           cuentaPagar: {
             select: { id: true, estado: true, monto: true, montoPagado: true, montoCompensado: true },
           },
@@ -82,8 +94,8 @@ export async function GET(req: NextRequest) {
         select: {
           id: true, concepto: true, monto: true, montoPagado: true, montoCompensado: true,
           estado: true, tipoAcreedor: true,
-          proveedor: { select: { id: true, nombre: true, empresa: true } },
-          tecnico: { select: { id: true, nombre: true } },
+          proveedor: { select: { id: true, nombre: true, empresa: true, ...SELECT_BANCARIOS_PROVEEDOR } },
+          tecnico: { select: { id: true, nombre: true, ...SELECT_BANCARIOS_TECNICO } },
           proveedorEvento: { select: { id: true } },
         },
       },
@@ -107,8 +119,10 @@ export async function GET(req: NextRequest) {
         proveedorEventoId: pe.id,
         cuentaPagarId: cxp?.id ?? null,
         acreedorKey,
+        acreedorId: acreedorId ?? null,
         acreedorNombre: pe.nombreProveedor,
         tipoAcreedor: pe.tipoAcreedor,
+        datosBancarios: datosBancarios(pe.proveedor ?? pe.tecnico ?? pe.personal),
         concepto: pe.servicioEquipo?.trim() || "Servicio del evento",
         unidades: pe.unidades,
         monto,
@@ -134,8 +148,10 @@ export async function GET(req: NextRequest) {
         proveedorEventoId: null,
         cuentaPagarId: c.id,
         acreedorKey: acreedorId ? `${c.tipoAcreedor}:${acreedorId}` : `SUELTO:${c.id}`,
+        acreedorId: acreedorId ?? null,
         acreedorNombre: acreedor ? nombre : "Sin acreedor",
         tipoAcreedor: c.tipoAcreedor,
+        datosBancarios: datosBancarios(c.proveedor ?? c.tecnico),
         concepto: c.concepto,
         unidades: null,
         monto: c.monto,
@@ -164,6 +180,8 @@ export async function GET(req: NextRequest) {
       key: string;
       nombre: string;
       tipoAcreedor: string;
+      acreedorId: string | null;
+      datosBancarios: DatosBancarios | null;
       deudas: {
         proyectoId: string; proyectoNombre: string; cuentaPagarId: string;
         concepto: string; monto: number; saldo: number; estado: EstadoGasto;
@@ -182,11 +200,16 @@ export async function GET(req: NextRequest) {
           key: g.acreedorKey,
           nombre: g.acreedorNombre,
           tipoAcreedor: g.tipoAcreedor,
+          acreedorId: g.acreedorId,
+          datosBancarios: g.datosBancarios,
           deudas: [],
           sinCxP: [],
         });
       }
       const entry = carteraMap.get(g.acreedorKey)!;
+      // El mismo acreedor puede llegar por varios renglones; basta con que uno
+      // traiga los datos del catálogo.
+      if (!entry.datosBancarios && g.datosBancarios) entry.datosBancarios = g.datosBancarios;
       if (g.cuentaPagarId) {
         entry.deudas.push({
           proyectoId: p.id,

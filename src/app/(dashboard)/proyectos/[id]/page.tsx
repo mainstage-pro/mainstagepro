@@ -27,6 +27,8 @@ import { MontajePosiciones, type Posicion as PosicionMontaje } from "@/component
 import { PanelProveedores } from "@/components/proyectos/PanelProveedores";
 import { PanelImprevistos } from "@/components/proyectos/PanelImprevistos";
 import ModalRegistrarPago, { type GrupoPago, type PagoCapturado } from "@/components/finanzas/ModalRegistrarPago";
+import DatosBancariosAcreedor from "@/components/finanzas/DatosBancariosAcreedor";
+import { datosBancarios, fichaAcreedorHref, type DatosBancarios } from "@/lib/datos-bancarios";
 import { labelConfiguracion, labelZona } from "@/lib/montaje-vocabulario";
 import { DISCIPLINA_COLORS, DISCIPLINA_LABELS } from "@/lib/disciplinaColors";
 import { contarRespondidos, contarIncidencias, nivelResultado, getEvalConfig, aplicaEvaluacion, type EvalPostEventoData } from "@/lib/evaluacion-post-evento";
@@ -42,7 +44,7 @@ import { getEquipoDisplayName } from "@/lib/equipoNombre";
 import { normalizarAmPm, fmt24to12 } from "@/lib/hora";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
-interface Tecnico { id: string; nombre: string; nivel: string; rol: { nombre: string } | null }
+interface Tecnico { id: string; nombre: string; nivel: string; rol: { nombre: string } | null; banco?: string | null; titularCuenta?: string | null; cuentaBancaria?: string | null; clabe?: string | null; noTarjeta?: string | null; datosFiscales?: string | null }
 interface RolTecnico { id: string; nombre: string; tipoPago: string; disciplina: string | null; tarifaAAACorta: number | null; tarifaAAAMedia: number | null; tarifaAAALarga: number | null; tarifaPlanaAAA: number | null; tarifaPlanaAA: number | null; tarifaPlanaA: number | null; tarifaHoraAAA: number | null; tarifaHoraAA: number | null; tarifaHoraA: number | null }
 interface SugerenciaTecnico {
   id: string; nombre: string; celular: string | null; nivel: string | null;
@@ -63,10 +65,12 @@ interface Personal {
   esAdicional: boolean;
   necesitaRevision: boolean;
   tecnico: { id: string; nombre: string; celular: string | null; rol: { nombre: string } | null } | null;
-  rolTecnico: { nombre: string } | null;
+  // Rol que exige el puesto. Es del slot, no del técnico: un operador de
+  // iluminación puede cubrir un puesto de técnico general.
+  rolTecnico: { id: string; nombre: string } | null;
 }
 interface CatFinanciera { id: string; nombre: string; tipo: string }
-interface Proveedor { id: string; nombre: string; empresa: string | null; compania: { id: string; nombre: string } | null; telefono: string | null; giro: string | null }
+interface Proveedor { id: string; nombre: string; empresa: string | null; compania: { id: string; nombre: string } | null; telefono: string | null; giro: string | null; banco?: string | null; titularCuenta?: string | null; cuentaBancaria?: string | null; clabe?: string | null; noTarjeta?: string | null; rfc?: string | null }
 interface CheckItem { id: string; item: string; completado: boolean; orden: number; tipo: string }
 interface Archivo { id: string; tipo: string; nombre: string; url: string; createdAt: string }
 interface AjusteEntry { fecha: string; de: number; a: number; motivo: string; usuario: string }
@@ -1217,6 +1221,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   // Estados para asignar técnico a fila sin asignar
   const [asignandoId, setAsignandoId] = useState<string | null>(null);
   const [selAsignar, setSelAsignar] = useState("");
+  const [selAsignarRol, setSelAsignarRol] = useState("");
   const [crearParaSlotId, setCrearParaSlotId] = useState<string | null>(null);
   // Estado para editar slot de personal completo
   const [editandoPersonalId, setEditandoPersonalId] = useState<string | null>(null);
@@ -2801,7 +2806,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     setEditandoPersonalId(p.id);
     setEditPersonalForm({
       tecnicoId: p.tecnico?.id ?? "",
-      rolTecnicoId: "", // se rellena abajo buscando por nombre en roles
+      rolTecnicoId: p.rolTecnico?.id ?? "",
       nivel: p.nivel ?? "A",
       jornada: p.jornada ?? "CORTA",
       tarifa: p.tarifaAcordada != null ? String(p.tarifaAcordada) : "",
@@ -2810,12 +2815,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       rolEnEvento: p.rolEnEvento ?? "",
       fechaJornada: p.fechaJornada ?? "",
     });
-    // Buscar rolTecnicoId desde la lista de roles por nombre
-    const rolNombre = p.rolTecnico?.nombre ?? p.tecnico?.rol?.nombre;
-    if (rolNombre) {
-      const found = roles.find(r => r.nombre === rolNombre);
-      if (found) setEditPersonalForm(prev => ({ ...prev, rolTecnicoId: found.id }));
-    }
   }
 
   async function guardarEditPersonal(pId: string) {
@@ -2938,6 +2937,16 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [pagoPersonalTarget, setPagoPersonalTarget] = useState<GrupoPago[] | null>(null);
   const [guardandoPagoPersonal, setGuardandoPagoPersonal] = useState(false);
 
+  // Los datos para depositar salen del catálogo ya cargado en la pantalla; no hace
+  // falta pedirlos otra vez por cada renglón de la tabla.
+  function bancariosDeAcreedor(tipoAcreedor: string, acreedorId: string | null): DatosBancarios | null {
+    if (!acreedorId) return null;
+    if (tipoAcreedor === "TECNICO") return datosBancarios(tecnicos.find(t => t.id === acreedorId));
+    if (tipoAcreedor === "PROVEEDOR") return datosBancarios(proveedores.find(p => p.id === acreedorId));
+    return null;
+  }
+  const [bancariosAbierto, setBancariosAbierto] = useState<string | null>(null);
+
   function abrirPagoPersonal(slots: Personal[]) {
     const pendientes = slots.filter(p => p.tecnico && p.estadoPago !== "PAGADO" && (p.tarifaAcordada ?? 0) > 0);
     if (!pendientes.length) {
@@ -2954,9 +2963,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       Array.from(porTecnico.entries()).map(([tecnicoId, filas]) => ({
         id: tecnicoId,
         titulo: filas[0].tecnico!.nombre,
+        datosBancarios: bancariosDeAcreedor("TECNICO", tecnicoId),
+        fichaHref: "/catalogo/tecnicos",
         lineas: filas.map(p => ({
           id: p.id,
-          etiqueta: p.rolTecnico?.nombre ?? p.tecnico?.rol?.nombre ?? "Participación",
+          etiqueta: p.rolTecnico?.nombre ?? "Participación",
           detalle: p.participacion ?? null,
           monto: p.tarifaAcordada ?? 0,
         })),
@@ -3055,9 +3066,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   async function asignarTecnico(pId: string, tecnicoIdOverride?: string) {
     const tid = tecnicoIdOverride ?? selAsignar;
     if (!tid) return;
+    // El rol del puesto solo se manda cuando el slot venía sin rol: asignar a
+    // alguien nunca debe sobrescribir el rol que exige el puesto.
     const res = await fetch(`/api/proyectos/${id}/personal/${pId}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tecnicoId: tid }),
+      body: JSON.stringify(selAsignarRol ? { tecnicoId: tid, rolTecnicoId: selAsignarRol } : { tecnicoId: tid }),
     });
     const d = await res.json();
     setProyecto(prev => prev ? {
@@ -3066,6 +3079,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     } : prev);
     setAsignandoId(null);
     setSelAsignar("");
+    setSelAsignarRol("");
   }
 
   // ── Desasignar técnico de slot (mantiene la fila) ──
@@ -5001,7 +5015,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                 className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
                               <div className="flex gap-2">
                                 <Combobox value={nuevoTecRolId} onChange={v => setNuevoTecRolId(v)}
-                                  options={[{ value: "", label: "— Rol (opcional) —" }, ...rolOptions]}
+                                  options={[{ value: "", label: "— Especialidad del técnico (opcional) —" }, ...rolOptions]}
                                   className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
                                 <Combobox value={nuevoTecNivel} onChange={v => setNuevoTecNivel(v)}
                                   options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]}
@@ -5262,6 +5276,23 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               // ── Render de tarjeta de técnico ──────────────────────────────────
               const renderCard = (p: Personal) => {
                 const badge = PART_BADGE[p.participacion ?? "OPERACION"] ?? PART_BADGE.OPERACION;
+                // El rol es del puesto, no de quien lo cubra. Si el puesto llegó
+                // sin rol se pide aquí mismo, para no dejar el registro a medias.
+                const rolPuestoPanel = p.rolTecnico ? (
+                  <p className="text-[11px] text-gray-500">Rol del puesto: <span className="text-gray-300 font-medium">{p.rolTecnico.nombre}</span></p>
+                ) : (
+                  <div>
+                    <p className="text-[11px] text-amber-400 mb-1">Este puesto no tiene rol definido — elígelo para poder asignar</p>
+                    <Combobox
+                      value={selAsignarRol}
+                      placeholder="— Rol del puesto —"
+                      onChange={v => setSelAsignarRol(v)}
+                      options={rolOptions}
+                      className="w-full bg-[#1a1a1a] border border-amber-800/50 rounded-lg px-2 py-1 text-white text-sm focus:outline-none"
+                    />
+                  </div>
+                );
+                const puedeAsignar = Boolean(p.rolTecnico) || Boolean(selAsignarRol);
                 return (
                   <div key={p.id} className={`p-4 border-b border-[#0d0d0d] last:border-0 border-l-2 ${p.confirmado ? "border-l-green-700/60" : "border-l-[#1e1e1e]"}`}>
                     <div className="flex items-start justify-between gap-2 mb-2">
@@ -5269,9 +5300,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                         {!p.tecnico ? (
                           asignandoId === p.id ? (
                             <div className="space-y-2">
+                              {rolPuestoPanel}
                               <div className="flex items-center gap-2">
                                 <Combobox
                                   value=""
+                                  disabled={!puedeAsignar}
                                   placeholder="Buscar técnico..."
                                   onChange={v => {
                                     if (v === "__nuevo__") { setCrearParaSlotId(p.id); }
@@ -5281,9 +5314,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                     { value: "__nuevo__", label: "＋ Registrar nuevo técnico" },
                                     ...tecnicos.map(t => ({ value: t.id, label: `${t.nombre} · ${t.rol?.nombre ?? "Sin rol"} · ${t.nivel}` })),
                                   ]}
-                                  className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1 text-white text-sm focus:outline-none"
+                                  className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1 text-white text-sm focus:outline-none disabled:opacity-40"
                                 />
-                                <button onClick={() => { setAsignandoId(null); setCrearParaSlotId(null); setSelAsignar(""); setNuevoTecNombre(""); setNuevoTecCelular(""); setNuevoTecRolId(""); setNuevoTecNivel("A"); }}
+                                <button onClick={() => { setAsignandoId(null); setCrearParaSlotId(null); setSelAsignar(""); setSelAsignarRol(""); setNuevoTecNombre(""); setNuevoTecCelular(""); setNuevoTecRolId(""); setNuevoTecNivel("A"); }}
                                   className="text-gray-500 hover:text-white text-xs shrink-0">Cancelar</button>
                               </div>
                               {crearParaSlotId === p.id && (
@@ -5292,7 +5325,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                   <input value={nuevoTecNombre} onChange={e => setNuevoTecNombre(e.target.value)} placeholder="Nombre completo *" autoFocus className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" />
                                   <input value={nuevoTecCelular} onChange={e => setNuevoTecCelular(e.target.value)} placeholder="Celular (WhatsApp)" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" />
                                   <div className="flex gap-2">
-                                    <Combobox value={nuevoTecRolId} onChange={v => setNuevoTecRolId(v)} options={[{ value: "", label: "— Rol (opcional) —" }, ...rolOptions]} className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
+                                    <Combobox value={nuevoTecRolId} onChange={v => setNuevoTecRolId(v)} options={[{ value: "", label: "— Especialidad del técnico (opcional) —" }, ...rolOptions]} className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
                                     <Combobox value={nuevoTecNivel} onChange={v => setNuevoTecNivel(v)} options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]} className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
                                   </div>
                                   <div className="flex gap-2 pt-1">
@@ -5308,15 +5341,17 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                               {p.nivel && <span className={`text-xs font-semibold ${NIVEL_COLORS[p.nivel] ?? "text-gray-400"}`}>{p.nivel}</span>}
                               <span className={`px-1.5 py-0.5 rounded border text-[10px] font-medium ${badge.cls}`}>{badge.label}</span>
                               {p.necesitaRevision && <span className="px-1.5 py-0.5 rounded border border-amber-700/50 bg-amber-900/20 text-amber-300 text-[10px] font-medium" title="Este rol se quitó o cambió en la cotización — revísalo (no se borró automáticamente)">Revisar</span>}
-                              <button onClick={() => { setAsignandoId(p.id); setSelAsignar(""); setCrearParaSlotId(null); }} className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-2 py-0.5 rounded transition-colors">Asignar</button>
+                              <button onClick={() => { setAsignandoId(p.id); setSelAsignar(""); setSelAsignarRol(""); setCrearParaSlotId(null); }} className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-2 py-0.5 rounded transition-colors">Asignar</button>
                             </div>
                           )
                         ) : (
                           asignandoId === p.id ? (
                             <div className="space-y-2">
+                              {rolPuestoPanel}
                               <div className="flex items-center gap-2">
                                 <Combobox
                                   value={p.tecnico.id}
+                                  disabled={!puedeAsignar}
                                   placeholder="Cambiar técnico..."
                                   onChange={v => {
                                     if (v === "__nuevo__") { setCrearParaSlotId(p.id); }
@@ -5326,9 +5361,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                     { value: "__nuevo__", label: "＋ Registrar nuevo técnico" },
                                     ...tecnicos.map(t => ({ value: t.id, label: `${t.nombre} · ${t.rol?.nombre ?? "Sin rol"} · ${t.nivel}` })),
                                   ]}
-                                  className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1 text-white text-sm focus:outline-none"
+                                  className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1 text-white text-sm focus:outline-none disabled:opacity-40"
                                 />
-                                <button onClick={() => { setAsignandoId(null); setCrearParaSlotId(null); }} className="text-gray-500 hover:text-white text-xs shrink-0">Cancelar</button>
+                                <button onClick={() => { setAsignandoId(null); setCrearParaSlotId(null); setSelAsignarRol(""); }} className="text-gray-500 hover:text-white text-xs shrink-0">Cancelar</button>
                               </div>
                               {crearParaSlotId === p.id && (
                                 <div className="p-3 bg-[#0d0d0d] border border-[#333] rounded-lg space-y-2">
@@ -5336,7 +5371,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                   <input value={nuevoTecNombre} onChange={e => setNuevoTecNombre(e.target.value)} placeholder="Nombre completo *" autoFocus className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" />
                                   <input value={nuevoTecCelular} onChange={e => setNuevoTecCelular(e.target.value)} placeholder="Celular (WhatsApp)" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" />
                                   <div className="flex gap-2">
-                                    <Combobox value={nuevoTecRolId} onChange={v => setNuevoTecRolId(v)} options={[{ value: "", label: "— Rol (opcional) —" }, ...rolOptions]} className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
+                                    <Combobox value={nuevoTecRolId} onChange={v => setNuevoTecRolId(v)} options={[{ value: "", label: "— Especialidad del técnico (opcional) —" }, ...rolOptions]} className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
                                     <Combobox value={nuevoTecNivel} onChange={v => setNuevoTecNivel(v)} options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]} className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
                                   </div>
                                   <div className="flex gap-2 pt-1">
@@ -5359,7 +5394,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                           )
                         )}
                         <p className="text-gray-500 text-xs mt-0.5">
-                          {p.rolTecnico?.nombre ?? p.tecnico?.rol?.nombre ?? "Sin rol"}
+                          {p.rolTecnico?.nombre ?? <span className="text-amber-500">Sin rol de puesto</span>}
                           {p.rolEnEvento ? ` · ${p.rolEnEvento}` : ""}
                           {p.jornada ? ` · ${p.jornada}` : ""}
                         </p>
@@ -5390,7 +5425,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                         <div className="grid grid-cols-2 gap-3">
                           <div><label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Técnico</label>
                             <Combobox value={editPersonalForm.tecnicoId} onChange={v => { if (v === "__nuevo__") { setShowNuevoTecnico(true); } else setEditPersonalForm(prev => ({ ...prev, tecnicoId: v })); }} options={[{ value: "", label: "— Sin asignar —" }, { value: "__nuevo__", label: "＋ Nuevo técnico..." }, ...tecnicos.map(t => ({ value: t.id, label: `${t.nombre} · ${t.rol?.nombre ?? "Sin rol"}` }))]} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" /></div>
-                          <div><label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Rol técnico</label>
+                          <div><label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Rol del puesto</label>
                             <Combobox value={editPersonalForm.rolTecnicoId} onChange={v => setEditPersonalForm(prev => ({ ...prev, rolTecnicoId: v }))} options={[{ value: "", label: "— Sin rol —" }, ...rolOptions]} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" /></div>
                           <div><label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Participación</label>
                             <Combobox value={editPersonalForm.participacion} onChange={v => setEditPersonalForm(prev => ({ ...prev, participacion: v }))} options={[{ value: "OPERACION", label: "Operación" }, { value: "MONTAJE", label: "Montaje" }, { value: "DESMONTAJE", label: "Desmontaje" }, { value: "TRANSPORTE", label: "Transporte" }, { value: "OTRO", label: "Otro" }]} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" /></div>
@@ -7858,7 +7893,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       </div>
                       {slots.map(p => {
                         const nombre = p.tecnico?.nombre ?? "Sin asignar";
-                        const rol = p.rolTecnico?.nombre ?? p.tecnico?.rol?.nombre ?? "—";
+                        const rol = p.rolTecnico?.nombre ?? "—";
                         const pagado = p.estadoPago === "PAGADO";
                         const marcando = marcandoPago.has(p.id);
                         return (
@@ -7944,7 +7979,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             interface FilaProv {
               key: string; origen: "COORDINADO" | "IMPREVISTO" | "DIRECTO";
               proveedorEventoId: string | null; cxp: CxP | null;
-              acreedorKey: string; acreedorNombre: string; tipoAcreedor: string;
+              acreedorKey: string; acreedorId: string | null; acreedorNombre: string; tipoAcreedor: string;
               concepto: string; unidades: number | null; monto: number; saldo: number; estado: EstadoProv;
             }
 
@@ -7959,6 +7994,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 proveedorEventoId: pe.id,
                 cxp,
                 acreedorKey: acreedorId ? `${pe.tipoAcreedor}:${acreedorId}` : `SUELTO:${pe.id}`,
+                acreedorId: acreedorId ?? null,
                 acreedorNombre: pe.nombreProveedor,
                 tipoAcreedor: pe.tipoAcreedor,
                 concepto: pe.servicioEquipo?.trim() || "Servicio del evento",
@@ -7980,6 +8016,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 proveedorEventoId: null,
                 cxp: c,
                 acreedorKey: c.proveedorId ? `PROVEEDOR:${c.proveedorId}` : `SUELTO:${c.id}`,
+                acreedorId: c.proveedorId ?? null,
                 acreedorNombre: prov ? prov.empresa || prov.nombre : "Sin acreedor",
                 tipoAcreedor: c.tipoAcreedor,
                 concepto: c.concepto,
@@ -8027,6 +8064,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 Array.from(porAcreedor.entries()).map(([key, fs]) => ({
                   id: key,
                   titulo: fs[0].acreedorNombre,
+                  datosBancarios: bancariosDeAcreedor(fs[0].tipoAcreedor, fs[0].acreedorId),
+                  fichaHref: fichaAcreedorHref(fs[0].tipoAcreedor, fs[0].acreedorId),
                   lineas: fs.map(f => ({ id: f.cxp!.id, etiqueta: f.concepto, detalle: null, monto: f.saldo })),
                 })),
               );
@@ -8062,10 +8101,20 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       </span>
                     </div>
                     {fs.map(f => (
-                      <div key={f.key} className="grid grid-cols-[1fr_1fr_52px_88px_74px_56px] gap-2 px-5 py-2.5 border-b border-[#0d0d0d] last:border-0 items-center">
+                      <div key={f.key} className="border-b border-[#0d0d0d] last:border-0">
+                      <div className="grid grid-cols-[1fr_1fr_52px_88px_74px_56px] gap-2 px-5 py-2.5 items-center">
                         <div className="min-w-0">
                           <p className="text-sm text-white truncate">{f.acreedorNombre}</p>
-                          <p className="text-[10px] text-gray-600">{ACREEDOR_LABEL[f.tipoAcreedor] ?? f.tipoAcreedor}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-[10px] text-gray-600">{ACREEDOR_LABEL[f.tipoAcreedor] ?? f.tipoAcreedor}</p>
+                            {f.acreedorId && (
+                              <button onClick={() => setBancariosAbierto(prev => prev === f.key ? null : f.key)}
+                                className={`text-[10px] transition-colors ${bancariosAbierto === f.key ? "text-[#B3985B]" : "text-gray-700 hover:text-[#B3985B]"}`}
+                                title="Datos para depositar">
+                                depósito
+                              </button>
+                            )}
+                          </div>
                         </div>
                         <p className="text-xs text-gray-400 truncate">{f.concepto}</p>
                         <p className="text-xs text-gray-500">{f.unidades ?? "—"}</p>
@@ -8106,6 +8155,16 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             </>
                           )}
                         </div>
+                      </div>
+                      {bancariosAbierto === f.key && (
+                        <div className="px-5 pb-2.5">
+                          <DatosBancariosAcreedor
+                            datos={bancariosDeAcreedor(f.tipoAcreedor, f.acreedorId)}
+                            nombre={f.acreedorNombre}
+                            fichaHref={fichaAcreedorHref(f.tipoAcreedor, f.acreedorId)}
+                          />
+                        </div>
+                      )}
                       </div>
                     ))}
                   </div>
@@ -9183,7 +9242,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
       const personalConfirmado = proyecto.personal.filter(p => p.confirmado);
       const personalLineas = personalConfirmado.map(p => {
-        const rol = p.rolTecnico?.nombre ?? p.tecnico?.rol?.nombre ?? null;
+        const rol = p.rolTecnico?.nombre ?? null;
         return `• ${p.tecnico?.nombre ?? "—"}${rol ? ` (${rol})` : ""}`;
       }).join("\n");
 

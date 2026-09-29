@@ -7,6 +7,8 @@ import ModalRegistrarPago, {
   type GrupoPago,
   type PagoCapturado,
 } from "@/components/finanzas/ModalRegistrarPago";
+import DatosBancariosAcreedor from "@/components/finanzas/DatosBancariosAcreedor";
+import { fichaAcreedorHref, type DatosBancarios } from "@/lib/datos-bancarios";
 
 // Espejo de "Pagos a personal", pero para todo lo que el proyecto le debe a
 // alguien de fuera: lo rentado en preproducción, el imprevisto del día del
@@ -61,6 +63,8 @@ interface Acreedor {
   key: string;
   nombre: string;
   tipoAcreedor: string;
+  acreedorId: string | null;
+  datosBancarios: DatosBancarios | null;
   deudas: Deuda[];
   sinCxP: SinCxP[];
   porPagar: number;
@@ -163,6 +167,8 @@ export default function PagosProveedoresPage() {
   const grupos: GrupoPago[] = (pagoTarget ?? []).map((a) => ({
     id: a.key,
     titulo: a.nombre,
+    datosBancarios: a.datosBancarios,
+    fichaHref: fichaAcreedorHref(a.tipoAcreedor, a.acreedorId),
     lineas: a.deudas.map((d) => ({
       id: d.cuentaPagarId,
       etiqueta: d.proyectoNombre,
@@ -530,6 +536,13 @@ export default function PagosProveedoresPage() {
                           </div>
                         ))}
                       </div>
+
+                      <DatosBancariosAcreedor
+                        datos={a.datosBancarios}
+                        nombre={a.nombre}
+                        fichaHref={fichaAcreedorHref(a.tipoAcreedor, a.acreedorId)}
+                        className="mb-3"
+                      />
 
                       {a.todoPagado ? (
                         <div className="flex items-center justify-center gap-1.5 py-1.5 text-xs text-green-500">

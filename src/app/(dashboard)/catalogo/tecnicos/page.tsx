@@ -1,5 +1,8 @@
 "use client";
 
+import DatosBancariosAcreedor from "@/components/finanzas/DatosBancariosAcreedor";
+import { datosBancarios } from "@/lib/datos-bancarios";
+
 import { useEffect, useState, useRef } from "react";
 import { CopyButton } from "@/components/CopyButton";
 import { Combobox } from "@/components/Combobox";
@@ -17,7 +20,11 @@ type Tecnico = {
   roles: { id: string; nombre: string; disciplina: string | null }[];
   nivel: string;
   zonaHabitual: string | null;
+  banco: string | null;
+  titularCuenta: string | null;
   cuentaBancaria: string | null;
+  clabe: string | null;
+  noTarjeta: string | null;
   datosFiscales: string | null;
   activo: boolean;
   prioridad: number; // 0=normal, 1=preferente
@@ -76,7 +83,8 @@ function PrefStar({ on, onToggle, size = 16 }: { on: boolean; onToggle?: () => v
 
 const EMPTY = {
   nombre: "", celular: "", roles: [] as string[], nivel: "A",
-  zonaHabitual: "", cuentaBancaria: "", datosFiscales: "", comentarios: "", habilidades: "",
+  zonaHabitual: "", banco: "", titularCuenta: "", cuentaBancaria: "", clabe: "", noTarjeta: "",
+  datosFiscales: "", comentarios: "", habilidades: "",
   prioridad: 0,
 };
 
@@ -176,7 +184,11 @@ export default function TecnicosPage() {
         roles: form.roles ?? [],
         nivel: form.nivel,
         zonaHabitual: form.zonaHabitual || null,
+        banco: form.banco || null,
+        titularCuenta: form.titularCuenta || null,
         cuentaBancaria: form.cuentaBancaria || null,
+        clabe: form.clabe || null,
+        noTarjeta: form.noTarjeta || null,
         datosFiscales: form.datosFiscales || null,
         comentarios: form.comentarios || null,
         habilidades: habilidadesArr.length ? JSON.stringify(habilidadesArr) : null,
@@ -197,7 +209,11 @@ export default function TecnicosPage() {
       roles: (t.roles ?? []).map(r => r.id),
       nivel: t.nivel,
       zonaHabitual: t.zonaHabitual ?? "",
+      banco: t.banco ?? "",
+      titularCuenta: t.titularCuenta ?? "",
       cuentaBancaria: t.cuentaBancaria ?? "",
+      clabe: t.clabe ?? "",
+      noTarjeta: t.noTarjeta ?? "",
       datosFiscales: t.datosFiscales ?? "",
       comentarios: t.comentarios ?? "",
       habilidades: t.habilidades ? (() => { try { return (JSON.parse(t.habilidades!) as string[]).join(", "); } catch { return t.habilidades!; } })() : "",
@@ -228,7 +244,11 @@ export default function TecnicosPage() {
       roles: form.roles ?? [],
       nivel: form.nivel,
       zonaHabitual: form.zonaHabitual || null,
+      banco: form.banco || null,
+      titularCuenta: form.titularCuenta || null,
       cuentaBancaria: form.cuentaBancaria || null,
+      clabe: form.clabe || null,
+      noTarjeta: form.noTarjeta || null,
       datosFiscales: form.datosFiscales || null,
       comentarios: form.comentarios || null,
       habilidades: habilidadesArr.length ? JSON.stringify(habilidadesArr) : null,
@@ -397,10 +417,34 @@ export default function TecnicosPage() {
                 placeholder="Ej. Querétaro, CDMX" />
             </div>
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Cuenta bancaria</label>
+              <label className="text-xs text-gray-500 mb-1 block">Banco</label>
+              <input value={form.banco} onChange={e => set("banco", e.target.value)}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                placeholder="Ej. BBVA, Banorte" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Titular de la cuenta</label>
+              <input value={form.titularCuenta} onChange={e => set("titularCuenta", e.target.value)}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                placeholder="Como aparece en el banco" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">CLABE</label>
+              <input value={form.clabe} onChange={e => set("clabe", e.target.value)}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                placeholder="18 dígitos" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Número de cuenta</label>
               <input value={form.cuentaBancaria} onChange={e => set("cuentaBancaria", e.target.value)}
                 className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                placeholder="Banco, CLABE o tarjeta" />
+                placeholder="Cuenta del banco" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Número de tarjeta</label>
+              <input value={form.noTarjeta} onChange={e => set("noTarjeta", e.target.value)}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                placeholder="16 dígitos" />
             </div>
             <div className="col-span-2">
               <label className="text-xs text-gray-500 mb-1 block">Datos fiscales (RFC / razón social)</label>
@@ -916,11 +960,12 @@ function TecnicoCard({ tecnico: t, onEdit, onToggle }: {
             <span className="text-white">{t.zonaHabitual}</span>
           </div>
         )}
-        {t.cuentaBancaria && (
-          <div className="flex items-center gap-2">
-            <span className="text-gray-600 w-16 shrink-0">Banco</span>
-            <span className="text-gray-300">{t.cuentaBancaria}</span>
-          </div>
+        {(t.banco || t.titularCuenta || t.clabe || t.cuentaBancaria || t.noTarjeta) && (
+          <DatosBancariosAcreedor
+            datos={datosBancarios(t)}
+            nombre={t.nombre}
+            className="mt-1"
+          />
         )}
         {t.datosFiscales && (
           <div className="flex items-center gap-2">

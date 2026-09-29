@@ -5,6 +5,8 @@ import { BotonDescarga } from "@/components/BotonDescarga";
 import Link from "next/link";
 import { Combobox } from "@/components/Combobox";
 import { FileText } from "lucide-react";
+import DatosBancariosAcreedor from "@/components/finanzas/DatosBancariosAcreedor";
+import type { DatosBancarios } from "@/lib/datos-bancarios";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -40,6 +42,7 @@ interface NominaPago {
 }
 
 interface NominaRow {
+  datosBancarios: DatosBancarios | null;
   tecnicoId: string;
   tecnicoNombre: string;
   pagos: NominaPago[];
@@ -803,6 +806,13 @@ export default function PagosPersonalPage() {
                         ))}
                       </div>
 
+                      <DatosBancariosAcreedor
+                        datos={row.datosBancarios}
+                        nombre={row.tecnicoNombre}
+                        fichaHref="/catalogo/tecnicos"
+                        className="mb-3"
+                      />
+
                       {!row.todosPagados ? (
                         <div className="space-y-2">
                           <button
@@ -887,7 +897,7 @@ export default function PagosPersonalPage() {
             </div>
 
             {/* Resumen de a quién se paga */}
-            <div className="bg-[#0d0d0d] rounded-xl p-3 mb-4 space-y-1.5 max-h-36 overflow-y-auto">
+            <div className="bg-[#0d0d0d] rounded-xl p-3 mb-4 space-y-1.5 max-h-64 overflow-y-auto">
               {pagoTarget.map(row => {
                 const checkedTotal = row.pagos.reduce((s, p) => selectedEventos.has(`${row.tecnicoId}-${p.proyectoId}`) ? s + p.monto : s, 0);
                 return (
@@ -918,6 +928,12 @@ export default function PagosPersonalPage() {
                       <span className={`text-xs transition-colors ${isChecked ? "text-gray-500" : "text-gray-700 line-through"}`}>{fmt(p.monto)}</span>
                     </div>
                   )})}
+                  <DatosBancariosAcreedor
+                    datos={row.datosBancarios}
+                    nombre={row.tecnicoNombre}
+                    fichaHref="/catalogo/tecnicos"
+                    className="mt-2"
+                  />
                 </div>
               )})}
             </div>

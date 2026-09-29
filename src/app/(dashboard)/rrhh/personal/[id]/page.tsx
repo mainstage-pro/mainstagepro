@@ -1,5 +1,8 @@
 "use client";
 
+import DatosBancariosAcreedor from "@/components/finanzas/DatosBancariosAcreedor";
+import { datosBancarios } from "@/lib/datos-bancarios";
+
 import { useEffect, useState, useRef, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -34,7 +37,7 @@ interface PersonalData {
   telefono: string | null; correo: string | null; salario: number | null; periodoPago: string;
   fechaIngreso: string | null; activo: boolean; diasLaborables: number[]; cuentaBancaria: string | null;
   datosFiscales: string | null; notas: string | null;
-  banco: string | null; clabe: string | null; numeroCuenta: string | null; numeroTarjeta: string | null;
+  banco: string | null; titularCuenta: string | null; clabe: string | null; numeroCuenta: string | null; numeroTarjeta: string | null;
   ineUrl: string | null; domicilio: string | null;
   emergenciaNombre: string | null; emergenciaTel: string | null;
   padecimientos: string | null;
@@ -529,10 +532,12 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
           <p className="text-[10px] text-[#B3985B] font-semibold uppercase tracking-wider mb-3">Datos bancarios</p>
           <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
             <Info label="Banco" val={p.banco} />
+            <Info label="Titular" val={p.titularCuenta} />
             <Info label="Núm. cuenta" val={p.numeroCuenta} mono />
             <Info label="CLABE" val={p.clabe} mono />
             <Info label="Núm. tarjeta" val={p.numeroTarjeta} mono />
           </div>
+          <DatosBancariosAcreedor datos={datosBancarios(p)} nombre={p.nombre} className="mt-3" />
         </div>
 
         <div className="border-t border-[#1a1a1a] pt-4">
@@ -1079,6 +1084,7 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
             <p className="text-[10px] text-[#B3985B] font-semibold uppercase tracking-wider pt-1">Datos bancarios</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {txt("banco", "Banco")}
+              {txt("titularCuenta", "Titular de la cuenta")}
               {txt("numeroCuenta", "Número de cuenta")}
               {txt("clabe", "CLABE")}
               {txt("numeroTarjeta", "Número de tarjeta")}

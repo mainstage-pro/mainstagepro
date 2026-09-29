@@ -1,5 +1,8 @@
 "use client";
 
+import DatosBancariosAcreedor from "@/components/finanzas/DatosBancariosAcreedor";
+import { datosBancarios } from "@/lib/datos-bancarios";
+
 import { useEffect, useState, useRef, useCallback, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -96,6 +99,7 @@ interface ProveedorDetail {
   cuentaBancaria: string | null;
   clabe: string | null;
   banco: string | null;
+  titularCuenta: string | null;
   noTarjeta: string | null;
   datosFiscales: string | null;
   activo: boolean;
@@ -308,6 +312,7 @@ export default function ProveedorDetailPage({ params }: { params: Promise<{ id: 
         cuentaBancaria: form.cuentaBancaria || null,
         clabe: form.clabe || null,
         banco: form.banco || null,
+        titularCuenta: form.titularCuenta || null,
         noTarjeta: form.noTarjeta || null,
         datosFiscales: form.datosFiscales || null,
         prioridad: form.prioridad ?? 0,
@@ -517,6 +522,12 @@ export default function ProveedorDetailPage({ params }: { params: Promise<{ id: 
                 placeholder="BBVA, Banorte, HSBC…" />
             </div>
             <div>
+              <label className="text-xs text-gray-500 mb-1 block">Titular de la cuenta</label>
+              <input value={form.titularCuenta || ""} onChange={e => setForm(p => ({ ...p, titularCuenta: e.target.value }))}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                placeholder="Como aparece en el banco" />
+            </div>
+            <div>
               <label className="text-xs text-gray-500 mb-1 block">Número de cuenta</label>
               <input value={form.cuentaBancaria || ""} onChange={e => setForm(p => ({ ...p, cuentaBancaria: e.target.value }))}
                 className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
@@ -599,32 +610,8 @@ export default function ProveedorDetailPage({ params }: { params: Promise<{ id: 
               <p className="text-gray-500 text-xs mb-1">RFC</p>
               <span className="text-white font-mono">{proveedor.rfc || "—"}</span>
             </div>
-            <div>
-              <p className="text-gray-500 text-xs mb-1">Banco / CLABE</p>
-              {proveedor.banco || proveedor.clabe ? (
-                <div className="text-white">
-                  {proveedor.banco && <p className="font-semibold text-xs">{proveedor.banco}</p>}
-                  {proveedor.clabe && (
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="font-mono text-xs text-gray-300">{proveedor.clabe}</span>
-                      <CopyButton value={proveedor.clabe} size="xs" />
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <span className="text-gray-600">—</span>
-              )}
-            </div>
-            <div>
-              <p className="text-gray-500 text-xs mb-1">Cuenta / Tarjeta</p>
-              {proveedor.cuentaBancaria || proveedor.noTarjeta ? (
-                <div className="text-white text-xs font-mono space-y-0.5">
-                  {proveedor.cuentaBancaria && <p>Cta: {proveedor.cuentaBancaria}</p>}
-                  {proveedor.noTarjeta && <p>Tarj: {proveedor.noTarjeta}</p>}
-                </div>
-              ) : (
-                <span className="text-gray-600">—</span>
-              )}
+            <div className="col-span-2">
+              <DatosBancariosAcreedor datos={datosBancarios(proveedor)} nombre={proveedor.empresa || proveedor.nombre} />
             </div>
           </div>
 

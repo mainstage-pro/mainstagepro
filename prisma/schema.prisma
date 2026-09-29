@@ -1407,7 +1407,12 @@ model Tecnico {
   nivel              String      @default("A") // AAA | AA | A
   zonaHabitual       String?
   evaluacionPromedio Float?
+  // Datos bancarios (mismos nombres que Proveedor: cuentaBancaria es el número de cuenta)
+  banco              String?
+  titularCuenta      String?
   cuentaBancaria     String?
+  clabe              String?
+  noTarjeta          String?
   datosFiscales      String?
   activo             Boolean     @default(true)
   prioridad          Int         @default(0) // 0=normal, 1=preferente
@@ -1447,9 +1452,10 @@ model Proveedor {
   correo         String?
   notas          String?
   rfc            String?
+  banco          String?
+  titularCuenta  String?
   cuentaBancaria String? // número de cuenta
   clabe          String?
-  banco          String?
   noTarjeta      String?
   datosFiscales  String?
   activo         Boolean  @default(true)
@@ -2110,6 +2116,7 @@ model PersonalInterno {
   notas            String?
   // Datos bancarios
   banco            String?
+  titularCuenta    String?           @map("titular_cuenta")
   clabe            String?           @map("clabe")
   numeroCuenta     String?           @map("numero_cuenta")
   numeroTarjeta    String?           @map("numero_tarjeta")

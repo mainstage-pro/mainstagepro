@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json();
   const { nombre, giro, telefono, correo, notas,
-    rfc, cuentaBancaria, clabe, banco, noTarjeta, datosFiscales } = body;
+    rfc, cuentaBancaria, clabe, banco, titularCuenta, noTarjeta, datosFiscales } = body;
 
   if (!nombre) return NextResponse.json({ error: "Nombre requerido" }, { status: 400 });
 
@@ -63,6 +63,7 @@ export async function POST(request: NextRequest) {
       cuentaBancaria: cuentaBancaria || null,
       clabe: clabe || null,
       banco: banco || null,
+      titularCuenta: titularCuenta || null,
       noTarjeta: noTarjeta || null,
       datosFiscales: datosFiscales || null,
     },

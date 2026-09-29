@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { Combobox } from "@/components/Combobox";
+import DatosBancariosAcreedor from "@/components/finanzas/DatosBancariosAcreedor";
+import type { DatosBancarios } from "@/lib/datos-bancarios";
 
 // Modal único para registrar la salida de dinero, lo mismo si se le paga a un
 // técnico que a un proveedor, y lo mismo desde el proyecto que desde el módulo
@@ -23,6 +25,9 @@ export interface GrupoPago {
   id: string;
   titulo: string;
   lineas: LineaPago[];
+  /** A dónde se le deposita: se muestra junto a lo que se está pagando. */
+  datosBancarios?: DatosBancarios | null;
+  fichaHref?: string | null;
 }
 
 export interface CuentaOpcion {
@@ -212,7 +217,7 @@ export default function ModalRegistrarPago({
         </div>
 
         {/* Qué se está pagando */}
-        <div className="bg-[#0d0d0d] rounded-xl p-3 mb-4 space-y-2 max-h-48 overflow-y-auto">
+        <div className="bg-[#0d0d0d] rounded-xl p-3 mb-4 space-y-2 max-h-72 overflow-y-auto">
           {grupos.map((g) => (
             <div key={g.id}>
               <div className="flex items-center justify-between">
@@ -251,6 +256,14 @@ export default function ModalRegistrarPago({
                   </div>
                 );
               })}
+              {(g.datosBancarios || g.fichaHref) && (
+                <DatosBancariosAcreedor
+                  datos={g.datosBancarios ?? null}
+                  nombre={g.titulo}
+                  fichaHref={g.fichaHref}
+                  className="mt-2"
+                />
+              )}
             </div>
           ))}
         </div>

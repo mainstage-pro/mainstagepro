@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { marcarFilaNominaPagada } from "@/lib/nomina-pagos";
+import { datosBancarios, SELECT_BANCARIOS_TECNICO, type DatosBancarios } from "@/lib/datos-bancarios";
 
 // Calculates the Wednesday of the cycle that contains a given event date
 function cicloDesde(cicloDate: Date): { desde: Date; hasta: Date } {
@@ -40,7 +41,7 @@ export async function GET(req: NextRequest) {
       cotizacion: { select: { subtotalOperacion: true } },
       personal: {
         include: {
-          tecnico: { select: { id: true, nombre: true } },
+          tecnico: { select: { id: true, nombre: true, ...SELECT_BANCARIOS_TECNICO } },
           rolTecnico: { select: { nombre: true } },
         },
         orderBy: [{ participacion: "asc" }, { fechaJornada: "asc" }, { id: "asc" }],
@@ -78,6 +79,7 @@ export async function GET(req: NextRequest) {
     {
       tecnicoId: string;
       tecnicoNombre: string;
+      datosBancarios: DatosBancarios | null;
       pagos: { proyectoId: string; proyectoNombre: string; monto: number; estadoPago: string }[];
     }
   >();
@@ -87,7 +89,12 @@ export async function GET(req: NextRequest) {
       if (!pp.tecnicoId || !pp.tecnico || pp.tarifaAcordada == null) continue;
       const key = pp.tecnicoId;
       if (!tecMap.has(key)) {
-        tecMap.set(key, { tecnicoId: pp.tecnicoId, tecnicoNombre: pp.tecnico.nombre, pagos: [] });
+        tecMap.set(key, {
+          tecnicoId: pp.tecnicoId,
+          tecnicoNombre: pp.tecnico.nombre,
+          datosBancarios: datosBancarios(pp.tecnico),
+          pagos: [],
+        });
       }
       const entry = tecMap.get(key)!;
       const existing = entry.pagos.find((x) => x.proyectoId === p.id);
