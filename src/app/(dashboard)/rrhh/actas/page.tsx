@@ -5,6 +5,7 @@ import { Combobox } from "@/components/Combobox";
 import { Modal } from "@/components/Modal";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
+import { fmtFechaCorta } from "@/lib/dates";
 import {
   sugerirConsecuencia,
   etiquetaGravedad,
@@ -15,7 +16,7 @@ import {
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Personal { id: string; nombre: string; puesto: string; departamento: string; activo: boolean; }
-interface Proyecto { id: string; nombre: string; numeroProyecto: string; }
+interface Proyecto { id: string; nombre: string; numeroProyecto: string; fechaEvento: string | null; }
 interface TipoFalta {
   id: string; codigo: string | null; nombre: string; categoria: string;
   gravedad: string; deteccion: string; descripcion: string | null; esDescuento: boolean;
@@ -86,7 +87,7 @@ export default function ActasPage() {
     fetch("/api/rrhh/personal").then(r => r.json()).then(d => setPersonal(d.personal ?? []));
     fetch("/api/rrhh/faltas-catalogo").then(r => r.json()).then(d => setTipos(d.tipos ?? []));
     fetch("/api/proyectos").then(r => r.json()).then(d =>
-      setProyectos((d.proyectos ?? []).map((p: Proyecto) => ({ id: p.id, nombre: p.nombre, numeroProyecto: p.numeroProyecto }))));
+      setProyectos((d.proyectos ?? []).map((p: Proyecto) => ({ id: p.id, nombre: p.nombre, numeroProyecto: p.numeroProyecto, fechaEvento: p.fechaEvento ?? null }))));
   }, []);
   useEffect(() => { cargarActas(); }, [cargarActas]);
 
@@ -332,7 +333,10 @@ function NuevaActaModal({ ambito, personal, proyectos, tipos, initialProyectoId,
               <div className="text-sm px-3 py-2 rounded-lg border border-[#333] bg-[#1a1a1a] text-gray-200">{initialProyectoNombre}</div>
             ) : (
               <Combobox value={proyectoId} onChange={setProyectoId} placeholder="Selecciona el evento…"
-                options={proyectos.map(p => ({ value: p.id, label: `${p.numeroProyecto} · ${p.nombre}` }))} />
+                options={proyectos.map(p => ({
+                  value: p.id,
+                  label: [p.nombre, fmtFechaCorta(p.fechaEvento), p.numeroProyecto].filter(Boolean).join(" · "),
+                }))} />
             )}
           </div>
         )}

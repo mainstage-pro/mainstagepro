@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Calendar, Zap, CheckCircle2, Users, AlertTriangle, type LucideIcon } from 'lucide-react'
 import { getAreaColor } from '@/lib/areaColors'
 import { GRUPOS_MODULOS } from '@/lib/modulosEjecucion'
+import { coincide } from '@/lib/buscar'
 
 const displayArea = (n: string) => (n === 'Ventas' ? 'Comercial' : n)
 
@@ -1828,7 +1829,7 @@ export default function PlanPage() {
   const usuarioSeleccionado = vistaPersonaId ? usuarios.find(u => u.id === vistaPersonaId) ?? null : null
 
   function filterT(t: Template): boolean {
-    if (busqueda && !t.nombre.toLowerCase().includes(busqueda.toLowerCase())) return false
+    if (busqueda && !coincide(busqueda, t.nombre)) return false
     if (filtroImpacto !== 'todos' && t.impacto !== filtroImpacto) return false
     if (filtroContexto !== 'todos' && t.contexto !== filtroContexto) return false
     return true

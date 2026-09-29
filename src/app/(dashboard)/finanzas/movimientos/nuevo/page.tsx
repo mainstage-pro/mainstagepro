@@ -4,12 +4,13 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Combobox } from "@/components/Combobox";
 import { buttonClass } from "@/lib/tipo-colores";
+import { fmtFechaCorta } from "@/lib/dates";
 
 interface Cuenta { id: string; nombre: string; banco: string | null; }
 interface Categoria { id: string; nombre: string; tipo: string; }
 interface Proveedor { id: string; nombre: string; empresa: string | null; }
 interface Cliente { id: string; nombre: string; empresa: string | null; }
-interface Proyecto { id: string; nombre: string; numeroProyecto: string; estado: string; }
+interface Proyecto { id: string; nombre: string; numeroProyecto: string; estado: string; fechaEvento: string | null; }
 interface TipoMov { clave: string; nombre: string; naturaleza: string; color: string; }
 
 const METODO_PAGO_OPTIONS = [
@@ -226,7 +227,10 @@ export default function NuevoMovimientoPage() {
               <div>
                 <label className={labelCls}>Proyecto (opcional)</label>
                 <Combobox value={form.proyectoId} onChange={v => setForm(p => ({ ...p, proyectoId: v }))}
-                  options={[{ value: "", label: "— Sin proyecto —" }, ...proyectos.map(p => ({ value: p.id, label: `${p.numeroProyecto} · ${p.nombre}` }))]} />
+                  options={[{ value: "", label: "— Sin proyecto —" }, ...proyectos.map(p => ({
+                    value: p.id,
+                    label: [p.nombre, fmtFechaCorta(p.fechaEvento), p.numeroProyecto].filter(Boolean).join(" · "),
+                  }))]} />
               </div>
 
               <div>
