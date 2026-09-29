@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, type DragEvent } from "react";
 import Link from "next/link";
 import { upload } from "@vercel/blob/client";
 import { SkeletonPage } from "@/components/Skeleton";
+import { coincide } from "@/lib/buscar";
 
 interface Foto {
   id: string;
@@ -209,13 +210,8 @@ function RendersSection() {
     setRenders((rs) => rs?.map((r) => (r.id === id ? { ...r, [campo]: valor || null } : r)) ?? rs);
   }
 
-  const q = filtro.trim().toLowerCase();
-  const visibles = (renders ?? []).filter(
-    (r) =>
-      !q ||
-      (r.etiqueta ?? "").toLowerCase().includes(q) ||
-      (r.caption ?? "").toLowerCase().includes(q)
-  );
+  const q = filtro.trim();
+  const visibles = (renders ?? []).filter((r) => coincide(filtro, r.etiqueta, r.caption));
 
   return (
     <div className="mt-12 border-t border-[#1a1a1a] pt-8">

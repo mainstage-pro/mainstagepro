@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import PresentacionNav from "@/components/presentacion/PresentacionNav";
+import { coincide } from "@/lib/buscar";
 
 const GOLD = "#B3985B";
 const WA   = "https://wa.me/524461432565?text=Hola%2C%20me%20gustar%C3%ADa%20conocer%20el%20equipo%20disponible%20para%20mi%20evento.";
@@ -728,13 +729,7 @@ function CotizadorTab({ categorias, quoteItems, onAddItem, onUpdateQty, onRemove
 
   const filtered = useMemo(() => {
     const pool = activeCat ? (categorias.find(c => c.nombre === activeCat)?.equipos ?? []) : allEquipos;
-    const q = search.toLowerCase();
-    if (!q) return pool;
-    return pool.filter(eq =>
-      eq.descripcion.toLowerCase().includes(q) ||
-      (eq.marca || "").toLowerCase().includes(q) ||
-      (eq.modelo || "").toLowerCase().includes(q)
-    );
+    return pool.filter(eq => coincide(search, eq.descripcion, eq.marca, eq.modelo));
   }, [search, activeCat, allEquipos, categorias]);
 
   const qtyInCart = useCallback((id: string) => quoteItems.find(i => i.id === id)?.cantidad ?? 0, [quoteItems]);

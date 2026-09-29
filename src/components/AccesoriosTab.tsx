@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { TipoEventoCell, type TipoEventoOpcion } from "@/components/TipoEventoCell";
 import { useToast } from "@/components/Toast";
+import { coincide } from "@/lib/buscar";
 
 type Categoria = { id: string; nombre: string };
 type Proveedor = { id: string; nombre: string; empresa?: string | null };
@@ -126,16 +127,12 @@ export function AccesoriosTab({ categorias, catalogoTipos }: { categorias: Categ
   }
 
   const filtrados = useMemo(() => {
-    const q = busqueda.trim().toLowerCase();
     return accesorios.filter(a => {
       if (fEstado && a.estado !== fEstado) return false;
       if (fCategoria && a.categoria?.id !== fCategoria) return false;
       if (fEvento && !parseTE(a.tiposEvento).map(s => s.toUpperCase()).includes(fEvento.toUpperCase())) return false;
       if (soloSinPrecio && a.precioRenta != null && a.precioRenta > 0) return false;
-      if (q) {
-        const hay = [a.nombre, a.marca, a.modelo, a.descripcion].filter(Boolean).join(" ").toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
+      if (!coincide(busqueda, a.nombre, a.marca, a.modelo, a.descripcion)) return false;
       return true;
     });
   }, [accesorios, busqueda, fEstado, fCategoria, fEvento, soloSinPrecio]);
@@ -507,8 +504,7 @@ export function AccesoriosTab({ categorias, catalogoTipos }: { categorias: Categ
             </div>
             <div className="flex-1 overflow-y-auto p-3 space-y-1">
               {(() => {
-                const q = busqMig.trim().toLowerCase();
-                const list = equiposCand.filter(e => !q || [e.marca, e.modelo, e.descripcion, e.categoria?.nombre].filter(Boolean).join(" ").toLowerCase().includes(q));
+                const list = equiposCand.filter(e => coincide(busqMig, e.marca, e.modelo, e.descripcion, e.categoria?.nombre));
                 if (list.length === 0) return <p className="text-center text-[#333] text-sm py-10">Sin equipos propios disponibles para migrar.</p>;
                 return list.map(e => (
                   <div key={e.id} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[#111] transition-colors">

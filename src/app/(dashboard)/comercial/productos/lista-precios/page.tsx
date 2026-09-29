@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useToast } from "@/components/Toast";
 import { getEquipoDisplayName, getEquipoMarcaModelo } from "@/lib/equipoNombre";
+import { coincide } from "@/lib/buscar";
 
 type Equipo = {
   id: string;
@@ -78,18 +79,14 @@ export default function ListaPreciosPage() {
   const equiposFiltrados = useMemo(() => equipos.filter(e => {
     if (origen !== "TODOS" && e.tipo !== origen) return false;
     if (soloSinPrecio && e.precioRenta > 0) return false;
-    if (!q) return true;
-    return [e.descripcion, e.marca, e.modelo, e.categoria.nombre, e.proveedorDefault?.nombre, e.proveedorDefault?.empresa]
-      .some(v => v?.toLowerCase().includes(q));
+    return coincide(busqueda, e.descripcion, e.marca, e.modelo, e.categoria.nombre, e.proveedorDefault?.nombre, e.proveedorDefault?.empresa);
   }), [equipos, origen, soloSinPrecio, q]);
 
   const accesoriosFiltrados = useMemo(() => accesorios.filter(a => {
     const tipo = a.proveedor ? "EXTERNO" : "PROPIO";
     if (origen !== "TODOS" && tipo !== origen) return false;
     if (soloSinPrecio && (a.precioRenta ?? 0) > 0) return false;
-    if (!q) return true;
-    return [a.nombre, a.marca, a.modelo, a.categoria?.nombre, a.proveedor?.nombre, a.proveedor?.empresa]
-      .some(v => v?.toLowerCase().includes(q));
+    return coincide(busqueda, a.nombre, a.marca, a.modelo, a.categoria?.nombre, a.proveedor?.nombre, a.proveedor?.empresa);
   }), [accesorios, origen, soloSinPrecio, q]);
 
   const equiposPorCategoria = useMemo(() =>

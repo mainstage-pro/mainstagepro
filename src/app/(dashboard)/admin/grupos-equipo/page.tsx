@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
+import { coincide } from "@/lib/buscar";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 interface EquipoRef {
@@ -131,12 +132,9 @@ export default function GruposEquipoPage() {
 
   // ── Equipos filtrados para el combobox del item ───────────────────────────
   const equiposFiltrados = useMemo(() => {
-    const q = equipoBusqueda.toLowerCase();
-    if (!q) return equipos.slice(0, 30);
+    if (!equipoBusqueda) return equipos.slice(0, 30);
     return equipos.filter(e =>
-      e.descripcion.toLowerCase().includes(q) ||
-      (e.marca ?? "").toLowerCase().includes(q) ||
-      (e.modelo ?? "").toLowerCase().includes(q)
+      coincide(equipoBusqueda, e.descripcion, e.marca, e.modelo)
     ).slice(0, 30);
   }, [equipos, equipoBusqueda]);
 
@@ -145,8 +143,7 @@ export default function GruposEquipoPage() {
     let list = grupos;
     if (filtroEvento) list = list.filter(g => g.tipoEvento === filtroEvento);
     if (busqueda.trim()) {
-      const q = busqueda.toLowerCase();
-      list = list.filter(g => g.nombre.toLowerCase().includes(q) || (g.descripcion ?? "").toLowerCase().includes(q));
+      list = list.filter(g => coincide(busqueda, g.nombre, g.descripcion));
     }
     return list;
   }, [grupos, filtroEvento, busqueda]);

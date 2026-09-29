@@ -6,6 +6,7 @@ import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { SkeletonPage } from "@/components/Skeleton";
 import NuevaTareaModal from "@/app/(dashboard)/operaciones/components/NuevaTareaModal";
+import { coincide } from "@/lib/buscar";
 
 type Usuario = { id: string; name: string };
 
@@ -253,16 +254,11 @@ export default function ProyectosPage() {
     } finally { setDeletingId(null); }
   }
 
-  const q = busqueda.toLowerCase();
   const tabProyectos = proyectos
     .filter(p => {
       const matchTab = mapEstado(p.estado) === tabActivo;
       const matchTipo = !filtroTipo || p.tipoEvento === filtroTipo;
-      const matchSearch = !q ||
-        p.cliente.nombre.toLowerCase().includes(q) ||
-        p.nombre.toLowerCase().includes(q) ||
-        p.numeroProyecto.toLowerCase().includes(q) ||
-        (p.lugarEvento ?? '').toLowerCase().includes(q);
+      const matchSearch = coincide(busqueda, p.cliente.nombre, p.nombre, p.numeroProyecto, p.lugarEvento);
       return matchTab && matchTipo && matchSearch;
     })
     .sort((a, b) => new Date(a.fechaEvento).getTime() - new Date(b.fechaEvento).getTime());

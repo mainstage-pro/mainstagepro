@@ -5,6 +5,7 @@ import { upload } from "@vercel/blob/client";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Modal } from "@/components/Modal";
+import { coincide } from "@/lib/buscar";
 import { SUBTIPOS_EVENTO, parseCoberturas, coberturaMatch, rangoBounds, TEMPORADAS_PAQUETE, type Cobertura, type TemporadaPaquete } from "@/lib/constants";
 import { agruparRolesTecnicos, tarifaRol, nivelEfectivo, rolUsaNivel, rolUsaJornada, etiquetaTarifaRol, JORNADAS_ROL, JORNADA_ROL_LABELS, NIVELES_ROL } from "@/lib/rolesTecnicos";
 import { Music, Wine, Building2, Sparkles, ImageIcon, Package, Puzzle, Users, type LucideIcon } from "lucide-react";
@@ -236,8 +237,8 @@ function PaqueteEditor({
     const eqSel = new Set(form.items.filter((i) => i.tipo === "EQUIPO").map((i) => i.equipoId));
     const prodSel = new Set(form.items.filter((i) => i.tipo === "PRODUCTO").map((i) => i.productoId));
     return {
-      equipos: equipos.filter((e) => !eqSel.has(e.id) && (nombreEq(e).toLowerCase().includes(q) || e.descripcion.toLowerCase().includes(q))).slice(0, 20),
-      productos: productos.filter((p) => !prodSel.has(p.id) && p.nombre.toLowerCase().includes(q)).slice(0, 12),
+      equipos: equipos.filter((e) => !eqSel.has(e.id) && coincide(busqueda, nombreEq(e), e.descripcion)).slice(0, 20),
+      productos: productos.filter((p) => !prodSel.has(p.id) && coincide(busqueda, p.nombre)).slice(0, 12),
     };
   }, [busqueda, equipos, productos, form.items]);
 
@@ -772,8 +773,7 @@ function SwapModal({
   useEffect(() => { if (open) setQ(""); }, [open]);
   const base = actual?.precio ?? 0;
   const lista = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    return s ? candidatos.filter((c) => c.nombre.toLowerCase().includes(s)) : candidatos;
+    return candidatos.filter((c) => coincide(q, c.nombre));
   }, [q, candidatos]);
   return (
     <Modal open={open} onClose={onClose} title="Sustituir por equivalente" maxWidth="max-w-lg">
@@ -861,11 +861,9 @@ function CatalogoPicker({
 
   // Equipos filtrados y agrupados por categoría
   const equiposPorCategoria = useMemo(() => {
-    const query = q.trim().toLowerCase();
     const filtrados = equipos.filter((e) => {
       if (catFiltro && e.categoria?.id !== catFiltro) return false;
-      if (!query) return true;
-      return nombreEq(e).toLowerCase().includes(query) || e.descripcion.toLowerCase().includes(query);
+      return coincide(q, nombreEq(e), e.descripcion);
     });
     const grupos = new Map<string, { nombre: string; equipos: EquipoItem[] }>();
     for (const e of filtrados) {
@@ -877,8 +875,7 @@ function CatalogoPicker({
   }, [equipos, q, catFiltro]);
 
   const productosFiltrados = useMemo(() => {
-    const query = q.trim().toLowerCase();
-    const base = productos.filter((p) => !query || p.nombre.toLowerCase().includes(query) || (p.categoria ?? "").toLowerCase().includes(query));
+    const base = productos.filter((p) => coincide(q, p.nombre, p.categoria));
     const filtrados = soloRecomendados && hayCriterio ? base.filter((p) => matchProducto.get(p.id) === "match") : base;
     if (!hayCriterio) return filtrados;
     const rank = (id: string) => (matchProducto.get(id) === "match" ? 0 : matchProducto.get(id) === "sindata" ? 1 : 2);

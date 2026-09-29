@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { idsPorTexto } from "@/lib/buscar-servidor";
 
 export async function GET(req: NextRequest) {
   const session = await getSession();
@@ -15,7 +16,7 @@ export async function GET(req: NextRequest) {
   else if (tipo === "proveedor") where.tipo = { in: ["PROVEEDOR", "AMBOS"] };
   else if (tipo === "CLIENTE" || tipo === "PROVEEDOR" || tipo === "AMBOS") where.tipo = tipo;
   if (q && q.trim()) {
-    where.nombre = { contains: q.trim(), mode: "insensitive" };
+    where.id = { in: await idsPorTexto("Empresa", ["nombre"], q) };
   }
 
   const empresas = await prisma.empresa.findMany({

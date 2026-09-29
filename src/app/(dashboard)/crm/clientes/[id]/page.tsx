@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CopyButton } from "@/components/CopyButton";
+import { coincide } from "@/lib/buscar";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { SkeletonPage } from "@/components/Skeleton";
@@ -250,15 +251,7 @@ function PanelPrecios({
   const equiposFiltrados = equipos.filter((eq) => {
     if (soloConPrecio && !preciosMap[eq.id]) return false;
     if (filtroCat !== "TODOS" && eq.categoria.id !== filtroCat) return false;
-    if (busqueda.trim()) {
-      const q = busqueda.toLowerCase();
-      return (
-        eq.descripcion.toLowerCase().includes(q) ||
-        (eq.marca ?? "").toLowerCase().includes(q) ||
-        (eq.modelo ?? "").toLowerCase().includes(q)
-      );
-    }
-    return true;
+    return coincide(busqueda, eq.descripcion, eq.marca, eq.modelo);
   });
 
   const countConPrecio = Object.keys(preciosMap).length;

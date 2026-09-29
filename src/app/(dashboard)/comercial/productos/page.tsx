@@ -10,6 +10,7 @@ import { SUBTIPOS_EVENTO, parseCoberturas, type Cobertura } from "@/lib/constant
 import { Guitar, PartyPopper, Briefcase, Package, Sparkles, type LucideIcon } from "lucide-react";
 import { TipoEventoCell, type TipoEventoOpcion } from "@/components/TipoEventoCell";
 import { FAMILIAS, SUBFAMILIAS_ILUMINACION } from "@/lib/producto-familias";
+import { coincide } from "@/lib/buscar";
 
 // ── Tipos ───────────────────────────────────────────────────────────────────
 type CambioClasifProp = { id: string; nombre: string; tiposAntes: string[]; tiposDespues: string[]; nichosAntes: string[]; nichosDespues: string[] };
@@ -318,11 +319,10 @@ function ProductoEditor({
   );
 
   const filtrados = useMemo(() => {
-    const q = busqueda.trim().toLowerCase();
     const seleccionados = new Set(form.items.map((i) => i.equipoId));
     return equipos
       .filter((e) => !seleccionados.has(e.id))
-      .filter((e) => !q || nombreEq(e).toLowerCase().includes(q) || e.descripcion.toLowerCase().includes(q))
+      .filter((e) => coincide(busqueda, nombreEq(e), e.descripcion))
       .slice(0, 40);
   }, [equipos, busqueda, form.items]);
 
@@ -345,11 +345,10 @@ function ProductoEditor({
   }
 
   const accFiltrados = useMemo(() => {
-    const q = busqAcc.trim().toLowerCase();
     const seleccionados = new Set(form.accesorios.map((a) => a.accesorioId));
     return accesoriosCat
       .filter((a) => !seleccionados.has(a.id))
-      .filter((a) => !q || nombreAcc(a).toLowerCase().includes(q))
+      .filter((a) => coincide(busqAcc, nombreAcc(a)))
       .slice(0, 40);
   }, [accesoriosCat, busqAcc, form.accesorios]);
 

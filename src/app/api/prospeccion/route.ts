@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { idsPorTexto } from "@/lib/buscar-servidor";
 
 export async function GET(request: NextRequest) {
   const session = await getSession();
@@ -30,9 +31,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (q) {
-      where.cliente = {
-        nombre: { contains: q, mode: "insensitive" },
-      };
+      where.clienteId = { in: await idsPorTexto("Cliente", ["nombre"], q) };
     }
 
     const prospecciones = await prisma.prospeccion.findMany({

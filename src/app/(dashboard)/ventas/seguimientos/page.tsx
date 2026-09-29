@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { EtapaInternaBar } from "@/components/crm/EtapaInternaBar";
 import { etapaInternaLabel } from "@/lib/etapasInternas";
+import { coincide } from "@/lib/buscar";
 import { MessageCircle, Phone, Handshake, ClipboardList, type LucideIcon } from "lucide-react";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -528,10 +529,7 @@ export default function SeguimientosPage() {
   const filtrados = todos.filter(s => {
     if (filtroEstado === "pendientes" && s.completado) return false;
     if (filtroEstado === "completados" && !s.completado) return false;
-    if (busqueda) {
-      const q = busqueda.toLowerCase();
-      if (!s.trato.cliente.nombre.toLowerCase().includes(q) && !(s.trato.nombreEvento ?? "").toLowerCase().includes(q)) return false;
-    }
+    if (!coincide(busqueda, s.trato.cliente.nombre, s.trato.nombreEvento)) return false;
     return true;
   });
 

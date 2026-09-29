@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { serializePerfiles } from "@/lib/proceso/perfiles";
+import { idsPorTexto } from "@/lib/buscar-servidor";
 
 export async function POST(request: NextRequest) {
   const session = await getSession();
@@ -77,16 +78,12 @@ export async function GET(request: NextRequest) {
   const q = searchParams.get("q")?.trim() || null;
   const limit = parseInt(searchParams.get("limit") || "200");
 
+  const idsCoincidentes = q
+    ? await idsPorTexto("Cliente", ["nombre", "empresa", "telefono"], q)
+    : null;
+
   const clientes = await prisma.cliente.findMany({
-    where: q
-      ? {
-          OR: [
-            { nombre: { contains: q, mode: "insensitive" } },
-            { empresa: { contains: q, mode: "insensitive" } },
-            { telefono: { contains: q, mode: "insensitive" } },
-          ],
-        }
-      : undefined,
+    where: idsCoincidentes ? { id: { in: idsCoincidentes } } : undefined,
     select: {
       id: true,
       nombre: true,

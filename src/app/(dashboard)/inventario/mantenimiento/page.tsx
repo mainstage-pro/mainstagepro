@@ -11,6 +11,7 @@ import { CostoMantenimientoModal, type CostoMantenimiento } from "@/components/C
 import { ReportarFallaModal } from "@/components/ReportarFallaModal";
 import { ESTADOS_EQUIPO, ESTADO_EQUIPO_LABEL, esRetornoAServicio } from "@/lib/equipo-estado";
 import { ORIGEN_FALLA_LABEL, SEVERIDAD_FALLA_BADGE, SEVERIDAD_FALLA_LABEL } from "@/lib/falla-equipo";
+import { coincide } from "@/lib/buscar";
 
 type Equipo = {
   id: string; descripcion: string; marca: string | null; modelo: string | null;
@@ -238,11 +239,8 @@ function MantenimientoContent() {
     if (r.proximoMantenimiento && !maintMap[eid].nextDate) maintMap[eid].nextDate = r.proximoMantenimiento;
   }
 
-  const filteredEquipos = equipos.filter(e => 
-    !searchQuery || 
-    e.descripcion.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (e.marca && e.marca.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (e.modelo && e.modelo.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredEquipos = equipos.filter(e =>
+    coincide(searchQuery, e.descripcion, e.marca, e.modelo)
   );
 
   const cats = Array.from(

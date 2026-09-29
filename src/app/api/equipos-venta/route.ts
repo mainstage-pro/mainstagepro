@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { ensureEquipoVentaColumns } from "@/lib/migraciones-lazy";
 import { CONDICIONES, fotosPublicables } from "@/lib/equipo-venta-shared";
 import { logActividad } from "@/lib/actividad";
+import { idsPorTexto } from "@/lib/buscar-servidor";
 
 export const dynamic = "force-dynamic";
 
@@ -55,13 +56,7 @@ export async function GET(request: NextRequest) {
         enVenta: false,
         estadoMigracion: null,
         ...(q
-          ? {
-              OR: [
-                { descripcion: { contains: q, mode: "insensitive" as const } },
-                { marca: { contains: q, mode: "insensitive" as const } },
-                { modelo: { contains: q, mode: "insensitive" as const } },
-              ],
-            }
+          ? { id: { in: await idsPorTexto("Equipo", ["descripcion", "marca", "modelo"], q) } }
           : {}),
       },
       select: SELECT,

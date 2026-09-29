@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { idsPorTexto } from "@/lib/buscar-servidor";
 
 export const runtime = "nodejs";
 
@@ -37,10 +38,7 @@ export async function POST(req: NextRequest) {
     const productos = await prisma.producto.findMany({
       where: {
         activo: true,
-        OR: [
-          { nombre: { contains: like, mode: "insensitive" } },
-          { descripcion: { contains: like, mode: "insensitive" } },
-        ],
+        id: { in: await idsPorTexto("Producto", ["nombre", "descripcion"], like) },
       },
       select: { id: true, nombre: true, categoria: true, precioFinal: true },
       take: 14,
@@ -55,7 +53,7 @@ export async function POST(req: NextRequest) {
     }
     // En modo productos, permite también asignar roles (personal/operadores).
     const roles = await prisma.rolTecnico.findMany({
-      where: { activo: true, nombre: { contains: like, mode: "insensitive" } },
+      where: { activo: true, id: { in: await idsPorTexto("RolTecnico", ["nombre"], like) } },
       select: { id: true, nombre: true, disciplina: true },
       take: 6,
       orderBy: { nombre: "asc" },
@@ -74,18 +72,14 @@ export async function POST(req: NextRequest) {
       prisma.equipo.findMany({
         where: {
           activo: true,
-          OR: [
-            { descripcion: { contains: like, mode: "insensitive" } },
-            { marca: { contains: like, mode: "insensitive" } },
-            { modelo: { contains: like, mode: "insensitive" } },
-          ],
+          id: { in: await idsPorTexto("Equipo", ["descripcion", "marca", "modelo"], like) },
         },
         select: { id: true, descripcion: true, marca: true, modelo: true, precioRenta: true, categoria: { select: { nombre: true } } },
         take: 12,
         orderBy: { descripcion: "asc" },
       }),
       prisma.accesorio.findMany({
-        where: { activo: true, nombre: { contains: like, mode: "insensitive" } },
+        where: { activo: true, id: { in: await idsPorTexto("Accesorio", ["nombre"], like) } },
         select: { id: true, nombre: true, precioRenta: true },
         take: 8,
         orderBy: { nombre: "asc" },
@@ -110,7 +104,7 @@ export async function POST(req: NextRequest) {
 
   if (!soloEquipo) {
     const roles = await prisma.rolTecnico.findMany({
-      where: { activo: true, nombre: { contains: like, mode: "insensitive" } },
+      where: { activo: true, id: { in: await idsPorTexto("RolTecnico", ["nombre"], like) } },
       select: { id: true, nombre: true, disciplina: true },
       take: 8,
       orderBy: { nombre: "asc" },

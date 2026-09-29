@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { coincide } from "@/lib/buscar";
 
 interface EmpresaOption {
   id: string;
@@ -36,7 +37,7 @@ export function EmpresaCombobox({ value, onChange, tipoDefault = "AMBOS", placeh
   }, [value?.nombre]);
 
   const filtered = query.trim()
-    ? empresas.filter(e => e.nombre.toLowerCase().includes(query.toLowerCase()))
+    ? empresas.filter(e => coincide(query, e.nombre))
     : empresas;
 
   const exactMatch = empresas.some(e => e.nombre.toLowerCase() === query.trim().toLowerCase());

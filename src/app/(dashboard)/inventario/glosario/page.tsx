@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { SkeletonPage } from "@/components/Skeleton";
+import { coincide } from "@/lib/buscar";
 
 type Tipo = "EQUIPO" | "ACCESORIO" | "ROL_TECNICO";
 interface Termino {
@@ -63,13 +64,11 @@ export default function GlosarioPage() {
 
   const lista = useMemo(() => {
     const items = objetivos?.[tab] ?? [];
-    const q = busqueda.trim().toLowerCase();
-    if (!q) return items;
+    if (!busqueda.trim()) return items;
     return items.filter(
       (o) =>
-        o.nombre.toLowerCase().includes(q) ||
-        o.detalle.toLowerCase().includes(q) ||
-        (porObjetivo.get(o.id) ?? []).some((t) => t.termino.includes(q))
+        coincide(busqueda, o.nombre, o.detalle) ||
+        (porObjetivo.get(o.id) ?? []).some((t) => coincide(busqueda, t.termino))
     );
   }, [objetivos, tab, busqueda, porObjetivo]);
 

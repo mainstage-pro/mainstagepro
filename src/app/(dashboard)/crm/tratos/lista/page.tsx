@@ -15,6 +15,7 @@ import { SkeletonPage } from "@/components/Skeleton";
 import { BadgeDias } from "@/components/ui/BadgeDias";
 import { NuevoTratoDropdown } from "@/components/NuevoTratoDropdown";
 import { diasTrato } from "@/lib/contadores";
+import { coincide } from "@/lib/buscar";
 import { EtapaInternaBar } from "@/components/crm/EtapaInternaBar";
 import NuevaTareaModal from "@/app/(dashboard)/operaciones/components/NuevaTareaModal";
 
@@ -1382,8 +1383,7 @@ export default function TratosPage() {
   const tratosFiltrados = tratos.filter(t => {
     if (filtroEtapa === 'LEADS') {
       const matchFrio2 = t.tipoProspecto === 'NURTURING';
-      const q2 = busqueda.toLowerCase();
-      const matchB2 = !q2 || t.cliente.nombre.toLowerCase().includes(q2) || (t.cliente.empresa ?? '').toLowerCase().includes(q2) || (t.nombreEvento ?? '').toLowerCase().includes(q2) || (t.lugarEstimado ?? '').toLowerCase().includes(q2);
+      const matchB2 = coincide(busqueda, t.cliente.nombre, t.cliente.empresa, t.nombreEvento, t.lugarEstimado);
       return matchFrio2 && matchB2;
     }
     if (filtroEtapa === 'CIERRE_SEMANA') {
@@ -1391,19 +1391,16 @@ export default function TratosPage() {
       const finSemana = new Date(hoyD);
       finSemana.setDate(hoyD.getDate() + (6 - hoyD.getDay()));
       finSemana.setHours(23, 59, 59, 999);
-      const qcs = busqueda.toLowerCase();
-      const matchBcs = !qcs || t.cliente.nombre.toLowerCase().includes(qcs) || (t.cliente.empresa ?? '').toLowerCase().includes(qcs) || (t.nombreEvento ?? '').toLowerCase().includes(qcs);
+      const matchBcs = coincide(busqueda, t.cliente.nombre, t.cliente.empresa, t.nombreEvento);
       return matchBcs && !!t.fechaProximaAccion && new Date(t.fechaProximaAccion) >= hoyD && new Date(t.fechaProximaAccion) <= finSemana;
     }
     if (filtroEtapa === 'FORMULARIOS') {
-      const qf = busqueda.toLowerCase();
-      const matchBf = !qf || t.cliente.nombre.toLowerCase().includes(qf) || (t.cliente.empresa ?? '').toLowerCase().includes(qf) || (t.nombreEvento ?? '').toLowerCase().includes(qf);
+      const matchBf = coincide(busqueda, t.cliente.nombre, t.cliente.empresa, t.nombreEvento);
       return matchBf && t.formEstado === 'COMPLETADO';
     }
     if (filtroEtapa === 'ACCION_REQUERIDA') {
       const hoyAR = new Date();
-      const qar = busqueda.toLowerCase();
-      const matchBar = !qar || t.cliente.nombre.toLowerCase().includes(qar) || (t.cliente.empresa ?? '').toLowerCase().includes(qar) || (t.nombreEvento ?? '').toLowerCase().includes(qar);
+      const matchBar = coincide(busqueda, t.cliente.nombre, t.cliente.empresa, t.nombreEvento);
       return matchBar && (
         (!!t.fechaProximaAccion && new Date(t.fechaProximaAccion) < hoyAR) ||
         (!t.fechaProximaAccion && (Date.now() - new Date(t.updatedAt ?? t.createdAt).getTime()) / 86400000 > 3)
@@ -1411,12 +1408,7 @@ export default function TratosPage() {
     }
     const matchEtapa = !filtroEtapa || t.etapa === filtroEtapa;
     const matchFrio = !filtroFrio || t.tipoProspecto === "NURTURING";
-    const q = busqueda.toLowerCase();
-    const matchBusqueda = !q ||
-      t.cliente.nombre.toLowerCase().includes(q) ||
-      (t.cliente.empresa ?? "").toLowerCase().includes(q) ||
-      (t.nombreEvento ?? "").toLowerCase().includes(q) ||
-      (t.lugarEstimado ?? "").toLowerCase().includes(q);
+    const matchBusqueda = coincide(busqueda, t.cliente.nombre, t.cliente.empresa, t.nombreEvento, t.lugarEstimado);
     return matchEtapa && matchFrio && matchBusqueda;
   }).sort((a: Trato, b: Trato) => {
     // Ordenar siempre del evento más próximo al más lejano por defecto
@@ -1836,15 +1828,10 @@ export default function TratosPage() {
           {loading ? (
             <SkeletonPage />
           ) : (() => {
-            const q = busqueda.toLowerCase();
             const tabTratos = tratos
               .filter(t => {
                 const matchEtapa = filtroEtapa === 'TODOS' || t.etapa === filtroEtapa;
-                const matchSearch = !q ||
-                  t.cliente.nombre.toLowerCase().includes(q) ||
-                  (t.cliente.empresa ?? '').toLowerCase().includes(q) ||
-                  (t.nombreEvento ?? '').toLowerCase().includes(q) ||
-                  (t.cliente.telefono ?? '').includes(q);
+                const matchSearch = coincide(busqueda, t.cliente.nombre, t.cliente.empresa, t.nombreEvento, t.cliente.telefono);
                 const matchTipo = !filtroTipoEvento || t.tipoEvento === filtroTipoEvento;
                 return matchEtapa && matchSearch && matchTipo;
               })

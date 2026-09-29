@@ -16,6 +16,7 @@ import { useCelebration } from "@/components/CelebrationToast";
 import type { Pendiente } from "@/lib/pendientes/tipos";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
+import { coincide } from "@/lib/buscar";
 import { Users, Zap, Building2, Sun, Calendar, Inbox, ClipboardList, MapPin, User, Handshake,
   Megaphone, Palette, Calculator, Target, Lightbulb, Music, Video, Wrench, Package, ShoppingCart,
   Scale, FileText, Folder, Contact, type LucideIcon } from "lucide-react";
@@ -1232,12 +1233,8 @@ export default function OperacionesPage() {
 
   // ── Hoy / Próximas grouped ───────────────────────────────────────────────
   const applyBusqueda = (list: TareaItem[]) => {
-    const q = busqueda.toLowerCase().trim();
-    if (!q) return list;
-    return list.filter(t =>
-      t.titulo.toLowerCase().includes(q) ||
-      (t.descripcion?.toLowerCase().includes(q) ?? false)
-    );
+    if (!busqueda.trim()) return list;
+    return list.filter(t => coincide(busqueda, t.titulo, t.descripcion));
   };
 
   const hoyGrouped = useMemo(() => {

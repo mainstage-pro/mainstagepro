@@ -6,6 +6,7 @@ import { useToast } from "@/components/Toast";
 import { Combobox } from "@/components/Combobox";
 import { Modal } from "@/components/Modal";
 import { etiquetaSlot, slotsDelCiclo } from "@/lib/contenido-variaciones";
+import { coincide } from "@/lib/buscar";
 
 interface Variacion {
   id: string; codigo: string; nombre: string; semana: number; posicion: number;
@@ -205,7 +206,7 @@ export default function ContenidosPage() {
 
   function applyFilters(list: TipoContenido[]) {
     return list.filter(t => {
-      if (search && !t.nombre.toLowerCase().includes(search.toLowerCase())) return false;
+      if (!coincide(search, t.nombre)) return false;
       if (filtroFormato && t.formato !== filtroFormato) return false;
       if (filtroPlataforma && !t[PLAT_KEYS[filtroPlataforma]]) return false;
       return true;

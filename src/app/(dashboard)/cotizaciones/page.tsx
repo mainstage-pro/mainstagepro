@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ESTADO_COTIZACION_LABELS, ESTADO_COTIZACION_COLORS, TIPO_EVENTO_LABELS } from "@/lib/constants";
 import { formatCurrency } from "@/lib/cotizador";
+import { coincide } from "@/lib/buscar";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { SkeletonPage } from "@/components/Skeleton";
@@ -61,12 +62,7 @@ export default function CotizacionesPage() {
   const cotizacionesFiltradas = q
     ? cotizaciones.filter((cot) => {
         const evento = cot.nombreEvento || (cot.tipoEvento ? TIPO_EVENTO_LABELS[cot.tipoEvento] : "");
-        return (
-          cot.numeroCotizacion.toLowerCase().includes(q) ||
-          cot.cliente.nombre.toLowerCase().includes(q) ||
-          (cot.cliente.empresa?.toLowerCase().includes(q) ?? false) ||
-          evento.toLowerCase().includes(q)
-        );
+        return coincide(busqueda, cot.numeroCotizacion, cot.cliente.nombre, cot.cliente.empresa, evento);
       })
     : cotizaciones;
 

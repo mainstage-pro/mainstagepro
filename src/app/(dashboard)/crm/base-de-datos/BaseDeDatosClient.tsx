@@ -6,6 +6,7 @@ import { TIPO_CLIENTE_LABELS, CLASIFICACION_LABELS, ORIGEN_LEAD_OPTIONS, ORIGEN_
 import { PerfilMultiSelect, usePerfilesCustom } from "@/components/crm/PerfilSelect";
 import { PERFILES_POR_CATEGORIA, parsePerfiles, perfilesPorCategoriaCon, PERFIL_CATEGORIAS, PERFIL_CATEGORIA_LABELS, type CustomPerfil } from "@/lib/proceso/perfiles";
 import { CopyButton } from "@/components/CopyButton";
+import { coincide } from "@/lib/buscar";
 import { waUrlContacto, useWhatsappPlantillas } from "@/lib/whatsapp-mensajes";
 import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
@@ -1354,11 +1355,9 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
   // ── Filtrado ─────────────────────────────────────────────────────────────────
 
   function filtrar(lista: Contacto[]): Contacto[] {
-    const q = busqueda.toLowerCase().trim();
     return lista.filter(c => {
       const emp = c.compania?.nombre ?? c.empresa ?? "";
-      if (q && !c.nombre.toLowerCase().includes(q) && !emp.toLowerCase().includes(q)
-        && !(c.correo ?? "").toLowerCase().includes(q) && !(c.telefono ?? "").includes(q)) return false;
+      if (!coincide(busqueda, c.nombre, emp, c.correo, c.telefono)) return false;
       if (filtroTipo && c.tipoCliente !== filtroTipo) return false;
       if (filtroClasificacion && c.clasificacion !== filtroClasificacion) return false;
       if (filtroPerfil && !parsePerfiles(c.perfilesProspecto ?? c.perfilProspecto).includes(filtroPerfil)) return false;

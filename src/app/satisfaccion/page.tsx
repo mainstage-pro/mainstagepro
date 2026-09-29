@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import EncuestaSatisfaccionForm from "@/components/EncuestaSatisfaccionForm";
 import type { Respuestas } from "@/lib/satisfaccion-form";
+import { coincide } from "@/lib/buscar";
 
 const DEPT_LABEL: Record<string, string> = {
   BODEGA: "Bodega", COORDINACION: "Coordinación", PRODUCCION: "Producción",
@@ -32,9 +33,7 @@ export default function SatisfaccionSelfServicePage() {
   const seleccionado = useMemo(() => personal.find(p => p.id === personalId) ?? null, [personal, personalId]);
 
   const filtrados = useMemo(() => {
-    const q = busqueda.trim().toLowerCase();
-    if (!q) return personal;
-    return personal.filter(p => p.nombre.toLowerCase().includes(q));
+    return personal.filter(p => coincide(busqueda, p.nombre));
   }, [personal, busqueda]);
 
   const enviar = async (respuestas: Respuestas): Promise<{ ok: boolean; error?: string }> => {

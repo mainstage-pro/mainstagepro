@@ -8,6 +8,7 @@ import { EmpresaCombobox } from "@/components/EmpresaCombobox";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
 import { Modal } from "@/components/Modal";
+import { coincide } from "@/lib/buscar";
 
 const STAR_COLOR = '#c9a96a'
 
@@ -330,9 +331,7 @@ export default function ProveedoresPage() {
 
   let filtered = proveedores.filter(p => {
     if (!showInactivos && !p.activo) return false;
-    if (search && !p.nombre.toLowerCase().includes(search.toLowerCase()) &&
-        !(p.empresa ?? "").toLowerCase().includes(search.toLowerCase()) &&
-        !(p.giro ?? "").toLowerCase().includes(search.toLowerCase())) return false;
+    if (!coincide(search, p.nombre, p.empresa, p.giro)) return false;
     if (filterGiro === 'SIN_CATEGORIA') {
       if (p.giro && p.giro.trim() !== '') return false
     } else if (filterGiro !== "TODOS") {

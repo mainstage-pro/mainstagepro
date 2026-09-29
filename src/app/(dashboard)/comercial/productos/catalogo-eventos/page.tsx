@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Modal } from "@/components/Modal";
+import { coincide as coincideTexto } from "@/lib/buscar";
 import { Layers, Tags, PlusCircle, HelpCircle, Pencil, Trash2, Plus, Sparkles, GripVertical } from "lucide-react";
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
@@ -602,11 +603,7 @@ function PreguntasSeccion({ preguntas, tipos, nichos, onNuevo, onEdit, onDelete,
 // La categoría y el proveedor entran a la búsqueda porque mucho equipo externo se
 // encuentra antes por ahí ("pistas de baile", "Pixel Dance") que por su descripción.
 function coincide(i: ItemInv, q: string) {
-  return (
-    i.nombre.toLowerCase().includes(q) ||
-    (i.categoria ?? "").toLowerCase().includes(q) ||
-    (i.proveedor ?? "").toLowerCase().includes(q)
-  );
+  return coincideTexto(q, i.nombre, i.categoria, i.proveedor);
 }
 
 // Distingue producto, equipo propio y equipo de proveedor externo. Sin esto, al armar

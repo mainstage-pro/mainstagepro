@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import { Sliders, Armchair, Lightbulb, Plug } from "lucide-react";
 import { usePdfDownload } from "@/hooks/usePdfDownload";
+import { coincide } from "@/lib/buscar";
 
 type Equipo = {
   id: string;
@@ -438,7 +439,7 @@ export default function InventarioActivosPage() {
         descripcion: eq.descripcion,
         categoria: eq.categoria.nombre,
       }))
-      .filter(eq => !busquedaAcc || eq.equipoNombre.toLowerCase().includes(busquedaAcc.toLowerCase()))
+      .filter(eq => coincide(busquedaAcc, eq.equipoNombre))
       .sort((a, b) => a.equipoNombre.localeCompare(b.equipoNombre));
   }, [equiposProd, accesoriosProd, busquedaAcc]);
 
@@ -451,10 +452,7 @@ export default function InventarioActivosPage() {
   // ── Filtrado por búsqueda
   const accesoriosFiltrados = useMemo(() =>
     busquedaAcc
-      ? accesoriosProd.filter(a =>
-          a.nombre.toLowerCase().includes(busquedaAcc.toLowerCase()) ||
-          (a.equipoNombre ?? "").toLowerCase().includes(busquedaAcc.toLowerCase())
-        )
+      ? accesoriosProd.filter(a => coincide(busquedaAcc, a.nombre, a.equipoNombre))
       : accesoriosProd,
     [accesoriosProd, busquedaAcc]
   );
@@ -934,7 +932,7 @@ export default function InventarioActivosPage() {
                       {equipoOpen && equipoBusq && (() => {
                         const opts = equiposProd
                           .map(eq => ({ id: eq.id, label: [eq.marca, eq.modelo].filter(Boolean).join(" · ") || eq.descripcion, sub: eq.descripcion }))
-                          .filter(o => o.label.toLowerCase().includes(equipoBusq.toLowerCase()) || o.sub.toLowerCase().includes(equipoBusq.toLowerCase()))
+                          .filter(o => coincide(equipoBusq, o.label, o.sub))
                           .sort((a, b) => a.label.localeCompare(b.label));
                         return opts.length > 0 ? (
                           <div className="absolute z-10 mt-1 w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg shadow-xl overflow-hidden max-h-52 overflow-y-auto">
@@ -1021,7 +1019,7 @@ export default function InventarioActivosPage() {
                     ? (
                       <>
                         {accesoriosPorEquipo
-                          .filter(g => !busquedaAcc || g.items.some(a => a.nombre.toLowerCase().includes(busquedaAcc.toLowerCase()) || g.equipoNombre.toLowerCase().includes(busquedaAcc.toLowerCase())))
+                          .filter(g => !busquedaAcc || g.items.some(a => coincide(busquedaAcc, a.nombre, g.equipoNombre)))
                           .map(({ equipoId, equipoNombre, items }) => (
                           <>
                             <tr key={`eq-${equipoId}`}>
@@ -1039,7 +1037,7 @@ export default function InventarioActivosPage() {
                                 </div>
                               </td>
                             </tr>
-                            {items.filter(a => !busquedaAcc || a.nombre.toLowerCase().includes(busquedaAcc.toLowerCase())).map(a => (
+                            {items.filter(a => coincide(busquedaAcc, a.nombre)).map(a => (
                               <tr key={a.id} className="hover:bg-[#0d0d0d] transition-colors group">
                                 <td className="px-4 py-2.5 pl-8 text-gray-300 font-medium">{a.nombre}</td>
                                 <td className="px-4 py-2.5"><ConteoCell a={a} /></td>
@@ -1099,7 +1097,7 @@ export default function InventarioActivosPage() {
                               <span className="text-[#333] text-[10px] ml-2">({items.length})</span>
                             </td>
                           </tr>
-                          {items.filter(a => !busquedaAcc || a.nombre.toLowerCase().includes(busquedaAcc.toLowerCase()) || a.equipoNombre.toLowerCase().includes(busquedaAcc.toLowerCase())).map(a => (
+                          {items.filter(a => coincide(busquedaAcc, a.nombre, a.equipoNombre)).map(a => (
                             <tr key={a.id} className="hover:bg-[#0d0d0d] transition-colors group">
                               <td className="px-4 py-2.5 pl-8 text-gray-300 font-medium">{a.nombre}</td>
                               <td className="px-4 py-2.5"><ConteoCell a={a} /></td>
@@ -1238,7 +1236,7 @@ export default function InventarioActivosPage() {
               </thead>
               <tbody>
                 {activosOficina
-                  .filter(a => !busquedaOf || a.nombre.toLowerCase().includes(busquedaOf.toLowerCase()) || (a.marca ?? "").toLowerCase().includes(busquedaOf.toLowerCase()))
+                  .filter(a => coincide(busquedaOf, a.nombre, a.marca))
                   .map(a => {
                     const dep = a.valorAdquisicion > 0 && a.valorActual > 0
                       ? ((1 - a.valorActual / a.valorAdquisicion) * 100)

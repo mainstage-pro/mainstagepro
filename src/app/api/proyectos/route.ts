@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { calcularAvanceProduccion } from "@/lib/proyecto-avance";
+import { idsPorTexto } from "@/lib/buscar-servidor";
 
 export async function GET(req: Request) {
   const session = await getSession();
@@ -11,7 +12,7 @@ export async function GET(req: Request) {
   const lugarEvento = url.searchParams.get("lugarEvento");
 
   const where: Record<string, unknown> = {};
-  if (lugarEvento) where.lugarEvento = { contains: lugarEvento, mode: 'insensitive' };
+  if (lugarEvento) where.id = { in: await idsPorTexto("Proyecto", ["lugarEvento"], lugarEvento) };
 
   const fechaDesde = url.searchParams.get('fechaDesde');
   const fechaHasta = url.searchParams.get('fechaHasta');

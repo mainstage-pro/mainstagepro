@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { idsPorTexto } from "@/lib/buscar-servidor";
 
 export async function GET(req: NextRequest) {
   const session = await getSession();
@@ -12,7 +13,7 @@ export async function GET(req: NextRequest) {
   const venues = await prisma.venue.findMany({
     where: {
       activo: true,
-      ...(q ? { nombre: { contains: q, mode: "insensitive" } } : {}),
+      ...(q ? { id: { in: await idsPorTexto("Venue", ["nombre"], q) } } : {}),
     },
     orderBy: { nombre: "asc" },
   });

@@ -7,6 +7,7 @@ import { Telescope, Search, ClipboardList, CheckCircle2, AlertTriangle, Smartpho
 
 import { Combobox } from "@/components/Combobox";
 import { ORIGEN_LEAD_OPTIONS, MOMENTO_OPTIONS } from "@/lib/constants";
+import { coincide } from "@/lib/buscar";
 
 type CotejoEstado = "LIGADO" | "DUPLICADO_POSIBLE" | "NUEVO" | null;
 interface CotejoCliente { id: string; nombre: string; telefono: string | null; empresa: string | null; }
@@ -330,10 +331,7 @@ export default function NuevoContactoPage() {
               {clienteDropdown && (
                 <div className="absolute z-50 w-full mt-1 bg-[#161616] border border-[#2a2a2a] rounded-lg shadow-xl max-h-52 overflow-y-auto">
                   {clientes
-                    .filter(c => {
-                      const q = clienteQuery.toLowerCase();
-                      return !q || c.nombre.toLowerCase().includes(q) || (c.empresa ?? "").toLowerCase().includes(q);
-                    })
+                    .filter(c => coincide(clienteQuery, c.nombre, c.empresa))
                     .map(c => (
                       <button
                         key={c.id}

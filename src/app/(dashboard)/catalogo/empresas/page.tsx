@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
+import { coincide } from "@/lib/buscar";
 
 interface Contacto { id: string; nombre: string; telefono: string | null; correo: string | null; }
 
@@ -172,7 +173,7 @@ export default function EmpresasPage() {
   }
 
   const lista = empresas.filter(e => {
-    const matchQuery = !query || e.nombre.toLowerCase().includes(query.toLowerCase()) || (e.giro ?? "").toLowerCase().includes(query.toLowerCase());
+    const matchQuery = coincide(query, e.nombre, e.giro);
     const matchTipo =
       filtroTipo === "todos" ? true :
       filtroTipo === "cliente" ? (e.tipo === "CLIENTE" || e.tipo === "AMBOS") :

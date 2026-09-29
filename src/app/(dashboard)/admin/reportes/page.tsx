@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Scale, Banknote, ClipboardList, TrendingUp, AlertTriangle, type LucideIcon } from "lucide-react";
 import { ReporteAnalisisSection } from '@/components/ui/ReporteAnalisisSection';
 import { usePdfDownload } from "@/hooks/usePdfDownload";
+import { coincide } from "@/lib/buscar";
 import {
   BarChart as RBarChart,
   Bar,
@@ -1176,13 +1177,7 @@ function TabRentabilidad() {
   useEffect(() => { load(meses); }, [meses, load]);
 
   const proyectosFiltrados = (data?.proyectos ?? [])
-    .filter(p => {
-      if (!buscar) return true;
-      const q = buscar.toLowerCase();
-      return p.nombre.toLowerCase().includes(q)
-        || p.clienteNombre.toLowerCase().includes(q)
-        || (p.numero ?? "").toLowerCase().includes(q);
-    })
+    .filter(p => coincide(buscar, p.nombre, p.clienteNombre, p.numero))
     .sort((a, b) => {
       if (ordenar === "margen")   return b.margen - a.margen;
       if (ordenar === "utilidad") return b.utilidad - a.utilidad;

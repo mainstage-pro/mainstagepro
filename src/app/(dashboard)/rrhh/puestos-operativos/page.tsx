@@ -8,6 +8,7 @@ import { useAreas } from "@/components/AreasProvider";
 import { MODULOS_POR_SECCION, AREA_MODULE_PRESETS } from "@/lib/nav";
 import { parseIdList } from "@/lib/onboarding";
 import { usePdfDownload } from "@/hooks/usePdfDownload";
+import { coincide } from "@/lib/buscar";
 import {
   asignacionesEfectivas, derivarAsignacionesDefault, nivelMax,
   type CapAsignacion, type NivelCapacitacion,
@@ -1290,7 +1291,7 @@ function TagNivelEditor({ items, setItems, catalogo, onCreate, conIndispensable,
   inputCls: string;
 }) {
   const [q, setQ] = useState("");
-  const sugerencias = catalogo.filter(c => c.toLowerCase().includes(q.toLowerCase()) && !items.some(i => i.nombre === c)).slice(0, 6);
+  const sugerencias = catalogo.filter(c => coincide(q, c) && !items.some(i => i.nombre === c)).slice(0, 6);
   function add(nombre: string) {
     const n = nombre.trim();
     if (!n || items.some(i => i.nombre === n)) { setQ(""); return; }

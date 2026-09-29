@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { ensureTareaColumns } from "@/lib/ensure-tarea-columns";
 import { recurrenciaOcurreHoy, primeraOcurrencia, type RecurrenciaConfig } from "@/lib/recurrencia";
+import { idsPorTexto } from "@/lib/buscar-servidor";
 
 const AREA_TO_MODULE_KEY: Record<string, string> = {
   VENTAS: "tareas-ventas",
@@ -149,11 +150,7 @@ export async function GET(req: NextRequest) {
       estado:   { notIn: ["CANCELADA", "COMPLETADA"] },
       parentId: null,
       ptTemplateId: null,
-      OR: [
-        { titulo:      { contains: term, mode: "insensitive" } },
-        { descripcion: { contains: term, mode: "insensitive" } },
-        { notas:       { contains: term, mode: "insensitive" } },
-      ],
+      id: { in: await idsPorTexto("Tarea", ["titulo", "descripcion", "notas"], term) },
     };
     // Acceso: no-admin sólo ve sus tareas personales + proyectos permitidos
     if (session.role !== "ADMIN") {
@@ -163,8 +160,7 @@ export async function GET(req: NextRequest) {
           ? [{ proyectoTareaId: { in: proyectosPermitidos } }]
           : []),
       ];
-      searchWhere.AND = [{ OR: searchWhere.OR }, { OR: accessOr }];
-      delete searchWhere.OR;
+      searchWhere.AND = [{ OR: accessOr }];
     }
     searchWhere.AND = [...(searchWhere.AND ?? []), proyectoInternoCond, soloDerivadasAgendadas];
     const tareas = await prisma.tarea.findMany({

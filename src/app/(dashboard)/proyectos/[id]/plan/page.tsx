@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import { AlertTriangle } from "lucide-react";
 import { normalizarAmPm } from "@/lib/hora";
+import { coincide } from "@/lib/buscar";
 
 type PersonalItem = { id: string; nombre: string; rol: string; confirmado: boolean; telefono?: string | null };
 type EquipoItem = { id: string; nombre: string; cantidad: number };
@@ -93,12 +94,7 @@ function VehiculoSelector({ value, onChange }: { value: string; onChange: (v: st
 
   const cls = "w-full bg-[#0d0d0d] border border-[#222] rounded-xl px-4 py-3 text-sm text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]/50";
 
-  const filtered = vehiculos.filter(v => {
-    const q = search.toLowerCase();
-    return !q || v.nombre.toLowerCase().includes(q) ||
-      (v.marca ?? "").toLowerCase().includes(q) ||
-      (v.placas ?? "").toLowerCase().includes(q);
-  });
+  const filtered = vehiculos.filter(v => coincide(search, v.nombre, v.marca, v.placas));
 
   function displayName(v: VehiculoItem) {
     const parts = [v.nombre];

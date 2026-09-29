@@ -8,6 +8,7 @@ import { CopyButton } from "@/components/CopyButton";
 import { Combobox } from "@/components/Combobox";
 import { Modal } from "@/components/Modal";
 import { DISCIPLINA_COLORS, DISCIPLINA_LABELS, DISCIPLINAS } from "@/lib/disciplinaColors";
+import { coincide } from "@/lib/buscar";
 import { Sliders, Users } from "lucide-react";
 
 type Rol = { id: string; nombre: string; disciplina?: string | null };
@@ -297,9 +298,7 @@ export default function TecnicosPage() {
 
   let filtered = tecnicos.filter(t => {
     if (!showInactivos && !t.activo) return false;
-    if (search && !t.nombre.toLowerCase().includes(search.toLowerCase()) &&
-        !(t.rol?.nombre ?? "").toLowerCase().includes(search.toLowerCase()) &&
-        !(t.zonaHabitual ?? "").toLowerCase().includes(search.toLowerCase())) return false;
+    if (!coincide(search, t.nombre, t.rol?.nombre, t.zonaHabitual)) return false;
     if (filterRol !== "TODOS" && (t.rol?.nombre ?? "Sin rol") !== filterRol) return false;
     if (filterDisciplina === 'SIN_CATEGORIA') {
       if ((t.disciplina ?? []).length > 0) return false;

@@ -12,6 +12,7 @@ import { getEquipoDisplayName } from "@/lib/equipoNombre";
 import { normalizarAmPm } from "@/lib/hora";
 import { TipoEventoCell, type TipoEventoOpcion } from "@/components/TipoEventoCell";
 import { AccesoriosTab } from "@/components/AccesoriosTab";
+import { coincide } from "@/lib/buscar";
 
 type Equipo = {
   id: string;
@@ -1019,15 +1020,10 @@ export default function InventarioMaestroPage() {
   }
 
   const equiposFiltrados = useMemo(() => {
-    const q = busqueda.trim().toLowerCase();
     return equipos.filter(e => {
       if (soloSinClasificar && (parseTiposEvento(e.tiposEvento).length > 0 || e.noCotizable)) return false;
       if (filtroEvento && !parseTiposEvento(e.tiposEvento).includes(filtroEvento)) return false;
-      if (!q) return true;
-      return e.descripcion.toLowerCase().includes(q) ||
-        (e.marca ?? "").toLowerCase().includes(q) ||
-        (e.modelo ?? "").toLowerCase().includes(q) ||
-        e.categoria.nombre.toLowerCase().includes(q);
+      return coincide(busqueda, e.descripcion, e.marca, e.modelo, e.categoria.nombre);
     });
   }, [equipos, busqueda, soloSinClasificar, filtroEvento]);
 

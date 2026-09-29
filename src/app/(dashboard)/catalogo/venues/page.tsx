@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
+import { coincide } from "@/lib/buscar";
 import { Landmark, Users, Ruler, Zap, Phone, Volume2, Clock, Wrench } from "lucide-react";
 
 interface Venue {
@@ -235,10 +236,7 @@ export default function VenuesPage() {
     setVenues(prev => prev.filter(v => v.id !== id));
   }
 
-  const filtered = venues.filter(v =>
-    !search || v.nombre.toLowerCase().includes(search.toLowerCase()) ||
-    (v.ciudad?.toLowerCase().includes(search.toLowerCase()))
-  );
+  const filtered = venues.filter(v => coincide(search, v.nombre, v.ciudad));
 
   if (loading) return <div className="text-gray-400 text-sm">Cargando...</div>;
 

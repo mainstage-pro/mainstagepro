@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { coincide } from "@/lib/buscar";
 
 export interface ComboboxOption {
   value: string;
@@ -46,7 +47,7 @@ export function Combobox({
 
   const isFiltering = query !== selectedLabel;
   const filtered = isFiltering && query.trim()
-    ? options.filter(o => o.label.toLowerCase().includes(query.toLowerCase()))
+    ? options.filter(o => coincide(query, o.label))
     : (idleOptions ?? options);
 
   function updatePosition() {

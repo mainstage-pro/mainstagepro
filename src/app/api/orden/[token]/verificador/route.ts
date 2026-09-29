@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { isTokenExpired } from "@/lib/tokens";
 import { proyectoIdPorToken } from "@/lib/orden-produccion";
+import { idsPorTexto } from "@/lib/buscar-servidor";
 
 /**
  * Busca en el padrón a quien no está asignado al proyecto.
@@ -26,7 +27,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
   if (q.length < 2) return NextResponse.json({ tecnicos: [] });
 
   const tecnicos = await prisma.tecnico.findMany({
-    where: { activo: true, nombre: { contains: q, mode: "insensitive" } },
+    where: { activo: true, id: { in: await idsPorTexto("Tecnico", ["nombre"], q) } },
     select: { id: true, nombre: true, rol: { select: { nombre: true } } },
     orderBy: { nombre: "asc" },
     take: 8,
