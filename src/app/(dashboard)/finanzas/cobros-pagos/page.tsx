@@ -1616,7 +1616,13 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
               )}
               <div className="space-y-2">
                 {grupo.items.map(c => {
-            const beneficiario = c.socio?.nombre ?? c.empresa?.nombre ?? c.proveedor?.nombre ?? c.tecnico?.nombre ?? "—";
+            let beneficiario = c.socio?.nombre ?? c.empresa?.nombre ?? c.proveedor?.nombre ?? c.tecnico?.nombre ?? "—";
+            let displayConcepto = c.concepto;
+            if (beneficiario === "—" && displayConcepto.includes(" — ")) {
+              const parts = displayConcepto.split(" — ");
+              beneficiario = parts[0];
+              displayConcepto = parts.slice(1).join(" — ");
+            }
             const telefono = c.empresa?.telefono ?? c.proveedor?.telefono ?? c.tecnico?.celular ?? null;
             return (
               <div key={c.id} id={`cuenta-${c.id}`} className={`relative hover:z-50 focus-within:z-50 bg-[#111] border rounded-xl px-4 py-3 ${resaltado === c.id ? "border-[#B3985B] ring-2 ring-[#B3985B]/40" : c.esVencida ? "border-red-900/40" : "border-[#1e1e1e]"}`}>
@@ -1632,7 +1638,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
                       </span>
                       {c.esVencida && <span className="text-[10px] text-red-400 font-medium">⚠ Vencida</span>}
                     </div>
-                    <p className="text-[#9ca3af] text-xs">{c.concepto}</p>
+                    <p className="text-[#9ca3af] text-xs">{displayConcepto}</p>
                     <div className="flex items-center gap-3 mt-1.5 flex-wrap">
                       <span className={`text-[10px] ${c.esVencida ? "text-red-400" : "text-[#555]"}`}>
                         Vence: {fmtDate(c.fechaCompromiso)}
