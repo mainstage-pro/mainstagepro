@@ -13,7 +13,7 @@ import { VistaCapturaRapida } from "./components/VistaCapturaRapida";
 import { VistaIdeas }        from "./components/VistaIdeas";
 import { VistaIniciativas }  from "./components/VistaIniciativas";
 import { useCelebration } from "@/components/CelebrationToast";
-import type { TareaIntegrada } from "@/lib/tareas-integradas";
+import type { Pendiente } from "@/lib/pendientes/tipos";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
 import { Users, Zap, Building2, Sun, Calendar, Inbox, ClipboardList, MapPin, User, Handshake,
@@ -176,7 +176,7 @@ export default function OperacionesPage() {
     return "bandeja";
   });
   const [tareas, setTareas]                           = useState<TareaItem[]>([]);
-  const [integradas, setIntegradas]                   = useState<TareaIntegrada[]>([]);
+  const [integradas, setIntegradas]                   = useState<Pendiente[]>([]);
   const [proyectoDetalle, setProyectoDetalle]         = useState<ProyectoDetalle | null>(null);
   const [proyectosEvento, setProyectosEvento]         = useState<ProyectoEventoConTareas[]>([]);
   const [proyectosEmpresa, setProyectosEmpresa]       = useState<ProyectoInternoConTareas[]>([]);
