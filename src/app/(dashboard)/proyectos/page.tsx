@@ -25,11 +25,37 @@ type Proyecto = {
 };
 
 const TABS = [
-  { key: 'PLANEACION', label: 'Planeación' },
-  { key: 'EN_CURSO',   label: 'En Curso' },
-  { key: 'COMPLETADO', label: 'Completado' },
-  { key: 'CANCELADO',  label: 'Cancelado' },
+  {
+    key: 'PLANEACION', label: 'Planeación',
+    activeGrad: 'from-blue-900/50 to-blue-950/30', activeBorder: 'border-blue-500/40',
+    activeDot: 'bg-blue-400', inactiveDot: 'bg-blue-900/60',
+  },
+  {
+    key: 'EN_CURSO', label: 'En curso',
+    activeGrad: 'from-amber-900/50 to-amber-950/30', activeBorder: 'border-amber-500/40',
+    activeDot: 'bg-amber-400', inactiveDot: 'bg-amber-900/60',
+  },
+  {
+    key: 'COMPLETADO', label: 'Completado',
+    activeGrad: 'from-emerald-900/50 to-emerald-950/30', activeBorder: 'border-emerald-500/40',
+    activeDot: 'bg-emerald-400', inactiveDot: 'bg-emerald-900/60',
+  },
+  {
+    key: 'CANCELADO', label: 'Cancelado',
+    activeGrad: 'from-red-900/40 to-red-950/30', activeBorder: 'border-red-500/30',
+    activeDot: 'bg-red-400', inactiveDot: 'bg-red-900/50',
+  },
 ];
+
+function mapEstado(estado: string) {
+  return estado === 'CONFIRMADO' ? 'PLANEACION'
+    : estado === 'PENDIENTE_CIERRE' ? 'EN_CURSO'
+    : estado;
+}
+
+const fmtM = (n: number) => n >= 1000000 ? `$${(n / 1000000).toFixed(1)}M`
+  : n >= 1000 ? `$${(n / 1000).toFixed(0)}k`
+  : `$${n.toLocaleString('es-MX', { maximumFractionDigits: 0 })}`;
 
 const TIPO_EVENTO_BORDER: Record<string, string> = {
   MUSICAL:     'border-l-indigo-500/30',
@@ -230,11 +256,7 @@ export default function ProyectosPage() {
   const q = busqueda.toLowerCase();
   const tabProyectos = proyectos
     .filter(p => {
-      // Map old states to new tabs gracefully
-      const estadoMapped = p.estado === 'CONFIRMADO' ? 'PLANEACION'
-        : p.estado === 'PENDIENTE_CIERRE' ? 'EN_CURSO'
-        : p.estado;
-      const matchTab = estadoMapped === tabActivo;
+      const matchTab = mapEstado(p.estado) === tabActivo;
       const matchTipo = !filtroTipo || p.tipoEvento === filtroTipo;
       const matchSearch = !q ||
         p.cliente.nombre.toLowerCase().includes(q) ||
@@ -267,14 +289,15 @@ export default function ProyectosPage() {
 
   const grupos = groupByMonth(proximos);
 
-  function tabCount(key: string) {
-    return proyectos.filter(p => {
-      const mapped = p.estado === 'CONFIRMADO' ? 'PLANEACION'
-        : p.estado === 'PENDIENTE_CIERRE' ? 'EN_CURSO'
-        : p.estado;
-      return mapped === key;
-    }).length;
+  function resumenEstado(key: string) {
+    const items = proyectos.filter(p => mapEstado(p.estado) === key);
+    return {
+      count: items.length,
+      valor: items.reduce((s, p) => s + (p.cotizacion?.granTotal ?? 0), 0),
+      proximos: items.filter(p => p.fechaEvento.slice(0, 10) >= hoyStr).length,
+    };
   }
+  const maxEstadoCount = Math.max(...TABS.map(t => resumenEstado(t.key).count), 1);
 
   const renderRow = (p: Proyecto) => (
     <ProyectoRow
@@ -312,28 +335,51 @@ export default function ProyectosPage() {
         )}
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-[#1e1e1e] mb-4 overflow-x-auto">
-        {TABS.map(({ key, label }) => {
-          const count = tabCount(key);
+      {/* Estados — tarjetas */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 mb-4">
+        {TABS.map(tab => {
+          const { count, valor, proximos } = resumenEstado(tab.key);
+          const isActive = tabActivo === tab.key;
+          const pct = Math.max(4, Math.round((count / maxEstadoCount) * 100));
           return (
             <button
-              key={key}
-              onClick={() => setTabActivo(key)}
-              className={`relative flex items-center gap-1 px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap shrink-0 ${
-                tabActivo === key
-                  ? 'relative px-4 py-2.5 text-sm font-medium text-white whitespace-nowrap'
-                  : 'relative px-4 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-400 whitespace-nowrap'
+              key={tab.key}
+              onClick={() => setTabActivo(tab.key)}
+              className={`relative flex flex-col items-start px-2.5 pt-2 pb-1.5 rounded-lg border text-left transition-all overflow-hidden ${
+                isActive
+                  ? `bg-gradient-to-b ${tab.activeGrad} ${tab.activeBorder}`
+                  : 'bg-[#0d0d0d] border-[#181818] hover:border-[#252525] hover:bg-[#111]'
               }`}
             >
-              <span className="hidden sm:inline">{label}</span>
-              <span className="sm:hidden text-[10px] font-semibold">{label.slice(0, 4)}</span>
-              <span className={`text-[10px] tabular-nums ${
-                tabActivo === key ? 'text-gray-400' : 'text-gray-700'
-              }`}>({count})</span>
-              {tabActivo === key && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#B3985B] rounded-full" />
-              )}
+              <div
+                className={`absolute bottom-0 left-0 right-0 transition-all duration-300 ${isActive ? tab.inactiveDot : 'bg-white/[0.025]'}`}
+                style={{ height: `${pct}%`, opacity: isActive ? 0.25 : 0.15 }}
+              />
+              <div className="relative z-10 w-full">
+                <div className="flex items-center gap-1.5">
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isActive ? tab.activeDot : tab.inactiveDot}`} />
+                  <span className={`text-[9px] font-medium uppercase tracking-wider truncate ${isActive ? 'text-gray-300' : 'text-gray-600'}`}>
+                    {tab.label}
+                  </span>
+                </div>
+                <p className={`text-lg sm:text-xl font-bold tabular-nums leading-tight ${
+                  isActive ? 'text-white' : count > 0 ? 'text-gray-400' : 'text-[#2a2a2a]'
+                }`}>
+                  {count}
+                </p>
+                <p className="flex items-baseline gap-1.5 leading-none h-3">
+                  {valor > 0 && (
+                    <span className={`text-[10px] font-bold tabular-nums ${isActive ? 'text-[#B3985B]' : 'text-[#B3985B]/60'}`}>
+                      {fmtM(valor)}
+                    </span>
+                  )}
+                  {proximos > 0 && (
+                    <span className={`text-[9px] tabular-nums ${isActive ? 'text-gray-400' : 'text-[#333]'}`}>
+                      {proximos} próximos
+                    </span>
+                  )}
+                </p>
+              </div>
             </button>
           );
         })}

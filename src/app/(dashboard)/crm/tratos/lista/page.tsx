@@ -1582,43 +1582,43 @@ export default function TratosPage() {
             const valorPipeline = activos.reduce((s, t) => s + getTratoValor(t), 0);
             const valorCerrado = cerradas.reduce((s, t) => s + getTratoValor(t), 0);
             return (
-              <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-2 mb-2 p-3 bg-[#080808] border border-[#141414] rounded-xl">
-                <div className="flex flex-col gap-0.5">
+              <div className="grid grid-cols-3 sm:grid-cols-4 xl:grid-cols-7 gap-x-2 gap-y-2 mb-2 px-3 py-2.5 bg-[#080808] border border-[#141414] rounded-xl">
+                <div className="flex flex-col">
                   <span className="text-[9px] uppercase tracking-wider text-[#444] font-semibold">Activos</span>
-                  <span className="text-xl font-bold text-white tabular-nums">{activos.length}</span>
-                  <span className="text-[10px] text-[#555]">{tratos.length} total</span>
+                  <span className="text-base sm:text-lg font-bold text-white tabular-nums">{activos.length}</span>
+                  <span className="text-[9px] text-[#555] leading-tight">{tratos.length} total</span>
                 </div>
-                <div className="flex flex-col gap-0.5">
+                <div className="flex flex-col">
                   <span className="text-[9px] uppercase tracking-wider text-[#444] font-semibold">Valor pipeline</span>
-                  <span className="text-xl font-bold text-[#B3985B] tabular-nums">{fmtM(valorPipeline)}</span>
-                  <span className="text-[10px] text-[#555]">{activos.filter(t => t.presupuestoEstimado).length} con monto</span>
+                  <span className="text-base sm:text-lg font-bold text-[#B3985B] tabular-nums">{fmtM(valorPipeline)}</span>
+                  <span className="text-[9px] text-[#555] leading-tight">{activos.filter(t => t.presupuestoEstimado).length} con monto</span>
                 </div>
-                <div className="flex flex-col gap-0.5">
+                <div className="flex flex-col">
                   <span className="text-[9px] uppercase tracking-wider text-[#444] font-semibold">Cerradas</span>
-                  <span className="text-xl font-bold text-emerald-400 tabular-nums">{cerradasProximas.length}</span>
-                  <span className="text-[10px] text-[#555]">{valorCerrado > 0 ? fmtM(valorCerrado) : '—'} · próximas</span>
+                  <span className="text-base sm:text-lg font-bold text-emerald-400 tabular-nums">{cerradasProximas.length}</span>
+                  <span className="text-[9px] text-[#555] leading-tight">{valorCerrado > 0 ? fmtM(valorCerrado) : '—'} · próximas</span>
                 </div>
-                <div className="flex flex-col gap-0.5">
+                <div className="flex flex-col">
                   <span className="text-[9px] uppercase tracking-wider text-[#444] font-semibold">Perdidas</span>
-                  <span className="text-xl font-bold text-red-400/70 tabular-nums">{perdidas.length}</span>
-                  <span className="text-[10px] text-[#555]">
+                  <span className="text-base sm:text-lg font-bold text-red-400/70 tabular-nums">{perdidas.length}</span>
+                  <span className="text-[9px] text-[#555] leading-tight">
                     {tratos.length > 0 ? `${Math.round((cerradas.length / Math.max(cerradas.length + perdidas.length, 1)) * 100)}% cierre` : '—'}
                   </span>
                 </div>
-                <div className="flex flex-col gap-0.5">
+                <div className="flex flex-col">
                   <span className="text-[9px] uppercase tracking-wider text-[#444] font-semibold">Sin seguimiento</span>
-                  <span className={`text-xl font-bold tabular-nums ${sinSeguimiento.length > 0 ? 'text-orange-400' : 'text-[#333]'}`}>{sinSeguimiento.length}</span>
-                  <span className="text-[10px] text-[#555]">de activos</span>
+                  <span className={`text-base sm:text-lg font-bold tabular-nums ${sinSeguimiento.length > 0 ? 'text-orange-400' : 'text-[#333]'}`}>{sinSeguimiento.length}</span>
+                  <span className="text-[9px] text-[#555] leading-tight">de activos</span>
                 </div>
-                <div className="flex flex-col gap-0.5">
+                <div className="flex flex-col">
                   <span className="text-[9px] uppercase tracking-wider text-[#444] font-semibold">Vencidos</span>
-                  <span className={`text-xl font-bold tabular-nums ${vencidos.length > 0 ? 'text-red-400' : 'text-[#333]'}`}>{vencidos.length}</span>
-                  <span className="text-[10px] text-[#555]">seguim. vencidos</span>
+                  <span className={`text-base sm:text-lg font-bold tabular-nums ${vencidos.length > 0 ? 'text-red-400' : 'text-[#333]'}`}>{vencidos.length}</span>
+                  <span className="text-[9px] text-[#555] leading-tight">seguim. vencidos</span>
                 </div>
-                <div className="flex flex-col gap-0.5">
+                <div className="flex flex-col">
                   <span className="text-[9px] uppercase tracking-wider text-[#444] font-semibold">Sin proceso</span>
-                  <span className={`text-xl font-bold tabular-nums ${sinProceso.length > 0 ? 'text-orange-400' : 'text-[#333]'}`}>{sinProceso.length}</span>
-                  <span className="text-[10px] text-[#555]">sin sub-etapa</span>
+                  <span className={`text-base sm:text-lg font-bold tabular-nums ${sinProceso.length > 0 ? 'text-orange-400' : 'text-[#333]'}`}>{sinProceso.length}</span>
+                  <span className="text-[9px] text-[#555] leading-tight">sin sub-etapa</span>
                 </div>
               </div>
             );
@@ -1698,7 +1698,7 @@ export default function TratosPage() {
             ];
             const maxCount = Math.max(...pipeline.slice(1).map(p => p.count), 1);
             return (
-              <div className="grid grid-cols-3 lg:grid-cols-6 gap-1.5 mb-5">
+              <div className="grid grid-cols-3 lg:grid-cols-6 gap-1.5 mb-4">
                 {pipeline.map((card, idx) => {
                   const isActive = filtroEtapa === card.filter;
                   const pct = idx === 0 ? 100 : Math.max(4, Math.round((card.count / maxCount) * 100));
@@ -1706,7 +1706,7 @@ export default function TratosPage() {
                     <button
                       key={card.filter}
                       onClick={() => setFiltroEtapa(card.filter)}
-                      className={`relative flex flex-col items-start px-3 pt-3 pb-2.5 rounded-xl border text-left transition-all overflow-hidden ${
+                      className={`relative flex flex-col items-start px-2.5 pt-2 pb-1.5 rounded-lg border text-left transition-all overflow-hidden ${
                         isActive
                           ? `bg-gradient-to-b ${card.activeGrad} ${card.activeBorder} shadow-sm`
                           : 'bg-[#0d0d0d] border-[#181818] hover:border-[#252525] hover:bg-[#111]'
@@ -1722,35 +1722,37 @@ export default function TratosPage() {
                         />
                       )}
                       <div className="relative z-10 w-full">
-                        <div className="flex items-center gap-1.5 mb-1.5">
-                          <span className={`w-2 h-2 rounded-full shrink-0 ${isActive ? card.activeDot : card.inactiveDot}`} />
-                          <span className={`text-[10px] font-medium uppercase tracking-wider truncate ${
+                        <div className="flex items-center gap-1.5">
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isActive ? card.activeDot : card.inactiveDot}`} />
+                          <span className={`text-[9px] font-medium uppercase tracking-wider truncate ${
                             isActive ? 'text-gray-300' : 'text-gray-600'
                           }`}>
                             {card.label}
                           </span>
                         </div>
-                        <p className={`text-2xl font-bold tabular-nums leading-none ${
+                        <p className={`text-lg sm:text-xl font-bold tabular-nums leading-tight ${
                           isActive
                             ? 'text-white'
                             : card.count > 0 ? 'text-gray-400' : 'text-[#2a2a2a]'
                         }`}>
                           {card.count}
                         </p>
-                        {card.valor !== undefined && card.valor > 0 && (
-                          <p className={`text-[10px] mt-1.5 font-bold tabular-nums ${
-                            isActive ? 'text-[#B3985B]' : 'text-[#B3985B]/60'
-                          }`}>
-                            {fmtM(card.valor)}
-                          </p>
-                        )}
-                        {'activeCount' in card && card.activeCount !== undefined && (
-                          <p className={`text-[9px] mt-0.5 tabular-nums ${
-                            isActive ? 'text-emerald-400/60' : 'text-[#333]'
-                          }`}>
-                            {card.activeCount} activos
-                          </p>
-                        )}
+                        <p className="flex items-baseline gap-1.5 leading-none h-3">
+                          {card.valor !== undefined && card.valor > 0 && (
+                            <span className={`text-[10px] font-bold tabular-nums ${
+                              isActive ? 'text-[#B3985B]' : 'text-[#B3985B]/60'
+                            }`}>
+                              {fmtM(card.valor)}
+                            </span>
+                          )}
+                          {'activeCount' in card && card.activeCount !== undefined && (
+                            <span className={`text-[9px] tabular-nums ${
+                              isActive ? 'text-emerald-400/60' : 'text-[#333]'
+                            }`}>
+                              {card.activeCount} activos
+                            </span>
+                          )}
+                        </p>
                       </div>
                     </button>
                   );
