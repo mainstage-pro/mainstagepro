@@ -153,11 +153,8 @@ export function PanelProveedores({
   dias,
   evento,
   equipo = [],
-  onIrAEquipos,
 }: {
   proyectoId: string;
-  /** Lleva al rider del proyecto, que es donde se captura el equipo de tercero. */
-  onIrAEquipos?: () => void;
   /** Días del evento en "YYYY-MM-DD". La operación siempre cae en uno de ellos. */
   dias: string[];
   /**
@@ -220,8 +217,6 @@ export function PanelProveedores({
     () => catalogo.map((p) => ({ value: p.id, label: p.empresa ? `${p.nombre} — ${p.empresa}` : p.nombre })),
     [catalogo],
   );
-
-  const pendientes = equiposTercero.filter((e) => !e.proveedor).length;
 
   /** Lo que trae cada proveedor, según el rider. */
   const equiposDe = (proveedorId: string | null) =>
@@ -418,75 +413,6 @@ export function PanelProveedores({
 
   return (
     <div className="space-y-3">
-      {/* El equipo de tercero se captura junto al equipo, en producción. Aquí solo se lee:
-          que la operación sepa quién trae qué sin volver a preguntarlo. */}
-      {equiposTercero.length > 0 && (
-        <div className={`ms-stat-card border-l-2 ${pendientes > 0 ? "border-l-orange-500/50" : "border-l-green-700/60"}`}>
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">
-              Equipo de tercero
-            </p>
-            {pendientes > 0 ? (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-900/30 text-orange-400">
-                {pendientes} sin proveedor
-              </span>
-            ) : (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-900/30 text-green-400">
-                Todo asignado
-              </span>
-            )}
-          </div>
-
-          <div className="mt-3 rounded-lg border border-[#222] divide-y divide-[#1a1a1a]">
-            {equiposTercero.map((e) => {
-              const total = (e.costoExterno ?? 0) * e.cantidad * Math.max(1, e.dias);
-              return (
-                <div
-                  key={e.id}
-                  className={`px-3 py-2.5 border-l-2 ${e.proveedor ? "border-l-green-700/60" : "border-l-[#1e1e1e]"}`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-white text-sm font-medium">
-                        {e.cantidad} × {e.descripcion}
-                      </p>
-                      {e.proveedor ? (
-                        <p className="text-gray-500 text-xs mt-0.5">
-                          {e.proveedor.empresa || e.proveedor.nombre}
-                          {total > 0 && ` · ${money(total)}`}
-                        </p>
-                      ) : (
-                        <p className="text-orange-400/80 text-xs mt-0.5">Sin proveedor asignado</p>
-                      )}
-                    </div>
-                    {e.confirmado && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-900/30 text-green-400 shrink-0">
-                        Confirmado
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="flex items-center justify-between gap-2 flex-wrap mt-3">
-            <p className="text-[11px] text-gray-600">
-              Quién lo trae y a cómo se captura junto al equipo, en producción. De ahí sale
-              la cuenta por pagar de cada proveedor.
-            </p>
-            {onIrAEquipos && (
-              <button
-                onClick={onIrAEquipos}
-                className="text-[11px] text-[#B3985B] hover:text-white transition-colors shrink-0"
-              >
-                Ir al equipo del proyecto →
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
       <div className="ms-stat-card">
         <div className="flex items-center justify-between gap-2">
           <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">Proveedores y subrentas</p>
