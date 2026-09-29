@@ -84,7 +84,7 @@ export default function ChecklistEventoTab({
 
   return (
     <div className="space-y-4">
-      {/* ── Nuevo registro (idéntico a Gestión Operativa) ── */}
+      {/* ── Alta de tarea (mismo modal de Gestión Operativa) ── */}
       <button
         onClick={() => setModal({ mode: "crear" })}
         className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl bg-[#0d0d0d] border border-[#1a1a1a] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/30 transition-all text-sm font-medium"
@@ -92,7 +92,7 @@ export default function ChecklistEventoTab({
         <span className="w-5 h-5 rounded-full bg-[#B3985B]/15 flex items-center justify-center">
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#B3985B" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         </span>
-        Nuevo registro
+        Nueva tarea
       </button>
 
       {/* ── Encabezado + progreso ── */}
