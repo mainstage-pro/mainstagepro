@@ -1,7 +1,18 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, type CSSProperties } from "react";
 import Link from "next/link";
+import {
+  DndContext,
+  MouseSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import { SortableContext, arrayMove, horizontalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { formatCurrency } from "@/lib/cotizador";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
@@ -38,6 +49,33 @@ function fmtDate(s: string) {
 }
 
 const inputCls = "w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]";
+
+/** Pestaña de cuenta: filtra al hacer clic y se reacomoda al arrastrarla. */
+function PestanaCuenta({ cuenta, activa, onSelect }: { cuenta: Cuenta; activa: boolean; onSelect: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: cuenta.id });
+  // Movimiento solo horizontal: anula el eje vertical del transform.
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform ? { ...transform, y: 0 } : null),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 50 : undefined,
+  };
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      role="button"
+      tabIndex={0}
+      onClick={onSelect}
+      title="Arrástrala para cambiar el orden"
+      className={`${activa ? "ms-tab-active" : "ms-tab"} select-none cursor-grab active:cursor-grabbing`}
+    >
+      {cuenta.nombre}
+    </div>
+  );
+}
 
 export default function MovimientosPage() {
   const toast = useToast();
@@ -82,6 +120,37 @@ export default function MovimientosPage() {
   }, [loadMovimientos]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Mouse: arrastra tras 6px. Touch: mantener presionado 220ms, así un
+  // deslizamiento rápido sigue haciendo scroll en vez de reordenar.
+  const sensores = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 8 } }),
+  );
+
+  async function reordenarCuentas(e: DragEndEvent) {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const ids = cuentas.map(c => c.id);
+    const next = arrayMove(cuentas, ids.indexOf(active.id as string), ids.indexOf(over.id as string));
+    setCuentas(next);
+    const res = await fetch("/api/cuentas/orden", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: next.map(c => c.id) }),
+    });
+    if (!res.ok) {
+      setCuentas(cuentas);
+      toast.error("No se pudo guardar el orden");
+    }
+  }
+
+  async function filtrarPorCuenta(id: string | null) {
+    setCuentaFiltro(id);
+    setLoading(true);
+    await loadMovimientos(id);
+    setLoading(false);
+  }
 
   function abrirEditar(mov: Movimiento) {
     setEditando(mov);
@@ -249,39 +318,28 @@ export default function MovimientosPage() {
         }
       />
 
-      {/* Filtros por cuenta */}
+      {/* Filtros por cuenta — el orden se arrastra y queda guardado para todos */}
       {cuentas.length > 0 && (
-        <div className="flex items-center gap-2 flex-wrap mb-6">
-          <button
-            onClick={async () => { setCuentaFiltro(null); setLoading(true); await loadMovimientos(null); setLoading(false); }}
-            className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-              cuentaFiltro === null
-                ? "bg-[#B3985B] border-[#B3985B] text-black font-semibold"
-                : "border-[#333] text-[#6b7280] hover:border-[#555] hover:text-white"
-            }`}
-          >
-            Todas
-          </button>
-          {cuentas.map(c => (
-            <button
-              key={c.id}
-              onClick={async () => {
-                const next = c.id === cuentaFiltro ? null : c.id;
-                setCuentaFiltro(next);
-                setLoading(true);
-                await loadMovimientos(next);
-                setLoading(false);
-              }}
-              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                cuentaFiltro === c.id
-                  ? "bg-[#B3985B] border-[#B3985B] text-black font-semibold"
-                  : "border-[#333] text-[#6b7280] hover:border-[#555] hover:text-white"
-              }`}
-            >
-              {c.nombre}{c.banco ? ` · ${c.banco}` : ""}
-            </button>
-          ))}
-        </div>
+        <DndContext sensors={sensores} collisionDetection={closestCenter} onDragEnd={reordenarCuentas}>
+          <SortableContext items={cuentas.map(c => c.id)} strategy={horizontalListSortingStrategy}>
+            <div className="ms-tabs flex-wrap w-fit max-w-full mb-4">
+              <button
+                onClick={() => filtrarPorCuenta(null)}
+                className={cuentaFiltro === null ? "ms-tab-active" : "ms-tab"}
+              >
+                Todas
+              </button>
+              {cuentas.map(c => (
+                <PestanaCuenta
+                  key={c.id}
+                  cuenta={c}
+                  activa={cuentaFiltro === c.id}
+                  onSelect={() => filtrarPorCuenta(c.id === cuentaFiltro ? null : c.id)}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       )}
 
       {/* Resumen */}

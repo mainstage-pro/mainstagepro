@@ -1574,6 +1574,7 @@ model CuentaBancaria {
   titular      String?
   rfc          String?
   activa       Boolean @default(true)
+  orden        Int     @default(0)
 
   movimientosEntrada MovimientoFinanciero[] @relation("CuentaDestino")
   movimientosSalida  MovimientoFinanciero[] @relation("CuentaOrigen")

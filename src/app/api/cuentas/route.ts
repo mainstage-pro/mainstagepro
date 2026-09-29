@@ -7,7 +7,7 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const cuentas = await prisma.cuentaBancaria.findMany({
-    orderBy: { nombre: "asc" },
+    orderBy: [{ orden: "asc" }, { nombre: "asc" }],
   });
 
   return NextResponse.json({ cuentas });
