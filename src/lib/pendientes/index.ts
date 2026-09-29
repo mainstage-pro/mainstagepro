@@ -25,6 +25,8 @@ export interface ConteoFuente {
   /** Llegó al tope de la consulta: el número real es mayor. */
   truncado: boolean;
   ms: number;
+  /** Ejemplos reales, sólo para calibrar una fuente antes de encenderla. */
+  muestra?: Array<Pick<Pendiente, "titulo" | "severidad" | "diasVencido" | "href">>;
 }
 
 export interface ResultadoPendientes {
@@ -53,7 +55,7 @@ export function ordenarPendientes(pendientes: Pendiente[]): Pendiente[] {
  * vista completa deja de ser hipotético.
  */
 export async function computarPendientes(
-  opciones: { incluirInactivas?: boolean; fuentes?: Fuente[] } = {},
+  opciones: { incluirInactivas?: boolean; fuentes?: Fuente[]; muestra?: number } = {},
 ): Promise<ResultadoPendientes> {
   const arranque = Date.now();
   const ahora = new Date();
@@ -87,6 +89,11 @@ export async function computarPendientes(
           media: encontrados.filter(p => p.severidad === "MEDIA").length,
           truncado: encontrados.length >= LIMITE_POR_FUENTE,
           ms: Date.now() - t0,
+          muestra: opciones.muestra
+            ? ordenarPendientes(encontrados)
+                .slice(0, opciones.muestra)
+                .map(({ titulo, severidad, diasVencido, href }) => ({ titulo, severidad, diasVencido, href }))
+            : undefined,
         });
         if (def.activa || opciones.fuentes) pendientes.push(...encontrados);
       } catch (e) {

@@ -15,7 +15,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  const { conteos, fallos, generadoEn, ms } = await computarPendientes({ incluirInactivas: true });
+  const muestra = Number(request.nextUrl.searchParams.get("muestra")) || undefined;
+  const { conteos, fallos, generadoEn, ms } = await computarPendientes({ incluirInactivas: true, muestra });
 
   const porArea: Record<string, number> = {};
   for (const c of conteos) porArea[c.area] = (porArea[c.area] ?? 0) + c.total;
