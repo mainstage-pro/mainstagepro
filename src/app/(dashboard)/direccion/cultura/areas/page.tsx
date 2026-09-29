@@ -311,6 +311,12 @@ function Objetivo({
     >
       <div className="flex items-start gap-4">
         <div className="min-w-0 flex-1">
+          <span
+            className="block text-[10px] font-medium uppercase mb-1.5"
+            style={{ color: oro(0.75), letterSpacing: "0.2em" }}
+          >
+            Objetivo
+          </span>
           <p className="text-[14px] text-gray-100 leading-[1.6]">{objetivo.descripcion}</p>
 
           <div className="flex items-baseline gap-2.5 mt-3 flex-wrap">
@@ -380,6 +386,12 @@ function Objetivo({
 
       {objetivo.tacticas.length > 0 && (
         <div className="mt-4 space-y-1.5">
+          <span
+            className="block text-[10px] font-medium uppercase text-gray-500 mb-0.5"
+            style={{ letterSpacing: "0.2em" }}
+          >
+            Tácticas
+          </span>
           {objetivo.tacticas.map(t => (
             <Tactica key={t.id} tactica={t} usuarios={usuarios} recargar={recargar} />
           ))}
