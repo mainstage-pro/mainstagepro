@@ -80,7 +80,7 @@ export const PRESENTACIONES_MODULO_GENERAL: PresentacionItem[] = [
   {
     key: "inventario",
     label: "Inventario de equipo",
-    desc: "Catálogo completo del inventario audiovisual, lista de precios y cotizador.",
+    desc: "Catálogo del equipo propio más el que subcontratamos, lista de precios y cotizador.",
     href: "/presentacion/inventario",
     icon: Package,
     audience: "Clientes · Equipo",
@@ -91,6 +91,14 @@ export const PRESENTACIONES_MODULO_GENERAL: PresentacionItem[] = [
     desc: "El mismo catálogo, solo con el equipo propio de Mainstage: sin lo que se subcontrata.",
     href: "/presentacion/inventario-propio",
     icon: PackageCheck,
+    audience: "Clientes · Equipo",
+  },
+  {
+    key: "inventario-premium",
+    label: "Inventario de equipo premium",
+    desc: "Solo la línea premium: L'Acoustics, d&b, ROBE, Avolites y grandMA3.",
+    href: "/presentacion/inventario-premium",
+    icon: Sparkles,
     audience: "Clientes · Equipo",
   },
   {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { randomBytes } from "crypto";
+import { imagenDeModeloExistente } from "@/lib/equipo-imagen";
 
 // GET — listar equipos del proveedor (vista interna con auth)
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -72,6 +73,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           proveedorDefaultId: equipoProveedor.proveedorId,
           precioRenta: equipoProveedor.precioPublico ?? 0,
           costoProveedor: equipoProveedor.precioMainstage ?? undefined,
+          imagenUrl: await imagenDeModeloExistente(equipoProveedor.marca, equipoProveedor.modelo),
           activo: true,
         },
       });

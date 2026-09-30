@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { imagenDeModeloExistente } from "@/lib/equipo-imagen";
 
 const EQUIPO_SELECT = {
   id: true,
@@ -68,6 +69,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "descripcion y categoriaId son requeridos" }, { status: 400 });
   }
 
+  const imagen = imagenUrl || (await imagenDeModeloExistente(marca, modelo));
+
   const equipo = await prisma.equipo.create({
     data: {
       descripcion,
@@ -83,7 +86,7 @@ export async function POST(req: NextRequest) {
       notas: notas || null,
       amperajeRequerido: amperajeRequerido !== "" && amperajeRequerido != null ? parseFloat(amperajeRequerido) : null,
       voltajeRequerido: voltajeRequerido !== "" && voltajeRequerido != null ? String(voltajeRequerido) : null,
-      imagenUrl: imagenUrl || null,
+      imagenUrl: imagen,
       descripcionInterna: descripcionInterna || null,
       activo: true,
     },

@@ -3,19 +3,17 @@ import InventarioClient from "../inventario/InventarioClient";
 import { getPresentationMetadata } from "@/lib/metadata";
 
 export const metadata = getPresentationMetadata({
-  title: "Catálogo de Equipo Propio",
-  description: "Explora el inventario propio de Mainstage: audio, iluminación, video y escenarios profesionales que operamos con equipo de la casa.",
-  path: "/presentacion/inventario-propio",
+  title: "Catálogo de Equipo Premium",
+  description: "La línea premium de Mainstage: L'Acoustics, d&b, Funktion One, ROBE, Avolites y grandMA3 para producciones que no admiten margen de error.",
+  path: "/presentacion/inventario-premium",
 });
 
 export const dynamic = "force-dynamic";
 
-export default async function InventarioPropioPage() {
-  // Misma presentación que /presentacion/inventario, restringida a tipo PROPIO:
-  // solo el equipo de la casa, sin lo que se subcontrata (EXTERNO).
+export default async function InventarioPremiumPage() {
   const CATEGORIAS_OCULTAS = ["Toldos y lonas", "Accesorios Provisionales"];
   const equipos = await prisma.equipo.findMany({
-    where: { activo: true, estadoMigracion: null, tipo: "PROPIO", categoria: { nombre: { notIn: CATEGORIAS_OCULTAS } } },
+    where: { activo: true, estadoMigracion: null, tipo: "PREMIUM", categoria: { nombre: { notIn: CATEGORIAS_OCULTAS } } },
     select: {
       id: true,
       descripcion: true,
@@ -65,5 +63,5 @@ export default async function InventarioPropioPage() {
     categoriaOrden,
   };
 
-  return <InventarioClient data={data} variante="propio" />;
+  return <InventarioClient data={data} variante="premium" />;
 }

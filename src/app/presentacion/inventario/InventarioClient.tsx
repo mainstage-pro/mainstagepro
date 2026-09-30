@@ -19,9 +19,10 @@ interface EquipoData {
 interface CategoriaData { nombre: string; orden: number; equipos: EquipoData[]; }
 interface Props {
   data: { categorias: CategoriaData[]; totalEquipos: number; totalUnidades: number; categoriaOrden?: string[] };
-  // Variante /presentacion/inventario-propio: el mismo catálogo, pero solo con
-  // equipo tipo PROPIO. Únicamente cambia el copy del hero.
-  soloPropio?: boolean;
+  // El mismo catálogo servido en tres presentaciones: "mixto" es propio más
+  // externo, "propio" solo el equipo de la casa y "premium" solo la línea de
+  // marcas premium que se subrenta. Únicamente cambia el copy del hero.
+  variante?: "mixto" | "propio" | "premium";
 }
 // Productos = "sistemas armados a partir del inventario" (cargados en cliente vía /api/productos/publico)
 interface ProductoItemData { cantidad: number; equipo: { id: string; descripcion: string; marca: string | null; modelo: string | null } }
@@ -1105,7 +1106,7 @@ function CotizadorTab({ categorias, quoteItems, onAddItem, onUpdateQty, onRemove
 
 
 // ─── Main ─────────────────────────────────────────────────────────────────────────
-export default function InventarioClient({ data, soloPropio = false }: Props) {
+export default function InventarioClient({ data, variante = "mixto" }: Props) {
   const [activeTab, setActiveTab]         = useState<Tab>("catalogo");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [lightbox, setLightbox]           = useState<{ images: string[]; index: number; alt: string } | null>(null);
@@ -1277,14 +1278,16 @@ export default function InventarioClient({ data, soloPropio = false }: Props) {
             {/* inline-block: siendo inline, al partirse en dos líneas el fondo
                 redondeado se rompe y queda desalineado en móvil. */}
             <span className="inline-block max-w-full text-balance text-[10px] sm:text-xs tracking-[0.18em] sm:tracking-[0.3em] uppercase leading-relaxed px-4 py-2 rounded-full" style={{ background: `${GOLD}15`, color: GOLD, border: `1px solid ${GOLD}25` }}>
-              Mainstage Pro · Catálogo Técnico{soloPropio ? " · Equipo propio" : ""}
+              Mainstage Pro · Catálogo Técnico{variante === "propio" ? " · Equipo propio" : variante === "premium" ? " · Línea premium" : ""}
             </span>
           </div>
           <h1 className="font-bold leading-[0.95]" style={{ fontSize: "clamp(3.5rem,12vw,10rem)", letterSpacing: "-0.04em", animation: "fadeUp 0.9s ease forwards 0.3s", opacity: 0 }}>El equipo.</h1>
-          <h1 className="font-bold leading-[0.95]" style={{ fontSize: "clamp(3.5rem,12vw,10rem)", letterSpacing: "-0.04em", color: GOLD, animation: "fadeUp 0.9s ease forwards 0.5s", opacity: 0 }}>Disponible.</h1>
+          <h1 className="font-bold leading-[0.95]" style={{ fontSize: "clamp(3.5rem,12vw,10rem)", letterSpacing: "-0.04em", color: GOLD, animation: "fadeUp 0.9s ease forwards 0.5s", opacity: 0 }}>{variante === "premium" ? "Premium." : "Disponible."}</h1>
           <p className="text-white/40 mt-10 max-w-xl mx-auto leading-relaxed" style={{ fontSize: "clamp(1rem,1.8vw,1.2rem)", animation: "fadeUp 0.9s ease forwards 0.75s", opacity: 0 }}>
-            {soloPropio
+            {variante === "propio"
               ? "Audio, iluminación y video de nivel profesional. Equipo propio de Mainstage, listo para operar en tu evento."
+              : variante === "premium"
+              ? "L'Acoustics, d&b, Funktion One, ROBE, Avolites y grandMA3. Las marcas que pide una producción cuando no hay margen de error."
               : "Audio, iluminación y video de nivel profesional. Todo listo para operar en tu evento."}
           </p>
         </div>
@@ -1297,8 +1300,8 @@ export default function InventarioClient({ data, soloPropio = false }: Props) {
       {/* ── Stats ── */}
       <section className="py-4 px-6 border-y" style={{ borderColor: `${GOLD}12` }}>
         <div className="max-w-4xl mx-auto grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-[#1a1a0a]">
-          <StatBlock target={data.totalEquipos}      label="Referencias de equipo" sub="modelos distintos en inventario"  />
-          <StatBlock target={data.totalUnidades}      label="Unidades totales"       sub="piezas listas para tu evento"     />
+          <StatBlock target={data.totalEquipos}      label="Referencias de equipo" sub={variante === "premium" ? "modelos distintos en la línea premium" : "modelos distintos en inventario"}  />
+          <StatBlock target={data.totalUnidades}      label="Unidades totales"       sub={variante === "premium" ? "piezas que conseguimos para tu evento" : "piezas listas para tu evento"}     />
           <StatBlock target={filteredCategorias.length} label="Categorías"            sub="familias de equipo audiovisual"  />
         </div>
       </section>
