@@ -577,9 +577,17 @@ model Cotizacion {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
-  lineas        CotizacionLinea[]
-  proyecto      Proyecto?
-  cuentasCobrar CuentaCobrar[]
+  // Proyecto al que esta cotización aporta sin ser su origen. El cliente pide
+  // facturas separadas de un mismo evento: cada cotización se factura sola, pero
+  // el equipo y el personal se operan en un solo proyecto.
+  proyectoFusionadoId String?   @map("proyecto_fusionado_id")
+  proyectoFusionado   Proyecto? @relation("CotizacionesFusionadas", fields: [proyectoFusionadoId], references: [id])
+
+  lineas           CotizacionLinea[]
+  proyecto         Proyecto?
+  cuentasCobrar    CuentaCobrar[]
+  proyectoEquipos  ProyectoEquipo[]
+  proyectoPersonal ProyectoPersonal[]
 
   @@map("cotizaciones")
 }
@@ -638,6 +646,8 @@ model Proyecto {
   trato          Trato?     @relation(fields: [tratoId], references: [id])
   cotizacionId   String     @unique
   cotizacion     Cotizacion @relation(fields: [cotizacionId], references: [id])
+  // Cotizaciones extra fusionadas a este proyecto (además de `cotizacion`, la de origen).
+  cotizacionesFusionadas Cotizacion[] @relation("CotizacionesFusionadas")
   clienteId      String
   cliente        Cliente    @relation(fields: [clienteId], references: [id])
   encargadoId    String?
@@ -894,6 +904,12 @@ model ProyectoPersonal {
   coordinaEnSitio  Boolean               @default(false)
   esAdicional      Boolean               @default(false) // Técnico agregado fuera de lo cotizado (marcador interno; NO afecta PDFs)
   necesitaRevision Boolean               @default(false) // El rol se quitó de la cotización — revisar sin borrar (sync)
+  // Cotización que pagó este puesto. Un proyecto puede facturarse en varias
+  // cotizaciones (el cliente pide facturas separadas de un mismo evento); el
+  // sync solo toca las filas de la cotización que se está sincronizando.
+  // NULL = capturado a mano, fuera de toda cotización.
+  cotizacionId     String?               @map("cotizacion_id")
+  cotizacion       Cotizacion?           @relation(fields: [cotizacionId], references: [id])
 
   @@map("proyecto_personal")
 }
@@ -915,6 +931,9 @@ model ProyectoEquipo {
   confirmToken      String?                  @unique // Token para link de confirmación al proveedor
   notas             String? // Comentarios / instrucciones de carga para este equipo
   necesitaRevision  Boolean                  @default(false) // El equipo se quitó/redujo en la cotización — revisar sin borrar (sync)
+  // Cotización que pagó este equipo — ver nota en ProyectoPersonal.cotizacionId.
+  cotizacionId      String?                  @map("cotizacion_id")
+  cotizacion        Cotizacion?              @relation(fields: [cotizacionId], references: [id])
   riderAccesorios   RiderAccesorio[]
   posiciones        ProyectoEquipoPosicion[]
 

@@ -72,6 +72,8 @@ interface Personal {
   rolTecnico: { id: string; nombre: string } | null;
   cotizacion?: { numeroCotizacion: string } | null;
 }
+interface CotizacionFusionada { id: string; numeroCotizacion: string; nombreEvento: string | null; granTotal: number }
+interface CandidataFusion extends CotizacionFusionada { fechaEvento: string | null; proyecto: { id: string; numeroProyecto: string } | null }
 interface CatFinanciera { id: string; nombre: string; tipo: string }
 interface Proveedor { id: string; nombre: string; empresa: string | null; compania: { id: string; nombre: string } | null; telefono: string | null; giro: string | null; banco?: string | null; titularCuenta?: string | null; cuentaBancaria?: string | null; clabe?: string | null; noTarjeta?: string | null; rfc?: string | null }
 interface CheckItem { id: string; item: string; completado: boolean; orden: number; tipo: string }
@@ -157,7 +159,7 @@ interface Proyecto {
   trato: { tipoEvento: string; tipoServicio: string | null; ideasReferencias: string | null; notas: string | null; familyAndFriends: boolean; tradeCalificado: boolean; ventanaMontajeInicio: string | null; ventanaMontajeFin: string | null; responsable: { name: string } | null } | null;
   cotizacion: { id: string; numeroCotizacion: string; granTotal: number; diasComidas: number; subtotalComidas: number; subtotalOperacion: number; subtotalTransporte: number; subtotalHospedaje: number; subtotalEquiposNeto: number; subtotalTerceros: number; notasSecciones: string | null; observaciones: string | null; lineas: { id: string; tipo: string; descripcion: string; cantidad: number; nivel: string | null; jornada: string | null; precioUnitario: number; notas: string | null; marca: string | null; modelo: string | null; rolTecnicoId: string | null; rolTecnico: { id: string; nombre: string; disciplina: string | null } | null }[] } | null;
   // Cotizaciones extra que se facturan solas pero se operan en este mismo proyecto.
-  cotizacionesFusionadas?: { id: string; numeroCotizacion: string; nombreEvento: string | null; granTotal: number }[];
+  cotizacionesFusionadas?: CotizacionFusionada[];
   logisticaRenta: string | null;
   docsTecnicos: string | null;
   evaluacionPostEvento: EvalPostEventoData | null;
@@ -771,6 +773,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [loadError, setLoadError] = useState(false);
   const [loadErrorMsg, setLoadErrorMsg] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // Fusión de cotizaciones: un mismo evento facturado en varias cotizaciones.
+  const [modalFusion, setModalFusion] = useState(false);
+  const [candidatasFusion, setCandidatasFusion] = useState<CandidataFusion[] | null>(null);
+  const [fusionando, setFusionando] = useState<string | null>(null);
 
   const [gastosOp, setGastosOp] = useState<GastoOp[]>([]);
   const [gastosLoaded, setGastosLoaded] = useState(false);
@@ -3442,6 +3449,38 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     }
   }
 
+  // ── Fusionar otra cotización a este proyecto ──
+  async function abrirModalFusion() {
+    setModalFusion(true);
+    setCandidatasFusion(null);
+    const res = await fetch(`/api/proyectos/${id}/fusionar-cotizacion`);
+    const d = await res.json();
+    setCandidatasFusion(res.ok ? d.candidatas : []);
+  }
+
+  async function fusionarCotizacion(cotizacionId: string) {
+    setFusionando(cotizacionId);
+    const res = await fetch(`/api/proyectos/${id}/fusionar-cotizacion`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cotizacionId }),
+    });
+    const d = await res.json();
+    setFusionando(null);
+    if (!res.ok) {
+      toast.error(d.error ?? "No se pudo fusionar");
+      return;
+    }
+    toast.success(
+      d.absorbido
+        ? `Cotización fusionada. Se absorbió el proyecto ${d.absorbido}.`
+        : "Cotización fusionada a este proyecto.",
+    );
+    setModalFusion(false);
+    router.refresh();
+    window.location.reload();
+  }
+
   // ── Agregar nota bitácora ──
   async function agregarNota() {
     if (!notaBitacora.trim()) return;
@@ -3790,6 +3829,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               <Link href={`/cotizaciones/${proyecto.cotizacion.id}`} className="font-mono text-gray-600 hover:text-[#B3985B] transition-colors">
                 {proyecto.cotizacion.numeroCotizacion}
               </Link>
+              {proyecto.cotizacionesFusionadas?.map(c => (
+                <Link key={c.id} href={`/cotizaciones/${c.id}`} title="Se factura por separado, se opera en este proyecto" className="font-mono text-gray-600 hover:text-[#B3985B] transition-colors">
+                  + {c.numeroCotizacion}
+                </Link>
+              ))}
+              <button onClick={abrirModalFusion} title="Sumar otra cotización aprobada a este proyecto: se factura por separado pero se opera aquí" className="text-[#3a3a3a] hover:text-[#B3985B] transition-colors">
+                + cotización
+              </button>
             </>)}
             {proyecto.tratoId && (<>
               <span className="text-[#2f2f2f]">·</span>
@@ -9231,6 +9278,53 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 className="flex-1 py-2.5 rounded-xl bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c9a96a] disabled:opacity-40 transition-colors">
                 {savingGasto ? "Guardando..." : "Guardar cambios"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal fusionar cotización ── */}
+      {modalFusion && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#0f0f0f] border border-[#222] rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
+            <div className="px-6 py-4 border-b border-[#1e1e1e] flex items-center justify-between">
+              <h2 className="text-white font-semibold">Sumar cotización al proyecto</h2>
+              <button onClick={() => setModalFusion(false)} className="text-gray-500 hover:text-white text-xl">×</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-gray-400 text-xs leading-relaxed">
+                La cotización se sigue facturando y cobrando por separado. Lo que cambia es la
+                operación: su equipo y su personal pasan a este proyecto, marcados con su número
+                para saber de dónde salió cada cosa. Si ya tenía proyecto propio, se absorbe aquí.
+              </p>
+              {candidatasFusion === null && <p className="text-gray-500 text-sm">Buscando cotizaciones…</p>}
+              {candidatasFusion?.length === 0 && (
+                <p className="text-gray-500 text-sm">No hay otras cotizaciones aprobadas de este cliente.</p>
+              )}
+              <div className="space-y-2">
+                {candidatasFusion?.map(c => (
+                  <div key={c.id} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-[#1e1e1e] bg-[#0b0b0b]">
+                    <div className="min-w-0">
+                      <p className="text-white text-sm font-medium truncate">
+                        <span className="font-mono text-gray-400">{c.numeroCotizacion}</span>
+                        {c.nombreEvento && <span className="ml-2 font-normal text-gray-300">{c.nombreEvento}</span>}
+                      </p>
+                      <p className="text-gray-500 text-[11px] mt-0.5">
+                        {fmt(c.granTotal)}
+                        {c.fechaEvento && ` · ${c.fechaEvento.substring(0, 10)}`}
+                        {c.proyecto && ` · absorbe ${c.proyecto.numeroProyecto}`}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => fusionarCotizacion(c.id)}
+                      disabled={fusionando !== null}
+                      className="shrink-0 px-3 py-1.5 rounded-lg border border-[#2a2a2a] text-xs text-gray-300 hover:border-[#B3985B] hover:text-[#B3985B] transition-colors disabled:opacity-40"
+                    >
+                      {fusionando === c.id ? "Fusionando…" : "Fusionar"}
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>

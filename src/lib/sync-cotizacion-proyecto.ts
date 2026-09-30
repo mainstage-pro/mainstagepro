@@ -21,6 +21,11 @@ import { sembrarNotasEquiposProyecto } from "@/lib/notas-equipos";
  * - Rider de carga (RiderAccesorio): cuelga de ProyectoEquipo, así que sigue la
  *   lista de equipos automáticamente (se conserva al marcar el equipo en revisión).
  *
+ * Un proyecto puede facturarse en varias cotizaciones (el cliente las pide por
+ * separado aunque el evento sea uno solo). Por eso el diff se limita a las filas
+ * selladas con `cotizacionId`: lo que trajo otra cotización no cuenta como
+ * sobrante, y lo capturado a mano (sin cotización) queda intocable.
+ *
  * Es idempotente: correrlo dos veces con la misma cotización no cambia nada.
  * Nunca lanza hacia afuera — cualquier error se registra y se traga, para no
  * romper la mutación de la cotización que lo dispara.
@@ -79,20 +84,24 @@ export async function sincronizarProyectoDesdeCotizacion(
       where: { id: cotizacionId },
       include: {
         lineas: true,
-        proyecto: {
-          select: {
-            id: true,
-            equipos: true,
-            personal: true,
-          },
-        },
+        proyecto: { select: { id: true } },
+        proyectoFusionado: { select: { id: true } },
       },
     });
 
     if (!cot) return { sincronizado: false, motivo: "cotización no encontrada" };
-    if (!cot.proyecto) return { sincronizado: false, motivo: "sin proyecto ligado" };
+    // El proyecto puede ser propio (esta cotización lo originó) o anfitrión (esta
+    // cotización se fusionó a un evento que ya existía).
+    const proyectoId = cot.proyecto?.id ?? cot.proyectoFusionado?.id;
+    if (!proyectoId) return { sincronizado: false, motivo: "sin proyecto ligado" };
 
-    const proyectoId = cot.proyecto.id;
+    // Un proyecto puede alimentarse de varias cotizaciones a la vez. El diff mira
+    // únicamente las filas que esta cotización pagó: lo que trajo otra cotización
+    // no es "sobrante", y lo capturado a mano (cotizacionId nulo) tampoco.
+    const [equiposDeEstaCot, personalDeEstaCot] = await Promise.all([
+      prisma.proyectoEquipo.findMany({ where: { proyectoId, cotizacionId } }),
+      prisma.proyectoPersonal.findMany({ where: { proyectoId, cotizacionId } }),
+    ]);
 
     // ── 1. Derivar equipos deseados desde la cotización ────────────────────────
     // Líneas de equipo directo + expansión de componentes de paquetes.
@@ -143,7 +152,7 @@ export async function sincronizarProyectoDesdeCotizacion(
     }
 
     // ── 2. Diff de equipos contra el proyecto ──────────────────────────────────
-    const existentes = cot.proyecto.equipos;
+    const existentes = equiposDeEstaCot;
     const existentesPorKey = new Map<string, typeof existentes>();
     for (const pe of existentes) {
       const key = `${pe.tipo}:${pe.equipoId}`;
@@ -182,6 +191,7 @@ export async function sincronizarProyectoDesdeCotizacion(
       await prisma.proyectoEquipo.createMany({
         data: equiposACrear.map((d) => ({
           proyectoId,
+          cotizacionId,
           equipoId: d.equipoId,
           tipo: d.tipo,
           cantidad: d.cantidad,
@@ -256,7 +266,7 @@ export async function sincronizarProyectoDesdeCotizacion(
       }
     }
 
-    const personal = cot.proyecto.personal;
+    const personal = personalDeEstaCot;
     const keyDeSlot = (p: (typeof personal)[number]) =>
       `${p.rolTecnicoId ?? "sinrol"}:${p.fechaJornada ?? "sinfecha"}:${p.participacion ?? "OPERACION"}`;
 
@@ -269,6 +279,7 @@ export async function sincronizarProyectoDesdeCotizacion(
 
     const slotsACrear: {
       proyectoId: string;
+      cotizacionId: string;
       rolTecnicoId: string | null;
       participacion: string;
       fechaJornada: string | null;
@@ -283,6 +294,7 @@ export async function sincronizarProyectoDesdeCotizacion(
       for (let i = 0; i < faltan; i++) {
         slotsACrear.push({
           proyectoId,
+          cotizacionId,
           rolTecnicoId: d.rolTecnicoId,
           participacion: d.participacion,
           fechaJornada: d.fechaJornada,

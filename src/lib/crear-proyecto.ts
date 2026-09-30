@@ -214,7 +214,7 @@ export async function crearProyectoDesdeCotizacion(
   // equipo+tipo+proveedor en una sola fila de proyecto_equipos con la cantidad
   // sumada, para no duplicar la fila en el rider (bug reportado en Lazy Sunday).
   type EquipoAgrupado = {
-    proyectoId: string; equipoId: string; tipo: string; cantidad: number; dias: number;
+    proyectoId: string; cotizacionId: string; equipoId: string; tipo: string; cantidad: number; dias: number;
     costoExterno: number | null; proveedorId: string | null; notas: string | null;
   };
   const equiposAgrupados = new Map<string, EquipoAgrupado>();
@@ -226,7 +226,7 @@ export async function crearProyectoDesdeCotizacion(
     const previo = equiposAgrupados.get(key);
     if (!previo) {
       equiposAgrupados.set(key, {
-        proyectoId: proy.id, equipoId: item.equipoId, tipo: item.tipo,
+        proyectoId: proy.id, cotizacionId: cot.id, equipoId: item.equipoId, tipo: item.tipo,
         cantidad: item.cantidad, dias: item.dias,
         costoExterno: item.costoExterno, proveedorId: item.proveedorId, notas: item.notas,
       });

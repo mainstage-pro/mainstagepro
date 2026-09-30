@@ -66,10 +66,15 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
             },
           },
         },
+        cotizacionesFusionadas: {
+          select: { id: true, numeroCotizacion: true, nombreEvento: true, granTotal: true },
+          orderBy: { numeroCotizacion: "asc" },
+        },
         personal: {
           include: {
             tecnico: { select: { id: true, nombre: true, celular: true, rol: { select: { nombre: true } } } },
             rolTecnico: { select: { id: true, nombre: true } },
+            cotizacion: { select: { numeroCotizacion: true } },
           },
           orderBy: { id: "asc" },
         },
@@ -77,6 +82,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
           include: {
             equipo: { select: { descripcion: true, marca: true, modelo: true, imagenUrl: true, amperajeRequerido: true, voltajeRequerido: true, categoria: { select: { nombre: true, disciplina: true } }, accesorios: { select: { id: true, nombre: true, categoria: true, accesorioId: true }, orderBy: { createdAt: "asc" } } } },
             proveedor: { select: { nombre: true, empresa: true, telefono: true } },
+            cotizacion: { select: { numeroCotizacion: true } },
             riderAccesorios: { orderBy: { orden: "asc" } },
             posiciones: { orderBy: { orden: "asc" } },
           },
@@ -124,10 +130,15 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
             },
           },
         },
+        cotizacionesFusionadas: {
+          select: { id: true, numeroCotizacion: true, nombreEvento: true, granTotal: true },
+          orderBy: { numeroCotizacion: "asc" },
+        },
         personal: {
           include: {
             tecnico: { select: { id: true, nombre: true, celular: true, rol: { select: { nombre: true } } } },
             rolTecnico: { select: { id: true, nombre: true } },
+            cotizacion: { select: { numeroCotizacion: true } },
           },
           orderBy: { id: "asc" },
         },
@@ -135,6 +146,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
           include: {
             equipo: { select: { descripcion: true, marca: true, modelo: true, categoria: { select: { nombre: true } } } },
             proveedor: { select: { nombre: true, empresa: true, telefono: true } },
+            cotizacion: { select: { numeroCotizacion: true } },
           },
           orderBy: { id: "asc" },
         },
