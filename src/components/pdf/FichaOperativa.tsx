@@ -3,6 +3,11 @@
  * Misma estructura visual que FichaCliente. Sin info financiera ni costos.
  * Incluye: cronograma, rider con accesorios (checklist), traslados, proveedores,
  * personal, contactos clave, documentos del show, notas.
+ *
+ * Es la versión congelada de la Orden de Producción (src/app/orden/[token]/page.tsx):
+ * el mismo documento en papel. Las secciones van en el mismo orden en las dos —
+ * reacomodar aquí obliga a reacomodar allá, o el equipo pierde el hilo entre la
+ * hoja impresa y el teléfono.
  */
 import React from "react";
 import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
