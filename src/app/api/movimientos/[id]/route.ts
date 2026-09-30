@@ -43,7 +43,52 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
-  const updated = await prisma.movimientoFinanciero.update({ where: { id }, data });
+  const updated = await prisma.$transaction(async (tx) => {
+    const movUpdated = await tx.movimientoFinanciero.update({ where: { id }, data });
+
+    // Sincronizar con entidades relacionadas
+    const syncData: Record<string, any> = {};
+    if ("fecha" in data) syncData.fecha = data.fecha;
+    if ("metodoPago" in data) syncData.metodoPago = data.metodoPago;
+
+    if (Object.keys(syncData).length > 0 || "cuentaDestinoId" in data) {
+      const abonoSync = { ...syncData };
+      if ("cuentaDestinoId" in data) abonoSync.cuentaDestinoId = data.cuentaDestinoId;
+      if (Object.keys(abonoSync).length > 0) {
+        await tx.abono.updateMany({
+          where: { movimientoId: id },
+          data: abonoSync
+        });
+      }
+    }
+
+    if (Object.keys(syncData).length > 0 || "cuentaOrigenId" in data) {
+      const pagoSync = { ...syncData };
+      if ("cuentaOrigenId" in data) pagoSync.cuentaOrigenId = data.cuentaOrigenId;
+      if (Object.keys(pagoSync).length > 0) {
+        await tx.abonoPago.updateMany({
+          where: { movimientoId: id },
+          data: pagoSync
+        });
+        
+        // PagoNomina usa fechaPago en lugar de fecha
+        const nominaSync: Record<string, any> = {};
+        if ("fecha" in data) nominaSync.fechaPago = data.fecha;
+        if ("metodoPago" in data) nominaSync.metodoPago = data.metodoPago;
+        if ("cuentaOrigenId" in data) nominaSync.cuentaOrigenId = data.cuentaOrigenId;
+        
+        if (Object.keys(nominaSync).length > 0) {
+          await tx.pagoNomina.updateMany({
+            where: { movimientoId: id },
+            data: nominaSync
+          });
+        }
+      }
+    }
+
+    return movUpdated;
+  });
+
   return NextResponse.json({ movimiento: updated });
 }
 

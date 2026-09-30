@@ -658,9 +658,25 @@ export default function MovimientosPage() {
                   </div>
                 )
               )}
-              <div>
-                <label className="text-xs text-gray-500 block mb-1">Referencia / Folio</label>
-                <input value={editForm.referencia} onChange={e => setEditForm(p => ({ ...p, referencia: e.target.value }))} className={inputCls} placeholder="Núm. transferencia, folio..." />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Método de pago</label>
+                  <Combobox
+                    value={editForm.metodoPago}
+                    onChange={v => setEditForm(p => ({ ...p, metodoPago: v }))}
+                    options={[
+                      { value: "TRANSFERENCIA", label: "Transferencia" },
+                      { value: "EFECTIVO", label: "Efectivo" },
+                      { value: "TARJETA", label: "Tarjeta" },
+                      { value: "CHEQUE", label: "Cheque" },
+                    ]}
+                    className={inputCls}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Referencia / Folio</label>
+                  <input value={editForm.referencia} onChange={e => setEditForm(p => ({ ...p, referencia: e.target.value }))} className={inputCls} placeholder="Folio..." />
+                </div>
               </div>
               <div>
                 <label className="text-xs text-gray-500 block mb-1">Notas</label>
