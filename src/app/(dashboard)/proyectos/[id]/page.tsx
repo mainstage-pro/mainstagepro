@@ -1091,6 +1091,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
   // Estados para nuevo técnico inline
   const [showNuevoTecnico, setShowNuevoTecnico] = useState(false);
+  const [nuevoTecEnEdit, setNuevoTecEnEdit] = useState(false);
   const [nuevoTecNombre, setNuevoTecNombre] = useState("");
   const [nuevoTecCelular, setNuevoTecCelular] = useState("");
   const [nuevoTecRolId, setNuevoTecRolId] = useState("");
@@ -2649,6 +2650,30 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     setCreandoTecnico(false);
   }
 
+  async function crearTecnicoParaEdit() {
+    if (!nuevoTecNombre.trim()) return;
+    setCreandoTecnico(true);
+    const res = await fetch("/api/tecnicos", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nombre: nuevoTecNombre.trim(),
+        celular: nuevoTecCelular.trim() || null,
+        roles: nuevoTecRolId ? [nuevoTecRolId] : [],
+        nivel: nuevoTecNivel,
+      }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (res.ok && d.tecnico) {
+      setTecnicos(prev => [...prev, d.tecnico].sort((a, b) => a.nombre.localeCompare(b.nombre)));
+      setEditPersonalForm(prev => ({ ...prev, tecnicoId: d.tecnico.id }));
+      setNuevoTecEnEdit(false);
+      setNuevoTecNombre(""); setNuevoTecCelular(""); setNuevoTecRolId(""); setNuevoTecNivel("A");
+    } else {
+      toast.error(d.error ?? "No se pudo registrar el técnico");
+    }
+    setCreandoTecnico(false);
+  }
+
   // ── Agregar personal ──
   async function agregarPersonal() {
     if (!selTecnico && !selRol) return;
@@ -2785,6 +2810,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   // ── Editar slot de personal completo ──
   function abrirEditPersonal(p: Personal) {
     setEditandoPersonalId(p.id);
+    setNuevoTecEnEdit(false);
     setEditPersonalForm({
       tecnicoId: p.tecnico?.id ?? "",
       rolTecnicoId: p.rolTecnico?.id ?? "",
@@ -5405,7 +5431,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       <div className="mt-3 p-3 bg-[#0d0d0d] border border-[#B3985B]/20 rounded-lg space-y-3">
                         <div className="grid grid-cols-2 gap-3">
                           <div><label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Técnico</label>
-                            <Combobox value={editPersonalForm.tecnicoId} onChange={v => { if (v === "__nuevo__") { setShowNuevoTecnico(true); } else setEditPersonalForm(prev => ({ ...prev, tecnicoId: v })); }} options={[{ value: "", label: "— Sin asignar —" }, { value: "__nuevo__", label: "＋ Nuevo técnico..." }, ...tecnicos.map(t => ({ value: t.id, label: `${t.nombre} · ${t.rol?.nombre ?? "Sin rol"}` }))]} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" /></div>
+                            <Combobox value={editPersonalForm.tecnicoId} onChange={v => { if (v === "__nuevo__") { setNuevoTecEnEdit(true); } else { setNuevoTecEnEdit(false); setEditPersonalForm(prev => ({ ...prev, tecnicoId: v })); } }} options={[{ value: "", label: "— Sin asignar —" }, { value: "__nuevo__", label: "＋ Nuevo técnico..." }, ...tecnicos.map(t => ({ value: t.id, label: `${t.nombre} · ${t.rol?.nombre ?? "Sin rol"}` }))]} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" /></div>
                           <div><label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Rol del puesto</label>
                             <Combobox value={editPersonalForm.rolTecnicoId} onChange={v => setEditPersonalForm(prev => ({ ...prev, rolTecnicoId: v }))} options={[{ value: "", label: "— Sin rol —" }, ...rolOptions]} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" /></div>
                           <div><label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Participación</label>
@@ -5419,6 +5445,21 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             <input type="number" value={editPersonalForm.tarifa} onChange={e => setEditPersonalForm(prev => ({ ...prev, tarifa: e.target.value }))} placeholder="0" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" /></div>
                           )}
                         </div>
+                        {nuevoTecEnEdit && (
+                          <div className="p-3 bg-[#0d0d0d] border border-[#B3985B]/40 rounded-lg space-y-2">
+                            <p className="text-[#B3985B] text-xs font-semibold">Registrar nuevo técnico</p>
+                            <input value={nuevoTecNombre} onChange={e => setNuevoTecNombre(e.target.value)} placeholder="Nombre completo *" autoFocus className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                            <input value={nuevoTecCelular} onChange={e => setNuevoTecCelular(e.target.value)} placeholder="Celular (WhatsApp)" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                            <div className="flex gap-2">
+                              <Combobox value={nuevoTecRolId} onChange={v => setNuevoTecRolId(v)} options={[{ value: "", label: "— Especialidad del técnico (opcional) —" }, ...rolOptions]} className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
+                              <Combobox value={nuevoTecNivel} onChange={v => setNuevoTecNivel(v)} options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]} className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
+                            </div>
+                            <div className="flex gap-2 pt-1">
+                              <button type="button" onClick={crearTecnicoParaEdit} disabled={creandoTecnico || !nuevoTecNombre.trim()} className="flex-1 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-xs font-semibold py-1.5 rounded-lg transition-colors">{creandoTecnico ? "Guardando..." : "Guardar y seleccionar"}</button>
+                              <button type="button" onClick={() => { setNuevoTecEnEdit(false); setNuevoTecNombre(""); setNuevoTecCelular(""); setNuevoTecRolId(""); setNuevoTecNivel("A"); }} className="px-3 text-gray-500 hover:text-white text-xs transition-colors">Cancelar</button>
+                            </div>
+                          </div>
+                        )}
                         <div className="grid grid-cols-2 gap-3">
                           <div><label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Fecha de jornada (override)</label>
                             <input type="date" value={editPersonalForm.fechaJornada} onChange={e => setEditPersonalForm(prev => ({ ...prev, fechaJornada: e.target.value }))} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]" /></div>
@@ -5429,7 +5470,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                           <textarea value={editPersonalForm.responsabilidad} onChange={e => setEditPersonalForm(prev => ({ ...prev, responsabilidad: e.target.value }))} placeholder="Describe las actividades..." rows={2} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555] resize-none" /></div>
                         <div className="flex gap-2 pt-1">
                           <button onClick={() => guardarEditPersonal(p.id)} disabled={savingPersonal} className="flex-1 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-xs font-semibold py-1.5 rounded-lg transition-colors">{savingPersonal ? "Guardando..." : "Guardar cambios"}</button>
-                          <button onClick={() => setEditandoPersonalId(null)} className="px-4 text-gray-500 hover:text-white text-xs transition-colors">Cancelar</button>
+                          <button onClick={() => { setEditandoPersonalId(null); setNuevoTecEnEdit(false); }} className="px-4 text-gray-500 hover:text-white text-xs transition-colors">Cancelar</button>
                         </div>
                       </div>
                     )}
