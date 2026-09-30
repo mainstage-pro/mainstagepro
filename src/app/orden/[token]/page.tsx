@@ -56,7 +56,7 @@ export default function OrdenPage() {
   ));
 
   /* 2. Venue. */
-  add("venue", "Venue y acceso", !!(o.lugarEvento || o.direccionVenue || o.indicacionesAcceso), (
+  add("venue", "Venue y logística", !!(o.lugarEvento || o.direccionVenue || o.indicacionesAcceso), (
     <>
       <KVGrid>
         <KV label="Venue" fuerte full valor={o.lugarEvento} />
@@ -148,7 +148,7 @@ export default function OrdenPage() {
 
   /* 7. Salida de bodega: la hora que determina si el día arranca bien. */
   const hayBodega = !!(o.llamadoBodega || o.horaSalidaBodega || o.lugarLlamado || o.choferNombre || o.transportes.length > 0);
-  add("bodega", "Salida de bodega y traslados", hayBodega, (
+  add("bodega", "Traslados", hayBodega, (
     <>
       <KVGrid>
         {/* La fecha solo estorba cuando el llamado es el mismo día del evento,
@@ -188,7 +188,7 @@ export default function OrdenPage() {
   ));
 
   /* 8. Equipo. */
-  add("equipo", "Equipo y accesorios", o.equipos.length > 0, <Equipo orden={o} />);
+  add("equipo", "Lista de carga — equipos", o.equipos.length > 0, <Equipo orden={o} />);
 
   /* 9. Equipo fuera de cotización: el checklist de carga sí lo pide, así que
         tiene que estar en el documento o no cuadran las listas. */
@@ -198,7 +198,7 @@ export default function OrdenPage() {
   add("proveedores", "Proveedores y subrentas", o.proveedores.length > 0, <Proveedores orden={o} />);
 
   /* 11. Personal. */
-  add("personal", "Equipo de trabajo", o.personal.length > 0, <Personal orden={o} />);
+  add("personal", "Personal técnico", o.personal.length > 0, <Personal orden={o} />);
 
   /* 12. Archivos. */
   add("archivos", "Archivos operativos", o.archivos.length > 0, <Archivos orden={o} />);
