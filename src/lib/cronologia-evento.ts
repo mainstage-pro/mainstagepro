@@ -197,6 +197,64 @@ function bloqueAItem(b: BloqueTiempo, nombreProveedor?: string | null): ItemCron
 }
 
 /**
+ * Horarios de montaje/desmontaje que ya viven en el resumen del proyecto, listos para
+ * enmarcar las actividades capturadas: `previos` abren la jornada y `posteriores` la
+ * cierran. Así la pantalla de Logística general y los PDFs muestran lo mismo sin que
+ * nadie recapture lo que el resumen ya sabe.
+ */
+export function derivadosLogistica(
+  p: ProyectoCronologia,
+  fase: "montaje" | "desmontaje",
+  opts?: { interno?: boolean },
+): { previos: ItemCronologia[]; posteriores: ItemCronologia[] } {
+  const interno = opts?.interno ?? true;
+  const previos: ItemCronologia[] = [];
+  const posteriores: ItemCronologia[] = [];
+
+  if (fase === "montaje") {
+    const llamadoHora = horaDeDateTime(p.llamadoBodega);
+    const llamadoFecha = p.llamadoBodega ? fechaISOaDia(p.llamadoBodega) : null;
+    const montajeFecha = p.fechaMontaje ? fechaISOaDia(p.fechaMontaje) : llamadoFecha;
+    if (interno && (llamadoHora || p.lugarLlamado)) {
+      previos.push({
+        label: "Llamado en bodega",
+        hora: llamadoHora ?? "Por definir",
+        // Solo mostramos la fecha del llamado si el montaje es día aparte (contexto distinto al día del evento).
+        fecha: p.montajeDiaAparte === true ? fechaCorta(llamadoFecha ?? montajeFecha) : null,
+        nota: p.lugarLlamado,
+      });
+    }
+    if (interno && p.horaSalidaBodega) {
+      previos.push({ label: "Salida de bodega", hora: p.horaSalidaBodega, fecha: null, nota: null });
+    }
+    if (p.horaMontaje) {
+      previos.push({ label: "Llegada al venue", hora: p.horaMontaje, fecha: null, nota: p.lugarEvento });
+    }
+    if (p.horaInicioMontaje) {
+      previos.push({
+        label: "Inicio de montaje",
+        hora: p.horaInicioMontaje,
+        fecha: null,
+        nota: p.horaMontaje ? null : p.lugarEvento,
+      });
+    }
+    const termino = sumarHoras(p.horaInicioMontaje, p.duracionMontajeHrs);
+    if (termino) posteriores.push({ label: "Término aprox. de montaje", hora: termino, fecha: null, nota: null });
+  } else if (interno) {
+    if (p.horaDesmontaje) {
+      previos.push({ label: "Inicio de desmontaje", hora: p.horaDesmontaje, fecha: null, nota: null });
+    }
+    const termino = sumarHoras(p.horaDesmontaje, p.duracionDesmontajeHrs);
+    if (termino) posteriores.push({ label: "Término aprox. de desmontaje", hora: termino, fecha: null, nota: null });
+  }
+
+  [...previos, ...posteriores].forEach((it) => {
+    it.hora = horaAmPm(it.hora) ?? it.hora;
+  });
+  return { previos, posteriores };
+}
+
+/**
  * Construye la cronología ordenada del proyecto.
  * @param opts.interno  true (default) incluye logística de bodega (llamado, salida, desmontaje).
  *                      false = versión cliente: solo montaje en venue y horarios de cada día.
@@ -260,51 +318,21 @@ export function construirCronologia(
   const llamadoHora = horaDeDateTime(p.llamadoBodega);
   const llamadoFecha = p.llamadoBodega ? fechaISOaDia(p.llamadoBodega) : null;
   const montajeFecha = p.fechaMontaje ? fechaISOaDia(p.fechaMontaje) : llamadoFecha;
-  const terminoMontaje = sumarHoras(p.horaInicioMontaje, p.duracionMontajeHrs);
-  const itemsMontaje: ItemCronologia[] = [];
-  if (conLogistica && interno && (llamadoHora || p.lugarLlamado)) {
-    itemsMontaje.push({
-      label: "Llamado en bodega",
-      hora: llamadoHora ?? "Por definir",
-      // Solo mostramos la fecha del llamado si el montaje es día aparte (contexto distinto al día del evento).
-      fecha: montajeDiaAparte ? fechaCorta(llamadoFecha ?? montajeFecha) : null,
-      nota: p.lugarLlamado,
-    });
-  }
-  if (conLogistica && interno && p.horaSalidaBodega) {
-    itemsMontaje.push({ label: "Salida de bodega", hora: p.horaSalidaBodega, fecha: null, nota: null });
-  }
-  if (conLogistica && p.horaMontaje) {
-    itemsMontaje.push({ label: "Llegada al venue", hora: p.horaMontaje, fecha: null, nota: p.lugarEvento });
-  }
-  if (conLogistica && p.horaInicioMontaje) {
-    itemsMontaje.push({
-      label: "Inicio de montaje",
-      hora: p.horaInicioMontaje,
-      fecha: null,
-      nota: p.horaMontaje ? null : p.lugarEvento,
-    });
-  }
+  const derivMontaje = derivadosLogistica(p, "montaje", { interno });
+  const itemsMontaje: ItemCronologia[] = conLogistica ? [...derivMontaje.previos] : [];
   const diaMontaje = (montajeDiaAparte ? montajeFecha : null) ?? dias[0];
   itemsMontaje.push(...itemsExtra(diaMontaje, ["MONTAJE"]));
-  if (conLogistica && terminoMontaje) {
-    itemsMontaje.push({ label: "Término aprox. de montaje", hora: terminoMontaje, fecha: null, nota: null });
-  }
+  if (conLogistica) itemsMontaje.push(...derivMontaje.posteriores);
 
   // ── Ítems de desmontaje (solo interno) ──
-  const terminoDesmontaje = sumarHoras(p.horaDesmontaje, p.duracionDesmontajeHrs);
   const desmontajeFecha = p.fechaDesmontaje ? fechaISOaDia(p.fechaDesmontaje) : null;
-  const itemsDesmontaje: ItemCronologia[] = [];
-  if (conLogistica && interno && p.horaDesmontaje) {
-    itemsDesmontaje.push({ label: "Inicio de desmontaje", hora: p.horaDesmontaje, fecha: null, nota: null });
-  }
+  const derivDesmontaje = derivadosLogistica(p, "desmontaje", { interno });
+  const itemsDesmontaje: ItemCronologia[] = conLogistica ? [...derivDesmontaje.previos] : [];
   if (interno) {
     const diaDesmontaje = (desmontajeDiaAparte ? desmontajeFecha : null) ?? dias[dias.length - 1];
     itemsDesmontaje.push(...itemsExtra(diaDesmontaje, ["DESMONTAJE"]));
   }
-  if (conLogistica && interno && terminoDesmontaje) {
-    itemsDesmontaje.push({ label: "Término aprox. de desmontaje", hora: terminoDesmontaje, fecha: null, nota: null });
-  }
+  if (conLogistica) itemsDesmontaje.push(...derivDesmontaje.posteriores);
 
   // ── Montaje como día adicional (antes de los días del evento) ──
   if (montajeDiaAparte && itemsMontaje.length) {

@@ -35,7 +35,7 @@ import { DISCIPLINA_COLORS, DISCIPLINA_LABELS } from "@/lib/disciplinaColors";
 import { contarRespondidos, contarIncidencias, nivelResultado, getEvalConfig, aplicaEvaluacion, type EvalPostEventoData } from "@/lib/evaluacion-post-evento";
 import { getDireccionConfig, promedioDireccion, type EvaluacionDireccionData } from "@/lib/evaluacion-direccion";
 import { diasEvento, parseHorariosEvento, horarioDeDia, parseFechasEvento } from "@/lib/fechas-evento";
-import { construirCronologia, VISTAS_CRONOLOGIA, type BloqueTiempo } from "@/lib/cronologia-evento";
+import { construirCronologia, derivadosLogistica, VISTAS_CRONOLOGIA, type BloqueTiempo, type ItemCronologia } from "@/lib/cronologia-evento";
 import { checksAvanceProduccion } from "@/lib/proyecto-avance";
 import { requisitosDocumento, type ProyectoDocumentoInput, type RequisitosDocumento, type TipoDocumento } from "@/lib/proyecto-documentos";
 import { preguntasAlCliente, textoSolicitud } from "@/lib/solicitud-cliente";
@@ -70,6 +70,7 @@ interface Personal {
   // Rol que exige el puesto. Es del slot, no del técnico: un operador de
   // iluminación puede cubrir un puesto de técnico general.
   rolTecnico: { id: string; nombre: string } | null;
+  cotizacion?: { numeroCotizacion: string } | null;
 }
 interface CatFinanciera { id: string; nombre: string; tipo: string }
 interface Proveedor { id: string; nombre: string; empresa: string | null; compania: { id: string; nombre: string } | null; telefono: string | null; giro: string | null; banco?: string | null; titularCuenta?: string | null; cuentaBancaria?: string | null; clabe?: string | null; noTarjeta?: string | null; rfc?: string | null }
@@ -83,7 +84,7 @@ interface GastoOp { id: string; tipo: string; concepto: string; monto: number; c
 interface Gasto { id: string; fecha: string; concepto: string; monto: number; metodoPago: string; notas: string | null; referencia: string | null; categoriaId?: string | null; categoria: { id?: string; nombre: string } | null; proveedorId?: string | null; proveedor: { id?: string; nombre: string; empresa?: string | null } | null; cuentaOrigenId?: string | null; cuentaOrigen: { id: string; nombre: string; banco: string | null } | null }
 interface EquipoAccesorioLib { id: string; nombre: string; categoria: string | null; accesorioId?: string | null }
 interface RiderAccesorio { id: string; nombre: string; cantidad: number; categoria: string | null; completado: boolean; esSugerencia: boolean; orden: number; origen?: string | null; accesorioId?: string | null }
-interface ProyectoEquipoItem { id: string; equipoId: string; proveedorId: string | null; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; confirmToken: string | null; confirmDisponible: boolean | null; notas: string | null; necesitaRevision: boolean; equipo: { descripcion: string; marca: string | null; modelo: string | null; imagenUrl: string | null; amperajeRequerido?: number | null; voltajeRequerido?: string | null; categoria: { nombre: string; disciplina?: string | null }; accesorios: EquipoAccesorioLib[] }; proveedor: { nombre: string; empresa: string | null; telefono: string | null } | null; riderAccesorios: RiderAccesorio[]; posiciones?: PosicionMontaje[] }
+interface ProyectoEquipoItem { id: string; equipoId: string; proveedorId: string | null; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; confirmToken: string | null; confirmDisponible: boolean | null; notas: string | null; necesitaRevision: boolean; equipo: { descripcion: string; marca: string | null; modelo: string | null; imagenUrl: string | null; amperajeRequerido?: number | null; voltajeRequerido?: string | null; categoria: { nombre: string; disciplina?: string | null }; accesorios: EquipoAccesorioLib[] }; proveedor: { nombre: string; empresa: string | null; telefono: string | null } | null; cotizacion?: { numeroCotizacion: string } | null; riderAccesorios: RiderAccesorio[]; posiciones?: PosicionMontaje[] }
 type FaseCrono = "montaje" | "soundcheck" | "operacion" | "desmontaje";
 const FASE_ORDEN: Record<FaseCrono, number> = { montaje: 0, soundcheck: 1, operacion: 2, desmontaje: 3 };
 const faseDe = (r: CronoRow): FaseCrono => r.fase ?? "operacion";
@@ -155,6 +156,8 @@ interface Proyecto {
   tratoId: string | null;
   trato: { tipoEvento: string; tipoServicio: string | null; ideasReferencias: string | null; notas: string | null; familyAndFriends: boolean; tradeCalificado: boolean; ventanaMontajeInicio: string | null; ventanaMontajeFin: string | null; responsable: { name: string } | null } | null;
   cotizacion: { id: string; numeroCotizacion: string; granTotal: number; diasComidas: number; subtotalComidas: number; subtotalOperacion: number; subtotalTransporte: number; subtotalHospedaje: number; subtotalEquiposNeto: number; subtotalTerceros: number; notasSecciones: string | null; observaciones: string | null; lineas: { id: string; tipo: string; descripcion: string; cantidad: number; nivel: string | null; jornada: string | null; precioUnitario: number; notas: string | null; marca: string | null; modelo: string | null; rolTecnicoId: string | null; rolTecnico: { id: string; nombre: string; disciplina: string | null } | null }[] } | null;
+  // Cotizaciones extra que se facturan solas pero se operan en este mismo proyecto.
+  cotizacionesFusionadas?: { id: string; numeroCotizacion: string; nombreEvento: string | null; granTotal: number }[];
   logisticaRenta: string | null;
   docsTecnicos: string | null;
   evaluacionPostEvento: EvalPostEventoData | null;
@@ -2246,6 +2249,24 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     );
   }
 
+  // Horarios que ya vienen del resumen del proyecto: se leen aquí, se editan allá.
+  function renderHorariosDelResumen(items: ItemCronologia[]) {
+    if (items.length === 0) return null;
+    return (
+      <div className="space-y-1 py-2">
+        {items.map((it, i) => (
+          <div key={i} className="flex items-baseline gap-3 text-xs">
+            <span className="text-[#B3985B]/70 font-mono shrink-0 w-[84px]">{it.hora}</span>
+            <span className="text-gray-400">{it.label}</span>
+            {it.fecha && <span className="text-gray-600 capitalize">· {it.fecha}</span>}
+            {it.nota && <span className="text-gray-600 truncate">· {it.nota}</span>}
+            <span className="text-[9px] text-gray-600 border border-[#2a2a2a] rounded px-1 py-px shrink-0 ml-auto">Resumen</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   // Render de una fase extra (montaje o desmontaje) con su fecha propia, plantilla y filas.
   function renderFaseExtra(fase: "montaje" | "desmontaje") {
     const esMont = fase === "montaje";
@@ -2255,6 +2276,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     const label = esMont ? "Montaje" : "Desmontaje";
     const badge = esMont ? "M" : "D";
     const entries = cronoRows.map((row, i) => ({ row, i })).filter(({ row }) => faseDe(row) === fase);
+    const derivados = derivadosLogistica(datosCrono, fase);
     return (
       <div>
         <div className="flex items-center justify-between mb-2 flex-wrap gap-2 border-b border-[#222] pb-2">
@@ -2290,11 +2312,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             </button>
           </div>
         </div>
+        {renderHorariosDelResumen(derivados.previos)}
         {entries.length === 0 ? (
           <p className="text-gray-600 text-xs py-3">Sin actividades para {label.toLowerCase()}. Usa <span className="text-gray-400">Plantilla base</span> o <span className="text-gray-400">+ Agregar fila</span>.</p>
         ) : (
           renderCronoTabla(entries)
         )}
+        {renderHorariosDelResumen(derivados.posteriores)}
       </div>
     );
   }
@@ -3644,6 +3668,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       <a href="/proyectos" className="text-white/30 text-xs hover:text-white/60 transition-colors">← Volver a proyectos</a>
     </div>
   );
+
+  // El evento se factura en varias cotizaciones: solo entonces vale la pena
+  // decir de cuál salió cada equipo y cada puesto.
+  const hayVariasCotizaciones = (proyecto.cotizacionesFusionadas?.length ?? 0) > 0;
 
   const checkOp = proyecto.checklist.filter(c => c.tipo !== "RIDER");
   const checkRider = proyecto.checklist.filter(c => c.tipo === "RIDER");
@@ -5418,6 +5446,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                               {p.nivel && <span className={`text-xs font-semibold ${NIVEL_COLORS[p.nivel] ?? "text-gray-400"}`}>{p.nivel}</span>}
                               <span className={`px-1.5 py-0.5 rounded border text-[10px] font-medium ${badge.cls}`}>{badge.label}</span>
                               {p.necesitaRevision && <span className="px-1.5 py-0.5 rounded border border-amber-700/50 bg-amber-900/20 text-amber-300 text-[10px] font-medium" title="Este puesto ya no está en la cotización: se quitó el rol o bajó la cantidad. No se borró solo — decide si lo quitas.">Ya no está en la cotización</span>}
+                              {hayVariasCotizaciones && p.cotizacion && <span className="px-1.5 py-0.5 rounded border border-[#2a2a2a] bg-[#141414] text-gray-400 text-[10px] font-medium" title="Cotización que paga este puesto. El evento se factura en varias cotizaciones.">{p.cotizacion.numeroCotizacion}</span>}
                               <button onClick={() => { setAsignandoId(p.id); setSelAsignar(""); setSelAsignarRol(""); setCrearParaSlotId(null); }} className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-2 py-0.5 rounded transition-colors">Asignar</button>
                             </div>
                           )
@@ -5467,6 +5496,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                               <span className={`px-1.5 py-0.5 rounded border text-[10px] font-medium ${badge.cls}`}>{badge.label}</span>
                               {p.esAdicional && <span className="px-1.5 py-0.5 rounded border border-fuchsia-800/40 bg-fuchsia-900/20 text-fuchsia-300 text-[10px] font-medium" title="Agregado fuera de lo cotizado — solo visible internamente">Adicional</span>}
                               {p.necesitaRevision && <span className="px-1.5 py-0.5 rounded border border-amber-700/50 bg-amber-900/20 text-amber-300 text-[10px] font-medium" title="Este puesto ya no está en la cotización: se quitó el rol o bajó la cantidad. No se borró solo — decide si lo quitas.">Ya no está en la cotización</span>}
+                              {hayVariasCotizaciones && p.cotizacion && <span className="px-1.5 py-0.5 rounded border border-[#2a2a2a] bg-[#141414] text-gray-400 text-[10px] font-medium" title="Cotización que paga este puesto. El evento se factura en varias cotizaciones.">{p.cotizacion.numeroCotizacion}</span>}
                             </div>
                           )
                         )}
@@ -5690,7 +5720,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   )}
                 </div>
               </div>
-              <p className="text-[11px] text-gray-600 mb-4">{VISTAS_CRONOLOGIA.LOGISTICA.descripcion}</p>
+              <p className="text-[11px] text-gray-600 mb-4">
+                {VISTAS_CRONOLOGIA.LOGISTICA.descripcion} Las filas marcadas <span className="text-gray-400">Resumen</span> vienen de los horarios del proyecto y se editan en <span className="text-gray-400">Resumen</span>.
+              </p>
               <div className="space-y-8">
                 {renderFaseExtra("montaje")}
                 {renderFaseExtra("desmontaje")}
@@ -6604,6 +6636,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                         className="ml-2 align-middle px-1.5 py-0.5 rounded border border-amber-700/50 bg-amber-900/20 text-amber-300 text-[10px] font-medium"
                                         title="Este equipo ya no está en la cotización, pero tiene datos capturados a mano — decide si lo quitas del listado"
                                       >Ya no está en la cotización</span>
+                                    )}
+                                    {hayVariasCotizaciones && e.cotizacion && (
+                                      <span
+                                        className="ml-2 align-middle px-1.5 py-0.5 rounded border border-[#2a2a2a] bg-[#141414] text-gray-400 text-[10px] font-medium"
+                                        title="Cotización que paga este equipo. El evento se factura en varias cotizaciones."
+                                      >{e.cotizacion.numeroCotizacion}</span>
                                     )}
                                   </p>
                                   <p className="text-gray-500 text-xs mt-0.5 leading-snug">{e.equipo.descripcion}</p>
