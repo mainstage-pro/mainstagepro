@@ -67,6 +67,7 @@ export interface OpcionesPagoNomina {
   referencia?: string | null;
   notas?: string | null;
   creadoPor?: string | null;
+  overrideMonto?: number;
 }
 
 /**
@@ -143,13 +144,15 @@ export async function marcarFilaNominaPagada(
   const categoriaFreelanceId = await getCategoriaPersonalFreelance(tx);
 
   let movId: string;
+  const finalMonto = opts.overrideMonto ?? fila.tarifaAcordada;
+  
   if (huerfano) {
     movId = huerfano.id;
     // Asegurar la categoría en el movimiento reutilizado si venía sin ella.
-    if (!huerfano.categoriaId) {
+    if (!huerfano.categoriaId || huerfano.monto !== finalMonto) {
       await tx.movimientoFinanciero.update({
         where: { id: movId },
-        data: { categoriaId: categoriaFreelanceId },
+        data: { categoriaId: categoriaFreelanceId, monto: finalMonto },
       });
     }
   } else {
@@ -158,7 +161,7 @@ export async function marcarFilaNominaPagada(
         tipo: "GASTO",
         fecha: opts.fecha,
         concepto,
-        monto: fila.tarifaAcordada,
+        monto: finalMonto,
         metodoPago: opts.metodoPago || "TRANSFERENCIA",
         cuentaOrigenId: opts.cuentaOrigenId || null,
         referencia: opts.referencia || null,

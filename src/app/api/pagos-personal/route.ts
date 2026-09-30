@@ -193,7 +193,7 @@ export async function POST(req: NextRequest) {
   // Filas de nómina pendientes del técnico en estos proyectos (lo que se paga).
   const filasPendientes = await prisma.proyectoPersonal.findMany({
     where: { tecnicoId, proyectoId: { in: proyectoIds }, estadoPago: "PENDIENTE" },
-    select: { id: true, tarifaAcordada: true },
+    select: { id: true, tarifaAcordada: true, proyectoId: true },
   });
 
   // Total adeudado: preferir el que envía la UI (coincide con las tarifas
@@ -229,19 +229,84 @@ export async function POST(req: NextRequest) {
   const fullyPaid = totalOwed > 0 ? totalPagado >= totalOwed - 0.01 : true;
 
   if (fullyPaid) {
-    // ── Pago completo: un movimiento GASTO por fila, ligado y reconocible ─────
+    // ── Pago completo: distribuir las entradas sobre las filas de nómina ─────
     const movIds: string[] = [];
+    
+    // Configurar distribución
+    let entradaIdx = 0;
+    let entradaRestante = validEntradas.length > 0 ? validEntradas[0].monto : totalOwed;
+    const entradasADistribuir = validEntradas.length > 0 ? validEntradas : [{ monto: totalOwed, metodoPago: metodoPrimario, cuentaOrigenId: cuentaPrimaria, referencia: refPrimaria }];
+
     await prisma.$transaction(async (tx) => {
       for (const fila of filasPendientes) {
-        const movId = await marcarFilaNominaPagada(tx, fila.id, {
-          fecha: fechaPago,
-          metodoPago: metodoPrimario,
-          cuentaOrigenId: cuentaPrimaria,
-          referencia: refPrimaria,
-          notas: notasPago,
-          creadoPor: session.id,
-        });
-        if (movId) movIds.push(movId);
+        let filaMontoPendiente = fila.tarifaAcordada ?? 0;
+        let filaVinculada = false;
+
+        // Si la fila no tiene monto, igual la marcamos como pagada
+        if (filaMontoPendiente <= 0.01) {
+          const movId = await marcarFilaNominaPagada(tx, fila.id, {
+            fecha: fechaPago,
+            metodoPago: entradasADistribuir[0].metodoPago,
+            cuentaOrigenId: entradasADistribuir[0].cuentaOrigenId || null,
+            referencia: entradasADistribuir[0].referencia || null,
+            notas: notasPago,
+            creadoPor: session.id,
+            overrideMonto: 0,
+          });
+          if (movId) movIds.push(movId);
+          continue;
+        }
+
+        // Mientras la fila necesite fondos y haya entradas disponibles
+        while (filaMontoPendiente > 0.01 && entradaIdx < entradasADistribuir.length) {
+          const entradaActual = entradasADistribuir[entradaIdx];
+          const montoAUsar = Math.min(filaMontoPendiente, entradaRestante);
+
+          if (montoAUsar > 0.01) {
+            if (!filaVinculada) {
+              // El primer pago o la mayor parte se vincula directamente a la fila
+              const movId = await marcarFilaNominaPagada(tx, fila.id, {
+                fecha: fechaPago,
+                metodoPago: entradaActual.metodoPago,
+                cuentaOrigenId: entradaActual.cuentaOrigenId || null,
+                referencia: entradaActual.referencia || null,
+                notas: notasPago,
+                creadoPor: session.id,
+                overrideMonto: montoAUsar,
+              });
+              if (movId) movIds.push(movId);
+              filaVinculada = true;
+            } else {
+              // Si la fila requirió fondos de múltiples cuentas, las partes restantes se
+              // crean como movimientos sueltos para mantener la integridad del ledger.
+              const mov = await tx.movimientoFinanciero.create({
+                data: {
+                  tipo: "GASTO",
+                  fecha: fechaPago,
+                  concepto: `Nómina — ${tecnico?.nombre ?? tecnicoId} (Complemento)`,
+                  monto: montoAUsar,
+                  metodoPago: entradaActual.metodoPago,
+                  cuentaOrigenId: entradaActual.cuentaOrigenId || null,
+                  referencia: entradaActual.referencia || null,
+                  notas: notasPago,
+                  proyectoId: fila.proyectoId, // usamos el id del proyecto al que pertenecía la fila
+                  creadoPor: session.id,
+                },
+              });
+              movIds.push(mov.id);
+            }
+
+            filaMontoPendiente -= montoAUsar;
+            entradaRestante -= montoAUsar;
+
+            if (entradaRestante < 0.01) {
+              entradaIdx++;
+              if (entradaIdx < entradasADistribuir.length) {
+                entradaRestante = entradasADistribuir[entradaIdx].monto;
+              }
+            }
+          }
+        }
       }
     });
     return NextResponse.json({ ok: true, movimientosCreados: movIds.length, totalPagado, fullyPaid: true });
