@@ -100,7 +100,7 @@ function buildNotasValue(categoria: string, nota: string): string | null {
 }
 
 interface LineaExterno {
-  id: string; equipoId: string; descripcion: string; marca: string;
+  id: string; equipoId: string; descripcion: string; marca: string; modelo: string;
   cantidad: number; dias: number;
   precioUnitario: number; // precio al cliente
   costoProveedor: number;  // costo que nos cobra el proveedor
@@ -641,9 +641,9 @@ function CotizadorForm() {
         setPaquetesAgregados(paqueteLineas.map((l) => {
           try { return (JSON.parse(l.notasInternas ?? "{}").paqueteId as string) ?? ""; } catch { return ""; }
         }).filter(Boolean));
-        setLineasExterno(lineas.filter((l: {tipo:string}) => l.tipo === "EQUIPO_EXTERNO").map((l: {equipoId:string;descripcion:string;marca:string|null;cantidad:number;dias:number;precioUnitario:number;costoUnitario:number;subtotal:number;proveedorId:string|null;notas:string|null}) => ({
+        setLineasExterno(lineas.filter((l: {tipo:string}) => l.tipo === "EQUIPO_EXTERNO").map((l: {equipoId:string;descripcion:string;marca:string|null;modelo:string|null;cantidad:number;dias:number;precioUnitario:number;costoUnitario:number;subtotal:number;proveedorId:string|null;notas:string|null}) => ({
           id: uid(), equipoId: l.equipoId ?? "", descripcion: l.descripcion,
-          marca: l.marca ?? "", cantidad: l.cantidad, dias: l.dias,
+          marca: l.marca ?? "", modelo: l.modelo ?? "", cantidad: l.cantidad, dias: l.dias,
           precioUnitario: l.precioUnitario, costoProveedor: l.costoUnitario ?? 0,
           subtotal: l.subtotal, costoTotal: (l.costoUnitario ?? 0) * l.cantidad * l.dias,
           proveedorId: l.proveedorId ?? null,
@@ -1145,7 +1145,7 @@ function CotizadorForm() {
         const costo = mejorProveedor ? mejorProveedor.precio : (eq.costoProveedor ?? 0);
         nuevasExt.push({
           id: uid(), equipoId: eq.id, descripcion: eq.descripcion,
-          marca: [eq.marca, eq.modelo].filter(Boolean).join(" "),
+          marca: eq.marca ?? "", modelo: eq.modelo ?? "",
           cantidad: veces, dias,
           precioUnitario: eq.precioRenta,
           costoProveedor: costo,
@@ -1283,7 +1283,7 @@ function CotizadorForm() {
     const mejorProveedor = (eq.proveedoresPrecios ?? [])[0] ?? null;
     setLineasExterno(prev => [...prev, {
       id: uid(), equipoId: eq.id, descripcion: eq.descripcion,
-      marca: [eq.marca, eq.modelo].filter(Boolean).join(" "),
+      marca: eq.marca ?? "", modelo: eq.modelo ?? "",
       cantidad: cant, dias,
       precioUnitario: eq.precioRenta,
       costoProveedor: mejorProveedor ? mejorProveedor.precio : costo,
@@ -1324,6 +1324,7 @@ function CotizadorForm() {
         equipoId: newEq.id,
         descripcion: newEq.descripcion,
         marca: newEq.marca ?? "",
+        modelo: newEq.modelo ?? "",
         cantidad: 1,
         dias: parseInt(evento.diasEquipo) || 1,
         precioUnitario: newEq.precioRenta,
@@ -1380,6 +1381,7 @@ function CotizadorForm() {
           equipoId: newEq.id,
           descripcion: newEq.descripcion,
           marca: newEq.marca ?? "",
+          modelo: newEq.modelo ?? "",
           cantidad: 1,
           dias,
           precioUnitario: newEq.precioRenta,
@@ -1656,7 +1658,7 @@ function CotizadorForm() {
             notasInternas: JSON.stringify({ paqueteId: l.productoId, componentes: l.componentes }),
           })),
           ...lineasExterno.map(l => ({
-            tipo: "EQUIPO_EXTERNO", descripcion: l.descripcion, marca: l.marca,
+            tipo: "EQUIPO_EXTERNO", descripcion: l.descripcion, marca: l.marca, modelo: l.modelo,
             cantidad: l.cantidad, dias: l.dias, precioUnitario: l.precioUnitario,
             costoUnitario: l.costoProveedor,
             subtotal: l.subtotal, esExterno: true, esIncluido: false, equipoId: l.equipoId,
@@ -1832,7 +1834,7 @@ function CotizadorForm() {
         notasInternas: JSON.stringify({ paqueteId: l.productoId, componentes: l.componentes }),
       })),
       ...lineasExterno.map(l => ({
-        tipo: "EQUIPO_EXTERNO", descripcion: l.descripcion, marca: l.marca,
+        tipo: "EQUIPO_EXTERNO", descripcion: l.descripcion, marca: l.marca, modelo: l.modelo,
         cantidad: l.cantidad, dias: l.dias, precioUnitario: l.precioUnitario,
         costoUnitario: l.costoProveedor, // guardamos el costo del proveedor para recuperarlo en edición
         subtotal: l.subtotal,
@@ -2993,7 +2995,10 @@ function CotizadorForm() {
                     <button onClick={() => setShowConfirmDisp(false)} className="text-gray-600 hover:text-white text-xs transition-colors">Cerrar</button>
                   </div>
                   {Object.entries(grupos).map(([key, grupo]) => {
-                    const listaEquipos = grupo.lineas.map(l => `• ${l.descripcion}${l.marca ? ` (${l.marca})` : ""} — ${l.cantidad} u x ${l.dias} día${l.dias > 1 ? "s" : ""}`).join("\n");
+                    const listaEquipos = grupo.lineas.map(l => {
+                      const eq = [l.marca, l.modelo].filter(Boolean).join(" ");
+                      return `• ${l.descripcion}${eq ? ` (${eq})` : ""} — ${l.cantidad} u x ${l.dias} día${l.dias > 1 ? "s" : ""}`;
+                    }).join("\n");
                     const msg = `Hola ${grupo.proveedor?.nombre.split(" ")[0] ?? ""}! 👋\n\nNecesito confirmar disponibilidad de equipos para un evento:\n📅 ${fechaEvento}${evento.nombreEvento ? `\n🎪 ${evento.nombreEvento}` : ""}\n\nEquipos requeridos:\n${listaEquipos}\n\n¿Están disponibles para esa fecha? 🙏`;
                     const tel = grupo.proveedor?.telefono?.replace(/\D/g, "").replace(/^(?!52)/, "52") ?? "";
                     const waUrl = tel ? `https://wa.me/${tel}?text=${encodeURIComponent(msg)}` : null;
@@ -3003,7 +3008,7 @@ function CotizadorForm() {
                           <p className="text-white text-sm font-medium">{grupo.proveedor?.nombre ?? <span className="text-gray-500 italic">Sin proveedor asignado</span>}</p>
                           <ul className="mt-1 space-y-0.5">
                             {grupo.lineas.map(l => (
-                              <li key={l.id} className="text-xs text-gray-400">{l.descripcion}{l.marca ? <span className="text-gray-600"> · {l.marca}</span> : null} — <span className="text-gray-300">{l.cantidad} u × {l.dias} día{l.dias > 1 ? "s" : ""}</span></li>
+                              <li key={l.id} className="text-xs text-gray-400">{l.descripcion}{[l.marca, l.modelo].filter(Boolean).length ? <span className="text-gray-600"> · {[l.marca, l.modelo].filter(Boolean).join(" ")}</span> : null} — <span className="text-gray-300">{l.cantidad} u × {l.dias} día{l.dias > 1 ? "s" : ""}</span></li>
                             ))}
                           </ul>
                         </div>
@@ -3123,10 +3128,10 @@ function CotizadorForm() {
                   <div key={l.id} className="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-[#111] last:border-0">
                     <div className="w-full min-w-0 sm:w-auto sm:flex-1">
                       <div className="flex items-center gap-1.5">
-                        <p className="text-white text-sm truncate">{l.marca || l.descripcion}</p>
+                        <p className="text-white text-sm truncate">{[l.marca, l.modelo].filter(Boolean).join(" ") || l.descripcion}</p>
                         {l.categoria && <span className="shrink-0 text-[10px] px-1.5 py-0.5 bg-[#1e1e1e] text-[#6b7280] rounded" title="En el PDF aparece dentro de esta categoría">{l.categoria}</span>}
                       </div>
-                      {l.marca && <p className="text-gray-500 text-xs">{l.descripcion}</p>}
+                      {(l.marca || l.modelo) && <p className="text-gray-500 text-xs">{l.descripcion}</p>}
                       <p className="text-[#555] text-[10px]">Costo proveedor: {formatCurrency(l.costoProveedor)}/u · Total costo: {formatCurrency(l.costoTotal)}</p>
                     </div>
                     <NumSelect value={l.cantidad} onChange={v => updateExterno(l.id, "cantidad", parseFloat(v) || 1)} max={50} className="w-14 py-1" title="Cantidad" />
