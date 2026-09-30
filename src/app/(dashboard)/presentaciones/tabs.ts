@@ -5,6 +5,7 @@ export const presentacionesTabs: ModuleNavTab[] = [
   { href: "/presentaciones/paquetes", label: "Paquetes" },
   { href: "/presentaciones/servicios", label: "Servicios" },
   { href: "/presentaciones/tipo-eventos", label: "Tipo de eventos" },
+  { href: "/presentaciones/inventario", label: "Inventario" },
   { href: "/presentaciones/categoria-equipos", label: "Categoría de equipos" },
   { href: "/presentaciones/galeria", label: "Galería" },
   { href: "/presentaciones/interno", label: "Interno" },

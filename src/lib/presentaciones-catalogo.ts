@@ -78,6 +78,18 @@ export const PRESENTACION_CENTRAL: PresentacionItem = {
 export const PRESENTACIONES_MODULO_GENERAL: PresentacionItem[] = [
   PRESENTACION_CENTRAL,
   {
+    key: "venta",
+    label: "Equipo en venta",
+    desc: "Equipo propio que Mainstage pone a la venta: precio, condición y galería de fotos.",
+    href: "/presentacion/venta",
+    icon: Tag,
+    audience: "Compradores · Colegas",
+  },
+];
+
+// Las tres presentaciones de catálogo de inventario, en su propia pestaña.
+export const PRESENTACIONES_MODULO_INVENTARIO: PresentacionItem[] = [
+  {
     key: "inventario",
     label: "Inventario de equipo",
     desc: "Catálogo del equipo propio más el que subcontratamos, lista de precios y cotizador.",
@@ -100,14 +112,6 @@ export const PRESENTACIONES_MODULO_GENERAL: PresentacionItem[] = [
     href: "/presentacion/inventario-premium",
     icon: Sparkles,
     audience: "Clientes · Equipo",
-  },
-  {
-    key: "venta",
-    label: "Equipo en venta",
-    desc: "Equipo propio que Mainstage pone a la venta: precio, condición y galería de fotos.",
-    href: "/presentacion/venta",
-    icon: Tag,
-    audience: "Compradores · Colegas",
   },
 ];
 
