@@ -64,11 +64,13 @@ export async function POST(req: NextRequest) {
 
   const montoTotal = Number(monto) * Number(cantidad ?? 1);
 
+  // Nace autorizado: el gasto ya se incurrió y aquí mismo se le abre la cuenta por
+  // pagar. No es una propuesta que espere firma como las del cuadro de viáticos.
   const [gasto] = await prisma.$queryRawUnsafe<GastoRow[]>(`
-    INSERT INTO gastos_operativos ("proyectoId", tipo, concepto, monto, cantidad, notas)
-    VALUES ($1, $2, $3, $4, $5, $6)
+    INSERT INTO gastos_operativos ("proyectoId", tipo, concepto, monto, cantidad, notas, "autorizadoEn", "autorizadoPor")
+    VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7)
     RETURNING *
-  `, proyectoId, tipo ?? "OTRO", concepto, Number(monto), Number(cantidad ?? 1), notas ?? null);
+  `, proyectoId, tipo ?? "OTRO", concepto, Number(monto), Number(cantidad ?? 1), notas ?? null, session.name || session.email);
 
   // Create linked CxP so it appears in cuentas por pagar
   const proyecto = await prisma.proyecto.findUnique({

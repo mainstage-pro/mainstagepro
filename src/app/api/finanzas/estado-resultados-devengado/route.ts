@@ -99,9 +99,10 @@ export async function GET(req: NextRequest) {
       },
     }),
 
-    // GASTOS DE EVENTO: GastoOperativo cuyo proyecto ocurre en el mes
+    // GASTOS DE EVENTO: GastoOperativo cuyo proyecto ocurre en el mes. Sin la firma de
+    // dirección el renglón es una propuesta, no un gasto comprometido.
     prisma.gastoOperativo.findMany({
-      where: { proyecto: { fechaEvento: { gte: desde, lte: hasta } } },
+      where: { proyecto: { fechaEvento: { gte: desde, lte: hasta } }, autorizadoEn: { not: null } },
       include: {
         proyecto: {
           select: { nombre: true, numeroProyecto: true, fechaEvento: true },

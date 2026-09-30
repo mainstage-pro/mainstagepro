@@ -163,6 +163,8 @@ export async function POST(request: NextRequest) {
         diasTransporte: campos.diasTransporte ? parseInt(campos.diasTransporte) : 1,
         diasHospedaje: campos.diasHospedaje ? parseInt(campos.diasHospedaje) : 1,
         diasComidas: campos.diasComidas ? parseInt(campos.diasComidas) : 1,
+        personasViaticos: campos.personasViaticos != null ? parseInt(campos.personasViaticos) : null,
+        comidasPorDia: campos.comidasPorDia ? parseInt(campos.comidasPorDia) : 1,
         subtotalEquiposBruto: campos.subtotalEquiposBruto || 0,
         descuentoVolumenPct: campos.descuentoVolumenPct || 0,
         descuentoB2bPct: campos.descuentoB2bPct || 0,

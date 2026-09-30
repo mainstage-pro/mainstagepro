@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { ensureSyncColumns, ensureCotizacionHorarioColumns } from "@/lib/migraciones-lazy";
 import { sembrarNotasEquiposProyecto } from "@/lib/notas-equipos";
+import { sembrarViaticosProyecto } from "@/lib/viaticos-proyecto";
 
 /**
  * Motor de sincronización cotización → proyecto.
@@ -370,6 +371,10 @@ export async function sincronizarProyectoDesdeCotizacion(
     // Sembrar notas de equipo desde la cotización hacia los ProyectoEquipo que
     // aún no tienen (incluye los recién creados). No sobrescribe notas manuales.
     await sembrarNotasEquiposProyecto(proyectoId);
+
+    // Comidas y viáticos: el renglón editable donde coordinación revisa la gente y
+    // dirección libera el dinero. Solo crea los que faltan.
+    await sembrarViaticosProyecto(proyectoId, cotizacionId);
 
     return { sincronizado: true };
   } catch (err) {

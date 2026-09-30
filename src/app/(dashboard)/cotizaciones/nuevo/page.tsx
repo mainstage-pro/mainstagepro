@@ -9,6 +9,7 @@ import { getSugerenciasTecnicos } from "@/lib/sugerencias-tecnicos";
 import { DISCIPLINA_LABELS, DISCIPLINA_COLORS } from "@/lib/disciplinaColors";
 import { agruparRolesTecnicos, tarifaRol, nivelEfectivo, rolUsaNivel, rolUsaJornada, JORNADAS_ROL, JORNADA_ROL_LABELS, NIVELES_ROL } from "@/lib/rolesTecnicos";
 import { diasEvento } from "@/lib/fechas-evento";
+import { personasDeCotizacion } from "@/lib/viaticos";
 import VenuePicker from "@/components/ui/VenuePicker";
 import NumSelect from "@/components/ui/NumSelect";
 import { Combobox } from "@/components/Combobox";
@@ -173,10 +174,13 @@ interface Jornada {
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
+// Precio de UNA comida para UNA persona: cuántas se dan al día lo dice el cuadro de
+// viáticos, no el concepto.
 const CONCEPTOS_COMIDA = [
-  { label: "1 comida por persona", precio: 150 },
-  { label: "2 comidas por persona", precio: 300 },
-  { label: "3 comidas por persona", precio: 450 },
+  { label: "Comida corrida", precio: 150 },
+  { label: "Desayuno", precio: 120 },
+  { label: "Cena", precio: 150 },
+  { label: "Box lunch", precio: 180 },
 ];
 const CONCEPTOS_TRANSPORTE = [
   { label: "Gasolina (corta)", precio: 250 },
@@ -367,6 +371,11 @@ function CotizadorForm() {
   const [logPrecio, setLogPrecio] = useState({ COMIDA: String(CONCEPTOS_COMIDA[0].precio), TRANSPORTE: String(CONCEPTOS_TRANSPORTE[0].precio), HOSPEDAJE: String(CONCEPTOS_HOSPEDAJE[0].precio) });
   const [logCant, setLogCant] = useState({ COMIDA: "1", TRANSPORTE: "1", HOSPEDAJE: "1" });
   const [logDias, setLogDias] = useState({ COMIDA: "1", TRANSPORTE: "1", HOSPEDAJE: "1" });
+
+  // Cuadro de viáticos: la gente de casa que va al evento. Vacío = el número que sale
+  // de los puestos cotizados; con valor, el vendedor lo ajustó a mano.
+  const [personasViaticosManual, setPersonasViaticosManual] = useState("");
+  const [comidasPorDia, setComidasPorDia] = useState("1");
 
   // Proveedores para selector en modal nuevo equipo
   const [proveedores, setProveedores] = useState<Array<{ id: string; nombre: string; telefono: string | null }>>([]);
@@ -679,6 +688,8 @@ function CotizadorForm() {
         }
         if (cot.zonaEvento) setZonaEvento(cot.zonaEvento as "LOCAL"|"BAJIO"|"NACIONAL");
         if (cot.numTecnicosZona) setNumTecnicosZona(cot.numTecnicosZona);
+        if (cot.personasViaticos != null) setPersonasViaticosManual(String(cot.personasViaticos));
+        if (cot.comidasPorDia) setComidasPorDia(String(cot.comidasPorDia));
         if (cot.paqueteId) setPaqueteBaseId(cot.paqueteId);
         if (cot.sustituciones) {
           try { const s = JSON.parse(cot.sustituciones); if (Array.isArray(s)) setSustituciones(s); } catch { /* ignore */ }
@@ -749,12 +760,27 @@ function CotizadorForm() {
   // Auto-activación B2B desactivada intencionalmente:
   // El vendedor decide manualmente si aplica descuento B2B para cada cotización.
 
-  // Auto-calcular cantidad de comidas = total técnicos en cotización
+  // Personas que van al evento según los puestos cotizados. Misma regla que usa el
+  // proyecto con los técnicos ya asignados (src/lib/viaticos.ts).
+  const personasCalculadas = useMemo(
+    () => personasDeCotizacion({ lineasOperacion: lineasOp, djs: lineasDJ.length, jornadas: jornadasPlan }),
+    [lineasOp, lineasDJ, jornadasPlan],
+  );
+  const personasViaticos = personasViaticosManual !== ""
+    ? Math.max(0, parseInt(personasViaticosManual) || 0)
+    : personasCalculadas;
+  const diasComidas = Math.max(1, ...lineasLog.filter(l => l.tipo === "COMIDA").map(l => l.dias));
+
+  // La cantidad de comidas nunca se captura: son las personas por los servicios del día.
+  // El cuadro manda, así que también corrige las líneas de comida ya agregadas.
   useEffect(() => {
-    const totalTecnicos = lineasOp.reduce((s, l) => s + Math.round(l.cantidad), 0)
-      + lineasDJ.length;
-    if (totalTecnicos > 0) setLogCant(p => ({ ...p, COMIDA: String(totalTecnicos) }));
-  }, [lineasOp, lineasDJ]);
+    const raciones = personasViaticos * (parseInt(comidasPorDia) || 1);
+    if (raciones <= 0) return;
+    setLogCant(p => ({ ...p, COMIDA: String(raciones) }));
+    setLineasLog(prev => prev.map(l => l.tipo !== "COMIDA" || l.cantidad === raciones
+      ? l
+      : { ...l, cantidad: raciones, subtotal: l.precioUnitario * raciones * l.dias }));
+  }, [personasViaticos, comidasPorDia]);
 
   // Cargar disponibilidad cuando cambia la fecha del evento
   useEffect(() => {
@@ -1718,6 +1744,9 @@ function CotizadorForm() {
           ...evento,
           zonaEvento,
           numTecnicosZona,
+          personasViaticos: personasViaticosManual !== "" ? personasViaticos : null,
+          comidasPorDia: parseInt(comidasPorDia) || 1,
+          diasComidas,
           notasSecciones: Object.keys(notasSecciones).length > 0 ? JSON.stringify(notasSecciones) : null,
           jornadasPlan: jornadasPlan.length > 0 ? jornadasPlan : null,
           observaciones,
@@ -1780,6 +1809,7 @@ function CotizadorForm() {
     evento, observaciones, aplicaIva, incluirChofer,
     lineasEquipo, lineasPaquete, lineasExterno, lineasOp, lineasDJ, lineasLog, lineasOcasional,
     jornadasPlan, notasSecciones, zonaEvento, numTecnicosZona,
+    personasViaticosManual, comidasPorDia,
     volumenActivo, b2bActivo, manualActivo, manualEsMonto, manualValor, manualRazon,
     pagoAnticipadoActivo, pagoAnticipadoFecha, pagoAnticipadoTexto,
   ]);
@@ -1902,6 +1932,9 @@ function CotizadorForm() {
       sustituciones: sustituciones.length ? sustituciones : null,
       zonaEvento,
       numTecnicosZona,
+      personasViaticos: personasViaticosManual !== "" ? personasViaticos : null,
+      comidasPorDia: parseInt(comidasPorDia) || 1,
+      diasComidas,
       notasSecciones: Object.keys(notasSecciones).length > 0 ? JSON.stringify(notasSecciones) : null,
       jornadasPlan: jornadasPlan.length > 0 ? jornadasPlan : null,
       observaciones,
@@ -3598,6 +3631,41 @@ function CotizadorForm() {
 
           {/* ── Logística ── */}
           <Seccion titulo="Logística" hint="sin descuento">
+            {/* Cuadro de viáticos: de aquí sale la cantidad de comidas y el número que
+                el proyecto vuelve a calcular con los técnicos que queden asignados. */}
+            <div className="mb-4 rounded-lg border border-[#222] bg-[#0d0d0d] px-3 py-3">
+              <div className="flex flex-wrap items-end gap-4">
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] uppercase tracking-wider text-[#666]">Personas que van al evento</span>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={0}
+                      value={personasViaticosManual !== "" ? personasViaticosManual : String(personasCalculadas)}
+                      onChange={e => setPersonasViaticosManual(e.target.value)}
+                      className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                    />
+                    {personasViaticosManual !== "" && parseInt(personasViaticosManual) !== personasCalculadas && (
+                      <button
+                        onClick={() => setPersonasViaticosManual("")}
+                        className="text-[11px] text-[#B3985B] hover:text-white transition-colors"
+                      >
+                        volver a {personasCalculadas}
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] uppercase tracking-wider text-[#666]">Comidas por persona al día</span>
+                  <NumSelect value={comidasPorDia} onChange={setComidasPorDia} max={5} className="w-16 py-2" title="Comidas por día" />
+                </div>
+                <p className="text-[11px] text-gray-500 flex-1 min-w-[180px]">
+                  {personasCalculadas > 0
+                    ? `Salen ${personasCalculadas} de los puestos cotizados. Ajusta el número si va más o menos gente.`
+                    : "Agrega los puestos de operación técnica y el número se calcula solo."}
+                </p>
+              </div>
+            </div>
             {([
               { tipo: "COMIDA" as const, label: "Comida", conceptos: CONCEPTOS_COMIDA, icon: Utensils as LucideIcon },
               { tipo: "TRANSPORTE" as const, label: "Transporte", conceptos: CONCEPTOS_TRANSPORTE, icon: Bus as LucideIcon },
@@ -3628,7 +3696,16 @@ function CotizadorForm() {
                       </div>
                       <div className="flex shrink-0 flex-col gap-1">
                         <span className="text-[10px] uppercase tracking-wider text-[#666]">Cantidad</span>
-                        <NumSelect value={logCant[tipo]} onChange={v => setLogCant(p => ({ ...p, [tipo]: v }))} max={50} className="w-16 py-2" title="Cantidad" />
+                        {tipo === "COMIDA" ? (
+                          <span
+                            title={`${personasViaticos} personas × ${comidasPorDia} comida(s) al día`}
+                            className="w-16 py-2 px-3 rounded-lg border border-[#2a2a2a] bg-[#111] text-center text-sm text-gray-400"
+                          >
+                            {logCant.COMIDA}
+                          </span>
+                        ) : (
+                          <NumSelect value={logCant[tipo]} onChange={v => setLogCant(p => ({ ...p, [tipo]: v }))} max={50} className="w-16 py-2" title="Cantidad" />
+                        )}
                       </div>
                       <div className="flex shrink-0 flex-col gap-1">
                         <span className="text-[10px] uppercase tracking-wider text-[#666]">Días</span>
@@ -3640,7 +3717,8 @@ function CotizadorForm() {
                       const cant = parseFloat(logCant[tipo]) || 1;
                       const dias = parseInt(logDias[tipo]) || 1;
                       setLineasLog(prev => [...prev, { id: uid(), tipo, concepto: logConcepto[tipo], precioUnitario: precio, cantidad: cant, dias, subtotal: precio * cant * dias }]);
-                      setLogCant(p => ({ ...p, [tipo]: "1" }));
+                      // La cantidad de comidas la manda el cuadro de viáticos: no se reinicia.
+                      if (tipo !== "COMIDA") setLogCant(p => ({ ...p, [tipo]: "1" }));
                       setLogDias(p => ({ ...p, [tipo]: "1" }));
                     }} className="w-full px-3 py-2 rounded-lg bg-[#333] text-white font-semibold text-sm hover:bg-[#444] sm:w-auto">+ Agregar</button>
                   </div>
@@ -3650,13 +3728,21 @@ function CotizadorForm() {
                         <div key={l.id} className="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-[#111] last:border-0">
                           <div className="w-full min-w-0 sm:w-auto sm:flex-1">
                             <p className="text-white text-sm truncate">{l.concepto}</p>
-                            <p className="text-gray-500 text-xs">×{l.cantidad} · {l.dias} día(s) · {formatCurrency(l.precioUnitario)}/u</p>
+                            <p className="text-gray-500 text-xs">
+                              {l.tipo === "COMIDA"
+                                ? `${personasViaticos} personas × ${comidasPorDia} al día × ${l.dias} día(s) · ${formatCurrency(l.precioUnitario)}/comida`
+                                : `×${l.cantidad} · ${l.dias} día(s) · ${formatCurrency(l.precioUnitario)}/u`}
+                            </p>
                           </div>
                           <input type="number" value={l.precioUnitario} onChange={e => {
                             const p = parseFloat(e.target.value) || 0;
                             setLineasLog(pr => pr.map(x => x.id === l.id ? { ...x, precioUnitario: p, subtotal: p * x.cantidad * x.dias } : x));
                           }} className="w-20 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white text-xs text-right focus:outline-none" />
-                          <NumSelect value={l.cantidad} onChange={v => { const c = parseFloat(v) || 1; setLineasLog(pr => pr.map(x => x.id === l.id ? { ...x, cantidad: c, subtotal: x.precioUnitario * c * x.dias } : x)); }} max={50} className="w-14 py-1" />
+                          {l.tipo === "COMIDA" ? (
+                            <span className="w-14 py-1 text-center text-xs text-gray-500 border border-[#2a2a2a] rounded bg-[#111]">{l.cantidad}</span>
+                          ) : (
+                            <NumSelect value={l.cantidad} onChange={v => { const c = parseFloat(v) || 1; setLineasLog(pr => pr.map(x => x.id === l.id ? { ...x, cantidad: c, subtotal: x.precioUnitario * c * x.dias } : x)); }} max={50} className="w-14 py-1" />
+                          )}
                           <NumSelect value={l.dias} onChange={v => { const d = parseInt(v) || 1; setLineasLog(pr => pr.map(x => x.id === l.id ? { ...x, dias: d, subtotal: x.precioUnitario * x.cantidad * d } : x)); }} max={10} className="w-14 py-1" />
                           <span className="ml-auto w-20 text-right text-white text-sm font-medium shrink-0 sm:ml-0">{formatCurrency(l.subtotal)}</span>
                           <button onClick={() => setLineasLog(p => p.filter(x => x.id !== l.id))} className="text-gray-600 hover:text-red-400 text-lg leading-none shrink-0">×</button>

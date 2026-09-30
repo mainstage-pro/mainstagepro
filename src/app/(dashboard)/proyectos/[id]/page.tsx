@@ -27,6 +27,7 @@ import { ViabilidadWidget, type ViabilidadActiva, type ViabilidadHistoricoItem }
 import { MontajePosiciones, type Posicion as PosicionMontaje } from "@/components/proyectos/MontajePosiciones";
 import { PanelProveedores } from "@/components/proyectos/PanelProveedores";
 import { PanelImprevistos } from "@/components/proyectos/PanelImprevistos";
+import { PanelViaticos } from "@/components/proyectos/PanelViaticos";
 import ModalRegistrarPago, { type GrupoPago, type PagoCapturado } from "@/components/finanzas/ModalRegistrarPago";
 import DatosBancariosAcreedor from "@/components/finanzas/DatosBancariosAcreedor";
 import { datosBancarios, fichaAcreedorHref, type DatosBancarios } from "@/lib/datos-bancarios";
@@ -82,7 +83,6 @@ interface AjusteEntry { fecha: string; de: number; a: number; motivo: string; us
 interface CxC { id: string; concepto: string; tipoPago: string; monto: number; montoCobrado: number; estado: string; fechaCompromiso: string; montoOriginal: number | null; ajustesLog: string | null }
 interface CxP { id: string; concepto: string; monto: number; montoPagado?: number; montoCompensado?: number; estado: string; fechaCompromiso: string; tipoAcreedor: string; montoOriginal: number | null; ajustesLog: string | null; notas: string | null; esNomina?: boolean; esDeuda?: boolean; esReparto?: boolean; gastoRecurrenteId?: string | null; proveedorId?: string | null; tecnicoId?: string | null }
 interface Bitacora { id: string; tipo: string; contenido: string; createdAt: string; usuario: { name: string } | null }
-interface GastoOp { id: string; tipo: string; concepto: string; monto: number; cantidad: number; entregado: boolean; fechaEntrega: string | null; notas: string | null; cxpId: string | null }
 interface Gasto { id: string; fecha: string; concepto: string; monto: number; metodoPago: string; notas: string | null; referencia: string | null; categoriaId?: string | null; categoria: { id?: string; nombre: string } | null; proveedorId?: string | null; proveedor: { id?: string; nombre: string; empresa?: string | null } | null; cuentaOrigenId?: string | null; cuentaOrigen: { id: string; nombre: string; banco: string | null } | null }
 interface EquipoAccesorioLib { id: string; nombre: string; categoria: string | null; accesorioId?: string | null }
 interface RiderAccesorio { id: string; nombre: string; cantidad: number; categoria: string | null; completado: boolean; esSugerencia: boolean; orden: number; origen?: string | null; accesorioId?: string | null }
@@ -779,14 +779,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [candidatasFusion, setCandidatasFusion] = useState<CandidataFusion[] | null>(null);
   const [fusionando, setFusionando] = useState<string | null>(null);
 
-  const [gastosOp, setGastosOp] = useState<GastoOp[]>([]);
-  const [gastosLoaded, setGastosLoaded] = useState(false);
-  const [showGastoOpForm, setShowGastoOpForm] = useState(false);
-  const [gastoOpForm, setGastoOpForm] = useState({ tipo: "COMIDA", concepto: "", monto: "", cantidad: "1", notas: "" });
-  const [togglingGasto, setTogglingGasto] = useState<string | null>(null);
-  const [editingGastoOpId, setEditingGastoOpId] = useState<string | null>(null);
-  const [editGastoOpForm, setEditGastoOpForm] = useState({ tipo: "COMIDA", concepto: "", monto: "", cantidad: "1", notas: "" });
-  const [savingEditGastoOp, setSavingEditGastoOp] = useState(false);
 
   // Evaluación interna
   type EvalData = {
@@ -1448,85 +1440,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     }
   }
 
-  async function loadGastosOp() {
-    const r = await fetch(`/api/proyectos/gastos-operativos?proyectoId=${id}`, { cache: "no-store" });
-    const d = await r.json();
-    setGastosOp(d.gastos ?? []);
-    setGastosLoaded(true);
-  }
-
-  async function agregarGastoOp() {
-    if (!gastoOpForm.concepto || !gastoOpForm.monto) return;
-    const r = await fetch("/api/proyectos/gastos-operativos", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ proyectoId: id, ...gastoOpForm, monto: parseFloat(gastoOpForm.monto), cantidad: parseInt(gastoOpForm.cantidad) || 1 }),
-    });
-    if (!r.ok) {
-      const d = await r.json().catch(() => ({}));
-      toast.error(d.error ?? "Error al guardar");
-      return;
-    }
-    setGastoOpForm({ tipo: "COMIDA", concepto: "", monto: "", cantidad: "1", notas: "" });
-    setShowGastoOpForm(false);
-    loadGastosOp();
-  }
-
-  async function toggleEntregadoOp(g: GastoOp) {
-    setTogglingGasto(g.id);
-    const res = await fetch("/api/proyectos/gastos-operativos", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: g.id, entregado: !g.entregado }),
-    });
-    if (!res.ok) {
-      const d = await res.json().catch(() => ({}));
-      toast.error(d.error ?? "Error al guardar");
-      setTogglingGasto(null);
-      return;
-    }
-    await loadGastosOp();
-    setTogglingGasto(null);
-  }
-
-  async function eliminarGastoOp(gId: string) {
-    const res = await fetch("/api/proyectos/gastos-operativos", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: gId }),
-    });
-    if (!res.ok) {
-      const d = await res.json().catch(() => ({}));
-      toast.error(d.error ?? "Error al eliminar");
-      return;
-    }
-    loadGastosOp();
-  }
-
-  async function editarGastoOp() {
-    if (!editingGastoOpId || !editGastoOpForm.concepto.trim() || !editGastoOpForm.monto) return;
-    setSavingEditGastoOp(true);
-    const res = await fetch("/api/proyectos/gastos-operativos", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        id: editingGastoOpId,
-        tipo: editGastoOpForm.tipo,
-        concepto: editGastoOpForm.concepto.trim(),
-        monto: parseFloat(editGastoOpForm.monto),
-        cantidad: parseInt(editGastoOpForm.cantidad) || 1,
-        notas: editGastoOpForm.notas || null,
-      }),
-    });
-    setSavingEditGastoOp(false);
-    if (res.ok) {
-      setEditingGastoOpId(null);
-      loadGastosOp();
-    } else {
-      const d = await res.json().catch(() => ({}));
-      toast.error(d.error ?? "Error al editar");
-    }
-  }
 
   async function eliminarCxP(cxpId: string) {
     const ok = await confirm({ message: "¿Eliminar esta cuenta por pagar? Esta acción no se puede deshacer." });
@@ -1731,11 +1644,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       setCuentasBancarias(cu.cuentas ?? []);
     });
   }, [id]);
-
-  // Lazy-load gastos operativos when proyecto loads
-  useEffect(() => {
-    if (proyecto && !gastosLoaded) loadGastosOp();
-  }, [proyecto?.id]); // eslint-disable-line
 
   // Lazy-load evaluación cliente when proyecto loads
   useEffect(() => {
@@ -5917,6 +5825,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             })()}
           </div>
 
+          {/* ── Comidas y viáticos: el dinero de la gente que va al evento ── */}
+          <PanelViaticos proyectoId={id} puedeAutorizar={yo?.role === "ADMIN"} />
 
           {/* ── Logística general: montaje, soundcheck, evento y desmontaje ── */}
           {!esRenta && (() => {

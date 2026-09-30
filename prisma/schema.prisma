@@ -515,6 +515,11 @@ model Cotizacion {
   diasHospedaje  Int @default(1)
   diasComidas    Int @default(1)
 
+  // Cuadro de viáticos: la gente de casa que va al evento. NULL = se usa el número que
+  // sale de los puestos cotizados; con valor, el vendedor lo ajustó a mano.
+  personasViaticos Int?
+  comidasPorDia    Int @default(1)
+
   subtotalEquiposBruto      Float   @default(0)
   descuentoVolumenPct       Float   @default(0)
   descuentoB2bPct           Float   @default(0)
@@ -3116,9 +3121,15 @@ model TareaComentario {
   @@map("tarea_comentarios")
 }
 
-// ─── GASTOS OPERATIVOS ───────────────────────────────────────────────────────
-// Efectivo que coordinación necesita antes del evento: comidas, transporte, hospedaje.
-// Se jalan de las líneas de cotización y admin marca si ya se entregó el dinero.
+// ─── GASTOS OPERATIVOS (COMIDAS Y VIÁTICOS) ──────────────────────────────────
+// Lo que coordinación necesita antes del evento: comidas, transporte, hospedaje. Se
+// siembran desde el cuadro de viáticos de la cotización y se revisan en el proyecto,
+// donde el número de personas se recalcula con los técnicos que quedaron asignados.
+//
+// El estado no es un campo: sale de las marcas (ver estadoViatico en src/lib/viaticos.ts).
+//   sin autorizadoEn        → PROPUESTO (es un plan, no cuenta como gasto)
+//   con autorizadoEn        → AUTORIZADO (dirección liberó el dinero)
+//   entregado = true        → ENTREGADO (ya salió de caja)
 model GastoOperativo {
   id           String    @id @default(cuid())
   proyectoId   String
@@ -3133,6 +3144,22 @@ model GastoOperativo {
   notas        String?
   createdAt    DateTime  @default(now())
 
+  // Desglose del renglón: monto = personas × porDia × dias × costoUnitario
+  personas      Int?
+  porDia        Int?
+  dias          Int?
+  costoUnitario Float?
+
+  // EFECTIVO (se le da el dinero a alguien) | SERVICIO (se contrata a un proveedor)
+  modalidad   String  @default("EFECTIVO")
+  responsable String? // quién recibe el efectivo, o el proveedor del servicio
+
+  autorizadoPor String?
+  autorizadoEn  DateTime?
+
+  cotizacionId String? // de qué cotización se sembró; NULL = capturado a mano
+
+  @@index([proyectoId])
   @@map("gastos_operativos")
 }
 
