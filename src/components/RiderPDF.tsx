@@ -1,6 +1,6 @@
 import React from 'react'
 import {
-  Document, Page, View, Text, Image, StyleSheet, Font,
+  Document, Page, View, Text, Image, Link, StyleSheet,
 } from '@react-pdf/renderer'
 import { fmt24to12 } from '@/lib/hora'
 
@@ -89,11 +89,16 @@ const s = StyleSheet.create({
   headerTitle:{ fontSize: 9, color: GOLD, letterSpacing: 3, textTransform: 'uppercase', fontFamily: 'Helvetica-Bold' },
   headerSub:  { fontSize: 14, color: INK1, fontFamily: 'Helvetica-Bold', marginTop: 2 },
   headerDate: { fontSize: 8, color: INK5, marginTop: 3 },
-  // Event grid
-  gridRow:    { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 16, gap: 6 },
-  gridCell:   { backgroundColor: LIGHT1, borderWidth: 1, borderColor: BORDER, borderRadius: 4, padding: 8, minWidth: 120, flex: 1 },
-  gridLabel:  { fontSize: 7, color: INK5, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 3, fontFamily: 'Helvetica-Bold' },
-  gridValue:  { fontSize: 9, color: INK1 },
+  // Panel de datos del evento — una sola caja con columnas alineadas
+  infoPanel:  { borderWidth: 1, borderColor: BORDER, borderRadius: 4, marginBottom: 12, overflow: 'hidden' },
+  infoRow:    { flexDirection: 'row', borderBottomWidth: 0.5, borderBottomColor: BORDER, alignItems: 'stretch' },
+  infoCell:   { paddingHorizontal: 9, paddingVertical: 7 },
+  infoCellDiv:{ borderRightWidth: 0.5, borderRightColor: BORDER },
+  infoLabel:  { fontSize: 6.5, color: INK8, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2.5, fontFamily: 'Helvetica-Bold' },
+  infoValue:  { fontSize: 9, color: INK1 },
+  infoSub:    { fontSize: 7.5, color: INK5, marginTop: 2 },
+  infoLink:   { fontSize: 7.5, color: GOLD, marginTop: 2, textDecoration: 'none' },
+  resumenNum: { fontSize: 13, color: INK1, fontFamily: 'Helvetica-Bold' },
   // Section
   sectionHead:{ flexDirection: 'row', alignItems: 'center', marginTop: 16, marginBottom: 8 },
   sectionLine:{ flex: 1, height: 1, backgroundColor: BORDER },
@@ -104,14 +109,15 @@ const s = StyleSheet.create({
   checkBox:   { width: 12, height: 12, borderWidth: 1.5, borderColor: INK5, borderRadius: 2, marginRight: 8 },
   equipName:  { fontSize: 10, color: INK1, flex: 1, fontFamily: 'Helvetica-Bold' },
   equipMeta:  { fontSize: 8, color: INK8 },
-  badge:      { backgroundColor: LIGHT1, borderWidth: 1, borderColor: GOLD, borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2 },
-  badgeTxt:   { fontSize: 8, color: GOLD, fontFamily: 'Helvetica-Bold' },
+  // La cantidad va en negro: es el dato que se lee en bodega sobre papel impreso.
+  badge:      { backgroundColor: LIGHT1, borderWidth: 1, borderColor: INK1, borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2 },
+  badgeTxt:   { fontSize: 8, color: INK1, fontFamily: 'Helvetica-Bold' },
   // Accesorios grid
   accGrid:    { flexDirection: 'row', flexWrap: 'wrap', padding: 8, gap: 6, backgroundColor: LIGHT1 },
   accItem:    { flexDirection: 'row', alignItems: 'center', width: '48%', backgroundColor: LIGHT2, borderRadius: 3, padding: 5 },
   accCheck:   { width: 10, height: 10, borderWidth: 1, borderColor: INK5, borderRadius: 2, marginRight: 5 },
   accTxt:     { fontSize: 8, color: INK5, flex: 1 },
-  accQty:     { fontSize: 7, color: GOLD, marginLeft: 4 },
+  accQty:     { fontSize: 7, color: INK1, marginLeft: 4, fontFamily: 'Helvetica-Bold' },
   // Categoria header
   catHead:    { backgroundColor: INK1, paddingHorizontal: 10, paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: BORDER },
   catTxt:     { fontSize: 7, color: WHITE, textTransform: 'uppercase', letterSpacing: 1.5, fontFamily: 'Helvetica-Bold' },
@@ -149,23 +155,31 @@ function fmtFechaCorta(iso: string | null): string {
   } catch { return iso }
 }
 
-function GridCell({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={s.gridCell}>
-      <Text style={s.gridLabel}>{label}</Text>
-      <Text style={s.gridValue}>{value || '—'}</Text>
-    </View>
-  )
-}
+/** Una celda del panel de datos. `peso` reparte el ancho de la fila. */
+type InfoCelda = { label: string; value: string; sub?: string; link?: string; peso?: number }
 
-function DateTimeCell({ label, fecha, hora }: { label: string; fecha: string | null; hora: string | null }) {
+function InfoRow({ celdas }: { celdas: InfoCelda[] }) {
+  const total = celdas.reduce((a, c) => a + (c.peso ?? 1), 0)
   return (
-    <View style={s.gridCell}>
-      <Text style={s.gridLabel}>{label}</Text>
-      {fecha
-        ? <Text style={{ fontSize: 7.5, color: INK5, marginBottom: 1 }}>{fecha}</Text>
-        : <View style={{ width: 80, borderBottomWidth: 0.5, borderBottomColor: '#aaa', height: 9, marginBottom: 2 }} />}
-      <Text style={[s.gridValue, { fontFamily: 'Helvetica-Bold' }]}>{hora || '—'}</Text>
+    <View style={s.infoRow} wrap={false}>
+      {celdas.map((c, i) => (
+        <View
+          key={c.label}
+          style={[
+            s.infoCell,
+            { width: `${((c.peso ?? 1) / total) * 100}%` },
+            i < celdas.length - 1 ? s.infoCellDiv : {},
+          ]}
+        >
+          <Text style={s.infoLabel}>{c.label}</Text>
+          <Text style={s.infoValue}>{c.value || '—'}</Text>
+          {c.sub
+            ? c.link
+              ? <Link src={c.link} style={s.infoLink}>{c.sub}</Link>
+              : <Text style={s.infoSub}>{c.sub}</Text>
+            : null}
+        </View>
+      ))}
     </View>
   )
 }
@@ -193,6 +207,53 @@ export function RiderPDF({ data }: { data: RiderPDFData }) {
 
   const totalEquipos = data.equipos.reduce((s, e) => s + e.cantidad, 0)
   const totalAccesorios = data.equipos.reduce((s, e) => s + e.riderAccesorios.length, 0)
+
+  const filasInfo: InfoCelda[][] = [[
+    { label: 'Cliente', value: data.cliente?.empresa ?? data.cliente?.nombre ?? '—' },
+    { label: 'Venue', value: data.lugarEvento ?? '—' },
+    { label: 'Montaje', value: fmt24to12(data.horaMontaje) || '—', sub: fmtFechaCorta(data.fechaMontaje) || fmtFechaCorta(data.fechaEvento) || undefined },
+    { label: 'Inicio evento', value: fmt24to12(data.horaInicio) || '—', sub: fmtFechaCorta(data.fechaEvento) || undefined },
+  ]]
+
+  const filaLogistica: InfoCelda[] = []
+  if (data.direccionVenue || data.linkMaps) {
+    filaLogistica.push({
+      label: 'Dirección',
+      value: data.direccionVenue ?? '—',
+      sub: data.linkMaps?.replace(/^https?:\/\//, '') || undefined,
+      link: data.linkMaps ?? undefined,
+      peso: 2,
+    })
+  }
+  if (data.horaSalidaBodega) {
+    filaLogistica.push({
+      label: data.puntoSalidaBodega ? `Salida de ${data.puntoSalidaBodega}` : 'Salida de bodega',
+      value: fmt24to12(data.horaSalidaBodega) || '—',
+    })
+  }
+  if (data.choferNombre) filaLogistica.push({ label: 'Chofer', value: data.choferNombre })
+  if (filaLogistica.length) filasInfo.push(filaLogistica)
+
+  const filaEncargados: InfoCelda[] = []
+  if (data.encargadoCliente) {
+    filaEncargados.push({
+      label: 'Encargado cliente',
+      value: `${data.encargadoCliente}${data.encargadoClienteContacto ? ` · ${data.encargadoClienteContacto}` : ''}`,
+    })
+  }
+  if (data.encargadoLugar) {
+    filaEncargados.push({
+      label: 'Encargado del lugar',
+      value: `${data.encargadoLugar}${data.encargadoLugarContacto ? ` · ${data.encargadoLugarContacto}` : ''}`,
+    })
+  }
+  if (filaEncargados.length) filasInfo.push(filaEncargados)
+
+  const resumen = [
+    { label: 'Equipos', value: String(data.equipos.length) },
+    { label: 'Piezas totales', value: String(totalEquipos) },
+    { label: 'Accesorios', value: String(totalAccesorios) },
+  ]
 
   return (
     <Document
@@ -230,23 +291,18 @@ export function RiderPDF({ data }: { data: RiderPDFData }) {
           </View>
         )}
 
-        {/* ── Datos del evento ── */}
-        <View style={[s.gridRow, { marginBottom: 8 }]}>
-          <GridCell label="Cliente" value={data.cliente?.empresa ?? data.cliente?.nombre ?? '—'} />
-          <GridCell label="Venue" value={data.lugarEvento ?? '—'} />
-          <DateTimeCell label="Fecha y hora de montaje" fecha={fmtFechaCorta(data.fechaMontaje) || fmtFechaCorta(data.fechaEvento)} hora={fmt24to12(data.horaMontaje)} />
-          <DateTimeCell label="Fecha y hora inicio evento" fecha={fmtFechaCorta(data.fechaEvento)} hora={fmt24to12(data.horaInicio)} />
-        </View>
-
-        {/* ── Dirección y acceso ── */}
-        {(data.direccionVenue || data.linkMaps || data.horaSalidaBodega || data.choferNombre) && (
-          <View style={[s.gridRow, { marginBottom: 8 }]}>
-            {data.direccionVenue && <GridCell label="Dirección" value={data.direccionVenue} />}
-            {data.linkMaps && <GridCell label="Google Maps" value={data.linkMaps} />}
-            {data.horaSalidaBodega && <GridCell label={data.puntoSalidaBodega ? `Salida de ${data.puntoSalidaBodega}` : 'Salida desde bodega'} value={fmt24to12(data.horaSalidaBodega)} />}
-            {data.choferNombre && <GridCell label="Chofer" value={data.choferNombre} />}
+        {/* ── Datos del evento: un solo panel con las columnas alineadas ── */}
+        <View style={s.infoPanel}>
+          {filasInfo.map((fila, i) => <InfoRow key={i} celdas={fila} />)}
+          <View style={[s.infoRow, { borderBottomWidth: 0, backgroundColor: LIGHT1 }]} wrap={false}>
+            {resumen.map((r, i) => (
+              <View key={r.label} style={[s.infoCell, { width: '33.3333%' }, i < resumen.length - 1 ? s.infoCellDiv : {}]}>
+                <Text style={s.infoLabel}>{r.label}</Text>
+                <Text style={s.resumenNum}>{r.value}</Text>
+              </View>
+            ))}
           </View>
-        )}
+        </View>
 
         {/* ── Indicaciones de acceso ── */}
         {data.indicacionesAcceso && (
@@ -263,31 +319,6 @@ export function RiderPDF({ data }: { data: RiderPDFData }) {
             <Text style={{ fontSize: 9, color: INK1, lineHeight: 1.5 }}>{data.contactosEmergencia}</Text>
           </View>
         )}
-
-        {(data.encargadoCliente || data.encargadoLugar) && (
-          <View style={[s.gridRow, { marginBottom: 12 }]}>
-            {data.encargadoCliente && (
-              <GridCell label="Encargado cliente" value={`${data.encargadoCliente}${data.encargadoClienteContacto ? ` · ${data.encargadoClienteContacto}` : ''}`} />
-            )}
-            {data.encargadoLugar && (
-              <GridCell label="Encargado lugar" value={`${data.encargadoLugar}${data.encargadoLugarContacto ? ` · ${data.encargadoLugarContacto}` : ''}`} />
-            )}
-          </View>
-        )}
-
-        {/* Stats */}
-        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
-          {[
-            { label: 'Equipos', value: String(data.equipos.length) },
-            { label: 'Piezas totales', value: String(totalEquipos) },
-            { label: 'Accesorios', value: String(totalAccesorios) },
-          ].map(s2 => (
-            <View key={s2.label} style={{ flex: 1, backgroundColor: LIGHT1, borderRadius: 4, padding: 8, borderWidth: 1, borderColor: BORDER }}>
-              <Text style={{ fontSize: 7, color: INK5, marginBottom: 2 }}>{s2.label}</Text>
-              <Text style={{ fontSize: 14, color: GOLD, fontFamily: 'Helvetica-Bold' }}>{s2.value}</Text>
-            </View>
-          ))}
-        </View>
 
         {/* ── Equipos por categoría ── */}
         <SectionHeader title="Equipos" />
