@@ -1,0 +1,72 @@
+Matched: 135, Unmatched Bank: 53, Unmatched DB: 16
+=== UNMATCHED BANK AMOUNTS ===
+20000
+20000
+4800
+8000
+15100
+3200
+300
+11474
+11474
+18700
+12000
+5800
+519
+3597.2
+73
+92
+154.5
+799
+4900
+20000
+3500
+3000
+3250
+2750
+1800
+319
+50
+94
+1000
+3000
+347.69
+50000
+42999
+4089
+1444.91
+12474
+12474
+1467.09
+10000
+8500
+4200
+8750
+1500
+5000
+600
+36
+369
+183
+2000
+1500
+2500
+2500
+2000
+=== UNMATCHED DB AMOUNTS ===
+2026-04-21 | 60.54 | Saldo Banorte Personal
+2026-04-27 | 15500 | Préstamo Mau
+2026-04-28 | 7500 | Anticipo — PROYECTO SEBASTIAN LOREDO JURIQUILLA
+2026-05-02 | 588 | Viáticos
+2026-05-08 | 460 | SPEI
+2026-05-12 | 25100 | Traspaso Nóminas
+2026-05-15 | 27000 | Cuota 1/6 — Amortización Obra de Bodega
+2026-05-15 | 27000 | Traspaso Crédito Actinver para obra de bodega
+2026-05-18 | 500 | Transferencia por compra de insumos a Zaid
+2026-05-18 | 1600 | Nómina 2026-05-18 — Daniel Guarneros
+2026-05-22 | 500 | Gastos Operativos
+2026-05-26 | 1600 | Nómina 2026-05-25 — Rodolfo Daniel Vázquez Guarneros
+2026-05-26 | 6000 | Nómina 2026-05-25 — Mauricio Hernández Vázquez Mellado
+2026-05-29 | 4000 | Total — Sara 
+2026-06-02 | 15000 | Préstamo Mau
+2026-06-04 | 15000 | Set de extensiones

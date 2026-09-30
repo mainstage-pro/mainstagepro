@@ -1,0 +1,187 @@
+Matched: 150, Unmatched Bank: 38, Unmatched DB: 146
+=== UNMATCHED BANK AMOUNTS ===
+20000
+20000
+4800
+13800
+15100
+3200
+11474
+11474
+18700
+12000
+5800
+519
+3597.2
+73
+92
+154.5
+799
+4900
+20000
+3500
+3250
+2750
+319
+94
+347.69
+50000
+42999
+4089
+1444.91
+12474
+12474
+1467.09
+8500
+4200
+8750
+5000
+369
+183
+=== UNMATCHED DB AMOUNTS ===
+2026-04-21 | 60.54 | Saldo Banorte Personal
+2026-04-21 | 91810 | Saldo efectivo
+2026-04-21 | 66575.38 | Saldo Banorte Cuenta Fiscal
+2026-04-22 | 3030 | Fondo Caja chica
+2026-04-22 | 800 | Pago Eventos Semana 3 Abril
+2026-04-24 | 2350 | Servicio de Entarimado
+2026-04-24 | 3000 | Flete desmontaje
+2026-04-24 | 30 | Garrafón de agua
+2026-04-24 | 2700 | Renta equipos asteras
+2026-04-24 | 15000 | Anticipo — Presentación en Vivo Luca Mersini
+2026-04-27 | 15500 | Préstamo Mau
+2026-04-28 | 7500 | Anticipo — PROYECTO SEBASTIAN LOREDO JURIQUILLA
+2026-04-28 | 3816 | Anticipo 70 por ciento letrero neon
+2026-04-29 | 3000 | Pago Roy Abril Semana 4
+2026-04-29 | 3750 | ISRAEL PEREZ  — 15 PINSPOT BODA MARTIN
+2026-04-29 | 800 | Servicio Limpieza Edna
+2026-04-29 | 3000 | Pago Zaid Abril Semana 4
+2026-04-29 | 800 | Pago Noe Eventos Semana 4 Abril
+2026-04-29 | 3800 | Pago Efrain Eventos Abril Semana 4
+2026-04-29 | 3000 | Pago Victor Semana 4 Abril
+2026-04-29 | 200 | Gasolina para traslado a compra de letrero
+2026-04-30 | 6394.5 | Pago Consultores EMSO
+2026-04-30 | 1636.01 | Liquidación Letrero Mainstage
+2026-04-30 | 500 | Gasolina
+2026-04-30 | 6960 | Servicios Jurídicos EMSO (Mau)
+2026-04-30 | 26912 | Pago Planta de Luz
+2026-05-02 | 2400 | Gastos Operativos Bodas
+2026-05-02 | 588 | Viáticos
+2026-05-05 | 2552 | Total — 50% — Renta equipos Cao Cao
+2026-05-05 | 500 | Gasolina camioneta Ram
+2026-05-06 | 3700 | Nómina — Zaid Mainstage
+2026-05-06 | 1000 | Nómina — Rodrigo Vera
+2026-05-06 | 4500 | Nómina — Aron Padilla
+2026-05-06 | 3000 | Nómina — Diego Luna
+2026-05-06 | 19100 | Ingreso por pago a Freelancers ACTINVER efectivo
+2026-05-06 | 1800 | Nómina — Emmanuel Herrera
+2026-05-06 | 3600 | Nómina — Juan Carlos Herrera
+2026-05-08 | 460 | SPEI
+2026-05-11 | 580 | Comisión membresía
+2026-05-12 | 34974 | Total — 50% — Desayuno We Build
+2026-05-12 | 1600 | Nómina 2026-05 — Daniel Guarneros
+2026-05-12 | 40000 | CONCIERTO MORE THAN A TEE
+2026-05-12 | 316.91 | Tornillos Casa Blanca
+2026-05-12 | 90 | Duplicados Llaves
+2026-05-12 | 25100 | Traspaso Nóminas
+2026-05-12 | 4220 | Mars Pro
+2026-05-13 | 1300 | Adelanto Alejandro
+2026-05-13 | 1875 | Plaza de Toros
+2026-05-13 | 1000 | Total — 50% — Renta sub
+2026-05-14 | 1300 | Reembolso por uso de efectivo
+2026-05-14 | 800 | Nómina — Paki Arias
+2026-05-14 | 1000 | Nómina — Paki Arias
+2026-05-14 | 1300 | Nómina — Alejandro Staff
+2026-05-14 | 1000 | Nómina — Emmanuel Mane
+2026-05-14 | 800 | Nómina — Zaid Mainstage
+2026-05-14 | 1000 | Nómina — Zaid Mainstage
+2026-05-15 | 27000 | Cuota 1/6 — Amortización Obra de Bodega
+2026-05-16 | 500 | Gasolina
+2026-05-18 | 6000 | Nómina 2026-05-18 — Mauricio Hernández Vázquez Mellado
+2026-05-18 | 1600 | Nómina 2026-05-18 — Daniel Guarneros
+2026-05-18 | 500 | Transferencia por compra de insumos a Zaid
+2026-05-18 | 4000 | Reparto de utilidades — Susana Vázquez Mellado (2026-05-18)
+2026-05-18 | 4000 | Nómina 2026-05-18 — Carlos Luna
+2026-05-19 | 500 | Gasolina Camioneta RAM
+2026-05-19 | 4000 | Total — Sara
+2026-05-20 | 2800 | Nómina — Zaid Mainstage
+2026-05-20 | 850 | Limpieza Edna e insumos para limpieza
+2026-05-20 | 10000 | Home Depot
+2026-05-20 | 3248 | Anticipo Mantenimiento Planta Predator
+2026-05-20 | 3300 | Nómina — Rodrigo Vera
+2026-05-20 | 600 | Nómina — Zaid Mainstage
+2026-05-21 | 13 | Garrafón de agua
+2026-05-21 | 72 | Compras llaves Allen para pulpos
+2026-05-21 | 1050 | Compras Steren
+2026-05-21 | 3248 | Liquidación Mantenimiento Planta Predator
+2026-05-22 | 500 | Gastos Operativos
+2026-05-22 | 1500 | Pago Tecnico
+2026-05-23 | 1000 | Gastos Operativos Roy
+2026-05-23 | 400 | Desayuno Roy Vera
+2026-05-25 | 1810.97 | Gasolina Mau
+2026-05-25 | 2000 | Total — Renta de 2 boxinas EV
+2026-05-26 | 6394.5 | Pago Honorarios Contables EMSO
+2026-05-26 | 4000 | Reparto de utilidades — Susana Vázquez Mellado (2026-05-25)
+2026-05-26 | 2000 | Nómina 2026-05-25 — Zaid Bautista
+2026-05-26 | 6000 | Nómina 2026-05-25 — Mauricio Hernández Vázquez Mellado
+2026-05-26 | 2500 | Nómina 2026-05-25 — Sebastían Pérez
+2026-05-26 | 2500 | Nómina 2026-05-25 — Rodrigo Vera
+2026-05-26 | 1600 | Nómina 2026-05-25 — Rodolfo Daniel Vázquez Guarneros
+2026-05-26 | 4000 | Nómina 2026-05-25 — Carlos Luna
+2026-05-27 | 3000 | Nómina — Aron Padilla
+2026-05-27 | 2500 | Nómina — Paki Arias
+2026-05-27 | 94000 | Total — — Presentación en Vivo Luca Mersini
+2026-05-27 | 1800 | Nómina — Angel Staff
+2026-05-27 | 4300 | Nómina — Rodrigo Vera
+2026-05-27 | 3800 | Nómina — Rafa Gutiérrez
+2026-05-27 | 3800 | Nómina — Zaid Mainstage
+2026-05-27 | 2800 | Nómina — Emmanuel Mane
+2026-05-27 | 1500 | Nómina — Felipe Romero
+2026-05-28 | 2000 | Recarga caja chica
+2026-05-28 | 253 | Compras
+2026-05-28 | 1000 | Gasolina Camioneta RAM
+2026-05-29 | 580 | COMISION MEMBRESIA P. MORAL 0526
+2026-05-29 | 4000 | Instalación Cámaras
+2026-05-29 | 6000 | Puerta de Aluminio
+2026-05-29 | 14469.55 | Anualidad e Instalación Alarmas Guardían
+2026-05-29 | 600 | Comidas Diego Luna y Rafa
+2026-05-29 | 600 | Comidas Kuulto
+2026-05-29 | 4000 | Total — Sara
+2026-05-30 | 1200 | Total — Renta IEM
+2026-06-01 | 2500 | Nómina 2026-06-01 — Sebastían Pérez
+2026-06-01 | 2900 | Instalación cámaras y canaleta.
+2026-06-01 | 4000 | Reparto de utilidades — Susana Vázquez Mellado (2026-06-01)
+2026-06-01 | 6000 | Nómina 2026-06-01 — Mauricio Hernández Vázquez Mellado
+2026-06-01 | 500 | Nómina 2026-06-01 — Emiliano Pérez Peña
+2026-06-01 | 2500 | Nómina 2026-06-01 — Rodrigo Vera
+2026-06-01 | 2500 | Nómina 2026-06-01 — Emiliano Pérez Peña
+2026-06-01 | 2000 | Nómina 2026-06-01 — Zaid Bautista
+2026-06-01 | 1280 | Nómina 2026-06-01 — Rodolfo Daniel Vázquez Guarneros
+2026-06-01 | 4000 | Nómina 2026-06-01  — Carlos Luna
+2026-06-02 | 15000 | Compra de estuches
+2026-06-02 | 15000 | Préstamo Mau
+2026-06-02 | 2000 | Total — Renta de 2 boxinas EV
+2026-06-03 | 1800 | Renta Asteras
+2026-06-03 | 1150 | Nómina — Zaid Mainstage
+2026-06-03 | 1500 | Nómina — Paki Arias
+2026-06-03 | 359 | Insumos Limpieza
+2026-06-03 | 750 | Pendiente Edna
+2026-06-03 | 1500 | Nómina — Rafa Gutiérrez
+2026-06-03 | 200 | Gasolina Letrero Andrés Arroyo
+2026-06-03 | 1500 | Nómina — Diego Luna
+2026-06-03 | 9000 | Renta de Consola ma3 y Programación 5 canciones SMPTE
+2026-06-03 | 1150 | Nómina — Rodrigo Vera
+2026-06-03 | 800 | Limpieza Edna
+2026-06-03 | 1200 | Nómina — Victor Oronoz
+2026-06-03 | 2000 | Reparación medios Vic
+2026-06-04 | 1000 | Canaletas
+2026-06-04 | 2250 | Total — Renta de 4 beams y op tec
+2026-06-04 | 2500 | Total — Renta de triangulo de trusses
+2026-06-04 | 15000 | Set de extensiones
+2026-06-04 | 7000 | Planta de Luz (60w) 12 horas
+2026-06-04 | 4250 | EDGAR PORTABLE GENERATOR — DEUDA PLANTA DE LUZ HUMAN FESTIVAL
+2026-06-04 | 300 | Saldos Roy y Dany
+2026-06-04 | 500 | Gasolina Camioneta RAM
+2026-06-05 | 900 | Comidas Fin de Semana
+2026-06-05 | 1000 | Gasolina RAM
+2026-06-05 | 1200 | Reparación Baños

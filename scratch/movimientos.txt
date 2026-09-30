@@ -1,0 +1,435 @@
+Encontrados 434 movimientos en la base de datos.
+2026-04-01 | GASTO | 580 | AJUSTE PARA CUADRAR CUENTA  | TRANSFERENCIA
+2026-04-01 | GASTO | 2621.03 | pendiente | TRANSFERENCIA
+2026-04-21 | INGRESO | 60.54 | Saldo Banorte Personal | TRANSFERENCIA
+2026-04-21 | INGRESO | 91810 | Saldo efectivo | EFECTIVO
+2026-04-21 | INGRESO | 66575.38 | Saldo Banorte Cuenta Fiscal | TRANSFERENCIA
+2026-04-22 | GASTO | 3000 | Pago Eventos Semana 3 Abril | EFECTIVO
+2026-04-22 | GASTO | 15000 | Préstamo Mau | EFECTIVO
+2026-04-22 | GASTO | 18500 | Anticipo Tarimas | TRANSFERENCIA
+2026-04-22 | TRANSFERENCIA | 19800 | Traspaso devolución Efren | TRANSFERENCIA
+2026-04-22 | TRANSFERENCIA | 3030 | Fondo Caja chica | EFECTIVO
+2026-04-22 | GASTO | 4250 | Vallas Tom & Collins | TRANSFERENCIA
+2026-04-22 | GASTO | 800 | Pago Eventos Semana 3 Abril | EFECTIVO
+2026-04-22 | GASTO | 1000 | Pago Eventos Semana 3 Abril | EFECTIVO
+2026-04-22 | GASTO | 800 | Pago Eventos Semana 3 Abril | EFECTIVO
+2026-04-22 | INGRESO | 750 | Renta de Maquina de Humo | TRANSFERENCIA
+2026-04-22 | GASTO | 3000 | Pago Semana 3 Abril | EFECTIVO
+2026-04-22 | INGRESO | 30000 | Anticipo — Tom & collins | TRANSFERENCIA
+2026-04-22 | GASTO | 2000 | Renta de Camioneta | TRANSFERENCIA
+2026-04-22 | GASTO | 800 | Pago Eventos Semana 3 Abril | EFECTIVO
+2026-04-23 | GASTO | 4500 | Viáticos Tom & Collins | EFECTIVO
+2026-04-23 | GASTO | 1000 | Gasolina Camioneta Ram  | EFECTIVO
+2026-04-24 | GASTO | 2350 | Servicio de Entarimado | EFECTIVO
+2026-04-24 | GASTO | 1800 | Renta Asteras | TRANSFERENCIA
+2026-04-24 | INGRESO | 30000 | Anticipo — Tom & collins | TRANSFERENCIA
+2026-04-24 | GASTO | 3000 | Flete desmontaje | EFECTIVO
+2026-04-24 | GASTO | 31718 | Liquidación Servicio de Entarimado | TRANSFERENCIA
+2026-04-24 | GASTO | 30 | Garrafón de agua | EFECTIVO
+2026-04-24 | GASTO | 2700 | Renta equipos asteras | TRANSFERENCIA
+2026-04-24 | GASTO | 2820 | SEGUIDORES TIJERAS/TARIMAS | TRANSFERENCIA
+2026-04-24 | GASTO | 2150 | Mantenimiento de equipos, reparación luces beam y mantenimiento dom 900nsx2 | TRANSFERENCIA
+2026-04-24 | GASTO | 2400 | Renta de 8 Blinders 200 (300 c/u) | EFECTIVO
+2026-04-24 | GASTO | 500 | Flete desmontaje | EFECTIVO
+2026-04-24 | INGRESO | 15000 | Anticipo — Presentación en Vivo Luca Mersini | EFECTIVO
+2026-04-25 | GASTO | 1000 | Gasolina y comida  | EFECTIVO
+2026-04-27 | GASTO | 550 | Envió de 2 fundas para Bajos RCF | TRANSFERENCIA
+2026-04-27 | GASTO | 2500 | Nómina 2026-04 — Emiliano Pérez Peña | TRANSFERENCIA
+2026-04-27 | GASTO | 4000 | Nómina 2026-04 — Carlos Luna | TRANSFERENCIA
+2026-04-27 | GASTO | 15500 | Préstamo Mau | TRANSFERENCIA
+2026-04-27 | GASTO | 179 | Chip Cheb | TRANSFERENCIA
+2026-04-27 | GASTO | 1600 | Nómina 2026-04 — Daniel Guarneros | TRANSFERENCIA
+2026-04-27 | INGRESO | 4250 | Anticipo — Warache Studio 25 de abril | TRANSFERENCIA
+2026-04-27 | GASTO | 500 | Gasolina camioneta Ram | EFECTIVO
+2026-04-27 | GASTO | 6000 | Nómina 2026-04 — Mauricio Hernández Vázquez Mellado | TRANSFERENCIA
+2026-04-27 | RETIRO | 4000 | Reparto de utilidades — Susana Vázquez Mellado (2026-04) | TRANSFERENCIA
+2026-04-27 | GASTO | 1500 | Gastos Operativos (Transporte y Viáticos) Eventos Semana 4. | TRANSFERENCIA
+2026-04-27 | GASTO | 2500 | Nómina 2026-04 — Sebastían Pérez | TRANSFERENCIA
+2026-04-27 | GASTO | 2000 | Nómina 2026-04 — Rodrigo Vera | TRANSFERENCIA
+2026-04-27 | GASTO | 1500 | Nómina 2026-04 — Zaid Bautista | TRANSFERENCIA
+2026-04-28 | INGRESO | 7500 | Anticipo — PROYECTO SEBASTIAN LOREDO JURIQUILLA | TRANSFERENCIA
+2026-04-28 | GASTO | 3816 | Anticipo 70 por ciento letrero neon | TRANSFERENCIA
+2026-04-28 | GASTO | 8750 | Anticipo Planta Gto | TRANSFERENCIA
+2026-04-28 | INGRESO | 1000 | RENTA DE BOCINA ELECTRO VOICE | TRANSFERENCIA
+2026-04-29 | GASTO | 3000 | Pago Roy Abril Semana 4 | TRANSFERENCIA
+2026-04-29 | INGRESO | 24560 | Liquidación Muda Palabra | TRANSFERENCIA
+2026-04-29 | GASTO | 4200 | Catering Pendiente Edna | TRANSFERENCIA
+2026-04-29 | GASTO | 10000 | Renta Barandal | EFECTIVO
+2026-04-29 | GASTO | 3750 | ISRAEL PEREZ  — 15 PINSPOT BODA MARTIN | EFECTIVO
+2026-04-29 | GASTO | 2500 | Pago Semana 4 Abril | TRANSFERENCIA
+2026-04-29 | INGRESO | 10700 | NIDO 4 DE ABRIL | TRANSFERENCIA
+2026-04-29 | GASTO | 800 | Servicio Limpieza Edna | TRANSFERENCIA
+2026-04-29 | GASTO | 3000 | Pago Zaid Abril Semana 4 | TRANSFERENCIA
+2026-04-29 | GASTO | 800 | Pago Noe Eventos Semana 4 Abril | TRANSFERENCIA
+2026-04-29 | GASTO | 3800 | Pago Efrain Eventos Abril Semana 4 | TRANSFERENCIA
+2026-04-29 | INGRESO | 4500 | Anticipo — Renta de cabina 3000 para Nex | TRANSFERENCIA
+2026-04-29 | GASTO | 3000 | Pago Victor Semana 4 Abril | TRANSFERENCIA
+2026-04-29 | GASTO | 200 | Gasolina para traslado a compra de letrero | TRANSFERENCIA
+2026-04-29 | GASTO | 1000 | Pago Francisco Arias Abril Semana 4 | TRANSFERENCIA
+2026-04-29 | GASTO | 2500 | Pago Carlos Luna Eventos Abril Semana 4 | TRANSFERENCIA
+2026-04-30 | GASTO | 2000 | Pago Emmanuel Perez  Abril Semana 4 | TRANSFERENCIA
+2026-04-30 | GASTO | 7780 | Asesoría Legal Proser | TRANSFERENCIA
+2026-04-30 | GASTO | 2500 | Pago Diego Luna Abril Semana 4 | TRANSFERENCIA
+2026-04-30 | GASTO | 4000 | Pago Aaron Abril Semana 4  | TRANSFERENCIA
+2026-04-30 | GASTO | 6394.5 | Pago Consultores EMSO | TRANSFERENCIA
+2026-04-30 | GASTO | 1636.01 | Liquidación Letrero Mainstage  | TRANSFERENCIA
+2026-04-30 | INGRESO | 46352 | Total — 50% — Terms & Conditions - Alhondiga Guanajuato | TRANSFERENCIA
+2026-04-30 | GASTO | 500 | Comidas | TRANSFERENCIA
+2026-04-30 | GASTO | 5000 | Varios levantamientos Cheb | TRANSFERENCIA
+2026-04-30 | GASTO | 500 | Gasolina | TRANSFERENCIA
+2026-04-30 | GASTO | 1500 | Pago Abril Semana 4 | TRANSFERENCIA
+2026-04-30 | GASTO | 6960 | Servicios Jurídicos EMSO (Mau) | TRANSFERENCIA
+2026-04-30 | GASTO | 26912 | Pago Planta de Luz | TRANSFERENCIA
+2026-04-30 | GASTO | 2300 | Levantamiento de Fotografía | TRANSFERENCIA
+2026-05-01 | GASTO | 12400 | Fee Production y equipos. | TRANSFERENCIA
+2026-05-01 | GASTO | 5000 | Emergencias TC Alhóndiga | TRANSFERENCIA
+2026-05-01 | GASTO | 600 | Comidas Diego Luna y Don Carlos | TRANSFERENCIA
+2026-05-01 | GASTO | 4000 | Compras  | TRANSFERENCIA
+2026-05-01 | GASTO | 2100 | Comidas y Gasolina Montaje Bodas | TRANSFERENCIA
+2026-05-01 | GASTO | 9500 | Viáticos TC | TRANSFERENCIA
+2026-05-02 | GASTO | 2400 | Gastos Operativos Bodas | TRANSFERENCIA
+2026-05-02 | GASTO | 2000 | Renta Booth  | TRANSFERENCIA
+2026-05-02 | GASTO | 4000 | Renta Camioneta | TRANSFERENCIA
+2026-05-02 | GASTO | 3500 | Levantamiento de Contenido | TRANSFERENCIA
+2026-05-02 | GASTO | 2900 | Ferretería | TRANSFERENCIA
+2026-05-02 | GASTO | 2000 | Anticipo Hotel | TRANSFERENCIA
+2026-05-02 | GASTO | 588 | Viáticos | TRANSFERENCIA
+2026-05-02 | GASTO | 1500 | Gasolina Planta  | TRANSFERENCIA
+2026-05-02 | GASTO | 5000 | Emergencia 2 | TRANSFERENCIA
+2026-05-02 | GASTO | 4000 | Pago Juan chofer | TRANSFERENCIA
+2026-05-04 | GASTO | 4000 | Nómina 2026-05 — Carlos Luna | TRANSFERENCIA
+2026-05-04 | GASTO | 6000 | Nómina 2026-05 — Mauricio Hernández | TRANSFERENCIA
+2026-05-04 | GASTO | 2500 | Nómina 2026-05-04 — Rodrigo Vera | TRANSFERENCIA
+2026-05-04 | RETIRO | 4000 | Reparto de utilidades — Susana Vázquez Mellado (2026-05) | TRANSFERENCIA
+2026-05-04 | GASTO | 1600 | Nómina 2026-05 — Daniel Guarneros | TRANSFERENCIA
+2026-05-04 | GASTO | 2500 | Nómina 2026-05 — Sebastián Pérez | TRANSFERENCIA
+2026-05-04 | GASTO | 2000 | Nómina 2026-05-04 — Zaid Bautista | TRANSFERENCIA
+2026-05-05 | INGRESO | 23350 | Total — 50% — Proyecto Ricardo Padilla | TRANSFERENCIA
+2026-05-05 | INGRESO | 2552 | Total — 50% — Renta equipos Cao Cao | TRANSFERENCIA
+2026-05-05 | GASTO | 36 | Pago estacionamiento desmontaje  | EFECTIVO
+2026-05-05 | GASTO | 400 | Adelanto pago Noe | EFECTIVO
+2026-05-05 | GASTO | 500 | Gasolina camioneta Ram | TRANSFERENCIA
+2026-05-06 | GASTO | 3700 | Nómina — Zaid Mainstage | EFECTIVO
+2026-05-06 | GASTO | 2000 | Nómina — Paki Arias | EFECTIVO
+2026-05-06 | GASTO | 1000 | Nómina — Rodrigo Vera | EFECTIVO
+2026-05-06 | GASTO | 2000 | Nómina — Carlos Efraín | EFECTIVO
+2026-05-06 | GASTO | 4500 | Nómina — Aron Padilla | TRANSFERENCIA
+2026-05-06 | GASTO | 3000 | Nómina — Diego Luna | EFECTIVO
+2026-05-06 | GASTO | 536 | Ferretería | TRANSFERENCIA
+2026-05-06 | INGRESO | 19100 | Ingreso por pago a Freelancers ACTINVER efectivo | TRANSFERENCIA
+2026-05-06 | INGRESO | 10333 | Total — 50% — Proyecto Esteban Rosas | TRANSFERENCIA
+2026-05-06 | GASTO | 1500 | Nómina — Rafa Gutiérrez | TRANSFERENCIA
+2026-05-06 | GASTO | 2000 | Nómina — Andrés Arroyo | TRANSFERENCIA
+2026-05-06 | GASTO | 2500 | Nómina — Teodoro | TRANSFERENCIA
+2026-05-06 | GASTO | 1800 | Nómina — Emmanuel Herrera | EFECTIVO
+2026-05-06 | GASTO | 3600 | Nómina — Juan Carlos Herrera | EFECTIVO
+2026-05-06 | GASTO | 2000 | Nómina — Emmanuel Mane | EFECTIVO
+2026-05-06 | GASTO | 2500 | Nómina — Noe Espinoza | TRANSFERENCIA
+2026-05-08 | GASTO | 460 | SPEI | TRANSFERENCIA
+2026-05-11 | GASTO | 600 | 02 BASES HEAVY PARA TRUSS | TRANSFERENCIA
+2026-05-11 | GASTO | 1600 | Barras (Proyecto no registrado) | TRANSFERENCIA
+2026-05-11 | GASTO | 580 | Comisión membresía | TRANSFERENCIA
+2026-05-11 | INGRESO | 3200 | Traspaso Pago proveedores ACTINVER | TRANSFERENCIA
+2026-05-11 | GASTO | 1600 | DAVID VILLAGOMEZ — RENTA 04 BARRAS SUN STAR SOUL (MTAT) | TRANSFERENCIA
+2026-05-12 | INGRESO | 34974 | Total — 50% — Desayuno We Build | TRANSFERENCIA
+2026-05-12 | GASTO | 1600 | Nómina 2026-05 — Daniel Guarneros | TRANSFERENCIA
+2026-05-12 | INGRESO | 40000 | CONCIERTO MORE THAN A TEE | EFECTIVO
+2026-05-12 | GASTO | 400 | Gastos Personales | TRANSFERENCIA
+2026-05-12 | GASTO | 316.91 | Tornillos Casa Blanca | TRANSFERENCIA
+2026-05-12 | GASTO | 50 | Candado Dani | TRANSFERENCIA
+2026-05-12 | GASTO | 4000 | Nómina 2026-05 — Carlos Luna | TRANSFERENCIA
+2026-05-12 | GASTO | 2450.98 | Cargo por Domiciliación  | TRANSFERENCIA
+2026-05-12 | GASTO | 6000 | Nómina 2026-05 — Mauricio Hernández Vázquez Mellado | TRANSFERENCIA
+2026-05-12 | GASTO | 90 | Duplicados Llaves | TRANSFERENCIA
+2026-05-12 | INGRESO | 25100 | Traspaso Nóminas | TRANSFERENCIA
+2026-05-12 | GASTO | 2000 | Nómina 2026-05 — Zaid Bautista | TRANSFERENCIA
+2026-05-12 | GASTO | 2500 | Nómina 2026-05 — Rodrigo Vera | TRANSFERENCIA
+2026-05-12 | GASTO | 2500 | Nómina 2026-05 — Sebastían Pérez | TRANSFERENCIA
+2026-05-12 | RETIRO | 4000 | Nómina 2026-05 — Susana Vázquez Mellado | TRANSFERENCIA
+2026-05-12 | INVERSION | 4220 | Mars Pro | TRANSFERENCIA
+2026-05-13 | GASTO | 1300 | Adelanto Alejandro | EFECTIVO
+2026-05-13 | GASTO | 1875 | Plaza de Toros | TRANSFERENCIA
+2026-05-13 | INGRESO | 1000 | Total — 50% — Renta sub | TRANSFERENCIA
+2026-05-13 | INGRESO | 5200 | Devolución Viáticos | TRANSFERENCIA
+2026-05-13 | GASTO | 12500 | Anticipo Ground Support | TRANSFERENCIA
+2026-05-13 | APORTACION_DE_CAPITAL | 3000 | Disposición ACTINVER para Caja Chica | TRANSFERENCIA
+2026-05-13 | APORTACION_DE_CAPITAL | 13800 | Traspaso ACTINVER | TRANSFERENCIA
+2026-05-13 | GASTO | 2000 | Anticipo Bidones | TRANSFERENCIA
+2026-05-14 | INGRESO | 1300 | Reembolso por uso de efectivo | TRANSFERENCIA
+2026-05-14 | GASTO | 2000 | Nómina — Andrés Arroyo | TRANSFERENCIA
+2026-05-14 | GASTO | 800 | Nómina — Paki Arias | TRANSFERENCIA
+2026-05-14 | GASTO | 1000 | Nómina — Paki Arias | TRANSFERENCIA
+2026-05-14 | GASTO | 1300 | Nómina — Alejandro Staff | EFECTIVO
+2026-05-14 | GASTO | 1000 | Nómina — Emmanuel Mane | EFECTIVO
+2026-05-14 | GASTO | 8000 | Carpa en medidas 10x10 metros (x1 × 1d) — ⚠ Asignar proveedor | TRANSFERENCIA
+2026-05-14 | GASTO | 800 | Nómina — Zaid Mainstage | EFECTIVO
+2026-05-14 | GASTO | 1000 | Nómina — Zaid Mainstage | EFECTIVO
+2026-05-14 | GASTO | 300 | Nómina — Emmanuel Mane | TRANSFERENCIA
+2026-05-14 | INGRESO | 70000 | Total — — Tom & collins | TRANSFERENCIA
+2026-05-14 | GASTO | 4000 | EDGAR PORTABLE GENERATOR — DEUDA PLANTA DE LUZ HUMAN FESTIVAL | EFECTIVO
+2026-05-15 | APORTACION_DE_CAPITAL | 27000 | Traspaso Crédito Actinver para obra de bodega | TRANSFERENCIA
+2026-05-15 | GASTO | 27000 | Cuota 1/6 — Amortización Obra de Bodega | TRANSFERENCIA
+2026-05-15 | GASTO | 10000 | Renta Barandal | TRANSFERENCIA
+2026-05-16 | GASTO | 300 | Saldos Celulares | TRANSFERENCIA
+2026-05-16 | GASTO | 500 | Gasolina | TRANSFERENCIA
+2026-05-18 | GASTO | 6000 | Nómina 2026-05-18 — Mauricio Hernández Vázquez Mellado | TRANSFERENCIA
+2026-05-18 | GASTO | 5500 | Renta de equipos DJ (2 cdj300x, 1 mixer a9 y 1 rmx1000) | TRANSFERENCIA
+2026-05-18 | GASTO | 2500 | Nómina 2026-05-12 mayo — Emiliano Pérez Peña | TRANSFERENCIA
+2026-05-18 | GASTO | 2500 | Nómina 2026-05-18 — Emiliano Pérez Peña | TRANSFERENCIA
+2026-05-18 | INGRESO | 7200 | Total — Renta Audio sirilo house | TRANSFERENCIA
+2026-05-18 | GASTO | 2500 | Nómina 2026-05-18 — Sebastían Pérez | TRANSFERENCIA
+2026-05-18 | GASTO | 2000 | Nómina 2026-05-18 — Zaid Bautista | TRANSFERENCIA
+2026-05-18 | GASTO | 1600 | Nómina 2026-05-18 — Daniel Guarneros | TRANSFERENCIA
+2026-05-18 | GASTO | 2500 | Nómina 2026-05-18 — Rodrigo Vera | TRANSFERENCIA
+2026-05-18 | INGRESO | 21200 | Total — 50% — Jugueteria de Tranquilo | TRANSFERENCIA
+2026-05-18 | GASTO | 500 | Transferencia por compra de insumos a Zaid | TRANSFERENCIA
+2026-05-18 | RETIRO | 4000 | Reparto de utilidades — Susana Vázquez Mellado (2026-05-18) | TRANSFERENCIA
+2026-05-18 | GASTO | 4000 | Nómina 2026-05-18 — Carlos Luna | TRANSFERENCIA
+2026-05-19 | GASTO | 540 | Etiquetas Mainstage | TRANSFERENCIA
+2026-05-19 | GASTO | 500 | Gasolina Camioneta RAM | TRANSFERENCIA
+2026-05-19 | GASTO | 348.69 | Suscripción Chatgpt | TRANSFERENCIA
+2026-05-19 | INGRESO | 42659 | Total — — Tom & collins | TRANSFERENCIA
+2026-05-19 | INGRESO | 4000 | Total — Sara  | EFECTIVO
+2026-05-20 | GASTO | 2800 | Nómina — Zaid Mainstage | EFECTIVO
+2026-05-20 | GASTO | 850 | Limpieza Edna e insumos para limpieza | TRANSFERENCIA
+2026-05-20 | GASTO | 600 | Nómina — Rodrigo Vera | EFECTIVO
+2026-05-20 | GASTO | 10000 | Home Depot | TRANSFERENCIA
+2026-05-20 | GASTO | 3248 | Anticipo Mantenimiento Planta Predator | TRANSFERENCIA
+2026-05-20 | GASTO | 3300 | Nómina — Rodrigo Vera | EFECTIVO
+2026-05-20 | GASTO | 600 | Nómina — Zaid Mainstage | EFECTIVO
+2026-05-21 | GASTO | 632 | Tacos Victor | TRANSFERENCIA
+2026-05-21 | GASTO | 13 | Garrafón de agua | EFECTIVO
+2026-05-21 | GASTO | 72 | Compras llaves Allen para pulpos | EFECTIVO
+2026-05-21 | GASTO | 1050 | Compras Steren | EFECTIVO
+2026-05-21 | GASTO | 3248 | Liquidación Mantenimiento Planta Predator | TRANSFERENCIA
+2026-05-21 | INGRESO | 42351 | Total — 50% — Terms & Conditions - Alhondiga Guanajuato | TRANSFERENCIA
+2026-05-22 | GASTO | 486.45 | Tacos El Pata | TRANSFERENCIA
+2026-05-22 | GASTO | 5000 | Reparación Cases (Vic) | TRANSFERENCIA
+2026-05-22 | GASTO | 500 | Gastos Operativos | TRANSFERENCIA
+2026-05-22 | INGRESO | 12440 | Total — Hacienda San Miguel Royal Prestige  | TRANSFERENCIA
+2026-05-22 | GASTO | 3950 | Transportes Fica | TRANSFERENCIA
+2026-05-22 | GASTO | 1500 | Pago Tecnico | TRANSFERENCIA
+2026-05-22 | GASTO | 1476 | Cena Tacos  | TRANSFERENCIA
+2026-05-22 | GASTO | 2000 | Pipa de Agua | TRANSFERENCIA
+2026-05-22 | INVERSION | 28479 | Compra Cámara Sony | TRANSFERENCIA
+2026-05-23 | GASTO | 3950 | Transportes Fica | TRANSFERENCIA
+2026-05-23 | GASTO | 1000 | Gastos Operativos Roy | TRANSFERENCIA
+2026-05-23 | GASTO | 400 | Desayuno Roy Vera | TRANSFERENCIA
+2026-05-23 | GASTO | 2000 | Bidones | TRANSFERENCIA
+2026-05-23 | GASTO | 2000 | Gasolina y Comidas Roy Vera | TRANSFERENCIA
+2026-05-25 | GASTO | 1810.97 | Gasolina Mau | TRANSFERENCIA
+2026-05-25 | GASTO | 2719.01 | Steren | TRANSFERENCIA
+2026-05-25 | GASTO | 16837.4 | Reparación — Subwoofer activo (Unidad 4) | TRANSFERENCIA
+2026-05-25 | GASTO | 24500 | Ground Support Tarimas y Trusses | TRANSFERENCIA
+2026-05-25 | INGRESO | 2000 | Total — Renta de 2 boxinas EV | TRANSFERENCIA
+2026-05-26 | GASTO | 6394.5 | Pago Honorarios Contables EMSO | TRANSFERENCIA
+2026-05-26 | RETIRO | 4000 | Reparto de utilidades — Susana Vázquez Mellado (2026-05-25) | TRANSFERENCIA
+2026-05-26 | GASTO | 2500 | Nómina 2026-05 — Emiliano Pérez Peña | TRANSFERENCIA
+2026-05-26 | GASTO | 2000 | Nómina 2026-05-25 — Zaid Bautista | TRANSFERENCIA
+2026-05-26 | GASTO | 6000 | Nómina 2026-05-25 — Mauricio Hernández Vázquez Mellado | TRANSFERENCIA
+2026-05-26 | GASTO | 2500 | Nómina 2026-05-25 — Sebastían Pérez | TRANSFERENCIA
+2026-05-26 | GASTO | 2500 | Nómina 2026-05-25 — Rodrigo Vera | TRANSFERENCIA
+2026-05-26 | GASTO | 1600 | Nómina 2026-05-25 — Rodolfo Daniel Vázquez Guarneros | TRANSFERENCIA
+2026-05-26 | GASTO | 4000 | Nómina 2026-05-25 — Carlos Luna | TRANSFERENCIA
+2026-05-27 | GASTO | 3000 | Nómina — Aron Padilla | EFECTIVO
+2026-05-27 | GASTO | 2500 | Nómina — Paki Arias | TRANSFERENCIA
+2026-05-27 | INGRESO | 94000 | Total — — Presentación en Vivo Luca Mersini | EFECTIVO
+2026-05-27 | GASTO | 5150 | Anticipo Camaras | TRANSFERENCIA
+2026-05-27 | GASTO | 17063.75 | Gastos Operativos TDC Azul | TRANSFERENCIA
+2026-05-27 | GASTO | 1800 | Nómina — Angel Staff | EFECTIVO
+2026-05-27 | GASTO | 4300 | Nómina — Rodrigo Vera | EFECTIVO
+2026-05-27 | GASTO | 3800 | Nómina — Rafa Gutiérrez | EFECTIVO
+2026-05-27 | GASTO | 3800 | Nómina — Zaid Mainstage | TRANSFERENCIA
+2026-05-27 | GASTO | 2800 | Nómina — Emmanuel Mane | EFECTIVO
+2026-05-27 | GASTO | 1500 | Nómina — Felipe Romero | EFECTIVO
+2026-05-27 | GASTO | 2250 | Nómina — Noe Espinoza | EFECTIVO
+2026-05-28 | GASTO | 300 | Comida Roy Zaid | TRANSFERENCIA
+2026-05-28 | TRANSFERENCIA | 2000 | Recarga caja chica | TRANSFERENCIA
+2026-05-28 | GASTO | 253 | Compras | EFECTIVO
+2026-05-28 | GASTO | 1000 | Gasolina Camioneta RAM | TRANSFERENCIA
+2026-05-29 | GASTO | 580 | COMISION MEMBRESIA P. MORAL 0526 | TRANSFERENCIA
+2026-05-29 | GASTO | 4000 | Instalación Cámaras | TRANSFERENCIA
+2026-05-29 | GASTO | 6000 | Puerta de Aluminio | TRANSFERENCIA
+2026-05-29 | GASTO | 14469.55 | Anualidad e Instalación Alarmas Guardían | TRANSFERENCIA
+2026-05-29 | GASTO | 600 | Comidas Diego Luna y Rafa | TRANSFERENCIA
+2026-05-29 | GASTO | 600 | Comidas Kuulto | TRANSFERENCIA
+2026-05-29 | INGRESO | 4000 | Total — Sara  | TRANSFERENCIA
+2026-05-30 | INGRESO | 1200 | Total — Renta IEM | EFECTIVO
+2026-06-01 | GASTO | 2500 | Nómina 2026-06-01 — Sebastían Pérez | EFECTIVO
+2026-06-01 | GASTO | 2900 | Instalación cámaras y canaleta. | TRANSFERENCIA
+2026-06-01 | INGRESO | 3387 | Saldo a favor SAT | TRANSFERENCIA
+2026-06-01 | GASTO | 87.5 | Farmacias del Ahorro  | TRANSFERENCIA
+2026-06-01 | GASTO | 5300 | Varios levantamientos Cheb | TRANSFERENCIA
+2026-06-01 | RETIRO | 4000 | Reparto de utilidades — Susana Vázquez Mellado (2026-06-01) | EFECTIVO
+2026-06-01 | GASTO | 6000 | Nómina 2026-06-01 — Mauricio Hernández Vázquez Mellado | EFECTIVO
+2026-06-01 | INGRESO | 3500 | Total — Kuulto Sirilo | TRANSFERENCIA
+2026-06-01 | GASTO | 500 | Nómina 2026-06-01 — Emiliano Pérez Peña | TRANSFERENCIA
+2026-06-01 | GASTO | 2500 | Nómina 2026-06-01 — Rodrigo Vera | EFECTIVO
+2026-06-01 | GASTO | 2500 | Nómina 2026-06-01 — Emiliano Pérez Peña | EFECTIVO
+2026-06-01 | GASTO | 2000 | Nómina 2026-06-01 — Zaid Bautista | EFECTIVO
+2026-06-01 | GASTO | 1280 | Nómina 2026-06-01 — Rodolfo Daniel Vázquez Guarneros | EFECTIVO
+2026-06-01 | GASTO | 4000 | Nómina 2026-06-01  — Carlos Luna | EFECTIVO
+2026-06-02 | INVERSION | 15000 | Compra de estuches | TRANSFERENCIA
+2026-06-02 | INGRESO | 15000 | Préstamo Mau | TRANSFERENCIA
+2026-06-02 | INGRESO | 2000 | Total — Renta de 2 boxinas EV | TRANSFERENCIA
+2026-06-02 | INGRESO | 5000 | Total — Renta de audio y luces Mikey | TRANSFERENCIA
+2026-06-02 | INGRESO | 7525 | Total — Hacienda San Miguel Royal Prestige | TRANSFERENCIA
+2026-06-03 | GASTO | 1800 | Renta Asteras | EFECTIVO
+2026-06-03 | GASTO | 1150 | Nómina — Zaid Mainstage | EFECTIVO
+2026-06-03 | GASTO | 1500 | Nómina — Paki Arias | EFECTIVO
+2026-06-03 | GASTO | 359 | Insumos Limpieza | TRANSFERENCIA
+2026-06-03 | INGRESO | 87000 | Total — Mid Festival Tuneles de Guanajuato - Sasha | TRANSFERENCIA
+2026-06-03 | GASTO | 750 | Pendiente Edna | TRANSFERENCIA
+2026-06-03 | GASTO | 1500 | Nómina — Rafa Gutiérrez | EFECTIVO
+2026-06-03 | GASTO | 200 | Gasolina Letrero Andrés Arroyo | TRANSFERENCIA
+2026-06-03 | GASTO | 1500 | Nómina — Diego Luna | TRANSFERENCIA
+2026-06-03 | GASTO | 9000 | Renta de Consola ma3 y Programación 5 canciones SMPTE | EFECTIVO
+2026-06-03 | GASTO | 1150 | Nómina — Rodrigo Vera | EFECTIVO
+2026-06-03 | GASTO | 800 | Limpieza Edna | TRANSFERENCIA
+2026-06-03 | GASTO | 1200 | Nómina — Victor Oronoz | EFECTIVO
+2026-06-03 | GASTO | 2000 | Reparación medios Vic | TRANSFERENCIA
+2026-06-04 | GASTO | 1000 | Canaletas | TRANSFERENCIA
+2026-06-04 | INGRESO | 2250 | Total — Renta de 4 beams y op tec | TRANSFERENCIA
+2026-06-04 | INGRESO | 2500 | Total — Renta de triangulo de trusses | TRANSFERENCIA
+2026-06-04 | INVERSION | 3265 | Rollo de Cable y Conectores | TRANSFERENCIA
+2026-06-04 | INVERSION | 15000 | Set de extensiones | TRANSFERENCIA
+2026-06-04 | GASTO | 7000 | Planta de Luz (60w) 12 horas | EFECTIVO
+2026-06-04 | GASTO | 4250 | EDGAR PORTABLE GENERATOR — DEUDA PLANTA DE LUZ HUMAN FESTIVAL | EFECTIVO
+2026-06-04 | GASTO | 300 | Saldos Roy y Dany | TRANSFERENCIA
+2026-06-04 | GASTO | 500 | Gasolina Camioneta RAM | TRANSFERENCIA
+2026-06-05 | GASTO | 900 | Comidas Fin de Semana | TRANSFERENCIA
+2026-06-05 | GASTO | 1000 | Gasolina RAM | TRANSFERENCIA
+2026-06-05 | GASTO | 1200 | Reparación Baños | TRANSFERENCIA
+2026-06-08 | GASTO | 2000 | Repetidores? | TRANSFERENCIA
+2026-06-08 | RETIRO | 4000 | Reparto de utilidades — Susana Vázquez Mellado (2026-06-08) | TRANSFERENCIA
+2026-06-08 | GASTO | 2500 | Nómina 2026-06-08 — Rodrigo Vera | TRANSFERENCIA
+2026-06-08 | GASTO | 6000 | Nómina 2026-06-08 — Mauricio Hernández Vázquez Mellado | TRANSFERENCIA
+2026-06-08 | GASTO | 4000 | Nómina 2026-06-08 — Carlos Luna | TRANSFERENCIA
+2026-06-08 | GASTO | 25 | Garrafón de agua | EFECTIVO
+2026-06-08 | GASTO | 2500 | Nómina 2026-06-08 — Sebastían Pérez Gámez | TRANSFERENCIA
+2026-06-08 | INGRESO | 2250 | Total — Renta de 4 beams y op tec | TRANSFERENCIA
+2026-06-08 | GASTO | 3000 | Nómina 2026-06-08 — Emiliano Pérez Peña | TRANSFERENCIA
+2026-06-08 | GASTO | 1600 | Nómina 2026-06-08 — Rodolfo Daniel Vázquez Guarneros | TRANSFERENCIA
+2026-06-08 | GASTO | 300 | Comidas Roy y Zaid | TRANSFERENCIA
+2026-06-08 | GASTO | 2000 | Nómina 2026-06-08 — Zaid Efraín Bautista Colchado  | TRANSFERENCIA
+2026-06-08 | GASTO | 18700 | Renta Carretas | TRANSFERENCIA
+2026-06-08 | GASTO | 981.12 | Steren | TRANSFERENCIA
+2026-06-09 | GASTO | 134 | Pago Luz | TRANSFERENCIA
+2026-06-09 | GASTO | 109 | Paquete de hoja blancas | TRANSFERENCIA
+2026-06-09 | INGRESO | 1000 | Total — Renta inálámbricos | EFECTIVO
+2026-06-09 | GASTO | 1000 | Renta tarimas y tijeras | EFECTIVO
+2026-06-09 | INGRESO | 2000 | Total — Renta trusses Dr. Perkins | EFECTIVO
+2026-06-09 | INGRESO | 14815 | Total — Boda en el Salitre | TRANSFERENCIA
+2026-06-09 | GASTO | 46 | Materiales producción | TRANSFERENCIA
+2026-06-10 | GASTO | 750 | Reparación | TRANSFERENCIA
+2026-06-10 | INGRESO | 10000 | Total — — Presentación en Vivo Luca Mersini | TRANSFERENCIA
+2026-06-10 | GASTO | 4000 | SPEI | TRANSFERENCIA
+2026-06-10 | GASTO | 800 | Pago Edna | TRANSFERENCIA
+2026-06-10 | GASTO | 2450.98 | Domiciliación  | TRANSFERENCIA
+2026-06-10 | GASTO | 750 | Nómina — Zaid Mainstage | EFECTIVO
+2026-06-10 | GASTO | 9000 | SPEI (Liquidación Hotel) | TRANSFERENCIA
+2026-06-10 | GASTO | 1250 | Nómina — Rodrigo Vera | EFECTIVO
+2026-06-11 | GASTO | 1000 | Gasolina Camioneta RAM | TRANSFERENCIA
+2026-06-11 | GASTO | 1500 | Nómina — Diego Luna | TRANSFERENCIA
+2026-06-11 | INVERSION | 3635 | Mars Pro | TRANSFERENCIA
+2026-06-12 | GASTO | 3600 | Pista de baile | TRANSFERENCIA
+2026-06-12 | GASTO | 1509 | Home Depot | TRANSFERENCIA
+2026-06-13 | GASTO | 720 | SPEI | TRANSFERENCIA
+2026-06-13 | GASTO | 1000 | Comidas Boda | TRANSFERENCIA
+2026-06-14 | GASTO | 500 | SPEI | TRANSFERENCIA
+2026-06-14 | GASTO | 2000 | SPEI | TRANSFERENCIA
+2026-06-14 | GASTO | 3000 | Devolución Pista de Baile Charly (hora extra) | TRANSFERENCIA
+2026-06-14 | GASTO | 21900 | Liquidación Flete | TRANSFERENCIA
+2026-06-15 | INGRESO | 17815 | Total — Boda en el Salitre | TRANSFERENCIA
+2026-06-15 | GASTO | 15000 | Cuota 2/6 — Amortización Obra de Bodega | TRANSFERENCIA
+2026-06-15 | GASTO | 316 | Oxxo | TRANSFERENCIA
+2026-06-15 | INGRESO | 5000 | Total — Renta 4 lumos con operacion tecnica | TRANSFERENCIA
+2026-06-15 | INVERSION | 1572 | Mercado Pago | TRANSFERENCIA
+2026-06-15 | GASTO | 1000 | Gasolina RAM | TRANSFERENCIA
+2026-06-16 | INGRESO | 117220 | Total — Mid Festival Tuneles de Guanajuato - Sasha | TRANSFERENCIA
+2026-06-16 | GASTO | 2500 | Nómina 2026-06-15 — Sebastían Pérez Gámez | TRANSFERENCIA
+2026-06-16 | GASTO | 3000 | Nómina 2026-06-15 — Emiliano Pérez Peña | TRANSFERENCIA
+2026-06-16 | GASTO | 4000 | Nómina 2026-06-15 — Carlos Luna | TRANSFERENCIA
+2026-06-16 | GASTO | 6000 | Nómina 2026-06-15 — Mauricio Hernández Vázquez Mellado | TRANSFERENCIA
+2026-06-16 | GASTO | 2500 | Nómina 2026-06-15 — Rodrigo Vera | TRANSFERENCIA
+2026-06-16 | GASTO | 7750 | Reembolso Gastos | TRANSFERENCIA
+2026-06-16 | RETIRO | 4000 | Reparto de utilidades — Susana Vázquez Mellado (2026-06-15) | TRANSFERENCIA
+2026-06-16 | INGRESO | 1500 | Total — Renta medios | TRANSFERENCIA
+2026-06-17 | GASTO | 3500 | Nómina — Victor Oronoz | TRANSFERENCIA
+2026-06-17 | GASTO | 4000 | Transporte GTO | TRANSFERENCIA
+2026-06-17 | GASTO | 27000 | Actinver — Pago Crédito Actinver  | TRANSFERENCIA
+2026-06-17 | GASTO | 4350 | Nómina — Zaid Mainstage | TRANSFERENCIA
+2026-06-17 | GASTO | 4850 | Nómina — Rodrigo Vera | TRANSFERENCIA
+2026-06-17 | GASTO | 700 | Nómina — Noé Espinoza | TRANSFERENCIA
+2026-06-17 | GASTO | 1000 | Nómina — Hijo aaron | TRANSFERENCIA
+2026-06-17 | GASTO | 2000 | Nómina 2026-06-15 — Zaid Efraín Bautista Colchado  | TRANSFERENCIA
+2026-06-17 | INGRESO | 5000 | Total — Kuulto Sirilo | TRANSFERENCIA
+2026-06-17 | INGRESO | 3000 | Total — Renta equipo Sirilo house | TRANSFERENCIA
+2026-06-17 | GASTO | 11500 | KUULTO — Saldo a Favor KUULTO | TRANSFERENCIA
+2026-06-17 | GASTO | 850 | Nómina — Alan Lara | TRANSFERENCIA
+2026-06-17 | GASTO | 7150 | Nómina — Andrés Arroyo | TRANSFERENCIA
+2026-06-17 | GASTO | 3150 | Nómina — Aron Padilla | TRANSFERENCIA
+2026-06-17 | GASTO | 2000 | Levantamiento Tuneles Cheb | TRANSFERENCIA
+2026-06-17 | GASTO | 1500 | Nómina — Diego Luna | TRANSFERENCIA
+2026-06-17 | GASTO | 3600 | Nómina — Fabián Alcázar | TRANSFERENCIA
+2026-06-17 | GASTO | 2850 | Nómina — Joel foro arpa | TRANSFERENCIA
+2026-06-17 | GASTO | 1600 | Nómina — Juan Carlos Herrera | TRANSFERENCIA
+2026-06-17 | GASTO | 1450 | Reparación manguera RAM | TRANSFERENCIA
+2026-06-17 | GASTO | 200 | Compras | TRANSFERENCIA
+2026-06-17 | GASTO | 1600 | Nómina 2026-06-15 — Rodolfo Daniel Vázquez Guarneros | TRANSFERENCIA
+2026-06-17 | GASTO | 2850 | Nómina — Emmanuel Mane | TRANSFERENCIA
+2026-06-17 | GASTO | 2850 | Nómina — Teodoro Luna | TRANSFERENCIA
+2026-06-17 | INGRESO | 6500 | Total — Renta equipo Sirilo house | TRANSFERENCIA
+2026-06-19 | GASTO | 500 | Comidas | TRANSFERENCIA
+2026-06-19 | GASTO | 500 | Gasolina RAM | TRANSFERENCIA
+2026-06-19 | GASTO | 200 | Ubers Noe (emergencia) | TRANSFERENCIA
+2026-06-19 | GASTO | 9000 | Renta RCF Huevo | TRANSFERENCIA
+2026-06-22 | GASTO | 4000 | Nómina 2026-06-22 — Carlos Luna | TRANSFERENCIA
+2026-06-22 | GASTO | 346.11 | Chatgpt | TRANSFERENCIA
+2026-06-22 | GASTO | 2000 | Nómina 2026-06-22 — Zaid Efraín Bautista Colchado  | TRANSFERENCIA
+2026-06-22 | INGRESO | 3250 | Total — Renta medios y sub | TRANSFERENCIA
+2026-06-22 | GASTO | 2500 | Nómina 2026-06-22 — Rodrigo Vera | TRANSFERENCIA
+2026-06-22 | INGRESO | 6600 | Total — Renta inalámbricos | EFECTIVO
+2026-06-22 | INGRESO | 1500 | Total — Renta sub | TRANSFERENCIA
+2026-06-22 | INGRESO | 3480 | Total — Producción Gabriela Zárate | TRANSFERENCIA
+2026-06-22 | GASTO | 2507.76 | Curso Meta Ads | TRANSFERENCIA
+2026-06-22 | GASTO | 6000 | Nómina 2026-06-22 — Mauricio Hernández Vázquez Mellado | TRANSFERENCIA
+2026-06-22 | GASTO | 800 | Edna | TRANSFERENCIA
+2026-06-22 | GASTO | 490.06 | Rappi | TRANSFERENCIA
+2026-06-22 | GASTO | 8500 | Servicio de Cobertura Audiovisual Fractal Studio | TRANSFERENCIA
+2026-06-22 | INGRESO | 11970 | Total — Boda 80 personas | TRANSFERENCIA
+2026-06-22 | GASTO | 2500 | Nómina 2026-06-22 — Sebastían Pérez Gámez | TRANSFERENCIA
+2026-06-22 | RETIRO | 4000 | Reparto de utilidades — Susana Vázquez Mellado (2026-06-22) | TRANSFERENCIA
+2026-06-22 | GASTO | 25 | Garrafón | TRANSFERENCIA
+2026-06-22 | GASTO | 300 | Canalates Dany | TRANSFERENCIA
+2026-06-22 | GASTO | 3000 | Nómina 2026-06-22 — Emiliano Pérez Peña | TRANSFERENCIA
+2026-06-23 | INGRESO | 3900 | Saldo Conexzion | EFECTIVO
+2026-06-23 | INGRESO | 33636 | Total — 50% — Proyecto Ana Paula de los Cobos | TRANSFERENCIA
+2026-06-23 | GASTO | 437 | Taberna Hércules (CNXZN) | TRANSFERENCIA
+2026-06-23 | INGRESO | 5500 | Cuota 1 — BODA | TRANSFERENCIA
+2026-06-23 | GASTO | 3900 | Saldo Conexzion | EFECTIVO
+2026-06-23 | GASTO | 3000 | Gasto Tokens Plataforma | TRANSFERENCIA
+2026-06-23 | GASTO | 900 | Reparación de Washes y Sixline | TRANSFERENCIA
+2026-06-24 | INGRESO | 20000 | CONCIERTO MORE THAN A TEE | TRANSFERENCIA
+2026-06-25 | GASTO | 1000 | Nómina — Emmanuel Mane | TRANSFERENCIA
+2026-06-25 | GASTO | 1500 | Nómina — Rodrigo Vera | TRANSFERENCIA
+2026-06-25 | GASTO | 500 | Gasolina RAM | TRANSFERENCIA
+2026-06-26 | GASTO | 495.9 | Rappi | TRANSFERENCIA
+2026-06-26 | GASTO | 400 | Jornada Apoyo Mane | TRANSFERENCIA
+2026-06-26 | GASTO | 251 | Rappi | TRANSFERENCIA
+2026-06-26 | GASTO | 10000 | Saldo Conexzion (sheets) | TRANSFERENCIA
+2026-06-26 | GASTO | 1060.8 | Rappi | TRANSFERENCIA
+2026-06-29 | GASTO | 3000 | Nómina 2026-06-30 — Emiliano Pérez Peña | TRANSFERENCIA
+2026-06-29 | GASTO | 2500 | Nómina 2026-06-29 — Sebastían Pérez Gámez | TRANSFERENCIA
+2026-06-29 | GASTO | 4000 | Nómina 2026-06-29 — Carlos Luna | TRANSFERENCIA
+2026-06-29 | GASTO | 1600 | Nómina 2026-06-29 — Rodolfo Daniel Vázquez Guarneros | TRANSFERENCIA
+2026-06-29 | GASTO | 6000 | Nómina 2026-06-29 — Mauricio Hernández Vázquez Mellado | TRANSFERENCIA
+2026-06-29 | GASTO | 2500 | Nómina 2026-06-29 — Rodrigo Vera | TRANSFERENCIA
+2026-06-29 | EGRESO | 3000 | Cuota 1 — Finiquito Carlos Luna | TRANSFERENCIA
+2026-06-29 | GASTO | 640 | Nómina 2026-06-22 — Rodolfo Daniel Vázquez Guarneros | TRANSFERENCIA
+2026-06-29 | GASTO | 471.15 | Rappi | TRANSFERENCIA
+2026-06-29 | INGRESO | 17695.99 | Total — 50% — Rueda de prensa Zibata Golf | TRANSFERENCIA
+2026-06-29 | RETIRO | 4000 | Reparto de utilidades — Susana Vázquez Mellado (2026-06-29) | TRANSFERENCIA
+2026-06-29 | GASTO | 2000 | Nómina 2026-06-29 — Zaid Efraín Bautista Colchado  | TRANSFERENCIA
+2026-06-30 | GASTO | 5000 | Pago TDC | TRANSFERENCIA
+2026-06-30 | GASTO | 6394.5 | Honorarios Contables EMSO Junio | TRANSFERENCIA
