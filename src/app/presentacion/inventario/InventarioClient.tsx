@@ -1223,7 +1223,7 @@ export default function InventarioClient({ data, variante = "mixto" }: Props) {
     document.getElementById(`cat-${orden}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const brands = ["Pioneer DJ","RCF","Allen & Heath","Shure","Sennheiser","Grand MA","Chauvet","Astera","Lite Tek","Lumos","Electro-Voice","Rode","Blackmagic","Midas","Sun Star"];
+  const brands = ["Pioneer","RCF","Allen & Heath","Shure","Sennheiser","MA Lighting","Chauvet","Astera","Lite Tek","Lumos","Electro Voice","Rode","Blackmagic","Midas","Sun Star"];
 
   return (
     <div className="bg-[#050505] text-white min-h-screen" style={{ fontFamily: '-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif' }}>
