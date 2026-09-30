@@ -32,7 +32,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
           notasSecciones: true,
           lineas: {
             where: { tipo: { in: ["EQUIPO_PROPIO", "EQUIPO_EXTERNO", "PAQUETE", "OTRO"] } },
-            select: { id: true, tipo: true, descripcion: true, marca: true, modelo: true, cantidad: true, notas: true },
+            select: {
+              id: true, tipo: true, descripcion: true, marca: true, modelo: true, cantidad: true, notas: true,
+              equipo: { select: { imagenUrl: true } },
+            },
             orderBy: { orden: "asc" },
           },
         },
@@ -80,13 +83,21 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     }))
   );
 
+  const lineasCotizacion = await Promise.all(
+    (proyecto.cotizacion?.lineas ?? []).map(async (l) => ({
+      ...l,
+      notas: notaVisibleDeCotizacion(l.notas),
+      imagenUrl: await resolveImg(l.equipo?.imagenUrl ?? null),
+    }))
+  );
+
   const proyectoData = {
     ...proyecto,
     equipos,
     cotizacion: proyecto.cotizacion
       ? {
           ...proyecto.cotizacion,
-          lineas: proyecto.cotizacion.lineas.map((l) => ({ ...l, notas: notaVisibleDeCotizacion(l.notas) })),
+          lineas: lineasCotizacion,
         }
       : null,
     fechaEvento: proyecto.fechaEvento?.toISOString() ?? null,

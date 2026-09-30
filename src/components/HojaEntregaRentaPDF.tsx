@@ -449,6 +449,7 @@ interface CotizacionLinea {
   modelo: string | null;
   cantidad: number;
   notas: string | null;
+  imagenUrl?: string | null;
 }
 interface CotizacionData {
   numeroCotizacion: string;
@@ -756,9 +757,14 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
                   const nombre = getEquipoDisplayName(l);
                   return (
                     <View key={l.id} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt} wrap={false}>
-                      <View style={s.colModelo}>
-                        <Text style={s.cellText}>{nombre}</Text>
-                        {l.notas ? <Text style={{ fontSize: 6, color: LIGHT, fontStyle: "italic", marginTop: 1 }}>{l.notas}</Text> : null}
+                      <View style={[s.colModelo, { flexDirection: "row", alignItems: "center", gap: 4 }]}>
+                        {l.imagenUrl ? (
+                          <Image src={l.imagenUrl} style={{ width: 28, height: 28, flexShrink: 0, objectFit: "contain" }} />
+                        ) : null}
+                        <View style={{ flex: 1 }}>
+                          <Text style={s.cellText}>{nombre}</Text>
+                          {l.notas ? <Text style={{ fontSize: 6, color: LIGHT, fontStyle: "italic", marginTop: 1 }}>{l.notas}</Text> : null}
+                        </View>
                       </View>
                       <View style={s.colQty}><Text style={[s.cellText, { textAlign: "center" }]}>{l.cantidad}</Text></View>
                       <View style={[s.colSerie, { borderRightWidth: 0 }]}><Text style={s.cellText}> </Text></View>
@@ -796,9 +802,14 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
                   const nombre = getEquipoDisplayName(l);
                   return (
                     <View key={l.id} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt} wrap={false}>
-                      <View style={s.colModelo}>
-                        <Text style={s.cellText}>{nombre}</Text>
-                        {l.notas ? <Text style={{ fontSize: 6, color: LIGHT, fontStyle: "italic", marginTop: 1 }}>{l.notas}</Text> : null}
+                      <View style={[s.colModelo, { flexDirection: "row", alignItems: "center", gap: 4 }]}>
+                        {l.imagenUrl ? (
+                          <Image src={l.imagenUrl} style={{ width: 28, height: 28, flexShrink: 0, objectFit: "contain" }} />
+                        ) : null}
+                        <View style={{ flex: 1 }}>
+                          <Text style={s.cellText}>{nombre}</Text>
+                          {l.notas ? <Text style={{ fontSize: 6, color: LIGHT, fontStyle: "italic", marginTop: 1 }}>{l.notas}</Text> : null}
+                        </View>
                       </View>
                       <View style={s.colQty}><Text style={[s.cellText, { textAlign: "center" }]}>{l.cantidad}</Text></View>
                       <View style={[s.colSerie, { borderRightWidth: 0 }]}><Text style={s.cellText}> </Text></View>

@@ -207,7 +207,7 @@ export default function ResumenGlobalPage({ params }: { params: Promise<{ id: st
                           onClick={() =>
                             downloadPdf(
                               `/api/cotizaciones/${ev.id}/pdf`,
-                              `${ev.numeroCotizacion}.pdf`,
+                              undefined,
                               `Cotización ${ev.numeroCotizacion}`
                             )
                           }

@@ -13,6 +13,7 @@ import VenuePicker from "@/components/ui/VenuePicker";
 import NumSelect from "@/components/ui/NumSelect";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
+import { MiniaturaLinea } from "@/components/MiniaturaLinea";
 import { Sparkles, Package, SlidersHorizontal, AlertTriangle, Ban, Utensils, Bus, BedDouble, File, FileText, BarChart3, Paperclip, type LucideIcon } from "lucide-react";
 import { getEquipoDisplayName } from "@/lib/equipoNombre";
 import { coincide } from "@/lib/buscar";
@@ -3126,6 +3127,7 @@ function CotizadorForm() {
               <div className="border border-[#222] rounded-lg overflow-hidden">
                 {lineasExterno.map(l => (
                   <div key={l.id} className="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-[#111] last:border-0">
+                    <MiniaturaLinea src={equipos.find(e => e.id === l.equipoId)?.imagenUrl} size={28} />
                     <div className="w-full min-w-0 sm:w-auto sm:flex-1">
                       <div className="flex items-center gap-1.5">
                         <p className="text-white text-sm truncate">{[l.marca, l.modelo].filter(Boolean).join(" ") || l.descripcion}</p>

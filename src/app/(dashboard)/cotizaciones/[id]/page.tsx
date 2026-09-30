@@ -10,6 +10,7 @@ import { Combobox } from "@/components/Combobox";
 import { CopyButton } from "@/components/CopyButton";
 import VersionHistorial from "@/components/VersionHistorial";
 import { BackButton } from "@/components/BackButton";
+import { MiniaturaLinea } from "@/components/MiniaturaLinea";
 import { CerrarVentaModal } from "@/components/crm/CerrarVentaModal";
 import { usePdfDownload } from "@/hooks/usePdfDownload";
 import { esMovil } from "@/lib/descargas";
@@ -638,8 +639,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
 
   function sharePdf() {
     if (!cot) return;
-    const filename = `${cot.numeroCotizacion}${cot.nombreEvento ? `-${cot.nombreEvento.replace(/\s+/g, "-")}` : ""}.pdf`;
-    downloadPdf(`/api/cotizaciones/${cot.id}/pdf`, filename, `Cotización ${cot.numeroCotizacion}`);
+    downloadPdf(`/api/cotizaciones/${cot.id}/pdf`, undefined, `Cotización ${cot.numeroCotizacion}`);
   }
 
   async function toggleIdioma() {
@@ -665,8 +665,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
       // Paso 1: entregar el PDF. En móvil abre la hoja de compartir (WhatsApp
       // adjunta el archivo); en escritorio se guarda y luego se abre el chat.
       const pdfUrl = `/api/cotizaciones/${cot.id}/pdf`;
-      const filename = `${cot.numeroCotizacion}${cot.nombreEvento ? `-${cot.nombreEvento.replace(/\s+/g, "-")}` : ""}.pdf`;
-      downloadPdf(pdfUrl, filename, `Cotización ${cot.numeroCotizacion}`);
+      downloadPdf(pdfUrl, undefined, `Cotización ${cot.numeroCotizacion}`);
 
       // Paso 2: si está en borrador, cambiar a ENVIADA (esto también genera los seguimientos)
       if (cot.estado === "BORRADOR") {
@@ -1392,13 +1391,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                     {lins.map((l) => (
                       <div key={l.id} className={`flex justify-between items-center px-4 py-2 border-b border-[#111] last:border-0 text-sm ${l.esIncluido ? "opacity-50" : ""}`}>
                         <div className="flex items-center gap-2.5 min-w-0">
-                          {l.equipo?.imagenUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={l.equipo.imagenUrl} alt="" className="w-8 h-8 object-contain rounded shrink-0 opacity-75" />
-                          ) : (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src="/logo-icon.png" alt="" className="w-8 h-8 object-contain shrink-0 opacity-15" />
-                          )}
+                          <MiniaturaLinea src={l.equipo?.imagenUrl} />
                           <div>
                             <span className={l.esIncluido ? "text-gray-500 italic font-medium" : "text-white font-medium"}>{[l.marca, l.modelo].filter(Boolean).join(' ') || l.descripcion}</span>
                             {([l.marca, l.modelo].filter(Boolean).join(' ') !== l.descripcion) && <span className="text-gray-500 text-xs ml-2">{l.descripcion}</span>}
@@ -1506,10 +1499,13 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
               </div>
               {lineasExterno.map((l) => (
                 <div key={l.id} className="flex justify-between items-start px-4 py-2 border-t border-[#1a1a1a] text-sm">
-                  <div>
-                    <span className="text-white font-medium">{[l.marca, l.modelo].filter(Boolean).join(' ') || l.descripcion}</span>
-                    {([l.marca, l.modelo].filter(Boolean).join(' ') !== l.descripcion) && <span className="text-gray-500 text-xs ml-2">{l.descripcion}</span>}
-                    <NoteField linea={l} noteEdit={noteEdit} setNoteEdit={setNoteEdit} saveNota={saveNota} />
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <MiniaturaLinea src={l.equipo?.imagenUrl} />
+                    <div>
+                      <span className="text-white font-medium">{[l.marca, l.modelo].filter(Boolean).join(' ') || l.descripcion}</span>
+                      {([l.marca, l.modelo].filter(Boolean).join(' ') !== l.descripcion) && <span className="text-gray-500 text-xs ml-2">{l.descripcion}</span>}
+                      <NoteField linea={l} noteEdit={noteEdit} setNoteEdit={setNoteEdit} saveNota={saveNota} />
+                    </div>
                   </div>
                   <div className="flex items-center gap-4 text-gray-400 text-xs shrink-0">
                     <span>{l.cantidad} × {l.dias}d</span>
@@ -1532,11 +1528,14 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
               </div>
               {lineasOcasional.map((l) => (
                 <div key={l.id} className="flex justify-between items-start px-4 py-2 border-t border-[#1a1a1a] text-sm">
-                  <div>
-                    <span className="text-gray-300">{l.descripcion}
-                      <span className="text-gray-500 text-xs ml-2">×{l.cantidad} · {l.dias}d</span>
-                    </span>
-                    <NoteField linea={l} noteEdit={noteEdit} setNoteEdit={setNoteEdit} saveNota={saveNota} />
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <MiniaturaLinea src={l.equipo?.imagenUrl} />
+                    <div>
+                      <span className="text-gray-300">{l.descripcion}
+                        <span className="text-gray-500 text-xs ml-2">×{l.cantidad} · {l.dias}d</span>
+                      </span>
+                      <NoteField linea={l} noteEdit={noteEdit} setNoteEdit={setNoteEdit} saveNota={saveNota} />
+                    </div>
                   </div>
                   <span className="text-white font-medium shrink-0">{formatCurrency(l.subtotal)}</span>
                 </div>

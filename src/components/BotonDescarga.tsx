@@ -12,7 +12,7 @@ export function BotonDescarga({
   children,
 }: {
   url: string;
-  filename: string;
+  filename?: string;
   titulo?: string;
   className?: string;
   style?: React.CSSProperties;

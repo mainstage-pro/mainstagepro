@@ -11,7 +11,7 @@ export function usePdfDownload() {
   const { descargar, ocupado } = useDescarga();
 
   const downloadPdf = useCallback(
-    (url: string, filename: string, titulo?: string, init?: RequestInit) =>
+    (url: string, filename?: string, titulo?: string, init?: RequestInit) =>
       descargar({ url, filename, titulo, init }),
     [descargar]
   );

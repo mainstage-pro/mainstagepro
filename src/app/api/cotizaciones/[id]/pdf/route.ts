@@ -11,6 +11,36 @@ import path from "path";
 import { validarTokenPresentacion } from "@/lib/presentacion-token";
 import { ensureCotizacionIdiomaColumn, ensureCotizacionHorarioColumns } from "@/lib/migraciones-lazy";
 import { traducirTextosCotizacion, extraerNotaLibre, conNotaTraducida } from "@/lib/traduccion-cotizacion";
+import { fmtDate } from "@/lib/dates";
+
+/** "Cotización - Cliente - Evento - 12 dic 2026 - COT-2026-014.pdf" */
+function nombreArchivo(
+  c: {
+    numeroCotizacion: string;
+    nombreEvento: string | null;
+    fechaEvento: Date | null;
+    cliente: { nombre: string; empresa: string | null };
+  },
+  idioma: "es" | "en"
+): string {
+  const limpiar = (txt: string) => txt.replace(/[\\/:*?"<>|]/g, " ").replace(/\s+/g, " ").trim();
+  const partes = [idioma === "en" ? "Quote" : "Cotización"];
+  const cliente = c.cliente.empresa?.trim() || c.cliente.nombre;
+  if (cliente) partes.push(limpiar(cliente));
+  if (c.nombreEvento?.trim()) partes.push(limpiar(c.nombreEvento));
+  if (c.fechaEvento) {
+    partes.push(
+      fmtDate(
+        c.fechaEvento.toISOString(),
+        { day: "2-digit", month: "short", year: "numeric" },
+        idioma === "en" ? "en-US" : "es-MX"
+      )
+    );
+  }
+  // El número va al final y fuera del recorte: es lo que distingue dos opciones
+  // (A/B) del mismo evento, que de otro modo compartirían nombre.
+  return `${partes.join(" - ").slice(0, 110).trim()} - ${c.numeroCotizacion}.pdf`;
+}
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -194,11 +224,16 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     pdfStream.on("end", () => resolve(Buffer.concat(chunks)));
   });
 
+  const nombre = nombreArchivo(cotizacion, cotizacion.idioma === "en" ? "en" : "es");
+  // Los headers viajan en latin-1: el nombre con acentos va en filename* (RFC 5987)
+  // y la versión sin acentos queda como respaldo para clientes viejos.
+  const respaldo = nombre.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\x20-\x7E]/g, "");
+
   return new NextResponse(pdfBuffer as any, {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="Cotizacion-${cotizacion.numeroCotizacion}.pdf"`,
+      "Content-Disposition": `attachment; filename="${respaldo}"; filename*=UTF-8''${encodeURIComponent(nombre)}`,
       "Content-Length": String(pdfBuffer.length),
     },
   });

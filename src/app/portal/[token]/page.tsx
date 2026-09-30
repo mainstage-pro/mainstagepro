@@ -438,7 +438,6 @@ export default function PortalCliente() {
             <p className="text-[10px] text-white/25 font-semibold uppercase tracking-widest mb-4">Documentos</p>
             <BotonDescarga
               url={`/api/cotizaciones/${proyecto.cotizacion.id}/pdf`}
-              filename={`Cotizacion-${proyecto.cotizacion.numeroCotizacion}.pdf`}
               titulo={`Cotización ${proyecto.cotizacion.numeroCotizacion}`}
               className="w-full flex items-center gap-4 bg-white/[0.02] border border-white/6 hover:border-[#B3985B]/25 rounded-xl px-5 py-4 transition-colors group"
             >
