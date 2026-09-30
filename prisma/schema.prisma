@@ -1019,7 +1019,7 @@ model Equipo {
   modelo                 String?
   descripcion            String
   cantidadTotal          Int             @default(1)
-  tipo                   String          @default("PROPIO") // PROPIO | EXTERNO
+  tipo                   String          @default("PROPIO") // PROPIO | EXTERNO | PREMIUM (src/lib/equipo-tipos.ts)
   proveedorDefaultId     String?
   proveedorDefault       Proveedor?      @relation("ProveedorDefault", fields: [proveedorDefaultId], references: [id])
   precioRenta            Float           @default(0) // Precio que cobramos al cliente

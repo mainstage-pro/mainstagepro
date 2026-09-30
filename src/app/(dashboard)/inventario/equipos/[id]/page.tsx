@@ -9,6 +9,7 @@ import { BackButton } from "@/components/BackButton";
 import { EquipoGaleria } from "@/components/EquipoGaleria";
 import { CostoMantenimientoModal, type CostoMantenimiento } from "@/components/CostoMantenimientoModal";
 import { ESTADOS_EQUIPO as ESTADOS_UNIDAD, ESTADO_EQUIPO_LABEL, esRetornoAServicio } from "@/lib/equipo-estado";
+import { TIPO_EQUIPO_LABEL } from "@/lib/equipo-tipos";
 import { ReportarFallaModal } from "@/components/ReportarFallaModal";
 import { normalizarAmPm } from "@/lib/hora";
 import {
@@ -900,7 +901,7 @@ export default function EquipoFichaPage() {
             {equipo.activo ? "ACTIVO" : "INACTIVO"}
           </span>
           <span className="text-xs px-2 py-1 rounded bg-[#1a1a1a] text-[#6b7280] border border-[#222]">
-            {equipo.tipo === "PROPIO" ? "Propio" : "Externo"}
+            {TIPO_EQUIPO_LABEL[equipo.tipo] ?? equipo.tipo}
           </span>
         </div>
       </div>

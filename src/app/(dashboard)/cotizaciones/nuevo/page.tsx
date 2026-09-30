@@ -17,6 +17,7 @@ import { Sparkles, Package, SlidersHorizontal, AlertTriangle, Ban, Utensils, Bus
 import { getEquipoDisplayName } from "@/lib/equipoNombre";
 import { coincide } from "@/lib/buscar";
 import SelectorEquipoCascada, { agruparEquiposPorCategoria } from "@/components/SelectorEquipoCascada";
+import { esEquipoDeTercero } from "@/lib/equipo-tipos";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Equipo {
@@ -828,10 +829,19 @@ function CotizadorForm() {
     });
   }, [paquetesCatalogo]);
 
-  // Equipos externos (de terceros)
-  const equiposExternos = useMemo(() => equipos.filter(e => e.tipo === "EXTERNO"), [equipos]);
+  // Equipo que no es nuestro: subrenta. Se cotiza igual (línea EQUIPO_EXTERNO con
+  // costo y proveedor), pero se elige de dos listas distintas — terceros y premium.
+  const equiposExternos = useMemo(() => equipos.filter(e => esEquipoDeTercero(e.tipo)), [equipos]);
 
-  const equiposExternosPorCategoria = useMemo(() => agruparEquiposPorCategoria(equiposExternos), [equiposExternos]);
+  const equiposExternosPorCategoria = useMemo(
+    () => agruparEquiposPorCategoria(equipos.filter(e => e.tipo === "EXTERNO")),
+    [equipos]
+  );
+  const equiposPremiumPorCategoria = useMemo(
+    () => agruparEquiposPorCategoria(equipos.filter(e => e.tipo === "PREMIUM")),
+    [equipos]
+  );
+  const [listaTercero, setListaTercero] = useState<"externos" | "premium">("externos");
 
   // Categorías únicas derivadas del catálogo cargado
   const categoriasList = useMemo(() => {
@@ -1126,7 +1136,7 @@ function CotizadorForm() {
       }
       const eq = equipos.find(e => e.id === c.referenciaId);
       if (!eq) return;
-      if (eq.tipo === "EXTERNO") {
+      if (esEquipoDeTercero(eq.tipo)) {
         if (lineasExterno.some(l => l.equipoId === eq.id) || nuevasExt.some(n => n.equipoId === eq.id)) return;
         const mejorProveedor = (eq.proveedoresPrecios ?? [])[0] ?? null;
         const costo = mejorProveedor ? mejorProveedor.precio : (eq.costoProveedor ?? 0);
@@ -1294,7 +1304,7 @@ function CotizadorForm() {
           descripcion: nuevoEqForm.descripcion,
           marca: nuevoEqForm.marca || null,
           categoriaId: nuevoEqForm.categoriaId,
-          tipo: "EXTERNO",
+          tipo: listaTercero === "premium" ? "PREMIUM" : "EXTERNO",
           precioRenta: parseFloat(nuevoEqForm.precioRenta) || 0,
           costoProveedor: nuevoEqForm.costoProveedor ? parseFloat(nuevoEqForm.costoProveedor) : null,
           cantidadTotal: parseInt(nuevoEqForm.cantidadTotal) || 1,
@@ -3008,7 +3018,7 @@ function CotizadorForm() {
             {/* Modal: registrar nuevo equipo proveedor */}
             {showNuevoEqModal && (
               <div className="mb-4 bg-[#0a0a0a] border border-[#B3985B]/40 rounded-xl p-4">
-                <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wider mb-3">Registrar nuevo equipo de proveedor</p>
+                <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wider mb-3">Registrar nuevo equipo {listaTercero === "premium" ? "premium" : "de proveedor"}</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
                   <div className="sm:col-span-2">
                     <input value={nuevoEqForm.descripcion} onChange={e => setNuevoEqForm(p => ({ ...p, descripcion: e.target.value }))}
@@ -3054,14 +3064,29 @@ function CotizadorForm() {
               </div>
             )}
 
+            <div className="flex gap-1 mb-3">
+              {(["externos", "premium"] as const).map(l => (
+                <button key={l} onClick={() => { setListaTercero(l); setSelExt(""); }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    listaTercero === l
+                      ? l === "premium" ? "bg-purple-900/30 text-purple-300 border border-purple-700/50" : "bg-blue-900/30 text-blue-300 border border-blue-700/50"
+                      : "text-gray-500 border border-[#222] hover:text-white"
+                  }`}>
+                  {l === "premium"
+                    ? `Premium (${equiposPremiumPorCategoria.reduce((s, [, eqs]) => s + eqs.length, 0)})`
+                    : `Terceros (${equiposExternosPorCategoria.reduce((s, [, eqs]) => s + eqs.length, 0)})`}
+                </button>
+              ))}
+            </div>
+
             <div className="flex flex-col gap-2 mb-4 sm:flex-row sm:items-end">
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] text-[#555] mb-1 px-1">Equipo del catálogo</p>
                 <SelectorEquipoCascada
                   value={selExt}
                   onChange={setSelExt}
-                  grupos={equiposExternosPorCategoria}
-                  placeholder="— Seleccionar equipo de tercero —"
+                  grupos={listaTercero === "premium" ? equiposPremiumPorCategoria : equiposExternosPorCategoria}
+                  placeholder={listaTercero === "premium" ? "— Seleccionar equipo premium —" : "— Seleccionar equipo de tercero —"}
                   renderMeta={eq => (
                     <>
                       <span className="text-gray-600">cliente {formatCurrency(preciosCliente[eq.id] ?? eq.precioRenta)}</span>

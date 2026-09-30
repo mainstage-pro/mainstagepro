@@ -8,6 +8,7 @@ import { Modal } from "@/components/Modal";
 import { EquipoGaleria } from "@/components/EquipoGaleria";
 import { CostoMantenimientoModal, type CostoMantenimiento } from "@/components/CostoMantenimientoModal";
 import { ESTADO_EQUIPO_LABEL, esRetornoAServicio } from "@/lib/equipo-estado";
+import { TIPOS_EQUIPO, TIPO_EQUIPO_LABEL, esEquipoDeTercero } from "@/lib/equipo-tipos";
 import { getEquipoDisplayName } from "@/lib/equipoNombre";
 import { normalizarAmPm } from "@/lib/hora";
 import { TipoEventoCell, type TipoEventoOpcion } from "@/components/TipoEventoCell";
@@ -45,6 +46,7 @@ type Kpis = {
   totalEquipos: number;
   totalPropios: number;
   totalExternos: number;
+  totalPremium: number;
 };
 
 type Form = {
@@ -181,8 +183,8 @@ function FormPanel({ panel, equipos, form, setForm, imagen, saving, categorias, 
   const equipoActual = panel !== "nuevo" ? equipos.find(e => e.id === panel) : null;
   return (
     <div>
-      {/* Clonar de inventario propio — solo al crear externo */}
-      {panel === "nuevo" && form.tipo === "EXTERNO" && (
+      {/* Clonar de inventario propio — solo al crear equipo de tercero */}
+      {panel === "nuevo" && esEquipoDeTercero(form.tipo) && (
         <div className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl p-3 mb-3">
           <p className="text-xs text-gray-500 mb-2">¿Basado en un equipo de tu inventario?</p>
           <select
@@ -252,8 +254,9 @@ function FormPanel({ panel, equipos, form, setForm, imagen, saving, categorias, 
             <FieldGroup label="Tipo">
               <select value={form.tipo} onChange={e => setForm(p => ({ ...p, tipo: e.target.value }))}
                 className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/50">
-                <option value="PROPIO">Propio</option>
-                <option value="EXTERNO">Externo</option>
+                {TIPOS_EQUIPO.map(t => (
+                  <option key={t} value={t}>{TIPO_EQUIPO_LABEL[t]}</option>
+                ))}
               </select>
             </FieldGroup>
             <FieldGroup label="Estado">
@@ -273,7 +276,7 @@ function FormPanel({ panel, equipos, form, setForm, imagen, saving, categorias, 
             <FieldGroup label="Precio de renta ($)">
               <FInput type="number" value={form.precioRenta} onChange={v => setForm(p => ({ ...p, precioRenta: v }))} placeholder="0" />
             </FieldGroup>
-            {form.tipo === "EXTERNO" && (
+            {esEquipoDeTercero(form.tipo) && (
               <FieldGroup label="Costo proveedor ($)">
                 <FInput type="number" value={form.costoProveedor} onChange={v => setForm(p => ({ ...p, costoProveedor: v }))} placeholder="0" />
               </FieldGroup>
@@ -287,8 +290,8 @@ function FormPanel({ panel, equipos, form, setForm, imagen, saving, categorias, 
             </select>
           </FieldGroup>
 
-          {/* Proveedores y precios — solo en modo edición de EXTERNO */}
-          {equipoActual && equipoActual.tipo === "EXTERNO" && (
+          {/* Proveedores y precios — solo al editar equipo de tercero */}
+          {equipoActual && esEquipoDeTercero(equipoActual.tipo) && (
             <div>
               <label className={labelCls}>Proveedores y precios</label>
               <div className="space-y-1.5 mb-2">
@@ -891,7 +894,10 @@ export default function InventarioMaestroPage() {
   useEffect(() => { load(); }, [filtroTipo, filtroEstado, filtroCategoria, filtroInactivos]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function abrirNuevo() {
-    setForm({ ...FORM_EMPTY });
+    // Arranca en la línea que se está viendo: desde la pestaña Premium el alta
+    // ya viene marcada como premium.
+    const tipo = tab === "premium" ? "PREMIUM" : tab === "externos" ? "EXTERNO" : "PROPIO";
+    setForm({ ...FORM_EMPTY, tipo });
     setImagen(null);
     setPanel("nuevo");
   }
@@ -972,7 +978,7 @@ export default function InventarioMaestroPage() {
       amperajeRequerido: form.amperajeRequerido !== "" ? parseFloat(form.amperajeRequerido) : null,
       voltajeRequerido: form.voltajeRequerido !== "" ? form.voltajeRequerido : null,
       precioRenta: form.precioRenta !== "" ? parseFloat(form.precioRenta) : 0,
-      costoProveedor: form.tipo === "EXTERNO" && form.costoProveedor !== "" ? parseFloat(form.costoProveedor) : null,
+      costoProveedor: esEquipoDeTercero(form.tipo) && form.costoProveedor !== "" ? parseFloat(form.costoProveedor) : null,
       ...(imagen !== null ? { imagenUrl: imagen } : {}),
       ...(costo ? { costo } : {}),
     };
@@ -1035,12 +1041,13 @@ export default function InventarioMaestroPage() {
     return { clasificados, total: relevantes.length };
   }, [equipos]);
 
-  // ── Tab Propios / Externos / Accesorios ───────────────────────────────────
-  const [tab, setTab] = useState<"propios" | "externos" | "accesorios">("propios");
+  // ── Tab Propios / Externos / Premium / Accesorios ─────────────────────────
+  const [tab, setTab] = useState<"propios" | "externos" | "premium" | "accesorios">("propios");
   const [accesoriosCount, setAccesoriosCount] = useState<number | null>(null);
   const propios = useMemo(() => equiposFiltrados.filter(e => e.tipo === "PROPIO"), [equiposFiltrados]);
   const externos = useMemo(() => equiposFiltrados.filter(e => e.tipo === "EXTERNO"), [equiposFiltrados]);
-  const equiposTab = tab === "propios" ? propios : externos;
+  const premium = useMemo(() => equiposFiltrados.filter(e => e.tipo === "PREMIUM"), [equiposFiltrados]);
+  const equiposTab = tab === "propios" ? propios : tab === "premium" ? premium : externos;
 
   const porCategoria = useMemo(() =>
     categorias
@@ -1254,7 +1261,7 @@ export default function InventarioMaestroPage() {
 
       {/* KPIs */}
       {kpis && tab !== "accesorios" && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           <div className="ms-stat-card">
             <p className="text-[#6b7280] text-xs mb-1">Total equipos</p>
             <p className="text-white text-2xl font-semibold">{kpis.totalEquipos}</p>
@@ -1271,6 +1278,11 @@ export default function InventarioMaestroPage() {
             <p className="text-[#444] text-[10px] mt-0.5">De proveedores</p>
           </div>
           <div className="ms-stat-card">
+            <p className="text-[#6b7280] text-xs mb-1">Premium</p>
+            <p className="text-purple-400 text-2xl font-semibold">{kpis.totalPremium}</p>
+            <p className="text-[#444] text-[10px] mt-0.5">Marcas premium en subrenta</p>
+          </div>
+          <div className="ms-stat-card">
             <p className="text-[#6b7280] text-xs mb-1">En vista actual</p>
             <p className="text-white text-2xl font-semibold">{equiposTab.length}</p>
             <p className="text-[#444] text-[10px] mt-0.5">Con filtros aplicados</p>
@@ -1281,13 +1293,14 @@ export default function InventarioMaestroPage() {
       {/* Tabs Propios / Externos */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex gap-1 ms-card p-1">
-          {(["propios", "externos", "accesorios"] as const).map(t => (
+          {(["propios", "externos", "premium", "accesorios"] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
                 tab === t ? "bg-[#B3985B] text-black" : "text-[#6b7280] hover:text-white"
               }`}>
               {t === "propios" ? `Equipos Propios (${propios.length})`
                 : t === "externos" ? `Equipos Externos (${externos.length})`
+                : t === "premium" ? `Premium (${premium.length})`
                 : `Accesorios${accesoriosCount !== null ? ` (${accesoriosCount})` : ""}`}
             </button>
           ))}
@@ -1352,7 +1365,7 @@ export default function InventarioMaestroPage() {
         </div>
       ) : equiposTab.length === 0 ? (
         <div className="text-center py-16 text-[#333]">
-          <p className="text-sm">Sin equipos {tab === "propios" ? "propios" : "externos"} con los filtros actuales.</p>
+          <p className="text-sm">Sin equipos {tab === "propios" ? "propios" : tab === "premium" ? "premium" : "externos"} con los filtros actuales.</p>
         </div>
       ) : vista === "grid" ? (
 
@@ -1387,8 +1400,8 @@ export default function InventarioMaestroPage() {
                       )}
                     </div>
                     <div className="flex items-center justify-between mt-1">
-                      <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${e.tipo === "PROPIO" ? "text-[#6b7280] bg-[#1a1a1a]" : "text-blue-400 bg-blue-900/20"}`}>
-                        {e.tipo === "PROPIO" ? "Propio" : "Externo"}
+                      <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${e.tipo === "PROPIO" ? "text-[#6b7280] bg-[#1a1a1a]" : e.tipo === "PREMIUM" ? "text-purple-400 bg-purple-900/20" : "text-blue-400 bg-blue-900/20"}`}>
+                        {TIPO_EQUIPO_LABEL[e.tipo] ?? e.tipo}
                       </span>
                       <span className="text-sm font-bold text-white">×{e.cantidadTotal}</span>
                     </div>

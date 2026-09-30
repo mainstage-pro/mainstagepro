@@ -6,6 +6,7 @@ import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Modal } from "@/components/Modal";
 import { coincide as coincideTexto } from "@/lib/buscar";
+import { esEquipoDeTercero } from "@/lib/equipo-tipos";
 import { Layers, Tags, PlusCircle, HelpCircle, Pencil, Trash2, Plus, Sparkles, GripVertical } from "lucide-react";
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
@@ -91,7 +92,7 @@ export default function CatalogoEventosPage() {
       }
       if (re.ok) {
         for (const eq of (await re.json()).equipos as { id: string; descripcion?: string; marca?: string; modelo?: string; tipo?: string; precioRenta?: number; imagenUrl?: string | null; categoria?: { nombre: string } | null; proveedorDefault?: { nombre: string } | null }[])
-          inv.push({ id: eq.id, tipo: "equipo", nombre: [eq.descripcion, eq.marca, eq.modelo].filter(Boolean).join(" ").trim() || "Equipo", precio: eq.precioRenta ?? 0, imagenUrl: eq.imagenUrl ?? null, categoria: eq.categoria?.nombre ?? null, externo: eq.tipo === "EXTERNO", proveedor: eq.proveedorDefault?.nombre ?? null });
+          inv.push({ id: eq.id, tipo: "equipo", nombre: [eq.descripcion, eq.marca, eq.modelo].filter(Boolean).join(" ").trim() || "Equipo", precio: eq.precioRenta ?? 0, imagenUrl: eq.imagenUrl ?? null, categoria: eq.categoria?.nombre ?? null, externo: esEquipoDeTercero(eq.tipo), proveedor: eq.proveedorDefault?.nombre ?? null });
       }
       setInventario(inv);
     } finally {

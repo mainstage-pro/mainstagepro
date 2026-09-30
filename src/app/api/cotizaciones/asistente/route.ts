@@ -7,6 +7,7 @@ import { calcularJornada, calcularResumen, type LineaCotizacion } from "@/lib/co
 import { cargarGlosario, cargarGlosarioProductos, resolverTerminos, type GlosarioRow } from "@/lib/glosario";
 import { ensureGlosarioTabla } from "@/lib/migraciones-lazy";
 import { crearTratoParaCotizacion } from "@/lib/trato-auto";
+import { esEquipoDeTercero } from "@/lib/equipo-tipos";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -152,7 +153,7 @@ function tarifaDe(r: RolRec, jornada: string): number {
 }
 
 function lineaEquipo(e: EquipoRec, termino: string, cant: number, dias: number): LineaDraft {
-  const esExterno = e.tipo === "EXTERNO";
+  const esExterno = esEquipoDeTercero(e.tipo);
   const precio = e.precioRenta || 0;
   const costo = e.costoInternoEstimado ?? e.costoProveedor ?? 0;
   const cat = e.categoria?.nombre ?? null;

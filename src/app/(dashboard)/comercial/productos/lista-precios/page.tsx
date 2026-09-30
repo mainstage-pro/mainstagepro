@@ -4,6 +4,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { useToast } from "@/components/Toast";
 import { getEquipoDisplayName, getEquipoMarcaModelo } from "@/lib/equipoNombre";
 import { coincide } from "@/lib/buscar";
+import { esEquipoDeTercero } from "@/lib/equipo-tipos";
 
 type Equipo = {
   id: string;
@@ -35,7 +36,7 @@ type Accesorio = {
 
 type Categoria = { id: string; nombre: string; orden: number };
 type Vista = "EQUIPOS" | "ACCESORIOS";
-type Origen = "TODOS" | "PROPIO" | "EXTERNO";
+type Origen = "TODOS" | "PROPIO" | "EXTERNO" | "PREMIUM";
 
 const fmx = (n: number) => `$${n.toLocaleString("es-MX", { maximumFractionDigits: 0 })}`;
 const SIN_CAT = "__sin-categoria__";
@@ -71,6 +72,7 @@ export default function ListaPreciosPage() {
 
   const propios = equipos.filter(e => e.tipo === "PROPIO");
   const externos = equipos.filter(e => e.tipo === "EXTERNO");
+  const premium = equipos.filter(e => e.tipo === "PREMIUM");
   const sinPrecioEquipos = equipos.filter(e => !e.precioRenta || e.precioRenta <= 0).length;
   const sinPrecioAcc = accesorios.filter(a => !a.precioRenta || a.precioRenta <= 0).length;
 
@@ -154,8 +156,9 @@ export default function ListaPreciosPage() {
     );
   }
 
-  function OrigenBadge({ proveedor }: { proveedor: string | null }) {
+  function OrigenBadge({ proveedor, premium }: { proveedor: string | null; premium?: boolean }) {
     if (!proveedor) return <span className="ms-badge ms-badge-gold">Propio</span>;
+    if (premium) return <span className="ms-badge ms-badge-purple" title={proveedor}>Premium · {proveedor}</span>;
     return <span className="ms-badge ms-badge-blue" title={proveedor}>Ext · {proveedor}</span>;
   }
 
@@ -173,7 +176,7 @@ export default function ListaPreciosPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <div className="ms-stat-card">
           <p className="text-[10px] text-[#555] uppercase tracking-wider">Equipos propios</p>
           <p className="text-xl font-bold text-white tabular-nums mt-1">{propios.length}</p>
@@ -183,6 +186,11 @@ export default function ListaPreciosPage() {
           <p className="text-[10px] text-[#555] uppercase tracking-wider">Equipos externos</p>
           <p className="text-xl font-bold text-white tabular-nums mt-1">{externos.length}</p>
           <p className="text-[10px] text-[#444] mt-0.5">subrenta con proveedor</p>
+        </div>
+        <div className="ms-stat-card">
+          <p className="text-[10px] text-[#555] uppercase tracking-wider">Equipos premium</p>
+          <p className="text-xl font-bold text-purple-400 tabular-nums mt-1">{premium.length}</p>
+          <p className="text-[10px] text-[#444] mt-0.5">marcas premium en subrenta</p>
         </div>
         <div className="ms-stat-card">
           <p className="text-[10px] text-[#555] uppercase tracking-wider">Accesorios</p>
@@ -215,6 +223,7 @@ export default function ListaPreciosPage() {
             { key: "TODOS", label: "Todos" },
             { key: "PROPIO", label: "Propios" },
             { key: "EXTERNO", label: "Externos" },
+            { key: "PREMIUM", label: "Premium" },
           ] as const).map(o => (
             <button key={o.key} onClick={() => setOrigen(o.key)}
               className={`px-3 py-1.5 text-xs rounded-md transition-colors ${origen === o.key ? "bg-[#1f1f1f] text-white font-medium" : "text-[#6b7280] hover:text-white"}`}>
@@ -262,7 +271,7 @@ export default function ListaPreciosPage() {
                         </td>
                       </tr>
                       {g.items.map(e => {
-                        const proveedor = e.tipo === "EXTERNO"
+                        const proveedor = esEquipoDeTercero(e.tipo)
                           ? (e.proveedorDefault?.empresa || e.proveedorDefault?.nombre || "Externo")
                           : null;
                         const costo = e.costoProveedor ?? e.proveedoresPrecios[0]?.precio ?? null;
@@ -288,7 +297,7 @@ export default function ListaPreciosPage() {
                                 </div>
                               </div>
                             </td>
-                            <td className="px-4 py-2.5 text-center"><OrigenBadge proveedor={proveedor} /></td>
+                            <td className="px-4 py-2.5 text-center"><OrigenBadge proveedor={proveedor} premium={e.tipo === "PREMIUM"} /></td>
                             <td className="px-4 py-2.5 text-right text-[#9ca3af] tabular-nums">{e.cantidadTotal}</td>
                             {esAdmin && (
                               <td className="px-4 py-2.5 text-right text-[#6b7280] tabular-nums">

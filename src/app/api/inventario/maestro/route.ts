@@ -6,7 +6,7 @@ export async function GET(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  const tipo = req.nextUrl.searchParams.get("tipo");    // PROPIO | EXTERNO
+  const tipo = req.nextUrl.searchParams.get("tipo");    // PROPIO | EXTERNO | PREMIUM
   const estado = req.nextUrl.searchParams.get("estado"); // ACTIVO | EN_MANTENIMIENTO | DADO_DE_BAJA
   const categoriaId = req.nextUrl.searchParams.get("categoriaId");
   const inactivos = req.nextUrl.searchParams.get("inactivos") === "true";
@@ -61,6 +61,7 @@ export async function GET(req: NextRequest) {
   // KPIs
   const propios = equipos.filter(e => e.tipo === "PROPIO");
   const externos = equipos.filter(e => e.tipo === "EXTERNO");
+  const premium = equipos.filter(e => e.tipo === "PREMIUM");
 
   const valorTotalActivo = propios.reduce((sum, e) => {
     const costo = e.costoInternoEstimado ?? 0;
@@ -78,6 +79,7 @@ export async function GET(req: NextRequest) {
       totalEquipos: equipos.length,
       totalPropios: propios.length,
       totalExternos: externos.length,
+      totalPremium: premium.length,
       valorTotalActivo,
       potencialRentaMensual,
     },
