@@ -225,7 +225,7 @@ export default async function RiderPrintPage({ params }: { params: Promise<{ id:
         <div style={{ marginTop: 32, paddingTop: 16, borderTop: "1px solid #ddd", display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
           <div style={{ fontSize: 9, color: "#aaa" }}>
             <div>Generado: {new Date().toLocaleDateString("es-MX", { dateStyle: "long" })}</div>
-            <div style={{ marginTop: 2 }}>Mainstage — Rider de Carga</div>
+            <div style={{ marginTop: 2 }}>Mainstage — Lista de Carga</div>
           </div>
           <div style={{ textAlign: "center" }}>
             <div style={{ width: 180, borderBottom: "1px solid #aaa", marginBottom: 4, height: 32 }} />

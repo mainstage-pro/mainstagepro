@@ -248,7 +248,7 @@ export async function GET(req: NextRequest,
     pdfStream.on("end", () => resolve(Buffer.concat(chunks)));
   });
 
-  const filename = `RiderCarga-${(proyecto as unknown as Record<string, unknown>).numeroProyecto ?? id}.pdf`
+  const filename = `ListaCarga-${(proyecto as unknown as Record<string, unknown>).numeroProyecto ?? id}.pdf`
 
   const isPreview = req.nextUrl?.searchParams?.get("preview") === "1";
   return new NextResponse(pdfBuffer as any, {

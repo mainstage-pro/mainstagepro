@@ -6433,7 +6433,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               );
             })()}
 
-            {/* ══ EQUIPO, ACCESORIOS Y MONTAJE (de aquí sale el control de carga) ══ */}
+            {/* ══ EQUIPO, ACCESORIOS Y MONTAJE (de aquí sale la lista de carga) ══ */}
             {(() => {
             // Este es el único listado de equipo del proyecto: origen, accesorios y montaje en un solo lugar.
             const camposFaltantesEq: string[] = [];
@@ -6455,11 +6455,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-white font-semibold">{esRenta ? "Control de carga" : "Equipo, accesorios y montaje"}</p>
+                  <p className="text-white font-semibold">{esRenta ? "Lista de carga" : "Equipo, accesorios y montaje"}</p>
                   <p className="text-gray-500 text-xs mt-0.5">
                     {esRenta
                       ? "Listado de equipos con accesorios y herramientas necesarias para montaje"
-                      : "Qué equipo va, de dónde sale, con qué accesorios y cómo se monta cada concepto. De aquí sale el control de carga que se descarga para el traslado."}
+                      : "Qué equipo va, de dónde sale, con qué accesorios y cómo se monta cada concepto. De aquí sale la lista de carga que bodega usa para preparar la salida."}
                   </p>
                 </div>
                 {(() => {
@@ -6473,7 +6473,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                         {showAddEquipo ? "Cancelar" : "+ Agregar equipo"}
                       </button>
                       <button
-                        onClick={() => previewPdf(`/api/proyectos/${id}/rider-pdf`, 'Control de Carga', `control-carga-${proyecto.numeroProyecto}.pdf`)}
+                        onClick={() => previewPdf(`/api/proyectos/${id}/rider-pdf`, 'Lista de Carga', `lista-carga-${proyecto.numeroProyecto}.pdf`)}
                         disabled={!rq.listo}
                         title={rq.bloqueos.join(" · ") || undefined}
                         className="flex items-center gap-1.5 text-xs text-gray-400 border border-[#2a2a2a] hover:border-[#B3985B]/40 hover:text-[#B3985B] px-3 py-1.5 rounded-lg transition-all disabled:opacity-40 disabled:hover:border-[#2a2a2a] disabled:hover:text-gray-400 disabled:cursor-not-allowed"
@@ -6482,13 +6482,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                         Vista previa
                       </button>
                       <button
-                        onClick={() => downloadPdf(`/api/proyectos/${id}/rider-pdf`, `control-carga-${proyecto.numeroProyecto}.pdf`, 'Control de carga')}
+                        onClick={() => downloadPdf(`/api/proyectos/${id}/rider-pdf`, `lista-carga-${proyecto.numeroProyecto}.pdf`, 'Lista de carga')}
                         disabled={!rq.listo}
                         title={rq.bloqueos.join(" · ") || undefined}
                         className="flex items-center gap-1.5 text-xs text-[#B3985B] border border-[#B3985B]/30 hover:border-[#B3985B]/60 hover:bg-[#B3985B]/5 px-3 py-1.5 rounded-lg transition-all disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed"
                       >
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                        Descargar control de carga
+                        Descargar lista de carga
                       </button>
                     </div>
                   );
@@ -6502,16 +6502,16 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 const entregamos = modalidad === "ENTREGA_BODEGA" || modalidad === "ENTREGA_VENUE";
                 const destino = modalidad === "ENTREGA_VENUE" ? "el venue del evento" : "la bodega del cliente";
                 return (
-                  <div className={`rounded-xl px-4 py-3 border ${entregamos ? "bg-[#B3985B]/5 border-[#B3985B]/30" : "bg-yellow-900/10 border-yellow-800/30"}`}>
-                    <p className={`text-xs font-semibold ${entregamos ? "text-[#B3985B]" : "text-yellow-500"}`}>
-                      {entregamos ? "Aplica el control de carga" : "El control de carga no aplica para este servicio"}
+                  <div className={`rounded-xl px-4 py-3 border ${entregamos || modalidad === "RECOGE_BODEGA" ? "bg-[#B3985B]/5 border-[#B3985B]/30" : "bg-yellow-900/10 border-yellow-800/30"}`}>
+                    <p className={`text-xs font-semibold ${entregamos || modalidad === "RECOGE_BODEGA" ? "text-[#B3985B]" : "text-yellow-500"}`}>
+                      {modalidad ? "Con qué se prepara la salida" : "Falta definir la modalidad de entrega"}
                     </p>
                     <p className="text-gray-400 text-xs mt-1 leading-relaxed">
                       {entregamos
-                        ? `El control de carga solo aplica en renta cuando nosotros entregamos el equipo. En este servicio llevamos el equipo a ${destino}, así que úsalo como lista de carga.`
+                        ? `Bodega prepara el equipo con la lista de carga y nosotros lo llevamos a ${destino}.`
                         : modalidad === "RECOGE_BODEGA"
-                          ? "El cliente recoge el equipo en bodega (Querétaro), por lo que no se realiza entrega de nuestra parte. Genera el control de carga únicamente cuando nosotros vayamos a entregar el equipo."
-                          : "Define la modalidad de entrega en la logística. El control de carga solo aplica cuando nosotros entregamos el equipo (a su bodega o al venue)."}
+                          ? "Bodega prepara el equipo con la lista de carga y el cliente lo recoge en bodega (Querétaro); el traslado corre por su cuenta y se firma en la hoja de entrega."
+                          : "Bodega puede preparar el equipo con la lista de carga, pero define la modalidad en la logística para saber quién traslada."}
                     </p>
                   </div>
                 );
@@ -9095,23 +9095,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   onDescargar={() => downloadPdf(`/api/proyectos/${proyecto.id}/hoja-entrega`, `hoja-entrega-${proyecto.numeroProyecto}.pdf`)}
                 />
               )}
-              {esRenta && (() => {
-                let rd: Record<string, string> = {};
-                try { if (proyecto.logisticaRenta) rd = JSON.parse(proyecto.logisticaRenta); } catch {}
-                const modalidad = rd.entrega ?? rd.modalidadEntrega ?? "";
-                const entregamos = modalidad === "ENTREGA_BODEGA" || modalidad === "ENTREGA_VENUE";
-                if (!entregamos) return null;
-                return (
-                  <BotonDocumento
-                    label="Control de Carga"
-                    icono={<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>}
-                    requisitos={reqDoc('CONTROL_CARGA')}
-                    cargando={downloading === `control-carga-${proyecto.numeroProyecto}.pdf`}
-                    deshabilitado={!!downloading}
-                    onDescargar={() => downloadPdf(`/api/proyectos/${proyecto.id}/rider-pdf`, `control-carga-${proyecto.numeroProyecto}.pdf`, 'Control de carga')}
-                  />
-                );
-              })()}
+              <BotonDocumento
+                label="Lista de Carga"
+                icono={<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>}
+                requisitos={reqDoc('CONTROL_CARGA')}
+                cargando={downloading === `lista-carga-${proyecto.numeroProyecto}.pdf`}
+                deshabilitado={!!downloading}
+                onDescargar={() => downloadPdf(`/api/proyectos/${proyecto.id}/rider-pdf`, `lista-carga-${proyecto.numeroProyecto}.pdf`, 'Lista de carga')}
+              />
               {!esRenta && (
                 <BotonDocumento
                   label="Ficha Operativa"

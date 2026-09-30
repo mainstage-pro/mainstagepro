@@ -196,7 +196,7 @@ export function RiderPDF({ data }: { data: RiderPDFData }) {
 
   return (
     <Document
-      title={`Rider de Carga — ${data.nombre}`}
+      title={`Lista de Carga — ${data.nombre}`}
       author="Mainstage Pro"
       creator="Mainstage Pro"
     >
@@ -208,7 +208,7 @@ export function RiderPDF({ data }: { data: RiderPDFData }) {
             : <Text style={{ fontSize: 14, color: INK1, fontFamily: 'Helvetica-Bold' }}>MAINSTAGE</Text>
           }
           <View style={s.headerRight}>
-            <Text style={s.headerTitle}>Rider de Carga</Text>
+            <Text style={s.headerTitle}>Lista de Carga</Text>
             <Text style={s.headerSub}>{data.nombre}</Text>
             {data.fechaEvento && (
               <Text style={s.headerDate}>{fmtFecha(data.fechaEvento)}</Text>
@@ -219,13 +219,13 @@ export function RiderPDF({ data }: { data: RiderPDFData }) {
         {/* ── Nota de aplicabilidad (solo renta) ── */}
         {data.esRenta && (
           <View style={{ backgroundColor: LIGHT1, borderWidth: 1, borderColor: GOLD, borderRadius: 4, padding: 10, marginBottom: 12 }}>
-            <Text style={{ fontSize: 7, color: GOLD, textTransform: 'uppercase', letterSpacing: 1.5, fontFamily: 'Helvetica-Bold', marginBottom: 4 }}>Aplicabilidad del rider de carga</Text>
+            <Text style={{ fontSize: 7, color: GOLD, textTransform: 'uppercase', letterSpacing: 1.5, fontFamily: 'Helvetica-Bold', marginBottom: 4 }}>Aplicabilidad de la lista de carga</Text>
             <Text style={{ fontSize: 9, color: INK1, lineHeight: 1.5 }}>
               {data.modalidadEntrega === 'ENTREGA_VENUE'
-                ? 'Este rider de carga aplica porque Mainstage entrega el equipo directamente en el venue del evento.'
+                ? 'Prepara este equipo en bodega. Mainstage lo entrega directamente en el venue del evento.'
                 : data.modalidadEntrega === 'ENTREGA_BODEGA'
-                  ? 'Este rider de carga aplica porque Mainstage entrega el equipo en la bodega del cliente.'
-                  : 'El rider de carga solo aplica cuando Mainstage entrega el equipo (a la bodega del cliente o al venue). Si el cliente recoge el equipo en bodega, este documento no aplica.'}
+                  ? 'Prepara este equipo en bodega. Mainstage lo entrega en la bodega del cliente.'
+                  : 'Prepara este equipo en bodega. Falta definir la modalidad de entrega: confirma si nosotros lo llevamos o si el cliente lo recoge.'}
             </Text>
           </View>
         )}

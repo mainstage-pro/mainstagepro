@@ -14,7 +14,7 @@ export type TipoDocumento =
 export const DOCUMENTO_LABELS: Record<TipoDocumento, string> = {
   FICHA_OPERATIVA: "Ficha operativa",
   HOJA_ENTREGA: "Hoja de entrega",
-  CONTROL_CARGA: "Control de carga",
+  CONTROL_CARGA: "Lista de carga",
   BRIEF_TECNICO: "Info para técnicos",
 };
 

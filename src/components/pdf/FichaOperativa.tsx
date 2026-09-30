@@ -546,7 +546,7 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
           {/* 6. EQUIPOS — estructura de cards idéntica a Rider de Carga (sin imágenes) */}
           {data.equipos.length > 0 && (
             <View style={base.section}>
-              <SecNum num={sec("rider")} titulo="Rider de Carga — Equipos" />
+              <SecNum num={sec("rider")} titulo="Lista de Carga — Equipos" />
               {Array.from(todasCategorias.entries()).map(([catNombre, items]) => (
                 <View key={catNombre} style={{ marginBottom: 10 }}>
                   {/* Header de categoría negro — igual que RiderPDF */}

@@ -269,7 +269,7 @@ export function FichaTecnicos({ data }: { data: FichaTecnicosData }) {
         {/* RIDER DE CARGA — PROPIOS */}
         {equiposPropios.length > 0 && (
           <View style={s.secWrap}>
-            <Text style={s.secTitle}>Rider de Carga — Equipos que llevas</Text>
+            <Text style={s.secTitle}>Lista de Carga — Equipos que llevas</Text>
             {Array.from(gruposPropios.entries()).map(([cat, items]) => (
               <View key={cat}>
                 <Text style={s.catHeader}>{cat}</Text>
