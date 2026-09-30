@@ -13,8 +13,11 @@ import { sembrarNotasEquiposProyecto } from "@/lib/notas-equipos";
  *   no tiene nada capturado a mano (proveedor, notas, rider, montaje, confirmación)
  *   lo borra; si sí lo tiene, lo marca `necesitaRevision` para que alguien decida.
  * - Operación técnica (ProyectoPersonal): auto-crea slots VACÍOS para los roles/
- *   fechas nuevos, y marca `necesitaRevision` en los grupos de rol que se quitaron
- *   (nunca borra ni desasigna al técnico; ignora slots `esAdicional`).
+ *   fechas nuevos y marca `necesitaRevision` en los puestos que sobran, ya sea
+ *   porque el rol se quitó de la cotización o porque bajó la cantidad cotizada.
+ *   Aquí nunca borra ni desasigna: atrás de un puesto hay una persona a la que
+ *   ya se le prometió trabajo, y a quién se le cancela lo decide alguien. Ignora
+ *   los slots `esAdicional`.
  * - Rider de carga (RiderAccesorio): cuelga de ProyectoEquipo, así que sigue la
  *   lista de equipos automáticamente (se conserva al marcar el equipo en revisión).
  *
@@ -257,11 +260,11 @@ export async function sincronizarProyectoDesdeCotizacion(
     const keyDeSlot = (p: (typeof personal)[number]) =>
       `${p.rolTecnicoId ?? "sinrol"}:${p.fechaJornada ?? "sinfecha"}:${p.participacion ?? "OPERACION"}`;
 
-    const conteoExistente = new Map<string, number>();
+    const existentesPorSlot = new Map<string, typeof personal>();
     for (const p of personal) {
       if (p.esAdicional) continue; // los adicionales son manuales, fuera del diff
       const k = keyDeSlot(p);
-      conteoExistente.set(k, (conteoExistente.get(k) ?? 0) + 1);
+      existentesPorSlot.set(k, [...(existentesPorSlot.get(k) ?? []), p]);
     }
 
     const slotsACrear: {
@@ -275,7 +278,7 @@ export async function sincronizarProyectoDesdeCotizacion(
       tarifaAcordada: number | null;
     }[] = [];
     for (const [key, d] of slotsDeseados) {
-      const existentesN = conteoExistente.get(key) ?? 0;
+      const existentesN = existentesPorSlot.get(key)?.length ?? 0;
       const faltan = d.cantidad - existentesN;
       for (let i = 0; i < faltan; i++) {
         slotsACrear.push({
@@ -310,21 +313,41 @@ export async function sincronizarProyectoDesdeCotizacion(
       });
     }
 
-    // Roles cuyo grupo desapareció de la cotización → marcar para revisión
-    // (nunca borrar ni desasignar; respetar slots adicionales manuales).
-    const idsPersonalRevisar = personal
-      .filter((p) => !p.esAdicional && !slotsDeseados.has(keyDeSlot(p)) && !p.necesitaRevision)
-      .map((p) => p.id);
+    // Puestos que sobran: el rol salió de la cotización, o sigue ahí pero con
+    // menos cantidad (3 operadores cotizados que bajan a 1 dejan 2 de más). El
+    // diff es por conteo, no por presencia del rol, porque bajar la cantidad
+    // dejaba puestos invisibles: ni se avisaba de ellos ni se podían distinguir.
+    // A diferencia de los equipos, aquí nunca se borra: atrás de un puesto hay
+    // una persona a la que ya se le prometió trabajo, y quién se queda lo decide
+    // alguien, no el sync.
+    const sinAsignar = (p: (typeof personal)[number]) =>
+      !p.tecnicoId && !p.confirmado && p.movimientoId == null && !p.notas?.trim();
+
+    const idsPersonalRevisar: string[] = [];
+    const idsPersonalOk: string[] = [];
+    for (const [key, filas] of existentesPorSlot) {
+      const sobran = filas.length - (slotsDeseados.get(key)?.cantidad ?? 0);
+      // Sobra primero el puesto que nadie ocupa: si de tres operadores cotizados
+      // quedan dos, se señala el hueco vacío antes que a un técnico ya llamado.
+      const orden = [...filas].sort(
+        (a, b) => Number(!sinAsignar(a)) - Number(!sinAsignar(b)) || a.id.localeCompare(b.id),
+      );
+      orden.forEach((p, i) => {
+        if (i >= sobran) {
+          if (p.necesitaRevision) idsPersonalOk.push(p.id);
+        } else if (!p.necesitaRevision) {
+          idsPersonalRevisar.push(p.id);
+        }
+      });
+    }
+
     if (idsPersonalRevisar.length > 0) {
       await prisma.proyectoPersonal.updateMany({
         where: { id: { in: idsPersonalRevisar } },
         data: { necesitaRevision: true },
       });
     }
-    // Roles que volvieron a la cotización → quitar la bandera de revisión.
-    const idsPersonalOk = personal
-      .filter((p) => p.necesitaRevision && slotsDeseados.has(keyDeSlot(p)))
-      .map((p) => p.id);
+    // Puestos que volvieron a la cotización → quitar la bandera de revisión.
     if (idsPersonalOk.length > 0) {
       await prisma.proyectoPersonal.updateMany({
         where: { id: { in: idsPersonalOk } },

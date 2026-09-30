@@ -228,6 +228,13 @@ const ESTADO_COLORS: Record<string, string> = {
 const NIVEL_COLORS: Record<string, string> = {
   AAA: "text-yellow-400", AA: "text-blue-400", A: "text-gray-400",
 };
+const PART_BADGE: Record<string, { label: string; cls: string }> = {
+  OPERACION:  { label: "Operación",  cls: "bg-blue-900/30 text-blue-300 border-blue-800/40" },
+  MONTAJE:    { label: "Montaje",    cls: "bg-amber-900/30 text-amber-300 border-amber-800/40" },
+  DESMONTAJE: { label: "Desmontaje", cls: "bg-orange-900/30 text-orange-300 border-orange-800/40" },
+  TRANSPORTE: { label: "Transporte", cls: "bg-purple-900/30 text-purple-300 border-purple-800/40" },
+  OTRO:       { label: "Otro",       cls: "bg-gray-800/60 text-gray-400 border-gray-700/40" },
+};
 
 function fmt(n: number) {
   return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
@@ -1161,6 +1168,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   // Edición de cantidad en control de carga
   const [riderEquipoEditId, setRiderEquipoEditId] = useState<string | null>(null);
   const [riderEquipoEditCant, setRiderEquipoEditCant] = useState(1);
+  const [quitandoFueraCot, setQuitandoFueraCot] = useState(false);
   const [riderNotasEditId, setRiderNotasEditId] = useState<string | null>(null);
   const [riderNotasText, setRiderNotasText] = useState("");
   const [newExtraManualDesc, setNewExtraManualDesc] = useState("");
@@ -5101,6 +5109,77 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               )}
             </div>
 
+            {/* ── Puestos que la cotización ya no pide ──
+                 Un puesto con técnico asignado no se borra solo: aquí se ve de
+                 quién se trata para poder decidir a quién se le cancela. */}
+            {(() => {
+              const fuera = proyecto.personal.filter(p => p.necesitaRevision);
+              if (fuera.length === 0) return null;
+              const vacios = fuera.filter(p => !p.tecnico);
+              const fechaCorta = (s: string | null) => {
+                if (!s) return null;
+                try {
+                  return new Date(s + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", day: "numeric", month: "short" });
+                } catch { return s; }
+              };
+              return (
+                <div className="border-t border-amber-900/30 bg-amber-950/10 px-4 py-3">
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div className="flex-1 min-w-[220px]">
+                      <p className="text-amber-300 text-xs font-semibold">
+                        {fuera.length === 1 ? "1 puesto ya no está en la cotización" : `${fuera.length} puestos ya no están en la cotización`}
+                      </p>
+                      <p className="text-[11px] text-gray-500 mt-0.5">
+                        Se quitó el rol o bajó la cantidad al editar la cotización. Nada se borró solo: atrás de un puesto puede haber alguien a quien ya se le prometió el trabajo, así que tú decides a quién se le cancela.
+                      </p>
+                    </div>
+                    {vacios.length > 0 && (
+                      <button
+                        onClick={async () => {
+                          const ok = await confirm({
+                            message: `¿Quitar ${vacios.length === 1 ? "el puesto que nadie ocupa" : `los ${vacios.length} puestos que nadie ocupa`}? No afecta a los técnicos ya asignados.`,
+                            confirmText: "Quitar", danger: true,
+                          });
+                          if (!ok) return;
+                          setQuitandoFueraCot(true);
+                          try {
+                            for (const p of vacios) {
+                              await fetch(`/api/proyectos/${id}/personal/${p.id}`, { method: "DELETE" });
+                            }
+                            await load();
+                          } finally {
+                            setQuitandoFueraCot(false);
+                          }
+                        }}
+                        disabled={quitandoFueraCot}
+                        className="shrink-0 text-[11px] text-amber-300 border border-amber-800/50 hover:bg-amber-900/20 px-2.5 py-1 rounded-lg transition-colors disabled:opacity-40"
+                      >
+                        {quitandoFueraCot ? "Quitando…" : `Quitar ${vacios.length} que nadie ocupa`}
+                      </button>
+                    )}
+                  </div>
+                  <div className="mt-2 space-y-1">
+                    {fuera.map(p => (
+                      <div key={p.id} className="flex items-center gap-2 flex-wrap text-[11px]">
+                        <span className="text-gray-300 font-medium">{p.rolTecnico?.nombre ?? "Sin rol de puesto"}</span>
+                        <span className="text-white">· {p.tecnico?.nombre ?? "sin asignar"}</span>
+                        <span className="text-gray-600">· {PART_BADGE[p.participacion ?? "OPERACION"]?.label ?? "Operación"}</span>
+                        {fechaCorta(p.fechaJornada) && <span className="text-gray-600">· {fechaCorta(p.fechaJornada)}</span>}
+                        {p.confirmado && <span className="text-green-500">· ya confirmó</span>}
+                        <button
+                          onClick={async () => {
+                            const ok = await confirm({ message: `¿Quitar a ${p.tecnico?.nombre ?? "este puesto"} del proyecto? Se borrarán también las cuentas por pagar pendientes vinculadas.`, confirmText: "Quitar", danger: true });
+                            if (ok) eliminarPersonal(p.id);
+                          }}
+                          className="text-[11px] text-gray-400 hover:text-red-400 border border-[#333] hover:border-red-800/60 px-2 py-0.5 rounded transition-colors"
+                        >Quitar</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* ── Sugerencias de cotización — siempre visibles ── */}
             {proyecto.cotizacion && (() => {
               const lineas = (proyecto.cotizacion.lineas ?? []).filter(l => l.tipo === "OPERACION_TECNICA");
@@ -5237,15 +5316,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 Sin personal asignado aún
               </div>
             ) : (() => {
-              // ── Badges por tipo de participación ─────────────────────────────
-              const PART_BADGE: Record<string, { label: string; cls: string }> = {
-                OPERACION:  { label: "Operación",  cls: "bg-blue-900/30 text-blue-300 border-blue-800/40" },
-                MONTAJE:    { label: "Montaje",    cls: "bg-amber-900/30 text-amber-300 border-amber-800/40" },
-                DESMONTAJE: { label: "Desmontaje", cls: "bg-orange-900/30 text-orange-300 border-orange-800/40" },
-                TRANSPORTE: { label: "Transporte", cls: "bg-purple-900/30 text-purple-300 border-purple-800/40" },
-                OTRO:       { label: "Otro",       cls: "bg-gray-800/60 text-gray-400 border-gray-700/40" },
-              };
-
               // ── Fechas base del proyecto (yyyy-mm-dd) ─────────────────────────
               const fechaEvento  = proyecto.fechaEvento  ? proyecto.fechaEvento.substring(0, 10)  : null;
               const fechaMontaje = proyecto.fechaMontaje ? proyecto.fechaMontaje.substring(0, 10) : null;
@@ -5301,7 +5371,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 );
                 const puedeAsignar = Boolean(p.rolTecnico) || Boolean(selAsignarRol);
                 return (
-                  <div key={p.id} className={`p-4 border-b border-[#0d0d0d] last:border-0 border-l-2 ${p.confirmado ? "border-l-green-700/60" : "border-l-[#1e1e1e]"}`}>
+                  <div key={p.id} className={`p-4 border-b border-[#0d0d0d] last:border-0 border-l-2 ${p.necesitaRevision ? "border-l-amber-700/60 bg-amber-950/10" : p.confirmado ? "border-l-green-700/60" : "border-l-[#1e1e1e]"}`}>
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className="flex-1 min-w-0">
                         {!p.tecnico ? (
@@ -5347,7 +5417,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                               <span className="text-gray-500 text-sm">Pendiente de asignar</span>
                               {p.nivel && <span className={`text-xs font-semibold ${NIVEL_COLORS[p.nivel] ?? "text-gray-400"}`}>{p.nivel}</span>}
                               <span className={`px-1.5 py-0.5 rounded border text-[10px] font-medium ${badge.cls}`}>{badge.label}</span>
-                              {p.necesitaRevision && <span className="px-1.5 py-0.5 rounded border border-amber-700/50 bg-amber-900/20 text-amber-300 text-[10px] font-medium" title="Este rol se quitó o cambió en la cotización — revísalo (no se borró automáticamente)">Revisar</span>}
+                              {p.necesitaRevision && <span className="px-1.5 py-0.5 rounded border border-amber-700/50 bg-amber-900/20 text-amber-300 text-[10px] font-medium" title="Este puesto ya no está en la cotización: se quitó el rol o bajó la cantidad. No se borró solo — decide si lo quitas.">Ya no está en la cotización</span>}
                               <button onClick={() => { setAsignandoId(p.id); setSelAsignar(""); setSelAsignarRol(""); setCrearParaSlotId(null); }} className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-2 py-0.5 rounded transition-colors">Asignar</button>
                             </div>
                           )
@@ -5396,7 +5466,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                               )}
                               <span className={`px-1.5 py-0.5 rounded border text-[10px] font-medium ${badge.cls}`}>{badge.label}</span>
                               {p.esAdicional && <span className="px-1.5 py-0.5 rounded border border-fuchsia-800/40 bg-fuchsia-900/20 text-fuchsia-300 text-[10px] font-medium" title="Agregado fuera de lo cotizado — solo visible internamente">Adicional</span>}
-                              {p.necesitaRevision && <span className="px-1.5 py-0.5 rounded border border-amber-700/50 bg-amber-900/20 text-amber-300 text-[10px] font-medium" title="Este rol se quitó o cambió en la cotización — revísalo (no se borró automáticamente)">Revisar</span>}
+                              {p.necesitaRevision && <span className="px-1.5 py-0.5 rounded border border-amber-700/50 bg-amber-900/20 text-amber-300 text-[10px] font-medium" title="Este puesto ya no está en la cotización: se quitó el rol o bajó la cantidad. No se borró solo — decide si lo quitas.">Ya no está en la cotización</span>}
                             </div>
                           )
                         )}
@@ -6378,6 +6448,48 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   {conFaltante > 0 && <span className="px-2 py-1 rounded-lg border border-yellow-800/50 bg-yellow-900/10 text-yellow-300">{conFaltante} con faltante de inventario</span>}
                 </div>
               )}
+
+              {/* ── Equipos que la cotización ya no pide ──
+                   Siguen aquí porque cargaban algo capturado a mano (proveedor,
+                   rider de carga, montaje). De un clic se sacan todos. */}
+              {(() => {
+                const fuera = riderEquipos.filter(e => e.necesitaRevision);
+                if (fuera.length === 0) return null;
+                return (
+                  <div className="border border-amber-900/40 bg-amber-950/10 rounded-xl px-4 py-3 flex flex-wrap items-center gap-3">
+                    <div className="flex-1 min-w-[220px]">
+                      <p className="text-amber-300 text-xs font-semibold">
+                        {fuera.length === 1 ? "1 equipo ya no está en la cotización" : `${fuera.length} equipos ya no están en la cotización`}
+                      </p>
+                      <p className="text-[11px] text-gray-500 mt-0.5">
+                        {fuera.map(e => `${e.equipo.marca ?? ""} ${e.equipo.modelo ?? e.equipo.descripcion}`.trim()).join(" · ")}
+                      </p>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        const ok = await confirm({
+                          message: `¿Quitar ${fuera.length === 1 ? "este equipo" : `estos ${fuera.length} equipos`} del rider? Se borra también su rider de carga y su plan de montaje.`,
+                          confirmText: "Quitar del rider", danger: true,
+                        });
+                        if (!ok) return;
+                        setQuitandoFueraCot(true);
+                        try {
+                          for (const e of fuera) {
+                            await fetch(`/api/proyectos/${id}/equipos/${e.id}`, { method: "DELETE" });
+                          }
+                          await load();
+                        } finally {
+                          setQuitandoFueraCot(false);
+                        }
+                      }}
+                      disabled={quitandoFueraCot}
+                      className="shrink-0 text-xs text-amber-300 border border-amber-800/50 hover:bg-amber-900/20 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40"
+                    >
+                      {quitandoFueraCot ? "Quitando…" : "Quitar del rider"}
+                    </button>
+                  </div>
+                );
+              })()}
 
               {/* ── Plan de montaje: cómo se instala cada equipo en sitio ── */}
               {riderEquipos.length > 0 && (() => {
