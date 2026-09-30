@@ -13,6 +13,11 @@ const nextConfig: NextConfig = {
   outputFileTracingExcludes: {
     "*": ["./public/images/**", "./public/uploads/**"],
   },
+  // Las fuentes de marca del PDF se leen con `fs` en tiempo de ejecución; sin esto
+  // el bundle de la función no las lleva y el render cae a Helvetica en silencio.
+  outputFileTracingIncludes: {
+    "/api/cotizaciones/[id]/pdf": ["./public/fonts/**"],
+  },
   experimental: {
     staleTimes: {
       dynamic: 30,
