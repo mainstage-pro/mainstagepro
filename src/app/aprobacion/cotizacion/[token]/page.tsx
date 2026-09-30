@@ -246,7 +246,7 @@ export default function AprobacionCotizacionPage({ params }: { params: Promise<{
                     <div key={l.id} className="flex justify-between items-start gap-4 text-sm">
                       <div className="flex-1 min-w-0">
                         <span className="text-white/85">{l.descripcion}</span>
-                        {l.marca && <span className="text-white/30 ml-2 text-xs">{l.marca}</span>}
+                        {l.marca && <span className="text-white/45 ml-2 text-xs font-medium">{l.marca}</span>}
                         {l.cantidad > 1 && <span className="text-white/20 ml-2 text-xs">×{l.cantidad}</span>}
                         {l.esIncluido && (
                           <span className="ml-2 text-[9px] bg-[#B3985B]/15 text-[#B3985B] px-1.5 py-0.5 rounded-full">Incluido</span>

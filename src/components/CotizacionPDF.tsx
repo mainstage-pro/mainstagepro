@@ -227,6 +227,7 @@ const s = StyleSheet.create({
   cellMarca: {
     fontSize: 8,
     color: BLACK,
+    fontFamily: "Helvetica-Bold",
   },
   cellNum: {
     fontSize: 8.5,
@@ -248,6 +249,11 @@ const s = StyleSheet.create({
     fontSize: 8,
     color: LIGHT_GRAY,
     fontFamily: "Helvetica-Oblique",
+  },
+  cellIncluidoMarca: {
+    fontSize: 8,
+    color: LIGHT_GRAY,
+    fontFamily: "Helvetica-BoldOblique",
   },
   badgeNivel: {
     fontSize: 7,
@@ -895,7 +901,7 @@ function TablaEquipos({ lineas, notasSecciones, descCategorias, catLabels, idiom
               {catIncluidas.map((l) => (
                 <View key={l.id} style={s.tablaIncluido}>
                   <View style={s.colImg} />
-                  <Text style={[s.cellIncluido, s.colMarca]}>{[l.marca, l.modelo].filter(Boolean).join(" ") || ""}</Text>
+                  <Text style={[s.cellIncluidoMarca, s.colMarca]}>{[l.marca, l.modelo].filter(Boolean).join(" ") || ""}</Text>
                   <Text style={[s.cellIncluido, s.colDesc]}>✓ {l.descripcion}</Text>
                   <Text style={[s.cellIncluido, s.colCant, { textAlign: "center" }]}>{l.cantidad}</Text>
                   <Text style={[s.cellIncluido, s.colDias, { textAlign: "center" }]}>—</Text>
@@ -913,7 +919,7 @@ function TablaEquipos({ lineas, notasSecciones, descCategorias, catLabels, idiom
           {incluidas.map((l) => (
             <View key={l.id} style={s.tablaIncluido}>
               <View style={s.colImg} />
-              <Text style={[s.cellIncluido, s.colMarca]}>{[l.marca, l.modelo].filter(Boolean).join(" ") || ""}</Text>
+              <Text style={[s.cellIncluidoMarca, s.colMarca]}>{[l.marca, l.modelo].filter(Boolean).join(" ") || ""}</Text>
               <Text style={[s.cellIncluido, s.colDesc]}>✓ {l.descripcion}</Text>
               <Text style={[s.cellIncluido, s.colCant, { textAlign: "center" }]}>{l.cantidad}</Text>
               <Text style={[s.cellIncluido, s.colDias, { textAlign: "center" }]}>—</Text>

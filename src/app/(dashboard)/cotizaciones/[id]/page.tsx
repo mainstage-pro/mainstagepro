@@ -1389,7 +1389,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                             <img src="/logo-icon.png" alt="" className="w-8 h-8 object-contain shrink-0 opacity-15" />
                           )}
                           <div>
-                            <span className={l.esIncluido ? "text-gray-500 italic" : "text-white"}>{[l.marca, l.modelo].filter(Boolean).join(' ') || l.descripcion}</span>
+                            <span className={l.esIncluido ? "text-gray-500 italic font-medium" : "text-white font-medium"}>{[l.marca, l.modelo].filter(Boolean).join(' ') || l.descripcion}</span>
                             {([l.marca, l.modelo].filter(Boolean).join(' ') !== l.descripcion) && <span className="text-gray-500 text-xs ml-2">{l.descripcion}</span>}
                             <NoteField linea={l} noteEdit={noteEdit} setNoteEdit={setNoteEdit} saveNota={saveNota} />
                           </div>
@@ -1496,7 +1496,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
               {lineasExterno.map((l) => (
                 <div key={l.id} className="flex justify-between items-start px-4 py-2 border-t border-[#1a1a1a] text-sm">
                   <div>
-                    <span className="text-white">{[l.marca, l.modelo].filter(Boolean).join(' ') || l.descripcion}</span>
+                    <span className="text-white font-medium">{[l.marca, l.modelo].filter(Boolean).join(' ') || l.descripcion}</span>
                     {([l.marca, l.modelo].filter(Boolean).join(' ') !== l.descripcion) && <span className="text-gray-500 text-xs ml-2">{l.descripcion}</span>}
                     <NoteField linea={l} noteEdit={noteEdit} setNoteEdit={setNoteEdit} saveNota={saveNota} />
                   </div>
