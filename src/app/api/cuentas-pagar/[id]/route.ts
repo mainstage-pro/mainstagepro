@@ -40,8 +40,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (concepto !== undefined) updateData.concepto = concepto;
   if (fechaCompromiso !== undefined) updateData.fechaCompromiso = new Date(fechaCompromiso);
   if (cuentaOrigenId !== undefined) updateData.cuentaOrigenId = cuentaOrigenId || null;
-  if (proveedorId !== undefined) updateData.proveedorId = proveedorId || null;
-  if (tecnicoId !== undefined) updateData.tecnicoId = tecnicoId || null;
+  
+  if (proveedorId !== undefined) {
+    updateData.proveedorId = proveedorId || null;
+    if (proveedorId) updateData.tipoAcreedor = "PROVEEDOR";
+  }
+  
+  if (tecnicoId !== undefined) {
+    updateData.tecnicoId = tecnicoId || null;
+    if (tecnicoId) updateData.tipoAcreedor = "TECNICO";
+  }
+
+  if (proveedorId === null && tecnicoId === null && (proveedorId !== undefined || tecnicoId !== undefined)) {
+    updateData.tipoAcreedor = "OTRO";
+  }
+
   if (notas !== undefined) updateData.notas = notas || null;
 
   // Actualización masiva si es serie y se seleccionó 'editarSiguientes'

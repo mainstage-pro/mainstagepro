@@ -3369,10 +3369,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   }
 
   // ── Editar CxP (pendiente) ──
-  function abrirEditarCxP(c: { id: string; concepto: string; monto: number; fechaCompromiso: string | null; tipoAcreedor: string; notas: string | null }) {
+  function abrirEditarCxP(c: { id: string; concepto: string; monto: number; fechaCompromiso: string | null; tipoAcreedor: string; notas: string | null; proveedorId?: string | null }) {
     setEditGastoEstado("PENDIENTE");
     setEditingCxPId(c.id);
-    setEditGasto({ id: c.id, concepto: c.concepto, monto: c.monto, fecha: c.fechaCompromiso ?? new Date().toISOString().split("T")[0], notas: c.notas, referencia: null, metodoPago: "TRANSFERENCIA", categoriaId: null, categoria: null, proveedorId: null, proveedor: null, cuentaOrigenId: null, cuentaOrigen: null });
+    setEditGasto({ id: c.id, concepto: c.concepto, monto: c.monto, fecha: c.fechaCompromiso ?? new Date().toISOString().split("T")[0], notas: c.notas, referencia: null, metodoPago: "TRANSFERENCIA", categoriaId: null, categoria: null, proveedorId: c.proveedorId ?? null, proveedor: null, cuentaOrigenId: null, cuentaOrigen: null });
     setEditGastoForm({
       concepto: c.concepto,
       monto: String(c.monto),
@@ -3381,7 +3381,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       referencia: "",
       metodoPago: "TRANSFERENCIA",
       categoriaId: "",
-      proveedorId: "",
+      proveedorId: c.proveedorId ?? "",
       cuentaOrigenId: "",
     });
   }
@@ -3403,6 +3403,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             monto: parseFloat(editGastoForm.monto),
             motivo: "Edición de gasto",
             fechaCompromiso: editGastoForm.fecha,
+            proveedorId: editGastoForm.proveedorId || null,
             notas: editGastoForm.notas || null,
           }),
         });
@@ -3414,6 +3415,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               concepto: editGastoForm.concepto,
               monto: parseFloat(editGastoForm.monto),
               fechaCompromiso: editGastoForm.fecha,
+              proveedorId: editGastoForm.proveedorId || null,
+              tipoAcreedor: editGastoForm.proveedorId ? "PROVEEDOR" : "OTRO",
               notas: editGastoForm.notas || null,
             }),
           } : prev);
