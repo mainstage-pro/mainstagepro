@@ -761,6 +761,7 @@ export default function DiscoveryForm({
     nombreEvento: "",
     fechaEventoEstimada: "",
     lugarEstimado: "",
+    venueId: null as string | null,
     asistentesEstimados: "",
     diasServicio: "",
     // Días adicionales del evento (además del día 1 = fechaEventoEstimada). "YYYY-MM-DD"[]
@@ -942,6 +943,7 @@ export default function DiscoveryForm({
       nombreEvento: trato.nombreEvento || "",
       fechaEventoEstimada: trato.fechaEventoEstimada ? String(trato.fechaEventoEstimada).split("T")[0] : "",
       lugarEstimado: trato.lugarEstimado === "Por definir" ? "por-definir" : (trato.lugarEstimado || ""),
+      venueId: trato.venueId ?? null,
       asistentesEstimados: trato.asistentesEstimados != null ? String(trato.asistentesEstimados) : "",
       diasServicio: trato.diasServicio != null ? String(trato.diasServicio) : "",
       // Días adicionales = todas las fechas guardadas menos el día 1 (fechaEventoEstimada)
@@ -1023,6 +1025,7 @@ export default function DiscoveryForm({
       fechaEventoEstimada: form.fechaEventoEstimada === "por-definir" ? null : (form.fechaEventoEstimada || null),
       fechasEvento,
       lugarEstimado: form.lugarEstimado === "por-definir" ? "Por definir" : (form.lugarEstimado || null),
+      venueId: form.lugarEstimado === "por-definir" ? null : (form.venueId ?? null),
       asistentesEstimados: form.asistentesEstimados ? parseInt(form.asistentesEstimados) : null,
       diasServicio: diasDerivados ?? (form.diasServicio ? parseInt(form.diasServicio) : null),
       presupuestoEstimado: form.presupuestoEstimado ? parseFloat(form.presupuestoEstimado) : null,
@@ -1166,6 +1169,7 @@ export default function DiscoveryForm({
       fechaEventoEstimada: discForm.fechaEventoEstimada === "por-definir" ? null : (discForm.fechaEventoEstimada || null),
       fechasEvento,
       lugarEstimado: discForm.lugarEstimado === "por-definir" ? "Por definir" : (discForm.lugarEstimado || null),
+      venueId: discForm.lugarEstimado === "por-definir" ? null : (discForm.venueId ?? null),
       asistentesEstimados: discForm.asistentesEstimados ? parseInt(discForm.asistentesEstimados) : null,
       diasServicio: diasDerivados ?? (discForm.diasServicio ? parseInt(discForm.diasServicio) : null),
       presupuestoEstimado: discForm.presupuestoEstimado ? parseFloat(discForm.presupuestoEstimado) : null,
@@ -1547,7 +1551,7 @@ export default function DiscoveryForm({
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-xs text-gray-400">Lugar/salón del evento y ciudad *</label>
-                  <button type="button" onClick={() => setDiscForm(p => ({ ...p, lugarEstimado: p.lugarEstimado === "por-definir" ? "" : "por-definir" }))}
+                  <button type="button" onClick={() => setDiscForm(p => ({ ...p, lugarEstimado: p.lugarEstimado === "por-definir" ? "" : "por-definir", venueId: null }))}
                     className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${discForm.lugarEstimado === "por-definir" ? "border-[#B3985B]/60 text-[#B3985B] bg-[#B3985B]/10" : "border-[#333] text-gray-600 hover:text-gray-400"}`}>
                     Por definir
                   </button>
@@ -1555,7 +1559,11 @@ export default function DiscoveryForm({
                 {discForm.lugarEstimado === "por-definir" ? (
                   <div className="w-full bg-[#1a1a1a] border border-[#B3985B]/30 rounded-lg px-3 py-2 text-[#B3985B] text-sm italic">Lugar por definir</div>
                 ) : (
-                  <VenuePicker value={discForm.lugarEstimado} onChange={(v) => setDiscForm(p => ({ ...p, lugarEstimado: v }))} placeholder="Ej: CDMX · Salón Versalles" />
+                  <VenuePicker
+                    value={discForm.lugarEstimado}
+                    venueId={discForm.venueId}
+                    onChange={(nombre, venueId) => setDiscForm(p => ({ ...p, lugarEstimado: nombre, venueId }))}
+                    placeholder="Busca el venue: Sirilo, Hacienda Galindo…" />
                 )}
               </div>
 

@@ -272,7 +272,11 @@ model Trato {
   adicionalesSeleccionados String? // JSON: [adicionalId] sugeridos del catálogo encendidos
   // ──────────────────────────────────────────────────────────────────────────
 
+  // El nombre del venue se espeja aquí desde Venue.nombre para que todo lo que ya
+  // lee texto (PDFs, portales, presentaciones) siga funcionando sin join.
   lugarEstimado       String?
+  venueId             String?
+  venue               Venue?    @relation(fields: [venueId], references: [id])
   fechaEventoEstimada DateTime?
   // El cliente pidió apartar la fecha antes de que exista descubrimiento o cotización:
   // el evento aparece en el calendario comercial como reserva tentativa (gris).
@@ -496,7 +500,9 @@ model Cotizacion {
   tipoEvento            String?
   tipoServicio          String?
   fechaEvento           DateTime?
-  lugarEvento           String?
+  lugarEvento           String? // espejo de Venue.nombre
+  venueId               String?
+  venue                 Venue?    @relation(fields: [venueId], references: [id])
   horaInicioEvento      String? // ej: "18:00" — copiado del descubrimiento (Trato) al crear la cotización
   horaFinEvento         String? // ej: "23:00"
   horasOperacion        Float?
@@ -663,7 +669,9 @@ model Proyecto {
   puntoSalidaBodega        String? // Punto de salida desde bodega
   horaSalidaBodega         String? // Hora de salida desde bodega
   indicacionesCliente      String?   @db.Text // Lo que necesita tener listo el cliente
-  lugarEvento              String?
+  lugarEvento              String? // espejo de Venue.nombre
+  venueId                  String?
+  venue                    Venue?    @relation(fields: [venueId], references: [id])
   encargadoLugar           String?
   encargadoLugarContacto   String?
   descripcionGeneral       String?
@@ -3473,8 +3481,11 @@ model LevantamientoContenido {
 model Venue {
   id                     String   @id @default(cuid())
   nombre                 String
+  tipo                   String? // SALON|HACIENDA|JARDIN|VINEDO|HOTEL|FORO|TEATRO|AUDITORIO|MUSEO|HISTORICO|CLUB|CLUB_GOLF|BAR|RESTAURANTE|COLEGIO|PARQUE|PLAZA|PLAZA_TOROS|ESTADIO|GALERIA|RANCHO|ESPACIO_PUBLICO|OTRO
   direccion              String?
   ciudad                 String?
+  estado                 String?
+  linkMaps               String?
   contacto               String?
   telefonoContacto       String?
   emailContacto          String?
@@ -3504,6 +3515,12 @@ model Venue {
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 
+  tratos       Trato[]
+  cotizaciones Cotizacion[]
+  proyectos    Proyecto[]
+
+  @@index([nombre])
+  @@index([ciudad])
   @@map("venues")
 }
 

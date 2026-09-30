@@ -4,13 +4,18 @@ import { useEffect, useState, useRef } from "react";
 import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
 import { coincide } from "@/lib/buscar";
-import { Landmark, Users, Ruler, Zap, Phone, Volume2, Clock, Wrench } from "lucide-react";
+import { Landmark, Users, Ruler, Zap, Phone, Volume2, Clock, Wrench, Merge } from "lucide-react";
+import { VENUE_TIPOS, etiquetaTipoVenue } from "@/lib/venues";
 
 interface Venue {
   id: string;
   nombre: string;
+  tipo: string | null;
   direccion: string | null;
   ciudad: string | null;
+  estado: string | null;
+  linkMaps: string | null;
+  _count?: { tratos: number; cotizaciones: number; proyectos: number };
   contacto: string | null;
   telefonoContacto: string | null;
   emailContacto: string | null;
@@ -34,18 +39,8 @@ interface Venue {
   activo: boolean;
 }
 
-const FORM_EMPTY: Omit<Venue, "id" | "activo"> = {
-  nombre: "", direccion: null, ciudad: null, contacto: null,
-  telefonoContacto: null, emailContacto: null, capacidadPersonas: null,
-  largoM: null, anchoM: null, alturaMaximaM: null,
-  accesoVehicular: null, puntoDescarga: null,
-  voltajeDisponible: null, amperajeTotal: null, fases: null, ubicacionTablero: null,
-  restriccionDecibeles: null, restriccionHorario: null, restriccionInstalacion: null,
-  tiposEvento: null, calificacion: null, notas: null, fotoPortada: null,
-};
-
 type FormData = {
-  nombre: string; direccion: string; ciudad: string; contacto: string;
+  nombre: string; tipo: string; estado: string; linkMaps: string; direccion: string; ciudad: string; contacto: string;
   telefonoContacto: string; emailContacto: string; capacidadPersonas: string;
   largoM: string; anchoM: string; alturaMaximaM: string;
   accesoVehicular: string; puntoDescarga: string;
@@ -55,7 +50,7 @@ type FormData = {
 };
 
 const FORM_DEFAULTS: FormData = {
-  nombre: "", direccion: "", ciudad: "", contacto: "",
+  nombre: "", tipo: "SALON", estado: "", linkMaps: "", direccion: "", ciudad: "", contacto: "",
   telefonoContacto: "", emailContacto: "", capacidadPersonas: "",
   largoM: "", anchoM: "", alturaMaximaM: "",
   accesoVehicular: "", puntoDescarga: "",
@@ -103,11 +98,15 @@ export default function VenuesPage() {
   const currentEditId = useRef<string | null>(null);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [search, setSearch] = useState("");
+  const [filtroTipo, setFiltroTipo] = useState("");
+  const [orden, setOrden] = useState<"USO" | "NOMBRE">("USO");
+  const [fusionandoId, setFusionandoId] = useState<string | null>(null);
+  const [fusionDestino, setFusionDestino] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [historialVenue, setHistorialVenue] = useState<Record<string, {id:string;nombre:string;numeroProyecto:string;fechaEvento:string|null;estado:string;cliente:{nombre:string}}[]>>({});
 
   useEffect(() => {
-    fetch("/api/venues").then(r => r.json()).then(d => {
+    fetch("/api/venues?conUso=1").then(r => r.json()).then(d => {
       setVenues(d.venues ?? []);
       setLoading(false);
     });
@@ -116,6 +115,9 @@ export default function VenuesPage() {
   function venueToForm(v: Venue): FormData {
     return {
       nombre: v.nombre ?? "",
+      tipo: v.tipo ?? "OTRO",
+      estado: v.estado ?? "",
+      linkMaps: v.linkMaps ?? "",
       direccion: v.direccion ?? "",
       ciudad: v.ciudad ?? "",
       contacto: v.contacto ?? "",
@@ -146,7 +148,7 @@ export default function VenuesPage() {
     if (!editing || editing.id !== currentEditId.current) return;
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(async () => {
-      const payload = { nombre: form.nombre, direccion: form.direccion || null, ciudad: form.ciudad || null, contacto: form.contacto || null, telefonoContacto: form.telefonoContacto || null, emailContacto: form.emailContacto || null, capacidadPersonas: form.capacidadPersonas || null, largoM: form.largoM || null, anchoM: form.anchoM || null, alturaMaximaM: form.alturaMaximaM || null, accesoVehicular: form.accesoVehicular || null, puntoDescarga: form.puntoDescarga || null, voltajeDisponible: form.voltajeDisponible || null, amperajeTotal: form.amperajeTotal || null, fases: form.fases || null, ubicacionTablero: form.ubicacionTablero || null, restriccionDecibeles: form.restriccionDecibeles || null, restriccionHorario: form.restriccionHorario || null, restriccionInstalacion: form.restriccionInstalacion || null, tiposEvento: form.tiposEvento, calificacion: form.calificacion || null, notas: form.notas || null, fotoPortada: form.fotoPortada || null };
+      const payload = { nombre: form.nombre, tipo: form.tipo || null, estado: form.estado || null, linkMaps: form.linkMaps || null, direccion: form.direccion || null, ciudad: form.ciudad || null, contacto: form.contacto || null, telefonoContacto: form.telefonoContacto || null, emailContacto: form.emailContacto || null, capacidadPersonas: form.capacidadPersonas || null, largoM: form.largoM || null, anchoM: form.anchoM || null, alturaMaximaM: form.alturaMaximaM || null, accesoVehicular: form.accesoVehicular || null, puntoDescarga: form.puntoDescarga || null, voltajeDisponible: form.voltajeDisponible || null, amperajeTotal: form.amperajeTotal || null, fases: form.fases || null, ubicacionTablero: form.ubicacionTablero || null, restriccionDecibeles: form.restriccionDecibeles || null, restriccionHorario: form.restriccionHorario || null, restriccionInstalacion: form.restriccionInstalacion || null, tiposEvento: form.tiposEvento, calificacion: form.calificacion || null, notas: form.notas || null, fotoPortada: form.fotoPortada || null };
       const res = await fetch(`/api/venues/${editing.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const d = await res.json();
       if (d.venue) setVenues(prev => prev.map(v => v.id === editing.id ? d.venue : v));
@@ -172,6 +174,9 @@ export default function VenuesPage() {
     setSaving(true);
     const payload = {
       nombre: form.nombre,
+      tipo: form.tipo || null,
+      estado: form.estado || null,
+      linkMaps: form.linkMaps || null,
       direccion: form.direccion || null,
       ciudad: form.ciudad || null,
       contacto: form.contacto || null,
@@ -226,7 +231,7 @@ export default function VenuesPage() {
   }
 
   async function eliminar(id: string) {
-    if (!await confirm({ message: "¿Eliminar este venue?", danger: true, confirmText: "Eliminar" })) return;
+    if (!await confirm({ message: "¿Dar de baja este venue? Los eventos que ya lo usan lo conservan.", danger: true, confirmText: "Dar de baja" })) return;
     const res = await fetch(`/api/venues/${id}`, { method: "DELETE" });
     if (!res.ok) {
       const d = await res.json().catch(() => ({}));
@@ -236,7 +241,32 @@ export default function VenuesPage() {
     setVenues(prev => prev.filter(v => v.id !== id));
   }
 
-  const filtered = venues.filter(v => coincide(search, v.nombre, v.ciudad));
+  const usos = (v: Venue) => (v._count ? v._count.tratos + v._count.cotizaciones + v._count.proyectos : 0);
+  const tiposPresentes = VENUE_TIPOS.filter(t => venues.some(v => v.tipo === t.value));
+  const filtered = venues
+    .filter(v => (filtroTipo ? v.tipo === filtroTipo : true))
+    .filter(v => coincide(search, v.nombre, v.ciudad, v.estado))
+    .sort((a, b) => (orden === "USO" ? usos(b) - usos(a) : a.nombre.localeCompare(b.nombre, "es")));
+
+  async function fusionar(duplicado: Venue) {
+    if (!fusionDestino) return;
+    const destino = venues.find(v => v.id === fusionDestino);
+    if (!destino) return;
+    if (!await confirm({
+      message: `Todo lo que apunta a "${duplicado.nombre}" pasará a "${destino.nombre}", y "${duplicado.nombre}" se da de baja. ¿Continuar?`,
+      confirmText: "Fusionar",
+    })) return;
+    const res = await fetch(`/api/venues/${fusionDestino}/fusionar`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ duplicadoId: duplicado.id }),
+    });
+    const d = await res.json();
+    if (!res.ok) { toast.error(d.error ?? "No se pudo fusionar"); return; }
+    toast.success(`Fusionado: ${d.tratos} tratos, ${d.cotizaciones} cotizaciones, ${d.proyectos} proyectos.`);
+    setFusionandoId(null);
+    setFusionDestino("");
+    fetch("/api/venues?conUso=1").then(r => r.json()).then(x => setVenues(x.venues ?? []));
+  }
 
   if (loading) return <div className="text-gray-400 text-sm">Cargando...</div>;
 
@@ -253,12 +283,34 @@ export default function VenuesPage() {
         </button>
       </div>
 
-      {/* Buscador */}
-      <input
-        value={search} onChange={e => setSearch(e.target.value)}
-        placeholder="Buscar por nombre o ciudad..."
-        className="w-full ms-card px-4 py-3 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-      />
+      {/* Buscador + filtros */}
+      <div className="space-y-3">
+        <div className="flex flex-col md:flex-row gap-2">
+          <input
+            value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar por nombre, ciudad o estado..."
+            className="flex-1 ms-card px-4 py-3 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+          />
+          <button onClick={() => setOrden(o => (o === "USO" ? "NOMBRE" : "USO"))}
+            className="ms-card px-4 py-3 text-xs text-gray-400 hover:text-white transition-colors whitespace-nowrap">
+            Orden: {orden === "USO" ? "más usados" : "alfabético"}
+          </button>
+        </div>
+        {tiposPresentes.length > 1 && (
+          <div className="flex gap-2 flex-wrap">
+            <button onClick={() => setFiltroTipo("")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${!filtroTipo ? "bg-[#B3985B] text-black border-[#B3985B]" : "bg-[#1a1a1a] text-gray-400 border-[#2a2a2a] hover:border-[#B3985B]"}`}>
+              Todos ({venues.length})
+            </button>
+            {tiposPresentes.map(t => (
+              <button key={t.value} onClick={() => setFiltroTipo(f => (f === t.value ? "" : t.value))}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${filtroTipo === t.value ? "bg-[#B3985B] text-black border-[#B3985B]" : "bg-[#1a1a1a] text-gray-400 border-[#2a2a2a] hover:border-[#B3985B]"}`}>
+                {t.label} ({venues.filter(v => v.tipo === t.value).length})
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Lista */}
       {filtered.length === 0 ? (
@@ -287,10 +339,17 @@ export default function VenuesPage() {
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <p className="text-white font-semibold text-base">{v.nombre}</p>
-                        {v.ciudad && <p className="text-gray-400 text-xs mt-0.5">{v.ciudad}</p>}
+                        <p className="text-gray-400 text-xs mt-0.5">
+                          {etiquetaTipoVenue(v.tipo)}
+                          {v.ciudad ? ` · ${v.ciudad}` : ""}
+                          {v.estado ? `, ${v.estado}` : ""}
+                        </p>
                         {v.direccion && <p className="text-gray-500 text-xs">{v.direccion}</p>}
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
+                        {usos(v) > 0 && (
+                          <span className="px-2 py-0.5 rounded-full text-xs bg-[#B3985B]/15 text-[#B3985B] font-medium">{usos(v)} {usos(v) === 1 ? "evento" : "eventos"}</span>
+                        )}
                         {v.calificacion && (
                           <span className="text-[#B3985B] text-xs font-medium">{"★".repeat(Math.round(v.calificacion))}{v.calificacion.toFixed(1)}</span>
                         )}
@@ -322,7 +381,7 @@ export default function VenuesPage() {
                     const next = isExpanded ? null : v.id;
                     setExpandedId(next);
                     if (next && !historialVenue[next]) {
-                      fetch(`/api/proyectos?lugarEvento=${encodeURIComponent(v.nombre)}`)
+                      fetch(`/api/proyectos?venueId=${v.id}`)
                         .then(r => r.json())
                         .then(d => setHistorialVenue(prev => ({ ...prev, [v.id]: d.proyectos ?? [] })));
                     }
@@ -331,15 +390,47 @@ export default function VenuesPage() {
                     {isExpanded ? "▲ Menos detalles" : "▼ Ver ficha técnica + historial"}
                   </button>
                   <div className="flex gap-2">
+                    <button onClick={() => { setFusionandoId(fusionandoId === v.id ? null : v.id); setFusionDestino(""); }}
+                      className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-300 transition-colors">
+                      <Merge strokeWidth={1.75} className="w-3.5 h-3.5" />Fusionar
+                    </button>
                     <button onClick={() => openEdit(v)} className="text-xs text-[#B3985B] hover:underline">Editar</button>
-                    <button onClick={() => eliminar(v.id)} className="text-xs text-red-500 hover:underline">Eliminar</button>
+                    <button onClick={() => eliminar(v.id)} className="text-xs text-red-500 hover:underline">Dar de baja</button>
                   </div>
                 </div>
+
+                {/* Fusionar dentro de otro venue */}
+                {fusionandoId === v.id && (
+                  <div className="border-t border-[#1a1a1a] px-4 py-3 space-y-2">
+                    <p className="text-gray-400 text-xs">
+                      «{v.nombre}» es un duplicado de… (todo lo suyo se mueve al venue que elijas y este se da de baja)
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <select value={fusionDestino} onChange={e => setFusionDestino(e.target.value)}
+                        className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                        <option value="">Elige el venue bueno…</option>
+                        {venues.filter(o => o.id !== v.id).sort((a, b) => a.nombre.localeCompare(b.nombre, "es")).map(o => (
+                          <option key={o.id} value={o.id}>{o.nombre}{o.ciudad ? ` — ${o.ciudad}` : ""}</option>
+                        ))}
+                      </select>
+                      <button onClick={() => fusionar(v)} disabled={!fusionDestino}
+                        className="px-4 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9a96a] disabled:opacity-50 transition-colors whitespace-nowrap">
+                        Fusionar
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Expanded */}
                 {isExpanded && (
                   <div className="border-t border-[#1a1a1a] px-4 py-4 space-y-4">
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {v.linkMaps && (
+                        <div>
+                          <p className="text-gray-500 text-xs mb-0.5">Ubicación</p>
+                          <a href={v.linkMaps} target="_blank" rel="noopener noreferrer" className="text-[#B3985B] text-sm hover:underline">Abrir en Maps →</a>
+                        </div>
+                      )}
                       {v.contacto && (
                         <div>
                           <p className="text-gray-500 text-xs mb-0.5">Contacto</p>
@@ -439,19 +530,36 @@ export default function VenuesPage() {
                       className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-400 block mb-1">Ciudad</label>
-                    <input value={form.ciudad} onChange={e => setForm(p => ({ ...p, ciudad: e.target.value }))}
-                      className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                    <label className="text-xs text-gray-400 block mb-1">Tipo de recinto</label>
+                    <select value={form.tipo} onChange={e => setForm(p => ({ ...p, tipo: e.target.value }))}
+                      className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                      {VENUE_TIPOS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                    </select>
                   </div>
                   <div>
                     <label className="text-xs text-gray-400 block mb-1">Capacidad (personas)</label>
                     <input type="number" value={form.capacidadPersonas} onChange={e => setForm(p => ({ ...p, capacidadPersonas: e.target.value }))}
                       className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
                   </div>
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Ciudad</label>
+                    <input value={form.ciudad} onChange={e => setForm(p => ({ ...p, ciudad: e.target.value }))}
+                      className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Estado</label>
+                    <input value={form.estado} onChange={e => setForm(p => ({ ...p, estado: e.target.value }))}
+                      placeholder="Querétaro" className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
                   <div className="md:col-span-2">
-                    <label className="text-xs text-gray-400 block mb-1">Dirección / Google Maps</label>
+                    <label className="text-xs text-gray-400 block mb-1">Dirección</label>
                     <input value={form.direccion} onChange={e => setForm(p => ({ ...p, direccion: e.target.value }))}
                       className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="text-xs text-gray-400 block mb-1">Link de Google Maps</label>
+                    <input value={form.linkMaps} onChange={e => setForm(p => ({ ...p, linkMaps: e.target.value }))}
+                      placeholder="https://maps.app.goo.gl/…" className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
                   </div>
                 </div>
                 <div className="mt-3">

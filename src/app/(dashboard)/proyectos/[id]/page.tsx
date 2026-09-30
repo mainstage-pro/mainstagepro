@@ -142,7 +142,7 @@ interface Proyecto {
   direccionVenue: string | null; linkMaps: string | null; indicacionesAcceso: string | null;
   puntoSalidaBodega: string | null; horaSalidaBodega: string | null;
   indicacionesCliente: string | null;
-  lugarEvento: string | null; encargadoLugar: string | null; encargadoLugarContacto: string | null;
+  lugarEvento: string | null; venueId: string | null; encargadoLugar: string | null; encargadoLugarContacto: string | null;
   descripcionGeneral: string | null; detallesEspecificos: string | null;
   encargadoCliente: string | null; encargadoClienteContacto: string | null; transportes: string | null;
   proveedorCatering: string | null; contactosDireccion: string | null;
@@ -488,31 +488,15 @@ function Campo({ label, value, field, onSave, type = "text", multiline = false, 
   );
 }
 
-function CampoVenue({ label, value, field, onSave }: { label: string; value: string | null; field: string; onSave: (f: string, v: string) => void }) {
-  const [editing, setEditing] = useState(false);
-  const [val, setVal] = useState(value ?? "");
-
-  function save() { onSave(field, val); setEditing(false); }
-
-  if (editing) {
-    return (
-      <div>
-        <label className="text-gray-500 text-xs mb-1 block">{label}</label>
-        <VenuePicker value={val} onChange={(v) => setVal(v)} />
-        <div className="flex gap-2 mt-1">
-          <button onClick={save} className="text-xs text-[#B3985B] hover:text-white">Guardar</button>
-          <button onClick={() => { setEditing(false); setVal(value ?? ""); }} className="text-xs text-gray-500 hover:text-white">Cancelar</button>
-        </div>
-      </div>
-    );
-  }
-
+function CampoVenue({ label, value, venueId, onSave }: { label: string; value: string | null; venueId: string | null; onSave: (f: string, v: string, extra?: Record<string, unknown>) => void }) {
   return (
-    <div onClick={() => setEditing(true)} className="cursor-pointer group">
-      <p className="text-gray-500 text-xs mb-0.5">{label}</p>
-      <p className={`text-sm group-hover:text-[#B3985B] transition-colors ${value ? "text-white" : "text-gray-600 italic"}`}>
-        {value || "Click para editar..."}
-      </p>
+    <div>
+      <label className="text-gray-500 text-xs mb-1 block">{label}</label>
+      <VenuePicker
+        value={value ?? ""}
+        venueId={venueId}
+        onChange={(nombre, id) => onSave("lugarEvento", nombre, { venueId: id })}
+      />
     </div>
   );
 }
@@ -1919,10 +1903,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   }
 
   // ── Guardar campo de info ──
-  async function guardarCampo(field: string, value: string) {
+  async function guardarCampo(field: string, value: string, extra?: Record<string, unknown>) {
     await fetch(`/api/proyectos/${id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ [field]: value || null }),
+      body: JSON.stringify({ [field]: value || null, ...extra }),
     });
     setProyecto(prev => {
       if (!prev) return prev;
@@ -1931,7 +1915,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         const u = value ? usuariosActivos.find(u => u.id === value) : null;
         return { ...prev, encargado: u ? { id: u.id, name: u.name } : null };
       }
-      const updated = { ...prev, [field]: value || null };
+      const updated = { ...prev, [field]: value || null, ...extra };
 
       // Si el campo es clave (fecha/hora/lugar), construir panel de notificaciones
       if (field in KEY_CAMPOS && (updated.personal.length > 0 || updated.equipos.some(e => e.tipo === "EXTERNO"))) {
@@ -4147,7 +4131,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 </div>
                 <div className="grid grid-cols-2 gap-x-6 gap-y-3 mb-5">
                   <div className="col-span-2">
-                    <Campo label="Lugar del evento" value={proyecto.lugarEvento} field="lugarEvento" onSave={guardarCampo} />
+                    <CampoVenue label="Lugar del evento" value={proyecto.lugarEvento} venueId={proyecto.venueId} onSave={guardarCampo} />
                   </div>
                   <div className="col-span-2">
                     <p className="text-gray-500 text-xs mb-1">Coordinador de producción</p>
@@ -4400,7 +4384,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               {esRenta && (
                 <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                   <div className="col-span-2">
-                    <Campo label="Lugar del evento" value={proyecto.lugarEvento} field="lugarEvento" onSave={guardarCampo} />
+                    <CampoVenue label="Lugar del evento" value={proyecto.lugarEvento} venueId={proyecto.venueId} onSave={guardarCampo} />
                   </div>
                   <div className="col-span-2">
                     <p className="text-gray-500 text-xs mb-1">Coordinador de producción</p>

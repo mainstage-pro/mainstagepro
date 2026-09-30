@@ -18,7 +18,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const body = await req.json();
 
   const data: Record<string, unknown> = {};
-  const textFields = ["nombre", "direccion", "ciudad", "contacto", "telefonoContacto", "emailContacto",
+  const textFields = ["nombre", "tipo", "direccion", "ciudad", "estado", "linkMaps", "contacto", "telefonoContacto", "emailContacto",
     "accesoVehicular", "puntoDescarga", "voltajeDisponible", "fases", "ubicacionTablero",
     "restriccionDecibeles", "restriccionHorario", "restriccionInstalacion", "notas", "fotoPortada"];
   const numFields = ["largoM", "anchoM", "alturaMaximaM", "amperajeTotal", "calificacion"];
@@ -38,6 +38,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   const { id } = await params;
-  await prisma.venue.delete({ where: { id } });
+  await prisma.venue.update({ where: { id }, data: { activo: false } });
   return NextResponse.json({ ok: true });
 }

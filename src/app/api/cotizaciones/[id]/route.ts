@@ -75,7 +75,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       lineas,
       paqueteId,
       notasSecciones,
-      nombreEvento, tipoEvento, tipoServicio, fechaEvento, lugarEvento,
+      nombreEvento, tipoEvento, tipoServicio, fechaEvento, lugarEvento, venueId,
       horaInicioEvento, horaFinEvento,
       horasOperacion, diasEquipo, diasOperacion,
       descuentoVolumenPct, descuentoB2bPct, descuentoMultidiaPct,
@@ -173,6 +173,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
             tipoServicio: tipoServicio ?? null,
             fechaEvento: fechaEvento ? new Date(fechaEvento) : null,
             lugarEvento: lugarEvento ?? null,
+            venueId: venueId ?? null,
             horaInicioEvento: horaInicioEvento ?? null,
             horaFinEvento: horaFinEvento ?? null,
             horasOperacion: horasOperacion ? parseFloat(horasOperacion) : null,
@@ -343,7 +344,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   // Actualización parcial normal (estado, observaciones, etc.)
   try {
-    const allowed = ["estado", "observaciones", "terminosComerciales", "fechaEnvio", "fechaVencimiento", "notasSecciones", "planPagos", "mainstageTradeData", "tradeToken", "descuentoFamilyFriendsPct", "nombreCotizacion", "descripcionCotizacion", "gastosProduccionActivo", "gastosProduccionEsMonto", "gastosProduccionPct", "gastosProduccionMonto", "fechaEvento", "lugarEvento", "horaInicioEvento", "horaFinEvento", "eventoConfirmado", "idioma"];
+    const allowed = ["estado", "observaciones", "terminosComerciales", "fechaEnvio", "fechaVencimiento", "notasSecciones", "planPagos", "mainstageTradeData", "tradeToken", "descuentoFamilyFriendsPct", "nombreCotizacion", "descripcionCotizacion", "gastosProduccionActivo", "gastosProduccionEsMonto", "gastosProduccionPct", "gastosProduccionMonto", "fechaEvento", "lugarEvento", "venueId", "horaInicioEvento", "horaFinEvento", "eventoConfirmado", "idioma"];
     const data: Record<string, unknown> = {};
     for (const key of allowed) {
       if (key in body) {
@@ -368,6 +369,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const proyectoData: Record<string, unknown> = {};
     if ("fechaEvento" in data) proyectoData.fechaEvento = data.fechaEvento;
     if ("lugarEvento" in data) proyectoData.lugarEvento = data.lugarEvento;
+    if ("venueId" in data) proyectoData.venueId = data.venueId;
     if ("horaInicioEvento" in data) proyectoData.horaInicioEvento = data.horaInicioEvento;
     if ("horaFinEvento" in data) proyectoData.horaFinEvento = data.horaFinEvento;
     if (Object.keys(proyectoData).length > 0) {

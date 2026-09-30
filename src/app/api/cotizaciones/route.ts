@@ -155,6 +155,7 @@ export async function POST(request: NextRequest) {
         tipoServicio: campos.tipoServicio || null,
         fechaEvento: campos.fechaEvento ? new Date(campos.fechaEvento) : null,
         lugarEvento: campos.lugarEvento || null,
+        venueId: campos.venueId || null,
         horasOperacion: campos.horasOperacion ? parseFloat(campos.horasOperacion) : null,
         tipoJornada: campos.tipoJornada || null,
         diasEquipo: campos.diasEquipo ? parseInt(campos.diasEquipo) : 1,

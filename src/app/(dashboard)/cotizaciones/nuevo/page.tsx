@@ -330,6 +330,7 @@ function CotizadorForm() {
     tipoServicio: "",
     fechaEvento: "",
     lugarEvento: "",
+    venueId: null as string | null,
     horaInicioEvento: "",
     horaFinEvento: "",
     horasOperacion: "8",
@@ -556,6 +557,7 @@ function CotizadorForm() {
           tipoServicio: cot.tipoServicio ?? "",
           fechaEvento: cot.fechaEvento ? cot.fechaEvento.split("T")[0] : "",
           lugarEvento: cot.lugarEvento ?? "",
+          venueId: cot.venueId ?? null,
           horaInicioEvento: cot.horaInicioEvento ?? "",
           horaFinEvento: cot.horaFinEvento ?? "",
           horasOperacion: String(cot.horasOperacion ?? 8),
@@ -708,6 +710,7 @@ function CotizadorForm() {
           tipoServicio: t.tipoServicio || prev.tipoServicio,
           fechaEvento: t.fechaEventoEstimada ? t.fechaEventoEstimada.split("T")[0] : prev.fechaEvento,
           lugarEvento: t.lugarEstimado || prev.lugarEvento,
+          venueId: t.venueId ?? prev.venueId,
           horaInicioEvento: t.horaInicioEvento || prev.horaInicioEvento,
           horaFinEvento: t.horaFinEvento || prev.horaFinEvento,
           diasEquipo: t.diasServicio ? String(t.diasServicio) : prev.diasEquipo,
@@ -2187,7 +2190,7 @@ function CotizadorForm() {
               </div>
               <Input label="Fecha del evento" type="date" value={evento.fechaEvento} onChange={e => setEvento(p => ({ ...p, fechaEvento: e.target.value }))} />
               <div>
-                <VenuePicker label="Lugar del evento" value={evento.lugarEvento} onChange={(v) => setEvento(p => ({ ...p, lugarEvento: v }))} placeholder="Venue, ciudad..." />
+                <VenuePicker label="Lugar del evento" value={evento.lugarEvento} venueId={evento.venueId} onChange={(nombre, venueId) => setEvento(p => ({ ...p, lugarEvento: nombre, venueId }))} />
               </div>
               <Input label="Asistentes estimados" type="number" min="1" value={asistentesEstimados ?? ""} onChange={e => setAsistentesEstimados(e.target.value ? parseInt(e.target.value) : null)} placeholder="Número de invitados" />
               <div className="grid grid-cols-2 gap-2 col-span-1">

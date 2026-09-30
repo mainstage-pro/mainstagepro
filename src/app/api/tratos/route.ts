@@ -146,6 +146,7 @@ export async function POST(request: NextRequest) {
         posibleDuplicado,
         nombreEvento: body.nombreEvento || null,
         lugarEstimado: body.lugarEstimado || null,
+        venueId: body.venueId || null,
         asistentesEstimados: body.asistentesEstimados ? parseInt(body.asistentesEstimados) : null,
         fechaEventoEstimada: body.fechaEventoEstimada ? new Date(body.fechaEventoEstimada) : null,
         fechaApartada: Boolean(body.fechaApartada),

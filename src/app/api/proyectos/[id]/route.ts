@@ -275,7 +275,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   const allowed = [
     "estado", "nombre", "horaInicioEvento", "horaFinEvento", "horariosEvento", "fechaMontaje", "fechaEvento", "fechasEvento",
-    "horaInicioMontaje", "duracionMontajeHrs", "lugarEvento", "encargadoLugar",
+    "horaInicioMontaje", "duracionMontajeHrs", "lugarEvento", "venueId", "encargadoLugar",
     "encargadoLugarContacto", "encargadoCliente", "encargadoClienteContacto",
     "descripcionGeneral", "detallesEspecificos",
     "transportes", "proveedorCatering", "contactosDireccion",

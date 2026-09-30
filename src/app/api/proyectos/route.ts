@@ -10,9 +10,11 @@ export async function GET(req: Request) {
 
   const url = new URL(req.url);
   const lugarEvento = url.searchParams.get("lugarEvento");
+  const venueId = url.searchParams.get("venueId");
 
   const where: Record<string, unknown> = {};
-  if (lugarEvento) where.id = { in: await idsPorTexto("Proyecto", ["lugarEvento"], lugarEvento) };
+  if (venueId) where.venueId = venueId;
+  else if (lugarEvento) where.id = { in: await idsPorTexto("Proyecto", ["lugarEvento"], lugarEvento) };
 
   const fechaDesde = url.searchParams.get('fechaDesde');
   const fechaHasta = url.searchParams.get('fechaHasta');

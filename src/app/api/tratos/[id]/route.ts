@@ -78,7 +78,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   const allowed = [
     "clienteId",
-    "etapa", "etapaInterna", "estatusContacto", "tipoEvento", "tipoServicio", "lugarEstimado",
+    "etapa", "etapaInterna", "estatusContacto", "tipoEvento", "tipoServicio", "lugarEstimado", "venueId",
     "fechaEventoEstimada", "presupuestoEstimado", "clasificacion", "notas", "perfilProspecto",
     "proximaAccion", "fechaProximaAccion", "motivoPerdida", "etapaCambiadaEn", "origenLead", "tipoLead",
     "origenVenta", "vendedorOrigenId", "responsableId", "vendedorId",
@@ -314,6 +314,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
             tipoServicio: trato.tipoServicio ?? null,
             fechaEvento: trato.fechaEventoEstimada,
             lugarEvento: trato.lugarEstimado ?? null,
+            venueId: trato.venueId ?? null,
           },
         });
       }
@@ -371,6 +372,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if ("lugarEstimado" in body && body.lugarEstimado) {
     cotUpdate.lugarEvento = body.lugarEstimado;
     proyUpdate.lugarEvento = body.lugarEstimado;
+  }
+  // El venue del trato baja igual que el texto: cotización y proyecto no se
+  // vuelven a capturar a mano.
+  if ("venueId" in body) {
+    cotUpdate.venueId = body.venueId ?? null;
+    proyUpdate.venueId = body.venueId ?? null;
   }
 
   if (Object.keys(cotUpdate).length > 0) {

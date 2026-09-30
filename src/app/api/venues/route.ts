@@ -9,13 +9,21 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = req.nextUrl;
   const q = searchParams.get("q");
+  const tipo = searchParams.get("tipo");
+  const incluirInactivos = searchParams.get("incluirInactivos") === "1";
+  // El catálogo pide los conteos de uso para poder ordenar por recurrencia.
+  const conUso = searchParams.get("conUso") === "1";
 
   const venues = await prisma.venue.findMany({
     where: {
-      activo: true,
-      ...(q ? { id: { in: await idsPorTexto("Venue", ["nombre"], q) } } : {}),
+      ...(incluirInactivos ? {} : { activo: true }),
+      ...(tipo ? { tipo } : {}),
+      ...(q ? { id: { in: await idsPorTexto("Venue", ["nombre", "ciudad", "direccion"], q) } } : {}),
     },
     orderBy: { nombre: "asc" },
+    ...(conUso
+      ? { include: { _count: { select: { tratos: true, cotizaciones: true, proyectos: true } } } }
+      : {}),
   });
 
   return NextResponse.json({ venues });
@@ -26,17 +34,31 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await req.json();
-  const { nombre, direccion, ciudad, contacto, telefonoContacto, emailContacto,
+  const { nombre, tipo, direccion, ciudad, estado, linkMaps, contacto, telefonoContacto, emailContacto,
     capacidadPersonas, largoM, anchoM, alturaMaximaM, accesoVehicular, puntoDescarga,
     voltajeDisponible, amperajeTotal, fases, ubicacionTablero,
     restriccionDecibeles, restriccionHorario, restriccionInstalacion,
     tiposEvento, calificacion, notas, fotoPortada } = body;
 
-  if (!nombre) return NextResponse.json({ error: "Nombre requerido" }, { status: 400 });
+  if (!nombre?.trim()) return NextResponse.json({ error: "Nombre requerido" }, { status: 400 });
+
+  // El catálogo no debe volver a llenarse de duplicados: si ya existe uno con el
+  // mismo nombre (sin importar acentos ni mayúsculas), se devuelve ese.
+  const yaExisteIds = await idsPorTexto("Venue", ["nombre"], nombre.trim());
+  if (yaExisteIds.length) {
+    const candidatos = await prisma.venue.findMany({ where: { id: { in: yaExisteIds } } });
+    const exacto = candidatos.find(
+      v => v.nombre.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        === nombre.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    );
+    if (exacto) return NextResponse.json({ venue: exacto, yaExistia: true });
+  }
 
   const venue = await prisma.venue.create({
     data: {
-      nombre, direccion: direccion ?? null, ciudad: ciudad ?? null,
+      nombre: nombre.trim(), tipo: tipo ?? null,
+      direccion: direccion ?? null, ciudad: ciudad ?? null,
+      estado: estado ?? null, linkMaps: linkMaps ?? null,
       contacto: contacto ?? null, telefonoContacto: telefonoContacto ?? null,
       emailContacto: emailContacto ?? null,
       capacidadPersonas: capacidadPersonas ? parseInt(capacidadPersonas) : null,
