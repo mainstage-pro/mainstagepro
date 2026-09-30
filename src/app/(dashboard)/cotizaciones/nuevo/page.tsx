@@ -1540,8 +1540,12 @@ function CotizadorForm() {
       : 0;
     // Neto descontado sobre la base combinada, repartido proporcionalmente entre
     // equipos y paquetes para conservar cada línea (y no alterar el pago anticipado).
-    const netoDescuentable = basePostB2b - montoManual;
-    const shareEquipos = baseDescuentable > 0 ? subtotalEquiposBruto / baseDescuentable : 1;
+    // Sin base descontable (cotización 100% de terceros y servicios) el descuento de
+    // monto fijo no se puede repartir: se resta del total en vez de dejar netos negativos,
+    // que contaminarían la base de comisión del vendedor.
+    const descuentoGlobal = baseDescuentable === 0 ? montoManual : 0;
+    const netoDescuentable = baseDescuentable === 0 ? 0 : basePostB2b - montoManual;
+    const shareEquipos = baseDescuentable > 0 ? subtotalEquiposBruto / baseDescuentable : 0;
     const subtotalEquiposNeto = netoDescuentable * shareEquipos;
     const subtotalPaquetesNeto = netoDescuentable - subtotalEquiposNeto;
 
@@ -1556,7 +1560,7 @@ function CotizadorForm() {
 
     const subtotalOcasionales = lineasOcasional.reduce((s, l) => s + l.subtotal, 0);
     const subtotalChofer = incluirChofer ? 500 : 0;
-    const baseTotal = subtotalEquiposNeto + subtotalPaquetesNeto + subtotalExternos + subtotalOcasionales + subtotalOperacion + subtotalDJ + subtotalTransporte + subtotalComidas + subtotalHospedaje + subtotalChofer;
+    const baseTotal = subtotalEquiposNeto + subtotalPaquetesNeto + subtotalExternos + subtotalOcasionales + subtotalOperacion + subtotalDJ + subtotalTransporte + subtotalComidas + subtotalHospedaje + subtotalChofer - descuentoGlobal;
 
     // Comisión interna / Gastos de producción
     const gastosProduccionMonto = gastosActivo
