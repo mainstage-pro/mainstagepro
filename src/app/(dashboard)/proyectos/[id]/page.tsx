@@ -35,7 +35,7 @@ import { DISCIPLINA_COLORS, DISCIPLINA_LABELS } from "@/lib/disciplinaColors";
 import { contarRespondidos, contarIncidencias, nivelResultado, getEvalConfig, aplicaEvaluacion, type EvalPostEventoData } from "@/lib/evaluacion-post-evento";
 import { getDireccionConfig, promedioDireccion, type EvaluacionDireccionData } from "@/lib/evaluacion-direccion";
 import { diasEvento, parseHorariosEvento, horarioDeDia, parseFechasEvento } from "@/lib/fechas-evento";
-import { construirCronologia, derivadosLogistica, VISTAS_CRONOLOGIA, type BloqueTiempo, type ItemCronologia } from "@/lib/cronologia-evento";
+import { construirCronologia, horariosResumen, VISTAS_CRONOLOGIA, type BloqueTiempo, type HorariosResumen } from "@/lib/cronologia-evento";
 import { checksAvanceProduccion } from "@/lib/proyecto-avance";
 import { requisitosDocumento, type ProyectoDocumentoInput, type RequisitosDocumento, type TipoDocumento } from "@/lib/proyecto-documentos";
 import { preguntasAlCliente, textoSolicitud } from "@/lib/solicitud-cliente";
@@ -1040,6 +1040,17 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   ];
   const mkCronoRows = (labels: string[], fase?: FaseCrono): CronoRow[] =>
     labels.map(a => ({ horaInicio: "", horaFin: "", actividad: a, responsable: "", involucrados: "", ...(fase ? { fase } : {}) }));
+  // Puente entre las actividades de la plantilla y los horarios que el resumen ya conoce,
+  // para que la fila nazca con su hora en vez de pedirla otra vez.
+  const HORA_RESUMEN_DE_ACTIVIDAD: Record<string, keyof HorariosResumen> = {
+    "Llamado en bodega": "llamadoBodega",
+    "Traslado a venue": "salidaBodega",
+    "Llegada a venue y descarga de equipos": "llegadaVenue",
+    "Inicio de montaje": "inicioMontaje",
+    "Fin de montaje": "finMontaje",
+    "Inicio de desmontaje": "inicioDesmontaje",
+    "Fin de la jornada": "finDesmontaje",
+  };
 
   // Estado de transportes (3 fichas JSON)
   const [transporteSlots, setTransporteSlots] = useState<TransporteSlot[]>([
@@ -2078,6 +2089,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       const row: CronoRow = { ...r, _id: nuevoCronoId(), ...(dia ? { dia } : {}) };
       if (r.actividad === "Inicio de evento" && horaInicio) row.horaInicio = horaInicio;
       if (r.actividad === "Fin de evento" && horaFin) row.horaInicio = horaFin;
+      row.horaInicio = row.horaInicio || horaDelResumen(r.actividad) || "";
       return row;
     });
 
@@ -2098,6 +2110,22 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     const opRows = cronoRows.filter(r => faseDe(r) === "operacion");
     if (opRows.length > 0 && !await confirm({ message: "¿Reemplazar el cronograma de la operación con la plantilla base?", danger: false, confirmText: "Reemplazar" })) return;
     setCronoRows(prev => [...prev.filter(r => faseDe(r) !== "operacion"), ...base]);
+  }
+
+  /** Hora "HH:MM" que el resumen del proyecto ya tiene para esta actividad, si la conoce. */
+  function horaDelResumen(actividad: string): string | null {
+    const key = HORA_RESUMEN_DE_ACTIVIDAD[actividad.trim()];
+    if (!key || !proyecto) return null;
+    return horariosResumen(datosCrono)[key];
+  }
+
+  // Rellena solo las horas vacías: lo que ya se ajustó a mano manda sobre el resumen.
+  function traerHorariosDelResumen(fase: FaseCrono) {
+    setCronoRows(prev => prev.map(r => {
+      if (faseDe(r) !== fase || r.horaInicio) return r;
+      const hora = horaDelResumen(r.actividad);
+      return hora ? { ...r, horaInicio: hora } : r;
+    }));
   }
 
   function addCronoRow(opts?: { dia?: string; fase?: FaseCrono }) {
@@ -2220,6 +2248,19 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                           </td>
                           <td className="py-1 pr-2 w-[84px]">
                             <InlinePicker value={row.horaInicio} onChange={v => updateCronoRow(i, "horaInicio", v)} />
+                            {(() => {
+                              // La fila se independiza del resumen en cuanto se edita; avisamos
+                              // para que nadie descubra la diferencia hasta el día del evento.
+                              const hRes = horaDelResumen(row.actividad);
+                              if (!hRes || !row.horaInicio || row.horaInicio === hRes) return null;
+                              return (
+                                <button type="button" onClick={() => updateCronoRow(i, "horaInicio", hRes)}
+                                  title={`El resumen dice ${fmt24to12(hRes)}. Clic para usar esa hora.`}
+                                  className="block mt-0.5 text-[10px] text-yellow-500/80 hover:text-yellow-400 transition-colors">
+                                  ≠ {fmt24to12(hRes)}
+                                </button>
+                              );
+                            })()}
                           </td>
                           <td className="py-1 pr-2 w-[84px]">
                             <InlinePicker value={row.horaFin} onChange={v => updateCronoRow(i, "horaFin", v)} />
@@ -2256,24 +2297,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     );
   }
 
-  // Horarios que ya vienen del resumen del proyecto: se leen aquí, se editan allá.
-  function renderHorariosDelResumen(items: ItemCronologia[]) {
-    if (items.length === 0) return null;
-    return (
-      <div className="space-y-1 py-2">
-        {items.map((it, i) => (
-          <div key={i} className="flex items-baseline gap-3 text-xs">
-            <span className="text-[#B3985B]/70 font-mono shrink-0 w-[84px]">{it.hora}</span>
-            <span className="text-gray-400">{it.label}</span>
-            {it.fecha && <span className="text-gray-600 capitalize">· {it.fecha}</span>}
-            {it.nota && <span className="text-gray-600 truncate">· {it.nota}</span>}
-            <span className="text-[9px] text-gray-600 border border-[#2a2a2a] rounded px-1 py-px shrink-0 ml-auto">Resumen</span>
-          </div>
-        ))}
-      </div>
-    );
-  }
-
   // Render de una fase extra (montaje o desmontaje) con su fecha propia, plantilla y filas.
   function renderFaseExtra(fase: "montaje" | "desmontaje") {
     const esMont = fase === "montaje";
@@ -2283,7 +2306,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     const label = esMont ? "Montaje" : "Desmontaje";
     const badge = esMont ? "M" : "D";
     const entries = cronoRows.map((row, i) => ({ row, i })).filter(({ row }) => faseDe(row) === fase);
-    const derivados = derivadosLogistica(datosCrono, fase);
+    const porLlenar = entries.filter(({ row }) => !row.horaInicio && horaDelResumen(row.actividad)).length;
     return (
       <div>
         <div className="flex items-center justify-between mb-2 flex-wrap gap-2 border-b border-[#222] pb-2">
@@ -2309,6 +2332,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             </button>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            {porLlenar > 0 && (
+              <button onClick={() => traerHorariosDelResumen(fase)}
+                className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-3 py-1 rounded-lg transition-colors">
+                Traer horarios del resumen ({porLlenar})
+              </button>
+            )}
             <button onClick={() => cargarPlantillaCrono({ fase })}
               className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-3 py-1 rounded-lg transition-colors">
               Plantilla base
@@ -2319,13 +2348,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             </button>
           </div>
         </div>
-        {renderHorariosDelResumen(derivados.previos)}
         {entries.length === 0 ? (
           <p className="text-gray-600 text-xs py-3">Sin actividades para {label.toLowerCase()}. Usa <span className="text-gray-400">Plantilla base</span> o <span className="text-gray-400">+ Agregar fila</span>.</p>
         ) : (
           renderCronoTabla(entries)
         )}
-        {renderHorariosDelResumen(derivados.posteriores)}
       </div>
     );
   }
@@ -5768,7 +5795,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 </div>
               </div>
               <p className="text-[11px] text-gray-600 mb-4">
-                {VISTAS_CRONOLOGIA.LOGISTICA.descripcion} Las filas marcadas <span className="text-gray-400">Resumen</span> vienen de los horarios del proyecto y se editan en <span className="text-gray-400">Resumen</span>.
+                {VISTAS_CRONOLOGIA.LOGISTICA.descripcion} Las filas nacen con la hora que ya capturaste en <span className="text-gray-400">Resumen</span>; a partir de ahí las mandas tú.
               </p>
               <div className="space-y-8">
                 {renderFaseExtra("montaje")}

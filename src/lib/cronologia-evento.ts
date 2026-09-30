@@ -196,6 +196,34 @@ function bloqueAItem(b: BloqueTiempo, nombreProveedor?: string | null): ItemCron
   };
 }
 
+/** Los momentos de la jornada que el resumen del proyecto ya conoce, en "HH:MM" 24h. */
+export type HorariosResumen = {
+  llamadoBodega: string | null;
+  salidaBodega: string | null;
+  llegadaVenue: string | null;
+  inicioMontaje: string | null;
+  finMontaje: string | null;
+  inicioDesmontaje: string | null;
+  finDesmontaje: string | null;
+};
+
+/**
+ * Traduce los campos sueltos de horario del proyecto a los momentos de la jornada.
+ * Es la única fuente: de aquí comen la cronología de los PDFs y las filas de la
+ * Logística general, para que nadie recapture lo que el resumen ya sabe.
+ */
+export function horariosResumen(p: ProyectoCronologia): HorariosResumen {
+  return {
+    llamadoBodega: horaDeDateTime(p.llamadoBodega),
+    salidaBodega: p.horaSalidaBodega ?? null,
+    llegadaVenue: p.horaMontaje ?? null,
+    inicioMontaje: p.horaInicioMontaje ?? null,
+    finMontaje: sumarHoras(p.horaInicioMontaje, p.duracionMontajeHrs),
+    inicioDesmontaje: p.horaDesmontaje ?? null,
+    finDesmontaje: sumarHoras(p.horaDesmontaje, p.duracionDesmontajeHrs),
+  };
+}
+
 /**
  * Horarios de montaje/desmontaje que ya viven en el resumen del proyecto, listos para
  * enmarcar las actividades capturadas: `previos` abren la jornada y `posteriores` la
@@ -208,44 +236,46 @@ export function derivadosLogistica(
   opts?: { interno?: boolean },
 ): { previos: ItemCronologia[]; posteriores: ItemCronologia[] } {
   const interno = opts?.interno ?? true;
+  const h = horariosResumen(p);
   const previos: ItemCronologia[] = [];
   const posteriores: ItemCronologia[] = [];
 
   if (fase === "montaje") {
-    const llamadoHora = horaDeDateTime(p.llamadoBodega);
     const llamadoFecha = p.llamadoBodega ? fechaISOaDia(p.llamadoBodega) : null;
     const montajeFecha = p.fechaMontaje ? fechaISOaDia(p.fechaMontaje) : llamadoFecha;
-    if (interno && (llamadoHora || p.lugarLlamado)) {
+    if (interno && (h.llamadoBodega || p.lugarLlamado)) {
       previos.push({
         label: "Llamado en bodega",
-        hora: llamadoHora ?? "Por definir",
+        hora: h.llamadoBodega ?? "Por definir",
         // Solo mostramos la fecha del llamado si el montaje es día aparte (contexto distinto al día del evento).
         fecha: p.montajeDiaAparte === true ? fechaCorta(llamadoFecha ?? montajeFecha) : null,
         nota: p.lugarLlamado,
       });
     }
-    if (interno && p.horaSalidaBodega) {
-      previos.push({ label: "Salida de bodega", hora: p.horaSalidaBodega, fecha: null, nota: null });
+    if (interno && h.salidaBodega) {
+      previos.push({ label: "Salida de bodega", hora: h.salidaBodega, fecha: null, nota: null });
     }
-    if (p.horaMontaje) {
-      previos.push({ label: "Llegada al venue", hora: p.horaMontaje, fecha: null, nota: p.lugarEvento });
+    if (h.llegadaVenue) {
+      previos.push({ label: "Llegada al venue", hora: h.llegadaVenue, fecha: null, nota: p.lugarEvento });
     }
-    if (p.horaInicioMontaje) {
+    if (h.inicioMontaje) {
       previos.push({
         label: "Inicio de montaje",
-        hora: p.horaInicioMontaje,
+        hora: h.inicioMontaje,
         fecha: null,
-        nota: p.horaMontaje ? null : p.lugarEvento,
+        nota: h.llegadaVenue ? null : p.lugarEvento,
       });
     }
-    const termino = sumarHoras(p.horaInicioMontaje, p.duracionMontajeHrs);
-    if (termino) posteriores.push({ label: "Término aprox. de montaje", hora: termino, fecha: null, nota: null });
-  } else if (interno) {
-    if (p.horaDesmontaje) {
-      previos.push({ label: "Inicio de desmontaje", hora: p.horaDesmontaje, fecha: null, nota: null });
+    if (h.finMontaje) {
+      posteriores.push({ label: "Término aprox. de montaje", hora: h.finMontaje, fecha: null, nota: null });
     }
-    const termino = sumarHoras(p.horaDesmontaje, p.duracionDesmontajeHrs);
-    if (termino) posteriores.push({ label: "Término aprox. de desmontaje", hora: termino, fecha: null, nota: null });
+  } else if (interno) {
+    if (h.inicioDesmontaje) {
+      previos.push({ label: "Inicio de desmontaje", hora: h.inicioDesmontaje, fecha: null, nota: null });
+    }
+    if (h.finDesmontaje) {
+      posteriores.push({ label: "Término aprox. de desmontaje", hora: h.finDesmontaje, fecha: null, nota: null });
+    }
   }
 
   [...previos, ...posteriores].forEach((it) => {
