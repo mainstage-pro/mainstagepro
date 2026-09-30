@@ -2404,6 +2404,67 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     );
   }
 
+  // El correr del evento, dentro de la misma logística: en multidía cada día lleva
+  // su propio bloque para que las filas no se mezclen entre jornadas.
+  function renderOperacionEvento() {
+    const cabecera = (extra: React.ReactNode, dia?: string) => (
+      <div className="flex items-center justify-between mb-2 flex-wrap gap-2 border-b border-[#222] pb-2">
+        <div className="flex items-center gap-2 flex-wrap">{extra}</div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button onClick={() => cargarPlantillaCrono(dia ? { dia } : undefined)}
+            className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-3 py-1 rounded-lg transition-colors">
+            Plantilla base
+          </button>
+          <button onClick={() => addCronoRow(dia ? { dia } : undefined)}
+            className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/40 hover:border-[#B3985B] px-3 py-1 rounded-lg transition-colors">
+            + Agregar fila
+          </button>
+        </div>
+      </div>
+    );
+    const vacio = (texto: string) => (
+      <p className="text-gray-600 text-xs py-3">{texto} Usa <span className="text-gray-400">Plantilla base</span> o <span className="text-gray-400">+ Agregar fila</span>.</p>
+    );
+
+    if (esMultidia) {
+      return (
+        <div className="space-y-6">
+          {diasDelEvento.map((dia, di) => {
+            const entries = cronoRows
+              .map((row, i) => ({ row, i }))
+              .filter(({ row }) => faseDe(row) === "operacion" && ((row.dia && diasDelEvento.includes(row.dia)) ? row.dia === dia : di === 0));
+            return (
+              <div key={dia}>
+                {cabecera(
+                  <>
+                    <span className="text-[9px] font-semibold text-black bg-[#B3985B] rounded px-1.5 py-0.5 shrink-0">D{di + 1}</span>
+                    <span className="text-white text-sm capitalize font-medium">{fmtDiaCorto(dia)}</span>
+                  </>,
+                  dia
+                )}
+                {entries.length === 0 ? vacio("Sin actividades para este día.") : renderCronoTabla(entries)}
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    const entries = cronoRows.map((row, i) => ({ row, i })).filter(({ row }) => faseDe(row) === "operacion");
+    return (
+      <div>
+        {cabecera(
+          <>
+            <span className="text-[9px] font-semibold text-black bg-[#B3985B] rounded px-1.5 py-0.5 shrink-0">O</span>
+            <span className="text-white text-sm font-medium">Operación del evento</span>
+            <span className="text-gray-500 text-xs capitalize">{fmtDiaCorto(eventoStr)}</span>
+          </>
+        )}
+        {entries.length === 0 ? vacio("Sin actividades para la operación.") : renderCronoTabla(entries)}
+      </div>
+    );
+  }
+
   // ── Guardar transportes ──
   async function guardarTransportes(slots: TransporteSlot[]) {
     setSavingTransporte(true);
@@ -5798,7 +5859,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           </div>
 
 
-          {/* ── Cronología 1: logística general ── */}
+          {/* ── Logística general: montaje, soundcheck, evento y desmontaje ── */}
           {!esRenta && (
             <div className="ms-card p-5">
               <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
@@ -5820,6 +5881,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               </p>
               <div className="space-y-8">
                 {renderFaseExtra("montaje")}
+                {renderSoundcheck()}
+                {renderOperacionEvento()}
                 {renderFaseExtra("desmontaje")}
               </div>
             </div>
@@ -5854,7 +5917,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           />
 
 
-          {/* ── Cronología 2: proveedores (se captura en el panel de arriba) ── */}
+          {/* ── Logística de proveedores (se captura en el panel de arriba) ── */}
           {!esRenta && (() => {
             const bloquesProv = construirCronologia(datosCrono, {
               bloques: proyecto.bloquesTiempo,
@@ -5896,94 +5959,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   </div>
                 )}
               </div>
-            );
-          })()}
-
-          {/* ── Cronología 3: operación del evento ── */}
-          {!esRenta && (() => {
-            const opRows = cronoRows.filter(r => faseDe(r) === "operacion");
-            return (
-          <div className="ms-card p-5">
-            <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
-              <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">
-                {VISTAS_CRONOLOGIA.OPERACION.titulo}
-              </p>
-              <div className="flex items-center gap-2 flex-wrap">
-                {savingCrono && <span className="text-xs text-gray-600">Guardando...</span>}
-                {cronoRows.length > 0 && (
-                  <button onClick={() => guardarCronograma(cronoRows)} disabled={savingCrono}
-                    className="text-xs bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black font-semibold px-3 py-1 rounded-lg transition-colors">
-                    Guardar
-                  </button>
-                )}
-              </div>
-            </div>
-            <p className="text-[11px] text-gray-600 mb-4">{VISTAS_CRONOLOGIA.OPERACION.descripcion}</p>
-            <div className="space-y-8">
-              {renderSoundcheck()}
-
-              {/* Día del evento; multidía = un bloque por día */}
-              {esMultidia ? (
-                <div className="space-y-6">
-                  {diasDelEvento.map((dia, di) => {
-                    const entries = cronoRows
-                      .map((row, i) => ({ row, i }))
-                      .filter(({ row }) => faseDe(row) === "operacion" && ((row.dia && diasDelEvento.includes(row.dia)) ? row.dia === dia : di === 0));
-                    return (
-                      <div key={dia}>
-                        <div className="flex items-center justify-between mb-2 flex-wrap gap-2 border-b border-[#222] pb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[9px] font-semibold text-black bg-[#B3985B] rounded px-1.5 py-0.5 shrink-0">D{di + 1}</span>
-                            <span className="text-white text-sm capitalize font-medium">{fmtDiaCorto(dia)}</span>
-                          </div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <button onClick={() => cargarPlantillaCrono({ dia })}
-                              className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-3 py-1 rounded-lg transition-colors">
-                              Plantilla base
-                            </button>
-                            <button onClick={() => addCronoRow({ dia })}
-                              className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/40 hover:border-[#B3985B] px-3 py-1 rounded-lg transition-colors">
-                              + Agregar fila
-                            </button>
-                          </div>
-                        </div>
-                        {entries.length === 0 ? (
-                          <p className="text-gray-600 text-xs py-3">Sin actividades para este día. Usa <span className="text-gray-400">Plantilla base</span> o <span className="text-gray-400">+ Agregar fila</span>.</p>
-                        ) : (
-                          renderCronoTabla(entries)
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div>
-                  <div className="flex items-center justify-between mb-2 flex-wrap gap-2 border-b border-[#222] pb-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-[9px] font-semibold text-black bg-[#B3985B] rounded px-1.5 py-0.5 shrink-0">O</span>
-                      <span className="text-white text-sm font-medium">Operación</span>
-                      <span className="text-gray-500 text-xs capitalize">{fmtDiaCorto(eventoStr)}</span>
-                    </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <button onClick={() => cargarPlantillaCrono()}
-                        className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-3 py-1 rounded-lg transition-colors">
-                        Plantilla base
-                      </button>
-                      <button onClick={() => addCronoRow()}
-                        className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/40 hover:border-[#B3985B] px-3 py-1 rounded-lg transition-colors">
-                        + Agregar fila
-                      </button>
-                    </div>
-                  </div>
-                  {opRows.length === 0 ? (
-                    <p className="text-gray-600 text-xs py-3">Sin actividades para la operación. Usa <span className="text-gray-400">Plantilla base</span> o <span className="text-gray-400">+ Agregar fila</span>.</p>
-                  ) : (
-                    renderCronoTabla(cronoRows.map((row, i) => ({ row, i })).filter(({ row }) => faseDe(row) === "operacion"))
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
             );
           })()}
 
