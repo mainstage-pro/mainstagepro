@@ -2119,13 +2119,31 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     return horariosResumen(datosCrono)[key];
   }
 
-  // Rellena solo las horas vacías: lo que ya se ajustó a mano manda sobre el resumen.
+  /** Lo que el resumen puede aportar a esta fase: horas por rellenar y filas que ni existen. */
+  function pendientesDelResumen(fase: FaseCrono) {
+    const items = fase === "montaje" ? MONTAJE_ITEMS : fase === "desmontaje" ? DESMONTAJE_ITEMS : [];
+    const delFase = cronoRows.filter(r => faseDe(r) === fase);
+    const aRellenar = delFase.filter(r => !r.horaInicio && horaDelResumen(r.actividad));
+    const aCrear = items.filter(a => horaDelResumen(a) && !delFase.some(r => r.actividad.trim() === a));
+    return { aRellenar, aCrear, total: aRellenar.length + aCrear.length };
+  }
+
+  // Rellena las horas vacías y agrega las actividades que el resumen conoce y aquí faltan.
+  // Lo que ya se ajustó a mano manda sobre el resumen: nunca se pisa una hora escrita.
   function traerHorariosDelResumen(fase: FaseCrono) {
-    setCronoRows(prev => prev.map(r => {
-      if (faseDe(r) !== fase || r.horaInicio) return r;
-      const hora = horaDelResumen(r.actividad);
-      return hora ? { ...r, horaInicio: hora } : r;
+    const { aCrear } = pendientesDelResumen(fase);
+    const nuevas: CronoRow[] = aCrear.map(actividad => ({
+      _id: nuevoCronoId(), horaInicio: horaDelResumen(actividad) ?? "", horaFin: "",
+      actividad, responsable: "", involucrados: "", fase,
     }));
+    setCronoRows(prev => [
+      ...prev.map(r => {
+        if (faseDe(r) !== fase || r.horaInicio) return r;
+        const hora = horaDelResumen(r.actividad);
+        return hora ? { ...r, horaInicio: hora } : r;
+      }),
+      ...nuevas,
+    ]);
   }
 
   function addCronoRow(opts?: { dia?: string; fase?: FaseCrono }) {
@@ -2306,7 +2324,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     const label = esMont ? "Montaje" : "Desmontaje";
     const badge = esMont ? "M" : "D";
     const entries = cronoRows.map((row, i) => ({ row, i })).filter(({ row }) => faseDe(row) === fase);
-    const porLlenar = entries.filter(({ row }) => !row.horaInicio && horaDelResumen(row.actividad)).length;
+    const porLlenar = pendientesDelResumen(fase).total;
     return (
       <div>
         <div className="flex items-center justify-between mb-2 flex-wrap gap-2 border-b border-[#222] pb-2">
@@ -2349,7 +2367,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           </div>
         </div>
         {entries.length === 0 ? (
-          <p className="text-gray-600 text-xs py-3">Sin actividades para {label.toLowerCase()}. Usa <span className="text-gray-400">Plantilla base</span> o <span className="text-gray-400">+ Agregar fila</span>.</p>
+          <p className="text-gray-600 text-xs py-3">
+            Sin actividades para {label.toLowerCase()}. Usa {porLlenar > 0 && <><span className="text-gray-400">Traer horarios del resumen</span>, </>}
+            <span className="text-gray-400">Plantilla base</span> o <span className="text-gray-400">+ Agregar fila</span>.
+          </p>
         ) : (
           renderCronoTabla(entries)
         )}
