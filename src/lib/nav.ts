@@ -1,6 +1,6 @@
 import type React from "react";
 import {
-  LayoutDashboard, CalendarDays, ClipboardList, Target, FolderKanban,
+  LayoutDashboard, CalendarDays, ClipboardList, FolderKanban,
   LineChart, CalendarClock, Presentation, Wallet, Landmark,
   FileBarChart, Users,
   PenTool, Megaphone, BarChart3, SlidersHorizontal, BadgeDollarSign,
@@ -62,17 +62,6 @@ export const NAV: NavSection[] = [
         icon: ClipboardList,
         children: [
           { key: "operaciones", label: "Gestión Operativa", href: "/operaciones" },
-        ],
-      },
-      {
-        key: "metas",
-        label: "Metas",
-        href: "/metas",
-        icon: Target,
-        adminOnly: true,
-        children: [
-          { key: "objetivos", label: "Objetivos", href: "/objetivos", adminOnly: true },
-          { key: "kpis-dashboard", label: "KPIs", href: "/kpis", adminOnly: true },
         ],
       },
     ],

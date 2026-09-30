@@ -1,8 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { KPI_PLAN_SLUG_PREFIX, type KpiPuesto } from "@/lib/puesto";
 
-// Persiste los KPIs de un puesto contra PTKPI (el módulo de /metas), usando puesto_id
-// como dimensión. No crea un sistema paralelo: estos KPIs viven en /metas con dueño.
+// Persiste los KPIs de un puesto contra PTKPI (los del plan de trabajo), usando
+// puesto_id como dimensión. No crea un sistema paralelo.
 // El KPI fijo (Cumplimiento del plan) siempre existe, con esFijoPlan y fórmula fija.
 export async function syncPuestoKpis(puestoId: string, areaCode: string | null, kpis: KpiPuesto[]) {
   let areaId: string | null = null;

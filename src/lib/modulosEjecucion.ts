@@ -7,7 +7,6 @@ export const GRUPOS_MODULOS: { grupo: string; modulos: ModuloEjecucion[] }[] = [
   {
     grupo: 'Dirección & General',
     modulos: [
-      { ruta: '/kpis',              nombre: 'KPIs' },
       { ruta: '/plan-trabajo/plan', nombre: 'Plan de Trabajo' },
       { ruta: '/operaciones',       nombre: 'Módulo de tareas' },
       { ruta: '/calendario',        nombre: 'Calendario de eventos' },
