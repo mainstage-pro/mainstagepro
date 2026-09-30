@@ -46,7 +46,8 @@ export async function POST(req: NextRequest) {
 
     // Crear categorías de equipos
     const categorias = [
-      "Equipo de Audio",
+      "Bocinas y Subwoofers",
+      "Amplificación y Procesamiento",
       "Sistemas de Microfonía",
       "Monitoreo In-Ear",
       "Consolas de Audio",

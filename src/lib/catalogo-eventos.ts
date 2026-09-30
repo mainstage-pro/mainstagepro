@@ -102,17 +102,17 @@ export const NICHO_CONTENIDO: Record<string, NichoContenido> = {
   boda: {
     adicionales: ["Audio de ceremonia", "Micrófono de brindis", "Pista de baile", "Pista personalizada", "Washes arquitectónicos", "Pinspot", "Chisperos", "Bruma / hazer", "DJ Booth", "Pantalla LED"],
     preguntas: [
-      { texto: "¿La ceremonia necesita audio y micrófonos propios, aparte del salón?", categorias: ["Sistemas de Microfonía", "Equipo de Audio"], enciende: ["Audio de ceremonia"] },
+      { texto: "¿La ceremonia necesita audio y micrófonos propios, aparte del salón?", categorias: ["Sistemas de Microfonía", "Bocinas y Subwoofers"], enciende: ["Audio de ceremonia"] },
       { texto: "¿Quieren un momento de impacto en la entrada o el primer baile?", enciende: ["Chisperos", "Bruma / hazer"] },
       { texto: "¿Buscan realzar el salón con iluminación decorativa de color?", categorias: ["Equipo de Iluminación"], enciende: ["Washes arquitectónicos", "Pinspot"] },
-      { texto: "¿Habrá banda o grupo en vivo además del DJ?", categorias: ["Equipo de Audio", "Sistemas de Microfonía"], enciende: ["Backline", "Microfonía"] },
+      { texto: "¿Habrá banda o grupo en vivo además del DJ?", categorias: ["Bocinas y Subwoofers", "Sistemas de Microfonía"], enciende: ["Backline", "Microfonía"] },
       { texto: "¿La recepción es al aire libre o en jardín sin instalación eléctrica?", categorias: ["Corriente Eléctrica"], enciende: ["Planta de luz"] },
     ],
   },
   "xv-anos": {
     adicionales: ["Chisperos", "Bazuca de papel metálico", "Pista personalizada", "Pantalla LED", "DJ Booth", "Washes arquitectónicos", "Pinspot", "Bruma / hazer"],
     preguntas: [
-      { texto: "¿Habrá baile sorpresa o coreografía que necesite audio y proyección?", categorias: ["Equipo de Audio", "Pantalla / Video"], enciende: ["Pantalla LED"] },
+      { texto: "¿Habrá baile sorpresa o coreografía que necesite audio y proyección?", categorias: ["Bocinas y Subwoofers", "Pantalla / Video"], enciende: ["Pantalla LED"] },
       { texto: "¿Quieren impacto en la entrada o el vals (chispas, confeti, humo)?", enciende: ["Chisperos", "Bazuca de papel metálico", "Bruma / hazer"] },
       { texto: "¿Van a proyectar un video o sesión de fotos de la festejada?", categorias: ["Pantalla / Video"], enciende: ["Pantalla LED"] },
       { texto: "¿Quieren realzar el salón con iluminación de colores?", categorias: ["Equipo de Iluminación"], enciende: ["Washes arquitectónicos", "Pinspot"] },
@@ -122,14 +122,14 @@ export const NICHO_CONTENIDO: Record<string, NichoContenido> = {
     adicionales: ["Audio de ceremonia", "Micrófono de brindis", "DJ Booth", "Pinspot", "Pista de baile"],
     preguntas: [
       { texto: "¿La misa o ceremonia necesita audio propio?", categorias: ["Sistemas de Microfonía"], enciende: ["Audio de ceremonia"] },
-      { texto: "¿Habrá música para el convivio (DJ o audio ambiental)?", categorias: ["Equipo de Audio", "Consolas/Equipo para DJ"], enciende: ["DJ Booth"] },
+      { texto: "¿Habrá música para el convivio (DJ o audio ambiental)?", categorias: ["Bocinas y Subwoofers", "Consolas/Equipo para DJ"], enciende: ["DJ Booth"] },
       { texto: "¿Quieren unas palabras o brindis con micrófono?", enciende: ["Micrófono de brindis"] },
     ],
   },
   cumpleanos: {
     adicionales: ["DJ Booth", "Pista de baile", "Washes arquitectónicos", "Pantalla LED", "Chisperos", "Bruma / hazer"],
     preguntas: [
-      { texto: "¿Habrá DJ o prefieren música en vivo?", categorias: ["Consolas/Equipo para DJ", "Equipo de Audio"], enciende: ["DJ Booth"] },
+      { texto: "¿Habrá DJ o prefieren música en vivo?", categorias: ["Consolas/Equipo para DJ", "Bocinas y Subwoofers"], enciende: ["DJ Booth"] },
       { texto: "¿Quieren un momento especial en el pastel (chispas, humo)?", enciende: ["Chisperos", "Bruma / hazer"] },
       { texto: "¿Van a proyectar fotos o video?", categorias: ["Pantalla / Video"], enciende: ["Pantalla LED"] },
     ],
@@ -138,7 +138,7 @@ export const NICHO_CONTENIDO: Record<string, NichoContenido> = {
     adicionales: ["DJ Booth", "Reproductores y mixer DJ", "Washes arquitectónicos", "Pista de baile", "Pantalla LED", "Bruma / hazer", "Planta de luz"],
     preguntas: [
       { texto: "¿La fiesta es al aire libre o en un lugar sin luz suficiente?", categorias: ["Corriente Eléctrica"], enciende: ["Planta de luz"] },
-      { texto: "¿Habrá DJ o banda en vivo?", categorias: ["Consolas/Equipo para DJ", "Equipo de Audio"], enciende: ["DJ Booth", "Reproductores y mixer DJ"] },
+      { texto: "¿Habrá DJ o banda en vivo?", categorias: ["Consolas/Equipo para DJ", "Bocinas y Subwoofers"], enciende: ["DJ Booth", "Reproductores y mixer DJ"] },
       { texto: "¿Quieren ambiente con iluminación y humo en la pista?", categorias: ["Equipo de Iluminación"], enciende: ["Washes arquitectónicos", "Bruma / hazer"] },
     ],
   },
@@ -154,18 +154,18 @@ export const NICHO_CONTENIDO: Record<string, NichoContenido> = {
   concierto: {
     adicionales: ["Microfonía", "Monitoreo in-ear", "Backline", "Riser de batería", "Intercom FOH-monitores", "Ground support", "Torres de delay", "Pantalla LED", "Planta de luz"],
     preguntas: [
-      { texto: "¿Habrá banda en vivo con varios músicos que necesiten monitoreo?", categorias: ["Sistemas de Microfonía", "Monitoreo In-Ear", "Equipo de Audio"], enciende: ["Microfonía", "Monitoreo in-ear", "Backline"] },
+      { texto: "¿Habrá banda en vivo con varios músicos que necesiten monitoreo?", categorias: ["Sistemas de Microfonía", "Monitoreo In-Ear", "Bocinas y Subwoofers"], enciende: ["Microfonía", "Monitoreo in-ear", "Backline"] },
       { texto: "¿Habrá batería acústica en vivo?", enciende: ["Riser de batería"] },
-      { texto: "¿El escenario es grande o el público queda lejos del sonido?", categorias: ["Rigging y Estructuras", "Equipo de Audio"], enciende: ["Torres de delay", "Ground support"] },
+      { texto: "¿El escenario es grande o el público queda lejos del sonido?", categorias: ["Rigging y Estructuras", "Bocinas y Subwoofers"], enciende: ["Torres de delay", "Ground support"] },
       { texto: "¿El evento es al aire libre sin instalación eléctrica?", categorias: ["Corriente Eléctrica"], enciende: ["Planta de luz"] },
     ],
   },
   festival: {
     adicionales: ["Microfonía", "Monitoreo in-ear", "Backline", "Riser de batería", "Intercom FOH-monitores", "Ground support", "Layher", "Torres de delay", "Pantalla LED", "Planta de luz"],
     preguntas: [
-      { texto: "¿Se presentarán varios artistas con cambios rápidos de escenario?", categorias: ["Equipo de Audio", "Sistemas de Microfonía"], enciende: ["Backline", "Riser de batería", "Intercom FOH-monitores"] },
+      { texto: "¿Se presentarán varios artistas con cambios rápidos de escenario?", categorias: ["Bocinas y Subwoofers", "Sistemas de Microfonía"], enciende: ["Backline", "Riser de batería", "Intercom FOH-monitores"] },
       { texto: "¿El escenario necesita estructura techada o de gran formato?", categorias: ["Rigging y Estructuras"], enciende: ["Ground support", "Layher"] },
-      { texto: "¿El público queda lejos y hace falta refuerzo de sonido a distancia?", categorias: ["Equipo de Audio"], enciende: ["Torres de delay"] },
+      { texto: "¿El público queda lejos y hace falta refuerzo de sonido a distancia?", categorias: ["Bocinas y Subwoofers"], enciende: ["Torres de delay"] },
       { texto: "¿Es al aire libre sin instalación eléctrica?", categorias: ["Corriente Eléctrica"], enciende: ["Planta de luz"] },
     ],
   },
@@ -188,8 +188,8 @@ export const NICHO_CONTENIDO: Record<string, NichoContenido> = {
   "tocada-bar": {
     adicionales: ["Backline", "Microfonía", "Iluminación funcional", "Monitoreo in-ear"],
     preguntas: [
-      { texto: "¿Habrá banda en vivo?", categorias: ["Equipo de Audio", "Sistemas de Microfonía"], enciende: ["Backline", "Microfonía"] },
-      { texto: "¿El bar ya tiene audio o montamos todo nosotros?", categorias: ["Equipo de Audio"], enciende: ["Monitoreo in-ear"] },
+      { texto: "¿Habrá banda en vivo?", categorias: ["Bocinas y Subwoofers", "Sistemas de Microfonía"], enciende: ["Backline", "Microfonía"] },
+      { texto: "¿El bar ya tiene audio o montamos todo nosotros?", categorias: ["Bocinas y Subwoofers"], enciende: ["Monitoreo in-ear"] },
     ],
   },
   // ── EMPRESARIAL ───────────────────────────────────────────────────────────────
@@ -238,7 +238,7 @@ export const NICHO_CONTENIDO: Record<string, NichoContenido> = {
   "evento-deportivo": {
     adicionales: ["Audio para explanada o cancha", "Torres de delay", "Microfonía", "Pantalla LED", "Templete / tarima", "Planta de luz", "Intercom de coordinación", "Streaming y grabación", "Ground support"],
     preguntas: [
-      { texto: "¿El audio tiene que cubrir cancha y gradas por igual?", categorias: ["Equipo de Audio"], enciende: ["Audio para explanada o cancha", "Torres de delay"] },
+      { texto: "¿El audio tiene que cubrir cancha y gradas por igual?", categorias: ["Bocinas y Subwoofers"], enciende: ["Audio para explanada o cancha", "Torres de delay"] },
       { texto: "¿Habrá animador o narrador durante la competencia?", categorias: ["Sistemas de Microfonía"], enciende: ["Microfonía"] },
       { texto: "¿Se necesita pantalla para repeticiones, marcador o patrocinadores?", categorias: ["Pantalla / Video"], enciende: ["Pantalla LED"] },
       { texto: "¿Habrá premiación o ceremonia con templete?", categorias: ["Entarimado"], enciende: ["Templete / tarima"] },
@@ -249,17 +249,17 @@ export const NICHO_CONTENIDO: Record<string, NichoContenido> = {
     adicionales: ["Microfonía", "Iluminación funcional", "Templete / tarima", "Pantalla LED", "Streaming y grabación", "Monitoreo in-ear"],
     preguntas: [
       { texto: "¿El comediante trabaja con micrófono de mano, diadema o ambos?", categorias: ["Sistemas de Microfonía"], enciende: ["Microfonía"] },
-      { texto: "¿Necesitan que la voz se entienda perfecto hasta la última fila?", categorias: ["Equipo de Audio"], enciende: ["Microfonía"] },
+      { texto: "¿Necesitan que la voz se entienda perfecto hasta la última fila?", categorias: ["Bocinas y Subwoofers"], enciende: ["Microfonía"] },
       { texto: "¿Habrá spot o luz frontal sobre el comediante?", categorias: ["Equipo de Iluminación"], enciende: ["Iluminación funcional"] },
       { texto: "¿Se va a grabar la función para redes o para un especial?", categorias: ["Pantalla / Video"], enciende: ["Streaming y grabación"] },
-      { texto: "¿Hay teloneros o varios actos en la misma función?", categorias: ["Equipo de Audio"], enciende: ["Monitoreo in-ear"] },
+      { texto: "¿Hay teloneros o varios actos en la misma función?", categorias: ["Bocinas y Subwoofers"], enciende: ["Monitoreo in-ear"] },
     ],
   },
   "teatro-y-artes-escenicas": {
     adicionales: ["Diseño de iluminación escénica", "Microfonía", "Iluminación funcional", "Monitoreo in-ear", "Intercom de coordinación", "Bruma / hazer", "Templete / tarima", "Ground support"],
     preguntas: [
       { texto: "¿La obra necesita cambios de luz por escena (cues programados)?", categorias: ["Equipo de Iluminación"], enciende: ["Diseño de iluminación escénica", "Iluminación funcional"] },
-      { texto: "¿Los actores usan micrófonos de diadema o hay música en vivo?", categorias: ["Sistemas de Microfonía", "Equipo de Audio"], enciende: ["Microfonía", "Monitoreo in-ear"] },
+      { texto: "¿Los actores usan micrófonos de diadema o hay música en vivo?", categorias: ["Sistemas de Microfonía", "Bocinas y Subwoofers"], enciende: ["Microfonía", "Monitoreo in-ear"] },
       { texto: "¿Se requiere comunicación entre cabina, tramoya y escenario?", enciende: ["Intercom de coordinación"] },
       { texto: "¿Hay efectos de atmósfera (humo, neblina) en la puesta en escena?", categorias: ["Equipo de Iluminación"], enciende: ["Bruma / hazer"] },
       { texto: "¿Hay que colgar luces o escenografía de una estructura?", categorias: ["Rigging y Estructuras"], enciende: ["Ground support"] },
@@ -269,7 +269,7 @@ export const NICHO_CONTENIDO: Record<string, NichoContenido> = {
     adicionales: ["Microfonía", "Splitter de prensa", "Backdrop / photo wall", "Pantalla LED", "Streaming y grabación", "Teleprompter", "Templete / tarima"],
     preguntas: [
       { texto: "¿Habrá varios voceros en presídium con micrófono cada uno?", categorias: ["Sistemas de Microfonía"], enciende: ["Microfonía"] },
-      { texto: "¿Los medios necesitan tomar audio limpio para sus cámaras?", categorias: ["Equipo de Audio"], enciende: ["Splitter de prensa"] },
+      { texto: "¿Los medios necesitan tomar audio limpio para sus cámaras?", categorias: ["Bocinas y Subwoofers"], enciende: ["Splitter de prensa"] },
       { texto: "¿Se requiere backdrop con branding para las fotos?", enciende: ["Backdrop / photo wall"] },
       { texto: "¿Se transmite en vivo o se graba para difusión?", categorias: ["Pantalla / Video"], enciende: ["Streaming y grabación", "Pantalla LED"] },
       { texto: "¿El vocero necesita apuntador para leer el comunicado?", enciende: ["Teleprompter"] },
@@ -278,7 +278,7 @@ export const NICHO_CONTENIDO: Record<string, NichoContenido> = {
   "evento-cultural": {
     adicionales: ["Microfonía", "Diseño de iluminación escénica", "Iluminación funcional", "Templete / tarima", "Pantalla LED", "Backline", "Planta de luz", "Streaming y grabación"],
     preguntas: [
-      { texto: "¿Habrá música en vivo, danza o presentación escénica?", categorias: ["Equipo de Audio", "Sistemas de Microfonía"], enciende: ["Microfonía", "Backline"] },
+      { texto: "¿Habrá música en vivo, danza o presentación escénica?", categorias: ["Bocinas y Subwoofers", "Sistemas de Microfonía"], enciende: ["Microfonía", "Backline"] },
       { texto: "¿La presentación necesita iluminación diseñada por escena?", categorias: ["Equipo de Iluminación"], enciende: ["Diseño de iluminación escénica", "Iluminación funcional"] },
       { texto: "¿Hace falta escenario o templete para los participantes?", categorias: ["Entarimado"], enciende: ["Templete / tarima"] },
       { texto: "¿Es en plaza pública o espacio abierto sin corriente?", categorias: ["Corriente Eléctrica"], enciende: ["Planta de luz"] },
@@ -287,8 +287,8 @@ export const NICHO_CONTENIDO: Record<string, NichoContenido> = {
   "evento-religioso": {
     adicionales: ["Audio de ceremonia", "Microfonía", "Pantalla LED", "Templete / tarima", "Iluminación funcional", "Streaming y grabación", "Planta de luz", "Backline"],
     preguntas: [
-      { texto: "¿La ceremonia o servicio necesita audio y micrófonos propios?", categorias: ["Sistemas de Microfonía", "Equipo de Audio"], enciende: ["Audio de ceremonia", "Microfonía"] },
-      { texto: "¿Habrá coro, ministerio de alabanza o música en vivo?", categorias: ["Equipo de Audio"], enciende: ["Backline", "Microfonía"] },
+      { texto: "¿La ceremonia o servicio necesita audio y micrófonos propios?", categorias: ["Sistemas de Microfonía", "Bocinas y Subwoofers"], enciende: ["Audio de ceremonia", "Microfonía"] },
+      { texto: "¿Habrá coro, ministerio de alabanza o música en vivo?", categorias: ["Bocinas y Subwoofers"], enciende: ["Backline", "Microfonía"] },
       { texto: "¿Se proyectan letras, lecturas o video durante el servicio?", categorias: ["Pantalla / Video"], enciende: ["Pantalla LED"] },
       { texto: "¿Se transmite el servicio en vivo?", enciende: ["Streaming y grabación"] },
       { texto: "¿Es al aire libre o en atrio sin instalación eléctrica?", categorias: ["Corriente Eléctrica"], enciende: ["Planta de luz"] },
@@ -297,9 +297,9 @@ export const NICHO_CONTENIDO: Record<string, NichoContenido> = {
   "feria-festival-patronal": {
     adicionales: ["Torres de delay", "Ground support", "Layher", "Backline", "Microfonía", "Monitoreo in-ear", "Riser de batería", "Iluminación funcional", "Pantalla LED", "Planta de luz", "Intercom de coordinación"],
     preguntas: [
-      { texto: "¿Se presentan varios artistas o grupos a lo largo de los días?", categorias: ["Equipo de Audio", "Sistemas de Microfonía"], enciende: ["Backline", "Riser de batería", "Intercom FOH-monitores"] },
+      { texto: "¿Se presentan varios artistas o grupos a lo largo de los días?", categorias: ["Bocinas y Subwoofers", "Sistemas de Microfonía"], enciende: ["Backline", "Riser de batería", "Intercom FOH-monitores"] },
       { texto: "¿El escenario necesita estructura techada o de gran formato?", categorias: ["Rigging y Estructuras"], enciende: ["Ground support", "Layher"] },
-      { texto: "¿El público se extiende a lo largo de la explanada?", categorias: ["Equipo de Audio"], enciende: ["Torres de delay"] },
+      { texto: "¿El público se extiende a lo largo de la explanada?", categorias: ["Bocinas y Subwoofers"], enciende: ["Torres de delay"] },
       { texto: "¿Hay corriente eléctrica confiable en la sede?", categorias: ["Corriente Eléctrica"], enciende: ["Planta de luz"] },
       { texto: "¿El montaje se queda varios días en el lugar?", enciende: ["Intercom de coordinación"] },
     ],

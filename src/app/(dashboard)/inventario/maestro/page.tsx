@@ -14,6 +14,7 @@ import { normalizarAmPm } from "@/lib/hora";
 import { TipoEventoCell, type TipoEventoOpcion } from "@/components/TipoEventoCell";
 import { AccesoriosTab } from "@/components/AccesoriosTab";
 import { coincide } from "@/lib/buscar";
+import { DISCIPLINAS, DISCIPLINA_LABELS, DISCIPLINA_COLORS } from "@/lib/disciplinaColors";
 
 type Equipo = {
   id: string;
@@ -39,7 +40,7 @@ type Equipo = {
   proveedoresPrecios: { precio: number; notas: string | null; proveedor: { id: string; nombre: string; empresa: string | null; prioridad: number } }[];
 };
 
-type Categoria = { id: string; nombre: string; orden: number; descripcionInterna: string | null; descMusical: string | null; descSocial: string | null; descEmpresarial: string | null };
+type Categoria = { id: string; nombre: string; orden: number; disciplina: string | null; descripcionInterna: string | null; descMusical: string | null; descSocial: string | null; descEmpresarial: string | null };
 type Proveedor = { id: string; nombre: string; empresa: string | null; prioridad: number };
 
 type Kpis = {
@@ -712,6 +713,7 @@ export default function InventarioMaestroPage() {
   // Estado del panel de categorías
   const [showCatPanel, setShowCatPanel] = useState(false);
   const [newCatNombre, setNewCatNombre] = useState("");
+  const [newCatDisciplina, setNewCatDisciplina] = useState("");
   const [savingCat, setSavingCat] = useState(false);
   const [renamingCat, setRenamingCat] = useState<{ id: string; nombre: string } | null>(null);
   const [editingDescCat, setEditingDescCat] = useState<string | null>(null);
@@ -725,12 +727,13 @@ export default function InventarioMaestroPage() {
       const res = await fetch("/api/inventario/categorias", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre: newCatNombre.trim() }),
+        body: JSON.stringify({ nombre: newCatNombre.trim(), disciplina: newCatDisciplina || null }),
       });
       if (!res.ok) { const d = await res.json(); toast.error(d.error ?? "Error al crear"); return; }
       const { categoria } = await res.json();
       setCategorias(prev => [...prev, categoria]);
       setNewCatNombre("");
+      setNewCatDisciplina("");
       toast.success("Categoría creada");
     } finally { setSavingCat(false); }
   }
@@ -1141,7 +1144,7 @@ export default function InventarioMaestroPage() {
       <Modal open={showCatPanel} onClose={() => { setShowCatPanel(false); setNewCatNombre(""); setRenamingCat(null); }} title="Categorías de equipos" maxWidth="max-w-md">
         <div className="space-y-4">
           {/* Nueva categoría */}
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <input
               value={newCatNombre}
               onChange={e => setNewCatNombre(e.target.value)}
@@ -1149,6 +1152,14 @@ export default function InventarioMaestroPage() {
               placeholder="Nombre de nueva categoría..."
               className="flex-1 bg-[#0d0d0d] border border-[#222] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/40"
             />
+            <select
+              value={newCatDisciplina}
+              onChange={e => setNewCatDisciplina(e.target.value)}
+              className="bg-[#0d0d0d] border border-[#222] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B3985B]/40"
+            >
+              <option value="">Sin disciplina</option>
+              {DISCIPLINAS.map(d => <option key={d} value={d}>{DISCIPLINA_LABELS[d]}</option>)}
+            </select>
             <button onClick={createCategoria} disabled={savingCat || !newCatNombre.trim()}
               className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
               {savingCat ? "..." : "Crear"}
@@ -1181,6 +1192,14 @@ export default function InventarioMaestroPage() {
                 ) : (
                   <>
                     <span className="flex-1 text-sm text-white">{cat.nombre}</span>
+                    {cat.disciplina ? (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded border"
+                        style={{ color: DISCIPLINA_COLORS[cat.disciplina], borderColor: `${DISCIPLINA_COLORS[cat.disciplina]}40` }}>
+                        {DISCIPLINA_LABELS[cat.disciplina] ?? cat.disciplina}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-amber-500/70">Sin disciplina</span>
+                    )}
                     <span className="text-[10px] text-[#444] mr-1">
                       {equipos.filter(e => e.categoria.id === cat.id).length} equipos
                     </span>

@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await req.json();
-  const { nombre, orden } = body;
+  const { nombre, orden, disciplina } = body;
 
   if (!nombre?.trim()) {
     return NextResponse.json({ error: "El nombre es requerido" }, { status: 400 });
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const categoria = await prisma.categoriaEquipo.create({
-      data: { nombre: nombre.trim(), orden: finalOrden },
+      data: { nombre: nombre.trim(), orden: finalOrden, disciplina: disciplina || null },
     });
     return NextResponse.json({ categoria }, { status: 201 });
   } catch {

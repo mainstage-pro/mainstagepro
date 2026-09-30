@@ -114,7 +114,8 @@ const MODELO_IMGS: Record<string, string> = {
 };
 const CAT_DESC: Record<string, string> = {
   "Sistemas de Audio":          "Line arrays, subwoofers y monitores activos para cobertura uniforme en cualquier venue, desde jardines hasta auditorios.",
-  "Equipo de Audio":            "Line arrays, subwoofers y monitores activos para cobertura uniforme en cualquier venue, desde jardines hasta auditorios.",
+  "Bocinas y Subwoofers":       "Line arrays, subwoofers y monitores activos para cobertura uniforme en cualquier venue, desde jardines hasta auditorios.",
+  "Amplificación y Procesamiento": "Amplificadores de potencia y procesadores que alimentan y calibran los sistemas pasivos de gama alta.",
   "Consolas de Audio":          "Consolas digitales para mezcla en vivo con control total sobre señal, efectos y ruteo.",
   "Sistemas de Microfonía":     "Micrófonos de solapa, headset y de mano para oradores, artistas y ceremonias.",
   "Microfonía e Inalámbricos":  "Micrófonos de solapa, headset y de mano para oradores, artistas y ceremonias.",

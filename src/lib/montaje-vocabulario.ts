@@ -76,7 +76,7 @@ const S = {
 
 const PERFILES_POR_CATEGORIA: Record<string, PerfilMontaje> = {
   // ── AUDIO ────────────────────────────────────────────────────────────────
-  "Equipo de Audio": {
+  "Bocinas y Subwoofers": {
     configuraciones: [
       { id: "PA_PRINCIPAL", label: "PA principal (house)" },
       { id: "PA_REFUERZO", label: "Refuerzo / delay" },
@@ -101,6 +101,18 @@ const PERFILES_POR_CATEGORIA: Record<string, PerfilMontaje> = {
       { id: "RESPALDO", label: "Respaldo (no se monta)" },
     ],
     soportes: [S.mesa, S.rack, S.tarima, S.piso],
+  },
+  "Amplificación y Procesamiento": {
+    configuraciones: [
+      { id: "AMP_PA_PRINCIPAL", label: "Amplificación del PA principal" },
+      { id: "AMP_SUBGRAVE", label: "Amplificación de subgraves" },
+      { id: "AMP_MONITORES", label: "Amplificación de monitores" },
+      { id: "AMP_REFUERZO", label: "Amplificación de refuerzo / delay" },
+      { id: "PROCESADOR_SISTEMA", label: "Procesador de sistema (drive)" },
+      { id: "PROCESADOR_INMERSIVO", label: "Procesador inmersivo / espacial" },
+      { id: "RESPALDO", label: "Respaldo (no se monta)" },
+    ],
+    soportes: [S.rack, S.piso, S.tarima, S.estructura],
   },
   "Sistemas de Microfonía": {
     configuraciones: [
@@ -360,7 +372,7 @@ const PERFILES_POR_CATEGORIA: Record<string, PerfilMontaje> = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const PERFILES_POR_DISCIPLINA: Record<string, PerfilMontaje> = {
-  AUDIO: PERFILES_POR_CATEGORIA["Equipo de Audio"],
+  AUDIO: PERFILES_POR_CATEGORIA["Bocinas y Subwoofers"],
   DJ: PERFILES_POR_CATEGORIA["Consolas/Equipo para DJ"],
   ILUMINACION: PERFILES_POR_CATEGORIA["Equipo de Iluminación"],
   VIDEO: PERFILES_POR_CATEGORIA["Pantalla / Video"],

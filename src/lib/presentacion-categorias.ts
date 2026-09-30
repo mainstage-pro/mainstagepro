@@ -68,7 +68,8 @@ export const PRESENTACION_CATEGORIAS: PresentacionCategoria[] = [
       { titulo: "Dirección técnica", texto: "Coordinación integral del audio dentro de una producción completa, alineado con iluminación, video y escenario." },
     ],
     grupos: [
-      { label: "Sistemas de sonido", rol: "principal", categorias: ["Equipo de Audio"], descripcion: "Line arrays, subwoofers y sistemas de refuerzo para cualquier escala de evento." },
+      { label: "Sistemas de sonido", rol: "principal", categorias: ["Bocinas y Subwoofers"], descripcion: "Line arrays, subwoofers y sistemas de refuerzo para cualquier escala de evento." },
+      { label: "Amplificación y procesamiento", rol: "relacionado", categorias: ["Amplificación y Procesamiento"], descripcion: "Amplificadores y procesadores que le dan potencia y calibración al sistema." },
       { label: "Consolas de audio", rol: "relacionado", categorias: ["Consolas de Audio"], descripcion: "Mezcladoras digitales para control preciso de cada canal." },
       { label: "Microfonía e inalámbricos", rol: "relacionado", categorias: ["Sistemas de Microfonía"], descripcion: "Micrófonos de mano, diadema y solapa con sistemas inalámbricos." },
       { label: "Monitoreo in-ear", rol: "relacionado", categorias: ["Monitoreo In-Ear"], descripcion: "Sistemas personales para que músicos y presentadores se escuchen perfecto." },

@@ -111,7 +111,7 @@ const EVENTO_CONFIG: Record<string, EventoCfg> = {
 const DEFAULT_EVENTO: EventoCfg = EVENTO_CONFIG.MUSICAL;
 
 // ─── Category constants ───────────────────────────────────────────────────────
-const AUDIO_CATS = ["Equipo de Audio","Sistemas de Microfonía","Monitoreo In-Ear","Consolas de Audio"];
+const AUDIO_CATS = ["Bocinas y Subwoofers","Amplificación y Procesamiento","Sistemas de Microfonía","Monitoreo In-Ear","Consolas de Audio"];
 const ILUM_CATS  = ["Equipo de Iluminación","Consolas de Iluminación"];
 const DJ_CATS    = ["Consolas/Equipo para DJ","DJ Booths","Entarimado"];
 const VIDEO_CATS = ["Pantalla / Video"];

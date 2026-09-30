@@ -42,11 +42,11 @@ export async function POST(req: NextRequest) {
       cantidadTotal: number;
     }> = [
       // ── EQUIPO DE AUDIO ──────────────────────────────────────────────
-      { categoriaId: cat("Equipo de Audio"), descripcion: "Bocina line array activa", marca: "RCF", modelo: "HDL 30A", precioRenta: 2000, tipo: "PROPIO", cantidadTotal: 4 },
-      { categoriaId: cat("Equipo de Audio"), descripcion: "Bocina line array activa", marca: "RCF", modelo: "HDL 6A", precioRenta: 1250, tipo: "PROPIO", cantidadTotal: 8 },
-      { categoriaId: cat("Equipo de Audio"), descripcion: "Subwoofer activo", marca: "RCF", modelo: "SUB 8006 AS", precioRenta: 3500, tipo: "PROPIO", cantidadTotal: 4 },
-      { categoriaId: cat("Equipo de Audio"), descripcion: "Bocina activa tipo full range", marca: "Electro Voice", modelo: "EKX 12P", precioRenta: 1000, tipo: "PROPIO", cantidadTotal: 6 },
-      { categoriaId: cat("Equipo de Audio"), descripcion: "Subwoofer activo", marca: "Electro Voice", modelo: "EKX 18P", precioRenta: 1250, tipo: "PROPIO", cantidadTotal: 4 },
+      { categoriaId: cat("Bocinas y Subwoofers"), descripcion: "Bocina line array activa", marca: "RCF", modelo: "HDL 30A", precioRenta: 2000, tipo: "PROPIO", cantidadTotal: 4 },
+      { categoriaId: cat("Bocinas y Subwoofers"), descripcion: "Bocina line array activa", marca: "RCF", modelo: "HDL 6A", precioRenta: 1250, tipo: "PROPIO", cantidadTotal: 8 },
+      { categoriaId: cat("Bocinas y Subwoofers"), descripcion: "Subwoofer activo", marca: "RCF", modelo: "SUB 8006 AS", precioRenta: 3500, tipo: "PROPIO", cantidadTotal: 4 },
+      { categoriaId: cat("Bocinas y Subwoofers"), descripcion: "Bocina activa tipo full range", marca: "Electro Voice", modelo: "EKX 12P", precioRenta: 1000, tipo: "PROPIO", cantidadTotal: 6 },
+      { categoriaId: cat("Bocinas y Subwoofers"), descripcion: "Subwoofer activo", marca: "Electro Voice", modelo: "EKX 18P", precioRenta: 1250, tipo: "PROPIO", cantidadTotal: 4 },
 
       // ── MICROFONÍA ───────────────────────────────────────────────────
       { categoriaId: cat("Sistemas de Microfonía"), descripcion: "Micrófono inalámbrico digital", marca: "Shure", modelo: "AXIENT B58/SM58", precioRenta: 2000, tipo: "PROPIO", cantidadTotal: 4 },
