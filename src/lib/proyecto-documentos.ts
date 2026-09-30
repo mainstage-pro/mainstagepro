@@ -109,20 +109,22 @@ export function requisitosDocumento(
       break;
     }
 
+    // Sin bloqueos: es la hoja de respaldo que se imprime, y media ficha en la
+    // mano vale más que ninguna. Lo que falte se avisa, no se impide.
     case "FICHA_OPERATIVA": {
-      if (sinVenue) bloqueos.push("Falta el lugar del evento");
-      if (p.equiposCount === 0) bloqueos.push("No hay equipo cargado");
-      if (p.personalCount === 0) bloqueos.push("No hay técnicos asignados al proyecto");
-      if (falta(p.encargadoNombre)) bloqueos.push("Falta el coordinador de producción");
-      if (sinComoLlegar) bloqueos.push("Falta dirección del venue o link de Maps");
-      if (sinMontaje) bloqueos.push("Falta fecha u hora de montaje");
+      if (sinVenue) advertencias.push("Falta el lugar del evento");
+      if (p.equiposCount === 0) advertencias.push("No hay equipo cargado");
+      if (p.personalCount === 0) advertencias.push("No hay técnicos asignados al proyecto");
+      if (falta(p.encargadoNombre)) advertencias.push("Falta el coordinador de producción");
+      if (sinComoLlegar) advertencias.push("Falta dirección del venue o link de Maps");
+      if (sinMontaje) advertencias.push("Falta fecha u hora de montaje");
       if (sinContactoEnSitio) advertencias.push("Sin encargado del lugar ni del cliente");
       if (p.coordinadoresEnSitio === 0)
-        bloqueos.push("Nadie está marcado como coordinador en sitio: el equipo no sabría a quién obedecer");
+        advertencias.push("Nadie está marcado como coordinador en sitio: el equipo no sabría a quién obedecer");
       if (p.coordinadoresEnSitio > 1)
-        bloqueos.push(`${p.coordinadoresEnSitio} técnicos marcados como coordinador en sitio: debe ser uno solo`);
+        advertencias.push(`${p.coordinadoresEnSitio} técnicos marcados como coordinador en sitio: debe ser uno solo`);
       if (p.proveedoresSinResponsable > 0)
-        bloqueos.push(`${p.proveedoresSinResponsable} proveedor(es) sin responsable asignado de la casa`);
+        advertencias.push(`${p.proveedoresSinResponsable} proveedor(es) sin responsable asignado de la casa`);
       if (p.llevaEscenario && falta(p.escenarioAccesos))
         advertencias.push("Escenario sin bajadas definidas: no sabemos cuántas escaleras ni dónde van");
       if (p.llevaEscenario && falta(p.escenarioMedidas))
