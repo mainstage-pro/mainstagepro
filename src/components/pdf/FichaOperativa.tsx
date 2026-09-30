@@ -7,7 +7,7 @@
 import React from "react";
 import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
 import {
-  C, base, fmtFecha, fmtHora, duracion, nowStr,
+  C, base, fmtFechaDiaCorta, fmtHora, duracion, nowStr,
   agruparPorCategoria, EquipoFlat, TransporteSlot,
   EquipoRiderExtra, ProveedorRenta, MAPS,
 } from "./PdfShared";
@@ -230,7 +230,9 @@ const ARCHIVO_TIPO: Record<string, string> = {
 };
 
 export function FichaOperativa({ data }: { data: FichaOperativaData }) {
-  const fechaStr = fmtFecha(data.fechaEvento);
+  // En la banda cabe una línea: el día de la semana solo no ubica a nadie, y la
+  // fecha larga la desborda. Forma corta con ambos.
+  const fechaStr = fmtFechaDiaCorta(data.fechaEvento);
   const horaIni = fmtHora(data.horaInicio || data.horaInicioEvento);
   const horaFin = fmtHora(data.horaDesmontaje || data.horaFinEvento);
   const dur = duracion(data.horaInicio || data.horaInicioEvento, data.horaDesmontaje || data.horaFinEvento);
@@ -311,7 +313,7 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
           {fechaStr && (
             <View style={base.bandaItem}>
               <Text style={base.bandaLabel}>Fecha del evento</Text>
-              <Text style={base.bandaVal}>{fechaStr.split(",")[0]?.trim()}</Text>
+              <Text style={base.bandaVal}>{fechaStr}</Text>
             </View>
           )}
           {data.lugarEvento && (

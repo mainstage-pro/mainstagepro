@@ -173,6 +173,17 @@ export function fmtFecha(iso: string | null | undefined): string {
   } catch { return iso; }
 }
 
+/** "vie, 2 oct 2026" — día de la semana y fecha completa en una sola línea angosta. */
+export function fmtFechaDiaCorta(iso: string | null | undefined): string {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toLocaleDateString("es-MX", {
+      timeZone: "UTC", weekday: "short", day: "numeric",
+      month: "short", year: "numeric",
+    });
+  } catch { return iso; }
+}
+
 export function fmtFechaCorta(iso: string | null | undefined): string {
   if (!iso) return "";
   try {
