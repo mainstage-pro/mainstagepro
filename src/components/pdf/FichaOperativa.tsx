@@ -132,6 +132,33 @@ function KV({ label, value, bold, full }: { label: string; value?: string | null
   );
 }
 
+type Kv = { label: string; value?: string | null; bold?: boolean };
+
+/**
+ * Renglón de dos columnas fijas. Con una rejilla que fluye, un dato sin valor
+ * recorre a los demás y el teléfono termina junto al nombre equivocado; aquí
+ * cada contacto viaja pegado al suyo aunque el de al lado falte.
+ */
+function KVPar({ izq, der }: { izq: Kv; der?: Kv }) {
+  if (!izq.value && !der?.value) return null;
+  const celda = (kv?: Kv) => (
+    <View style={base.kvCell}>
+      {kv?.value ? (
+        <>
+          <Text style={base.kvLabel}>{kv.label}</Text>
+          <Text style={kv.bold ? base.kvValBold : base.kvVal}>{kv.value}</Text>
+        </>
+      ) : null}
+    </View>
+  );
+  return (
+    <View style={base.kvGrid}>
+      {celda(izq)}
+      {celda(der)}
+    </View>
+  );
+}
+
 export interface PersonalItem {
   nombre: string; rolEnEvento: string | null; rolTecnico: string | null;
   celular: string | null; confirmado: boolean;
@@ -204,12 +231,10 @@ const ARCHIVO_TIPO: Record<string, string> = {
 
 export function FichaOperativa({ data }: { data: FichaOperativaData }) {
   const fechaStr = fmtFecha(data.fechaEvento);
-  const fechaMontajeStr = fmtFecha(data.fechaMontaje);
   const horaIni = fmtHora(data.horaInicio || data.horaInicioEvento);
   const horaFin = fmtHora(data.horaDesmontaje || data.horaFinEvento);
   const dur = duracion(data.horaInicio || data.horaInicioEvento, data.horaDesmontaje || data.horaFinEvento);
   const horaMontaje = fmtHora(data.horaMontaje || data.horaInicioMontaje);
-  const horaSalida = fmtHora(data.horaSalidaBodega);
 
   // Agrupa TODOS los equipos (propios + externos) por categoría — igual que RiderPDF
   const todasCategorias = agruparPorCategoria(data.equipos);
@@ -329,7 +354,72 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
 
         <View style={base.body}>
 
-          {/* QUIÉN MANDA — va primero a propósito: es la duda que más cuesta en sitio. */}
+          {/* CLIENTE Y CONTACTOS — abre el documento: a quién se le llama y a qué número. */}
+          <View style={base.section}>
+            <SecNum num={sec("cliente")} titulo="Cliente y Contactos" />
+            <KVPar
+              izq={{ label: "Cliente", value: data.cliente.nombre, bold: true }}
+              der={{ label: "Teléfono cliente", value: data.cliente.telefono }}
+            />
+            <KVPar izq={{ label: "Empresa", value: data.cliente.empresa }} />
+            <KVPar
+              izq={{ label: "Encargado del cliente", value: data.encargadoCliente, bold: true }}
+              der={{ label: "Contacto directo", value: data.encargadoClienteContacto }}
+            />
+            <KVPar
+              izq={{ label: "Encargado del venue", value: data.encargadoLugar, bold: true }}
+              der={{ label: "Contacto del venue", value: data.encargadoLugarContacto }}
+            />
+            <KVPar
+              izq={{ label: "Coordinador Mainstage", value: data.encargadoNombre, bold: true }}
+              der={{ label: "Contacto directo", value: data.encargadoContacto }}
+            />
+            {data.contactosEmergencia && (
+              <View style={[base.textBox, { marginTop: 6 }]}>
+                <Text style={{ fontSize: 6.5, fontFamily: 'Helvetica-Bold', color: C.grisClaro, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 3 }}>Contactos de emergencia</Text>
+                <Text style={base.textBoxContent}>{data.contactosEmergencia}</Text>
+              </View>
+            )}
+          </View>
+
+          {/* VENUE Y LOGÍSTICA */}
+          {(data.lugarEvento || data.direccionVenue || data.indicacionesAcceso) && (
+            <View style={base.section}>
+              <SecNum num={sec("venue")} titulo="Venue y Logística" />
+              <View style={base.kvGrid}>
+                {data.lugarEvento && <KV label="Venue" value={data.lugarEvento} bold full />}
+                {data.direccionVenue && <KV label="Dirección" value={data.direccionVenue} full />}
+                {data.linkMaps && (
+                  <View style={base.kvCellFull}>
+                    <Text style={base.kvLabel}>Google Maps</Text>
+                    <Text style={base.kvValLink}>{data.linkMaps}</Text>
+                  </View>
+                )}
+              </View>
+              <KVPar
+                izq={{ label: "Chofer asignado", value: data.choferNombre, bold: true }}
+                der={{ label: "Punto de salida", value: data.puntoSalidaBodega }}
+              />
+              <KVPar
+                izq={{
+                  label: "Catering",
+                  value: data.aplicaCatering
+                    ? (data.proveedorCatering ? `Sí — ${data.proveedorCatering}` : "Incluido")
+                    : null,
+                }}
+              />
+              {data.indicacionesAcceso && (
+                <View style={[base.textBox, { marginTop: 6 }]}>
+                  <Text style={{ fontSize: 6.5, fontFamily: "Helvetica-Bold", color: C.grisClaro, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 3 }}>
+                    Acceso al venue
+                  </Text>
+                  <Text style={base.textBoxContent}>{data.indicacionesAcceso}</Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* QUIÉN MANDA — la duda que más cuesta en sitio. */}
           <View style={base.section}>
             <SecNum num={sec("mando")} titulo="Quién manda en este evento" />
             <View style={s.mandoTable}>
@@ -417,11 +507,10 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
             <View style={base.section}>
               <SecNum num={sec("horarios")} titulo="Cronología y logística" />
               <CronologiaEvento bloques={bloquesCrono} />
-              {(data.puntoSalidaBodega || data.duracionMontajeHrs != null || dur) && (
+              {(data.duracionMontajeHrs != null || dur) && (
                 <Text style={{ fontSize: 7.5, color: C.grisMedio, marginTop: 4 }}>
                   {[
                     dur ? `Duración del evento: ${dur}` : null,
-                    data.puntoSalidaBodega ? `Punto de salida: ${data.puntoSalidaBodega}` : null,
                     data.duracionMontajeHrs != null ? `Montaje est.: ${data.duracionMontajeHrs} hrs` : null,
                   ].filter(Boolean).join("  ·  ")}
                 </Text>
@@ -429,61 +518,7 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
             </View>
           )}
 
-          {/* 2. CLIENTE Y CONTACTOS */}
-          <View style={base.section}>
-            <SecNum num={sec("cliente")} titulo="Cliente y Contactos" />
-            <View style={base.kvGrid}>
-              <KV label="Cliente" value={data.cliente.nombre} bold />
-              {data.cliente.empresa && <KV label="Empresa" value={data.cliente.empresa} />}
-              {data.cliente.telefono && <KV label="Teléfono cliente" value={data.cliente.telefono} />}
-              {data.encargadoCliente && <KV label="Encargado del cliente" value={data.encargadoCliente} bold />}
-              {data.encargadoClienteContacto && <KV label="Contacto directo" value={data.encargadoClienteContacto} />}
-              {data.encargadoLugar && <KV label="Encargado del venue" value={data.encargadoLugar} bold />}
-              {data.encargadoLugarContacto && <KV label="Contacto del venue" value={data.encargadoLugarContacto} />}
-              {data.encargadoNombre && <KV label="Coordinador Mainstage" value={data.encargadoNombre} bold />}
-              {data.encargadoContacto && <KV label="Contacto directo" value={data.encargadoContacto} />}
-            </View>
-            {data.contactosEmergencia && (
-              <View style={[base.textBox, { marginTop: 6 }]}>
-                <Text style={{ fontSize: 6.5, fontFamily: 'Helvetica-Bold', color: C.grisClaro, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 3 }}>Contactos de emergencia</Text>
-                <Text style={base.textBoxContent}>{data.contactosEmergencia}</Text>
-              </View>
-            )}
-          </View>
-
-          {/* 3. VENUE Y LOGÍSTICA */}
-          {(data.lugarEvento || data.direccionVenue || data.indicacionesAcceso) && (
-            <View style={base.section}>
-              <SecNum num={sec("venue")} titulo="Venue y Logística" />
-              <View style={base.kvGrid}>
-                {data.lugarEvento && <KV label="Venue" value={data.lugarEvento} bold full />}
-                {data.direccionVenue && <KV label="Dirección" value={data.direccionVenue} full />}
-                {data.linkMaps && (
-                  <View style={base.kvCellFull}>
-                    <Text style={base.kvLabel}>Google Maps</Text>
-                    <Text style={base.kvValLink}>{data.linkMaps}</Text>
-                  </View>
-                )}
-                {horaSalida && <KV label="Salida desde bodega" value={horaSalida} bold />}
-                {data.puntoSalidaBodega && <KV label="Punto de salida" value={data.puntoSalidaBodega} />}
-                {fechaMontajeStr && <KV label="Fecha de montaje" value={fechaMontajeStr} />}
-                {horaMontaje && <KV label="Inicio de montaje" value={horaMontaje} bold />}
-                {data.duracionMontajeHrs && <KV label="Duración montaje" value={`${data.duracionMontajeHrs} hrs`} />}
-                {data.choferNombre && <KV label="Chofer asignado" value={data.choferNombre} bold />}
-                {data.aplicaCatering && <KV label="Catering" value={data.proveedorCatering ? `Sí — ${data.proveedorCatering}` : 'Incluido'} />}
-              </View>
-              {data.indicacionesAcceso && (
-                <View style={[base.textBox, { marginTop: 6 }]}>
-                  <Text style={{ fontSize: 6.5, fontFamily: "Helvetica-Bold", color: C.grisClaro, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 3 }}>
-                    Acceso al venue
-                  </Text>
-                  <Text style={base.textBoxContent}>{data.indicacionesAcceso}</Text>
-                </View>
-              )}
-            </View>
-          )}
-
-          {/* 5. TRASLADOS */}
+          {/* TRASLADOS */}
           {transConDatos.length > 0 && (
             <View style={base.section}>
               <SecNum num={sec("traslados")} titulo="Traslados" />

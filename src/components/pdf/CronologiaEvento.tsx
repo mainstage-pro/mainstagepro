@@ -52,9 +52,24 @@ const s = StyleSheet.create({
     paddingHorizontal: 8,
   },
   hora: { width: 54, fontSize: 9.5, fontFamily: "Helvetica-Bold", color: C.dorado },
+  fase: {
+    width: 46, fontSize: 5.8, fontFamily: "Helvetica-Bold",
+    textTransform: "uppercase", letterSpacing: 0.4, flexShrink: 0,
+  },
   label: { flex: 1, fontSize: 8, color: C.negro },
   nota: { fontSize: 7, color: C.grisMedio, maxWidth: 170, textAlign: "right" },
 });
+
+// Una sola jornada puede mezclar montaje, show y proveedores; la etiqueta dice
+// de qué es cada renglón sin partir la cronología en varias listas.
+const FASE: Record<string, { txt: string; color: string }> = {
+  MONTAJE:    { txt: "Montaje",    color: "#b45309" },
+  DESMONTAJE: { txt: "Desmontaje", color: "#b45309" },
+  PROVEEDOR:  { txt: "Proveedor",  color: "#8a8a8a" },
+  SOUNDCHECK: { txt: "Soundcheck", color: C.dorado },
+  PROGRAMA:   { txt: "Show",       color: C.dorado },
+};
+const faseDe = (tipo?: string) => FASE[tipo ?? ""] ?? { txt: "Evento", color: C.dorado };
 
 export function CronologiaEvento({ bloques }: { bloques: BloqueCronologia[] }) {
   if (!bloques.length) return null;
@@ -66,13 +81,17 @@ export function CronologiaEvento({ bloques }: { bloques: BloqueCronologia[] }) {
             <Text style={s.bloqueTitulo}>{b.titulo}</Text>
             {b.subtitulo ? <Text style={s.bloqueFecha}>{b.subtitulo}</Text> : null}
           </View>
-          {b.items.map((it, ii) => (
-            <View key={ii} style={ii < b.items.length - 1 ? s.row : s.rowLast}>
-              <Text style={s.hora}>{it.hora}</Text>
-              <Text style={s.label}>{it.label}</Text>
-              {it.nota ? <Text style={s.nota}>{it.nota}</Text> : null}
-            </View>
-          ))}
+          {b.items.map((it, ii) => {
+            const fase = faseDe(it.tipo);
+            return (
+              <View key={ii} style={ii < b.items.length - 1 ? s.row : s.rowLast}>
+                <Text style={s.hora}>{it.hora}</Text>
+                <Text style={[s.fase, { color: fase.color }]}>{fase.txt}</Text>
+                <Text style={s.label}>{it.label}</Text>
+                {it.nota ? <Text style={s.nota}>{it.nota}</Text> : null}
+              </View>
+            );
+          })}
         </View>
       ))}
     </View>

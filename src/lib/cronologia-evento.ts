@@ -14,7 +14,7 @@
  * Todos los PDFs deben usar esto para que la información esté completa y ordenada igual.
  */
 import { diasEvento, horarioDeDia, fechaISOaDia } from "./fechas-evento";
-import { fmt24to12 } from "./hora";
+import { fmt24to12, parseHora } from "./hora";
 
 /** Tipos de fila de `ProyectoBloqueTiempo`. Cada documento filtra por estos. */
 export const TIPOS_BLOQUE = ["MONTAJE", "SOUNDCHECK", "PROGRAMA", "PROVEEDOR", "DESMONTAJE"] as const;
@@ -30,10 +30,11 @@ export type TipoBloque = (typeof TIPOS_BLOQUE)[number];
 export type BaseCronologia = "COMPLETA" | "EVENTO" | "NINGUNA";
 
 /**
- * Las tres cronologías que se leen por separado. Una sola captura, tres lecturas:
- * cada bloque ya sabe qué es, así que nadie recaptura lo mismo en dos lados.
+ * Las dos logísticas que se leen por separado: la de la casa y la de cada
+ * proveedor externo. Una sola captura, dos lecturas; cada bloque ya sabe qué es,
+ * así que nadie recaptura lo mismo en dos lados.
  */
-export type VistaCronologia = "LOGISTICA" | "PROVEEDORES" | "OPERACION";
+export type VistaCronologia = "LOGISTICA" | "PROVEEDORES";
 
 export const VISTAS_CRONOLOGIA: Record<
   VistaCronologia,
@@ -41,21 +42,15 @@ export const VISTAS_CRONOLOGIA: Record<
 > = {
   LOGISTICA: {
     titulo: "Logística general",
-    descripcion: "Los trazos gruesos: llamado, salida de bodega, montaje y desmontaje.",
-    tipos: ["MONTAJE", "DESMONTAJE"],
+    descripcion: "La jornada completa: llamado, salida de bodega, montaje, el correr del evento y desmontaje.",
+    tipos: ["MONTAJE", "SOUNDCHECK", "PROGRAMA", "DESMONTAJE"],
     base: "COMPLETA",
   },
   PROVEEDORES: {
-    titulo: "Cronología de proveedores",
+    titulo: "Logística de proveedores",
     descripcion: "Entrega, operación y recolección de cada proveedor externo.",
     tipos: ["PROVEEDOR"],
     base: "NINGUNA",
-  },
-  OPERACION: {
-    titulo: "Operación del evento",
-    descripcion: "El correr del show: soundcheck y programa.",
-    tipos: ["SOUNDCHECK", "PROGRAMA"],
-    base: "EVENTO",
   },
 };
 
@@ -180,6 +175,33 @@ function fechaCorta(fecha: string | Date | null | undefined): string | null {
   }
 }
 
+/** Minutos desde medianoche de una hora ya formateada ("9:30" o "7:00 AM"); null si no es una hora. */
+function minutosDeHora(hora: string): number | null {
+  const hhmm = parseHora(hora);
+  if (!hhmm) return null;
+  const [h, m] = hhmm.split(":").map(Number);
+  return h * 60 + m;
+}
+
+/**
+ * Ordena los ítems de un bloque como transcurre la jornada, no como se capturaron.
+ * La primera hora del bloque abre el día; lo que caiga antes de ella es madrugada
+ * del día siguiente —así el fin del show a las 3 AM cierra la lista en vez de
+ * encabezarla—. Lo que no trae hora se va al final.
+ */
+function ordenarPorReloj(items: ItemCronologia[]): ItemCronologia[] {
+  const mins = items.map((it) => minutosDeHora(it.hora));
+  const ancla = mins.find((m) => m != null);
+  if (ancla == null) return items;
+  return items
+    .map((it, i) => {
+      const m = mins[i];
+      return { it, i, clave: m == null ? Infinity : m < ancla ? m + 1440 : m };
+    })
+    .sort((a, b) => a.clave - b.clave || a.i - b.i)
+    .map((x) => x.it);
+}
+
 /** Convierte una fila de ProyectoBloqueTiempo en un ítem de la cronología. */
 function bloqueAItem(b: BloqueTiempo, nombreProveedor?: string | null): ItemCronologia {
   const fase = b.fase ? b.fase.charAt(0) + b.fase.slice(1).toLowerCase() : null;
@@ -233,9 +255,10 @@ export function horariosResumen(p: ProyectoCronologia): HorariosResumen {
 export function derivadosLogistica(
   p: ProyectoCronologia,
   fase: "montaje" | "desmontaje",
-  opts?: { interno?: boolean },
+  opts?: { interno?: boolean; diaAparte?: boolean },
 ): { previos: ItemCronologia[]; posteriores: ItemCronologia[] } {
   const interno = opts?.interno ?? true;
+  const diaAparte = opts?.diaAparte ?? p.montajeDiaAparte === true;
   const h = horariosResumen(p);
   const previos: ItemCronologia[] = [];
   const posteriores: ItemCronologia[] = [];
@@ -248,15 +271,16 @@ export function derivadosLogistica(
         label: "Llamado en bodega",
         hora: h.llamadoBodega ?? "Por definir",
         // Solo mostramos la fecha del llamado si el montaje es día aparte (contexto distinto al día del evento).
-        fecha: p.montajeDiaAparte === true ? fechaCorta(llamadoFecha ?? montajeFecha) : null,
+        fecha: diaAparte ? fechaCorta(llamadoFecha ?? montajeFecha) : null,
         nota: p.lugarLlamado,
+        tipo: "MONTAJE",
       });
     }
     if (interno && h.salidaBodega) {
-      previos.push({ label: "Salida de bodega", hora: h.salidaBodega, fecha: null, nota: null });
+      previos.push({ label: "Salida de bodega", hora: h.salidaBodega, fecha: null, nota: null, tipo: "MONTAJE" });
     }
     if (h.llegadaVenue) {
-      previos.push({ label: "Llegada al venue", hora: h.llegadaVenue, fecha: null, nota: p.lugarEvento });
+      previos.push({ label: "Llegada al venue", hora: h.llegadaVenue, fecha: null, nota: p.lugarEvento, tipo: "MONTAJE" });
     }
     if (h.inicioMontaje) {
       previos.push({
@@ -264,17 +288,18 @@ export function derivadosLogistica(
         hora: h.inicioMontaje,
         fecha: null,
         nota: h.llegadaVenue ? null : p.lugarEvento,
+        tipo: "MONTAJE",
       });
     }
     if (h.finMontaje) {
-      posteriores.push({ label: "Término aprox. de montaje", hora: h.finMontaje, fecha: null, nota: null });
+      posteriores.push({ label: "Término aprox. de montaje", hora: h.finMontaje, fecha: null, nota: null, tipo: "MONTAJE" });
     }
   } else if (interno) {
     if (h.inicioDesmontaje) {
-      previos.push({ label: "Inicio de desmontaje", hora: h.inicioDesmontaje, fecha: null, nota: null });
+      previos.push({ label: "Inicio de desmontaje", hora: h.inicioDesmontaje, fecha: null, nota: null, tipo: "DESMONTAJE" });
     }
     if (h.finDesmontaje) {
-      posteriores.push({ label: "Término aprox. de desmontaje", hora: h.finDesmontaje, fecha: null, nota: null });
+      posteriores.push({ label: "Término aprox. de desmontaje", hora: h.finDesmontaje, fecha: null, nota: null, tipo: "DESMONTAJE" });
     }
   }
 
@@ -339,24 +364,29 @@ export function construirCronologia(
         return bloqueAItem(b, b.proveedorEventoId ? nombres[b.proveedorEventoId] : null);
       });
 
-  const montajeDiaAparte = p.montajeDiaAparte === true;
-  const desmontajeDiaAparte = p.desmontajeDiaAparte === true;
-
   // ── Ítems de montaje ──
   // Orden cronológico: llamado en bodega → salida de bodega → llegada al venue →
   // inicio de montaje → término aproximado de montaje.
   const llamadoHora = horaDeDateTime(p.llamadoBodega);
   const llamadoFecha = p.llamadoBodega ? fechaISOaDia(p.llamadoBodega) : null;
   const montajeFecha = p.fechaMontaje ? fechaISOaDia(p.fechaMontaje) : llamadoFecha;
-  const derivMontaje = derivadosLogistica(p, "montaje", { interno });
+  const desmontajeFecha = p.fechaDesmontaje ? fechaISOaDia(p.fechaDesmontaje) : null;
+
+  // "Día aparte" es un hecho del calendario, no una casilla: si la fecha coincide
+  // con la del evento, darle bloque propio partiría en dos una sola jornada y el
+  // llamado saldría en ambas mitades. La fecha manda sobre la bandera.
+  const montajeDiaAparte = p.montajeDiaAparte === true && !!montajeFecha && montajeFecha !== dias[0];
+  const desmontajeDiaAparte =
+    p.desmontajeDiaAparte === true && !!desmontajeFecha && desmontajeFecha !== dias[dias.length - 1];
+
+  const derivMontaje = derivadosLogistica(p, "montaje", { interno, diaAparte: montajeDiaAparte });
   const itemsMontaje: ItemCronologia[] = conLogistica ? [...derivMontaje.previos] : [];
   const diaMontaje = (montajeDiaAparte ? montajeFecha : null) ?? dias[0];
   itemsMontaje.push(...itemsExtra(diaMontaje, ["MONTAJE"]));
   if (conLogistica) itemsMontaje.push(...derivMontaje.posteriores);
 
   // ── Ítems de desmontaje (solo interno) ──
-  const desmontajeFecha = p.fechaDesmontaje ? fechaISOaDia(p.fechaDesmontaje) : null;
-  const derivDesmontaje = derivadosLogistica(p, "desmontaje", { interno });
+  const derivDesmontaje = derivadosLogistica(p, "desmontaje", { interno, diaAparte: desmontajeDiaAparte });
   const itemsDesmontaje: ItemCronologia[] = conLogistica ? [...derivDesmontaje.previos] : [];
   if (interno) {
     const diaDesmontaje = (desmontajeDiaAparte ? desmontajeFecha : null) ?? dias[dias.length - 1];
@@ -390,10 +420,10 @@ export function construirCronologia(
       items.push(...itemsMontaje);
     }
     if (conLogistica && interno && h.llamado) {
-      items.push({ label: "Llamado", hora: h.llamado, fecha: null, nota: p.lugarLlamado });
+      items.push({ label: "Llamado", hora: h.llamado, fecha: null, nota: p.lugarLlamado, tipo: "MONTAJE" });
     }
     if (conLogistica && interno && i > 0 && h.aplicaMontaje && h.montaje) {
-      items.push({ label: "Montaje", hora: h.montaje, fecha: null, nota: p.lugarEvento });
+      items.push({ label: "Montaje", hora: h.montaje, fecha: null, nota: p.lugarEvento, tipo: "MONTAJE" });
     }
     if (conEvento && h.inicio) {
       items.push({ label: "Inicio del evento", hora: h.inicio, fecha: null, nota: p.lugarEvento });
@@ -452,10 +482,13 @@ export function construirCronologia(
       }
     });
 
-  bloques.forEach((b) => b.items.forEach((it) => {
-    it.hora = horaAmPm(it.hora) ?? it.hora;
-    if (it.horaFin) it.horaFin = horaAmPm(it.horaFin);
-  }));
+  bloques.forEach((b) => {
+    b.items.forEach((it) => {
+      it.hora = horaAmPm(it.hora) ?? it.hora;
+      if (it.horaFin) it.horaFin = horaAmPm(it.horaFin);
+    });
+    b.items = ordenarPorReloj(b.items);
+  });
 
   return bloques;
 }
