@@ -974,6 +974,29 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     await load();
   }
 
+  const [descartandoCarga, setDescartandoCarga] = useState<string | null>(null);
+
+  async function descartarCarga(cargaId: string, tipo: string) {
+    const nombre = tipo === "RETORNO" ? "retorno a bodega" : "salida de bodega";
+    const ok = await confirm({
+      message: `¿Descartar el pase de ${nombre}? Se borra lo revisado y las fallas que ese pase levantó. El equipo podrá abrir uno nuevo desde cero.`,
+      danger: true,
+      confirmText: "Descartar",
+    });
+    if (!ok) return;
+    setDescartandoCarga(cargaId);
+    const res = await fetch(`/api/proyectos/${id}/carga/${cargaId}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al descartar el pase");
+      setDescartandoCarga(null);
+      return;
+    }
+    setDescartandoCarga(null);
+    toast.success("Pase descartado");
+    await load();
+  }
+
   async function guardarNotasPortal() {
     setSavingNotasPortal(true);
     const res = await fetch(`/api/proyectos/${id}`, {
@@ -2078,20 +2101,17 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   async function cargarPlantillaCrono(opts?: { dia?: string; fase?: FaseCrono }) {
     const dia = opts?.dia;
     const fase: FaseCrono = opts?.fase ?? "operacion";
-    const horaInicio = proyecto?.horaInicioEvento ?? "";
-    const horaFin = proyecto?.horaFinEvento ?? "";
 
     let plantilla: CronoRow[];
     if (fase === "montaje") plantilla = mkCronoRows(MONTAJE_ITEMS, "montaje");
     else if (fase === "desmontaje") plantilla = mkCronoRows(DESMONTAJE_ITEMS, "desmontaje");
     else plantilla = mkCronoRows(EVENTO_ITEMS, "operacion");
-    const base = plantilla.map(r => {
-      const row: CronoRow = { ...r, _id: nuevoCronoId(), ...(dia ? { dia } : {}) };
-      if (r.actividad === "Inicio de evento" && horaInicio) row.horaInicio = horaInicio;
-      if (r.actividad === "Fin de evento" && horaFin) row.horaInicio = horaFin;
-      row.horaInicio = row.horaInicio || horaDelResumen(r.actividad) || "";
-      return row;
-    });
+    const base = plantilla.map(r => ({
+      ...r,
+      _id: nuevoCronoId(),
+      ...(dia ? { dia } : {}),
+      horaInicio: r.horaInicio || horaDelResumen(r.actividad, dia) || "",
+    }));
 
     if (fase === "montaje" || fase === "desmontaje") {
       const yaTiene = cronoRows.some(r => faseDe(r) === fase);
@@ -2112,37 +2132,72 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     setCronoRows(prev => [...prev.filter(r => faseDe(r) !== "operacion"), ...base]);
   }
 
-  /** Hora "HH:MM" que el resumen del proyecto ya tiene para esta actividad, si la conoce. */
-  function horaDelResumen(actividad: string): string | null {
-    const key = HORA_RESUMEN_DE_ACTIVIDAD[actividad.trim()];
-    if (!key || !proyecto) return null;
-    return horariosResumen(datosCrono)[key];
+  /** Horarios del evento para un día concreto (los días 2+ heredan del día 1). */
+  function horarioDelDia(dia?: string) {
+    const i = dia ? diasDelEvento.indexOf(dia) : 0;
+    return horarioDeDia(dia ?? diasDelEvento[0] ?? eventoStr, i < 0 ? 0 : i, diasDelEvento, proyecto?.horariosEvento, {
+      inicio: proyecto?.horaInicioEvento,
+      fin: proyecto?.horaFinEvento,
+      llamado: proyecto?.llamadoBodega ? proyecto.llamadoBodega.substring(11, 16) : null,
+      montaje: proyecto?.horaInicioMontaje,
+    });
   }
 
-  /** Lo que el resumen puede aportar a esta fase: horas por rellenar y filas que ni existen. */
-  function pendientesDelResumen(fase: FaseCrono) {
-    const items = fase === "montaje" ? MONTAJE_ITEMS : fase === "desmontaje" ? DESMONTAJE_ITEMS : [];
-    const delFase = cronoRows.filter(r => faseDe(r) === fase);
-    const aRellenar = delFase.filter(r => !r.horaInicio && horaDelResumen(r.actividad));
-    const aCrear = items.filter(a => horaDelResumen(a) && !delFase.some(r => r.actividad.trim() === a));
+  /** Hora "HH:MM" que el resumen del proyecto ya tiene para esta actividad, si la conoce. */
+  function horaDelResumen(actividad: string, dia?: string): string | null {
+    if (!proyecto) return null;
+    const nombre = actividad.trim();
+    // El inicio y fin del evento se capturan por día, no en los campos de la jornada.
+    if (nombre === "Inicio de evento") return horarioDelDia(dia).inicio;
+    if (nombre === "Fin de evento") return horarioDelDia(dia).fin;
+    const key = HORA_RESUMEN_DE_ACTIVIDAD[nombre];
+    return key ? horariosResumen(datosCrono)[key] : null;
+  }
+
+  /** Los bloques de la logística, en el orden en que se muestran. Multidía = un bloque de operación por día. */
+  function bloquesDeLogistica(): { fase: FaseCrono; dia?: string }[] {
+    const operacion: { fase: FaseCrono; dia?: string }[] = esMultidia
+      ? diasDelEvento.map(dia => ({ fase: "operacion" as FaseCrono, dia }))
+      : [{ fase: "operacion" as FaseCrono }];
+    return [{ fase: "montaje" }, ...operacion, { fase: "desmontaje" }];
+  }
+
+  const filasDelBloque = (fase: FaseCrono, dia?: string) =>
+    cronoRows
+      .map((row, i) => ({ row, i }))
+      .filter(({ row }) => faseDe(row) === fase && (!dia || ((row.dia && diasDelEvento.includes(row.dia)) ? row.dia === dia : dia === diasDelEvento[0])));
+
+  /** Lo que el resumen puede aportar a toda la logística: horas por rellenar y filas que ni existen. */
+  function pendientesDelResumen() {
+    const aRellenar: { i: number; hora: string }[] = [];
+    const aCrear: { fase: FaseCrono; dia?: string; actividad: string; hora: string }[] = [];
+    for (const { fase, dia } of bloquesDeLogistica()) {
+      const items = fase === "montaje" ? MONTAJE_ITEMS : fase === "desmontaje" ? DESMONTAJE_ITEMS : EVENTO_ITEMS;
+      const filas = filasDelBloque(fase, dia);
+      for (const { row, i } of filas) {
+        if (row.horaInicio) continue;
+        const hora = horaDelResumen(row.actividad, dia);
+        if (hora) aRellenar.push({ i, hora });
+      }
+      for (const actividad of items) {
+        const hora = horaDelResumen(actividad, dia);
+        if (hora && !filas.some(({ row }) => row.actividad.trim() === actividad)) aCrear.push({ fase, dia, actividad, hora });
+      }
+    }
     return { aRellenar, aCrear, total: aRellenar.length + aCrear.length };
   }
 
   // Rellena las horas vacías y agrega las actividades que el resumen conoce y aquí faltan.
   // Lo que ya se ajustó a mano manda sobre el resumen: nunca se pisa una hora escrita.
-  function traerHorariosDelResumen(fase: FaseCrono) {
-    const { aCrear } = pendientesDelResumen(fase);
-    const nuevas: CronoRow[] = aCrear.map(actividad => ({
-      _id: nuevoCronoId(), horaInicio: horaDelResumen(actividad) ?? "", horaFin: "",
-      actividad, responsable: "", involucrados: "", fase,
-    }));
+  function traerHorariosDelResumen() {
+    const { aRellenar, aCrear } = pendientesDelResumen();
+    const porIndice = new Map(aRellenar.map(x => [x.i, x.hora]));
     setCronoRows(prev => [
-      ...prev.map(r => {
-        if (faseDe(r) !== fase || r.horaInicio) return r;
-        const hora = horaDelResumen(r.actividad);
-        return hora ? { ...r, horaInicio: hora } : r;
-      }),
-      ...nuevas,
+      ...prev.map((r, i) => porIndice.has(i) ? { ...r, horaInicio: porIndice.get(i)! } : r),
+      ...aCrear.map(p => ({
+        _id: nuevoCronoId(), horaInicio: p.hora, horaFin: "", actividad: p.actividad,
+        responsable: "", involucrados: "", fase: p.fase, ...(p.dia ? { dia: p.dia } : {}),
+      })),
     ]);
   }
 
@@ -2323,8 +2378,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     const diaAparte = (esMont ? proyecto?.montajeDiaAparte : proyecto?.desmontajeDiaAparte) === true;
     const label = esMont ? "Montaje" : "Desmontaje";
     const badge = esMont ? "M" : "D";
-    const entries = cronoRows.map((row, i) => ({ row, i })).filter(({ row }) => faseDe(row) === fase);
-    const porLlenar = pendientesDelResumen(fase).total;
+    const entries = filasDelBloque(fase);
     return (
       <div>
         <div className="flex items-center justify-between mb-2 flex-wrap gap-2 border-b border-[#222] pb-2">
@@ -2350,12 +2404,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             </button>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            {porLlenar > 0 && (
-              <button onClick={() => traerHorariosDelResumen(fase)}
-                className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-3 py-1 rounded-lg transition-colors">
-                Traer horarios del resumen ({porLlenar})
-              </button>
-            )}
             <button onClick={() => cargarPlantillaCrono({ fase })}
               className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-3 py-1 rounded-lg transition-colors">
               Plantilla base
@@ -2368,8 +2416,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         </div>
         {entries.length === 0 ? (
           <p className="text-gray-600 text-xs py-3">
-            Sin actividades para {label.toLowerCase()}. Usa {porLlenar > 0 && <><span className="text-gray-400">Traer horarios del resumen</span>, </>}
-            <span className="text-gray-400">Plantilla base</span> o <span className="text-gray-400">+ Agregar fila</span>.
+            Sin actividades para {label.toLowerCase()}. Usa <span className="text-gray-400">Plantilla base</span> o <span className="text-gray-400">+ Agregar fila</span>.
           </p>
         ) : (
           renderCronoTabla(entries)
@@ -4264,9 +4311,21 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                         {c.tipo === "SALIDA" ? "Salida de bodega" : "Retorno a bodega"}
                         {c.etiqueta ? ` · ${c.etiqueta}` : ""}
                       </span>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${c.estado === "CERRADA" ? "bg-green-900/50 text-green-300" : "bg-yellow-900/50 text-yellow-300"}`}>
-                        {c.estado === "CERRADA" ? "Cerrado" : "En curso"}
-                      </span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${c.estado === "CERRADA" ? "bg-green-900/50 text-green-300" : "bg-yellow-900/50 text-yellow-300"}`}>
+                          {c.estado === "CERRADA" ? "Cerrado" : "En curso"}
+                        </span>
+                        {yo?.role === "ADMIN" && (
+                          <button
+                            onClick={() => descartarCarga(c.id, c.tipo)}
+                            disabled={descartandoCarga === c.id}
+                            title="Descartar este pase y dejar el control de carga en blanco"
+                            className="text-[10px] text-gray-600 hover:text-red-400 disabled:opacity-50 transition-colors"
+                          >
+                            {descartandoCarga === c.id ? "Descartando..." : "Descartar"}
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <div className="h-[3px] bg-[#1c1c1c] rounded-full overflow-hidden">
                       <div
@@ -5860,7 +5919,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
 
           {/* ── Logística general: montaje, soundcheck, evento y desmontaje ── */}
-          {!esRenta && (
+          {!esRenta && (() => {
+            const porLlenar = pendientesDelResumen().total;
+            return (
             <div className="ms-card p-5">
               <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
                 <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">
@@ -5868,6 +5929,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 </p>
                 <div className="flex items-center gap-2 flex-wrap">
                   {savingCrono && <span className="text-xs text-gray-600">Guardando...</span>}
+                  {porLlenar > 0 && (
+                    <button onClick={traerHorariosDelResumen}
+                      className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-3 py-1 rounded-lg transition-colors">
+                      Traer horarios del resumen ({porLlenar})
+                    </button>
+                  )}
                   {cronoRows.length > 0 && (
                     <button onClick={() => guardarCronograma(cronoRows)} disabled={savingCrono}
                       className="text-xs bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black font-semibold px-3 py-1 rounded-lg transition-colors">
@@ -5886,7 +5953,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 {renderFaseExtra("desmontaje")}
               </div>
             </div>
-          )}
+            );
+          })()}
 
           {/* ── Proveedores y Subrentas ── */}
           <PanelProveedores
