@@ -73,6 +73,7 @@ interface Cotizacion {
   montoDescuento: number;
   subtotalEquiposNeto: number;
   subtotalOperacion: number;
+  incluirChofer: boolean;
   subtotalTransporte: number;
   subtotalComidas: number;
   subtotalHospedaje: number;
@@ -749,6 +750,16 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   const subtotalOp = lineasOp.reduce((s, l) => s + l.subtotal, 0);
   const subtotalLog = lineasLog.reduce((s, l) => s + l.subtotal, 0);
   const subtotalOcasional = lineasOcasional.reduce((s, l) => s + l.subtotal, 0);
+  // La comisión interna viaja como línea OTRO; en el resumen va en su propio renglón.
+  const subtotalGastosProd = lineasOcasional
+    .filter((l) => l.descripcion === "Gastos de Producción")
+    .reduce((s, l) => s + l.subtotal, 0);
+  const subtotalAdicionales = subtotalOcasional - subtotalGastosProd;
+  // El descuento corre sobre equipos + paquetes; el neto guardado es solo el de equipos.
+  const subtotalPaqueteNeto = subtotalPaquete > 0
+    ? cot.subtotalEquiposBruto + subtotalPaquete - cot.montoDescuento - cot.subtotalEquiposNeto
+    : 0;
+  const subtotalChofer = cot.incluirChofer ? 500 : 0;
 
   // Notas por sección (guardadas en notasSecciones JSON)
   const notasSecciones: Record<string, string> = cot.notasSecciones
@@ -1956,6 +1967,11 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
             <div className="flex justify-between text-gray-400">
               <span>Equipos bruto</span><span>{formatCurrency(cot.subtotalEquiposBruto)}</span>
             </div>
+            {subtotalPaquete > 0 && (
+              <div className="flex justify-between text-gray-400">
+                <span>Paquetes bruto</span><span>{formatCurrency(subtotalPaquete)}</span>
+              </div>
+            )}
             {cot.montoDescuento > 0 && (
               <div className="flex justify-between text-red-400 text-xs">
                 <span>Precio preferencial</span>
@@ -1965,9 +1981,19 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
             <div className="flex justify-between text-white">
               <span>Equipos neto</span><span>{formatCurrency(cot.subtotalEquiposNeto)}</span>
             </div>
+            {subtotalPaquete > 0 && (
+              <div className="flex justify-between text-gray-400">
+                <span>Paquetes neto</span><span>{formatCurrency(subtotalPaqueteNeto)}</span>
+              </div>
+            )}
             {subtotalExterno > 0 && (
               <div className="flex justify-between text-gray-400">
                 <span>Equipos externos</span><span>{formatCurrency(subtotalExterno)}</span>
+              </div>
+            )}
+            {subtotalAdicionales > 0 && (
+              <div className="flex justify-between text-gray-400">
+                <span>Adicionales</span><span>{formatCurrency(subtotalAdicionales)}</span>
               </div>
             )}
             {cot.subtotalOperacion > 0 && (
@@ -1978,6 +2004,16 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
             {subtotalLog > 0 && (
               <div className="flex justify-between text-gray-400">
                 <span>Logística</span><span>{formatCurrency(subtotalLog)}</span>
+              </div>
+            )}
+            {subtotalChofer > 0 && (
+              <div className="flex justify-between text-gray-400">
+                <span>Chofer de producción</span><span>{formatCurrency(subtotalChofer)}</span>
+              </div>
+            )}
+            {subtotalGastosProd > 0 && (
+              <div className="flex justify-between text-[#B3985B]">
+                <span>Gastos de producción</span><span>{formatCurrency(subtotalGastosProd)}</span>
               </div>
             )}
             <div className="flex justify-between font-semibold text-white border-t border-[#333] pt-2">

@@ -14,7 +14,8 @@ interface Cotizacion {
   fechaEvento: string | null; granTotal: number; total: number; montoIva: number;
   aplicaIva: boolean; subtotalEquiposBruto: number; montoDescuento: number;
   subtotalOperacion: number; subtotalTransporte: number; subtotalComidas: number;
-  subtotalHospedaje: number; observaciones: string | null; vigenciaDias: number;
+  subtotalHospedaje: number; incluirChofer: boolean;
+  observaciones: string | null; vigenciaDias: number;
   fechaVencimiento: string | null; aprobacionFecha: string | null;
   aprobacionNombre: string | null;
   cliente: { nombre: string; empresa: string | null };
@@ -108,9 +109,10 @@ export default function AprobacionCotizacionPage({ params }: { params: Promise<{
     </div>
   );
 
-  const lineasEquipo = cot.lineas.filter(l => l.tipo === "EQUIPO_PROPIO" || l.tipo === "EQUIPO_EXTERNO");
+  const lineasEquipo = cot.lineas.filter(l => ["EQUIPO_PROPIO", "EQUIPO_EXTERNO", "PAQUETE"].includes(l.tipo));
   const lineasOp = cot.lineas.filter(l => l.tipo === "OPERACION_TECNICA" || l.tipo === "DJ");
   const lineasLog = cot.lineas.filter(l => ["TRANSPORTE", "COMIDA", "HOSPEDAJE"].includes(l.tipo));
+  const lineasOtro = cot.lineas.filter(l => l.tipo === "OTRO");
 
   const equiposPorCat: Record<string, Linea[]> = {};
   for (const l of lineasEquipo) {
@@ -275,13 +277,35 @@ export default function AprobacionCotizacionPage({ params }: { params: Promise<{
                 </div>
               </div>
             )}
-            {lineasLog.length > 0 && (
+            {(lineasLog.length > 0 || cot.incluirChofer) && (
               <div className="px-6 py-4">
                 <p className="text-[#B3985B] text-[10px] font-semibold uppercase tracking-widest mb-3">Logística</p>
                 <div className="space-y-2.5">
                   {lineasLog.map(l => (
                     <div key={l.id} className="flex justify-between items-start gap-4 text-sm">
                       <span className="text-white/85 flex-1">{l.descripcion}</span>
+                      <span className="text-white/35 shrink-0 font-medium">{fmt(l.subtotal)}</span>
+                    </div>
+                  ))}
+                  {cot.incluirChofer && (
+                    <div className="flex justify-between items-start gap-4 text-sm">
+                      <span className="text-white/85 flex-1">Chofer de producción</span>
+                      <span className="text-white/35 shrink-0 font-medium">{fmt(500)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            {lineasOtro.length > 0 && (
+              <div className="px-6 py-4">
+                <p className="text-[#B3985B] text-[10px] font-semibold uppercase tracking-widest mb-3">Conceptos adicionales</p>
+                <div className="space-y-2.5">
+                  {lineasOtro.map(l => (
+                    <div key={l.id} className="flex justify-between items-start gap-4 text-sm">
+                      <div className="flex-1">
+                        <span className="text-white/85">{l.descripcion}</span>
+                        {l.cantidad > 1 && <span className="text-white/20 ml-2 text-xs">×{l.cantidad}</span>}
+                      </div>
                       <span className="text-white/35 shrink-0 font-medium">{fmt(l.subtotal)}</span>
                     </div>
                   ))}
