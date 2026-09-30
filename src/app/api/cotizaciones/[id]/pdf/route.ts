@@ -12,54 +12,6 @@ import { validarTokenPresentacion } from "@/lib/presentacion-token";
 import { ensureCotizacionIdiomaColumn, ensureCotizacionHorarioColumns } from "@/lib/migraciones-lazy";
 import { traducirTextosCotizacion, extraerNotaLibre, conNotaTraducida } from "@/lib/traduccion-cotizacion";
 
-/**
- * Imagen de referencia a ancho de página (612pt ≈ 1224px @2x). El resolver de
- * miniaturas de PdfShared recorta a 240px, que se ve pixeleado a este tamaño.
- */
-async function resolverHero(src: string | null | undefined): Promise<string | null> {
-  if (!src) return null;
-  try {
-    let input: Buffer;
-    if (src.startsWith("data:")) return src;
-    if (/^https?:\/\//.test(src)) {
-      const res = await fetch(src);
-      if (!res.ok) return null;
-      input = Buffer.from(await res.arrayBuffer());
-    } else {
-      const p = path.join(process.cwd(), "public", src.replace(/^\//, ""));
-      if (!fs.existsSync(p)) return null;
-      input = fs.readFileSync(p);
-    }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const sharp = (await import("sharp")).default as any;
-    const jpg = await sharp(input)
-      .rotate()
-      .resize(1100, 620, { fit: "cover", position: "centre" })
-      .jpeg({ quality: 78, mozjpeg: true })
-      .toBuffer();
-    return `data:image/jpeg;base64,${jpg.toString("base64")}`;
-  } catch { return null; }
-}
-
-/** Número de páginas de un PDF de pdfkit (el nodo /Pages trae /Count). */
-function contarPaginas(buf: Buffer): number {
-  const m = buf.toString("latin1").match(/\/Type\s*\/Pages[\s\S]{0,400}?\/Count\s+(\d+)/);
-  return m ? parseInt(m[1], 10) : 1;
-}
-
-async function renderBuffer(element: React.ReactElement): Promise<Buffer> {
-  const stream = await ReactPDF.renderToStream(
-    element as React.ReactElement<React.ComponentProps<typeof Document>>
-  );
-  return new Promise<Buffer>((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    stream.on("data", (chunk: any) => chunks.push(Buffer.from(chunk)));
-    stream.on("error", reject);
-    stream.on("end", () => resolve(Buffer.concat(chunks)));
-  });
-}
-
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   
@@ -95,8 +47,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   if (!cotizacion) return NextResponse.json({ error: "No encontrada" }, { status: 404 });
 
-  // Logo de letras negras: el encabezado va sobre papel claro, no sobre banda negra.
-  const logoPath = path.join(process.cwd(), "public", "logo.png");
+  const logoPath = path.join(process.cwd(), "public", "logo-white.png");
   const logoSrc = fs.existsSync(logoPath)
     ? `data:image/png;base64,${fs.readFileSync(logoPath).toString("base64")}`
     : null;
@@ -158,25 +109,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const tipoEvento = (cotizacion.tipoEvento ?? cotizacion.trato?.tipoEvento ?? "MUSICAL").toUpperCase();
   const campoDesc = tipoEvento === "SOCIAL" ? "descSocial" : tipoEvento === "EMPRESARIAL" ? "descEmpresarial" : "descMusical";
   const categorias = await prisma.categoriaEquipo.findMany({
-    select: { nombre: true, disciplina: true, descMusical: true, descSocial: true, descEmpresarial: true },
+    select: { nombre: true, descMusical: true, descSocial: true, descEmpresarial: true },
   });
   const descCategorias: Record<string, string> = {};
-  const catDisciplina: Record<string, string> = {};
   for (const cat of categorias) {
     const txt = (cat as Record<string, string | null>)[campoDesc];
     if (txt) descCategorias[cat.nombre] = txt;
-    if (cat.disciplina) catDisciplina[cat.nombre] = cat.disciplina;
   }
-
-  // Imagen de referencia: la foto destacada del tipo de evento que ya alimenta
-  // /presentacion. Se resuelve aparte del resolver de miniaturas porque ese
-  // reescala a 240px y aquí se pinta a ancho completo.
-  const foto = await prisma.fotoTipoEvento.findFirst({
-    where: { tipoEvento: { slug: tipoEvento.toLowerCase() } },
-    orderBy: [{ destacada: "desc" }, { orden: "asc" }],
-    select: { url: true },
-  });
-  const fotoReferenciaUrl = await resolverHero(foto?.url);
 
   // ── Traducción a inglés (solo si la cotización está marcada como idioma "en") ──
   // Los textos fijos de UI se traducen vía diccionario dentro de CotizacionPDF; aquí
@@ -238,48 +177,22 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     };
   }
 
-  const props = {
-    cotizacion: cotizacionFinal,
-    logoSrc,
-    descCategorias: descCategoriasFinal,
-    catLabels,
-    idioma: (cotizacion.idioma === "en" ? "en" : "es") as "es" | "en",
-    fotoReferenciaUrl,
-    catDisciplina,
-  };
+  const pdfStream = await ReactPDF.renderToStream(
+    React.createElement(CotizacionPDF, {
+      cotizacion: cotizacionFinal,
+      logoSrc,
+      descCategorias: descCategoriasFinal,
+      catLabels,
+      idioma: cotizacion.idioma === "en" ? "en" : "es",
+    }) as React.ReactElement<React.ComponentProps<typeof Document>>
+  );
 
-  // Formato "rollo": una sola página continua, sin cortes. react-pdf no expone el
-  // alto del contenido, así que se busca el alto mínimo que quepa en una página
-  // (búsqueda binaria: cada render es barato y la condición es monótona).
-  // `?formato=carta` devuelve el paginado tradicional, para imprimir y firmar.
-  const formato = req.nextUrl.searchParams.get("formato") === "carta" ? "carta" : "rollo";
-
-  let pdfBuffer: Buffer;
-  if (formato === "carta") {
-    pdfBuffer = await renderBuffer(React.createElement(CotizacionPDF, props));
-  } else {
-    const render = (altura: number | null) =>
-      renderBuffer(React.createElement(CotizacionPDF, { ...props, alturaRollo: altura }));
-
-    // El máximo que admite el formato PDF es 14400pt (200").
-    let lo = 900, hi = 5000;
-    let mejor = await render(hi);
-    while (contarPaginas(mejor) > 1 && hi < 14400) {
-      lo = hi;
-      hi = Math.min(hi * 2, 14400);
-      mejor = await render(hi);
-    }
-    if (contarPaginas(mejor) === 1) {
-      while (hi - lo > 8) {
-        const mid = Math.round((lo + hi) / 2);
-        const buf = await render(mid);
-        if (contarPaginas(buf) === 1) { hi = mid; mejor = buf; } else { lo = mid; }
-      }
-    } else {
-      mejor = await render(null); // no cabe en una tira: se pagina en carta
-    }
-    pdfBuffer = mejor;
-  }
+  const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    pdfStream.on("data", (chunk: any) => chunks.push(Buffer.from(chunk)));
+    pdfStream.on("error", reject);
+    pdfStream.on("end", () => resolve(Buffer.concat(chunks)));
+  });
 
   return new NextResponse(pdfBuffer as any, {
     status: 200,

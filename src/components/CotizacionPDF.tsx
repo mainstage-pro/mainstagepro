@@ -2,338 +2,216 @@ import React from "react";
 import {
   Document, Page, Text, View, StyleSheet, Image,
 } from "@react-pdf/renderer";
-import type { Style } from "@react-pdf/stylesheet";
-import { SANS, MONO } from "@/components/pdf/fonts";
 
-// ─── Paleta de colores (manual de marca v1) ──────────────────────────────────
+// Helvetica viene integrada en react-pdf, no requiere registro adicional
+
+// ─── Paleta de colores ────────────────────────────────────────────────────────
 const GOLD = "#B3985B";
 const BLACK = "#0a0a0a";
-const GRAY = "#55504A";
-const LIGHT_GRAY = "#8C8C8C";
+const DARK = "#111111";
+const GRAY = "#4a4a4a";
+const LIGHT_GRAY = "#888888";
 const WHITE = "#FFFFFF";
-const PAPER = "#F6F4F0";      // blanco cálido — papel del documento
-const BG_SECTION = "#EFEAE1"; // bandas y tarjetas sobre el papel
-const LINE = "#E1DBD1";       // hairline
+const BG_SECTION = "#F7F5F0"; // fondo crema muy suave para secciones
 
 // ─── Estilos ─────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   page: {
-    fontFamily: SANS,
-    backgroundColor: PAPER,
-    paddingTop: 0,
-    paddingBottom: 0,
+    fontFamily: "Helvetica",
+    backgroundColor: WHITE,
+    paddingTop: 36,
+    paddingBottom: 40,
     paddingHorizontal: 0,
     fontSize: 9,
     color: BLACK,
   },
-  // Encabezado sobre papel: logo negro a la izquierda, folio en mono a la derecha
+  // Header negro con oro
   header: {
+    backgroundColor: BLACK,
     paddingHorizontal: 40,
-    paddingTop: 34,
-    paddingBottom: 14,
+    paddingTop: 30,
+    paddingBottom: 25,
+    marginTop: -36,
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
+    alignItems: "flex-end",
   },
   headerLeft: {
     flexDirection: "column",
-    paddingTop: 2,
   },
   brand: {
-    fontSize: 16,
-    fontFamily: SANS,
-    fontWeight: 800,
-    color: BLACK,
+    fontSize: 18,
+    fontFamily: "Helvetica-Bold",
+    color: GOLD,
     letterSpacing: 2,
-    marginBottom: 4,
+    marginBottom: 3,
   },
   tagline: {
-    fontSize: 6,
-    color: LIGHT_GRAY,
-    letterSpacing: 1.6,
-    marginTop: 7,
+    fontSize: 8,
+    color: "#888888",
+    letterSpacing: 1,
   },
   headerRight: {
     alignItems: "flex-end",
   },
-  headerEtiqueta: {
-    fontSize: 6.5,
-    fontFamily: SANS,
-    fontWeight: 600,
-    color: GOLD,
-    letterSpacing: 2.2,
-    marginBottom: 4,
-  },
   numCotizacion: {
-    fontSize: 12,
-    fontFamily: MONO,
-    fontWeight: 700,
-    color: BLACK,
-    marginBottom: 3,
+    fontSize: 11,
+    fontFamily: "Helvetica-Bold",
+    color: WHITE,
+    marginBottom: 2,
   },
   fechaHeader: {
-    fontSize: 7,
-    fontFamily: MONO,
-    color: LIGHT_GRAY,
+    fontSize: 8,
+    color: "#888888",
   },
-  // Línea dorada del encabezado
+  // Barra dorada
   goldBar: {
-    height: 1,
+    height: 3,
     backgroundColor: GOLD,
-    marginHorizontal: 40,
   },
   // Agradecimiento
   gracias: {
-    paddingTop: 12,
+    backgroundColor: "#F7F5F0",
+    paddingVertical: 10,
     paddingHorizontal: 40,
     fontSize: 9,
     color: GRAY,
-    lineHeight: 1.5,
+    textAlign: "center",
+    letterSpacing: 0.5,
+    fontFamily: "Helvetica-Oblique",
   },
-  // Imagen de referencia
-  heroWrap: {
-    marginHorizontal: 40,
-    marginTop: 14,
-  },
-  heroImg: {
-    width: "100%",
-    height: 168,
-    objectFit: "cover",
-  },
-  heroCaption: {
-    fontSize: 6.5,
-    color: LIGHT_GRAY,
-    marginTop: 4,
-    lineHeight: 1.4,
-  },
-  // Ficha del evento — tarjetas de dato
-  fichaGrid: {
+  // Info del cliente y evento
+  infoBloque: {
     paddingHorizontal: 40,
-    paddingTop: 16,
+    paddingTop: 20,
+    paddingBottom: 16,
     flexDirection: "row",
-    flexWrap: "wrap",
+    gap: 0,
   },
-  fichaCard: {
-    width: "33.33%",
-    paddingRight: 10,
-    paddingBottom: 10,
+  infoCol: {
+    flex: 1,
   },
-  fichaLabel: {
-    fontSize: 6,
+  infoColRight: {
+    flex: 1,
+    paddingLeft: 20,
+    borderLeft: "1 solid #e0ddd8",
+  },
+  infoLabel: {
+    fontSize: 7.5,
     color: LIGHT_GRAY,
-    fontFamily: SANS,
-    fontWeight: 600,
-    letterSpacing: 1.2,
+    fontFamily: "Helvetica-Bold",
+    letterSpacing: 1,
     textTransform: "uppercase",
-    marginBottom: 3,
+    marginBottom: 2,
   },
-  fichaValor: {
+  infoValue: {
     fontSize: 9,
     color: BLACK,
-    fontFamily: SANS,
-    fontWeight: 700,
-    lineHeight: 1.3,
+    fontFamily: "Helvetica-Bold",
+    marginBottom: 8,
   },
-  fichaValorLight: {
-    fontSize: 8.5,
+  infoValueLight: {
+    fontSize: 9,
     color: GRAY,
-    lineHeight: 1.35,
-  },
-  fichaValorMono: {
-    fontSize: 8.5,
-    color: BLACK,
-    fontFamily: MONO,
-    fontWeight: 500,
+    marginBottom: 8,
   },
   // Función/momento interno del evento (ej. Haldi, Sangeet, Ceremony) — destacado
   // para distinguir a simple vista cotizaciones de un mismo trato multi-evento.
   subEventoValor: {
-    fontSize: 10,
+    fontSize: 11,
     color: GOLD,
-    fontFamily: SANS,
-    fontWeight: 800,
+    fontFamily: "Helvetica-Bold",
+    marginBottom: 8,
     textTransform: "uppercase",
-    letterSpacing: 0.4,
-  },
-  // Alcance — casillas marcadas por disciplina
-  alcanceWrap: {
-    marginHorizontal: 40,
-    marginTop: 6,
-    paddingTop: 12,
-    borderTop: `1 solid ${LINE}`,
-  },
-  alcanceGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    marginTop: 8,
-  },
-  alcanceItem: {
-    width: "33.33%",
-    flexDirection: "row",
-    alignItems: "center",
-    paddingBottom: 7,
-    paddingRight: 8,
-  },
-  alcanceBox: {
-    width: 12,
-    height: 12,
-    borderWidth: 0.8,
-    borderColor: "#CFC7B8",
-    borderStyle: "solid",
-    marginRight: 6,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  alcanceBoxOn: {
-    borderColor: GOLD,
-  },
-  // El aspa se dibuja con dos barras giradas: el glifo × de Montserrat es
-  // demasiado pequeño y la caja de 12pt recorta cualquier tamaño de texto mayor.
-  alcanceAspa: {
-    position: "absolute",
-    width: 12,
-    height: 1.2,
-    backgroundColor: GOLD,
-  },
-  alcanceTexto: {
-    fontSize: 7.5,
-    fontFamily: SANS,
-    fontWeight: 600,
-    color: BLACK,
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-  },
-  alcanceTextoOff: {
-    fontWeight: 400,
-    color: "#ADA69A",
-  },
-  alcanceNota: {
-    fontSize: 6.5,
-    color: LIGHT_GRAY,
-    marginTop: 1,
-    lineHeight: 1.4,
+    letterSpacing: 0.5,
   },
   // Divisor
   divisor: {
     height: 1,
-    backgroundColor: LINE,
+    backgroundColor: "#e0ddd8",
     marginHorizontal: 40,
     marginVertical: 4,
   },
   // Sección título
   seccionTitulo: {
     paddingHorizontal: 40,
-    paddingTop: 18,
-    paddingBottom: 8,
+    paddingTop: 14,
+    paddingBottom: 6,
     flexDirection: "row",
     alignItems: "center",
+    gap: 8,
   },
   seccionLinea: {
     height: 1.5,
     backgroundColor: GOLD,
-    width: 16,
-    marginRight: 7,
+    width: 20,
+    marginRight: 6,
   },
   seccionNombre: {
-    fontSize: 8,
-    fontFamily: SANS,
-    fontWeight: 700,
-    color: BLACK,
-    letterSpacing: 1.6,
+    fontSize: 8.5,
+    fontFamily: "Helvetica-Bold",
+    color: GOLD,
+    letterSpacing: 1.5,
     textTransform: "uppercase",
   },
   // Apartado del paquete comercial (solo si la cotización viene de un paquete)
   paqueteBloque: {
     marginHorizontal: 40,
-    marginTop: 10,
+    marginTop: 6,
     marginBottom: 2,
-    paddingVertical: 9,
+    paddingVertical: 8,
     paddingHorizontal: 12,
-    backgroundColor: BG_SECTION,
-    borderLeft: `2 solid ${GOLD}`,
+    backgroundColor: "#F0EDE8",
+    borderLeft: `3 solid ${GOLD}`,
+    borderRadius: 2,
   },
   paqueteLabel: {
-    fontSize: 6,
-    fontFamily: SANS,
-    fontWeight: 600,
+    fontSize: 6.5,
+    fontFamily: "Helvetica-Bold",
     color: GOLD,
-    letterSpacing: 1.6,
+    letterSpacing: 1.5,
     textTransform: "uppercase",
-    marginBottom: 3,
+    marginBottom: 2,
   },
   paqueteNombre: {
     fontSize: 11,
-    fontFamily: SANS,
-    fontWeight: 700,
+    fontFamily: "Helvetica-Bold",
     color: BLACK,
   },
   paqueteResumen: {
     fontSize: 8,
     color: GRAY,
-    lineHeight: 1.45,
-    marginTop: 3,
+    fontFamily: "Helvetica-Oblique",
+    lineHeight: 1.4,
+    marginTop: 2,
   },
-  // Tabla — encabezado en hairline, sin banda negra
-  tablaWrap: {
-    marginHorizontal: 40,
-  },
+  // Tabla
   tablaHeader: {
     flexDirection: "row",
-    paddingBottom: 5,
-    borderBottom: `1 solid ${BLACK}`,
+    backgroundColor: BLACK,
+    paddingVertical: 5,
+    paddingHorizontal: 40,
   },
   tablaHeaderTexto: {
-    fontSize: 6,
-    color: BLACK,
-    fontFamily: SANS,
-    fontWeight: 700,
-    letterSpacing: 1.1,
+    fontSize: 7.5,
+    color: "#888888",
+    fontFamily: "Helvetica-Bold",
+    letterSpacing: 0.8,
   },
   tablaFila: {
     flexDirection: "row",
     paddingVertical: 5.5,
-    borderBottom: `1 solid ${LINE}`,
-    alignItems: "center",
+    paddingHorizontal: 40,
+    borderBottom: "1 solid #f0ede8",
+  },
+  tablaFilaAlt: {
+    backgroundColor: BG_SECTION,
   },
   tablaIncluido: {
     flexDirection: "row",
-    paddingVertical: 4.5,
-    borderBottom: `1 solid ${LINE}`,
-    alignItems: "center",
-  },
-  // Columna de etiqueta rotada al margen de cada categoría
-  catGutter: {
-    width: 16,
-  },
-  catLabelRot: {
-    position: "absolute",
-    fontSize: 6,
-    fontFamily: SANS,
-    fontWeight: 700,
-    color: LIGHT_GRAY,
-    letterSpacing: 1.6,
-    textTransform: "uppercase",
-    textAlign: "center",
-  },
-  catSubheader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 5,
-    borderBottom: `1 solid ${LINE}`,
-  },
-  catNombre: {
-    fontSize: 7.5,
-    fontFamily: SANS,
-    fontWeight: 700,
-    color: GOLD,
-    letterSpacing: 1.4,
-    textTransform: "uppercase",
-  },
-  catSubtotal: {
-    fontSize: 7.5,
-    fontFamily: MONO,
-    fontWeight: 500,
-    color: GRAY,
+    paddingVertical: 4,
+    paddingHorizontal: 40,
+    borderBottom: "1 solid #f5f3ef",
   },
   colImg: { width: 22, marginRight: 4 },
   colDesc: { flex: 3.5 },
@@ -343,148 +221,130 @@ const s = StyleSheet.create({
   colPrecio: { flex: 1.5, textAlign: "right" },
   colSubtotal: { flex: 1.5, textAlign: "right" },
   cellDesc: {
-    fontSize: 8,
+    fontSize: 8.5,
     color: GRAY,
-    lineHeight: 1.35,
   },
   cellMarca: {
     fontSize: 8,
     color: BLACK,
-    fontFamily: SANS,
-    fontWeight: 600,
-    lineHeight: 1.3,
   },
   cellNum: {
-    fontSize: 8,
-    fontFamily: MONO,
+    fontSize: 8.5,
     color: GRAY,
     textAlign: "center",
   },
   cellPrecio: {
-    fontSize: 8,
-    fontFamily: MONO,
+    fontSize: 8.5,
     color: GRAY,
     textAlign: "right",
   },
   cellSubtotal: {
-    fontSize: 8,
-    fontFamily: MONO,
-    fontWeight: 700,
+    fontSize: 8.5,
+    fontFamily: "Helvetica-Bold",
     color: BLACK,
     textAlign: "right",
   },
   cellIncluido: {
-    fontSize: 7.5,
+    fontSize: 8,
     color: LIGHT_GRAY,
+    fontFamily: "Helvetica-Oblique",
   },
   badgeNivel: {
-    fontSize: 6.5,
+    fontSize: 7,
     color: GOLD,
-    fontFamily: SANS,
-    fontWeight: 700,
+    fontFamily: "Helvetica-Bold",
     marginLeft: 4,
   },
   // Totales
   totalesBloque: {
     marginHorizontal: 40,
-    marginTop: 18,
+    marginTop: 16,
     flexDirection: "row",
     justifyContent: "flex-end",
   },
   totalesTabla: {
-    width: 232,
-    borderTop: `1 solid ${GOLD}`,
+    width: 220,
+    borderTop: "1.5 solid " + GOLD,
   },
   totalFila: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: 4.5,
-    borderBottom: `1 solid ${LINE}`,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderBottom: "1 solid #f0ede8",
   },
   totalFilaDes: {
-    fontSize: 8,
+    fontSize: 8.5,
     color: GRAY,
     flex: 1,
     paddingRight: 10,
   },
   totalFilaMonto: {
-    fontSize: 8,
+    fontSize: 8.5,
     color: BLACK,
-    fontFamily: MONO,
-    fontWeight: 500,
+    fontFamily: "Helvetica-Bold",
     flexShrink: 0,
     textAlign: "right",
   },
   totalFilaDescuento: {
-    color: "#9E5B4A",
+    color: "#c0392b",
   },
   totalGranTotal: {
     backgroundColor: BLACK,
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 11,
-    paddingHorizontal: 12,
-    marginTop: 3,
+    padding: 10,
+    marginTop: 2,
   },
   totalGranLabel: {
-    fontSize: 8,
-    fontFamily: SANS,
-    fontWeight: 700,
+    fontSize: 10,
+    fontFamily: "Helvetica-Bold",
     color: WHITE,
-    letterSpacing: 1.2,
-    textTransform: "uppercase",
   },
   totalGranMonto: {
-    fontSize: 13,
-    fontFamily: MONO,
-    fontWeight: 700,
+    fontSize: 12,
+    fontFamily: "Helvetica-Bold",
     color: GOLD,
   },
   // Bloque de anticipo
   anticipo: {
     marginHorizontal: 40,
-    marginTop: 12,
+    marginTop: 10,
     flexDirection: "row",
     gap: 8,
   },
   anticipoItem: {
     flex: 1,
     backgroundColor: BG_SECTION,
-    borderLeft: `2 solid ${GOLD}`,
-    paddingVertical: 9,
-    paddingHorizontal: 10,
+    borderLeft: "2 solid " + GOLD,
+    padding: 8,
   },
   anticipoLabel: {
-    fontSize: 6.5,
+    fontSize: 7.5,
     color: LIGHT_GRAY,
-    fontFamily: SANS,
-    fontWeight: 600,
-    letterSpacing: 1.2,
-    marginBottom: 4,
+    fontFamily: "Helvetica-Bold",
+    letterSpacing: 0.8,
+    marginBottom: 3,
   },
   anticipoMonto: {
     fontSize: 11,
-    fontFamily: MONO,
-    fontWeight: 700,
+    fontFamily: "Helvetica-Bold",
     color: BLACK,
   },
   // Beneficio
   beneficioBloque: {
     marginHorizontal: 40,
-    marginTop: 14,
-    backgroundColor: BG_SECTION,
-    borderLeft: `2 solid ${GOLD}`,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    marginTop: 12,
+    backgroundColor: "#FFFBF2",
+    border: "1 solid " + GOLD,
+    borderRadius: 4,
+    padding: 12,
   },
   beneficioTitulo: {
-    fontSize: 7,
-    fontFamily: SANS,
-    fontWeight: 700,
+    fontSize: 8.5,
+    fontFamily: "Helvetica-Bold",
     color: GOLD,
-    letterSpacing: 1.4,
-    textTransform: "uppercase",
+    letterSpacing: 1,
     marginBottom: 5,
   },
   beneficioTexto: {
@@ -496,6 +356,7 @@ const s = StyleSheet.create({
   beneficioNota: {
     fontSize: 7.5,
     color: LIGHT_GRAY,
+    fontFamily: "Helvetica-Oblique",
     marginTop: 4,
     lineHeight: 1.4,
   },
@@ -509,163 +370,129 @@ const s = StyleSheet.create({
   pagoCard: {
     flex: 1,
     backgroundColor: BLACK,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
+    padding: 12,
+    borderRadius: 3,
   },
   pagoTitulo: {
-    fontSize: 6.5,
-    fontFamily: SANS,
-    fontWeight: 700,
+    fontSize: 7.5,
+    fontFamily: "Helvetica-Bold",
     color: GOLD,
-    letterSpacing: 1.4,
+    letterSpacing: 1,
     marginBottom: 8,
   },
   pagoFila: {
     flexDirection: "row",
-    marginBottom: 3.5,
+    marginBottom: 3,
   },
   pagoLabel: {
-    fontSize: 7,
-    color: "#8E877C",
-    width: 74,
+    fontSize: 7.5,
+    color: "#888",
+    width: 80,
   },
   pagoValor: {
-    fontSize: 7,
-    color: "#F6F4F0",
-    fontFamily: MONO,
-    fontWeight: 500,
+    fontSize: 7.5,
+    color: WHITE,
+    fontFamily: "Helvetica-Bold",
     flex: 1,
   },
   // Términos
   terminosBloque: {
     marginHorizontal: 40,
-    marginTop: 18,
-    borderTop: `1 solid ${LINE}`,
-    paddingTop: 12,
+    marginTop: 16,
+    backgroundColor: BG_SECTION,
+    padding: 12,
+    borderRadius: 3,
   },
   terminosTitulo: {
-    fontSize: 7,
-    fontFamily: SANS,
-    fontWeight: 700,
+    fontSize: 8.5,
+    fontFamily: "Helvetica-Bold",
     color: BLACK,
-    letterSpacing: 1.4,
-    textTransform: "uppercase",
-    marginBottom: 8,
+    marginBottom: 6,
   },
   terminoItem: {
     flexDirection: "row",
-    marginBottom: 4.5,
+    marginBottom: 4,
     alignItems: "flex-start",
   },
   terminoBullet: {
-    width: 10,
+    width: 12,
     fontSize: 8,
     color: GOLD,
-    fontFamily: SANS,
-    fontWeight: 700,
+    fontFamily: "Helvetica-Bold",
   },
   terminoTexto: {
-    fontSize: 7.5,
+    fontSize: 8,
     color: GRAY,
     flex: 1,
-    lineHeight: 1.45,
+    lineHeight: 1.4,
   },
   // Footer
   footer: {
     backgroundColor: BLACK,
-    paddingVertical: 18,
+    paddingVertical: 14,
     paddingHorizontal: 40,
-    marginTop: 26,
-  },
-  footerTop: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginTop: 20,
   },
   footerBrand: {
     fontSize: 9,
-    color: WHITE,
-    fontFamily: SANS,
-    fontWeight: 700,
-    letterSpacing: 2.4,
+    color: GOLD,
+    fontFamily: "Helvetica-Bold",
+    letterSpacing: 1,
+  },
+  footerContacto: {
+    fontSize: 8,
+    color: "#888",
+    textAlign: "center",
   },
   footerVigencia: {
-    fontSize: 7,
-    color: "#8E877C",
-    fontFamily: MONO,
+    fontSize: 7.5,
+    color: "#666",
     textAlign: "right",
   },
-  footerCta: {
-    flexDirection: "row",
-    marginTop: 12,
-    paddingTop: 12,
-    borderTop: "1 solid #2A2A2A",
-    gap: 8,
-  },
-  footerCtaItem: {
-    flex: 1,
-    borderWidth: 0.8,
-    borderColor: "#514735",
-    borderStyle: "solid",
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-  },
-  footerCtaLabel: {
-    fontSize: 5.5,
-    color: GOLD,
-    fontFamily: SANS,
-    fontWeight: 600,
-    letterSpacing: 1.4,
-    marginBottom: 2,
-  },
-  footerCtaValor: {
-    fontSize: 7,
-    color: "#F6F4F0",
-    fontFamily: MONO,
-  },
   confidencial: {
-    fontSize: 6.5,
-    color: LIGHT_GRAY,
+    fontSize: 7,
+    color: "#555",
     textAlign: "center",
     marginHorizontal: 40,
-    marginTop: 10,
-    marginBottom: 18,
-    lineHeight: 1.4,
+    marginTop: 8,
+    fontFamily: "Helvetica-Oblique",
   },
   // Firma
   firmaBloque: {
     marginHorizontal: 40,
-    marginTop: 26,
+    marginTop: 24,
     flexDirection: "row",
     justifyContent: "flex-end",
   },
   firmaCol: {
-    width: 210,
+    width: 200,
     alignItems: "center",
   },
   firmaEspacio: {
-    height: 64,  // espacio para pegar la firma
+    height: 72,  // espacio para pegar la firma
   },
   firmaLinea: {
-    height: 1,
+    height: 1.5,
     backgroundColor: GOLD,
     width: "100%",
-    marginBottom: 6,
+    marginBottom: 5,
   },
   firmaNombre: {
-    fontSize: 8,
-    fontFamily: SANS,
-    fontWeight: 700,
+    fontSize: 8.5,
+    fontFamily: "Helvetica-Bold",
     color: BLACK,
     textAlign: "center",
-    lineHeight: 1.3,
+    letterSpacing: 0.3,
   },
   firmaCargo: {
-    fontSize: 7,
+    fontSize: 7.5,
     color: GRAY,
     textAlign: "center",
-    marginTop: 3,
-    letterSpacing: 0.4,
+    marginTop: 2,
+    letterSpacing: 0.2,
   },
 
 });
@@ -679,19 +506,7 @@ export type Idioma = "es" | "en";
 const TXT = {
   es: {
     tagline: "AUDIO · ILUMINACIÓN · VIDEO · PRODUCCIÓN TÉCNICA",
-    etiquetaDocumento: "COTIZACIÓN",
     elaboradaEl: (f: string) => `Elaborada el ${f}`,
-    imagenReferencia: "Imagen de referencia de un montaje Mainstage Pro. El alcance de tu evento es el que se detalla en esta cotización.",
-    alcance: "Alcance del evento",
-    alcanceNota: "Marcadas, las disciplinas incluidas en esta cotización.",
-    disciplinas: {
-      AUDIO: "Audio", ILUMINACION: "Iluminación", VIDEO: "Video",
-      STAGE: "Escenario", RIGGING: "Rigging", ELECTRICIDAD: "Electricidad",
-      DJ: "DJ", OPERACION: "Operación técnica", LOGISTICA: "Transporte",
-    } as Record<string, string>,
-    ctaWhatsapp: "WHATSAPP",
-    ctaInstagram: "INSTAGRAM",
-    ctaCorreo: "CORREO",
     gracias: "¡Agradecemos la oportunidad de presentarte esta propuesta de nuestros servicios!",
     cliente: "Cliente",
     empresa: "Empresa",
@@ -771,19 +586,7 @@ const TXT = {
   },
   en: {
     tagline: "AUDIO · LIGHTING · VIDEO · TECHNICAL PRODUCTION",
-    etiquetaDocumento: "QUOTE",
     elaboradaEl: (f: string) => `Prepared on ${f}`,
-    imagenReferencia: "Reference image of a Mainstage Pro setup. The scope of your event is the one detailed in this quote.",
-    alcance: "Event scope",
-    alcanceNota: "Checked items are the disciplines included in this quote.",
-    disciplinas: {
-      AUDIO: "Audio", ILUMINACION: "Lighting", VIDEO: "Video",
-      STAGE: "Staging", RIGGING: "Rigging", ELECTRICIDAD: "Power",
-      DJ: "DJ", OPERACION: "Technical crew", LOGISTICA: "Transportation",
-    } as Record<string, string>,
-    ctaWhatsapp: "WHATSAPP",
-    ctaInstagram: "INSTAGRAM",
-    ctaCorreo: "EMAIL",
     gracias: "Thank you for the opportunity to present this proposal for our services!",
     cliente: "Client",
     empresa: "Company",
@@ -999,83 +802,9 @@ function getItemNota(notas: string | null): string | null {
   return notas.trim() || null; // nota plana (legado)
 }
 
-/** Imagen de referencia del tipo de evento, bajo el encabezado. */
-function ImagenReferencia({ src, idioma }: { src?: string | null; idioma: Idioma }) {
-  if (!src) return null;
+function FilaEquipo({ l, i }: { l: Linea; i: number }) {
   return (
-    <View style={s.heroWrap}>
-      <Image src={src} style={s.heroImg} />
-      <Text style={s.heroCaption}>{TXT[idioma].imagenReferencia}</Text>
-    </View>
-  );
-}
-
-/** Tarjeta de dato de la ficha del evento. */
-function FichaDato({ label, valor, estilo }: { label: string; valor: string; estilo?: Style }) {
-  return (
-    <View style={s.fichaCard}>
-      <Text style={s.fichaLabel}>{label}</Text>
-      <Text style={estilo ? [s.fichaValor, estilo] : s.fichaValor}>{valor}</Text>
-    </View>
-  );
-}
-
-/**
- * Alcance del evento: casillas marcadas por disciplina. Se deriva de lo que ya
- * trae la cotización — no hay captura nueva. Las disciplinas sin partidas quedan
- * en gris para que el cliente vea qué más se puede sumar.
- */
-const DISCIPLINAS_ALCANCE = [
-  "AUDIO", "ILUMINACION", "VIDEO",
-  "STAGE", "RIGGING", "ELECTRICIDAD",
-  "DJ", "OPERACION", "LOGISTICA",
-] as const;
-
-function Alcance({ lineas, catDisciplina, idioma }: { lineas: Linea[]; catDisciplina: Record<string, string>; idioma: Idioma }) {
-  const t = TXT[idioma];
-  const activas = new Set<string>();
-
-  for (const l of lineas) {
-    if (l.tipo === "DJ") activas.add("DJ");
-    if (l.tipo === "OPERACION_TECNICA") activas.add("OPERACION");
-    if (["TRANSPORTE", "COMIDA", "HOSPEDAJE"].includes(l.tipo)) activas.add("LOGISTICA");
-    if (["EQUIPO_PROPIO", "EQUIPO_EXTERNO", "PAQUETE"].includes(l.tipo)) {
-      const m = l.notas?.match(/^cat:([^|]+)/);
-      const disc = m ? catDisciplina[m[1].trim()]?.toUpperCase() : null;
-      // PRODUCCION y STAFF_GENERAL no tienen casilla propia: son operación.
-      if (disc) activas.add(disc === "PRODUCCION" || disc === "STAFF_GENERAL" ? "OPERACION" : disc);
-    }
-  }
-
-  if (activas.size === 0) return null;
-
-  return (
-    <View style={s.alcanceWrap}>
-      <Text style={s.seccionNombre}>{t.alcance}</Text>
-      <View style={s.alcanceGrid}>
-        {DISCIPLINAS_ALCANCE.map((d) => {
-          const on = activas.has(d);
-          return (
-            <View key={d} style={s.alcanceItem}>
-              <View style={[s.alcanceBox, on ? s.alcanceBoxOn : {}]}>
-                {on ? <>
-                  <View style={[s.alcanceAspa, { transform: "rotate(45deg)" }]} />
-                  <View style={[s.alcanceAspa, { transform: "rotate(-45deg)" }]} />
-                </> : null}
-              </View>
-              <Text style={[s.alcanceTexto, on ? {} : s.alcanceTextoOff]}>{t.disciplinas[d]}</Text>
-            </View>
-          );
-        })}
-      </View>
-      <Text style={s.alcanceNota}>{t.alcanceNota}</Text>
-    </View>
-  );
-}
-
-function FilaEquipo({ l }: { l: Linea }) {
-  return (
-    <View style={s.tablaFila}>
+    <View style={[s.tablaFila, i % 2 === 1 ? s.tablaFilaAlt : {}]}>
       {/* Thumbnail */}
       <View style={[s.colImg, { justifyContent: "center", alignItems: "center" }]}>
         {l.imagenUrl ? (
@@ -1086,7 +815,7 @@ function FilaEquipo({ l }: { l: Linea }) {
       <View style={s.colDesc}>
         <Text style={s.cellDesc}>{l.descripcion}</Text>
         {getItemNota(l.notas) ? (
-          <Text style={{ fontSize: 7, color: LIGHT_GRAY, marginTop: 1.5, lineHeight: 1.35 }}>
+          <Text style={{ fontSize: 7, color: GRAY, fontFamily: "Helvetica-Oblique", marginTop: 1.5 }}>
             {getItemNota(l.notas)}
           </Text>
         ) : null}
@@ -1124,106 +853,79 @@ function TablaEquipos({ lineas, notasSecciones, descCategorias, catLabels, idiom
   const cats    = Array.from(catMap.entries());
   const hasCats = cats.length > 1 || (cats.length === 1 && cats[0][0] !== "General");
 
-  const FilaIncluida = ({ l }: { l: Linea }) => (
-    <View style={s.tablaIncluido}>
-      <View style={s.colImg} />
-      <Text style={[s.cellIncluido, s.colMarca]}>{[l.marca, l.modelo].filter(Boolean).join(" ") || ""}</Text>
-      <Text style={[s.cellIncluido, s.colDesc]}>{l.descripcion}</Text>
-      <Text style={[s.cellIncluido, s.colCant, { textAlign: "center" }]}>{l.cantidad}</Text>
-      <Text style={[s.cellIncluido, s.colDias, { textAlign: "center" }]}>—</Text>
-      <Text style={[s.cellIncluido, s.colPrecio, { textAlign: "right" }]}>{t.incluye}</Text>
-      <Text style={[s.cellIncluido, s.colSubtotal, { textAlign: "right" }]}>—</Text>
-    </View>
-  );
-
   return (
     <View>
       <View style={s.seccionTitulo}>
         <View style={s.seccionLinea} />
         <Text style={s.seccionNombre}>{t.seccionEquipo}</Text>
       </View>
-      <View style={s.tablaWrap}>
-        {/* Header tabla — alineado con el contenido, dejando libre la columna
-            del margen donde se rotan los nombres de categoría. */}
-        <View style={{ flexDirection: "row" }}>
-          {hasCats ? <View style={s.catGutter} /> : null}
-          <View style={[s.tablaHeader, { flex: 1 }]}>
-            <View style={s.colImg} />
-            <Text style={[s.tablaHeaderTexto, s.colMarca]}>{t.colMarcaModelo}</Text>
-            <Text style={[s.tablaHeaderTexto, s.colDesc]}>{t.colDescripcion}</Text>
-            <Text style={[s.tablaHeaderTexto, s.colCant, { textAlign: "center" }]}>{t.colCant}</Text>
-            <Text style={[s.tablaHeaderTexto, s.colDias, { textAlign: "center" }]}>{t.colDias}</Text>
-            <Text style={[s.tablaHeaderTexto, s.colPrecio, { textAlign: "right" }]}>{t.colPU}</Text>
-            <Text style={[s.tablaHeaderTexto, s.colSubtotal, { textAlign: "right" }]}>{t.colSubtotal}</Text>
-          </View>
-        </View>
-
-        {hasCats ? (
-          // Agrupado por categoría, con la etiqueta rotada en el margen izquierdo
-          cats.map(([cat, lins]) => {
-            const catSubtotal = lins.reduce((sum, l) => sum + l.subtotal, 0);
-            const nota = notasSecciones[cat] ?? descCategorias[cat];
-            const catIncluidas = incluidas.filter(l => getCat(l) === cat);
-            const etiqueta = catLabels[cat] ?? cat;
-            const alto = altoBloqueCategoria(lins, catIncluidas, nota);
-            return (
-              <View key={cat} style={{ flexDirection: "row" }} wrap={false}>
-                <View style={s.catGutter}>
-                  {/* Si el bloque es corto la etiqueta se partiría en varias líneas
-                      y chocaría con la de la categoría vecina: mejor omitirla. */}
-                  {etiqueta.length * 5.4 <= alto - 14 ? (
-                    <Text
-                      style={[s.catLabelRot, {
-                        top: alto / 2 - 4,
-                        left: -(alto - 14) / 2 + 8,
-                        width: alto - 14,
-                        transform: "rotate(-90deg)",
-                      }]}
-                    >
-                      {etiqueta}
-                    </Text>
-                  ) : null}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <View style={s.catSubheader}>
-                    <Text style={s.catNombre}>{etiqueta}</Text>
-                    <Text style={s.catSubtotal}>{fmtMXN(catSubtotal)}</Text>
-                  </View>
-                  {nota ? (
-                    <View style={{ paddingVertical: 5, borderBottom: `1 solid ${LINE}` }}>
-                      <Text style={{ fontSize: 7.5, color: GRAY, lineHeight: 1.45 }}>{nota}</Text>
-                    </View>
-                  ) : null}
-                  {lins.map((l) => <FilaEquipo key={l.id} l={l} />)}
-                  {catIncluidas.map((l) => <FilaIncluida key={l.id} l={l} />)}
-                </View>
-              </View>
-            );
-          })
-        ) : (
-          // Lista plana (sin categorías o una sola categoría "General")
-          <>
-            {todasEquipo.map((l) => <FilaEquipo key={l.id} l={l} />)}
-            {incluidas.map((l) => <FilaIncluida key={l.id} l={l} />)}
-          </>
-        )}
+      {/* Header tabla */}
+      <View style={s.tablaHeader}>
+        <View style={s.colImg} />
+        <Text style={[s.tablaHeaderTexto, s.colMarca]}>{t.colMarcaModelo}</Text>
+        <Text style={[s.tablaHeaderTexto, s.colDesc]}>{t.colDescripcion}</Text>
+        <Text style={[s.tablaHeaderTexto, s.colCant, { textAlign: "center" }]}>{t.colCant}</Text>
+        <Text style={[s.tablaHeaderTexto, s.colDias, { textAlign: "center" }]}>{t.colDias}</Text>
+        <Text style={[s.tablaHeaderTexto, s.colPrecio, { textAlign: "right" }]}>{t.colPU}</Text>
+        <Text style={[s.tablaHeaderTexto, s.colSubtotal, { textAlign: "right" }]}>{t.colSubtotal}</Text>
       </View>
+
+      {hasCats ? (
+        // Grouped by category
+        cats.map(([cat, lins]) => {
+          const catSubtotal = lins.reduce((sum, l) => sum + l.subtotal, 0);
+          const nota = notasSecciones[cat] ?? descCategorias[cat];
+          // Incluidas that belong to this category
+          const catIncluidas = incluidas.filter(l => getCat(l) === cat);
+          return (
+            <View key={cat}>
+              {/* Category subheader */}
+              <View style={{ flexDirection: "row", justifyContent: "space-between", backgroundColor: "#F0EDE8", paddingVertical: 4, paddingHorizontal: 40, borderBottom: "1 solid #ddd9d4" }}>
+                <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 1, textTransform: "uppercase" }}>{catLabels[cat] ?? cat}</Text>
+                <Text style={{ fontSize: 7.5, color: GRAY, fontFamily: "Helvetica-Bold" }}>{fmtMXN(catSubtotal)}</Text>
+              </View>
+              {nota ? (
+                <View style={{ paddingHorizontal: 40, paddingVertical: 5, backgroundColor: "#FDFCFA", borderBottom: "1 solid #eeebe6" }}>
+                  <Text style={{ fontSize: 8, color: GRAY, fontFamily: "Helvetica-Oblique", lineHeight: 1.4 }}>
+                    {nota}
+                  </Text>
+                </View>
+              ) : null}
+              {lins.map((l, i) => <FilaEquipo key={l.id} l={l} i={i} />)}
+              {catIncluidas.map((l) => (
+                <View key={l.id} style={s.tablaIncluido}>
+                  <View style={s.colImg} />
+                  <Text style={[s.cellIncluido, s.colMarca]}>{[l.marca, l.modelo].filter(Boolean).join(" ") || ""}</Text>
+                  <Text style={[s.cellIncluido, s.colDesc]}>✓ {l.descripcion}</Text>
+                  <Text style={[s.cellIncluido, s.colCant, { textAlign: "center" }]}>{l.cantidad}</Text>
+                  <Text style={[s.cellIncluido, s.colDias, { textAlign: "center" }]}>—</Text>
+                  <Text style={[s.cellIncluido, s.colPrecio, { textAlign: "right" }]}>{t.incluye}</Text>
+                  <Text style={[s.cellIncluido, s.colSubtotal, { textAlign: "right" }]}>—</Text>
+                </View>
+              ))}
+            </View>
+          );
+        })
+      ) : (
+        // Flat list (no categories or single "General" category)
+        <>
+          {todasEquipo.map((l, i) => <FilaEquipo key={l.id} l={l} i={i} />)}
+          {incluidas.map((l) => (
+            <View key={l.id} style={s.tablaIncluido}>
+              <View style={s.colImg} />
+              <Text style={[s.cellIncluido, s.colMarca]}>{[l.marca, l.modelo].filter(Boolean).join(" ") || ""}</Text>
+              <Text style={[s.cellIncluido, s.colDesc]}>✓ {l.descripcion}</Text>
+              <Text style={[s.cellIncluido, s.colCant, { textAlign: "center" }]}>{l.cantidad}</Text>
+              <Text style={[s.cellIncluido, s.colDias, { textAlign: "center" }]}>—</Text>
+              <Text style={[s.cellIncluido, s.colPrecio, { textAlign: "right" }]}>{t.incluye}</Text>
+              <Text style={[s.cellIncluido, s.colSubtotal, { textAlign: "right" }]}>—</Text>
+            </View>
+          ))}
+        </>
+      )}
+
     </View>
   );
-}
-
-/**
- * Alto aproximado de un bloque de categoría, en puntos. Se usa para centrar la
- * etiqueta rotada del margen: react-pdf no expone la medida real del bloque, así
- * que se estima a partir del número de renglones y del largo de la nota.
- */
-function altoBloqueCategoria(lineas: Linea[], incluidas: Linea[], nota?: string | null): number {
-  const SUBHEADER = 20;
-  const FILA = 20;
-  const FILA_INCLUIDA = 17;
-  const notaAlto = nota ? 11 + Math.ceil(nota.length / 95) * 11 : 0;
-  const filas = lineas.reduce((acc, l) => acc + FILA + (getItemNota(l.notas) ? 10 : 0), 0);
-  return SUBHEADER + notaAlto + filas + incluidas.length * FILA_INCLUIDA;
 }
 
 // Operación técnica: solo subtotal global (sin detallar quiénes ni cuántos técnicos)
@@ -1234,10 +936,10 @@ function SubtotalOperacion({ lineas, incluirChofer, idioma }: { lineas: Linea[];
   if (subtotal === 0) return null;
 
   return (
-    <View style={{ marginHorizontal: 40, marginTop: 12 }}>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 8, borderTop: `1 solid ${LINE}`, borderBottom: `1 solid ${LINE}` }}>
-        <Text style={{ fontSize: 8.5, color: BLACK, fontFamily: SANS, fontWeight: 700 }}>{t.operacionTecnica}</Text>
-        <Text style={{ fontSize: 8.5, color: BLACK, fontFamily: MONO, fontWeight: 700 }}>{fmtMXN(subtotal)}</Text>
+    <View style={{ marginHorizontal: 40, marginTop: 8 }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 8, borderTop: "1 solid #e0ddd8", borderBottom: "1 solid #e0ddd8" }}>
+        <Text style={{ fontSize: 9, color: GRAY, fontFamily: "Helvetica-Bold" }}>{t.operacionTecnica}</Text>
+        <Text style={{ fontSize: 9, color: BLACK, fontFamily: "Helvetica-Bold" }}>{fmtMXN(subtotal)}</Text>
       </View>
     </View>
   );
@@ -1256,32 +958,30 @@ function SubtotalDJ({ lineas, idioma }: { lineas: Linea[]; idioma: Idioma }) {
         <View style={s.seccionLinea} />
         <Text style={s.seccionNombre}>{t.servicioDJ}</Text>
       </View>
-      <View style={s.tablaWrap}>
-        <View style={s.tablaHeader}>
-          <Text style={[s.tablaHeaderTexto, { flex: 3 }]}>{t.colDescripcion}</Text>
-          <Text style={[s.tablaHeaderTexto, { flex: 1, textAlign: "center" }]}>{t.colHoras}</Text>
-          <Text style={[s.tablaHeaderTexto, { flex: 1.5, textAlign: "right" }]}>{t.colTarifaHr}</Text>
-          <Text style={[s.tablaHeaderTexto, { flex: 1.5, textAlign: "right" }]}>{t.colSubtotal}</Text>
-        </View>
-        {djLineas.map((l, i) => (
-          <View key={l.id} style={s.tablaFila}>
-            <View style={{ flex: 3 }}>
-              <Text style={s.cellDesc}>{l.descripcion}</Text>
-              {getItemNota(l.notas) ? (
-                <Text style={{ fontSize: 7, color: LIGHT_GRAY, marginTop: 1.5 }}>
-                  {getItemNota(l.notas)}
-                </Text>
-              ) : null}
-            </View>
-            <Text style={[s.cellNum, { flex: 1, textAlign: "center" }]}>{l.cantidad}</Text>
-            <Text style={[s.cellPrecio, { flex: 1.5, textAlign: "right" }]}>{fmtMXN(l.precioUnitario)}</Text>
-            <Text style={[s.cellSubtotal, { flex: 1.5, textAlign: "right" }]}>{fmtMXN(l.subtotal)}</Text>
+      <View style={s.tablaHeader}>
+        <Text style={[s.tablaHeaderTexto, { flex: 3 }]}>{t.colDescripcion}</Text>
+        <Text style={[s.tablaHeaderTexto, { flex: 1, textAlign: "center" }]}>{t.colHoras}</Text>
+        <Text style={[s.tablaHeaderTexto, { flex: 1.5, textAlign: "right" }]}>{t.colTarifaHr}</Text>
+        <Text style={[s.tablaHeaderTexto, { flex: 1.5, textAlign: "right" }]}>{t.colSubtotal}</Text>
+      </View>
+      {djLineas.map((l, i) => (
+        <View key={l.id} style={[s.tablaFila, i % 2 === 1 ? s.tablaFilaAlt : {}]}>
+          <View style={{ flex: 3 }}>
+            <Text style={s.cellDesc}>{l.descripcion}</Text>
+            {getItemNota(l.notas) ? (
+              <Text style={{ fontSize: 7, color: GRAY, fontFamily: "Helvetica-Oblique", marginTop: 1.5 }}>
+                {getItemNota(l.notas)}
+              </Text>
+            ) : null}
           </View>
-        ))}
-        <View style={{ flexDirection: "row", justifyContent: "flex-end", paddingVertical: 6 }}>
-          <Text style={{ fontSize: 8, color: GRAY, fontFamily: SANS, fontWeight: 700 }}>{t.totalDJ}</Text>
-          <Text style={{ fontSize: 8, color: BLACK, fontFamily: MONO, fontWeight: 700 }}>{fmtMXN(subtotal)}</Text>
+          <Text style={[s.cellNum, { flex: 1, textAlign: "center" }]}>{l.cantidad}</Text>
+          <Text style={[s.cellPrecio, { flex: 1.5, textAlign: "right" }]}>{fmtMXN(l.precioUnitario)}</Text>
+          <Text style={[s.cellSubtotal, { flex: 1.5, textAlign: "right" }]}>{fmtMXN(l.subtotal)}</Text>
         </View>
+      ))}
+      <View style={{ flexDirection: "row", justifyContent: "flex-end", paddingHorizontal: 40, paddingVertical: 5, borderTop: "1 solid #e0ddd8" }}>
+        <Text style={{ fontSize: 8.5, color: GRAY, fontFamily: "Helvetica-Bold" }}>{t.totalDJ}</Text>
+        <Text style={{ fontSize: 8.5, color: BLACK, fontFamily: "Helvetica-Bold" }}>{fmtMXN(subtotal)}</Text>
       </View>
     </View>
   );
@@ -1300,36 +1000,34 @@ function TablaAdicionales({ lineas, idioma }: { lineas: Linea[]; idioma: Idioma 
         <View style={s.seccionLinea} />
         <Text style={s.seccionNombre}>{t.conceptosAdicionales}</Text>
       </View>
-      <View style={s.tablaWrap}>
-        {/* Header tabla */}
-        <View style={s.tablaHeader}>
-          <Text style={[s.tablaHeaderTexto, { flex: 3 }]}>{t.colDescripcion}</Text>
-          <Text style={[s.tablaHeaderTexto, { flex: 1, textAlign: "center" }]}>{t.colCant}</Text>
-          <Text style={[s.tablaHeaderTexto, { flex: 1, textAlign: "center" }]}>{t.colDias}</Text>
-          <Text style={[s.tablaHeaderTexto, { flex: 1.2, textAlign: "right" }]}>{t.colPU}</Text>
-          <Text style={[s.tablaHeaderTexto, { flex: 1.2, textAlign: "right" }]}>{t.colSubtotal}</Text>
-        </View>
-        {otros.map((l) => (
-          <View key={l.id} style={s.tablaFila}>
-            <View style={{ flex: 3 }}>
-              <Text style={{ fontSize: 8, color: BLACK }}>{l.descripcion}</Text>
-              {getItemNota(l.notas) ? (
-                <Text style={{ fontSize: 7, color: LIGHT_GRAY, marginTop: 1.5 }}>
-                  {getItemNota(l.notas)}
-                </Text>
-              ) : null}
-            </View>
-            <Text style={[s.cellNum, { flex: 1 }]}>{l.cantidad}</Text>
-            <Text style={[s.cellNum, { flex: 1 }]}>{l.dias}</Text>
-            <Text style={[s.cellPrecio, { flex: 1.2 }]}>{l.precioUnitario > 0 ? fmtMXN(l.precioUnitario) : "—"}</Text>
-            <Text style={[s.cellSubtotal, { flex: 1.2 }]}>{fmtMXN(l.subtotal)}</Text>
+      {/* Header tabla */}
+      <View style={s.tablaHeader}>
+        <Text style={[s.tablaHeaderTexto, { flex: 3 }]}>{t.colDescripcion}</Text>
+        <Text style={[s.tablaHeaderTexto, { flex: 1, textAlign: "center" }]}>{t.colCant}</Text>
+        <Text style={[s.tablaHeaderTexto, { flex: 1, textAlign: "center" }]}>{t.colDias}</Text>
+        <Text style={[s.tablaHeaderTexto, { flex: 1.2, textAlign: "right" }]}>{t.colPU}</Text>
+        <Text style={[s.tablaHeaderTexto, { flex: 1.2, textAlign: "right" }]}>{t.colSubtotal}</Text>
+      </View>
+      {otros.map((l, i) => (
+        <View key={l.id} style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 5, paddingHorizontal: 40, borderBottom: "1 solid #eeebe6", backgroundColor: i % 2 === 0 ? "#FDFCFA" : "#FFFFFF" }}>
+          <View style={{ flex: 3 }}>
+            <Text style={{ fontSize: 9, color: BLACK }}>{l.descripcion}</Text>
+            {getItemNota(l.notas) ? (
+              <Text style={{ fontSize: 7, color: GRAY, fontFamily: "Helvetica-Oblique", marginTop: 1.5 }}>
+                {getItemNota(l.notas)}
+              </Text>
+            ) : null}
           </View>
-        ))}
-        {/* Subtotal fila */}
-        <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 6 }}>
-          <Text style={{ fontSize: 7, color: GRAY, fontFamily: SANS, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.2 }}>{t.subtotalAdicionales}</Text>
-          <Text style={{ fontSize: 8, color: BLACK, fontFamily: MONO, fontWeight: 700 }}>{fmtMXN(subtotal)}</Text>
+          <Text style={{ fontSize: 9, color: GRAY, flex: 1, textAlign: "center" }}>{l.cantidad}</Text>
+          <Text style={{ fontSize: 9, color: GRAY, flex: 1, textAlign: "center" }}>{l.dias}</Text>
+          <Text style={{ fontSize: 9, color: GRAY, flex: 1.2, textAlign: "right" }}>{l.precioUnitario > 0 ? fmtMXN(l.precioUnitario) : "—"}</Text>
+          <Text style={{ fontSize: 9, color: BLACK, fontFamily: "Helvetica-Bold", flex: 1.2, textAlign: "right" }}>{fmtMXN(l.subtotal)}</Text>
         </View>
+      ))}
+      {/* Subtotal fila */}
+      <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 5, paddingHorizontal: 40, backgroundColor: "#F5F2ED" }}>
+        <Text style={{ fontSize: 8, color: GRAY, fontFamily: "Helvetica-Bold", textTransform: "uppercase", letterSpacing: 0.5 }}>{t.subtotalAdicionales}</Text>
+        <Text style={{ fontSize: 9, color: BLACK, fontFamily: "Helvetica-Bold" }}>{fmtMXN(subtotal)}</Text>
       </View>
     </View>
   );
@@ -1343,38 +1041,17 @@ function SubtotalLogistica({ lineas, idioma }: { lineas: Linea[]; idioma: Idioma
   const subtotal = logLineas.reduce((s, l) => s + l.subtotal, 0);
 
   return (
-    <View style={{ marginHorizontal: 40 }}>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 8, borderBottom: `1 solid ${LINE}` }}>
-        <Text style={{ fontSize: 8.5, color: BLACK, fontFamily: SANS, fontWeight: 700 }}>{t.transporteViaticos}</Text>
-        <Text style={{ fontSize: 8.5, color: BLACK, fontFamily: MONO, fontWeight: 700 }}>{fmtMXN(subtotal)}</Text>
+    <View style={{ marginHorizontal: 40, marginTop: 4 }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 8, borderBottom: "1 solid #e0ddd8" }}>
+        <Text style={{ fontSize: 9, color: GRAY, fontFamily: "Helvetica-Bold" }}>{t.transporteViaticos}</Text>
+        <Text style={{ fontSize: 9, color: BLACK, fontFamily: "Helvetica-Bold" }}>{fmtMXN(subtotal)}</Text>
       </View>
     </View>
   );
 }
 
 // ─── Documento principal ─────────────────────────────────────────────────────
-export function CotizacionPDF({
-  cotizacion: c,
-  logoSrc,
-  descCategorias = {},
-  catLabels = {},
-  idioma = "es",
-  fotoReferenciaUrl = null,
-  catDisciplina = {},
-  alturaRollo = null,
-}: {
-  cotizacion: CotizacionData;
-  logoSrc?: string | null;
-  descCategorias?: Record<string, string>;
-  catLabels?: Record<string, string>;
-  idioma?: Idioma;
-  /** Imagen de referencia del tipo de evento (base64). */
-  fotoReferenciaUrl?: string | null;
-  /** Categoría de equipo → disciplina, para marcar el alcance. */
-  catDisciplina?: Record<string, string>;
-  /** Alto en puntos de la página continua. Si es null, se pagina en carta. */
-  alturaRollo?: number | null;
-}) {
+export function CotizacionPDF({ cotizacion: c, logoSrc, descCategorias = {}, catLabels = {}, idioma = "es" }: { cotizacion: CotizacionData; logoSrc?: string | null; descCategorias?: Record<string, string>; catLabels?: Record<string, string>; idioma?: Idioma }) {
   const t = TXT[idioma];
   // Leer plan de pagos configurado; si no hay, usar 50/50 por defecto
   type PagoPlanItem = { concepto: string; porcentaje: number; monto?: number; tipoPago: string };
@@ -1464,12 +1141,7 @@ export function CotizacionPDF({
       author="Mainstage Producciones"
       subject={idioma === "en" ? "Service Proposal" : "Propuesta de Servicios"}
     >
-      {/* En rollo el encabezado ya trae su propio aire; en carta hace falta margen
-          vertical para que el contenido no toque el filo en las hojas siguientes. */}
-      <Page
-        size={alturaRollo ? { width: 612, height: alturaRollo } : "LETTER"}
-        style={alturaRollo ? s.page : [s.page, { paddingTop: 26, paddingBottom: 26 }]}
-      >
+      <Page size="LETTER" style={s.page}>
 
         {/* ── HEADER ── */}
         <View style={s.header}>
@@ -1481,7 +1153,6 @@ export function CotizacionPDF({
             <Text style={s.tagline}>{t.tagline}</Text>
           </View>
           <View style={s.headerRight}>
-            <Text style={s.headerEtiqueta}>{t.etiquetaDocumento}</Text>
             <Text style={s.numCotizacion}>{c.numeroCotizacion}{c.version > 1 ? ` v${c.version}` : ""}</Text>
             <Text style={s.fechaHeader}>{t.elaboradaEl(fmtDate(c.createdAt, idioma))}</Text>
           </View>
@@ -1493,26 +1164,39 @@ export function CotizacionPDF({
           {t.gracias}
         </Text>
 
-        {/* ── Imagen de referencia del tipo de evento ── */}
-        <ImagenReferencia src={fotoReferenciaUrl} idioma={idioma} />
-
-        {/* ── Ficha del cliente y del evento ── */}
-        <View style={s.fichaGrid}>
-          <FichaDato label={t.cliente} valor={c.cliente.nombre} />
-          {c.cliente.empresa ? <FichaDato label={t.empresa} valor={c.cliente.empresa} /> : null}
-          <FichaDato label={t.evento} valor={c.nombreEvento || "—"} />
-          {c.nombreCotizacion ? <FichaDato label={t.funcionEvento} valor={c.nombreCotizacion} estilo={s.subEventoValor} /> : null}
-          <FichaDato label={t.fechaEvento} valor={fmtDate(c.fechaEvento, idioma)} estilo={s.fichaValorMono} />
-          {fmtHorario(c.horaInicioEvento, c.horaFinEvento)
-            ? <FichaDato label={t.horario} valor={fmtHorario(c.horaInicioEvento, c.horaFinEvento)!} estilo={s.fichaValorMono} />
-            : null}
-          <FichaDato label={t.lugar} valor={c.lugarEvento || "—"} estilo={s.fichaValorLight} />
-          {c.tipoEvento ? <FichaDato label={t.tipoEvento} valor={t.tipoEventoMap[c.tipoEvento] ?? c.tipoEvento} estilo={s.fichaValorLight} /> : null}
-          <FichaDato label={t.vendedor} valor={c.creadaPor?.name || "Mauricio Hernández"} estilo={s.fichaValorLight} />
+        {/* ── Info cliente / evento ── */}
+        <View style={s.infoBloque}>
+          <View style={s.infoCol}>
+            <Text style={s.infoLabel}>{t.cliente}</Text>
+            <Text style={s.infoValue}>{c.cliente.nombre}</Text>
+            {c.cliente.empresa && <>
+              <Text style={s.infoLabel}>{t.empresa}</Text>
+              <Text style={s.infoValue}>{c.cliente.empresa}</Text>
+            </>}
+            <Text style={s.infoLabel}>{t.vendedor}</Text>
+            <Text style={s.infoValueLight}>{c.creadaPor?.name || "Mauricio Hernández"}</Text>
+          </View>
+          <View style={s.infoColRight}>
+            {c.nombreCotizacion && <>
+              <Text style={s.infoLabel}>{t.funcionEvento}</Text>
+              <Text style={s.subEventoValor}>{c.nombreCotizacion}</Text>
+            </>}
+            <Text style={s.infoLabel}>{t.evento}</Text>
+            <Text style={s.infoValue}>{c.nombreEvento || "—"}</Text>
+            <Text style={s.infoLabel}>{t.fechaEvento}</Text>
+            <Text style={s.infoValue}>{fmtDate(c.fechaEvento, idioma)}</Text>
+            <Text style={s.infoLabel}>{t.lugar}</Text>
+            <Text style={s.infoValueLight}>{c.lugarEvento || "—"}</Text>
+            {fmtHorario(c.horaInicioEvento, c.horaFinEvento) && <>
+              <Text style={s.infoLabel}>{t.horario}</Text>
+              <Text style={s.infoValueLight}>{fmtHorario(c.horaInicioEvento, c.horaFinEvento)}</Text>
+            </>}
+            {c.tipoEvento && <>
+              <Text style={s.infoLabel}>{t.tipoEvento}</Text>
+              <Text style={s.infoValueLight}>{t.tipoEventoMap[c.tipoEvento] ?? c.tipoEvento}</Text>
+            </>}
+          </View>
         </View>
-
-        {/* ── Alcance del evento ── */}
-        <Alcance lineas={c.lineas} catDisciplina={catDisciplina} idioma={idioma} />
 
         <View style={s.divisor} />
 
@@ -1551,8 +1235,8 @@ export function CotizacionPDF({
             )}
             {discRows.map((r, i) => (
               <View key={i} style={s.totalFila}>
-                <Text style={[s.totalFilaDes, s.totalFilaDescuento, r.gold ? { color: GOLD } : {}]}>{r.label}</Text>
-                <Text style={[s.totalFilaMonto, s.totalFilaDescuento, r.gold ? { color: GOLD } : {}]}>-{fmtMXN(r.monto)}</Text>
+                <Text style={[s.totalFilaDes, s.totalFilaDescuento, r.gold ? { color: "#B3985B" } : {}]}>{r.label}</Text>
+                <Text style={[s.totalFilaMonto, s.totalFilaDescuento, r.gold ? { color: "#B3985B" } : {}]}>-{fmtMXN(r.monto)}</Text>
               </View>
             ))}
             {c.lineas.filter(l => l.tipo === "OTRO").reduce((s, l) => s + l.subtotal, 0) > 0 && (
@@ -1589,9 +1273,9 @@ export function CotizacionPDF({
               </View>
             )}
             {/* Total sin IVA — recuadro destacado */}
-            <View style={{ borderTop: "1.5 solid " + GOLD, borderBottom: `1 solid ${LINE}`, flexDirection: "row", justifyContent: "space-between", paddingVertical: 7, paddingHorizontal: 8, backgroundColor: WHITE }}>
-              <Text style={{ fontSize: 9, fontFamily: SANS, fontWeight: 700, color: BLACK }}>{t.totalSinIva}</Text>
-              <Text style={{ fontSize: 10, fontFamily: MONO, fontWeight: 700, color: BLACK }}>{fmtMXN(c.total)}</Text>
+            <View style={{ borderTop: "1.5 solid " + GOLD, borderBottom: "1 solid #e0ddd8", flexDirection: "row", justifyContent: "space-between", paddingVertical: 7, paddingHorizontal: 8, backgroundColor: "#FFFDF7" }}>
+              <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: BLACK }}>{t.totalSinIva}</Text>
+              <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: BLACK }}>{fmtMXN(c.total)}</Text>
             </View>
             {c.aplicaIva && (
               <View style={s.totalFila}>
@@ -1606,7 +1290,7 @@ export function CotizacionPDF({
             </View>
             {/* Nota IVA */}
             <View style={{ paddingHorizontal: 8, paddingTop: 6, paddingBottom: 2 }}>
-              <Text style={{ fontSize: 7, color: LIGHT_GRAY, lineHeight: 1.5, fontFamily: SANS, fontStyle: "italic" }}>
+              <Text style={{ fontSize: 7, color: LIGHT_GRAY, lineHeight: 1.5, fontFamily: "Helvetica-Oblique" }}>
                 {c.aplicaIva ? t.notaIvaAplica : t.notaIvaNoAplica}
               </Text>
             </View>
@@ -1627,7 +1311,7 @@ export function CotizacionPDF({
 
         {/* ── OBSERVACIONES ── */}
         {c.observaciones && (
-          <View style={[s.beneficioBloque, { borderColor: LINE, backgroundColor: BG_SECTION }]}>
+          <View style={[s.beneficioBloque, { borderColor: "#ddd", backgroundColor: BG_SECTION }]}>
             <Text style={[s.beneficioTitulo, { color: GRAY }]}>{t.observaciones}</Text>
             <Text style={s.beneficioTexto}>{c.observaciones}</Text>
           </View>
@@ -1665,21 +1349,21 @@ export function CotizacionPDF({
             : null;
           const textoPA = c.pagoAnticipadoTexto || t.pagoAnticipadoDefault(pctPA, fechaLimite);
           return (
-            <View style={{ marginHorizontal: 40, marginTop: 16, paddingTop: 12, borderTopWidth: 1.5, borderTopColor: GOLD, borderTopStyle: "solid" }}>
-              <Text style={{ fontSize: 9, fontFamily: SANS, fontWeight: 700, color: GOLD, letterSpacing: 1.4, marginBottom: 6, textTransform: "uppercase" }}>
+            <View style={{ marginTop: 16, paddingTop: 12, borderTopWidth: 1.5, borderTopColor: "#B3985B", borderTopStyle: "solid" }}>
+              <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: "#B3985B", letterSpacing: 0.5, marginBottom: 6, textTransform: "uppercase" }}>
                 {t.opcionPagoAnticipado}
               </Text>
-              <Text style={{ fontSize: 8.5, color: GRAY, lineHeight: 1.5, marginBottom: 8 }}>
+              <Text style={{ fontSize: 8.5, color: "#444", lineHeight: 1.5, marginBottom: 8 }}>
                 {textoPA}
               </Text>
-              <View style={{ backgroundColor: BG_SECTION, padding: 8, gap: 4 }}>
+              <View style={{ backgroundColor: "#f9f5ee", borderRadius: 6, padding: 8, gap: 4 }}>
                 <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                  <Text style={{ fontSize: 8.5, color: GRAY }}>{t.ahorroPagoAnticipado(pctPA)}</Text>
-                  <Text style={{ fontSize: 8.5, color: GOLD, fontFamily: MONO, fontWeight: 700 }}>-{fmtMXN(ahorroPA)}</Text>
+                  <Text style={{ fontSize: 8.5, color: "#666" }}>{t.ahorroPagoAnticipado(pctPA)}</Text>
+                  <Text style={{ fontSize: 8.5, color: "#B3985B", fontFamily: "Helvetica-Bold" }}>-{fmtMXN(ahorroPA)}</Text>
                 </View>
-                <View style={{ flexDirection: "row", justifyContent: "space-between", borderTopWidth: 0.5, borderTopColor: LINE, borderTopStyle: "solid", paddingTop: 4 }}>
-                  <Text style={{ fontSize: 9, fontFamily: SANS, fontWeight: 700, color: BLACK }}>{t.totalPagoAnticipado}</Text>
-                  <Text style={{ fontSize: 9, fontFamily: MONO, fontWeight: 700, color: BLACK }}>{fmtMXN(totalPA)}</Text>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", borderTopWidth: 0.5, borderTopColor: "#ddd", borderTopStyle: "solid", paddingTop: 4 }}>
+                  <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: "#222" }}>{t.totalPagoAnticipado}</Text>
+                  <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: "#222" }}>{fmtMXN(totalPA)}</Text>
                 </View>
               </View>
             </View>
@@ -1711,24 +1395,9 @@ export function CotizacionPDF({
 
         {/* ── FOOTER ── */}
         <View style={s.footer}>
-          <View style={s.footerTop}>
-            <Text style={s.footerBrand}>MAINSTAGE PRODUCCIONES</Text>
-            <Text style={s.footerVigencia}>{t.vigencia(c.vigenciaDias)}</Text>
-          </View>
-          <View style={s.footerCta}>
-            <View style={s.footerCtaItem}>
-              <Text style={s.footerCtaLabel}>{t.ctaWhatsapp}</Text>
-              <Text style={s.footerCtaValor}>(446) 143 2565</Text>
-            </View>
-            <View style={s.footerCtaItem}>
-              <Text style={s.footerCtaLabel}>{t.ctaInstagram}</Text>
-              <Text style={s.footerCtaValor}>@mainstagepro.mx</Text>
-            </View>
-            <View style={s.footerCtaItem}>
-              <Text style={s.footerCtaLabel}>{t.ctaCorreo}</Text>
-              <Text style={s.footerCtaValor}>mainstageqro@gmail.com</Text>
-            </View>
-          </View>
+          <Text style={s.footerBrand}>MAINSTAGE PRODUCCIONES</Text>
+          <Text style={s.footerContacto}>WhatsApp: (446) 143 2565  |  mainstageqro@gmail.com</Text>
+          <Text style={s.footerVigencia}>{t.vigencia(c.vigenciaDias)}</Text>
         </View>
         <Text style={s.confidencial}>
           {t.confidencial}
