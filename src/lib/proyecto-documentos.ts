@@ -6,13 +6,13 @@
 // sería peligroso operarlo); `advertencias` deja descargar pero avisa.
 
 export type TipoDocumento =
-  | "ORDEN_PRODUCCION"
+  | "FICHA_OPERATIVA"
   | "HOJA_ENTREGA"
   | "CONTROL_CARGA"
   | "BRIEF_TECNICO";
 
 export const DOCUMENTO_LABELS: Record<TipoDocumento, string> = {
-  ORDEN_PRODUCCION: "Orden de producción",
+  FICHA_OPERATIVA: "Ficha operativa",
   HOJA_ENTREGA: "Hoja de entrega",
   CONTROL_CARGA: "Control de carga",
   BRIEF_TECNICO: "Info para técnicos",
@@ -109,7 +109,7 @@ export function requisitosDocumento(
       break;
     }
 
-    case "ORDEN_PRODUCCION": {
+    case "FICHA_OPERATIVA": {
       if (sinVenue) bloqueos.push("Falta el lugar del evento");
       if (p.equiposCount === 0) bloqueos.push("No hay equipo cargado");
       if (p.personalCount === 0) bloqueos.push("No hay técnicos asignados al proyecto");

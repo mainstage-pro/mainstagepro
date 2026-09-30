@@ -9023,12 +9023,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               })()}
               {!esRenta && (
                 <BotonDocumento
-                  label="Orden de Producción"
+                  label="Ficha Operativa"
                   icono={<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="11" y2="16"/></svg>}
-                  requisitos={reqDoc('ORDEN_PRODUCCION')}
-                  cargando={downloading === `orden-produccion-${proyecto.numeroProyecto}.pdf`}
+                  requisitos={reqDoc('FICHA_OPERATIVA')}
+                  cargando={downloading === `ficha-operativa-${proyecto.numeroProyecto}.pdf`}
                   deshabilitado={!!downloading}
-                  onDescargar={() => downloadPdf(`/api/proyectos/${proyecto.id}/fichas/operativa`, `orden-produccion-${proyecto.numeroProyecto}.pdf`)}
+                  onDescargar={() => downloadPdf(`/api/proyectos/${proyecto.id}/fichas/operativa`, `ficha-operativa-${proyecto.numeroProyecto}.pdf`)}
                 />
               )}
               {proyecto.tipoServicio === 'PRODUCCION_TECNICA' && (
