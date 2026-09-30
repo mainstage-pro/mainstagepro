@@ -40,6 +40,8 @@ type Origen = "TODOS" | "PROPIO" | "EXTERNO" | "PREMIUM";
 
 const fmx = (n: number) => `$${n.toLocaleString("es-MX", { maximumFractionDigits: 0 })}`;
 const SIN_CAT = "__sin-categoria__";
+const ORIGEN_ORDEN = ["PROPIO", "EXTERNO", "PREMIUM"] as const;
+const ORIGEN_LABEL: Record<string, string> = { PROPIO: "Propios", EXTERNO: "Externos", PREMIUM: "Premium" };
 
 export default function ListaPreciosPage() {
   const toast = useToast();
@@ -49,7 +51,7 @@ export default function ListaPreciosPage() {
   const [loading, setLoading] = useState(true);
   const [esAdmin, setEsAdmin] = useState(false);
   const [vista, setVista] = useState<Vista>("EQUIPOS");
-  const [origen, setOrigen] = useState<Origen>("TODOS");
+  const [origen, setOrigen] = useState<Origen>("PROPIO");
   const [busqueda, setBusqueda] = useState("");
   const [soloSinPrecio, setSoloSinPrecio] = useState(false);
   const [editando, setEditando] = useState<string | null>(null);
@@ -92,9 +94,16 @@ export default function ListaPreciosPage() {
   }), [accesorios, origen, soloSinPrecio, q]);
 
   const equiposPorCategoria = useMemo(() =>
-    categorias
-      .map(cat => ({ id: cat.id, nombre: cat.nombre, items: equiposFiltrados.filter(e => e.categoria.id === cat.id) }))
-      .filter(g => g.items.length > 0),
+    ORIGEN_ORDEN.flatMap(o =>
+      categorias
+        .map(cat => ({
+          id: `${o}-${cat.id}`,
+          nombre: cat.nombre,
+          origen: o,
+          items: equiposFiltrados.filter(e => e.tipo === o && e.categoria.id === cat.id),
+        }))
+        .filter(g => g.items.length > 0)
+    ),
     [categorias, equiposFiltrados]
   );
 
@@ -157,13 +166,21 @@ export default function ListaPreciosPage() {
   }
 
   function OrigenBadge({ proveedor, premium }: { proveedor: string | null; premium?: boolean }) {
-    if (!proveedor) return <span className="ms-badge ms-badge-gold">Propio</span>;
-    if (premium) return <span className="ms-badge ms-badge-purple" title={proveedor}>Premium · {proveedor}</span>;
-    return <span className="ms-badge ms-badge-blue" title={proveedor}>Ext · {proveedor}</span>;
+    if (!proveedor) return <span className="ms-badge ms-badge-gold whitespace-nowrap">Propio</span>;
+    return (
+      <div className="flex flex-col items-center gap-0.5 min-w-0">
+        <span className={`ms-badge whitespace-nowrap ${premium ? "ms-badge-purple" : "ms-badge-blue"}`}>
+          {premium ? "Premium" : "Externo"}
+        </span>
+        <span className="text-[10px] text-[#555] truncate max-w-full" title={proveedor}>{proveedor}</span>
+      </div>
+    );
   }
 
   const total = vista === "EQUIPOS" ? equiposFiltrados.length : accesoriosFiltrados.length;
-  const grupos = vista === "EQUIPOS" ? equiposPorCategoria.length : accesoriosPorCategoria.length;
+  const grupos = vista === "EQUIPOS"
+    ? new Set(equiposPorCategoria.map(g => g.nombre)).size
+    : accesoriosPorCategoria.length;
   const colSpanEquipos = esAdmin ? 6 : 4;
 
   return (
@@ -220,10 +237,10 @@ export default function ListaPreciosPage() {
         </div>
         <div className="flex bg-[#111] border border-[#1e1e1e] rounded-lg p-0.5">
           {([
-            { key: "TODOS", label: "Todos" },
             { key: "PROPIO", label: "Propios" },
             { key: "EXTERNO", label: "Externos" },
             { key: "PREMIUM", label: "Premium" },
+            { key: "TODOS", label: "Todos" },
           ] as const).map(o => (
             <button key={o.key} onClick={() => setOrigen(o.key)}
               className={`px-3 py-1.5 text-xs rounded-md transition-colors ${origen === o.key ? "bg-[#1f1f1f] text-white font-medium" : "text-[#6b7280] hover:text-white"}`}>
@@ -266,6 +283,10 @@ export default function ListaPreciosPage() {
                     <Fragment key={g.id}>
                       <tr className="border-t border-[#1a1a1a]">
                         <td colSpan={colSpanEquipos} className="px-4 py-1.5 bg-[#0d0d0d]">
+                          <span className={`text-[10px] uppercase tracking-widest font-semibold ${g.origen === "PREMIUM" ? "text-purple-400/80" : g.origen === "EXTERNO" ? "text-blue-400/70" : "text-[#B3985B]/80"}`}>
+                            {ORIGEN_LABEL[g.origen]}
+                          </span>
+                          <span className="text-[#333] text-[10px] mx-1.5">·</span>
                           <span className="text-[10px] text-[#6b7280] uppercase tracking-widest font-semibold">{g.nombre}</span>
                           <span className="text-[#333] text-[10px] ml-2">({g.items.length})</span>
                         </td>

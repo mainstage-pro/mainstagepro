@@ -23,6 +23,7 @@ type EquipoItem = {
   precioRenta: number;
   cantidadTotal: number;
   imagenUrl: string | null;
+  tipo?: string;
   categoria: { id: string; nombre: string } | null;
 };
 
@@ -71,6 +72,18 @@ type Producto = {
 };
 
 type EquipoSinPaquetear = EquipoItem;
+
+// El origen del producto lo manda su composición: si trae una sola pieza premium
+// es premium, si trae subrenta es externo; si todo es nuestro, es propio.
+const ORIGEN_ORDEN = ["PROPIO", "EXTERNO", "PREMIUM"] as const;
+const ORIGEN_LABEL: Record<string, string> = { PROPIO: "Propios", EXTERNO: "Externos", PREMIUM: "Premium" };
+
+function origenProducto(p: Producto): (typeof ORIGEN_ORDEN)[number] {
+  const tipos = p.items.map((i) => i.equipo.tipo ?? "PROPIO");
+  if (tipos.includes("PREMIUM")) return "PREMIUM";
+  if (tipos.includes("EXTERNO")) return "EXTERNO";
+  return "PROPIO";
+}
 
 const TIPOS_EVENTO: { key: string; label: string; icon: LucideIcon }[] = [
   { key: "MUSICAL", label: "Musical", icon: Guitar },
@@ -935,6 +948,7 @@ export function ProductosSection() {
   const [filtroTipo, setFiltroTipo] = useState<string>("TODOS");
   const [filtroRol, setFiltroRol] = useState<string>("TODOS");
   const [filtroDisp, setFiltroDisp] = useState<string>("TODAS");
+  const [filtroOrigen, setFiltroOrigen] = useState<string>("TODOS");
   const [showSinPaquetear, setShowSinPaquetear] = useState(false);
   const [soloSinClasificar, setSoloSinClasificar] = useState(false);
   const [soloSinCapacidad, setSoloSinCapacidad] = useState(false);
@@ -1158,11 +1172,12 @@ export function ProductosSection() {
       if (filtroTipo !== "TODOS" && !parseTags(p.tiposEvento).includes(filtroTipo)) return false;
       if (filtroRol !== "TODOS" && (p.rol ?? "base") !== filtroRol) return false;
       if (filtroDisp !== "TODAS" && (p.disponibilidad ?? "propio") !== filtroDisp) return false;
+      if (filtroOrigen !== "TODOS" && origenProducto(p) !== filtroOrigen) return false;
       if (soloSinClasificar && parseTags(p.tiposEvento).length > 0) return false;
       if (soloSinCapacidad && (p.capacidadUniversal || capacidadProducto(p) !== null)) return false;
       return true;
     });
-  }, [productos, filtroCat, filtroTipo, filtroRol, filtroDisp, soloSinClasificar, soloSinCapacidad]);
+  }, [productos, filtroCat, filtroTipo, filtroRol, filtroDisp, filtroOrigen, soloSinClasificar, soloSinCapacidad]);
 
   const sinCapacidadCount = useMemo(
     () => productos.filter((p) => !p.capacidadUniversal && capacidadProducto(p) === null).length,
@@ -1181,9 +1196,15 @@ export function ProductosSection() {
       const d = orderIdx(a) - orderIdx(b);
       return d !== 0 ? d : a.localeCompare(b);
     });
-    return cats
-      .map((cat) => ({ cat, items: visibles.filter((p) => (p.categoria ?? "OTRO") === cat) }))
-      .filter((g) => g.items.length > 0);
+    return ORIGEN_ORDEN.flatMap((origen) =>
+      cats
+        .map((cat) => ({
+          origen,
+          cat,
+          items: visibles.filter((p) => (p.categoria ?? "OTRO") === cat && origenProducto(p) === origen),
+        }))
+        .filter((g) => g.items.length > 0)
+    );
   }, [visibles, categoriasInv]);
 
   return (
@@ -1276,6 +1297,19 @@ export function ProductosSection() {
 
       {/* Filtros de clasificación */}
       <div className="flex flex-wrap items-center gap-2 mb-4">
+        <div className="flex bg-[#111] border border-[#1e1e1e] rounded-lg p-0.5">
+          {(["TODOS", ...ORIGEN_ORDEN] as const).map((o) => (
+            <button
+              key={o}
+              onClick={() => setFiltroOrigen(o)}
+              className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
+                filtroOrigen === o ? "bg-[#1f1f1f] text-white font-medium" : "text-[#6b7280] hover:text-white"
+              }`}
+            >
+              {o === "TODOS" ? "Todo origen" : ORIGEN_LABEL[o]}
+            </button>
+          ))}
+        </div>
         <select
           value={filtroTipo}
           onChange={(e) => setFiltroTipo(e.target.value)}
@@ -1305,9 +1339,9 @@ export function ProductosSection() {
           <option value="subrenta">Subrenta</option>
           <option value="bajo_pedido">Bajo pedido</option>
         </select>
-        {(filtroTipo !== "TODOS" || filtroRol !== "TODOS" || filtroDisp !== "TODAS" || soloSinClasificar || soloSinCapacidad) && (
+        {(filtroTipo !== "TODOS" || filtroRol !== "TODOS" || filtroDisp !== "TODAS" || filtroOrigen !== "TODOS" || soloSinClasificar || soloSinCapacidad) && (
           <button
-            onClick={() => { setFiltroTipo("TODOS"); setFiltroRol("TODOS"); setFiltroDisp("TODAS"); setSoloSinClasificar(false); setSoloSinCapacidad(false); }}
+            onClick={() => { setFiltroTipo("TODOS"); setFiltroRol("TODOS"); setFiltroDisp("TODAS"); setFiltroOrigen("TODOS"); setSoloSinClasificar(false); setSoloSinCapacidad(false); }}
             className="text-[11px] text-gray-500 hover:text-white px-2 py-1"
           >
             Limpiar filtros
@@ -1348,11 +1382,15 @@ export function ProductosSection() {
                 </tr>
               </thead>
               <tbody>
-                {porCategoria.map(({ cat, items }) => (
-                  <Fragment key={`cat-${cat}`}>
+                {porCategoria.map(({ origen, cat, items }) => (
+                  <Fragment key={`cat-${origen}-${cat}`}>
                     <tr className="border-t border-[#1a1a1a]">
                       <td colSpan={7} className="px-4 py-1.5 bg-[#0d0d0d]">
                         <div className="flex items-center gap-2">
+                          <span className={`text-[10px] uppercase tracking-widest font-semibold ${origen === "PREMIUM" ? "text-purple-400/80" : origen === "EXTERNO" ? "text-blue-400/70" : "text-[#B3985B]/80"}`}>
+                            {ORIGEN_LABEL[origen]}
+                          </span>
+                          <span className="text-[#333] text-[10px]">·</span>
                           <span className="text-[10px] text-[#6b7280] uppercase tracking-widest font-semibold">{cat}</span>
                           <span className="text-[#333] text-[10px]">({items.length})</span>
                         </div>
@@ -1414,7 +1452,7 @@ export function ProductosSection() {
           </div>
           <div className="px-4 py-3 border-t border-[#1a1a1a] flex items-center justify-between">
             <p className="text-[#555] text-xs">{visibles.length} productos mostrados</p>
-            <p className="text-[#444] text-xs">{porCategoria.length} categorías</p>
+            <p className="text-[#444] text-xs">{new Set(porCategoria.map((g) => g.cat)).size} categorías</p>
           </div>
         </div>
       )}

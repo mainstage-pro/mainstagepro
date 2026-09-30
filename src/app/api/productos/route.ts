@@ -18,6 +18,7 @@ const PRODUCTO_INCLUDE = {
           precioRenta: true,
           cantidadTotal: true,
           imagenUrl: true,
+          tipo: true,
           categoria: { select: { id: true, nombre: true } },
         },
       },
