@@ -43,6 +43,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     log.push({ fecha: new Date().toISOString(), de: cxc.monto, a: monto, motivo: String(motivo).trim(), usuario: session.name ?? session.email ?? "usuario" });
     updateData.ajustesLog = JSON.stringify(log);
     updateData.monto = monto;
+
+    if (cxc.montoCobrado >= monto) {
+      updateData.estado = "LIQUIDADO";
+      if (!cxc.fechaCobroReal) updateData.fechaCobroReal = new Date();
+    }
   }
 
   if (concepto !== undefined) updateData.concepto = concepto;
