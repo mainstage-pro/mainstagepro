@@ -7,6 +7,7 @@ const ETAPA_ACCENT: Record<string, { on: string; off: string; text: string }> = 
   PROSPECCION:    { on: "bg-violet-500",  off: "bg-violet-900/30",  text: "text-violet-300" },
   DESCUBRIMIENTO: { on: "bg-blue-500",    off: "bg-blue-900/30",    text: "text-blue-300" },
   OPORTUNIDAD:    { on: "bg-yellow-500",  off: "bg-yellow-900/30",  text: "text-yellow-300" },
+  EN_NEGOCIACION: { on: "bg-orange-500",  off: "bg-orange-900/30",  text: "text-orange-300" },
   VENTA_CERRADA:  { on: "bg-emerald-500", off: "bg-emerald-900/30", text: "text-emerald-300" },
   VENTA_PERDIDA:  { on: "bg-red-500",     off: "bg-red-900/30",     text: "text-red-400" },
 };

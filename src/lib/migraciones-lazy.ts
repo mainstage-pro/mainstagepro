@@ -135,6 +135,7 @@ export async function ensureProcesoVentaColumns() {
         WHEN etapa = 'PROSPECCION'                                   THEN 'NURTURING'
         WHEN etapa = 'DESCUBRIMIENTO'                                THEN 'FORMULARIO_ENVIADO'
         WHEN etapa = 'OPORTUNIDAD'                                   THEN 'PROPUESTA_EN_ELABORACION'
+        WHEN etapa = 'EN_NEGOCIACION'                                THEN 'CAMBIOS_Y_NEGOCIACION'
         WHEN etapa = 'VENTA_CERRADA'                                 THEN 'CONFIRMADA'
         WHEN etapa = 'VENTA_PERDIDA'                                 THEN 'PERDIDA'
         ELSE "etapaInterna"
@@ -164,6 +165,35 @@ export async function ensureContactoInicialRetirado() {
     );
   } catch { /* best-effort */ }
   _contactoInicialRetiradoReady = true;
+}
+
+/**
+ * Migración lazy: "Cambios y negociación" dejó de ser sub-etapa de OPORTUNIDAD y ahora
+ * es la etapa EN_NEGOCIACION del pipeline. Resiembra la estructura del proceso (crea la
+ * sub-etapa PROPUESTA_AJUSTADA y reapunta el paso de reenvío) y mueve los tratos que ya
+ * estaban negociando. Solo DML. Idempotente: en caliente cuesta una consulta.
+ */
+let _etapaNegociacionReady = false;
+
+export async function ensureEtapaNegociacion() {
+  if (_etapaNegociacionReady) return;
+  try {
+    const sub = await prisma.procesoSubetapa.findUnique({
+      where: { etapaInterna: "CAMBIOS_Y_NEGOCIACION" },
+      select: { etapa: true },
+    });
+    if (sub?.etapa !== "EN_NEGOCIACION") {
+      const { seedProceso } = await import("@/lib/proceso/seed");
+      await seedProceso();
+    }
+    // Un trato solo sube desde OPORTUNIDAD: nunca arrastra hacia atrás una venta cerrada.
+    await prisma.$executeRawUnsafe(
+      `UPDATE tratos SET etapa = 'EN_NEGOCIACION'
+         WHERE "etapaInterna" IN ('CAMBIOS_Y_NEGOCIACION', 'PROPUESTA_AJUSTADA')
+           AND etapa = 'OPORTUNIDAD'`
+    );
+  } catch { /* best-effort */ }
+  _etapaNegociacionReady = true;
 }
 
 /**

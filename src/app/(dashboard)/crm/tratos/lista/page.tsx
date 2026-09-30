@@ -72,6 +72,7 @@ const ETAPA_COLORS: Record<string, string> = {
   PROSPECCION: "bg-violet-900/40 text-violet-300",
   DESCUBRIMIENTO: "bg-blue-900/40 text-blue-300",
   OPORTUNIDAD: "bg-yellow-900/40 text-yellow-300",
+  EN_NEGOCIACION: "bg-orange-900/40 text-orange-300",
   VENTA_CERRADA: "bg-green-900/40 text-green-300",
   VENTA_PERDIDA: "bg-red-900/40 text-red-400",
 };
@@ -81,6 +82,7 @@ const ETAPA_TEXT: Record<string, string> = {
   PROSPECCION:    "text-violet-500/60",
   DESCUBRIMIENTO: "text-blue-500/60",
   OPORTUNIDAD:    "text-yellow-500/60",
+  EN_NEGOCIACION: "text-orange-500/60",
   VENTA_CERRADA:  "text-emerald-500/60",
   VENTA_PERDIDA:  "text-red-500/40",
 };
@@ -224,7 +226,7 @@ function groupTratosByMes(tratos: Trato[], ordenTrato: OrdenTrato = 'fechaEvento
 }
 
 
-const ETAPAS = ["PROSPECCION", "DESCUBRIMIENTO", "OPORTUNIDAD", "VENTA_CERRADA", "VENTA_PERDIDA"];
+const ETAPAS = ["PROSPECCION", "DESCUBRIMIENTO", "OPORTUNIDAD", "EN_NEGOCIACION", "VENTA_CERRADA", "VENTA_PERDIDA"];
 const TIPOS_EVENTO = ["MUSICAL", "SOCIAL", "EMPRESARIAL", "OTRO"];
 
 const ALL_ETAPAS = [
@@ -232,6 +234,7 @@ const ALL_ETAPAS = [
   { key: 'PROSPECCION',      label: 'Prospección',    color: '#A855F7' },
   { key: 'DESCUBRIMIENTO',   label: 'Descubrimiento', color: '#3B82F6' },
   { key: 'OPORTUNIDAD',      label: 'Oportunidad',    color: '#8B5CF6' },
+  { key: 'EN_NEGOCIACION',   label: 'En negociación', color: '#F97316' },
   { key: 'VENTA_CERRADA',    label: 'Cerrada',        color: '#10B981' },
   { key: 'VENTA_PERDIDA',    label: 'Perdida',        color: '#EF4444' },
 ];
@@ -657,7 +660,7 @@ function SubProcesoChips({ t }: { t: Trato }) {
   }
 
   // Descubrimiento pendiente en etapas avanzadas (aviso). El "✓" se omite para no engrosar la fila.
-  if (!t.descubrimientoCompleto && ['OPORTUNIDAD', 'VENTA_CERRADA'].includes(t.etapa)) {
+  if (!t.descubrimientoCompleto && ['OPORTUNIDAD', 'EN_NEGOCIACION', 'VENTA_CERRADA'].includes(t.etapa)) {
     chips.push({ label: '🔍 Descubrimiento pendiente', cls: 'text-red-400/80 bg-red-900/15' });
   }
 
@@ -752,6 +755,7 @@ function CompactTratoRow({
     PROSPECCION:    { dot: 'bg-violet-400',  text: 'text-violet-400',  bg: 'bg-violet-900/20' },
     DESCUBRIMIENTO: { dot: 'bg-blue-400',    text: 'text-blue-400',    bg: 'bg-blue-900/20' },
     OPORTUNIDAD:    { dot: 'bg-violet-400',  text: 'text-violet-400',  bg: 'bg-violet-900/20' },
+    EN_NEGOCIACION: { dot: 'bg-orange-400',  text: 'text-orange-400',  bg: 'bg-orange-900/20' },
     VENTA_CERRADA:  { dot: 'bg-emerald-400', text: 'text-emerald-400', bg: 'bg-emerald-900/20' },
     VENTA_PERDIDA:  { dot: 'bg-red-400',     text: 'text-red-400',     bg: 'bg-red-900/20' },
   };
@@ -1464,7 +1468,7 @@ export default function TratosPage() {
       if (!map.has(g.key)) map.set(g.key, { ...g, tratos: [] });
       map.get(g.key)!.tratos.push(t);
     }
-    const ETAPA_ORDEN: Record<string, number> = { VENTA_CERRADA: 0, OPORTUNIDAD: 1, DESCUBRIMIENTO: 2, VENTA_PERDIDA: 3 };
+    const ETAPA_ORDEN: Record<string, number> = { VENTA_CERRADA: 0, EN_NEGOCIACION: 1, OPORTUNIDAD: 2, DESCUBRIMIENTO: 3, VENTA_PERDIDA: 4 };
     const sorted = Array.from(map.values()).sort((a, b) => a.key.localeCompare(b.key));
     for (const g of sorted) {
       g.tratos.sort((a, b) => (ETAPA_ORDEN[a.etapa] ?? 9) - (ETAPA_ORDEN[b.etapa] ?? 9));
@@ -1663,6 +1667,17 @@ export default function TratosPage() {
                 activeBorder: 'border-violet-500/40',
                 activeDot: 'bg-violet-400',
                 inactiveDot: 'bg-violet-900/60',
+              },
+              {
+                filter: 'EN_NEGOCIACION',
+                label: 'En negociación',
+                count: all.filter(t => t.etapa === 'EN_NEGOCIACION' && esEventoProximo(t)).length,
+                valor: all.filter(t => t.etapa === 'EN_NEGOCIACION').reduce((s, t) => s + getTratoValor(t), 0),
+                color: '#F97316',
+                activeGrad: 'from-orange-900/50 to-orange-950/30',
+                activeBorder: 'border-orange-500/40',
+                activeDot: 'bg-orange-400',
+                inactiveDot: 'bg-orange-900/60',
               },
               {
                 filter: 'VENTA_CERRADA',

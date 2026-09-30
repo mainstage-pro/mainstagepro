@@ -17,6 +17,7 @@ export const ETAPAS = [
   "PROSPECCION",
   "DESCUBRIMIENTO",
   "OPORTUNIDAD",
+  "EN_NEGOCIACION",
   "VENTA_CERRADA",
   "VENTA_PERDIDA",
 ] as const;
@@ -26,9 +27,18 @@ export const ETAPA_LABELS: Record<EtapaTrato, string> = {
   PROSPECCION: "Prospección",
   DESCUBRIMIENTO: "Descubrimiento",
   OPORTUNIDAD: "Oportunidad",
+  EN_NEGOCIACION: "En negociación",
   VENTA_CERRADA: "Venta cerrada",
   VENTA_PERDIDA: "Venta perdida",
 };
+
+// Etapas que cuentan como cerradas. EN_NEGOCIACION NO está aquí: el evento puede
+// estar confirmado y tener proyecto, pero la venta sigue abierta hasta que el
+// número se cierra, para no inflar la tasa de conversión.
+export const ETAPAS_CERRADAS = ["VENTA_CERRADA", "VENTA_PERDIDA"] as const;
+export const ETAPAS_ABIERTAS = ETAPAS.filter(
+  (e) => !(ETAPAS_CERRADAS as readonly string[]).includes(e),
+) as readonly EtapaTrato[];
 
 // ── Etapa interna (subetapa) ─────────────────────────────────────────────────
 export const ETAPAS_INTERNAS = [
@@ -38,6 +48,7 @@ export const ETAPAS_INTERNAS = [
   "PROPUESTA_EN_ELABORACION",
   "COTIZACION_ENVIADA",
   "CAMBIOS_Y_NEGOCIACION",
+  "PROPUESTA_AJUSTADA",
   "CONFIRMADA",
   "FORMALIZADA",
   "PERDIDA",
@@ -51,6 +62,7 @@ export const ETAPA_INTERNA_LABELS: Record<EtapaInterna, string> = {
   PROPUESTA_EN_ELABORACION: "Propuesta en elaboración",
   COTIZACION_ENVIADA: "Cotización enviada",
   CAMBIOS_Y_NEGOCIACION: "Cambios y negociación",
+  PROPUESTA_AJUSTADA: "Propuesta ajustada",
   CONFIRMADA: "Confirmada",
   FORMALIZADA: "Formalizada",
   PERDIDA: "Perdida",
@@ -63,7 +75,8 @@ export const ETAPA_DE_INTERNA: Record<EtapaInterna, EtapaTrato> = {
   FORMULARIO_ENVIADO: "DESCUBRIMIENTO",
   PROPUESTA_EN_ELABORACION: "OPORTUNIDAD",
   COTIZACION_ENVIADA: "OPORTUNIDAD",
-  CAMBIOS_Y_NEGOCIACION: "OPORTUNIDAD",
+  CAMBIOS_Y_NEGOCIACION: "EN_NEGOCIACION",
+  PROPUESTA_AJUSTADA: "EN_NEGOCIACION",
   CONFIRMADA: "VENTA_CERRADA",
   FORMALIZADA: "VENTA_CERRADA",
   PERDIDA: "VENTA_PERDIDA",
@@ -73,7 +86,8 @@ export const ETAPA_DE_INTERNA: Record<EtapaInterna, EtapaTrato> = {
 export const SUBETAPAS_DE_ETAPA: Record<EtapaTrato, EtapaInterna[]> = {
   PROSPECCION: ["PRIMER_CONTACTO", "NURTURING"],
   DESCUBRIMIENTO: ["FORMULARIO_ENVIADO"],
-  OPORTUNIDAD: ["PROPUESTA_EN_ELABORACION", "COTIZACION_ENVIADA", "CAMBIOS_Y_NEGOCIACION"],
+  OPORTUNIDAD: ["PROPUESTA_EN_ELABORACION", "COTIZACION_ENVIADA"],
+  EN_NEGOCIACION: ["CAMBIOS_Y_NEGOCIACION", "PROPUESTA_AJUSTADA"],
   VENTA_CERRADA: ["CONFIRMADA", "FORMALIZADA"],
   VENTA_PERDIDA: ["PERDIDA"],
 };

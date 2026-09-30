@@ -24,6 +24,7 @@ export async function register() {
         ensureSeguimientoColumns,
         ensureSyncColumns,
         ensureContactoInicialRetirado,
+        ensureEtapaNegociacion,
       } = await import("@/lib/migraciones-lazy");
       await Promise.all([
         ensureMultidiaColumns(),
@@ -35,6 +36,7 @@ export async function register() {
         ensureSeguimientoColumns(),
         ensureSyncColumns(),
         ensureContactoInicialRetirado(),
+        ensureEtapaNegociacion(),
       ]);
     } catch { /* el arranque no debe fallar por esto */ }
   }

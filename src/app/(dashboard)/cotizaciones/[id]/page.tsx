@@ -609,6 +609,26 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
     setCerrarVentaOpen(true);
   }
 
+  // Arranca producción mientras el número sigue negociándose: crea el proyecto y
+  // confirma el evento, pero no aprueba la cotización ni cierra la venta.
+  async function adelantarProyecto() {
+    const ok = await confirm({
+      message: "Se crea el proyecto de producción y el evento queda confirmado en el calendario. La cotización sigue en negociación: no se aprueba ni se cierra la venta.",
+      confirmText: "Crear proyecto",
+    });
+    if (!ok) return;
+    setSaving(true);
+    const res = await fetch(`/api/cotizaciones/${id}/generar-proyecto`, { method: "POST" });
+    const d = await res.json().catch(() => ({}));
+    setSaving(false);
+    if (!res.ok) {
+      toast.error(d.error ?? "No se pudo crear el proyecto");
+      return;
+    }
+    toast.success(`Proyecto ${d.numeroProyecto} creado`);
+    router.push(`/proyectos/${d.proyectoId}`);
+  }
+
   async function generarLinkAprobacion() {
     setGenerandoLink(true);
     const res = await fetch(`/api/cotizaciones/${id}/link-aprobacion`, { method: "POST" });
@@ -1236,6 +1256,29 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
             {cot.eventoConfirmado ? "Quitar confirmación" : "✓ Confirmar evento"}
           </button>
         </div>
+
+        {/* Adelantar producción — el evento ya se va a hacer aunque el número siga
+            en la mesa. Crea el proyecto sin aprobar la cotización. */}
+        {!cot.proyecto && cot.estado !== "APROBADA" && cot.estado !== "RECHAZADA" && (
+          <div className="mt-3 flex items-center gap-3 rounded-xl border border-orange-800/40 bg-orange-900/10 p-3">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-orange-900/30 text-orange-400">
+              ⚙
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-white text-sm font-semibold">Adelantar el proyecto</p>
+              <p className="text-[#666] text-xs">
+                El evento ya se va a hacer aunque sigas negociando el número. Crea el proyecto de producción sin aprobar la cotización.
+              </p>
+            </div>
+            <button
+              onClick={adelantarProyecto}
+              disabled={saving}
+              className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-40 border bg-orange-700/20 border-orange-700/40 text-orange-300 hover:bg-orange-700/30"
+            >
+              {saving ? "Creando..." : "Crear proyecto"}
+            </button>
+          </div>
+        )}
 
         {/* Progreso de completitud */}
         {(() => {

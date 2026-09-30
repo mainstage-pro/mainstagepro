@@ -89,6 +89,7 @@ interface Cliente {
 const ETAPA_COLORS: Record<string, string> = {
   DESCUBRIMIENTO: "bg-gray-700 text-gray-200",
   OPORTUNIDAD: "bg-yellow-900/50 text-yellow-300",
+  EN_NEGOCIACION: "bg-orange-900/50 text-orange-300",
   VENTA_CERRADA: "bg-green-900/50 text-green-300",
   VENTA_PERDIDA: "bg-red-900/50 text-red-300",
 };

@@ -64,7 +64,7 @@ export async function GET() {
     })),
     ...tratos.map((t) => {
       const tipo: "EN_PROCESO" | "SIN_CERRAR" =
-        t.etapa === "OPORTUNIDAD" ? "EN_PROCESO" : "SIN_CERRAR";
+        t.etapa === "OPORTUNIDAD" || t.etapa === "EN_NEGOCIACION" ? "EN_PROCESO" : "SIN_CERRAR";
       return {
         id:          t.id,
         tipo,

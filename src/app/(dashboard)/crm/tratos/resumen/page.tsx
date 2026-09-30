@@ -202,6 +202,7 @@ export default async function ResumenVentasPage() {
                 { label: "Prospección", valor: r.etapas.prospeccion, tono: "neutro" },
                 { label: "Descubrimiento", valor: r.etapas.descubrimiento, tono: "azul" },
                 { label: "Oportunidad", valor: r.etapas.oportunidad, tono: "oro" },
+                { label: "En negociación", valor: r.etapas.enNegociacion, tono: "ambar" },
               ]}
             />
           </Panel>

@@ -14,7 +14,7 @@ import { prisma } from "@/lib/prisma";
 import { calcularDescubrimientoNivel } from "./motor";
 import { instanciarTareasProceso } from "./tareas-subetapa";
 import { seedProceso } from "./seed";
-import type { EtapaInterna, EtapaTrato } from "./valores";
+import { ETAPA_DE_INTERNA, type EtapaInterna, type EtapaTrato } from "./valores";
 
 // Mapeo directo de la etapaInterna vieja a la nueva (spec de migración).
 const MAPA_INTERNA: Record<string, EtapaInterna> = {
@@ -92,12 +92,13 @@ function planificar(t: {
       (etapaVieja === "VENTA_CERRADA" ? "CONFIRMADA" : "PERDIDA");
     caso = "CERRADO";
   } else if (etapaVieja === "OPORTUNIDAD") {
-    nuevaEtapa = "OPORTUNIDAD";
     nuevaInterna = (t.etapaInterna && MAPA_INTERNA[t.etapaInterna]) || "PROPUESTA_EN_ELABORACION";
-    // Solo subetapas de OPORTUNIDAD son válidas aquí; si mapeó a otra, corrígela.
-    if (!["PROPUESTA_EN_ELABORACION", "COTIZACION_ENVIADA", "CAMBIOS_Y_NEGOCIACION"].includes(nuevaInterna)) {
+    // Solo subetapas de propuesta/negociación son válidas aquí; si mapeó a otra, corrígela.
+    if (!["PROPUESTA_EN_ELABORACION", "COTIZACION_ENVIADA", "CAMBIOS_Y_NEGOCIACION", "PROPUESTA_AJUSTADA"].includes(nuevaInterna)) {
       nuevaInterna = "PROPUESTA_EN_ELABORACION";
     }
+    // Las subetapas de negociación viven ahora en su propia etapa del pipeline.
+    nuevaEtapa = ETAPA_DE_INTERNA[nuevaInterna];
     if (disc) {
       caso = "A";
     } else {

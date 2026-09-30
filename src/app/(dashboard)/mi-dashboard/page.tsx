@@ -80,7 +80,7 @@ export default async function DashboardPage() {
     prisma.trato.groupBy({
       by: ["etapa"],
       _count: { _all: true },
-      where: { etapa: { in: ["DESCUBRIMIENTO", "OPORTUNIDAD", "VENTA_CERRADA", "VENTA_PERDIDA"] } },
+      where: { etapa: { in: ["DESCUBRIMIENTO", "OPORTUNIDAD", "EN_NEGOCIACION", "VENTA_CERRADA", "VENTA_PERDIDA"] } },
     }),
     prisma.cotizacion.count({ where: { createdAt: { gte: inicioMes, lte: finMes } } }),
     prisma.cotizacion.count({ where: { createdAt: { gte: inicioMes, lte: finMes }, estado: "APROBADA" } }),
@@ -89,11 +89,11 @@ export default async function DashboardPage() {
       where: { createdAt: { gte: inicioMes, lte: finMes }, estado: { in: ["APROBADA", "ENVIADA"] } },
     }),
     prisma.trato.count({
-      where: { etapa: { in: ["DESCUBRIMIENTO", "OPORTUNIDAD"] }, fechaProximaAccion: { lt: ahora } },
+      where: { etapa: { in: ["DESCUBRIMIENTO", "OPORTUNIDAD", "EN_NEGOCIACION"] }, fechaProximaAccion: { lt: ahora } },
     }),
     prisma.trato.aggregate({
       _sum: { presupuestoEstimado: true },
-      where: { etapa: { in: ["DESCUBRIMIENTO", "OPORTUNIDAD"] } },
+      where: { etapa: { in: ["DESCUBRIMIENTO", "OPORTUNIDAD", "EN_NEGOCIACION"] } },
     }),
 
     // ── PRODUCCIÓN ──────────────────────────────
@@ -262,7 +262,7 @@ export default async function DashboardPage() {
   // ── Cálculos ──────────────────────────────────────────────────────────────
   const etapasMap: Record<string, number> = {};
   tratosPorEtapa.forEach(t => { etapasMap[t.etapa] = t._count._all; });
-  const totalPipeline    = (etapasMap.DESCUBRIMIENTO ?? 0) + (etapasMap.OPORTUNIDAD ?? 0);
+  const totalPipeline    = (etapasMap.DESCUBRIMIENTO ?? 0) + (etapasMap.OPORTUNIDAD ?? 0) + (etapasMap.EN_NEGOCIACION ?? 0);
   const totalCerrados    = etapasMap.VENTA_CERRADA ?? 0;
   const totalPerdidos    = etapasMap.VENTA_PERDIDA ?? 0;
   const tasaConversion   = (totalCerrados + totalPerdidos) > 0
@@ -384,7 +384,7 @@ export default async function DashboardPage() {
     }),
     prisma.$queryRaw<{ count: bigint }[]>`
       SELECT COUNT(*) as count FROM tratos t
-      WHERE t.etapa IN ('DESCUBRIMIENTO', 'OPORTUNIDAD')
+      WHERE t.etapa IN ('DESCUBRIMIENTO', 'OPORTUNIDAD', 'EN_NEGOCIACION')
         AND t."tipoProspecto" = 'ACTIVO'
         AND (
           (t."etapaCambiadaEn" IS NULL AND t."createdAt" <= ${hace7dias})
@@ -400,7 +400,7 @@ export default async function DashboardPage() {
     prisma.$queryRaw<{ count: bigint }[]>`
       SELECT COUNT(*) as count FROM tratos
       WHERE "requiereRevision" = true
-        AND etapa IN ('DESCUBRIMIENTO', 'OPORTUNIDAD')
+        AND etapa IN ('DESCUBRIMIENTO', 'OPORTUNIDAD', 'EN_NEGOCIACION')
     `.catch(() => [{ count: BigInt(0) }]),
   ]);
   const tratosSinMovimiento = Number(tratosSinMovimientoRaw[0]?.count ?? 0);

@@ -44,6 +44,10 @@ export const PLANTILLAS_SUBETAPA_DEFAULT: Record<string, { titulo: string; descr
     { titulo: "Atender ajustes solicitados por el cliente", prioridad: "ALTA", offsetDias: 0 },
     { titulo: "Enviar cotización revisada", offsetDias: 1 },
   ],
+  PROPUESTA_AJUSTADA: [
+    { titulo: "Confirmar que el ajuste resolvió lo que pidió el cliente", prioridad: "ALTA", offsetDias: 1 },
+    { titulo: "Pedir la decisión sobre la propuesta ajustada", offsetDias: 3 },
+  ],
   CONFIRMADA: [
     { titulo: "Registrar método de confirmación", prioridad: "ALTA", offsetDias: 0 },
     { titulo: "Solicitar anticipo al cliente", area: "ADMINISTRACION", offsetDias: 1 },

@@ -46,7 +46,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   // Bloque 7: si se completó el seguimiento auto #3 y el trato sigue abierto, marcar requiereRevision
   if (body.completado && seguimiento.tipo === "PROCESO" && seguimiento.numero === 3) {
-    const etapaAbierta = ["DESCUBRIMIENTO", "OPORTUNIDAD"].includes(seguimiento.trato.etapa);
+    const etapaAbierta = ["DESCUBRIMIENTO", "OPORTUNIDAD", "EN_NEGOCIACION"].includes(seguimiento.trato.etapa);
     if (etapaAbierta) {
       await prisma.$executeRawUnsafe(
         `UPDATE tratos SET "requiereRevision" = true WHERE id = $1`,

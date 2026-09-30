@@ -29,6 +29,7 @@ export function GraficaFunnelVentas({ etapasMap, tratosSeguimientoVencido }: Pro
   const data = [
     { name: "Descubrimiento", value: etapasMap.DESCUBRIMIENTO ?? 0, fill: "#3b82f6" },
     { name: "Oportunidad",    value: etapasMap.OPORTUNIDAD    ?? 0, fill: "#B3985B" },
+    { name: "En negociación", value: etapasMap.EN_NEGOCIACION ?? 0, fill: "#f97316" },
     { name: "Cerradas",       value: etapasMap.VENTA_CERRADA  ?? 0, fill: "#4ade80" },
     { name: "Perdidas",       value: etapasMap.VENTA_PERDIDA  ?? 0, fill: "#f87171" },
   ];

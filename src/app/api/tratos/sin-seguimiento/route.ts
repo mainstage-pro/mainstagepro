@@ -12,7 +12,7 @@ export async function GET() {
 
   const tratos = await prisma.trato.findMany({
     where: {
-      etapa: { in: ["DESCUBRIMIENTO", "OPORTUNIDAD"] },
+      etapa: { in: ["DESCUBRIMIENTO", "OPORTUNIDAD", "EN_NEGOCIACION"] },
       tipoProspecto: "ACTIVO",
       OR: [
         { etapaCambiadaEn: null, createdAt: { lte: hace7dias } },

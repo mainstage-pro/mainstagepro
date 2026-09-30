@@ -137,6 +137,7 @@ export const ETAPA_LABELS: Record<string, string> = {
   PROSPECCION: "Prospección",
   DESCUBRIMIENTO: "Descubrimiento",
   OPORTUNIDAD: "Oportunidad",
+  EN_NEGOCIACION: "En negociación",
   VENTA_CERRADA: "Venta Cerrada",
   VENTA_PERDIDA: "Venta Perdida",
 };

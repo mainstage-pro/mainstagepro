@@ -139,10 +139,11 @@ interface Trato {
 }
 
 // ─── Catálogos / Constantes ───────────────────────────────────────────────────
-const ETAPAS = ["PROSPECCION", "DESCUBRIMIENTO", "OPORTUNIDAD", "VENTA_CERRADA", "VENTA_PERDIDA"];
+const ETAPAS = ["PROSPECCION", "DESCUBRIMIENTO", "OPORTUNIDAD", "EN_NEGOCIACION", "VENTA_CERRADA", "VENTA_PERDIDA"];
 const ETAPA_LABELS: Record<string, string> = {
   CONTACTO_INICIAL: "Contacto inicial", PROSPECCION: "Prospección",
   DESCUBRIMIENTO: "Descubrimiento", OPORTUNIDAD: "Oportunidad",
+  EN_NEGOCIACION: "En negociación",
   VENTA_CERRADA: "Venta Cerrada", VENTA_PERDIDA: "Venta Perdida",
 };
 const ETAPA_COLORS: Record<string, string> = {
@@ -150,6 +151,7 @@ const ETAPA_COLORS: Record<string, string> = {
   PROSPECCION: "bg-violet-900/50 text-violet-300",
   DESCUBRIMIENTO: "bg-gray-700 text-gray-200",
   OPORTUNIDAD: "bg-yellow-900/50 text-yellow-300",
+  EN_NEGOCIACION: "bg-orange-900/50 text-orange-300",
   VENTA_CERRADA: "bg-green-900/50 text-green-300",
   VENTA_PERDIDA: "bg-red-900/50 text-red-300",
 };

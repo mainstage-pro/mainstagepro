@@ -94,7 +94,7 @@ export default async function DashboardDireccionPage() {
 
     // Tratos activos en pipeline
     prisma.trato.count({
-      where: { etapa: { in: ["DESCUBRIMIENTO", "OPORTUNIDAD"] } },
+      where: { etapa: { in: ["DESCUBRIMIENTO", "OPORTUNIDAD", "EN_NEGOCIACION"] } },
     }),
 
     // Personal activo

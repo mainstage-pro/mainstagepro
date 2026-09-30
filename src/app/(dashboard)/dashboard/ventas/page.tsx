@@ -26,12 +26,14 @@ function KpiCard({ label, value, sub, color = "text-white", href, alert }: { lab
 const ETAPA_LABELS: Record<string, string> = {
   DESCUBRIMIENTO: "Descubrimiento",
   OPORTUNIDAD: "Oportunidad",
+  EN_NEGOCIACION: "En negociación",
   VENTA_CERRADA: "Venta Cerrada",
   VENTA_PERDIDA: "Venta Perdida",
 };
 const ETAPA_COLORS: Record<string, string> = {
   DESCUBRIMIENTO: "bg-blue-900/30 text-blue-300",
   OPORTUNIDAD: "bg-yellow-900/30 text-yellow-300",
+  EN_NEGOCIACION: "bg-orange-900/30 text-orange-300",
   VENTA_CERRADA: "bg-green-900/30 text-green-300",
   VENTA_PERDIDA: "bg-red-900/30 text-red-400",
 };
@@ -74,7 +76,7 @@ export default async function DashboardVentasPage() {
     }),
     prisma.trato.findMany({
       where: {
-        etapa: { in: ["DESCUBRIMIENTO", "OPORTUNIDAD"] },
+        etapa: { in: ["DESCUBRIMIENTO", "OPORTUNIDAD", "EN_NEGOCIACION"] },
         fechaProximaAccion: { gte: ahora, lte: en7dias },
         ...tf,
       },
@@ -89,7 +91,7 @@ export default async function DashboardVentasPage() {
       take: 5,
     }),
     prisma.trato.findMany({
-      where: { etapa: { in: ["DESCUBRIMIENTO", "OPORTUNIDAD"] }, ...tf },
+      where: { etapa: { in: ["DESCUBRIMIENTO", "OPORTUNIDAD", "EN_NEGOCIACION"] }, ...tf },
       include: { cliente: { select: { nombre: true } }, responsable: { select: { name: true } } },
       orderBy: { updatedAt: "desc" },
       take: 8,
@@ -101,11 +103,11 @@ export default async function DashboardVentasPage() {
   void finMes;
 
   const etapasMap = Object.fromEntries(tratosPorEtapa.map(t => [t.etapa, { count: t._count._all, sum: t._sum.presupuestoEstimado ?? 0 }]));
-  const pipeline = (etapasMap.DESCUBRIMIENTO?.count ?? 0) + (etapasMap.OPORTUNIDAD?.count ?? 0);
+  const pipeline = (etapasMap.DESCUBRIMIENTO?.count ?? 0) + (etapasMap.OPORTUNIDAD?.count ?? 0) + (etapasMap.EN_NEGOCIACION?.count ?? 0);
   const cerradas = etapasMap.VENTA_CERRADA?.count ?? 0;
   const perdidas = etapasMap.VENTA_PERDIDA?.count ?? 0;
   const tasa = (cerradas + perdidas) > 0 ? Math.round((cerradas / (cerradas + perdidas)) * 100) : 0;
-  const valorPipeline = (etapasMap.DESCUBRIMIENTO?.sum ?? 0) + (etapasMap.OPORTUNIDAD?.sum ?? 0);
+  const valorPipeline = (etapasMap.DESCUBRIMIENTO?.sum ?? 0) + (etapasMap.OPORTUNIDAD?.sum ?? 0) + (etapasMap.EN_NEGOCIACION?.sum ?? 0);
   const valorAprobado = valorAprobadas._sum.granTotal ?? 0;
 
   const fmtDate = (s: string | Date | null) => {
@@ -156,7 +158,7 @@ export default async function DashboardVentasPage() {
             <Link href="/crm/tratos" className="text-xs text-[#B3985B] hover:underline">Ver todos →</Link>
           </div>
           <div className="space-y-2">
-            {["DESCUBRIMIENTO", "OPORTUNIDAD", "VENTA_CERRADA", "VENTA_PERDIDA"].map(etapa => {
+            {["DESCUBRIMIENTO", "OPORTUNIDAD", "EN_NEGOCIACION", "VENTA_CERRADA", "VENTA_PERDIDA"].map(etapa => {
               const d = etapasMap[etapa];
               return (
                 <div key={etapa} className="flex items-center justify-between py-1">

@@ -15,7 +15,7 @@ export async function GET() {
     FROM tratos t
     JOIN clientes c ON c.id = t."clienteId"
     WHERE t."requiereRevision" = true
-      AND t.etapa IN ('DESCUBRIMIENTO', 'OPORTUNIDAD')
+      AND t.etapa IN ('DESCUBRIMIENTO', 'OPORTUNIDAD', 'EN_NEGOCIACION')
     ORDER BY t."createdAt" ASC
   `.catch(() => []);
 

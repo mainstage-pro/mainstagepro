@@ -68,6 +68,7 @@ const ETAPA_COLOR: Record<EtapaTrato, string> = {
   PROSPECCION: "#a78bfa",
   DESCUBRIMIENTO: "#60a5fa",
   OPORTUNIDAD: "#eab308",
+  EN_NEGOCIACION: "#fb923c",
   VENTA_CERRADA: "#34d399",
   VENTA_PERDIDA: "#f87171",
 };

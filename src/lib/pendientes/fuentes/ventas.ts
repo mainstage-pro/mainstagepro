@@ -17,7 +17,7 @@ export const FUENTES_VENTAS: DefinicionFuente[] = [
     fuente: "TRATO_VENCIDO",
     area: "VENTAS",
     etiqueta: "Seguimiento vencido",
-    criterio: "Trato en descubrimiento u oportunidad cuya fecha de próxima acción ya pasó",
+    criterio: "Trato en descubrimiento, oportunidad o negociación cuya fecha de próxima acción ya pasó",
     activa: true,
     anticipa: false,
     // Un mes sin tocarse ya no es seguimiento tarde: es pipeline muerto que hay que recalificar.
@@ -26,7 +26,7 @@ export const FUENTES_VENTAS: DefinicionFuente[] = [
     async computar({ ahora, limite }) {
       const tratos = await prisma.trato.findMany({
         where: {
-          etapa: { in: ["DESCUBRIMIENTO", "OPORTUNIDAD"] },
+          etapa: { in: ["DESCUBRIMIENTO", "OPORTUNIDAD", "EN_NEGOCIACION"] },
           fechaProximaAccion: { lt: ahora },
         },
         select: {

@@ -104,6 +104,32 @@ export const SEGUIMIENTO_TIPOS: Record<string, SeguimientoTipoItem[]> = {
         `Hola ${nombre.split(' ')[0]}, quería retomar el tema de la producción de tu evento. La fecha se acerca y quiero asegurarme de que tenemos todo listo para ti.`,
     },
   ],
+  EN_NEGOCIACION: [
+    {
+      key: 'negociacion',
+      label: 'Negociación',
+      getGuia: () =>
+        'El cliente tiene dudas sobre precio o servicios. Objetivo: encontrar un acuerdo sin sacrificar rentabilidad mínima. Registrar en nota qué se ofreció y qué se aceptó.',
+    },
+    {
+      key: 'propuesta_ajustada',
+      label: 'Propuesta ajustada',
+      getGuia: (nombre = '[nombre]') =>
+        `Hola ${nombre.split(' ')[0]}, te comparto la propuesta ya con los cambios que acordamos: [link cotización]. Confírmame que quedó como lo necesitabas.`,
+    },
+    {
+      key: 'confirmacion_anticipo',
+      label: 'Confirmación y anticipo',
+      getGuia: (nombre = '[nombre]') =>
+        `Hola ${nombre.split(' ')[0]}, para confirmar tu evento y apartar la fecha necesitamos el anticipo del 50%. Te comparto los datos: [datos de pago]. Con eso quedamos listos.`,
+    },
+    {
+      key: 'reactivacion',
+      label: 'Reactivación',
+      getGuia: (nombre = '[nombre]') =>
+        `Hola ${nombre.split(' ')[0]}, quería retomar el tema de la producción de tu evento. La fecha se acerca y quiero asegurarme de que tenemos todo listo para ti.`,
+    },
+  ],
   VENTA_CERRADA: [
     {
       key: 'llamada_post_evento',

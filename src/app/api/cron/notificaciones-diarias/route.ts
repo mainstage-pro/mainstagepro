@@ -146,7 +146,7 @@ export async function GET(req: NextRequest) {
   // 6. Tratos sin actualización en +7 días
   const tratosSinUpdate = await prisma.trato.count({
     where: {
-      etapa: { in: ["DESCUBRIMIENTO", "OPORTUNIDAD"] },
+      etapa: { in: ["DESCUBRIMIENTO", "OPORTUNIDAD", "EN_NEGOCIACION"] },
       updatedAt: { lt: hace7dias },
     },
   }).catch(() => 0);

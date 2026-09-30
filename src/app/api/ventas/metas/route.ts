@@ -75,7 +75,7 @@ export async function GET(req: NextRequest) {
   const [oportunidadesMes, cierresMes, perdidosMes] = await Promise.all([
     prisma.trato.count({
       where: {
-        etapa: "OPORTUNIDAD",
+        etapa: { in: ["OPORTUNIDAD", "EN_NEGOCIACION"] },
         createdAt: { gte: inicioMes, lte: finMes },
         ...(vendedorId ? { responsableId: vendedorId } : {}),
       },
@@ -152,7 +152,7 @@ export async function GET(req: NextRequest) {
   const leadsAsignados = await prisma.trato.findMany({
     where: {
       origenVenta: "ASIGNADO",
-      etapa: { in: ["DESCUBRIMIENTO", "OPORTUNIDAD"] },
+      etapa: { in: ["DESCUBRIMIENTO", "OPORTUNIDAD", "EN_NEGOCIACION"] },
       ...(vendedorId ? { responsableId: vendedorId } : {}),
     },
     select: {
@@ -190,7 +190,7 @@ export async function GET(req: NextRequest) {
           prisma.trato.count({ where: { tipoLead: "OUTBOUND", responsableId: v.id, createdAt: { gte: hoy, lte: finHoy } } }),
           prisma.trato.count({ where: { tipoLead: "OUTBOUND", responsableId: v.id, createdAt: { gte: new Date(hoy.getTime() - 6 * 86400000), lte: finHoy } } }),
           prisma.trato.count({ where: { tipoLead: "OUTBOUND", responsableId: v.id, createdAt: { gte: inicioMes, lte: finMes } } }),
-          prisma.trato.count({ where: { etapa: "OPORTUNIDAD", responsableId: v.id, createdAt: { gte: inicioMes, lte: finMes } } }),
+          prisma.trato.count({ where: { etapa: { in: ["OPORTUNIDAD", "EN_NEGOCIACION"] }, responsableId: v.id, createdAt: { gte: inicioMes, lte: finMes } } }),
           prisma.trato.count({ where: { etapa: "VENTA_CERRADA", responsableId: v.id, fechaCierre: { gte: inicioMes, lte: finMes } } }),
         ]);
         return { id: v.id, nombre: v.name, hoy: hoyV, semana: semanaV, mes: mesV, oportunidadesMes: opMes, cierresMes: cMes };

@@ -92,6 +92,7 @@ const ETAPA_BADGE: Record<string, { label: string; cls: string }> = {
   PROSPECCION:    { label: "Prospección",    cls: "bg-amber-900/20 text-amber-400" },
   DESCUBRIMIENTO: { label: "Descubrimiento", cls: "bg-blue-900/20 text-blue-400" },
   OPORTUNIDAD:    { label: "Oportunidad",    cls: "bg-violet-900/20 text-violet-400" },
+  EN_NEGOCIACION: { label: "En negociación", cls: "bg-orange-900/20 text-orange-400" },
   VENTA_CERRADA:  { label: "Cerrada",        cls: "bg-emerald-900/20 text-emerald-400" },
   VENTA_PERDIDA:  { label: "Perdida",        cls: "bg-red-900/20 text-red-400" },
 };
@@ -180,7 +181,7 @@ function ModalNuevo({ onClose, onSave }: { onClose: () => void; onSave: () => vo
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetch("/api/tratos?etapa=DESCUBRIMIENTO,OPORTUNIDAD&limit=100")
+    fetch("/api/tratos?etapa=DESCUBRIMIENTO,OPORTUNIDAD,EN_NEGOCIACION&limit=100")
       .then(r => r.ok ? r.json() : { tratos: [] })
       .then(d => setTratos(d.tratos ?? []));
   }, []);

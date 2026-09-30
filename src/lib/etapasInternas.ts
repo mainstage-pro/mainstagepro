@@ -19,6 +19,7 @@ const HINTS: Record<EtapaInternaKey, string> = {
   PROPUESTA_EN_ELABORACION: "Recibimos la información y armamos la cotización.",
   COTIZACION_ENVIADA: "Propuesta entregada y ciclo de tres seguimientos.",
   CAMBIOS_Y_NEGOCIACION: "El cliente pidió ajustes; los pasos son alternativos.",
+  PROPUESTA_AJUSTADA: "Se reenvió la propuesta con los cambios que pidió el cliente.",
   CONFIRMADA: "El cliente confirmó el servicio.",
   FORMALIZADA: "Recibo, contrato y proyecto creado.",
   PERDIDA: "Cierre del trato con motivo registrado.",

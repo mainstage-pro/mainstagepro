@@ -9,6 +9,7 @@ const ETAPAS: { etapa: string; label: string }[] = [
   { etapa: "PROSPECCION", label: "Prospección" },
   { etapa: "DESCUBRIMIENTO", label: "Descubrimiento" },
   { etapa: "OPORTUNIDAD", label: "Oportunidad" },
+  { etapa: "EN_NEGOCIACION", label: "En negociación" },
   { etapa: "VENTA_CERRADA", label: "Venta cerrada" },
 ];
 

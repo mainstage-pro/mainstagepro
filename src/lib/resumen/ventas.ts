@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { diasEntre, inicioDeMes, num, sumarDias, ventana } from "./base";
 
-const ABIERTAS = ["PROSPECCION", "DESCUBRIMIENTO", "OPORTUNIDAD"];
+const ABIERTAS = ["PROSPECCION", "DESCUBRIMIENTO", "OPORTUNIDAD", "EN_NEGOCIACION"];
 const COTIZACION_VIVA = ["ENVIADA", "EN_REVISION", "AJUSTE_SOLICITADO", "REENVIADA"];
 
 export async function resumenVentas() {
@@ -150,6 +150,7 @@ export async function resumenVentas() {
       prospeccion: conteoEtapa("PROSPECCION"),
       descubrimiento: conteoEtapa("DESCUBRIMIENTO"),
       oportunidad: conteoEtapa("OPORTUNIDAD"),
+      enNegociacion: conteoEtapa("EN_NEGOCIACION"),
     },
   };
 }
