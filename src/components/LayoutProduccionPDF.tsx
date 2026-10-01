@@ -4,121 +4,215 @@ import { Document, G, Line, Page, Rect, StyleSheet, Svg, Text, View, Image } fro
 import { C, fmtFecha, nowStr } from "@/components/pdf/PdfShared";
 import type { DocumentoLayout, FilaEquipo, ZonaDoc } from "@/lib/layout-produccion";
 import { rotuloEnLineas, type Area } from "@/lib/layout-escenario";
+import { DISCIPLINA_LABELS } from "@/lib/disciplinaColors";
 
 /** Carta horizontal: el plano y la tabla ancha piden apaisado. */
-const PAGINA = { ancho: 792, alto: 612 };
-const MARGEN = 30;
-const UTIL = PAGINA.ancho - MARGEN * 2;
+const MARGEN = 36;
+const UTIL = 792 - MARGEN * 2;
+
+/**
+ * El plano de un evento casi siempre es más alto que ancho —el público abajo, el
+ * escenario arriba—, así que al centrarlo sobran dos franjas a los costados. Ahí
+ * van el resumen, la carga eléctrica y la leyenda: la hoja se lee de un vistazo
+ * sin pasar de página.
+ */
+const COL_LATERAL = 166;
+const GAP_COL = 15;
+const PLANO_ANCHO = UTIL - COL_LATERAL * 2 - GAP_COL * 2;
+const PLANO_ALTO = 398;
+
+/**
+ * Cuánta nota cabe debajo de la leyenda, en caracteres. La franja es de alto fijo y
+ * cada zona le come un renglón, así que el presupuesto baja con el número de zonas;
+ * si queda muy poco, la nota se va completa a la última página en vez de partirse.
+ */
+function presupuestoNotas(zonas: number): number {
+  const libre = 620 - Math.max(0, zonas - 6) * 65;
+  return libre < 140 ? 0 : libre;
+}
+
+const CREMA = "#F7F5F0";
+const LINEA = "#e4e0d7";
 
 /** Anchos de la lista de instalación. Suman UTIL exacto para que no haya deriva. */
 const COL = {
-  img: 26,
-  cant: 30,
-  equipo: 112,
-  descripcion: 140,
-  config: 88,
-  montaje: 88,
-  peso: 42,
-  carga: 64,
-  notas: UTIL - (26 + 30 + 112 + 140 + 88 + 88 + 42 + 64),
+  img: 38,
+  cant: 26,
+  equipo: 128,
+  descripcion: 142,
+  config: 72,
+  montaje: 72,
+  peso: 38,
+  carga: 56,
+  notas: UTIL - (38 + 26 + 128 + 142 + 72 + 72 + 38 + 56),
 };
 
 const s = StyleSheet.create({
   page: {
-    paddingTop: MARGEN,
-    paddingBottom: 38,
-    paddingHorizontal: MARGEN,
+    fontFamily: "Helvetica",
+    paddingTop: 0,
+    paddingBottom: 34,
+    paddingHorizontal: 0,
     backgroundColor: C.blanco,
     fontSize: 7.5,
     color: C.negro,
   },
+  cuerpo: { paddingHorizontal: MARGEN, paddingTop: 14 },
 
+  // ── Encabezado de marca ──
   hero: {
     backgroundColor: C.negro,
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-end",
     justifyContent: "space-between",
-    paddingVertical: 11,
-    paddingHorizontal: 14,
+    paddingHorizontal: MARGEN,
+    paddingTop: 20,
+    paddingBottom: 16,
   },
-  heroTag: { fontSize: 6.5, color: C.dorado, letterSpacing: 2.2 },
-  heroTitulo: { fontSize: 16, color: C.blanco, marginTop: 2 },
-  heroSub: { fontSize: 7.5, color: "#9a9a9a", marginTop: 3 },
+  heroTag: { fontSize: 6.5, color: C.dorado, letterSpacing: 2.4 },
+  heroTitulo: { fontSize: 17, fontFamily: "Helvetica-Bold", color: C.blanco, marginTop: 5 },
+  heroSub: { fontSize: 8, color: "#8a8a8a", marginTop: 4 },
+  heroDer: { alignItems: "flex-end" },
   heroLogo: { height: 24, objectFit: "contain" },
+  heroNum: { fontSize: 8.5, fontFamily: "Helvetica-Bold", color: C.blanco, marginTop: 8 },
+  barraDorada: { height: 3, backgroundColor: C.dorado },
 
   banda: {
     flexDirection: "row",
-    borderBottomWidth: 1.6,
-    borderBottomColor: C.dorado,
-    backgroundColor: C.grisFondo,
-    paddingVertical: 7,
-    paddingHorizontal: 14,
+    backgroundColor: CREMA,
+    paddingVertical: 8,
+    paddingHorizontal: MARGEN,
   },
-  bandaItem: { flex: 1, paddingRight: 8 },
-  bandaLabel: { fontSize: 5.6, color: C.grisMedio, letterSpacing: 1.1 },
-  bandaVal: { fontSize: 8.5, color: C.negro, marginTop: 1.5 },
+  bandaItem: { flex: 1, paddingRight: 10 },
+  bandaLabel: { fontSize: 5.6, fontFamily: "Helvetica-Bold", color: "#9a917f", letterSpacing: 1.2 },
+  bandaVal: { fontSize: 8.5, color: C.negro, marginTop: 2 },
 
-  secTitulo: {
-    fontSize: 8,
-    letterSpacing: 1.6,
+  // ── Franjas laterales ──
+  lateral: { width: COL_LATERAL },
+  bloqueTit: {
+    fontSize: 6.2,
+    fontFamily: "Helvetica-Bold",
+    letterSpacing: 1.4,
     color: C.negro,
-    borderLeftWidth: 2.4,
-    borderLeftColor: C.dorado,
-    paddingLeft: 6,
-    marginTop: 14,
+    borderBottomWidth: 1.2,
+    borderBottomColor: C.dorado,
+    paddingBottom: 3.5,
     marginBottom: 6,
+    marginTop: 15,
   },
+  statGrid: { flexDirection: "row", flexWrap: "wrap" },
+  stat: { width: "50%", paddingBottom: 7, paddingRight: 6 },
+  statVal: { fontSize: 15, fontFamily: "Helvetica-Bold", color: C.negro },
+  statLbl: { fontSize: 5.4, color: C.grisClaro, letterSpacing: 0.9, marginTop: 2 },
 
-  kpis: { flexDirection: "row", gap: 7 },
-  kpi: {
-    flex: 1,
-    borderWidth: 0.7,
-    borderColor: C.grisLinea,
-    borderTopWidth: 2,
-    borderTopColor: C.dorado,
-    paddingVertical: 7,
-    paddingHorizontal: 8,
+  fila: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 2.8,
+    borderBottomWidth: 0.4,
+    borderBottomColor: LINEA,
   },
-  kpiVal: { fontSize: 14, color: C.negro },
-  kpiLabel: { fontSize: 5.8, color: C.grisMedio, letterSpacing: 1, marginTop: 2 },
+  filaLbl: { fontSize: 6.8, color: C.grisMedio },
+  filaVal: { fontSize: 8, fontFamily: "Helvetica-Bold", color: C.negro },
 
-  thead: { flexDirection: "row", backgroundColor: C.negro, paddingVertical: 4.5, paddingHorizontal: 4 },
-  th: { fontSize: 5.8, color: C.blanco, letterSpacing: 0.9 },
+  leyItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 3.2,
+    borderBottomWidth: 0.4,
+    borderBottomColor: LINEA,
+  },
+  leyChip: { width: 8, height: 8, marginRight: 6 },
+  leyNom: { flex: 1, fontSize: 7.2, fontFamily: "Helvetica-Bold", color: C.negro },
+  leyMeta: { fontSize: 5.8, color: C.grisClaro },
 
-  zonaHd: { flexDirection: "row", alignItems: "center", marginTop: 9, paddingVertical: 4, paddingHorizontal: 4, backgroundColor: C.grisFondo },
-  zonaChip: { width: 7, height: 7, marginRight: 6 },
-  zonaNombre: { fontSize: 9, letterSpacing: 0.8, flex: 1 },
-  zonaMeta: { fontSize: 6.5, color: C.grisMedio },
+  notaCaja: {
+    backgroundColor: CREMA,
+    borderLeftWidth: 2,
+    borderLeftColor: C.dorado,
+    paddingVertical: 6,
+    paddingHorizontal: 7,
+  },
+  notaTxt: { fontSize: 6.6, color: "#4a4a4a", lineHeight: 1.5 },
 
-  subHd: { flexDirection: "row", alignItems: "center", marginTop: 5, paddingVertical: 2.5, paddingHorizontal: 4, borderBottomWidth: 0.7, borderBottomColor: C.grisLinea },
-  subChip: { width: 5, height: 5, marginRight: 5 },
-  subNombre: { fontSize: 7.5, flex: 1 },
-  subMeta: { fontSize: 6, color: C.grisMedio },
+  planoPie: { fontSize: 5.8, color: C.grisClaro, letterSpacing: 0.8, textAlign: "center", marginTop: 6 },
 
-  tr: { flexDirection: "row", alignItems: "center", borderBottomWidth: 0.5, borderBottomColor: "#f0f0f0", paddingVertical: 3, paddingHorizontal: 4 },
-  td: { fontSize: 6.8, color: "#333333" },
-  tdFuerte: { fontSize: 7.2, color: C.negro },
-  tdTenue: { fontSize: 6.3, color: C.grisClaro },
-  thumb: { width: 18, height: 18, objectFit: "contain" },
+  // ── Lista de instalación ──
+  secTitulo: {
+    fontSize: 7.5,
+    fontFamily: "Helvetica-Bold",
+    color: C.blanco,
+    backgroundColor: C.negro,
+    letterSpacing: 1.4,
+    paddingVertical: 5,
+    paddingHorizontal: 9,
+    marginBottom: 9,
+  },
+  thead: {
+    flexDirection: "row",
+    backgroundColor: C.negro,
+    paddingVertical: 5,
+    paddingHorizontal: 4,
+  },
+  th: { fontSize: 5.8, fontFamily: "Helvetica-Bold", color: C.blanco, letterSpacing: 0.9 },
 
-  nota: { fontSize: 6.3, color: C.amarillo },
-  avisoCaja: { borderWidth: 0.7, borderColor: C.doradoBorde, backgroundColor: C.doradoClaro, padding: 7, marginTop: 10 },
-  avisoTxt: { fontSize: 7, color: "#6b5a2e", lineHeight: 1.4 },
+  zonaHd: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 13,
+    paddingVertical: 6.5,
+    paddingHorizontal: 9,
+    backgroundColor: CREMA,
+    borderLeftWidth: 4,
+  },
+  zonaNombre: { flex: 1, fontSize: 12, fontFamily: "Helvetica-Bold", letterSpacing: 1.2, color: C.negro },
+  zonaMeta: { fontSize: 6.6, color: C.grisMedio },
 
-  leyenda: { flexDirection: "row", flexWrap: "wrap", marginTop: 8 },
-  leyItem: { flexDirection: "row", alignItems: "center", width: "25%", paddingRight: 6, marginBottom: 3 },
-  leyChip: { width: 6, height: 6, marginRight: 4 },
-  leyTxt: { fontSize: 6.3, color: "#444444" },
+  subHd: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 7,
+    paddingVertical: 3.5,
+    paddingLeft: 10,
+    borderLeftWidth: 2.5,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#d8d8d8",
+  },
+  subNombre: { flex: 1, fontSize: 8.6, fontFamily: "Helvetica-Bold", letterSpacing: 0.6, color: C.negro },
+  subDisc: { fontSize: 6.2, fontFamily: "Helvetica", color: C.grisClaro, letterSpacing: 0 },
+  subMeta: { fontSize: 6.2, color: C.grisMedio },
+
+  tr: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderBottomWidth: 0.4,
+    borderBottomColor: "#f1efea",
+    paddingVertical: 4,
+    paddingHorizontal: 4,
+  },
+  td: { fontSize: 7, color: "#3a3a3a" },
+  tdFuerte: { fontSize: 7.6, fontFamily: "Helvetica-Bold", color: C.negro },
+  tdTenue: { fontSize: 6.4, color: C.grisClaro },
+  thumb: { width: 30, height: 30, objectFit: "contain" },
+  nota: { fontSize: 6.5, color: C.amarillo },
+
+  avisoCaja: {
+    borderLeftWidth: 2,
+    borderLeftColor: C.doradoBorde,
+    backgroundColor: C.doradoClaro,
+    paddingVertical: 6,
+    paddingHorizontal: 7,
+    marginTop: 7,
+  },
+  avisoTxt: { fontSize: 6.4, color: "#6b5a2e", lineHeight: 1.45 },
 
   pie: {
     position: "absolute",
-    bottom: 16,
-    left: MARGEN,
-    right: MARGEN,
+    bottom: 15,
     flexDirection: "row",
     justifyContent: "space-between",
-    borderTopWidth: 0.6,
-    borderTopColor: C.grisLinea,
+    borderTopWidth: 0.5,
+    borderTopColor: LINEA,
     paddingTop: 5,
   },
   pieTxt: { fontSize: 5.8, color: C.grisClaro },
@@ -128,9 +222,15 @@ function kg(v: number) {
   return `${v.toFixed(v >= 100 ? 0 : 1)} kg`;
 }
 
-function Pie({ doc }: { doc: DocumentoLayout }) {
+function disciplina(t: string) {
+  return DISCIPLINA_LABELS[t] ?? t.charAt(0) + t.slice(1).toLowerCase();
+}
+
+/** `sangrado` para las páginas cuyo contenido llega al borde: ahí el pie pone su propio margen. */
+function Pie({ doc, sangrado }: { doc: DocumentoLayout; sangrado?: boolean }) {
+  const lados = sangrado ? MARGEN : 0;
   return (
-    <View style={s.pie} fixed>
+    <View style={[s.pie, { left: lados, right: lados }]} fixed>
       <Text style={s.pieTxt}>
         {doc.proyecto.numero} · {doc.proyecto.nombre} · Layout de producción · {doc.escenario.nombre}
       </Text>
@@ -139,17 +239,45 @@ function Pie({ doc }: { doc: DocumentoLayout }) {
   );
 }
 
+function BloqueTit({ children, primero }: { children: string; primero?: boolean }) {
+  return <Text style={[s.bloqueTit, primero ? { marginTop: 0 } : {}]}>{children}</Text>;
+}
+
+function Fila({ label, valor, acento }: { label: string; valor: string; acento?: boolean }) {
+  return (
+    <View style={s.fila}>
+      <Text style={[s.filaLbl, { flex: 1 }]}>{label}</Text>
+      <Text style={[s.filaVal, acento ? { color: C.dorado } : {}]}>{valor}</Text>
+    </View>
+  );
+}
+
 /**
  * El plano cenital, redibujado en vectores para impresión. No es una captura de
  * pantalla: se arma con las mismas áreas y piezas del editor pero en claro, que
  * es como se lee en sitio con una hoja en la mano.
+ *
+ * Un color por zona: la configuración de montaje hereda el tono de su zona en vez
+ * de traer el de su disciplina. Con quince tonos distintos el plano se volvía un
+ * mosaico y la leyenda dejaba de servir.
  */
-function Plano({ doc, ancho, alto }: { doc: DocumentoLayout; ancho: number; alto: number }) {
+function Plano({
+  doc,
+  ancho,
+  alto,
+  colorDeZona,
+}: {
+  doc: DocumentoLayout;
+  ancho: number;
+  alto: number;
+  colorDeZona: (a: Area) => string;
+}) {
   const { anchoM, largoM, areas, piezas } = doc.plano;
   const escala = Math.min(ancho / anchoM, alto / largoM);
   const w = anchoM * escala;
   const h = largoM * escala;
   const dx = (ancho - w) / 2;
+  const dy = (alto - h) / 2;
 
   const lineasV = Math.floor(anchoM);
   const lineasH = Math.floor(largoM);
@@ -166,14 +294,14 @@ function Plano({ doc, ancho, alto }: { doc: DocumentoLayout; ancho: number; alto
     const r = rotuloEnLineas(texto, anchoCaja - 5, maximo);
     const pad = r.fs * 0.5;
     const x = dx + a.x * escala + 1.5;
-    const y = a.y * escala + 1.5;
+    const y = dy + a.y * escala + 1.5;
     return (
       <G>
         <Rect
           x={x} y={y}
           width={Math.min(anchoCaja - 3, r.ancho + pad * 2)}
           height={r.lineas.length * r.fs * 1.2 + pad * 1.4}
-          fill={a.color}
+          fill={colorDeZona(a)}
         />
         {r.lineas.map((l, i) => (
           <Text
@@ -193,42 +321,40 @@ function Plano({ doc, ancho, alto }: { doc: DocumentoLayout; ancho: number; alto
   return (
     <Svg width={ancho} height={alto + 14} viewBox={`0 0 ${ancho} ${alto + 14}`}>
       <G>
-        <Rect x={dx} y={0} width={w} height={h} fill="#fcfcfc" stroke="#cfcfcf" strokeWidth={0.9} />
+        <Rect x={dx} y={dy} width={w} height={h} fill="#fcfbf9" stroke="#cdc8bd" strokeWidth={0.9} />
 
         {Array.from({ length: lineasV }, (_, i) => (
-          <Line key={`v${i}`} x1={dx + (i + 1) * escala} y1={0} x2={dx + (i + 1) * escala} y2={h} stroke="#ededed" strokeWidth={0.4} />
+          <Line key={`v${i}`} x1={dx + (i + 1) * escala} y1={dy} x2={dx + (i + 1) * escala} y2={dy + h} stroke="#ebe8e1" strokeWidth={0.4} />
         ))}
         {Array.from({ length: lineasH }, (_, i) => (
-          <Line key={`h${i}`} x1={dx} y1={(i + 1) * escala} x2={dx + w} y2={(i + 1) * escala} stroke="#ededed" strokeWidth={0.4} />
+          <Line key={`h${i}`} x1={dx} y1={dy + (i + 1) * escala} x2={dx + w} y2={dy + (i + 1) * escala} stroke="#ebe8e1" strokeWidth={0.4} />
         ))}
 
         {zonas.map(a => (
-          <G key={a.id}>
-            <Rect
-              x={dx + a.x * escala} y={a.y * escala}
-              width={a.anchoM * escala} height={a.largoM * escala}
-              fill={a.color} fillOpacity={0.18} stroke={a.color} strokeWidth={1.1}
-            />
-          </G>
+          <Rect
+            key={a.id}
+            x={dx + a.x * escala} y={dy + a.y * escala}
+            width={a.anchoM * escala} height={a.largoM * escala}
+            fill={colorDeZona(a)} fillOpacity={0.14} stroke={colorDeZona(a)} strokeWidth={1.1}
+          />
         ))}
 
         {subzonas.map(a => (
-          <G key={a.id}>
-            <Rect
-              x={dx + a.x * escala} y={a.y * escala}
-              width={a.anchoM * escala} height={a.largoM * escala}
-              fill={a.color} fillOpacity={0.28} stroke={a.color} strokeWidth={0.6} strokeDasharray="2.5 1.8"
-            />
-          </G>
+          <Rect
+            key={a.id}
+            x={dx + a.x * escala} y={dy + a.y * escala}
+            width={a.anchoM * escala} height={a.largoM * escala}
+            fill={colorDeZona(a)} fillOpacity={0.22} stroke={colorDeZona(a)} strokeWidth={0.55} strokeDasharray="2.5 1.8"
+          />
         ))}
 
         {piezas.map(p => (
           <Rect
             key={p.id}
-            x={dx + p.x * escala} y={p.y * escala}
+            x={dx + p.x * escala} y={dy + p.y * escala}
             width={Math.max(1.5, p.anchoM * escala)} height={Math.max(1.5, p.largoM * escala)}
-            fill={p.colgado ? "#dfe5f2" : "#e4e4e4"}
-            stroke={p.colgado ? "#6b7fae" : "#9a9a9a"}
+            fill={p.colgado ? "#e6e9f1" : "#e9e7e2"}
+            stroke={p.colgado ? "#7b88a6" : "#a8a49c"}
             strokeWidth={0.5}
             strokeDasharray={p.colgado ? "1.6 1.1" : undefined}
           />
@@ -238,7 +364,7 @@ function Plano({ doc, ancho, alto }: { doc: DocumentoLayout; ancho: number; alto
         {subzonas.map(a => <Rotulo key={`r${a.id}`} a={a} maximo={5.5} mayusculas={false} />)}
         {zonas.map(a => <Rotulo key={`r${a.id}`} a={a} maximo={6.5} mayusculas />)}
 
-        <Text x={dx + w / 2} y={h + 10} fill="#9a9a9a" textAnchor="middle" style={{ fontSize: 7 }}>
+        <Text x={dx + w / 2} y={dy + h + 11} fill="#9a9a9a" textAnchor="middle" style={{ fontSize: 7 }}>
           P Ú B L I C O
         </Text>
       </G>
@@ -251,13 +377,13 @@ function FilaEquipoPDF({ e, thumb }: { e: FilaEquipo; thumb?: string }) {
     <View style={s.tr} wrap={false}>
       <View style={{ width: COL.img }}>{thumb ? <Image src={thumb} style={s.thumb} /> : null}</View>
       <Text style={[s.tdFuerte, { width: COL.cant }]}>{e.cantidad}</Text>
-      <View style={{ width: COL.equipo, paddingRight: 5 }}>
+      <View style={{ width: COL.equipo, paddingRight: 6 }}>
         <Text style={s.tdFuerte}>{e.nombre}</Text>
         {e.colgado ? <Text style={s.tdTenue}>volado</Text> : null}
       </View>
-      <Text style={[s.td, { width: COL.descripcion, paddingRight: 5 }]}>{e.descripcion}</Text>
-      <Text style={[s.td, { width: COL.config, paddingRight: 5 }]}>{e.configuracion}</Text>
-      <Text style={[s.td, { width: COL.montaje, paddingRight: 5 }]}>{e.montaje || "—"}</Text>
+      <Text style={[s.td, { width: COL.descripcion, paddingRight: 6 }]}>{e.descripcion}</Text>
+      <Text style={[s.td, { width: COL.config, paddingRight: 6 }]}>{e.configuracion}</Text>
+      <Text style={[s.td, { width: COL.montaje, paddingRight: 6 }]}>{e.montaje || "—"}</Text>
       <Text style={[s.td, { width: COL.peso }]}>{e.pesoKg > 0 ? kg(e.pesoKg) : "—"}</Text>
       <Text style={[s.td, { width: COL.carga }]}>{e.carga || "sin dato"}</Text>
       <Text style={[e.notas ? s.nota : s.tdTenue, { width: COL.notas }]}>{e.notas || "—"}</Text>
@@ -273,8 +399,8 @@ function Zona({ z, thumbs }: { z: ZonaDoc; thumbs: Record<string, string> }) {
 
   return (
     <View>
-      <View style={s.zonaHd} wrap={false}>
-        <View style={[s.zonaChip, { backgroundColor: z.color }]} />
+      {/* Un título solo al pie de la página no dice nada: arrastra consigo su primer renglón. */}
+      <View style={[s.zonaHd, { borderLeftColor: z.color }]} wrap={false} minPresenceAhead={72}>
         <Text style={s.zonaNombre}>{z.etiqueta.toUpperCase()}</Text>
         <Text style={s.zonaMeta}>
           {z.unidades} uds · {kg(z.pesoKg)}{amperes ? ` · ${amperes}` : ""}
@@ -283,11 +409,10 @@ function Zona({ z, thumbs }: { z: ZonaDoc; thumbs: Record<string, string> }) {
 
       {z.subzonas.map(sub => (
         <View key={sub.clave}>
-          <View style={s.subHd} wrap={false}>
-            <View style={[s.subChip, { backgroundColor: sub.color }]} />
+          <View style={[s.subHd, { borderLeftColor: z.color }]} wrap={false} minPresenceAhead={52}>
             <Text style={s.subNombre}>
-              {sub.etiqueta}
-              {sub.disciplina ? <Text style={s.subMeta}>{`  ${sub.disciplina.toLowerCase()}`}</Text> : null}
+              {sub.etiqueta.toUpperCase()}
+              {sub.disciplina ? <Text style={s.subDisc}>{`   ${disciplina(sub.disciplina)}`}</Text> : null}
             </Text>
             <Text style={s.subMeta}>{sub.unidades} uds · {kg(sub.pesoKg)}</Text>
           </View>
@@ -310,14 +435,20 @@ export default function LayoutProduccionPDF({
   thumbs?: Record<string, string>;
 }) {
   const { totales, plano } = doc;
-  const leyenda = [
-    ...doc.zonas.map(z => ({ color: z.color, texto: z.etiqueta })),
-    ...doc.zonas.flatMap(z => z.subzonas.map(sub => ({ color: sub.color, texto: `${z.etiqueta} · ${sub.etiqueta}` }))),
-  ].slice(0, 24);
+
+  // Un color por zona del evento. Las áreas dibujadas a mano no corresponden a
+  // ninguna zona del rider y se quedan con el tono que les puso quien las dibujó.
+  const colorPorZonaId = new Map(doc.zonas.map(z => [z.zonaId, z.color]));
+  const colorDeZona = (a: Area) => colorPorZonaId.get(a.zona) ?? a.color;
+
+  const notas = doc.escenario.notas?.trim() ?? "";
+  const cupo = presupuestoNotas(doc.zonas.length);
+  const notasPortada = notas.length <= cupo ? notas : "";
+  const notasAlFinal = notas && !notasPortada;
 
   return (
     <Document title={`Layout de producción · ${doc.proyecto.numero} · ${doc.escenario.nombre}`}>
-      {/* ── Plano ── */}
+      {/* ── Plano, con el resumen en las franjas laterales ── */}
       <Page size="LETTER" orientation="landscape" style={s.page}>
         <View style={s.hero}>
           <View>
@@ -325,14 +456,14 @@ export default function LayoutProduccionPDF({
             <Text style={s.heroTitulo}>{doc.escenario.nombre}</Text>
             <Text style={s.heroSub}>{doc.proyecto.nombre}</Text>
           </View>
-          {logo ? <Image src={logo} style={s.heroLogo} /> : null}
+          <View style={s.heroDer}>
+            {logo ? <Image src={logo} style={s.heroLogo} /> : null}
+            <Text style={s.heroNum}>{doc.proyecto.numero}</Text>
+          </View>
         </View>
+        <View style={s.barraDorada} />
 
         <View style={s.banda}>
-          <View style={s.bandaItem}>
-            <Text style={s.bandaLabel}>PROYECTO</Text>
-            <Text style={s.bandaVal}>{doc.proyecto.numero}</Text>
-          </View>
           <View style={s.bandaItem}>
             <Text style={s.bandaLabel}>CLIENTE</Text>
             <Text style={s.bandaVal}>{doc.proyecto.cliente}</Text>
@@ -346,116 +477,101 @@ export default function LayoutProduccionPDF({
             <Text style={s.bandaVal}>{doc.proyecto.lugar || "Por confirmar"}</Text>
           </View>
           <View style={s.bandaItem}>
-            <Text style={s.bandaLabel}>ÁREA</Text>
+            <Text style={s.bandaLabel}>ÁREA DEL MONTAJE</Text>
             <Text style={s.bandaVal}>{plano.anchoM} × {plano.largoM} m</Text>
           </View>
         </View>
 
-        <View style={{ marginTop: 10 }}>
-          <Plano doc={doc} ancho={UTIL} alto={300} />
-        </View>
-
-        {leyenda.length > 0 && (
-          <View style={s.leyenda}>
-            {leyenda.map((l, i) => (
-              <View key={`${l.texto}-${i}`} style={s.leyItem}>
-                <View style={[s.leyChip, { backgroundColor: l.color }]} />
-                <Text style={s.leyTxt}>{l.texto}</Text>
+        <View style={[s.cuerpo, { flexDirection: "row" }]}>
+          {/* Franja izquierda: qué se instala y cuánto pesa. */}
+          <View style={s.lateral}>
+            <BloqueTit primero>RESUMEN DEL MONTAJE</BloqueTit>
+            <View style={s.statGrid}>
+              <View style={s.stat}>
+                <Text style={s.statVal}>{totales.unidades}</Text>
+                <Text style={s.statLbl}>UNIDADES</Text>
               </View>
-            ))}
-          </View>
-        )}
-
-        <Pie doc={doc} />
-      </Page>
-
-      {/* ── Resumen y lista de instalación ── */}
-      <Page size="LETTER" orientation="landscape" style={s.page}>
-        <Text style={s.secTitulo}>RESUMEN DE LA INSTALACIÓN</Text>
-        <View style={s.kpis}>
-          <View style={s.kpi}>
-            <Text style={s.kpiVal}>{totales.unidades}</Text>
-            <Text style={s.kpiLabel}>UNIDADES</Text>
-          </View>
-          <View style={s.kpi}>
-            <Text style={s.kpiVal}>{totales.modelos}</Text>
-            <Text style={s.kpiLabel}>MODELOS</Text>
-          </View>
-          <View style={s.kpi}>
-            <Text style={s.kpiVal}>{totales.zonas}</Text>
-            <Text style={s.kpiLabel}>ZONAS</Text>
-          </View>
-          <View style={s.kpi}>
-            <Text style={s.kpiVal}>{totales.configuraciones}</Text>
-            <Text style={s.kpiLabel}>CONFIGURACIONES</Text>
-          </View>
-          <View style={s.kpi}>
-            <Text style={s.kpiVal}>{kg(totales.pesoKg)}</Text>
-            <Text style={s.kpiLabel}>PESO TOTAL</Text>
-          </View>
-          <View style={s.kpi}>
-            <Text style={s.kpiVal}>{kg(totales.pesoColgadoKg)}</Text>
-            <Text style={s.kpiLabel}>PESO VOLADO</Text>
-          </View>
-          <View style={s.kpi}>
-            <Text style={s.kpiVal}>{totales.carga.amperaje110.toFixed(1)} A</Text>
-            <Text style={s.kpiLabel}>A 110 V</Text>
-          </View>
-          <View style={s.kpi}>
-            <Text style={s.kpiVal}>{totales.carga.amperaje220.toFixed(1)} A</Text>
-            <Text style={s.kpiLabel}>A 220 V</Text>
-          </View>
-          <View style={s.kpi}>
-            <Text style={s.kpiVal}>{Math.round(totales.carga.watts).toLocaleString("es-MX")}</Text>
-            <Text style={s.kpiLabel}>WATTS</Text>
-          </View>
-        </View>
-
-        {doc.porDisciplina.length > 0 && (
-          <>
-            <Text style={s.secTitulo}>REPARTO POR DISCIPLINA</Text>
-            <View style={s.thead}>
-              <Text style={[s.th, { flex: 1 }]}>DISCIPLINA</Text>
-              <Text style={[s.th, { width: 70 }]}>UNIDADES</Text>
-              <Text style={[s.th, { width: 70 }]}>PESO</Text>
-              <Text style={[s.th, { width: 80 }]}>110 V</Text>
-              <Text style={[s.th, { width: 80 }]}>220 V</Text>
-              <Text style={[s.th, { width: 90 }]}>SIN AMPERAJE</Text>
+              <View style={s.stat}>
+                <Text style={s.statVal}>{totales.modelos}</Text>
+                <Text style={s.statLbl}>MODELOS</Text>
+              </View>
+              <View style={s.stat}>
+                <Text style={s.statVal}>{totales.zonas}</Text>
+                <Text style={s.statLbl}>ZONAS</Text>
+              </View>
+              <View style={s.stat}>
+                <Text style={s.statVal}>{totales.configuraciones}</Text>
+                <Text style={s.statLbl}>CONFIGURACIONES</Text>
+              </View>
             </View>
-            {doc.porDisciplina.map(d => (
-              <View key={d.disciplina} style={s.tr} wrap={false}>
-                <Text style={[s.tdFuerte, { flex: 1 }]}>{d.disciplina}</Text>
-                <Text style={[s.td, { width: 70 }]}>{d.unidades}</Text>
-                <Text style={[s.td, { width: 70 }]}>{kg(d.pesoKg)}</Text>
-                <Text style={[s.td, { width: 80 }]}>{d.carga.amperaje110.toFixed(1)} A</Text>
-                <Text style={[s.td, { width: 80 }]}>{d.carga.amperaje220.toFixed(1)} A</Text>
-                <Text style={[s.td, { width: 90 }]}>{d.carga.sinDato > 0 ? `${d.carga.sinDato} uds` : "—"}</Text>
-              </View>
-            ))}
-          </>
-        )}
 
-        {totales.carga.sinDato > 0 && (
-          <View style={s.avisoCaja}>
-            <Text style={s.avisoTxt}>
-              {totales.carga.sinDato} unidades no tienen amperaje capturado en el catálogo, así que el
-              consumo de arriba es un piso, no el total. Captúralo antes de dimensionar la acometida.
+            <BloqueTit>PESO</BloqueTit>
+            <Fila label="Total" valor={kg(totales.pesoKg)} />
+            <Fila label="Volado" valor={kg(totales.pesoColgadoKg)} />
+            <Fila label="En piso" valor={kg(totales.pesoPisoKg)} />
+
+            {doc.porDisciplina.length > 0 && (
+              <>
+                <BloqueTit>REPARTO POR DISCIPLINA</BloqueTit>
+                {doc.porDisciplina.map(d => (
+                  <View key={d.disciplina} style={s.fila}>
+                    <Text style={[s.filaLbl, { flex: 1 }]}>{disciplina(d.disciplina)}</Text>
+                    <Text style={[s.filaVal, { width: 30, textAlign: "right" }]}>{d.unidades}</Text>
+                    <Text style={[s.filaLbl, { width: 46, textAlign: "right" }]}>{kg(d.pesoKg)}</Text>
+                  </View>
+                ))}
+              </>
+            )}
+          </View>
+
+          {/* Centro: el plano. */}
+          <View style={{ width: PLANO_ANCHO, marginHorizontal: GAP_COL }}>
+            <Plano doc={doc} ancho={PLANO_ANCHO} alto={PLANO_ALTO} colorDeZona={colorDeZona} />
+            <Text style={s.planoPie}>
+              VISTA CENITAL · CUADRÍCULA DE 1 m · {plano.anchoM} × {plano.largoM} m
             </Text>
           </View>
-        )}
 
-        {doc.escenario.notas ? (
-          <>
-            <Text style={s.secTitulo}>NOTAS DEL ESCENARIO</Text>
-            <Text style={[s.td, { lineHeight: 1.5 }]}>{doc.escenario.notas}</Text>
-          </>
-        ) : null}
+          {/* Franja derecha: qué consume y dónde va cada cosa. */}
+          <View style={s.lateral}>
+            <BloqueTit primero>CARGA ELÉCTRICA</BloqueTit>
+            <Fila label="110 V" valor={`${totales.carga.amperaje110.toFixed(1)} A`} acento />
+            <Fila label="220 V" valor={`${totales.carga.amperaje220.toFixed(1)} A`} acento />
+            <Fila label="Potencia" valor={`${Math.round(totales.carga.watts).toLocaleString("es-MX")} W`} />
+            {totales.carga.sinDato > 0 && (
+              <View style={s.avisoCaja}>
+                <Text style={s.avisoTxt}>
+                  {totales.carga.sinDato} unidades sin amperaje en el catálogo: el consumo de arriba es
+                  un piso, no el total. Captúralo antes de dimensionar la acometida.
+                </Text>
+              </View>
+            )}
 
-        <Pie doc={doc} />
+            <BloqueTit>ZONAS DEL PLANO</BloqueTit>
+            {doc.zonas.map(z => (
+              <View key={z.clave} style={s.leyItem}>
+                <View style={[s.leyChip, { backgroundColor: z.color }]} />
+                <Text style={s.leyNom}>{z.etiqueta}</Text>
+                <Text style={s.leyMeta}>{z.unidades} uds</Text>
+              </View>
+            ))}
+
+            {notasPortada ? (
+              <>
+                <BloqueTit>NOTAS DEL ESCENARIO</BloqueTit>
+                <View style={s.notaCaja}>
+                  <Text style={s.notaTxt}>{notasPortada}</Text>
+                </View>
+              </>
+            ) : null}
+          </View>
+        </View>
+
+        <Pie doc={doc} sangrado />
       </Page>
 
-      {/* ── Lista completa ── */}
-      <Page size="LETTER" orientation="landscape" style={s.page}>
+      {/* ── Lista de instalación ── */}
+      <Page size="LETTER" orientation="landscape" style={[s.page, { paddingTop: MARGEN, paddingHorizontal: MARGEN }]}>
         <Text style={s.secTitulo}>LISTA DE INSTALACIÓN POR ZONA Y CONFIGURACIÓN</Text>
 
         <View style={s.thead} fixed>
@@ -474,7 +590,14 @@ export default function LayoutProduccionPDF({
           <Zona key={z.clave} z={z} thumbs={thumbs} />
         ))}
 
-        <Text style={[s.tdTenue, { marginTop: 12 }]}>
+        {notasAlFinal && (
+          <>
+            <Text style={[s.secTitulo, { marginTop: 16 }]}>NOTAS DEL ESCENARIO</Text>
+            <Text style={[s.td, { lineHeight: 1.55 }]}>{notas}</Text>
+          </>
+        )}
+
+        <Text style={[s.tdTenue, { marginTop: 14 }]}>
           Documento final generado el {nowStr()}. Cualquier cambio posterior en el rider obliga a
           descargarlo de nuevo.
         </Text>
