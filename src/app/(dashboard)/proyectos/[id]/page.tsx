@@ -23,7 +23,7 @@ import { Combobox } from "@/components/Combobox";
 import SelectorEquipoCascada, { agruparEquiposPorCategoria } from "@/components/SelectorEquipoCascada";
 import ChecklistEventoTab from "./ChecklistEventoTab";
 import { BackButton } from "@/components/BackButton";
-import { Package, AlertTriangle, Smartphone, Truck, Home, Radio, MessageCircle, FileText, Bell, User, Factory, ClipboardList, FileImage } from "lucide-react";
+import { Package, AlertTriangle, Smartphone, Truck, Home, Radio, MessageCircle, FileText, Bell, User, Factory, ClipboardList, FileImage, Eye, EyeOff } from "lucide-react";
 import { ViabilidadWidget, type ViabilidadActiva, type ViabilidadHistoricoItem } from "@/components/proyectos/ViabilidadWidget";
 import { MontajePosiciones, type Posicion as PosicionMontaje } from "@/components/proyectos/MontajePosiciones";
 import { PanelProveedores } from "@/components/proyectos/PanelProveedores";
@@ -43,6 +43,7 @@ import { DISCIPLINA_COLORS, DISCIPLINA_LABELS } from "@/lib/disciplinaColors";
 import { contarRespondidos, contarIncidencias, nivelResultado, getEvalConfig, aplicaEvaluacion, type EvalPostEventoData } from "@/lib/evaluacion-post-evento";
 import { getDireccionConfig, promedioDireccion, type EvaluacionDireccionData } from "@/lib/evaluacion-direccion";
 import { diasEvento, parseHorariosEvento, horarioDeDia, parseFechasEvento } from "@/lib/fechas-evento";
+import { useModoDiscreto } from "@/lib/modo-discreto";
 import { construirCronologia, horariosResumen, VISTAS_CRONOLOGIA, type BloqueTiempo, type HorariosResumen } from "@/lib/cronologia-evento";
 import { checksAvanceProduccion } from "@/lib/proyecto-avance";
 import { requisitosDocumento, type ProyectoDocumentoInput, type RequisitosDocumento, type TipoDocumento } from "@/lib/proyecto-documentos";
@@ -1312,6 +1313,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [borrando, setBorrando] = useState(false);
   const [activeTab, setActiveTab] = useState<'resumen'|'operacion'|'escenarios'|'extras'|'finanzas'|'tareas'>('resumen');
 
+  // Vista discreta: el proyecto se abre sin nada de dinero para poder repasarlo
+  // con los técnicos. Es preferencia del navegador y aplica a todos los proyectos.
+  const { discreto, listo: vistaListo, setDiscreto } = useModoDiscreto();
+
   // Escenarios del proyecto. Solo se usan para los selectores por renglón del rider,
   // crew, logística y proveedores — y esos aparecen únicamente si hay dos o más.
   const [escenarios, setEscenarios] = useState<{ id: string; nombre: string }[]>([]);
@@ -1417,7 +1422,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     const controller = new AbortController();
     const timeout = setTimeout(() => { controller.abort(); }, 15000);
     try {
-      const res = await fetch(`/api/proyectos/${id}`, { cache: "no-store", signal: controller.signal });
+      const res = await fetch(`/api/proyectos/${id}${discreto ? "?discreto=1" : ""}`, { cache: "no-store", signal: controller.signal });
       clearTimeout(timeout);
       const text = await res.text();
       let d: Record<string, unknown> = {};
@@ -1659,8 +1664,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     return d.evaluacion?.tokenAcceso ?? null;
   }
 
+  // El proyecto se pide hasta saber si la vista va discreta: pedirlo antes
+  // alcanzaría a pintar los montos y luego quitarlos.
   useEffect(() => {
-    load();
+    if (vistaListo) load();
+  }, [vistaListo, discreto]); // eslint-disable-line
+
+  useEffect(() => {
     loadEval();
     Promise.all([
       fetch("/api/tecnicos").then(r => r.json()),
@@ -2994,7 +3004,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         rolTecnicoId: editPersonalForm.rolTecnicoId || null,
         nivel: editPersonalForm.nivel || null,
         jornada: editPersonalForm.jornada || null,
-        tarifaAcordada: editPersonalForm.tarifa ? parseFloat(editPersonalForm.tarifa) : null,
+        // Si la tarifa no se ve, no se manda: el formulario la traería vacía y la borraría.
+        ...(proyecto?._canViewTecnicoCosts
+          ? { tarifaAcordada: editPersonalForm.tarifa ? parseFloat(editPersonalForm.tarifa) : null }
+          : {}),
         participacion: editPersonalForm.participacion || null,
         responsabilidad: editPersonalForm.responsabilidad || null,
         rolEnEvento: editPersonalForm.rolEnEvento || null,
@@ -4046,6 +4059,19 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         {activeTab === 'resumen' && (
           <div className="space-y-4">
 
+      {/* Vista discreta. El rótulo no dice de qué se trata a propósito: encendida,
+          el proyecto se puede repasar con cualquiera sin sugerir que falte algo. */}
+      <div className="flex justify-end -mb-2">
+        <button
+          onClick={() => { setLoading(true); setDiscreto(!discreto); }}
+          title="Vista discreta"
+          aria-label="Vista discreta"
+          className={`p-1 rounded transition-colors ${discreto ? "text-[#1c1c1c] hover:text-gray-500" : "text-[#2e2e2e] hover:text-gray-400"}`}
+        >
+          {discreto ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+        </button>
+      </div>
+
       {/* ── Progreso del proyecto (Avance) ── */}
       {(() => {
         // ── Protocolo salida / entrada ──────────────────────────────────────
@@ -4156,12 +4182,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             warn: proyecto.personal.length > 0 && personalConfirmado < proyecto.personal.length,
             txt: proyecto.personal.length === 0 ? "Sin asignar" : `${personalConfirmado}/${proyecto.personal.length} confirmados`,
           }] : []),
-          {
+          ...(proyecto._canViewFinances ? [{
             label: "Anticipo",
             ok: anticipoCobrado,
             warn: !!(anticipoCxC && !anticipoCobrado),
             txt: anticipoCxC ? (anticipoCobrado ? "Cobrado" : "Pendiente") : "Sin esquema",
-          },
+          }] : []),
         ];
 
         return (
@@ -5465,7 +5491,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             </div>
                           </div>
                           <div className="text-right shrink-0">
-                            <div className="text-xs text-[#B3985B] font-semibold">{fmt(linea.precioUnitario)}<span className="text-gray-600 font-normal"> × {linea.cantidad}</span></div>
+                            <div className="text-xs text-[#B3985B] font-semibold">
+                              {proyecto._canViewFinances
+                                ? <>{fmt(linea.precioUnitario)}<span className="text-gray-600 font-normal"> × {linea.cantidad}</span></>
+                                : <span className="text-gray-400 font-normal">× {linea.cantidad}</span>}
+                            </div>
                           </div>
                           {disciplina || linea.rolTecnicoId ? (
                             <div className="flex items-center gap-1.5 shrink-0">
@@ -5726,7 +5756,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                         {p.tecnico && (
                           <button
                             onClick={() => marcarCoordinador(p.id, p.coordinaEnSitio)}
-                            title={p.coordinaEnSitio
+                            title={!proyecto._canViewTecnicoCosts
+                              ? (p.coordinaEnSitio ? "Quitarle la coordinación en sitio" : "Marcar como quien manda en sitio")
+                              : p.coordinaEnSitio
                               ? `Quitarle la coordinación en sitio${p.bonoEncargado != null ? ` (y su bono de ${fmt(p.bonoEncargado)})` : ""}`
                               : `Marcar como quien manda en sitio — le suma el bono de encargado (${fmt(bonosCatalogo?.bonoEncargado ?? 0)})`}
                             className={`text-xs px-1.5 py-0.5 rounded border transition-colors ${p.coordinaEnSitio ? "border-[#B3985B]/60 text-[#B3985B]" : "border-transparent text-gray-700 hover:text-[#B3985B] hover:border-[#333]"}`}>
@@ -5828,7 +5860,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                           </button>
                         );
                       })}
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${p.estadoPago === "PAGADO" ? "bg-green-900/40 text-green-400" : "bg-[#1a1a1a] text-gray-500 border border-[#2a2a2a]"}`}>{p.estadoPago === "PAGADO" ? "Pagado" : "Pendiente"}</span>
+                      {proyecto._canViewTecnicoCosts && (
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${p.estadoPago === "PAGADO" ? "bg-green-900/40 text-green-400" : "bg-[#1a1a1a] text-gray-500 border border-[#2a2a2a]"}`}>{p.estadoPago === "PAGADO" ? "Pagado" : "Pendiente"}</span>
+                      )}
                       {p.confirmRespuesta && <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${p.confirmRespuesta === "CONFIRMADO" ? "bg-green-900/40 text-green-300" : "bg-red-900/40 text-red-300"}`}>{p.confirmRespuesta === "CONFIRMADO" ? "✓ Confirmó" : "✗ Rechazó"}</span>}
                       <button onClick={() => toggleConfirmar(p.id, p.confirmado)} className={`px-2 py-0.5 rounded-full text-xs font-medium border transition-colors ${p.confirmado ? "border-green-700 text-green-400 hover:bg-red-900/20 hover:text-red-400 hover:border-red-700" : "border-[#333] text-gray-500 hover:border-green-700 hover:text-green-400"}`}>{p.confirmado ? "✓ Confirmado" : "Confirmar"}</button>
                       {p.tecnico && (
@@ -5951,7 +5985,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           </div>
 
           {/* ── Comidas y viáticos: el dinero de la gente que va al evento ── */}
-          <PanelViaticos proyectoId={id} puedeAutorizar={yo?.role === "ADMIN"} />
+          {proyecto._canViewFinances && <PanelViaticos proyectoId={id} puedeAutorizar={yo?.role === "ADMIN"} />}
 
           {/* ── Logística general: montaje, soundcheck, evento y desmontaje ── */}
           {!esRenta && (() => {
@@ -5994,6 +6028,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           {/* ── Proveedores y Subrentas ── */}
           <PanelProveedores
             proyectoId={id}
+            sinPrecios={!proyecto._canViewFinances}
             dias={diasDelEvento}
             evento={{
               numeroProyecto: proyecto.numeroProyecto,
@@ -6625,12 +6660,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     </div>
                     {selEquipoTipo === "EXTERNO" && (
                       <>
+                        {proyecto._canViewFinances && (
                         <div>
                           <label className="text-xs text-gray-500 mb-1 block">Costo x día x unidad</label>
                           <input type="number" value={selEquipoCosto} onChange={e => setSelEquipoCosto(e.target.value)}
                             placeholder="0.00"
                             className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
                         </div>
+                        )}
                         <div>
                           <label className="text-xs text-gray-500 mb-1 block">Proveedor</label>
                           <Combobox
@@ -6977,7 +7014,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
                                     {esExterno ? (
                                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                        <div className="sm:col-span-2">
+                                        <div className={proyecto._canViewFinances ? "sm:col-span-2" : "sm:col-span-3"}>
                                           <label className="text-[10px] text-gray-600 block mb-1">Proveedor</label>
                                           <Combobox
                                             value={e.proveedorId ?? ""}
@@ -6986,6 +7023,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                             className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]/50"
                                           />
                                         </div>
+                                        {proyecto._canViewFinances && (
                                         <div>
                                           <label className="text-[10px] text-gray-600 block mb-1">Costo x día x unidad</label>
                                           <input
@@ -7000,6 +7038,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                             className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]/50 placeholder-gray-700"
                                           />
                                         </div>
+                                        )}
                                         <div className="sm:col-span-3 flex items-center gap-2 flex-wrap">
                                           {e.costoExterno != null && (
                                             <span className="text-[11px] text-yellow-400 font-semibold">
@@ -9437,8 +9476,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                         {c.nombreEvento && <span className="ml-2 font-normal text-gray-300">{c.nombreEvento}</span>}
                       </p>
                       <p className="text-gray-500 text-[11px] mt-0.5">
-                        {fmt(c.granTotal)}
-                        {c.fechaEvento && ` · ${c.fechaEvento.substring(0, 10)}`}
+                        {proyecto._canViewFinances && fmt(c.granTotal)}
+                        {c.fechaEvento && `${proyecto._canViewFinances ? " · " : ""}${c.fechaEvento.substring(0, 10)}`}
                         {c.proyecto && ` · absorbe ${c.proyecto.numeroProyecto}`}
                       </p>
                     </div>

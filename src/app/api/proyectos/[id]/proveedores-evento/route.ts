@@ -36,6 +36,12 @@ export async function GET(
     orderBy: { createdAt: "asc" },
     include: proveedorEventoInclude,
   });
+  // Vista discreta: el panel se usa igual para coordinar, pero sin lo que cuesta.
+  if (req.nextUrl.searchParams.get("discreto") === "1") {
+    return NextResponse.json({
+      proveedores: proveedores.map(p => ({ ...p, costoAcordado: null, cuentaPagar: null })),
+    });
+  }
   return NextResponse.json({ proveedores });
 }
 

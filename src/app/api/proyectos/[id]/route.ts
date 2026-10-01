@@ -22,6 +22,9 @@ function proximoMiercolesTraEvento(fecha: Date): Date {
 }
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  // Vista discreta: el dinero se quita aquí, no en el cliente, para que ni en la
+  // consola del navegador quede el rastro de que existe.
+  const discreto = _req.nextUrl.searchParams.get("discreto") === "1";
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
@@ -312,7 +315,43 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     } as unknown as typeof proyecto;
   }
 
-  return NextResponse.json({ proyecto: { ...proyecto, avance, _canViewFinances: canViewFinances, _canViewTecnicoCosts: canViewTecnicoCosts } });
+  // Vista discreta: se conserva todo lo operativo (líneas de la cotización, sus
+  // notas, el equipo, el personal) y se vacía solo el dinero.
+  if (discreto) {
+    const cot = (proyecto as any).cotizacion ?? null;
+    const fusionadas = (proyecto as any).cotizacionesFusionadas;
+    const SUBTOTALES = ["granTotal", "total", "subtotalComidas", "subtotalOperacion", "subtotalTransporte", "subtotalHospedaje", "subtotalEquiposNeto", "subtotalTerceros"];
+    proyecto = {
+      ...proyecto,
+      cotizacion: cot ? {
+        ...cot,
+        ...Object.fromEntries(SUBTOTALES.map(k => [k, 0])),
+        lineas: Array.isArray(cot.lineas) ? cot.lineas.map((l: any) => ({ ...l, precioUnitario: 0 })) : cot.lineas,
+      } : null,
+      cotizacionesFusionadas: Array.isArray(fusionadas)
+        ? fusionadas.map((c: any) => ({ ...c, granTotal: 0 }))
+        : fusionadas,
+      cuentasCobrar: [],
+      cuentasPagar: [],
+      movimientos: [],
+      movimientosIngresoSueltos: [],
+      gastosOperativos: [],
+      cierreFinanciero: null,
+      equipos: Array.isArray(proyecto.equipos) ? proyecto.equipos.map((eq: any) => ({
+        ...eq,
+        costoExterno: null,
+        precioUnitario: null,
+      })) : [],
+      personal: Array.isArray(proyecto.personal) ? proyecto.personal.map((p: any) => ({
+        ...p,
+        tarifaAcordada: null,
+        costo: null,
+        ...Object.fromEntries(BONOS_PERSONAL.map(b => [b.campo, null])),
+      })) : [],
+    } as unknown as typeof proyecto;
+  }
+
+  return NextResponse.json({ proyecto: { ...proyecto, avance, _canViewFinances: canViewFinances && !discreto, _canViewTecnicoCosts: canViewTecnicoCosts && !discreto } });
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {

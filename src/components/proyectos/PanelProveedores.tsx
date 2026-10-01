@@ -156,8 +156,11 @@ export function PanelProveedores({
   evento,
   equipo = [],
   escenarios = [],
+  sinPrecios = false,
 }: {
   proyectoId: string;
+  /** Vista discreta: el panel sirve igual para operar, pero sin el costo acordado. */
+  sinPrecios?: boolean;
   /** Escenarios del proyecto. Con menos de dos, el selector por renglón no aparece. */
   escenarios?: EscenarioOpcion[];
   /** Días del evento en "YYYY-MM-DD". La operación siempre cae en uno de ellos. */
@@ -200,9 +203,9 @@ export function PanelProveedores({
     (async () => {
       const [rp, rc, rl] = await Promise.all([
         // Los imprevistos del día viven en su propia tarjeta, no en la coordinación previa.
-        fetch(`/api/proyectos/${proyectoId}/proveedores-evento?imprevisto=0`),
+        fetch(`/api/proyectos/${proyectoId}/proveedores-evento?imprevisto=0${sinPrecios ? "&discreto=1" : ""}`),
         fetch("/api/proveedores"),
-        fetch(`/api/proyectos/${proyectoId}/equipos-cotizacion`),
+        fetch(`/api/proyectos/${proyectoId}/equipos-cotizacion${sinPrecios ? "?discreto=1" : ""}`),
       ]);
       if (rp.ok) setProveedores((await rp.json()).proveedores ?? []);
       if (rc.ok) {
@@ -216,7 +219,7 @@ export function PanelProveedores({
       if (rl.ok) setEquiposTercero((await rl.json()).equiposTercero ?? []);
       setCargando(false);
     })();
-  }, [proyectoId]);
+  }, [proyectoId, sinPrecios]);
 
   const opcionesCatalogo = useMemo(
     () => catalogo.map((p) => ({ value: p.id, label: p.empresa ? `${p.nombre} — ${p.empresa}` : p.nombre })),
@@ -307,7 +310,8 @@ export function PanelProveedores({
           notas: b.notas,
           modalidadEntrega: b.modalidadEntrega,
           modalidadRegreso: b.modalidadRegreso,
-          costoAcordado: b.costoAcordado === "" ? null : b.costoAcordado,
+          // En vista discreta el costo no llegó al navegador: mandarlo lo borraría.
+          ...(sinPrecios ? {} : { costoAcordado: b.costoAcordado === "" ? null : b.costoAcordado }),
           proveedorId: prov.proveedorId,
         }),
       });
@@ -502,7 +506,7 @@ export function PanelProveedores({
                             {prov.lineas.length} equipo{prov.lineas.length === 1 ? "" : "s"}
                           </span>
                         )}
-                        {prov.cuentaPagar && (
+                        {prov.cuentaPagar && !sinPrecios && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-900/40 text-green-400">CxP {money(prov.cuentaPagar.monto)}</span>
                         )}
                         {/* Sin dueño nadie lo recibe ni lo revisa: bloquea la orden de producción. */}
@@ -655,7 +659,7 @@ export function PanelProveedores({
                             {equiposDe(prov.proveedorId).map((e) => (
                               <div key={e.id} className="flex items-center gap-2 px-2.5 py-1.5 text-xs">
                                 <span className="text-gray-300">{e.cantidad} × {e.descripcion}</span>
-                                {(e.costoExterno ?? 0) > 0 && (
+                                {(e.costoExterno ?? 0) > 0 && !sinPrecios && (
                                   <span className="text-[10px] text-gray-600 ml-auto">
                                     {money((e.costoExterno ?? 0) * e.cantidad * Math.max(1, e.dias))}
                                   </span>
@@ -702,6 +706,7 @@ export function PanelProveedores({
                         </div>
                       </div>
 
+                      {!sinPrecios && (
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 items-end">
                         <div>
                           <label className="text-xs text-gray-500 block mb-1">Costo acordado (lo que nos cuesta)</label>
@@ -739,6 +744,7 @@ export function PanelProveedores({
                           )}
                         </div>
                       </div>
+                      )}
 
                       <div className="flex gap-2 flex-wrap">
                         <button
@@ -748,12 +754,14 @@ export function PanelProveedores({
                         >
                           {guardando === prov.id ? "Guardando..." : "Guardar"}
                         </button>
+                        {!sinPrecios && (
                         <button
                           onClick={() => generarCxP(prov)}
                           className="border border-[#333] hover:border-[#B3985B] text-gray-300 hover:text-white text-xs font-medium px-4 py-2 rounded-lg transition-colors"
                         >
                           {prov.cuentaPagar ? "Actualizar CxP" : "Generar CxP"}
                         </button>
+                        )}
                         <button
                           onClick={() => enviarWhatsApp(prov)}
                           className="border border-[#333] hover:border-[#B3985B] text-gray-300 hover:text-white text-xs font-medium px-4 py-2 rounded-lg transition-colors"

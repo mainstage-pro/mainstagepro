@@ -252,7 +252,7 @@ export async function GET(
   // que la pestaña de operación lo lea sin volver a preguntarlo.
   const verCostos = ["mauricio", "emiliano", "carlos"].some((n) =>
     session.name.toLowerCase().includes(n),
-  );
+  ) && _req.nextUrl.searchParams.get("discreto") !== "1";
   const equiposTercero = proyecto.equipos
     .filter((e) => e.tipo === "EXTERNO")
     .map((e) => ({
