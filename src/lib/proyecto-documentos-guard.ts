@@ -47,8 +47,25 @@ export async function bloqueoDocumento(
   proyectoId: string,
   tipo: TipoDocumento
 ): Promise<NextResponse | null> {
+  const bloqueos = await bloqueosDocumento(proyectoId, tipo);
+  if (bloqueos.length === 0) return null;
+
+  return NextResponse.json(
+    {
+      error: `${DOCUMENTO_LABELS[tipo]}: falta información del proyecto`,
+      bloqueos,
+    },
+    { status: 409 }
+  );
+}
+
+/** La lista cruda de bloqueos, para quien quiera presentarla a su manera. */
+export async function bloqueosDocumento(
+  proyectoId: string,
+  tipo: TipoDocumento
+): Promise<string[]> {
   const p = await prisma.proyecto.findUnique({ where: { id: proyectoId }, select: SELECT });
-  if (!p) return null; // el endpoint ya responde 404 por su cuenta
+  if (!p) return []; // el endpoint ya responde 404 por su cuenta
 
   const input: ProyectoDocumentoInput = {
     lugarEvento: p.lugarEvento,
@@ -90,14 +107,5 @@ export async function bloqueoDocumento(
     ),
   };
 
-  const { bloqueos } = requisitosDocumento(tipo, input);
-  if (bloqueos.length === 0) return null;
-
-  return NextResponse.json(
-    {
-      error: `${DOCUMENTO_LABELS[tipo]}: falta información del proyecto`,
-      bloqueos,
-    },
-    { status: 409 }
-  );
+  return requisitosDocumento(tipo, input).bloqueos;
 }

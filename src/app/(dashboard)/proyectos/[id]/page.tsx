@@ -244,6 +244,7 @@ interface Proyecto {
   infoToken: string | null;
   infoRecibidoEn: string | null;
   ordenToken: string | null;
+  docsToken: string | null;
   /** Avance de los pases de control de carga, para el panel de la orden. */
   cargas?: { id: string; tipo: string; etiqueta: string | null; estado: string; cerradaEn: string | null; avance: { total: number; revisados: number; faltantes: number; danados: number; pct: number } }[];
   notasPortal: string | null;
@@ -315,35 +316,65 @@ function fmtDateTime(s: string) {
 // ─── Botón de documento con candado ──────────────────────────────────────────
 // Si al proyecto le falta información, el botón queda bloqueado y lista lo que
 // falta. Las advertencias no bloquean: solo marcan el documento como incompleto.
-function BotonDocumento({ label, icono, requisitos, cargando, deshabilitado, onDescargar }: {
+function BotonDocumento({ label, icono, requisitos, cargando, deshabilitado, onDescargar, urlEnLinea, onCopiarLink, copiando }: {
   label: string;
   icono: React.ReactNode;
   requisitos: RequisitosDocumento;
   cargando: boolean;
   deshabilitado: boolean;
   onDescargar: () => void;
+  /** Endpoint con `?preview=1`: el mismo PDF, pero abierto en el navegador. */
+  urlEnLinea?: string;
+  /** Copia el enlace público (sin sesión) del mismo documento. */
+  onCopiarLink?: () => void;
+  copiando?: boolean;
 }) {
   const { listo, bloqueos, advertencias } = requisitos;
   return (
     <div>
-      <button
-        onClick={onDescargar}
-        disabled={!listo || deshabilitado}
-        title={!listo ? bloqueos.join(" · ") : advertencias.join(" · ") || undefined}
-        className={`w-full flex items-center gap-2.5 py-[7px] text-left text-[12.5px] transition-colors ${
-          listo
-            ? "text-gray-400 hover:text-[#B3985B] disabled:opacity-60"
-            : "text-gray-600 cursor-not-allowed"
-        }`}
-      >
-        {listo ? icono : (
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <div className="flex items-center">
+        <button
+          onClick={onDescargar}
+          disabled={!listo || deshabilitado}
+          title={!listo ? bloqueos.join(" · ") : advertencias.join(" · ") || undefined}
+          className={`flex-1 min-w-0 flex items-center gap-2.5 py-[7px] text-left text-[12.5px] transition-colors ${
+            listo
+              ? "text-gray-400 hover:text-[#B3985B] disabled:opacity-60"
+              : "text-gray-600 cursor-not-allowed"
+          }`}
+        >
+          {listo ? icono : (
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          )}
+          <span className="truncate">{cargando ? "Generando..." : label}</span>
+          {listo && advertencias.length > 0 && (
+            <span className="ml-auto text-[10px] text-amber-600/80 shrink-0">incompleto</span>
+          )}
+        </button>
+        {listo && urlEnLinea && (
+          <div className="flex items-center gap-2 pl-2 shrink-0">
+            <a
+              href={urlEnLinea}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Ver el PDF en el navegador"
+              className="text-[10.5px] text-gray-600 hover:text-[#B3985B] transition-colors"
+            >
+              Abrir
+            </a>
+            {onCopiarLink && (
+              <button
+                onClick={onCopiarLink}
+                disabled={copiando}
+                title="Copiar un enlace para compartirlo: muestra este mismo PDF sin pedir contraseña y se actualiza solo cuando el proyecto cambia"
+                className="text-[10.5px] text-gray-600 hover:text-[#B3985B] disabled:opacity-50 transition-colors"
+              >
+                {copiando ? "..." : "Copiar link"}
+              </button>
+            )}
+          </div>
         )}
-        <span>{cargando ? "Generando..." : label}</span>
-        {listo && advertencias.length > 0 && (
-          <span className="ml-auto text-[10px] text-amber-600/80 shrink-0">incompleto</span>
-        )}
-      </button>
+      </div>
       {!listo && (
         <ul className="pl-[21px] pb-1.5 space-y-0.5">
           {bloqueos.map(b => (
@@ -1001,6 +1032,32 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     if (!proyecto?.ordenToken) return;
     await navigator.clipboard.writeText(`${window.location.origin}/orden/${proyecto.ordenToken}`).catch(() => {});
     toast.success("Enlace copiado");
+  }
+
+  // Enlace público de un documento del proyecto. El token es uno por proyecto y
+  // cubre todos sus documentos; se crea la primera vez que alguien comparte uno.
+  const [copiandoDoc, setCopiandoDoc] = useState<string | null>(null);
+
+  async function copiarDocLink(slug: string) {
+    setCopiandoDoc(slug);
+    try {
+      let token = proyecto?.docsToken ?? null;
+      if (!token) {
+        const res = await fetch(`/api/proyectos/${id}/docs-token`, { method: "POST" });
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}));
+          toast.error(d.error ?? "Error al generar el enlace");
+          return;
+        }
+        token = (await res.json()).token as string | null;
+        await load();
+      }
+      if (!token) return;
+      await navigator.clipboard.writeText(`${window.location.origin}/doc/${token}/${slug}`).catch(() => {});
+      toast.success("Enlace copiado — se actualiza solo con el proyecto");
+    } finally {
+      setCopiandoDoc(null);
+    }
   }
 
   async function renovarOrdenToken() {
@@ -9204,6 +9261,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   cargando={downloading === `hoja-entrega-${proyecto.numeroProyecto}.pdf`}
                   deshabilitado={downloading === `hoja-entrega-${proyecto.numeroProyecto}.pdf`}
                   onDescargar={() => downloadPdf(`/api/proyectos/${proyecto.id}/hoja-entrega`, `hoja-entrega-${proyecto.numeroProyecto}.pdf`)}
+                  urlEnLinea={`/api/proyectos/${proyecto.id}/hoja-entrega?preview=1`}
+                  onCopiarLink={() => copiarDocLink("hoja-entrega")}
+                  copiando={copiandoDoc === "hoja-entrega"}
                 />
               )}
               <BotonDocumento
@@ -9213,6 +9273,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 cargando={downloading === `lista-carga-${proyecto.numeroProyecto}.pdf`}
                 deshabilitado={!!downloading}
                 onDescargar={() => downloadPdf(`/api/proyectos/${proyecto.id}/rider-pdf`, `lista-carga-${proyecto.numeroProyecto}.pdf`, 'Lista de carga')}
+                urlEnLinea={`/api/proyectos/${proyecto.id}/rider-pdf?preview=1`}
+                onCopiarLink={() => copiarDocLink("lista-carga")}
+                copiando={copiandoDoc === "lista-carga"}
               />
               {!esRenta && (
                 <BotonDocumento
@@ -9222,6 +9285,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   cargando={downloading === `ficha-operativa-${proyecto.numeroProyecto}.pdf`}
                   deshabilitado={!!downloading}
                   onDescargar={() => downloadPdf(`/api/proyectos/${proyecto.id}/fichas/operativa`, `ficha-operativa-${proyecto.numeroProyecto}.pdf`)}
+                  urlEnLinea={`/api/proyectos/${proyecto.id}/fichas/operativa?preview=1`}
+                  onCopiarLink={() => copiarDocLink("ficha-operativa")}
+                  copiando={copiandoDoc === "ficha-operativa"}
                 />
               )}
               {proyecto.tipoServicio === 'PRODUCCION_TECNICA' && (
@@ -9232,6 +9298,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   cargando={downloading === `info-tecnicos-${proyecto.numeroProyecto}.pdf`}
                   deshabilitado={!!downloading}
                   onDescargar={() => downloadPdf(`/api/proyectos/${proyecto.id}/brief-tecnico`, `info-tecnicos-${proyecto.numeroProyecto}.pdf`)}
+                  urlEnLinea={`/api/proyectos/${proyecto.id}/brief-tecnico?preview=1`}
+                  onCopiarLink={() => copiarDocLink("info-tecnicos")}
+                  copiando={copiandoDoc === "info-tecnicos"}
                 />
               )}
               {!esRenta && (

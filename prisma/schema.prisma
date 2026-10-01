@@ -737,6 +737,7 @@ model Proyecto {
   portalToken              String?   @unique // Token público para portal de cliente
   ordenToken               String?   @unique // Token público de la Orden de Producción (equipo operativo en sitio)
   infoToken                String?   @unique // Token público para que el cliente confirme/complete la info del resumen
+  docsToken                String?   @unique // Token público para ver los PDF del proyecto en línea (/doc/{token}/{documento})
   infoRecibidoEn           DateTime? // Timestamp en que el cliente envió la confirmación de información
   notasPortal              String? // Mensaje visible al cliente en su portal
   responsables             String? // JSON: { produccion, logistica, finanzas, marketing } → { userId, nombre }

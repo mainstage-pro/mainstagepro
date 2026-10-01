@@ -1,15 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import ReactPDF, { Document } from "@react-pdf/renderer";
-import { HojaEntregaRentaPDF } from "@/components/HojaEntregaRentaPDF";
-import { makePdfImageResolver } from "@/components/pdf/PdfShared";
 import { bloqueoDocumento } from "@/lib/proyecto-documentos-guard";
-import { notaVisibleDeCotizacion } from "@/lib/notas-equipos";
-import { resumenMontaje } from "@/lib/montaje-reportes";
-import React from "react";
-import path from "path";
-import fs from "fs";
+import { generarHojaEntrega } from "@/lib/pdf-proyecto/hoja-entrega";
+import { respuestaPdf } from "@/lib/pdf-proyecto";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -20,109 +13,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const bloqueo = await bloqueoDocumento(id, "HOJA_ENTREGA");
   if (bloqueo) return bloqueo;
 
-  const proyecto = await prisma.proyecto.findUnique({
-    where: { id },
-    include: {
-      cliente: { select: { nombre: true, empresa: true, telefono: true } },
-      trato: { select: { ideasReferencias: true } },
-      cotizacion: {
-        select: {
-          numeroCotizacion: true,
-          observaciones: true,
-          notasSecciones: true,
-          lineas: {
-            where: { tipo: { in: ["EQUIPO_PROPIO", "EQUIPO_EXTERNO", "PAQUETE", "OTRO"] } },
-            select: {
-              id: true, tipo: true, descripcion: true, marca: true, modelo: true, cantidad: true, notas: true,
-              equipo: { select: { imagenUrl: true } },
-            },
-            orderBy: { orden: "asc" },
-          },
-        },
-      },
-      equipos: {
-        // Lo que se quitó de la cotización no se entrega ni se firma.
-        where: { necesitaRevision: false },
-        include: {
-          equipo: {
-            select: {
-              descripcion: true,
-              marca: true,
-              modelo: true,
-              imagenUrl: true,
-              categoria: { select: { nombre: true, disciplina: true } },
-            },
-          },
-          riderAccesorios: {
-            select: { nombre: true, cantidad: true, categoria: true },
-            orderBy: { orden: "asc" },
-          },
-          posiciones: { orderBy: { orden: "asc" } },
-        },
-        orderBy: [{ equipo: { categoriaId: "asc" } }, { id: "asc" }],
-      },
-    },
-  });
+  const pdf = await generarHojaEntrega(id);
+  if (!pdf) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
-
-  if (!proyecto) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
-
-  const logoPath = path.join(process.cwd(), "public", "logo-white.png");
-  const logoSrc = fs.existsSync(logoPath)
-    ? `data:image/png;base64,${fs.readFileSync(logoPath).toString("base64")}`
-    : null;
-
-  const resolveImg = makePdfImageResolver(path.join(process.cwd(), "public"));
-  const equipos = await Promise.all(
-    proyecto.equipos.map(async (pe) => ({
-      ...pe,
-      montaje: resumenMontaje(pe.posiciones, pe.equipo?.categoria?.nombre, pe.equipo?.categoria?.disciplina),
-      equipo: pe.equipo
-        ? { ...pe.equipo, imagenUrl: await resolveImg(pe.equipo.imagenUrl) }
-        : null,
-    }))
-  );
-
-  const lineasCotizacion = await Promise.all(
-    (proyecto.cotizacion?.lineas ?? []).map(async (l) => ({
-      ...l,
-      notas: notaVisibleDeCotizacion(l.notas),
-      imagenUrl: await resolveImg(l.equipo?.imagenUrl ?? null),
-    }))
-  );
-
-  const proyectoData = {
-    ...proyecto,
-    equipos,
-    cotizacion: proyecto.cotizacion
-      ? {
-          ...proyecto.cotizacion,
-          lineas: lineasCotizacion,
-        }
-      : null,
-    fechaEvento: proyecto.fechaEvento?.toISOString() ?? null,
-    tratoIdeasReferencias: proyecto.trato?.ideasReferencias ?? null,
-  };
-
-  const pdfStream = await ReactPDF.renderToStream(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    React.createElement(HojaEntregaRentaPDF, { proyecto: proyectoData as any, logoSrc }) as React.ReactElement<React.ComponentProps<typeof Document>>
-  );
-
-  const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    pdfStream.on("data", (chunk: any) => chunks.push(Buffer.from(chunk)));
-    pdfStream.on("error", reject);
-    pdfStream.on("end", () => resolve(Buffer.concat(chunks)));
-  });
-
-  const isPreview = req.nextUrl?.searchParams?.get("preview") === "1";
-  return new NextResponse(pdfBuffer as any, {
-    status: 200,
-    headers: {
-      "Content-Type": "application/pdf",
-"Content-Disposition": `${isPreview ? 'inline' : 'attachment'}; filename="HojaEntrega-${proyecto.numeroProyecto}.pdf"`,
-      "Content-Length": String(pdfBuffer.length),
-    },
-  });
+  return respuestaPdf(pdf, req.nextUrl?.searchParams?.get("preview") === "1");
 }
