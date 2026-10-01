@@ -81,12 +81,17 @@ function Zona({ z, abierta, onAlternar }: { z: ZonaDoc; abierta: boolean; onAlte
       </button>
 
       {abierta && (
-        <div className="px-4 pb-4 space-y-4">
+        <div className="px-4 pb-4 space-y-7">
           {z.subzonas.map(sub => (
             <div key={sub.clave}>
-              <div className="flex items-center gap-2 pb-2 border-b border-white/10">
-                <span className="w-2 h-2 rounded-sm shrink-0" style={{ background: sub.color }} />
-                <p className="text-[12px] text-white/85 flex-1 min-w-0 truncate">{sub.etiqueta}</p>
+              <div className="flex items-baseline gap-2.5 pb-2.5 border-b border-white/20">
+                <span
+                  className="w-2.5 h-2.5 rounded-sm shrink-0 translate-y-[1px]"
+                  style={{ background: sub.color }}
+                />
+                <p className="text-[14px] uppercase tracking-[0.07em] text-white flex-1 min-w-0 truncate">
+                  {sub.etiqueta}
+                </p>
                 <p className="text-[10px] text-white/35 shrink-0">
                   {sub.unidades} uds · {kg(sub.pesoKg)}
                 </p>
