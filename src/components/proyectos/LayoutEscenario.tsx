@@ -676,40 +676,35 @@ export default function LayoutEscenario({
     const esZona = a.clase === "ZONA";
     const activa = sel?.tipo === "area" && sel.id === a.id;
     const etiqueta = esZona ? a.etiqueta.toUpperCase() : a.etiqueta;
-    const { lineas, fs } = rotuloEnLineas(etiqueta, w - 2, esZona ? 3.4 : 2.6);
+    const r = rotuloEnLineas(etiqueta, w - 2.4, esZona ? 2.4 : 2);
     // El rótulo va en una pastilla opaca: sobre la rejilla y las piezas, el texto
     // con contorno se volvía ilegible en cuanto dos áreas se tocaban.
-    const anchoTexto = Math.max(...lineas.map(l => l.length)) * fs * 0.56;
-    const altoChip = lineas.length * fs * 1.25 + fs * 0.7;
+    const pad = r.fs * 0.5;
+    const chip = { w: Math.min(w - 1.2, r.ancho + pad * 2), h: r.lineas.length * r.fs * 1.2 + pad * 1.4 };
+    const tx = x + 0.6 + pad;
     return (
       <g key={a.id} onPointerDown={ev => onPointerDownArea(ev, a)} className="cursor-move">
         <rect
           x={x} y={y} width={w} height={h} rx={1}
           fill={a.color}
-          fillOpacity={esZona ? 0.07 : 0.14}
+          fillOpacity={esZona ? 0.16 : 0.26}
           stroke={activa ? "#ffffff" : a.color}
-          strokeOpacity={activa ? 1 : 0.8}
+          strokeOpacity={activa ? 1 : 0.9}
           strokeWidth={activa ? 1.1 : esZona ? 0.8 : 0.6}
           strokeDasharray={esZona ? undefined : "2 1.4"}
         />
         {capas.rotulos && (
           <g style={{ pointerEvents: "none" }}>
             <rect
-              x={x + 0.6} y={y + 0.6}
-              width={Math.min(w - 1.2, anchoTexto + fs * 1.1)} height={altoChip}
-              rx={fs * 0.35}
-              fill={esZona ? a.color : "#0e0e0e"}
-              fillOpacity={esZona ? 0.92 : 0.82}
-              stroke={a.color} strokeOpacity={esZona ? 0 : 0.65} strokeWidth={0.3}
+              x={x + 0.6} y={y + 0.6} width={chip.w} height={chip.h} rx={r.fs * 0.3}
+              fill={a.color} fillOpacity={0.95}
             />
             <text
-              x={x + 0.6 + fs * 0.55} y={y + 0.6 + fs * 1.3}
-              fill={esZona ? "#0a0a0a" : a.color}
-              fontSize={fs} fontWeight={esZona ? 700 : 600}
-              letterSpacing={esZona ? 0.25 : 0}
+              x={tx} y={y + 0.6 + pad * 0.7 + r.fs * 0.92}
+              fill="#0a0a0a" fontSize={r.fs} fontWeight={esZona ? 700 : 600}
             >
-              {lineas.map((l, i) => (
-                <tspan key={i} x={x + 0.6 + fs * 0.55} dy={i === 0 ? 0 : fs * 1.25}>{l}</tspan>
+              {r.lineas.map((l, i) => (
+                <tspan key={i} x={tx} dy={i === 0 ? 0 : r.fs * 1.2}>{l}</tspan>
               ))}
             </text>
           </g>

@@ -165,36 +165,40 @@ export default function LayoutProduccionPublico({ doc }: { doc: DocumentoLayout 
               <rect
                 key={a.id}
                 x={a.x * pxPorM} y={a.y * pxPorM} width={a.anchoM * pxPorM} height={a.largoM * pxPorM} rx={0.8}
-                fill={a.color} fillOpacity={0.13} stroke={a.color} strokeOpacity={0.5}
+                fill={a.color} fillOpacity={0.26} stroke={a.color} strokeOpacity={0.6}
                 strokeWidth={0.45} strokeDasharray="2 1.4"
               />
             ))}
 
             {areasZona.map(a => {
               const activa = abierta === a.clave;
-              const { lineas, fs } = rotuloEnLineas(a.etiqueta.toUpperCase(), a.anchoM * pxPorM - 2, 3.4);
-              const anchoTexto = Math.max(...lineas.map(l => l.length)) * fs * 0.56;
+              const bx = a.x * pxPorM;
+              const by = a.y * pxPorM;
+              const bw = a.anchoM * pxPorM;
+              const r = rotuloEnLineas(a.etiqueta.toUpperCase(), bw - 2.4, 2.4);
+              const pad = r.fs * 0.5;
+              const tx = bx + 0.6 + pad;
               return (
                 <g key={a.id} onClick={() => abrir(a.clave)} className="cursor-pointer">
                   <rect
-                    x={a.x * pxPorM} y={a.y * pxPorM} width={a.anchoM * pxPorM} height={a.largoM * pxPorM} rx={1}
-                    fill={a.color} fillOpacity={activa ? 0.22 : 0.08}
-                    stroke={a.color} strokeOpacity={activa ? 1 : 0.75} strokeWidth={activa ? 1.3 : 0.7}
+                    x={bx} y={by} width={bw} height={a.largoM * pxPorM} rx={1}
+                    fill={a.color} fillOpacity={activa ? 0.34 : 0.16}
+                    stroke={a.color} strokeOpacity={activa ? 1 : 0.85} strokeWidth={activa ? 1.3 : 0.7}
                   />
                   <rect
-                    x={a.x * pxPorM + 0.6} y={a.y * pxPorM + 0.6}
-                    width={Math.min(a.anchoM * pxPorM - 1.2, anchoTexto + fs * 1.1)}
-                    height={lineas.length * fs * 1.25 + fs * 0.7}
-                    rx={fs * 0.35} fill={a.color} fillOpacity={0.92}
+                    x={bx + 0.6} y={by + 0.6}
+                    width={Math.min(bw - 1.2, r.ancho + pad * 2)}
+                    height={r.lineas.length * r.fs * 1.2 + pad * 1.4}
+                    rx={r.fs * 0.3} fill={a.color} fillOpacity={0.95}
                     style={{ pointerEvents: "none" }}
                   />
                   <text
-                    x={a.x * pxPorM + 0.6 + fs * 0.55} y={a.y * pxPorM + 0.6 + fs * 1.3}
-                    fill="#050505" fontSize={fs} fontWeight={700} letterSpacing={0.25}
+                    x={tx} y={by + 0.6 + pad * 0.7 + r.fs * 0.92}
+                    fill="#050505" fontSize={r.fs} fontWeight={700}
                     style={{ pointerEvents: "none" }}
                   >
-                    {lineas.map((l, i) => (
-                      <tspan key={i} x={a.x * pxPorM + 0.6 + fs * 0.55} dy={i === 0 ? 0 : fs * 1.25}>{l}</tspan>
+                    {r.lineas.map((l, i) => (
+                      <tspan key={i} x={tx} dy={i === 0 ? 0 : r.fs * 1.2}>{l}</tspan>
                     ))}
                   </text>
                 </g>

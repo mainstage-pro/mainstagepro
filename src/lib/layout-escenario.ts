@@ -97,25 +97,38 @@ export function medidasEscenario(anchoM: number | null | undefined, largoM: numb
   };
 }
 
-/** Ancho medio de un glifo respecto al tamaño de letra, para calcular a ojo si cabe. */
-const GLIFO = 0.56;
+/**
+ * Ancho medio de un glifo respecto al tamaño de letra. Medido sobre mayúsculas en
+ * negritas, que es el caso ancho: quedarse corto hace que el texto se salga de su
+ * pastilla, y eso ya pasó una vez.
+ */
+const GLIFO = 0.72;
+
+export type Rotulo = { lineas: string[]; fs: number; ancho: number };
+
+function medir(lineas: string[], fs: number): number {
+  return Math.max(...lineas.map(l => l.length)) * GLIFO * fs;
+}
 
 /**
  * Parte un rótulo en los renglones que caben en un ancho dado, achicando la letra
  * antes de recortar: dos renglones legibles sirven más que uno truncado. El plano
  * del editor, el del PDF y el de la vista pública lo usan igual para que una zona
- * se lea con el mismo nombre en los tres.
+ * se lea con el mismo nombre en los tres. Devuelve también el ancho que ocupa, para
+ * que quien dibuje la pastilla no tenga que volver a estimarlo.
  */
 export function rotuloEnLineas(
   label: string,
   anchoDisponible: number,
   maximo: number,
   maxLineas = 2,
-): { lineas: string[]; fs: number } {
+): Rotulo {
   const util = Math.max(1, anchoDisponible);
-  const palabras = label.split(/\s+/).filter(Boolean);
+  // "FOH / control" se parte pegado a la diagonal: un "/" solo al final de un
+  // renglón se lee como si faltara texto.
+  const palabras = label.replace(/\s*\/\s*/g, "/").split(/\s+/).filter(Boolean);
 
-  for (let fs = maximo; fs >= maximo * 0.45; fs -= maximo * 0.05) {
+  for (let fs = maximo; fs >= maximo * 0.4; fs -= maximo * 0.05) {
     const porLinea = Math.floor(util / (GLIFO * fs));
     if (porLinea < 3) continue;
     const lineas: string[] = [];
@@ -131,13 +144,13 @@ export function rotuloEnLineas(
     }
     if (!entra) continue;
     if (actual) lineas.push(actual);
-    if (lineas.length > 0 && lineas.length <= maxLineas) return { lineas, fs };
+    if (lineas.length > 0 && lineas.length <= maxLineas) return { lineas, fs, ancho: medir(lineas, fs) };
   }
 
-  const fs = maximo * 0.45;
+  const fs = maximo * 0.4;
   const porLinea = Math.max(2, Math.floor(util / (GLIFO * fs)));
   const texto = label.length > porLinea ? `${label.slice(0, porLinea - 1)}…` : label;
-  return { lineas: [texto], fs };
+  return { lineas: [texto], fs, ancho: medir([texto], fs) };
 }
 
 export const SNAP_M = 0.25;

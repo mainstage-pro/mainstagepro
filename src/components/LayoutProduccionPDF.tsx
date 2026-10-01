@@ -160,29 +160,28 @@ function Plano({ doc, ancho, alto }: { doc: DocumentoLayout; ancho: number; alto
    * Rótulo en pastilla: el mismo criterio del editor y de la vista pública. El
    * texto suelto sobre las piezas se volvía ilegible en cuanto dos áreas se tocan.
    */
-  function Rotulo({ a, maximo, invertido }: { a: Area; maximo: number; invertido: boolean }) {
-    const texto = invertido ? a.etiqueta.toUpperCase() : a.etiqueta;
-    const { lineas, fs } = rotuloEnLineas(texto, a.anchoM * escala - 6, maximo);
-    const x = dx + a.x * escala + 2;
-    const y = a.y * escala + 2;
-    const anchoTexto = Math.max(...lineas.map(l => l.length)) * fs * 0.56;
+  function Rotulo({ a, maximo, mayusculas }: { a: Area; maximo: number; mayusculas: boolean }) {
+    const texto = mayusculas ? a.etiqueta.toUpperCase() : a.etiqueta;
+    const anchoCaja = a.anchoM * escala;
+    const r = rotuloEnLineas(texto, anchoCaja - 5, maximo);
+    const pad = r.fs * 0.5;
+    const x = dx + a.x * escala + 1.5;
+    const y = a.y * escala + 1.5;
     return (
       <G>
         <Rect
           x={x} y={y}
-          width={Math.min(a.anchoM * escala - 4, anchoTexto + fs * 1.1)}
-          height={lineas.length * fs * 1.25 + fs * 0.6}
-          fill={invertido ? a.color : "#ffffff"}
-          fillOpacity={invertido ? 1 : 0.9}
-          stroke={a.color} strokeWidth={invertido ? 0 : 0.5}
+          width={Math.min(anchoCaja - 3, r.ancho + pad * 2)}
+          height={r.lineas.length * r.fs * 1.2 + pad * 1.4}
+          fill={a.color}
         />
-        {lineas.map((l, i) => (
+        {r.lineas.map((l, i) => (
           <Text
             key={i}
-            x={x + fs * 0.55}
-            y={y + fs * (1.05 + i * 1.25)}
-            fill={invertido ? "#ffffff" : a.color}
-            style={{ fontSize: fs }}
+            x={x + pad}
+            y={y + pad * 0.7 + r.fs * (0.92 + i * 1.2)}
+            fill="#ffffff"
+            style={{ fontSize: r.fs }}
           >
             {l}
           </Text>
@@ -208,7 +207,7 @@ function Plano({ doc, ancho, alto }: { doc: DocumentoLayout; ancho: number; alto
             <Rect
               x={dx + a.x * escala} y={a.y * escala}
               width={a.anchoM * escala} height={a.largoM * escala}
-              fill={a.color} fillOpacity={0.1} stroke={a.color} strokeWidth={1.1}
+              fill={a.color} fillOpacity={0.18} stroke={a.color} strokeWidth={1.1}
             />
           </G>
         ))}
@@ -218,7 +217,7 @@ function Plano({ doc, ancho, alto }: { doc: DocumentoLayout; ancho: number; alto
             <Rect
               x={dx + a.x * escala} y={a.y * escala}
               width={a.anchoM * escala} height={a.largoM * escala}
-              fill={a.color} fillOpacity={0.16} stroke={a.color} strokeWidth={0.6} strokeDasharray="2.5 1.8"
+              fill={a.color} fillOpacity={0.28} stroke={a.color} strokeWidth={0.6} strokeDasharray="2.5 1.8"
             />
           </G>
         ))}
@@ -236,8 +235,8 @@ function Plano({ doc, ancho, alto }: { doc: DocumentoLayout; ancho: number; alto
         ))}
 
         {/* Los rótulos van al final: tienen que quedar encima de las piezas. */}
-        {subzonas.map(a => <Rotulo key={`r${a.id}`} a={a} maximo={6.5} invertido={false} />)}
-        {zonas.map(a => <Rotulo key={`r${a.id}`} a={a} maximo={8} invertido />)}
+        {subzonas.map(a => <Rotulo key={`r${a.id}`} a={a} maximo={5.5} mayusculas={false} />)}
+        {zonas.map(a => <Rotulo key={`r${a.id}`} a={a} maximo={6.5} mayusculas />)}
 
         <Text x={dx + w / 2} y={h + 10} fill="#9a9a9a" textAnchor="middle" style={{ fontSize: 7 }}>
           P Ú B L I C O
