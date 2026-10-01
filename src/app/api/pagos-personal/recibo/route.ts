@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { desgloseBonos, totalPagoPersonal } from "@/lib/pago-personal";
 import { getSession } from "@/lib/auth";
 import ReactPDF, { Document } from "@react-pdf/renderer";
 import { ReciboNominaTecnicoPDF, type ReciboNominaTecnicoPDFData } from "@/components/ReciboNominaTecnicoPDF";
@@ -50,7 +51,6 @@ export async function GET(req: NextRequest) {
       proyecto: {
         fechaEvento: { gte: desde, lte: hasta }
       },
-      tarifaAcordada: { not: null }
     },
     include: {
       proyecto: {
@@ -61,13 +61,17 @@ export async function GET(req: NextRequest) {
     orderBy: { proyecto: { fechaEvento: "asc" } }
   });
 
-  const pagos = asignaciones.map(a => ({
+  const pagos = asignaciones
+    .filter(a => totalPagoPersonal(a) != null)
+    .map(a => ({
     proyectoNombre: a.proyecto.nombre,
     clienteNombre: a.proyecto.cliente?.nombre ?? "Sin cliente",
     fechaEvento: a.proyecto.fechaEvento ? a.proyecto.fechaEvento.toISOString() : "",
     rolNombre: a.rolTecnico?.nombre ?? null,
     jornada: a.jornada,
-    monto: a.tarifaAcordada ?? 0,
+    tarifa: a.tarifaAcordada,
+    bonos: desgloseBonos(a),
+    monto: totalPagoPersonal(a) ?? 0,
     estadoPago: a.estadoPago,
   }));
 

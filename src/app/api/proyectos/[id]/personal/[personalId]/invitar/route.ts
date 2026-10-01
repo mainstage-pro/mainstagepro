@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { desgloseBonos, totalPagoPersonal } from "@/lib/pago-personal";
 import { getSession } from "@/lib/auth";
 import { getConfig } from "@/lib/config";
 
@@ -64,8 +65,17 @@ export async function POST(
   mensaje += `📍 *Lugar:* ${proyecto?.lugarEvento ?? "Por confirmar"}\n`;
   mensaje += `🎛️ *Rol:* ${rolNombre}\n`;
   if (personal.jornada) mensaje += `⏱️ *Jornada:* ${personal.jornada}\n`;
-  if (personal.tarifaAcordada) {
-    mensaje += `💰 *Tarifa:* $${personal.tarifaAcordada.toLocaleString("es-MX")} MXN\n`;
+  const pago = totalPagoPersonal(personal);
+  if (pago) {
+    const bonos = desgloseBonos(personal);
+    mensaje += `💰 *Pago:* $${pago.toLocaleString("es-MX")} MXN\n`;
+    if (bonos.length > 0) {
+      const detalle = [
+        `jornada $${(personal.tarifaAcordada ?? 0).toLocaleString("es-MX")}`,
+        ...bonos.map(b => `${b.label.toLowerCase()} $${b.monto.toLocaleString("es-MX")}`),
+      ].join(" + ");
+      mensaje += `   (${detalle})\n`;
+    }
   }
   mensaje += `\nPor favor confirma tu participación en el siguiente enlace:\n${confirmUrl}`;
 

@@ -899,6 +899,14 @@ model ProyectoPersonal {
   confirmRespuesta String? // CONFIRMADO | RECHAZADO
   confirmToken     String?               @unique // Token para link de confirmación por WhatsApp
   tarifaAcordada   Float?
+  // Bonos del puesto. Se guarda el MONTO, no un booleano: el monto del catálogo
+  // cambia con el tiempo y un pago ya acordado no puede moverse cuando eso pasa.
+  // NULL = el bono no aplica. El pago total es la tarifa más los bonos.
+  bonoMontaje      Float? // montaje el mismo día del evento (si es otro día, es su propia jornada)
+  bonoDesmontaje   Float? // desmontaje el mismo día del evento
+  bonoEncargado    Float? // responsable en sitio — uno por proyecto
+  bonoChofer       Float? // manejó unidad
+  bonoForaneo      Float? // evento fuera de la zona local
   estadoPago       String                @default("PENDIENTE") // PENDIENTE | PAGADO
   movimientoId     String?               @unique // Movimiento financiero (GASTO) generado al marcar PAGADO
   movimiento       MovimientoFinanciero? @relation(fields: [movimientoId], references: [id])
@@ -2357,6 +2365,21 @@ model Asistencia {
 }
 
 // Configuración única (singleton) de las reglas de asistencia y penalización.
+// Montos de los bonos del tabulador de freelancers. Son fijos y globales a
+// propósito: negociarlos persona por persona es lo que hacía que dos técnicos
+// con el mismo rol y las mismas horas cobraran distinto.
+model ConfigPagoPersonal {
+  id             String   @id @default("singleton")
+  bonoMontaje    Float    @default(800) @map("bono_montaje")
+  bonoDesmontaje Float    @default(800) @map("bono_desmontaje")
+  bonoEncargado  Float    @default(500) @map("bono_encargado")
+  bonoChofer     Float    @default(500) @map("bono_chofer")
+  bonoForaneo    Float    @default(400) @map("bono_foraneo")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("config_pago_personal")
+}
+
 model ConfigAsistencia {
   id               String   @id @default("singleton")
   horaEntrada      String   @default("09:00") @map("hora_entrada")

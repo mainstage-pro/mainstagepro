@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession, puedeVerCostosTecnicos } from "@/lib/auth";
+import { BONOS_PERSONAL, totalPagoPersonal } from "@/lib/pago-personal";
 import { logActividad } from "@/lib/actividad";
 import { guardarVersion } from "@/lib/versiones";
 import { createExpiringToken, isTokenExpired } from "@/lib/tokens";
@@ -306,6 +307,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         ...p,
         tarifaAcordada: null,
         costo: null,
+        ...Object.fromEntries(BONOS_PERSONAL.map(b => [b.campo, null])),
       })) : [],
     } as unknown as typeof proyecto;
   }
@@ -467,10 +469,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   // ── Auto-crear CxP para técnicos con pago pendiente al marcar COMPLETADO ──
   if (data.estado === "COMPLETADO" && proyectoAntes?.estado !== "COMPLETADO") {
-    const personalPendiente = await prisma.proyectoPersonal.findMany({
-      where: { proyectoId: id, estadoPago: "PENDIENTE", tarifaAcordada: { gt: 0 } },
+    // El filtro de monto va en JS y no en el where: un puesto puede no tener
+    // tarifa y traer solo bonos (un chofer que no operó, por ejemplo).
+    const personalPendiente = (await prisma.proyectoPersonal.findMany({
+      where: { proyectoId: id, estadoPago: "PENDIENTE" },
       include: { tecnico: { select: { nombre: true } }, rolTecnico: { select: { nombre: true } } },
-    });
+    })).filter(p => (totalPagoPersonal(p) ?? 0) > 0);
 
     if (personalPendiente.length > 0) {
       // Contar CxP existentes por técnico para no duplicar las creadas al asignar
@@ -500,7 +504,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
             tecnicoId: p.tecnicoId ?? undefined,
             proyectoId: id,
             concepto: `Honorarios - ${p.tecnico?.nombre ?? "Técnico"} (${p.rolTecnico?.nombre ?? p.participacion ?? "Operación"}) · ${proyecto.numeroProyecto}`,
-            monto: p.tarifaAcordada!,
+            monto: totalPagoPersonal(p)!,
             fechaCompromiso,
             estado: "PENDIENTE",
           })),

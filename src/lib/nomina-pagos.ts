@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { SELECT_BONOS, totalPagoPersonal } from "./pago-personal";
 
 // ── Nómina · pagos a personal ────────────────────────────────────────────────
 // Lógica compartida entre los dos flujos que marcan una fila de nómina como
@@ -92,6 +93,7 @@ export async function marcarFilaNominaPagada(
       id: true,
       tecnicoId: true,
       tarifaAcordada: true,
+      ...SELECT_BONOS,
       proyectoId: true,
       estadoPago: true,
       movimientoId: true,
@@ -114,8 +116,9 @@ export async function marcarFilaNominaPagada(
     return fila.movimientoId;
   }
 
-  // Sin técnico o sin tarifa: no hay gasto que registrar, solo marcar pagado.
-  if (!fila.tecnicoId || !fila.tarifaAcordada || fila.tarifaAcordada <= 0) {
+  // Sin técnico o sin pago: no hay gasto que registrar, solo marcar pagado.
+  const pagoFila = totalPagoPersonal(fila);
+  if (!fila.tecnicoId || !pagoFila || pagoFila <= 0) {
     if (fila.estadoPago !== "PAGADO") {
       await tx.proyectoPersonal.update({
         where: { id: filaId },
@@ -144,7 +147,7 @@ export async function marcarFilaNominaPagada(
   const categoriaFreelanceId = await getCategoriaPersonalFreelance(tx);
 
   let movId: string;
-  const finalMonto = opts.overrideMonto ?? fila.tarifaAcordada;
+  const finalMonto = opts.overrideMonto ?? pagoFila;
   
   if (huerfano) {
     movId = huerfano.id;

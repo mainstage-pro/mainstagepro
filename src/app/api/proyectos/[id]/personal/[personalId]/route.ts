@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession, puedeVerCostosTecnicos } from "@/lib/auth";
+import { BONOS_PERSONAL, totalPagoPersonal } from "@/lib/pago-personal";
 import { ensureOperacionTecnicaColumns } from "@/lib/migraciones-lazy";
 import { marcarFilaNominaPagada, revertirFilaNominaPagada } from "@/lib/nomina-pagos";
 
@@ -31,6 +32,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if ("participacion" in body) data.participacion = body.participacion || null;
   if ("confirmado" in body) data.confirmado = body.confirmado;
   if ("tarifaAcordada" in body && canEditTecnicoCosts) data.tarifaAcordada = body.tarifaAcordada != null ? parseFloat(body.tarifaAcordada) : null;
+  // Bonos: el monto viaja en el cuerpo, no se re-lee del catálogo, para que al
+  // cambiar el catálogo no se muevan los puestos que ya lo tenían aplicado.
+  for (const b of BONOS_PERSONAL) {
+    if (b.campo in body && canEditTecnicoCosts) {
+      data[b.campo] = body[b.campo] != null ? parseFloat(body[b.campo]) : null;
+    }
+  }
   if ("estadoPago" in body) data.estadoPago = body.estadoPago;
   if ("nivel" in body) data.nivel = body.nivel || null;
   if ("jornada" in body) data.jornada = body.jornada || null;
@@ -85,7 +93,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   // ── Auto-crear CxP cuando se asigna técnico a una fila que no lo tenía ────
   const nuevaTecnicoId = personal.tecnicoId;
-  const tarifa = personal.tarifaAcordada;
+  const tarifa = totalPagoPersonal(personal);
   if (nuevaTecnicoId && tarifa && tarifa > 0 && previo && !previo.tecnicoId) {
     const proyecto = await prisma.proyecto.findUnique({
       where: { id: personal.proyectoId },

@@ -5,6 +5,7 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { agruparRolesTecnicos } from "@/lib/rolesTecnicos";
+import { BONOS_PERSONAL, desgloseBonos, totalPagoPersonal, type CampoBono } from "@/lib/pago-personal";
 import { PDFPreviewModal } from "@/components/PDFPreviewModal";
 import { upload } from "@vercel/blob/client";
 import { usePdfDownload } from "@/hooks/usePdfDownload";
@@ -65,6 +66,8 @@ interface Personal {
   fechaJornada: string | null;
   nivel: string | null; jornada: string | null; responsabilidad: string | null;
   tarifaAcordada: number | null; notas: string | null;
+  bonoMontaje: number | null; bonoDesmontaje: number | null;
+  bonoEncargado: number | null; bonoChofer: number | null; bonoForaneo: number | null;
   confirmToken: string | null; confirmRespuesta: string | null;
   rolEnEvento: string | null;
   coordinaEnSitio: boolean;
@@ -1033,6 +1036,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [roles, setRoles] = useState<RolTecnico[]>([]);
   const [categorias, setCategorias] = useState<CatFinanciera[]>([]);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
+  const [bonosCatalogo, setBonosCatalogo] = useState<Record<CampoBono, number> | null>(null);
 
   // Roles en el mismo orden y secciones que el tabulador de personal.
   const rolOptions = useMemo(
@@ -1642,7 +1646,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       fetch("/api/vehiculos").then(r => r.json()),
       fetch("/api/usuarios-activos").then(r => r.json()),
       fetch("/api/cuentas", { cache: "no-store" }).then(r => r.json()),
-    ]).then(([t, r, c, p, eq, v, u, cu]) => {
+      fetch("/api/roles-tecnicos/bonos", { cache: "no-store" }).then(r => r.json()),
+    ]).then(([t, r, c, p, eq, v, u, cu, bn]) => {
       setTecnicos(t.tecnicos ?? []);
       setRoles(r.roles ?? []);
       setCategorias((c.categorias ?? []).filter((x: CatFinanciera) => x.tipo === "GASTO"));
@@ -1651,6 +1656,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       setVehiculos((v.vehiculos ?? []).filter((x: { activo: boolean }) => x.activo));
       setUsuariosActivos(u.usuarios ?? []);
       setCuentasBancarias(cu.cuentas ?? []);
+      setBonosCatalogo(bn.bonos ?? null);
     });
   }, [id]);
 
@@ -2999,6 +3005,22 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     } : prev);
   }
 
+  // El monto del bono se congela en el puesto al aplicarlo: si mañana cambia el
+  // catálogo, lo ya acordado con la persona no se mueve.
+  async function toggleBono(pId: string, campo: CampoBono, montoActual: number | null) {
+    const nuevo = montoActual == null ? (bonosCatalogo?.[campo] ?? 0) : null;
+    if (nuevo === 0) { toast.error("Ese bono está en $0 en el tabulador"); return; }
+    const res = await fetch(`/api/proyectos/${id}/personal/${pId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ [campo]: nuevo }),
+    });
+    if (!res.ok) { toast.error("No se pudo aplicar el bono"); return; }
+    setProyecto(prev => prev ? {
+      ...prev,
+      personal: prev.personal.map(p => p.id === pId ? { ...p, [campo]: nuevo } : p),
+    } : prev);
+  }
+
   // ── Confirmar todos los de un grupo ──
   async function confirmarGrupo(grupo: NonNullable<typeof proyecto>["personal"]) {
     const pendientes = grupo.filter(p => !p.confirmado && p.tecnico);
@@ -3067,7 +3089,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [bancariosAbierto, setBancariosAbierto] = useState<string | null>(null);
 
   function abrirPagoPersonal(slots: Personal[]) {
-    const pendientes = slots.filter(p => p.tecnico && p.estadoPago !== "PAGADO" && (p.tarifaAcordada ?? 0) > 0);
+    const pendientes = slots.filter(p => p.tecnico && p.estadoPago !== "PAGADO" && (totalPagoPersonal(p) ?? 0) > 0);
     if (!pendientes.length) {
       toast.error("No hay tarifas pendientes que pagar");
       return;
@@ -3088,7 +3110,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           id: p.id,
           etiqueta: p.rolTecnico?.nombre ?? "Participación",
           detalle: p.participacion ?? null,
-          monto: p.tarifaAcordada ?? 0,
+          monto: totalPagoPersonal(p) ?? 0,
         })),
       })),
     );
@@ -5348,7 +5370,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               const lineas = (proyecto.cotizacion.lineas ?? []).filter(l => l.tipo === "OPERACION_TECNICA");
               if (lineas.length === 0) return null;
               const presupuestoCotizado = lineas.reduce((s, l) => s + l.precioUnitario * l.cantidad, 0);
-              const presupuestoAsignado = proyecto.personal.reduce((s, p) => s + (p.tarifaAcordada ?? 0), 0);
+              const presupuestoAsignado = proyecto.personal.reduce((s, p) => s + (totalPagoPersonal(p) ?? 0), 0);
               const restante = presupuestoCotizado - presupuestoAsignado;
               return (
                 <div className="border-t border-[#1a1a1a] px-4 py-3">
@@ -5712,9 +5734,32 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
                     {/* Actions */}
                     <div className="flex items-center gap-2 flex-wrap mt-2">
-                      {proyecto._canViewTecnicoCosts && (
-                        <span className={`text-sm font-medium ${p.tarifaAcordada != null ? "text-gray-300" : "text-gray-600 italic"}`}>{p.tarifaAcordada != null ? fmt(p.tarifaAcordada) : "Sin tarifa"}</span>
-                      )}
+                      {proyecto._canViewTecnicoCosts && (() => {
+                        const bonos = desgloseBonos(p);
+                        const total = totalPagoPersonal(p);
+                        return (
+                          <span className="inline-flex items-baseline gap-1.5">
+                            <span className={`text-sm font-medium ${total != null ? "text-gray-300" : "text-gray-600 italic"}`}>
+                              {total != null ? fmt(total) : "Sin tarifa"}
+                            </span>
+                            {bonos.length > 0 && (
+                              <span className="text-[10px] text-gray-600" title="Jornada más bonos">
+                                ({fmt(p.tarifaAcordada ?? 0)}{bonos.map(b => ` + ${b.label.toLowerCase()} ${fmt(b.monto)}`).join("")})
+                              </span>
+                            )}
+                          </span>
+                        );
+                      })()}
+                      {proyecto._canViewTecnicoCosts && p.estadoPago !== "PAGADO" && BONOS_PERSONAL.map(b => {
+                        const activo = p[b.campo] != null;
+                        return (
+                          <button key={b.campo} type="button" onClick={() => toggleBono(p.id, b.campo, p[b.campo])}
+                            title={activo ? `Quitar bono de ${b.label.toLowerCase()} (${fmt(p[b.campo] ?? 0)})` : `${b.ayuda} — suma ${fmt(bonosCatalogo?.[b.campo] ?? 0)}`}
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors ${activo ? "border-[#B3985B]/60 text-[#B3985B] bg-[#B3985B]/10" : "border-[#2a2a2a] text-gray-600 hover:border-[#B3985B]/40 hover:text-[#B3985B]"}`}>
+                            {activo ? "✓ " : "+ "}{b.label}
+                          </button>
+                        );
+                      })}
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${p.estadoPago === "PAGADO" ? "bg-green-900/40 text-green-400" : "bg-[#1a1a1a] text-gray-500 border border-[#2a2a2a]"}`}>{p.estadoPago === "PAGADO" ? "Pagado" : "Pendiente"}</span>
                       {p.confirmRespuesta && <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${p.confirmRespuesta === "CONFIRMADO" ? "bg-green-900/40 text-green-300" : "bg-red-900/40 text-red-300"}`}>{p.confirmRespuesta === "CONFIRMADO" ? "✓ Confirmó" : "✗ Rechazó"}</span>}
                       <button onClick={() => toggleConfirmar(p.id, p.confirmado)} className={`px-2 py-0.5 rounded-full text-xs font-medium border transition-colors ${p.confirmado ? "border-green-700 text-green-400 hover:bg-red-900/20 hover:text-red-400 hover:border-red-700" : "border-[#333] text-gray-500 hover:border-green-700 hover:text-green-400"}`}>{p.confirmado ? "✓ Confirmado" : "Confirmar"}</button>

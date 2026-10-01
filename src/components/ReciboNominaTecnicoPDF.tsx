@@ -13,6 +13,8 @@ export interface ReciboNominaTecnicoPDFData {
     fechaEvento: string;
     rolNombre: string | null;
     jornada: string | null;
+    bonos?: { label: string; monto: number }[];
+    tarifa?: number | null;
     monto: number;
     estadoPago: string;
   }[];
@@ -55,7 +57,7 @@ export function ReciboNominaTecnicoPDF({ data }: { data: ReciboNominaTecnicoPDFD
             <Text style={[base.th, { flex: 2.5 }]}>PROYECTO</Text>
             <Text style={[base.th, { flex: 2 }]}>ROL Y JORNADA</Text>
             <Text style={[base.th, { width: 60, textAlign: "right" }]}>ESTADO</Text>
-            <Text style={[base.th, { width: 65, textAlign: "right" }]}>TARIFA</Text>
+            <Text style={[base.th, { width: 65, textAlign: "right" }]}>PAGO</Text>
           </View>
           {data.pagos.map((p, i) => (
             <View key={i} style={i % 2 === 0 ? base.tbodyRow : base.tbodyRowAlt} wrap={false}>
@@ -65,7 +67,9 @@ export function ReciboNominaTecnicoPDF({ data }: { data: ReciboNominaTecnicoPDFD
               </View>
               <View style={{ flex: 2, paddingRight: 4 }}>
                 <Text style={base.td}>{p.rolNombre ?? "—"}</Text>
-                <Text style={base.tdSub}>{p.jornada ?? "—"}</Text>
+                <Text style={base.tdSub}>
+                  {[p.jornada ?? "—", ...(p.bonos ?? []).map(b => `+ ${b.label} ${fmtMoney(b.monto)}`)].join(" · ")}
+                </Text>
               </View>
               <Text style={[base.td, { width: 60, textAlign: "right", color: p.estadoPago === "PAGADO" ? "green" : "#B3985B" }]}>
                 {p.estadoPago === "PAGADO" ? "Pagado" : "Pendiente"}

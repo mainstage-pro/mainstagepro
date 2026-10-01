@@ -7,6 +7,7 @@ import { useConfirm } from "@/components/Confirm";
 import { Modal } from "@/components/Modal";
 import { DISCIPLINA_LABELS, DISCIPLINA_COLORS, DISCIPLINAS } from "@/lib/disciplinaColors";
 import { agruparRolesTecnicos } from "@/lib/rolesTecnicos";
+import { BONOS_PERSONAL } from "@/lib/pago-personal";
 
 type Rol = {
   id: string;
@@ -394,6 +395,8 @@ export default function RolesPage() {
         </div>
       </Modal>
 
+      <BonosCard />
+
       {/* Roles activos agrupados por categoría */}
       <div className="space-y-8">
         {secciones.map(({ disc, roles: rs }) => {
@@ -436,6 +439,69 @@ export default function RolesPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function BonosCard() {
+  const toast = useToast();
+  const [bonos, setBonos] = useState<Record<string, number> | null>(null);
+  const [guardado, setGuardado] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    fetch("/api/roles-tecnicos/bonos", { cache: "no-store" })
+      .then(r => r.json())
+      .then(d => setBonos(d.bonos ?? null))
+      .catch(() => setBonos(null));
+  }, []);
+
+  function set(campo: string, valor: number) {
+    setBonos(prev => (prev ? { ...prev, [campo]: valor } : prev));
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(async () => {
+      const res = await fetch("/api/roles-tecnicos/bonos", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [campo]: valor }),
+      });
+      if (!res.ok) { toast.error("No se pudo guardar el bono"); return; }
+      setGuardado(true);
+      setTimeout(() => setGuardado(false), 2000);
+    }, 1200);
+  }
+
+  if (!bonos) return null;
+
+  return (
+    <section className="rounded-2xl border border-[#B3985B]/20 bg-[#B3985B]/[0.04] mb-8">
+      <div className="flex items-center gap-3 px-5 py-3 border-l-4 border-l-[#B3985B]">
+        <span className="h-2.5 w-2.5 rounded-full bg-[#B3985B]" />
+        <h2 className="text-sm uppercase tracking-widest font-bold text-[#B3985B]">Bonos</h2>
+        {guardado && <span className="text-xs text-green-500">✓ Guardado</span>}
+      </div>
+      <div className="p-5 pt-3">
+        <p className="text-[11px] text-gray-500 mb-4 max-w-2xl">
+          Montos fijos que se suman a la jornada en el proyecto. Son iguales para todos a propósito:
+          negociarlos persona por persona es lo que hacía que dos técnicos con el mismo rol y las mismas
+          horas cobraran distinto. Cambiarlos aquí <span className="text-gray-300">no mueve</span> los
+          puestos que ya lo tienen aplicado.
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          {BONOS_PERSONAL.map(b => (
+            <div key={b.campo}>
+              <label className="text-xs text-gray-500 block mb-1" title={b.ayuda}>{b.label}</label>
+              <input
+                type="number"
+                value={String(bonos[b.config] ?? 0)}
+                onChange={e => set(b.config, Math.max(0, parseFloat(e.target.value) || 0))}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]/50"
+              />
+              <p className="text-[10px] text-gray-600 mt-1 leading-tight">{b.ayuda}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 

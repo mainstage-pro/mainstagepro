@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { marcarFilaNominaPagada } from "@/lib/nomina-pagos";
 import { datosBancarios, SELECT_BANCARIOS_TECNICO, type DatosBancarios } from "@/lib/datos-bancarios";
+import { desgloseBonos, SELECT_BONOS, totalPagoPersonal } from "@/lib/pago-personal";
 
 // Calculates the Wednesday of the cycle that contains a given event date
 function cicloDesde(cicloDate: Date): { desde: Date; hasta: Date } {
@@ -68,6 +69,8 @@ export async function GET(req: NextRequest) {
       nivel: pp.nivel,
       jornada: pp.jornada,
       tarifaAcordada: pp.tarifaAcordada,
+      bonos: desgloseBonos(pp),
+      pagoTotal: totalPagoPersonal(pp),
       estadoPago: pp.estadoPago,
       notas: pp.notas,
     })),
@@ -86,7 +89,8 @@ export async function GET(req: NextRequest) {
 
   for (const p of proyectos) {
     for (const pp of p.personal) {
-      if (!pp.tecnicoId || !pp.tecnico || pp.tarifaAcordada == null) continue;
+      const pagoPP = totalPagoPersonal(pp);
+      if (!pp.tecnicoId || !pp.tecnico || pagoPP == null) continue;
       const key = pp.tecnicoId;
       if (!tecMap.has(key)) {
         tecMap.set(key, {
@@ -99,13 +103,13 @@ export async function GET(req: NextRequest) {
       const entry = tecMap.get(key)!;
       const existing = entry.pagos.find((x) => x.proyectoId === p.id);
       if (existing) {
-        existing.monto += pp.tarifaAcordada;
+        existing.monto += pagoPP;
         if (pp.estadoPago !== "PAGADO") existing.estadoPago = "PENDIENTE";
       } else {
         entry.pagos.push({
           proyectoId: p.id,
           proyectoNombre: p.nombre,
-          monto: pp.tarifaAcordada,
+          monto: pagoPP,
           estadoPago: pp.estadoPago,
         });
       }
@@ -193,12 +197,12 @@ export async function POST(req: NextRequest) {
   // Filas de nómina pendientes del técnico en estos proyectos (lo que se paga).
   const filasPendientes = await prisma.proyectoPersonal.findMany({
     where: { tecnicoId, proyectoId: { in: proyectoIds }, estadoPago: "PENDIENTE" },
-    select: { id: true, tarifaAcordada: true, proyectoId: true },
+    select: { id: true, tarifaAcordada: true, ...SELECT_BONOS, proyectoId: true },
   });
 
   // Total adeudado: preferir el que envía la UI (coincide con las tarifas
   // mostradas); si no, sumar las tarifas de las filas pendientes.
-  const filasTotal = filasPendientes.reduce((s, f) => s + (f.tarifaAcordada ?? 0), 0);
+  const filasTotal = filasPendientes.reduce((s, f) => s + (totalPagoPersonal(f) ?? 0), 0);
   const totalOwed = totalOwedFromClient ?? filasTotal;
 
   // ── Determinar método/cuenta/referencia "primario" y total pagado ──────────
@@ -239,7 +243,7 @@ export async function POST(req: NextRequest) {
 
     await prisma.$transaction(async (tx) => {
       for (const fila of filasPendientes) {
-        let filaMontoPendiente = fila.tarifaAcordada ?? 0;
+        let filaMontoPendiente = totalPagoPersonal(fila) ?? 0;
         let filaVinculada = false;
 
         // Si la fila no tiene monto, igual la marcamos como pagada

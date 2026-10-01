@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { desgloseBonos, SELECT_BONOS, totalPagoPersonal } from "@/lib/pago-personal";
 
 export async function GET(
   _req: NextRequest,
@@ -15,6 +16,7 @@ export async function GET(
       jornada: true,
       responsabilidad: true,
       tarifaAcordada: true,
+      ...SELECT_BONOS,
       proyecto: {
         select: { nombre: true, fechaEvento: true, lugarEvento: true },
       },
@@ -31,7 +33,9 @@ export async function GET(
     return NextResponse.json({ error: "Token inválido o no encontrado" }, { status: 404 });
   }
 
-  return NextResponse.json({ personal });
+  return NextResponse.json({
+    personal: { ...personal, bonos: desgloseBonos(personal), pagoTotal: totalPagoPersonal(personal) },
+  });
 }
 
 export async function POST(

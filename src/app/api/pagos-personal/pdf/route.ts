@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { desgloseBonos, totalPagoPersonal } from "@/lib/pago-personal";
 import { getSession } from "@/lib/auth";
 import ReactPDF, { Document } from "@react-pdf/renderer";
 import { PagosPersonalPDF, type PagosPersonalPDFData } from "@/components/PagosPersonalPDF";
@@ -60,6 +61,8 @@ export async function GET(req: NextRequest) {
       rolNombre: pp.rolTecnico?.nombre ?? null,
       jornada: pp.jornada,
       tarifaAcordada: pp.tarifaAcordada,
+      bonos: desgloseBonos(pp),
+      pagoTotal: totalPagoPersonal(pp),
       estadoPago: pp.estadoPago,
     })),
   }));
@@ -78,8 +81,9 @@ export async function GET(req: NextRequest) {
   for (const p of proyectos) {
     totalPresupuestado += p.cotizacion?.subtotalOperacion ?? 0;
     for (const pp of p.personal) {
-      if (pp.tarifaAcordada != null) totalAsignado += pp.tarifaAcordada;
-      if (!pp.tecnicoId || !pp.tecnico || pp.tarifaAcordada == null) continue;
+      const pagoPP = totalPagoPersonal(pp);
+      if (pagoPP != null) totalAsignado += pagoPP;
+      if (!pp.tecnicoId || !pp.tecnico || pagoPP == null) continue;
       
       const key = pp.tecnicoId;
       if (!tecMap.has(key)) {
@@ -88,12 +92,12 @@ export async function GET(req: NextRequest) {
       const entry = tecMap.get(key)!;
       const existing = entry.pagos.find((x) => x.proyectoNombre === p.nombre);
       if (existing) {
-        existing.monto += pp.tarifaAcordada;
+        existing.monto += pagoPP;
         if (pp.estadoPago !== "PAGADO") existing.estadoPago = "PENDIENTE";
       } else {
         entry.pagos.push({
           proyectoNombre: p.nombre,
-          monto: pp.tarifaAcordada,
+          monto: pagoPP,
           estadoPago: pp.estadoPago,
         });
       }
