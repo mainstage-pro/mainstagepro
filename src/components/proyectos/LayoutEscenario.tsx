@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Copy, RotateCw, Trash2, Download, FileDown, Anchor, ZoomIn, ZoomOut, Maximize } from "lucide-react";
+import { Copy, RotateCw, Trash2, FileDown, Link2, ExternalLink, Anchor, ZoomIn, ZoomOut, Maximize } from "lucide-react";
 import { useToast } from "@/components/Toast";
+import { usePdfDownload } from "@/hooks/usePdfDownload";
 import ArbolZonasLayout from "@/components/proyectos/ArbolZonasLayout";
 import DetalleZonaLayout, { type CambioPosicion } from "@/components/proyectos/DetalleZonaLayout";
 import {
@@ -12,6 +13,7 @@ import {
   nuevoIdArea,
   nuevoIdPieza,
   parsearLayout,
+  rotuloEnLineas,
   snap,
   totalesDeLayout,
   type Area,
@@ -101,6 +103,7 @@ export default function LayoutEscenario({
   rider: EquipoDelRider[];
 }) {
   const toast = useToast();
+  const { downloading, downloadPdf } = usePdfDownload();
   const ancho = anchoM && anchoM > 0 ? anchoM : ANCHO_DEFAULT;
   const largo = largoM && largoM > 0 ? largoM : LARGO_DEFAULT;
 
@@ -115,6 +118,7 @@ export default function LayoutEscenario({
   const [vista, setVista] = useState({ zoom: 1, x: 0, y: 0 });
   const [capas, setCapas] = useState({ zonas: true, subzonas: true, piso: true, colgado: true, rotulos: true });
   const [copias, setCopias] = useState("3");
+  const [linkPublico, setLinkPublico] = useState<string | null>(null);
 
   const lienzoRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -628,37 +632,36 @@ export default function LayoutEscenario({
     return () => window.removeEventListener("keydown", onKey);
   }, [sel, piezas]);
 
-  async function exportar(formato: "png" | "pdf") {
-    if (!lienzoRef.current) return;
-    const html2canvas = (await import("html2canvas")).default;
-    // `as any`: el @types/html2canvas del repo es de la 0.5 y tapa los tipos reales de la 1.4.
-    const canvas = await html2canvas(lienzoRef.current, {
-      backgroundColor: "#0a0a0a", scale: 2, useCORS: true, allowTaint: true,
-    } as any);
-    const archivo = `layout-${nombre.replace(/\s+/g, "-").toLowerCase()}`;
-    if (formato === "png") {
-      const a = document.createElement("a");
-      a.href = canvas.toDataURL("image/png");
-      a.download = `${archivo}.png`;
-      a.click();
-      return;
+  // El PDF y el link públicos son la VERSIÓN FINAL: los arma el servidor desde el
+  // rider, no una captura de este lienzo (que es borrador y cambia a cada rato).
+  const baseApi = `/api/proyectos/${proyectoId}/escenarios/${escenarioId}`;
+
+  // El link se trae al montar: si se pidiera al hacer clic, el navegador trataría
+  // la pestaña nueva como popup y la bloquearía.
+  useEffect(() => {
+    let vivo = true;
+    fetch(`${baseApi}/layout-link`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (vivo && d?.url) setLinkPublico(d.url as string); })
+      .catch(() => {});
+    return () => { vivo = false; };
+  }, [baseApi]);
+
+  function descargarLayout() {
+    if (estado === "sucio") {
+      toast.info("Guarda los cambios antes de descargar: el documento se arma desde lo guardado.");
     }
-    const { jsPDF } = await import("jspdf");
-    const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "letter" });
-    const w = pdf.internal.pageSize.getWidth();
-    const h = pdf.internal.pageSize.getHeight();
-    const esc = Math.min((w - 20) / canvas.width, (h - 34) / canvas.height);
-    pdf.setFontSize(12);
-    pdf.text(`Layout · ${nombre}`, 10, 12);
-    pdf.setFontSize(8);
-    pdf.text(`${ancho} × ${largo} m · ${totales.total.toFixed(1)} kg en total · ${totales.colgado.toFixed(1)} kg colgados`, 10, 18);
-    pdf.text(
-      `Carga: ${cargaTotal.amperaje110.toFixed(1)} A a 110V · ${cargaTotal.amperaje220.toFixed(1)} A a 220V · ${Math.round(cargaTotal.watts)} W`
-      + (cargaTotal.sinDato > 0 ? ` · ${cargaTotal.sinDato} unidades sin amperaje capturado` : ""),
-      10, 23,
-    );
-    pdf.addImage(canvas.toDataURL("image/png"), "PNG", 10, 27, canvas.width * esc, canvas.height * esc);
-    pdf.save(`${archivo}.pdf`);
+    downloadPdf(`${baseApi}/layout-pdf`, undefined, `Layout de producción · ${nombre}`);
+  }
+
+  async function copiarLink() {
+    if (!linkPublico) return;
+    try {
+      await navigator.clipboard.writeText(linkPublico);
+      toast.success("Link del layout copiado. Ábrelo en celular o iPad.");
+    } catch {
+      toast.error("El navegador no dejó copiar; usa «Ver final» y copia la barra.");
+    }
   }
 
   const visibles = piezas.filter(p => (p.colgado ? capas.colgado : capas.piso));
@@ -672,7 +675,12 @@ export default function LayoutEscenario({
     const h = a.largoM * pxPorM;
     const esZona = a.clase === "ZONA";
     const activa = sel?.tipo === "area" && sel.id === a.id;
-    const { texto, fs } = rotulo(a.etiqueta, w, esZona ? 3.6 : 2.8);
+    const etiqueta = esZona ? a.etiqueta.toUpperCase() : a.etiqueta;
+    const { lineas, fs } = rotuloEnLineas(etiqueta, w - 2, esZona ? 3.4 : 2.6);
+    // El rótulo va en una pastilla opaca: sobre la rejilla y las piezas, el texto
+    // con contorno se volvía ilegible en cuanto dos áreas se tocaban.
+    const anchoTexto = Math.max(...lineas.map(l => l.length)) * fs * 0.56;
+    const altoChip = lineas.length * fs * 1.25 + fs * 0.7;
     return (
       <g key={a.id} onPointerDown={ev => onPointerDownArea(ev, a)} className="cursor-move">
         <rect
@@ -685,15 +693,26 @@ export default function LayoutEscenario({
           strokeDasharray={esZona ? undefined : "2 1.4"}
         />
         {capas.rotulos && (
-          <text
-            x={x + 1} y={y + fs + 0.9}
-            fill={a.color} fontSize={fs} fontWeight={esZona ? 700 : 500}
-            stroke="#0a0a0a" strokeWidth={fs * 0.3} paintOrder="stroke"
-            letterSpacing={esZona ? 0.3 : 0}
-            style={{ pointerEvents: "none" }}
-          >
-            {esZona ? texto.toUpperCase() : texto}
-          </text>
+          <g style={{ pointerEvents: "none" }}>
+            <rect
+              x={x + 0.6} y={y + 0.6}
+              width={Math.min(w - 1.2, anchoTexto + fs * 1.1)} height={altoChip}
+              rx={fs * 0.35}
+              fill={esZona ? a.color : "#0e0e0e"}
+              fillOpacity={esZona ? 0.92 : 0.82}
+              stroke={a.color} strokeOpacity={esZona ? 0 : 0.65} strokeWidth={0.3}
+            />
+            <text
+              x={x + 0.6 + fs * 0.55} y={y + 0.6 + fs * 1.3}
+              fill={esZona ? "#0a0a0a" : a.color}
+              fontSize={fs} fontWeight={esZona ? 700 : 600}
+              letterSpacing={esZona ? 0.25 : 0}
+            >
+              {lineas.map((l, i) => (
+                <tspan key={i} x={x + 0.6 + fs * 0.55} dy={i === 0 ? 0 : fs * 1.25}>{l}</tspan>
+              ))}
+            </text>
+          </g>
         )}
         {activa && (
           <rect
@@ -729,8 +748,20 @@ export default function LayoutEscenario({
             <button onClick={() => setVista(v => ({ ...v, zoom: clamp(v.zoom * 1.25, 0.4, 6) }))} className={BOTON}><ZoomIn size={12} /></button>
             <button onClick={() => setVista({ zoom: 1, x: 0, y: 0 })} className={BOTON}><Maximize size={12} /> Ajustar</button>
             <span className="w-px h-4 bg-[#2a2a2a]" />
-            <button onClick={() => exportar("png")} className={BOTON}><Download size={12} /> PNG</button>
-            <button onClick={() => exportar("pdf")} className={BOTON}><FileDown size={12} /> PDF</button>
+            <button onClick={copiarLink} disabled={!linkPublico} className={`${BOTON} disabled:opacity-40`}>
+              <Link2 size={12} /> Copiar link
+            </button>
+            <a
+              href={linkPublico ?? "#"}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`${BOTON} ${linkPublico ? "" : "pointer-events-none opacity-40"}`}
+            >
+              <ExternalLink size={12} /> Ver final
+            </a>
+            <button onClick={descargarLayout} disabled={!!downloading} className={`${BOTON} disabled:opacity-50`}>
+              <FileDown size={12} /> {downloading ? "Generando…" : "Layout de producción"}
+            </button>
           </div>
         </div>
 

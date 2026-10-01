@@ -87,6 +87,59 @@ export const PALETA_BACKLINE: ItemPaleta[] = [
 /** Tamaño por omisión de una pieza del rider cuyo modelo no tiene huella capturada. */
 export const TAMANO_RIDER = { anchoM: 0.8, largoM: 0.6 };
 
+/** Medidas del escenario cuando no se capturaron: suficiente para empezar a dibujar. */
+export const MEDIDAS_DEFAULT = { anchoM: 12, largoM: 8 };
+
+export function medidasEscenario(anchoM: number | null | undefined, largoM: number | null | undefined) {
+  return {
+    anchoM: anchoM && anchoM > 0 ? anchoM : MEDIDAS_DEFAULT.anchoM,
+    largoM: largoM && largoM > 0 ? largoM : MEDIDAS_DEFAULT.largoM,
+  };
+}
+
+/** Ancho medio de un glifo respecto al tamaño de letra, para calcular a ojo si cabe. */
+const GLIFO = 0.56;
+
+/**
+ * Parte un rótulo en los renglones que caben en un ancho dado, achicando la letra
+ * antes de recortar: dos renglones legibles sirven más que uno truncado. El plano
+ * del editor, el del PDF y el de la vista pública lo usan igual para que una zona
+ * se lea con el mismo nombre en los tres.
+ */
+export function rotuloEnLineas(
+  label: string,
+  anchoDisponible: number,
+  maximo: number,
+  maxLineas = 2,
+): { lineas: string[]; fs: number } {
+  const util = Math.max(1, anchoDisponible);
+  const palabras = label.split(/\s+/).filter(Boolean);
+
+  for (let fs = maximo; fs >= maximo * 0.45; fs -= maximo * 0.05) {
+    const porLinea = Math.floor(util / (GLIFO * fs));
+    if (porLinea < 3) continue;
+    const lineas: string[] = [];
+    let actual = "";
+    let entra = true;
+    for (const palabra of palabras) {
+      if (palabra.length > porLinea) { entra = false; break; }
+      const prueba = actual ? `${actual} ${palabra}` : palabra;
+      if (prueba.length <= porLinea) { actual = prueba; continue; }
+      lineas.push(actual);
+      actual = palabra;
+      if (lineas.length >= maxLineas) { entra = false; break; }
+    }
+    if (!entra) continue;
+    if (actual) lineas.push(actual);
+    if (lineas.length > 0 && lineas.length <= maxLineas) return { lineas, fs };
+  }
+
+  const fs = maximo * 0.45;
+  const porLinea = Math.max(2, Math.floor(util / (GLIFO * fs)));
+  const texto = label.length > porLinea ? `${label.slice(0, porLinea - 1)}…` : label;
+  return { lineas: [texto], fs };
+}
+
 export const SNAP_M = 0.25;
 
 export function snap(v: number) {

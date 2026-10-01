@@ -59,6 +59,8 @@ export type ItemDeZona = {
   proyectoEquipoId: string;
   equipoId: string;
   nombre: string;
+  /** Descripción de catálogo: lo que explica qué es, para quien no reconoce el modelo. */
+  descripcion: string;
   imagenUrl: string | null;
   cantidad: number;
   categoria: string | null;
@@ -188,6 +190,7 @@ function itemDe(e: EquipoDelRider, p: PosicionDelRider | null): ItemDeZona {
     proyectoEquipoId: e.id,
     equipoId: e.equipo.id,
     nombre: nombreCorto(e),
+    descripcion: e.equipo.descripcion,
     imagenUrl: e.equipo.imagenUrl,
     cantidad,
     categoria,
