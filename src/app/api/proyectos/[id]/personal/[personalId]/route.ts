@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSession } from "@/lib/auth";
+import { getSession, puedeVerCostosTecnicos } from "@/lib/auth";
 import { ensureOperacionTecnicaColumns } from "@/lib/migraciones-lazy";
 import { marcarFilaNominaPagada, revertirFilaNominaPagada } from "@/lib/nomina-pagos";
 
@@ -22,9 +22,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { personalId } = await params;
   const body = await req.json();
 
-  // Solo Mauricio/Emiliano pueden ver y modificar tarifas de técnicos.
-  const allowedTecnicoNames = ["mauricio", "emiliano"];
-  const canEditTecnicoCosts = allowedTecnicoNames.some(name => session.name.toLowerCase().includes(name));
+  const canEditTecnicoCosts = puedeVerCostosTecnicos(session);
 
   const data: Record<string, unknown> = {};
   if ("esAdicional" in body) data.esAdicional = body.esAdicional === true;

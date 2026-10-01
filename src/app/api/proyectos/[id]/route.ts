@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSession } from "@/lib/auth";
+import { getSession, puedeVerCostosTecnicos } from "@/lib/auth";
 import { logActividad } from "@/lib/actividad";
 import { guardarVersion } from "@/lib/versiones";
 import { createExpiringToken, isTokenExpired } from "@/lib/tokens";
@@ -279,8 +279,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const canViewFinances = allowedNames.some(name => session.name.toLowerCase().includes(name));
 
   // Costos/tarifas de técnicos: visibilidad más restringida que el resto de finanzas.
-  const allowedTecnicoNames = ["mauricio", "emiliano"];
-  const canViewTecnicoCosts = allowedTecnicoNames.some(name => session.name.toLowerCase().includes(name));
+  const canViewTecnicoCosts = puedeVerCostosTecnicos(session);
 
   if (!canViewFinances) {
     proyecto = {

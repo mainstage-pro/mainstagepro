@@ -75,3 +75,10 @@ export function puedeVerificar(session: SessionLike): boolean {
   if (!session) return false;
   return session.role === "ADMIN" || session.area === "ADMINISTRACION" || session.area === "DIRECCION";
 }
+
+const NOMBRES_COSTOS_TECNICOS = ["mauricio", "emiliano"];
+export function puedeVerCostosTecnicos(session: { name?: string | null } | null): boolean {
+  if (!session?.name) return false;
+  const n = session.name.toLowerCase();
+  return NOMBRES_COSTOS_TECNICOS.some(x => n.includes(x));
+}
