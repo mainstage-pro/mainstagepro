@@ -590,13 +590,19 @@ export default function LayoutEscenario({
         )}
 
         <div className="ms-card p-3">
-          <p className="ms-section-label">Banco del escenario</p>
+          <p className="ms-section-label">Banco de equipos</p>
           {banco.length === 0 ? (
             <p className="text-[11px] text-gray-600 mt-1.5 leading-tight">
-              Nada asignado todavía. Asigna equipo a este escenario desde la pestaña de producción
-              y desglosa su montaje para verlo aquí por función.
+              El rider del proyecto está vacío. Agrega equipo en la pestaña de producción y
+              aparecerá aquí; si desglosas su montaje, cada posición entra como su propio renglón.
             </p>
           ) : (
+            <p className="text-[10px] text-gray-600 mt-1 leading-tight">
+              Arrástralos al plano o haz clic para colocarlos al centro. El contador es cuántos
+              ya pusiste de los que pide el rider.
+            </p>
+          )}
+          {banco.length > 0 && (
             <div className="mt-2 space-y-1 max-h-[22rem] overflow-y-auto">
               {banco.map(f => {
                 const puestas = f.posicionId

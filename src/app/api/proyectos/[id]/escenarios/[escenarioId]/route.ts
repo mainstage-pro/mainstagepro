@@ -11,27 +11,31 @@ export async function GET(_req: NextRequest, { params }: Params) {
   const { id, escenarioId } = await params;
   const escenario = await prisma.proyectoEscenario.findFirst({
     where: { id: escenarioId, proyectoId: id },
-    include: {
-      // El banco del layout se arma con las POSICIONES de montaje, no con el equipo plano:
-      // un mismo modelo puede ir cuatro veces como PA principal y dos como sidefill, y en
-      // el plano eso son seis piezas con rótulos distintos.
-      equipos: {
-        include: {
-          equipo: {
-            select: {
-              id: true, marca: true, modelo: true, descripcion: true, pesoKg: true,
-              imagenUrl: true, huellaAnchoM: true, huellaLargoM: true,
-              categoria: { select: { nombre: true, disciplina: true } },
-            },
-          },
-          posiciones: { orderBy: { orden: "asc" } },
-        },
-        orderBy: { id: "asc" },
-      },
-    },
   });
   if (!escenario) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
-  return NextResponse.json({ escenario });
+
+  // El banco del layout se arma con las POSICIONES de montaje, no con el equipo plano:
+  // un mismo modelo puede ir cuatro veces como PA principal y dos como sidefill, y en
+  // el plano eso son seis piezas con rótulos distintos.
+  //
+  // Entra el equipo de ESTE escenario más el que todavía no tiene escenario: en un evento
+  // de un solo escenario nadie asigna nada, así que el rider completo es su banco.
+  const equipos = await prisma.proyectoEquipo.findMany({
+    where: { proyectoId: id, OR: [{ escenarioId }, { escenarioId: null }] },
+    include: {
+      equipo: {
+        select: {
+          id: true, marca: true, modelo: true, descripcion: true, pesoKg: true,
+          imagenUrl: true, huellaAnchoM: true, huellaLargoM: true,
+          categoria: { select: { nombre: true, disciplina: true } },
+        },
+      },
+      posiciones: { orderBy: { orden: "asc" } },
+    },
+    orderBy: { id: "asc" },
+  });
+
+  return NextResponse.json({ escenario: { ...escenario, equipos } });
 }
 
 export async function PATCH(req: NextRequest, { params }: Params) {

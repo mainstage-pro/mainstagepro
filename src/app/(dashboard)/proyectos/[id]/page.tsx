@@ -6513,6 +6513,16 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   return (
                     <div className="flex items-center gap-2">
                       <button
+                        onClick={() => {
+                          if (escenarios.length) router.push(`/proyectos/${id}/escenarios/${escenarios[0].id}/layout`);
+                          else setActiveTab('escenarios');
+                        }}
+                        title="Plano en planta: acomoda este equipo en el escenario"
+                        className="flex items-center gap-1.5 text-xs text-gray-400 border border-[#2a2a2a] hover:border-[#B3985B]/40 hover:text-[#B3985B] px-3 py-1.5 rounded-lg transition-all"
+                      >
+                        Layout del escenario
+                      </button>
+                      <button
                         onClick={() => setShowAddEquipo(v => !v)}
                         className="flex items-center gap-1.5 text-xs text-gray-400 border border-[#2a2a2a] hover:border-[#B3985B]/40 hover:text-[#B3985B] px-3 py-1.5 rounded-lg transition-all"
                       >

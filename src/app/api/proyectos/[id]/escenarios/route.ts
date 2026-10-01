@@ -28,13 +28,24 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
-  const escenarios = await prisma.proyectoEscenario.findMany({
-    where: { proyectoId: id },
-    orderBy: [{ orden: "asc" }, { createdAt: "asc" }],
-    include: INCLUDE_CONTEO,
-  });
+  const [escenarios, equipos, personal, bloques, proveedores] = await Promise.all([
+    prisma.proyectoEscenario.findMany({
+      where: { proyectoId: id },
+      orderBy: [{ orden: "asc" }, { createdAt: "asc" }],
+      include: INCLUDE_CONTEO,
+    }),
+    prisma.proyectoEquipo.count({ where: { proyectoId: id, escenarioId: null } }),
+    prisma.proyectoPersonal.count({ where: { proyectoId: id, escenarioId: null } }),
+    prisma.proyectoBloqueTiempo.count({ where: { proyectoId: id, escenarioId: null } }),
+    prisma.proveedorEvento.count({ where: { proyectoId: id, escenarioId: null } }),
+  ]);
 
-  return NextResponse.json({ escenarios });
+  // Lo que nadie repartió a un escenario. Con un solo escenario es todo el proyecto, y
+  // el layout lo trata como suyo; con varios, es la bandeja de pendientes por asignar.
+  return NextResponse.json({
+    escenarios,
+    sinAsignar: { equipos, personal, bloques, proveedores },
+  });
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

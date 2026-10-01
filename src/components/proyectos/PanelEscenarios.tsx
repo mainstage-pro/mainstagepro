@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Plus, Trash2, LayoutGrid, Loader2 } from "lucide-react";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
@@ -18,6 +19,8 @@ export type EscenarioItem = {
 };
 
 type Borrador = { nombre: string; anchoM: string; largoM: string; alturaM: string; notas: string };
+
+type SinAsignar = { equipos: number; personal: number; bloques: number; proveedores: number };
 
 const CAMPO =
   "w-full bg-[#0e0e0e] border border-[#1f1f1f] rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]";
@@ -48,7 +51,9 @@ export default function PanelEscenarios({
 }) {
   const toast = useToast();
   const confirm = useConfirm();
+  const router = useRouter();
   const [escenarios, setEscenarios] = useState<EscenarioItem[]>([]);
+  const [sinAsignar, setSinAsignar] = useState<SinAsignar | null>(null);
   const [cargando, setCargando] = useState(true);
   const [creando, setCreando] = useState(false);
   const [abierto, setAbierto] = useState<string | null>(null);
@@ -60,6 +65,7 @@ export default function PanelEscenarios({
     if (r.ok) {
       const d = await r.json();
       setEscenarios(d.escenarios ?? []);
+      setSinAsignar(d.sinAsignar ?? null);
     }
     setCargando(false);
   }, [proyectoId]);
@@ -67,13 +73,17 @@ export default function PanelEscenarios({
   // eslint-disable-next-line react-hooks/set-state-in-effect -- la carga inicial sí viene de fuera de React
   useEffect(() => { cargar(); }, [cargar]);
 
-  async function crear() {
+  async function crear(irAlLayout = false) {
     setCreando(true);
     const r = await fetch(`/api/proyectos/${proyectoId}/escenarios`, { method: "POST" });
     setCreando(false);
     if (!r.ok) { toast.error("No se pudo crear el escenario"); return; }
+    const d = await r.json().catch(() => null);
     await cargar();
     onCambio?.();
+    if (irAlLayout && d?.escenario?.id) {
+      router.push(`/proyectos/${proyectoId}/escenarios/${d.escenario.id}/layout`);
+    }
   }
 
   async function guardar(id: string) {
@@ -132,12 +142,18 @@ export default function PanelEscenarios({
             <h3 className="text-sm font-bold text-white">Escenarios</h3>
             <p className="text-[11px] text-gray-500 mt-0.5 max-w-xl">
               Un escenario por área de montaje. Cada uno lleva su propio equipo, crew, logística,
-              proveedores y layout. Si el evento tiene un solo escenario no hace falta crear nada.
+              proveedores y <span className="text-gray-400">layout</span>: el plano en planta donde
+              acomodas el equipo del rider. Con un solo escenario no hay que repartir nada — todo
+              el rider del proyecto es su banco de equipos.
             </p>
           </div>
-          <button onClick={crear} disabled={creando} className="ms-btn-primary shrink-0 text-xs px-3 py-1.5 flex items-center gap-1.5 disabled:opacity-50">
+          <button
+            onClick={() => crear(escenarios.length === 0)}
+            disabled={creando}
+            className="ms-btn-primary shrink-0 text-xs px-3 py-1.5 flex items-center gap-1.5 disabled:opacity-50"
+          >
             {creando ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
-            Agregar escenario
+            {escenarios.length === 0 ? "Crear escenario y abrir layout" : "Agregar escenario"}
           </button>
         </div>
         {escenarios.length === 0 && escenarioMedidas && (
@@ -150,6 +166,14 @@ export default function PanelEscenarios({
 
       {escenarios.map(e => {
         const editando = abierto === e.id;
+        // Con un solo escenario nadie reparte: lo que no tiene escenario también es suyo.
+        const extra = escenarios.length === 1 ? sinAsignar : null;
+        const cuenta = {
+          equipos: e._count.equipos + (extra?.equipos ?? 0),
+          personal: e._count.personal + (extra?.personal ?? 0),
+          bloques: e._count.bloques + (extra?.bloques ?? 0),
+          proveedores: e._count.proveedores + (extra?.proveedores ?? 0),
+        };
         return (
           <div key={e.id} className="ms-card p-4">
             <div className="flex items-start justify-between gap-3">
@@ -160,11 +184,17 @@ export default function PanelEscenarios({
                   {e.alturaM ? ` · ${e.alturaM} m de altura` : ""}
                 </p>
                 <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-[11px] text-gray-500">
-                  <span>{e._count.equipos} equipo{e._count.equipos !== 1 ? "s" : ""}</span>
-                  <span>{e._count.personal} de crew</span>
-                  <span>{e._count.bloques} bloque{e._count.bloques !== 1 ? "s" : ""}</span>
-                  <span>{e._count.proveedores} proveedor{e._count.proveedores !== 1 ? "es" : ""}</span>
+                  <span>{cuenta.equipos} equipo{cuenta.equipos !== 1 ? "s" : ""}</span>
+                  <span>{cuenta.personal} de crew</span>
+                  <span>{cuenta.bloques} bloque{cuenta.bloques !== 1 ? "s" : ""}</span>
+                  <span>{cuenta.proveedores} proveedor{cuenta.proveedores !== 1 ? "es" : ""}</span>
                 </div>
+                {escenarios.length > 1 && !!sinAsignar?.equipos && (
+                  <p className="text-[11px] text-gray-600 mt-1.5">
+                    {sinAsignar.equipos} equipo{sinAsignar.equipos !== 1 ? "s" : ""} sin escenario; el
+                    banco de cada layout los muestra hasta que los reparta con el selector del rider.
+                  </p>
+                )}
                 {e.notas && <p className="text-[11px] text-gray-600 mt-2 whitespace-pre-wrap">{e.notas}</p>}
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
