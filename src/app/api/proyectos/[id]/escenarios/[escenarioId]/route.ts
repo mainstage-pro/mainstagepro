@@ -12,8 +12,20 @@ export async function GET(_req: NextRequest, { params }: Params) {
   const escenario = await prisma.proyectoEscenario.findFirst({
     where: { id: escenarioId, proyectoId: id },
     include: {
+      // El banco del layout se arma con las POSICIONES de montaje, no con el equipo plano:
+      // un mismo modelo puede ir cuatro veces como PA principal y dos como sidefill, y en
+      // el plano eso son seis piezas con rótulos distintos.
       equipos: {
-        include: { equipo: { select: { marca: true, modelo: true, descripcion: true, pesoKg: true } } },
+        include: {
+          equipo: {
+            select: {
+              id: true, marca: true, modelo: true, descripcion: true, pesoKg: true,
+              imagenUrl: true, huellaAnchoM: true, huellaLargoM: true,
+              categoria: { select: { nombre: true, disciplina: true } },
+            },
+          },
+          posiciones: { orderBy: { orden: "asc" } },
+        },
         orderBy: { id: "asc" },
       },
     },

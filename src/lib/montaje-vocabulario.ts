@@ -81,6 +81,7 @@ const PERFILES_POR_CATEGORIA: Record<string, PerfilMontaje> = {
       { id: "PA_PRINCIPAL", label: "PA principal (house)" },
       { id: "PA_REFUERZO", label: "Refuerzo / delay" },
       { id: "FRONT_FILL", label: "Front fill" },
+      { id: "OUT_FILL", label: "Out fill" },
       { id: "SUBGRAVE", label: "Subgrave" },
       { id: "MONITOR_PISO", label: "Monitor de piso (wedge)" },
       { id: "SIDEFILL", label: "Sidefill" },

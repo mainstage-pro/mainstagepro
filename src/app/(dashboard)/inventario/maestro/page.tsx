@@ -37,6 +37,8 @@ type Equipo = {
   amperajeRequerido: number | null;
   voltajeRequerido: string | null;
   pesoKg: number | null;
+  huellaAnchoM: number | null;
+  huellaLargoM: number | null;
   _count: { accesorios: number };
   proveedoresPrecios: { precio: number; notas: string | null; proveedor: { id: string; nombre: string; empresa: string | null; prioridad: number } }[];
 };
@@ -56,6 +58,7 @@ type Form = {
   categoriaId: string; cantidadTotal: string; estado: string;
   proveedorDefaultId: string; notas: string;
   amperajeRequerido: string; voltajeRequerido: string; pesoKg: string;
+  huellaAnchoM: string; huellaLargoM: string;
   precioRenta: string; costoProveedor: string;
 };
 
@@ -64,6 +67,7 @@ const FORM_EMPTY: Form = {
   categoriaId: "", cantidadTotal: "1", estado: "ACTIVO",
   proveedorDefaultId: "", notas: "",
   amperajeRequerido: "", voltajeRequerido: "", pesoKg: "",
+  huellaAnchoM: "", huellaLargoM: "",
   precioRenta: "", costoProveedor: "",
 };
 
@@ -355,6 +359,12 @@ function FormPanel({ panel, equipos, form, setForm, imagen, saving, categorias, 
             </FieldGroup>
             <FieldGroup label="Peso por unidad (kg)">
               <FInput type="number" value={form.pesoKg} onChange={v => setForm(p => ({ ...p, pesoKg: v }))} placeholder="Ej. 18" />
+            </FieldGroup>
+            <FieldGroup label="Huella: ancho (m)">
+              <FInput type="number" value={form.huellaAnchoM} onChange={v => setForm(p => ({ ...p, huellaAnchoM: v }))} placeholder="Ej. 0.4" />
+            </FieldGroup>
+            <FieldGroup label="Huella: fondo (m)">
+              <FInput type="number" value={form.huellaLargoM} onChange={v => setForm(p => ({ ...p, huellaLargoM: v }))} placeholder="Ej. 0.35" />
             </FieldGroup>
             <div className="col-span-2">
             <FieldGroup label="Voltaje">
@@ -923,6 +933,8 @@ export default function InventarioMaestroPage() {
       amperajeRequerido: e.amperajeRequerido != null ? String(e.amperajeRequerido) : "",
       voltajeRequerido: e.voltajeRequerido != null ? String(e.voltajeRequerido) : "",
       pesoKg: e.pesoKg != null ? String(e.pesoKg) : "",
+      huellaAnchoM: e.huellaAnchoM != null ? String(e.huellaAnchoM) : "",
+      huellaLargoM: e.huellaLargoM != null ? String(e.huellaLargoM) : "",
       precioRenta: e.precioRenta != null ? String(e.precioRenta) : "",
       costoProveedor: e.costoProveedor != null ? String(e.costoProveedor) : "",
     });
@@ -988,6 +1000,8 @@ export default function InventarioMaestroPage() {
       amperajeRequerido: form.amperajeRequerido !== "" ? parseFloat(form.amperajeRequerido) : null,
       voltajeRequerido: form.voltajeRequerido !== "" ? form.voltajeRequerido : null,
       pesoKg: form.pesoKg !== "" ? parseFloat(form.pesoKg) : null,
+      huellaAnchoM: form.huellaAnchoM !== "" ? parseFloat(form.huellaAnchoM) : null,
+      huellaLargoM: form.huellaLargoM !== "" ? parseFloat(form.huellaLargoM) : null,
       precioRenta: form.precioRenta !== "" ? parseFloat(form.precioRenta) : 0,
       costoProveedor: esEquipoDeTercero(form.tipo) && form.costoProveedor !== "" ? parseFloat(form.costoProveedor) : null,
       ...(imagen !== null ? { imagenUrl: imagen } : {}),

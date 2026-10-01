@@ -13,11 +13,18 @@ export type Pieza = {
   etiqueta: string;
   /** Si la pieza salió del rider real, el `ProyectoEquipo` del que vino. */
   proyectoEquipoId?: string;
+  /** La posición de montaje concreta (PA principal, sidefill…) que esta pieza representa. */
+  posicionId?: string;
+  /** El `Equipo` de catálogo. Es la llave para que la huella aplique a todo el modelo. */
+  equipoId?: string;
+  /** Miniatura del catálogo, para dibujar el equipo real en vez de una caja gris. */
+  imagenUrl?: string;
   x: number;
   y: number;
   anchoM: number;
   largoM: number;
-  rot: 0 | 90 | 180 | 270;
+  /** Grados en sentido del reloj. Libre, no solo múltiplos de 90. */
+  rot: number;
   colgado?: boolean;
   /**
    * Peso total de la pieza en kg, congelado al momento de soltarla. No se recalcula:
@@ -50,7 +57,7 @@ export const PALETA_BACKLINE: ItemPaleta[] = [
   { tipo: "PANTALLA", etiqueta: "Pantalla", anchoM: 3, largoM: 0.4 },
 ];
 
-/** Tamaño por omisión de una pieza que viene del rider y no tiene medidas propias. */
+/** Tamaño por omisión de una pieza del rider cuyo modelo no tiene huella capturada. */
 export const TAMANO_RIDER = { anchoM: 0.8, largoM: 0.6 };
 
 export const SNAP_M = 0.25;
@@ -63,10 +70,19 @@ export function nuevoIdPieza() {
   return `pz_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
-/** Caja de la pieza ya rotada: a 90°/270° se intercambian ancho y fondo. */
+/**
+ * Caja envolvente de la pieza ya rotada. Con rotación libre la huella real es un
+ * rombo; se usa su caja alineada a los ejes porque es lo único que sirve para no
+ * dejar que la pieza se salga del escenario.
+ */
 export function cajaDe(p: Pieza) {
-  const girada = p.rot === 90 || p.rot === 270;
-  return { ancho: girada ? p.largoM : p.anchoM, largo: girada ? p.anchoM : p.largoM };
+  const rad = (p.rot * Math.PI) / 180;
+  const c = Math.abs(Math.cos(rad));
+  const s = Math.abs(Math.sin(rad));
+  return {
+    ancho: p.anchoM * c + p.largoM * s,
+    largo: p.anchoM * s + p.largoM * c,
+  };
 }
 
 export function parsearLayout(raw: string | null | undefined): Pieza[] {
@@ -74,7 +90,10 @@ export function parsearLayout(raw: string | null | undefined): Pieza[] {
   try {
     const d = JSON.parse(raw) as LayoutGuardado | Pieza[];
     const piezas = Array.isArray(d) ? d : d.piezas;
-    return Array.isArray(piezas) ? piezas.filter(p => p && typeof p.id === "string") : [];
+    if (!Array.isArray(piezas)) return [];
+    return piezas
+      .filter(p => p && typeof p.id === "string")
+      .map(p => ({ ...p, rot: Number(p.rot) || 0 }));
   } catch {
     return [];
   }
@@ -89,4 +108,14 @@ export function totalesDeLayout(piezas: Pieza[]) {
     if (p.colgado) colgado += w;
   }
   return { total, colgado, piso: total - colgado };
+}
+
+/** Cuántas piezas del plano corresponden a una posición de montaje concreta. */
+export function colocadasPorPosicion(piezas: Pieza[]) {
+  const m = new Map<string, number>();
+  for (const p of piezas) {
+    if (!p.posicionId) continue;
+    m.set(p.posicionId, (m.get(p.posicionId) ?? 0) + 1);
+  }
+  return m;
 }

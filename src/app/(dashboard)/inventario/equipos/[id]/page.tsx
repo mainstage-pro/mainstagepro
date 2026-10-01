@@ -96,6 +96,8 @@ type Equipo = {
   amperajeRequerido: number | null;
   voltajeRequerido: string | null;
   pesoKg: number | null;
+  huellaAnchoM: number | null;
+  huellaLargoM: number | null;
   imagenUrl: string | null;
   imagenesUrls: string | null;
   categoria: { id: string; nombre: string };
@@ -890,6 +892,75 @@ function PesoField({ equipoId, initial }: { equipoId: string; initial: number | 
   );
 }
 
+/**
+ * Huella en planta del modelo. Se captura una vez aquí y la heredan todos los layouts de
+ * escenario, de este evento y de los que vengan; el layout no guarda medidas por su cuenta.
+ */
+function HuellaField({ equipoId, ancho, largo }: { equipoId: string; ancho: number | null; largo: number | null }) {
+  const toast = useToast();
+  const [valor, setValor] = useState({ ancho, largo });
+  const [editando, setEditando] = useState(false);
+  const [borrador, setBorrador] = useState({ ancho: ancho != null ? String(ancho) : "", largo: largo != null ? String(largo) : "" });
+  const [guardando, setGuardando] = useState(false);
+
+  function limpiar(v: string) {
+    const t = v.trim();
+    if (!t) return null;
+    const n = parseFloat(t);
+    return Number.isFinite(n) && n > 0 ? n : NaN;
+  }
+
+  async function guardar() {
+    const a = limpiar(borrador.ancho);
+    const l = limpiar(borrador.largo);
+    if (Number.isNaN(a) || Number.isNaN(l)) { toast.error("Medidas inválidas"); return; }
+    setGuardando(true);
+    const r = await fetch(`/api/equipos/${equipoId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ huellaAnchoM: a, huellaLargoM: l }),
+    });
+    setGuardando(false);
+    if (!r.ok) { toast.error("No se pudo guardar la huella"); return; }
+    setValor({ ancho: a, largo: l });
+    setEditando(false);
+  }
+
+  const campo = "w-14 bg-[#0e0e0e] border border-[#1f1f1f] rounded px-1.5 py-0.5 text-white text-xs focus:outline-none focus:border-[#B3985B]";
+
+  return (
+    <div>
+      <dt className="text-[#6b7280] text-xs mb-0.5">Huella en planta</dt>
+      {editando ? (
+        <dd className="flex items-center gap-1">
+          <input autoFocus type="number" step="0.05" min="0" placeholder="ancho" value={borrador.ancho}
+            onChange={e => setBorrador(p => ({ ...p, ancho: e.target.value }))}
+            onKeyDown={e => { if (e.key === "Enter") guardar(); if (e.key === "Escape") setEditando(false); }}
+            className={campo} />
+          <span className="text-[#6b7280] text-xs">×</span>
+          <input type="number" step="0.05" min="0" placeholder="fondo" value={borrador.largo}
+            onChange={e => setBorrador(p => ({ ...p, largo: e.target.value }))}
+            onKeyDown={e => { if (e.key === "Enter") guardar(); if (e.key === "Escape") setEditando(false); }}
+            className={campo} />
+          <span className="text-[#6b7280] text-xs">m</span>
+          <button onClick={guardar} disabled={guardando} className="text-[10px] text-[#B3985B] hover:underline disabled:opacity-50">
+            {guardando ? "…" : "OK"}
+          </button>
+        </dd>
+      ) : (
+        <dd>
+          <button onClick={() => { setBorrador({ ancho: valor.ancho != null ? String(valor.ancho) : "", largo: valor.largo != null ? String(valor.largo) : "" }); setEditando(true); }}
+            className="text-white hover:text-[#B3985B] transition-colors">
+            {valor.ancho != null && valor.largo != null
+              ? `${valor.ancho} × ${valor.largo} m`
+              : <span className="text-[#444] italic text-xs">Sin capturar</span>}
+          </button>
+        </dd>
+      )}
+    </div>
+  );
+}
+
 export default function EquipoFichaPage() {
   const { id } = useParams<{ id: string }>();
   const [equipo, setEquipo] = useState<Equipo | null>(null);
@@ -966,6 +1037,7 @@ export default function EquipoFichaPage() {
             <dd className="text-white">{equipo.cantidadTotal}</dd>
           </div>
           <PesoField equipoId={equipo.id} initial={equipo.pesoKg} />
+          <HuellaField equipoId={equipo.id} ancho={equipo.huellaAnchoM} largo={equipo.huellaLargoM} />
           {(equipo.amperajeRequerido != null || equipo.voltajeRequerido != null) && (
             <div>
               <dt className="text-[#6b7280] text-xs mb-0.5">Eléctrico</dt>

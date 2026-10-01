@@ -1119,6 +1119,10 @@ model Equipo {
   // Peso nominal de catálogo por unidad. EquipoUnidad.pesoKg es el peso real de una unidad
   // física concreta y no se sincroniza con este.
   pesoKg                 Float?
+  // Huella en planta, en metros, con la que se dibuja el equipo en el layout de escenario.
+  // Se captura una vez por modelo y la heredan todos los layouts, presentes y futuros.
+  huellaAnchoM           Float?
+  huellaLargoM           Float?
   notas                  String?
   descripcionInterna     String? // Descripción interna del equipo (qué es / para qué sirve), no visible al cliente
   imagenUrl              String? // URL principal del equipo (ruta /inventario/equipos/... o base64)

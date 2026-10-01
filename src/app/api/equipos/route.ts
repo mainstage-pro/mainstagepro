@@ -23,6 +23,8 @@ const EQUIPO_SELECT = {
   amperajeRequerido: true,
   voltajeRequerido: true,
   pesoKg: true,
+  huellaAnchoM: true,
+  huellaLargoM: true,
   imagenUrl: true,
   imagenesUrls: true,
   tiposEvento: true,
@@ -64,7 +66,7 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await req.json();
-  const { descripcion, categoriaId, marca, modelo, tipo, precioRenta, costoProveedor, costoInternoEstimado, cantidadTotal, proveedorDefaultId, notas, amperajeRequerido, voltajeRequerido, imagenUrl, descripcionInterna, pesoKg } = body;
+  const { descripcion, categoriaId, marca, modelo, tipo, precioRenta, costoProveedor, costoInternoEstimado, cantidadTotal, proveedorDefaultId, notas, amperajeRequerido, voltajeRequerido, imagenUrl, descripcionInterna, pesoKg, huellaAnchoM, huellaLargoM } = body;
 
   if (!descripcion || !categoriaId) {
     return NextResponse.json({ error: "descripcion y categoriaId son requeridos" }, { status: 400 });
@@ -88,6 +90,8 @@ export async function POST(req: NextRequest) {
       amperajeRequerido: amperajeRequerido !== "" && amperajeRequerido != null ? parseFloat(amperajeRequerido) : null,
       voltajeRequerido: voltajeRequerido !== "" && voltajeRequerido != null ? String(voltajeRequerido) : null,
       pesoKg: pesoKg !== "" && pesoKg != null ? parseFloat(pesoKg) : null,
+      huellaAnchoM: huellaAnchoM !== "" && huellaAnchoM != null ? parseFloat(huellaAnchoM) : null,
+      huellaLargoM: huellaLargoM !== "" && huellaLargoM != null ? parseFloat(huellaLargoM) : null,
       imagenUrl: imagen,
       descripcionInterna: descripcionInterna || null,
       activo: true,
