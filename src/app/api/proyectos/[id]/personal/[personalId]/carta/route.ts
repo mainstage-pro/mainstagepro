@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import ReactPDF from "@react-pdf/renderer";
 import { CartaFreelancePDF, PuestoCategoria } from "@/components/CartaFreelancePDF";
+import { CartaRiggerPDF } from "@/components/CartaRiggerPDF";
 import React from "react";
 
 // Mapeo de nombre de rol → categoría de puesto para checkboxes y clausula 1
@@ -87,8 +88,10 @@ export async function GET(
     responsabilidad:   pp.responsabilidad,
   };
 
+  const PDFComponent = categoria === "RIGGING" ? CartaRiggerPDF : CartaFreelancePDF;
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const stream = await ReactPDF.renderToStream(React.createElement(CartaFreelancePDF, props) as any);
+  const stream = await ReactPDF.renderToStream(React.createElement(PDFComponent, props) as any);
 
   const chunks: Buffer[] = [];
   await new Promise<void>((resolve, reject) => {
@@ -99,7 +102,8 @@ export async function GET(
 
   const pdf = Buffer.concat(chunks);
   const nombre = (pp.tecnico?.nombre ?? "freelance").replace(/\s+/g, "-");
-  const filename = `Carta-Responsiva-Tecnico-Freelance-${proy.numeroProyecto}-${nombre}.pdf`;
+  const tipoDoc = categoria === "RIGGING" ? "Responsiva-Rigging" : "Carta-Responsiva-Tecnico-Freelance";
+  const filename = `${tipoDoc}-${proy.numeroProyecto}-${nombre}.pdf`;
 
   const isPreview = req.nextUrl?.searchParams?.get("preview") === "1";
   return new NextResponse(pdf, {
