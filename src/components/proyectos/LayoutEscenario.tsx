@@ -576,16 +576,29 @@ export default function LayoutEscenario({
     paneo.current = null;
   }
 
-  function onWheel(ev: React.WheelEvent) {
-    ev.preventDefault();
-    const s = aSvg(ev.clientX, ev.clientY);
-    if (!s) return;
-    setVista(v => {
-      const z = clamp(v.zoom * (ev.deltaY < 0 ? 1.12 : 1 / 1.12), 0.4, 6);
-      // El punto bajo el cursor no se mueve: el zoom se siente natural.
-      return { zoom: z, x: s.x - ((s.x - v.x) / v.zoom) * z, y: s.y - ((s.y - v.y) / v.zoom) * z };
-    });
-  }
+  /**
+   * Solo el pellizco de dos dedos hace zoom: el trackpad lo manda como wheel con
+   * ctrlKey. El deslizamiento normal se deja pasar para que la página scrollee.
+   * Va como listener nativo porque React registra wheel en modo pasivo y ahí
+   * preventDefault no surte efecto.
+   */
+  useEffect(() => {
+    const lienzo = lienzoRef.current;
+    if (!lienzo) return;
+    function alPellizcar(ev: WheelEvent) {
+      if (!ev.ctrlKey) return;
+      ev.preventDefault();
+      const s = aSvg(ev.clientX, ev.clientY);
+      if (!s) return;
+      setVista(v => {
+        const z = clamp(v.zoom * Math.exp(-ev.deltaY * 0.01), 0.4, 6);
+        // El punto bajo el cursor no se mueve: el zoom se siente natural.
+        return { zoom: z, x: s.x - ((s.x - v.x) / v.zoom) * z, y: s.y - ((s.y - v.y) / v.zoom) * z };
+      });
+    }
+    lienzo.addEventListener("wheel", alPellizcar, { passive: false });
+    return () => lienzo.removeEventListener("wheel", alPellizcar);
+  }, [aSvg]);
 
   function onDrop(ev: React.DragEvent) {
     ev.preventDefault();
@@ -727,7 +740,6 @@ export default function LayoutEscenario({
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerLeave={onPointerUp}
-          onWheel={onWheel}
           onDragOver={ev => ev.preventDefault()}
           onDrop={onDrop}
         >
@@ -824,7 +836,7 @@ export default function LayoutEscenario({
         <p className="text-[10px] text-gray-600">
           Las zonas y configuraciones salen del rider: dibújalas desde el panel y acomódalas aquí.
           Mover una zona arrastra sus configuraciones. Las piezas del banco se sueltan sobre el plano;
-          todo se acomoda a 25 cm, la rueda hace zoom y arrastrar el fondo panea.
+          todo se acomoda a 25 cm, el pellizco de dos dedos hace zoom y arrastrar el fondo panea.
           Con algo seleccionado: <span className="text-gray-400">R</span> gira la pieza 15°,
           {" "}<span className="text-gray-400">Supr</span> borra.
         </p>
