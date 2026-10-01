@@ -7044,16 +7044,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                     )}
                                   </div>
 
-                                  <MontajePosiciones
-                                    proyectoId={proyecto.id}
-                                    equipoId={e.id}
-                                    cantidadTotal={e.cantidad}
-                                    categoria={e.equipo.categoria.nombre}
-                                    disciplina={e.equipo.categoria.disciplina ?? null}
-                                    posiciones={e.posiciones ?? []}
-                                    onSaved={(pos) => setRiderEquipos(prev => prev.map(x => x.id === e.id ? { ...x, posiciones: pos } : x))}
-                                  />
-
                                   {/* Confirmed accessories */}
                                   {e.riderAccesorios.length > 0 && (
                                     <div>
@@ -7198,6 +7188,16 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                       Agregar accesorio
                                     </button>
                                   )}
+
+                                  <MontajePosiciones
+                                    proyectoId={proyecto.id}
+                                    equipoId={e.id}
+                                    cantidadTotal={e.cantidad}
+                                    categoria={e.equipo.categoria.nombre}
+                                    disciplina={e.equipo.categoria.disciplina ?? null}
+                                    posiciones={e.posiciones ?? []}
+                                    onSaved={(pos) => setRiderEquipos(prev => prev.map(x => x.id === e.id ? { ...x, posiciones: pos } : x))}
+                                  />
                                 </div>
                               )}
                             </div>
