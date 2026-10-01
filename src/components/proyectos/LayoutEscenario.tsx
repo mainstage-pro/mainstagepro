@@ -124,6 +124,8 @@ export default function LayoutEscenario({
   const svgRef = useRef<SVGSVGElement>(null);
   const arrastre = useRef<{ tipo: "pieza" | "area"; id: string; dx: number; dy: number } | null>(null);
   const redim = useRef<{ id: string } | null>(null);
+  const escala = useRef<{ id: string; cx: number; cy: number; d0: number; anchoM: number; largoM: number } | null>(null);
+  const giro = useRef<{ id: string; cx: number; cy: number } | null>(null);
   const paneo = useRef<{ sx: number; sy: number; px: number; py: number } | null>(null);
   const soltando = useRef<RenglonBanco | ItemPaleta | null>(null);
   const primerRender = useRef(true);
@@ -530,6 +532,29 @@ export default function LayoutEscenario({
     (ev.currentTarget as Element).setPointerCapture?.(ev.pointerId);
   }
 
+  /** Escalar es proporcional: la foto del equipo se deforma si ancho y fondo van por su lado. */
+  function onPointerDownEscala(ev: React.PointerEvent, p: Pieza) {
+    ev.stopPropagation();
+    setSel({ tipo: "pieza", id: p.id });
+    const m = aMetros(ev.clientX, ev.clientY);
+    if (!m) return;
+    const cx = p.x + p.anchoM / 2;
+    const cy = p.y + p.largoM / 2;
+    escala.current = {
+      id: p.id, cx, cy,
+      d0: Math.max(0.05, Math.hypot(m.x - cx, m.y - cy)),
+      anchoM: p.anchoM, largoM: p.largoM,
+    };
+    (ev.currentTarget as Element).setPointerCapture?.(ev.pointerId);
+  }
+
+  function onPointerDownGiro(ev: React.PointerEvent, p: Pieza) {
+    ev.stopPropagation();
+    setSel({ tipo: "pieza", id: p.id });
+    giro.current = { id: p.id, cx: p.x + p.anchoM / 2, cy: p.y + p.largoM / 2 };
+    (ev.currentTarget as Element).setPointerCapture?.(ev.pointerId);
+  }
+
   function onPointerDownFondo(ev: React.PointerEvent) {
     setSel(null);
     const s = aSvg(ev.clientX, ev.clientY);
@@ -555,6 +580,27 @@ export default function LayoutEscenario({
       });
       return;
     }
+    if (escala.current) {
+      const e = escala.current;
+      const m = aMetros(ev.clientX, ev.clientY);
+      const p = piezas.find(q => q.id === e.id);
+      if (!m || !p) return;
+      const f = Math.hypot(m.x - e.cx, m.y - e.cy) / e.d0;
+      const paso = (v: number) => Math.round(clamp(v * f, 0.1, Math.max(ancho, largo)) * 20) / 20;
+      const anchoM = paso(e.anchoM);
+      const largoM = paso(e.largoM);
+      if (anchoM !== p.anchoM || largoM !== p.largoM) redimensionar(p, { anchoM, largoM });
+      return;
+    }
+    if (giro.current) {
+      const g = giro.current;
+      const m = aMetros(ev.clientX, ev.clientY);
+      if (!m) return;
+      // El asa cuelga arriba de la pieza, así que 0° es apuntar hacia −Y.
+      const grados = (Math.atan2(m.y - g.cy, m.x - g.cx) * 180) / Math.PI + 90;
+      mutar(g.id, { rot: ((Math.round(grados / 5) * 5) % 360 + 360) % 360 });
+      return;
+    }
     const d = arrastre.current;
     if (!d) return;
     const m = aMetros(ev.clientX, ev.clientY);
@@ -577,6 +623,8 @@ export default function LayoutEscenario({
   function onPointerUp() {
     arrastre.current = null;
     redim.current = null;
+    escala.current = null;
+    giro.current = null;
     paneo.current = null;
   }
 
@@ -798,6 +846,9 @@ export default function LayoutEscenario({
                 const w = p.anchoM * pxPorM;
                 const h = p.largoM * pxPorM;
                 const activa = sel?.tipo === "pieza" && sel.id === p.id;
+                // Las asas se dibujan del tamaño que tendrían en pantalla sin zoom: si no,
+                // al acercarse tapan la pieza y de lejos no se pueden agarrar.
+                const asa = 1.4 / vista.zoom;
                 return (
                   <g
                     key={p.id}
@@ -805,31 +856,68 @@ export default function LayoutEscenario({
                     onPointerDown={ev => onPointerDownPieza(ev, p)}
                     className="cursor-move"
                   >
-                    <rect
-                      x={x} y={y} width={w} height={h} rx={0.8}
-                      fill={p.colgado ? "#1d2436" : p.equipoId ? "#1a1710" : "#161616"}
-                      stroke={activa ? "#B3985B" : p.colgado ? "#3c4a6b" : "#303030"}
-                      strokeWidth={activa ? 1 : 0.5}
-                      strokeDasharray={p.colgado ? "2 1.2" : undefined}
-                    />
-                    {p.imagenUrl && (
-                      <image
-                        href={p.imagenUrl}
-                        x={x + 0.6} y={y + 0.6}
-                        width={Math.max(0.1, w - 1.2)} height={Math.max(0.1, h - 1.2)}
-                        preserveAspectRatio="xMidYMid meet"
-                        style={{ pointerEvents: "none" }}
-                      />
+                    {p.imagenUrl ? (
+                      // El equipo con foto se dibuja a secas: la caja y el rótulo solo
+                      // ensucian el plano cuando ya se ve qué es. El rectángulo invisible
+                      // existe para poder agarrarla aunque la foto tenga fondo transparente.
+                      <>
+                        <rect x={x} y={y} width={w} height={h} fill="transparent" />
+                        <image
+                          href={p.imagenUrl}
+                          x={x} y={y} width={Math.max(0.1, w)} height={Math.max(0.1, h)}
+                          preserveAspectRatio="xMidYMid meet"
+                          style={{ pointerEvents: "none" }}
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <rect
+                          x={x} y={y} width={w} height={h} rx={0.8}
+                          fill={p.colgado ? "#1d2436" : p.equipoId ? "#1a1710" : "#161616"}
+                          stroke={activa ? "#B3985B" : p.colgado ? "#3c4a6b" : "#303030"}
+                          strokeWidth={activa ? 1 : 0.5}
+                          strokeDasharray={p.colgado ? "2 1.2" : undefined}
+                        />
+                        {capas.rotulos && (
+                          <text
+                            x={x + w / 2} y={y + h + 3}
+                            fill={activa ? "#B3985B" : "#8b8b8b"}
+                            fontSize="2.6" textAnchor="middle"
+                            style={{ pointerEvents: "none" }}
+                          >
+                            {p.etiqueta.length > 22 ? `${p.etiqueta.slice(0, 21)}…` : p.etiqueta}
+                          </text>
+                        )}
+                      </>
                     )}
-                    {capas.rotulos && (
-                      <text
-                        x={x + w / 2} y={y + h + 3}
-                        fill={activa ? "#B3985B" : "#8b8b8b"}
-                        fontSize="2.6" textAnchor="middle"
-                        style={{ pointerEvents: "none" }}
-                      >
-                        {p.etiqueta.length > 22 ? `${p.etiqueta.slice(0, 21)}…` : p.etiqueta}
-                      </text>
+                    {activa && (
+                      <>
+                        {p.imagenUrl && (
+                          <rect
+                            x={x} y={y} width={w} height={h}
+                            fill="none" stroke="#B3985B" strokeWidth={0.5 / vista.zoom}
+                            strokeDasharray={`${1.4 / vista.zoom} ${1 / vista.zoom}`}
+                            style={{ pointerEvents: "none" }}
+                          />
+                        )}
+                        <line
+                          x1={x + w / 2} y1={y} x2={x + w / 2} y2={y - asa * 2.4}
+                          stroke="#B3985B" strokeWidth={0.4 / vista.zoom}
+                          style={{ pointerEvents: "none" }}
+                        />
+                        <circle
+                          cx={x + w / 2} cy={y - asa * 2.4} r={asa}
+                          fill="#B3985B" stroke="#0a0a0a" strokeWidth={0.3 / vista.zoom}
+                          className="cursor-grab"
+                          onPointerDown={ev => onPointerDownGiro(ev, p)}
+                        />
+                        <circle
+                          cx={x + w} cy={y + h} r={asa}
+                          fill="#ffffff" stroke="#0a0a0a" strokeWidth={0.3 / vista.zoom}
+                          className="cursor-nwse-resize"
+                          onPointerDown={ev => onPointerDownEscala(ev, p)}
+                        />
+                      </>
                     )}
                   </g>
                 );
@@ -863,7 +951,9 @@ export default function LayoutEscenario({
           Las zonas y configuraciones salen del rider: dibújalas desde el panel y acomódalas aquí.
           Mover una zona arrastra sus configuraciones. Las piezas del banco se sueltan sobre el plano;
           todo se acomoda a 25 cm, el pellizco de dos dedos hace zoom y arrastrar el fondo panea.
-          Con algo seleccionado: <span className="text-gray-400">R</span> gira la pieza 15°,
+          El equipo con foto se dibuja solo con su imagen: al seleccionarlo, el punto blanco de
+          la esquina lo hace grande o chico y el dorado de arriba lo gira. Con algo seleccionado:
+          {" "}<span className="text-gray-400">R</span> gira la pieza 15°,
           {" "}<span className="text-gray-400">Supr</span> borra.
         </p>
       </div>
