@@ -35,6 +35,7 @@ export async function PATCH(
   if (body.fechaSolicitud !== undefined) {
     data.fechaSolicitud = body.fechaSolicitud ? new Date(body.fechaSolicitud) : null;
   }
+  if (body.escenarioId !== undefined) data.escenarioId = body.escenarioId || null;
 
   // Alta rápida al catálogo desde un bloque que nació como nombre suelto.
   if (!body.proveedorId && body.crearEnCatalogo) {

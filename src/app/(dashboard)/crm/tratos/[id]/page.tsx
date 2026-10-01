@@ -43,6 +43,8 @@ interface Trato {
   etapaInterna: string | null;
   estatusContacto: string;
   tipoEvento: string;
+  esGira: boolean;
+  artista: { id: string; nombre: string } | null;
   tipoLead: string;
   origenLead: string;
   origenVenta: string;
@@ -1733,8 +1735,14 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               <DollarSign strokeWidth={1.75} className="w-4 h-4 text-[#B3985B]" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-white tracking-tight">Cotizaciones del proyecto</h2>
-              <p className="text-[10px] text-gray-600 mt-0.5">{trato.cotizaciones.length} cotización{trato.cotizaciones.length !== 1 ? "es" : ""} · {fmt(trato.cotizaciones.reduce((s, c) => s + c.granTotal, 0))} total</p>
+              <h2 className="text-sm font-bold text-white tracking-tight">
+                {trato.esGira ? `Plazas de la gira${trato.artista ? ` · ${trato.artista.nombre}` : ""}` : "Cotizaciones del proyecto"}
+              </h2>
+              <p className="text-[10px] text-gray-600 mt-0.5">
+                {trato.esGira
+                  ? `${trato.cotizaciones.length} plaza${trato.cotizaciones.length !== 1 ? "s" : ""}`
+                  : `${trato.cotizaciones.length} cotización${trato.cotizaciones.length !== 1 ? "es" : ""}`} · {fmt(trato.cotizaciones.reduce((s, c) => s + c.granTotal, 0))} total
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">

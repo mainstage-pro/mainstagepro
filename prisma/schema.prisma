@@ -277,6 +277,12 @@ model Trato {
   lugarEstimado       String?
   venueId             String?
   venue               Venue?    @relation(fields: [venueId], references: [id])
+  // Artista del evento musical, capturado en el descubrimiento.
+  artistaId           String?
+  artista             Artista?  @relation(fields: [artistaId], references: [id])
+  // Una gira no compite entre opciones: sus cotizaciones son plazas distintas del mismo
+  // trato, cada una con su fecha y su venue.
+  esGira              Boolean   @default(false)
   fechaEventoEstimada DateTime?
   // El cliente pidió apartar la fecha antes de que exista descubrimiento o cotización:
   // el evento aparece en el calendario comercial como reserva tentativa (gris).
@@ -687,6 +693,10 @@ model Proyecto {
   lugarEvento              String? // espejo de Venue.nombre
   venueId                  String?
   venue                    Venue?    @relation(fields: [venueId], references: [id])
+  // Espejo del artista del trato. Se guarda aquí porque tratoId es opcional: hay proyectos
+  // que nacen sin trato.
+  artistaId                String?
+  artista                  Artista?  @relation(fields: [artistaId], references: [id])
   encargadoLugar           String?
   encargadoLugarContacto   String?
   descripcionGeneral       String?
@@ -780,8 +790,40 @@ model Proyecto {
   fallasEquipo       FallaEquipo[]              @relation("FallasDeProyecto")
   cargas             ProyectoCarga[]
   cargaVerificadores ProyectoCargaVerificador[]
+  escenarios         ProyectoEscenario[]
 
   @@map("proyectos")
+}
+
+// ─── ESCENARIOS DEL PROYECTO ─────────────────────────────────────────────────
+// Un festival tiene varios escenarios y cada uno manda sobre su propio rider, crew,
+// línea de tiempo y proveedores. Es opt-in: un proyecto sin escenarios opera igual que
+// siempre, con el rider plano.
+//
+// Los campos escenario* de Proyecto (medidas en texto, accesos, proveedor) siguen siendo
+// la fuente de la Ficha Operativa y la orden de producción; esto es aditivo y no los pisa.
+// anchoM/largoM son numéricos porque el editor de layout necesita dibujar la cuadrícula.
+model ProyectoEscenario {
+  id         String   @id @default(cuid())
+  proyectoId String
+  proyecto   Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  nombre     String
+  orden      Int      @default(0)
+  anchoM     Float?
+  largoM     Float?
+  alturaM    Float?
+  notas      String?  @db.Text
+  layout     String?  @db.Text // JSON: { piezas: Pieza[] } — ver src/lib/layout-escenario.ts
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  equipos     ProyectoEquipo[]
+  personal    ProyectoPersonal[]
+  bloques     ProyectoBloqueTiempo[]
+  proveedores ProveedorEvento[]
+
+  @@index([proyectoId])
+  @@map("proyecto_escenarios")
 }
 
 // ─── CONTROL DE CARGA ────────────────────────────────────────────────────────
@@ -923,6 +965,9 @@ model ProyectoPersonal {
   // NULL = capturado a mano, fuera de toda cotización.
   cotizacionId     String?               @map("cotizacion_id")
   cotizacion       Cotizacion?           @relation(fields: [cotizacionId], references: [id])
+  // Escenario donde trabaja este puesto. NULL = el proyecto no usa escenarios.
+  escenarioId      String?
+  escenario        ProyectoEscenario?    @relation(fields: [escenarioId], references: [id], onDelete: SetNull)
 
   @@map("proyecto_personal")
 }
@@ -947,6 +992,9 @@ model ProyectoEquipo {
   // Cotización que pagó este equipo — ver nota en ProyectoPersonal.cotizacionId.
   cotizacionId      String?                  @map("cotizacion_id")
   cotizacion        Cotizacion?              @relation(fields: [cotizacionId], references: [id])
+  // Escenario que ocupa este equipo. NULL = el proyecto no usa escenarios o aún no se asignó.
+  escenarioId       String?
+  escenario         ProyectoEscenario?       @relation(fields: [escenarioId], references: [id], onDelete: SetNull)
   riderAccesorios   RiderAccesorio[]
   posiciones        ProyectoEquipoPosicion[]
 
@@ -1068,6 +1116,9 @@ model Equipo {
   estado                 String          @default("ACTIVO") // ACTIVO | EN_MANTENIMIENTO | DADO_DE_BAJA
   amperajeRequerido      Float? // Consumo eléctrico en amperes
   voltajeRequerido       String? // Voltaje requerido ("110" | "220" | "AMBOS")
+  // Peso nominal de catálogo por unidad. EquipoUnidad.pesoKg es el peso real de una unidad
+  // física concreta y no se sincroniza con este.
+  pesoKg                 Float?
   notas                  String?
   descripcionInterna     String? // Descripción interna del equipo (qué es / para qué sirve), no visible al cliente
   imagenUrl              String? // URL principal del equipo (ruta /inventario/equipos/... o base64)
@@ -3593,6 +3644,33 @@ model Venue {
   @@map("venues")
 }
 
+// ─── ARTISTAS ────────────────────────────────────────────────────────────────
+
+// Catálogo de artistas del Directorio. Se captura en el descubrimiento de los tratos
+// musicales; cuando el trato es una gira, el artista es el sujeto de la gira y las
+// cotizaciones de abajo son sus plazas.
+model Artista {
+  id               String   @id @default(cuid())
+  nombre           String
+  genero           String? // género musical
+  origen           String? // ciudad / país de origen
+  contactoNombre   String? // manager / booking
+  contactoTelefono String?
+  contactoEmail    String?
+  instagram        String?
+  sitioWeb         String?
+  notas            String?
+  activo           Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tratos    Trato[]
+  proyectos Proyecto[]
+
+  @@index([nombre])
+  @@map("artistas")
+}
+
 // ─── CIERRE FINANCIERO DE PROYECTO ───────────────────────────────────────────
 
 model CierreFinanciero {
@@ -4248,6 +4326,9 @@ model ProveedorEvento {
   unidades          Int?
   cuentaPagarId     String?      @unique
   cuentaPagar       CuentaPagar? @relation(fields: [cuentaPagarId], references: [id])
+  // Escenario que atiende este proveedor. NULL = el proyecto no usa escenarios.
+  escenarioId       String?
+  escenario         ProyectoEscenario? @relation(fields: [escenarioId], references: [id], onDelete: SetNull)
 
   lineas  CotizacionLinea[]
   items   ProveedorEventoItem[]
@@ -4295,6 +4376,9 @@ model ProyectoBloqueTiempo {
   responsable       String?
   involucrados      String?
   orden             Int              @default(0)
+  // Escenario al que pertenece el bloque. NULL = el proyecto no usa escenarios.
+  escenarioId       String?
+  escenario         ProyectoEscenario? @relation(fields: [escenarioId], references: [id], onDelete: SetNull)
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 

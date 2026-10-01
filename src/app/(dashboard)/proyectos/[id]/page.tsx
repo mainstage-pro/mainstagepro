@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef, useMemo, use } from "react";
+import React, { useEffect, useState, useRef, useMemo, useCallback, use } from "react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -27,6 +27,8 @@ import { Package, AlertTriangle, Smartphone, Truck, Home, Radio, MessageCircle, 
 import { ViabilidadWidget, type ViabilidadActiva, type ViabilidadHistoricoItem } from "@/components/proyectos/ViabilidadWidget";
 import { MontajePosiciones, type Posicion as PosicionMontaje } from "@/components/proyectos/MontajePosiciones";
 import { PanelProveedores } from "@/components/proyectos/PanelProveedores";
+import PanelEscenarios from "@/components/proyectos/PanelEscenarios";
+import SelectorEscenario from "@/components/proyectos/SelectorEscenario";
 import { PanelImprevistos } from "@/components/proyectos/PanelImprevistos";
 import { PanelViaticos } from "@/components/proyectos/PanelViaticos";
 import { ResultadoFinanciero } from "@/components/proyectos/ResultadoFinanciero";
@@ -73,6 +75,7 @@ interface Personal {
   coordinaEnSitio: boolean;
   esAdicional: boolean;
   necesitaRevision: boolean;
+  escenarioId: string | null;
   tecnico: { id: string; nombre: string; celular: string | null; rol: { nombre: string } | null } | null;
   // Rol que exige el puesto. Es del slot, no del técnico: un operador de
   // iluminación puede cubrir un puesto de técnico general.
@@ -92,11 +95,11 @@ interface Bitacora { id: string; tipo: string; contenido: string; createdAt: str
 interface Gasto { id: string; fecha: string; concepto: string; monto: number; metodoPago: string; notas: string | null; referencia: string | null; categoriaId?: string | null; categoria: { id?: string; nombre: string } | null; proveedorId?: string | null; proveedor: { id?: string; nombre: string; empresa?: string | null } | null; cuentaOrigenId?: string | null; cuentaOrigen: { id: string; nombre: string; banco: string | null } | null; ligado?: boolean }
 interface EquipoAccesorioLib { id: string; nombre: string; categoria: string | null; accesorioId?: string | null }
 interface RiderAccesorio { id: string; nombre: string; cantidad: number; categoria: string | null; completado: boolean; esSugerencia: boolean; orden: number; origen?: string | null; accesorioId?: string | null }
-interface ProyectoEquipoItem { id: string; equipoId: string; proveedorId: string | null; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; confirmToken: string | null; confirmDisponible: boolean | null; notas: string | null; necesitaRevision: boolean; equipo: { descripcion: string; marca: string | null; modelo: string | null; imagenUrl: string | null; amperajeRequerido?: number | null; voltajeRequerido?: string | null; categoria: { nombre: string; disciplina?: string | null }; accesorios: EquipoAccesorioLib[] }; proveedor: { nombre: string; empresa: string | null; telefono: string | null } | null; cotizacion?: { numeroCotizacion: string } | null; riderAccesorios: RiderAccesorio[]; posiciones?: PosicionMontaje[] }
+interface ProyectoEquipoItem { id: string; equipoId: string; proveedorId: string | null; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; confirmToken: string | null; confirmDisponible: boolean | null; notas: string | null; necesitaRevision: boolean; escenarioId: string | null; equipo: { descripcion: string; marca: string | null; modelo: string | null; imagenUrl: string | null; amperajeRequerido?: number | null; voltajeRequerido?: string | null; categoria: { nombre: string; disciplina?: string | null }; accesorios: EquipoAccesorioLib[] }; proveedor: { nombre: string; empresa: string | null; telefono: string | null } | null; cotizacion?: { numeroCotizacion: string } | null; riderAccesorios: RiderAccesorio[]; posiciones?: PosicionMontaje[] }
 type FaseCrono = "montaje" | "soundcheck" | "operacion" | "desmontaje";
 const FASE_ORDEN: Record<FaseCrono, number> = { montaje: 0, soundcheck: 1, operacion: 2, desmontaje: 3 };
 const faseDe = (r: CronoRow): FaseCrono => r.fase ?? "operacion";
-interface CronoRow { horaInicio: string; horaFin: string; actividad: string; responsable: string; involucrados: string; dia?: string; fase?: FaseCrono; _id?: string }
+interface CronoRow { horaInicio: string; horaFin: string; actividad: string; responsable: string; involucrados: string; dia?: string; fase?: FaseCrono; escenarioId?: string | null; _id?: string }
 
 // La cronología ya no vive en JSON sueltos: cada fase es un `tipo` de ProyectoBloqueTiempo.
 // PROVEEDOR queda fuera porque esos bloques se editan en el panel de proveedores.
@@ -104,7 +107,7 @@ const FASE_A_TIPO: Record<FaseCrono, string> = { montaje: "MONTAJE", soundcheck:
 const TIPO_A_FASE: Record<string, FaseCrono> = { MONTAJE: "montaje", SOUNDCHECK: "soundcheck", PROGRAMA: "operacion", DESMONTAJE: "desmontaje" };
 const TIPOS_CRONOLOGIA = ["MONTAJE", "SOUNDCHECK", "PROGRAMA", "DESMONTAJE"];
 
-type BloqueApi = { id: string; tipo: string; fecha: string | null; horaInicio: string | null; horaFin: string | null; titulo: string; detalle: string | null; responsable: string | null; involucrados: string | null };
+type BloqueApi = { id: string; tipo: string; fecha: string | null; horaInicio: string | null; horaFin: string | null; titulo: string; detalle: string | null; responsable: string | null; involucrados: string | null; escenarioId?: string | null };
 
 function bloqueACronoRow(b: BloqueApi): CronoRow {
   return {
@@ -115,6 +118,7 @@ function bloqueACronoRow(b: BloqueApi): CronoRow {
     horaFin: b.horaFin ?? "",
     actividad: b.titulo,
     responsable: b.responsable ?? "",
+    escenarioId: b.escenarioId ?? null,
     // El detalle del programa/soundcheck viejo se muestra en la columna de notas.
     involucrados: b.involucrados || b.detalle || "",
   };
@@ -1305,7 +1309,19 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   // Estado para confirmación de borrado
   const [confirmarBorrado, setConfirmarBorrado] = useState(false);
   const [borrando, setBorrando] = useState(false);
-  const [activeTab, setActiveTab] = useState<'resumen'|'operacion'|'extras'|'finanzas'|'tareas'>('resumen');
+  const [activeTab, setActiveTab] = useState<'resumen'|'operacion'|'escenarios'|'extras'|'finanzas'|'tareas'>('resumen');
+
+  // Escenarios del proyecto. Solo se usan para los selectores por renglón del rider,
+  // crew, logística y proveedores — y esos aparecen únicamente si hay dos o más.
+  const [escenarios, setEscenarios] = useState<{ id: string; nombre: string }[]>([]);
+  const cargarEscenarios = useCallback(async () => {
+    const r = await fetch(`/api/proyectos/${id}/escenarios`);
+    if (!r.ok) return;
+    const d = await r.json();
+    setEscenarios((d.escenarios ?? []).map((e: { id: string; nombre: string }) => ({ id: e.id, nombre: e.nombre })));
+  }, [id]);
+  useEffect(() => { cargarEscenarios(); }, [cargarEscenarios]);
+  const multiEscenario = escenarios.length >= 2;
 
   // ── Pago a inversionistas por uso de equipos propios ──────────────────────
   type PagoSociosData = {
@@ -1590,6 +1606,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   async function eliminarEquipo(eqId: string) {
     await fetch(`/api/proyectos/${id}/equipos/${eqId}`, { method: "DELETE" });
     await load();
+  }
+
+  async function asignarEscenarioEquipo(eqId: string, escenarioId: string | null) {
+    setRiderEquipos(prev => prev.map(e => e.id === eqId ? { ...e, escenarioId } : e));
+    await fetch(`/api/proyectos/${id}/equipos/${eqId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ escenarioId }),
+    });
   }
 
   async function actualizarCantidadEquipo(eqId: string, cantidad: number) {
@@ -2015,6 +2039,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           titulo: r.actividad || "",
           responsable: r.responsable || null,
           involucrados: r.involucrados || null,
+          escenarioId: r.escenarioId ?? null,
         })),
       }),
     });
@@ -2163,6 +2188,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     guardarCronograma(next);
   }
 
+  function setCronoEscenario(i: number, escenarioId: string | null) {
+    const next = cronoRows.map((r, idx) => idx === i ? { ...r, escenarioId } : r);
+    setCronoRows(next);
+    guardarCronograma(next);
+  }
+
   // Reordena un subconjunto de filas (las de un mismo bloque: operación, montaje,
   // desmontaje o un día específico) sin tocar la posición de las filas de otros bloques.
   function moverCronoSubset(subsetIndices: number[], oldPos: number, newPos: number) {
@@ -2228,6 +2259,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <th className="text-left py-2 pr-2 font-medium">Actividad</th>
                   <th className="text-left py-2 pr-2 font-medium w-28">Responsable</th>
                   <th className="text-left py-2 pr-2 font-medium w-32">Involucrados</th>
+                  {multiEscenario && <th className="text-left py-2 pr-2 font-medium w-28">Escenario</th>}
                   <th className="w-6" />
                 </tr>
               </thead>
@@ -2276,6 +2308,16 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                               placeholder="Involucrados"
                               className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white focus:outline-none focus:border-[#B3985B]" />
                           </td>
+                          {multiEscenario && (
+                            <td className="py-1 pr-2">
+                              <SelectorEscenario
+                                escenarios={escenarios}
+                                value={row.escenarioId ?? null}
+                                onChange={esc => setCronoEscenario(i, esc)}
+                                className="w-full"
+                              />
+                            </td>
+                          )}
                           <td className="py-1 text-center">
                             <button onClick={() => removeCronoRow(i)}
                               className="text-gray-600 hover:text-red-400 text-base leading-none transition-colors">×</button>
@@ -3201,6 +3243,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     setProyecto(prev => prev ? { ...prev, personal: prev.personal.filter(p => p.id !== pId) } : prev);
   }
 
+  async function asignarEscenarioPersonal(pId: string, escenarioId: string | null) {
+    setProyecto(prev => prev ? { ...prev, personal: prev.personal.map(p => p.id === pId ? { ...p, escenarioId } : p) } : prev);
+    await fetch(`/api/proyectos/${id}/personal/${pId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ escenarioId }),
+    });
+  }
+
   // ── Asignar técnico a fila sin asignar ──
   async function asignarTecnico(pId: string, tecnicoIdOverride?: string) {
     const tid = tecnicoIdOverride ?? selAsignar;
@@ -3971,6 +4021,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             {([
               { id: 'resumen',   label: 'Resumen' },
               { id: 'operacion', label: 'Operación' },
+              { id: 'escenarios', label: 'Escenarios' },
               { id: 'extras',    label: 'Producción' },
               ...(proyecto?._canViewFinances ? [{ id: 'finanzas', label: 'Finanzas' } as const] : []),
               { id: 'tareas',    label: 'Tareas' },
@@ -5663,6 +5714,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                         {p.responsabilidad && <p className="text-gray-400 text-xs mt-1 leading-relaxed">{p.responsabilidad}</p>}
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
+                        {multiEscenario && (
+                          <SelectorEscenario
+                            escenarios={escenarios}
+                            value={p.escenarioId}
+                            onChange={esc => asignarEscenarioPersonal(p.id, esc)}
+                            className="mr-1"
+                          />
+                        )}
                         {p.tecnico && (
                           <button
                             onClick={() => marcarCoordinador(p.id, p.coordinaEnSitio)}
@@ -5957,6 +6016,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               }
               return Array.from(m.values());
             })()}
+            escenarios={multiEscenario ? escenarios : []}
           />
 
 
@@ -6083,6 +6143,17 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         );
       })()}
 
+          </div>
+        )}
+
+        {/* ──── ESCENARIOS tab ──── */}
+        {activeTab === 'escenarios' && (
+          <div id="section-escenarios" className="scroll-mt-14">
+            <PanelEscenarios
+              proyectoId={id}
+              escenarioMedidas={proyecto.escenarioMedidas}
+              onCambio={() => cargarEscenarios()}
+            />
           </div>
         )}
 
@@ -6786,6 +6857,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
+                                  {multiEscenario && (
+                                    <SelectorEscenario
+                                      escenarios={escenarios}
+                                      value={e.escenarioId}
+                                      onChange={esc => asignarEscenarioEquipo(e.id, esc)}
+                                    />
+                                  )}
                                   {(e.posiciones?.length ?? 0) > 0 && (() => {
                                     const resumen = (e.posiciones ?? [])
                                       .map(p => `${p.cantidad} ${labelConfiguracion(p.funcion, e.equipo.categoria.nombre, e.equipo.categoria.disciplina ?? null) || "sin definir"}${p.zona ? ` · ${labelZona(p.zona)}` : ""}`)

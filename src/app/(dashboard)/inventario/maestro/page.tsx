@@ -36,6 +36,7 @@ type Equipo = {
   notas: string | null;
   amperajeRequerido: number | null;
   voltajeRequerido: string | null;
+  pesoKg: number | null;
   _count: { accesorios: number };
   proveedoresPrecios: { precio: number; notas: string | null; proveedor: { id: string; nombre: string; empresa: string | null; prioridad: number } }[];
 };
@@ -54,7 +55,7 @@ type Form = {
   descripcion: string; marca: string; modelo: string; tipo: string;
   categoriaId: string; cantidadTotal: string; estado: string;
   proveedorDefaultId: string; notas: string;
-  amperajeRequerido: string; voltajeRequerido: string;
+  amperajeRequerido: string; voltajeRequerido: string; pesoKg: string;
   precioRenta: string; costoProveedor: string;
 };
 
@@ -62,7 +63,7 @@ const FORM_EMPTY: Form = {
   descripcion: "", marca: "", modelo: "", tipo: "PROPIO",
   categoriaId: "", cantidadTotal: "1", estado: "ACTIVO",
   proveedorDefaultId: "", notas: "",
-  amperajeRequerido: "", voltajeRequerido: "",
+  amperajeRequerido: "", voltajeRequerido: "", pesoKg: "",
   precioRenta: "", costoProveedor: "",
 };
 
@@ -352,6 +353,10 @@ function FormPanel({ panel, equipos, form, setForm, imagen, saving, categorias, 
             <FieldGroup label="Amperaje (A)">
               <FInput type="number" value={form.amperajeRequerido} onChange={v => setForm(p => ({ ...p, amperajeRequerido: v }))} placeholder="Ej. 15" />
             </FieldGroup>
+            <FieldGroup label="Peso por unidad (kg)">
+              <FInput type="number" value={form.pesoKg} onChange={v => setForm(p => ({ ...p, pesoKg: v }))} placeholder="Ej. 18" />
+            </FieldGroup>
+            <div className="col-span-2">
             <FieldGroup label="Voltaje">
               <div className="flex gap-1">
                 {([["", "—"], ["110", "110V"], ["220", "220V"], ["AMBOS", "110V - 220V"]] as [string, string][]).map(([val, label]) => (
@@ -370,6 +375,7 @@ function FormPanel({ panel, equipos, form, setForm, imagen, saving, categorias, 
                 ))}
               </div>
             </FieldGroup>
+            </div>
           </div>
         </div>
 
@@ -916,6 +922,7 @@ export default function InventarioMaestroPage() {
       notas: e.notas ?? "",
       amperajeRequerido: e.amperajeRequerido != null ? String(e.amperajeRequerido) : "",
       voltajeRequerido: e.voltajeRequerido != null ? String(e.voltajeRequerido) : "",
+      pesoKg: e.pesoKg != null ? String(e.pesoKg) : "",
       precioRenta: e.precioRenta != null ? String(e.precioRenta) : "",
       costoProveedor: e.costoProveedor != null ? String(e.costoProveedor) : "",
     });
@@ -980,6 +987,7 @@ export default function InventarioMaestroPage() {
       notas: form.notas || null,
       amperajeRequerido: form.amperajeRequerido !== "" ? parseFloat(form.amperajeRequerido) : null,
       voltajeRequerido: form.voltajeRequerido !== "" ? form.voltajeRequerido : null,
+      pesoKg: form.pesoKg !== "" ? parseFloat(form.pesoKg) : null,
       precioRenta: form.precioRenta !== "" ? parseFloat(form.precioRenta) : 0,
       costoProveedor: esEquipoDeTercero(form.tipo) && form.costoProveedor !== "" ? parseFloat(form.costoProveedor) : null,
       ...(imagen !== null ? { imagenUrl: imagen } : {}),

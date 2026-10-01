@@ -14,6 +14,7 @@ type BloqueEntrada = {
   detalle?: string | null;
   responsable?: string | null;
   involucrados?: string | null;
+  escenarioId?: string | null;
 };
 
 /** "YYYY-MM-DD" → Date a mediodía UTC, para que el día no se corra por zona horaria. */
@@ -71,6 +72,7 @@ export async function PUT(
       detalle: b.detalle?.trim() || null,
       responsable: b.responsable?.trim() || null,
       involucrados: b.involucrados?.trim() || null,
+      escenarioId: b.escenarioId || null,
       orden: i,
     }));
 

@@ -32,6 +32,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       responsable: { select: { id: true, name: true } },
       vendedor: { select: { id: true, name: true } },
       vendedorOrigen: { select: { id: true, name: true } },
+      artista: { select: { id: true, nombre: true } },
       cotizaciones: {
         select: {
           id: true, numeroCotizacion: true, opcionLetra: true, grupoId: true, estado: true,
@@ -91,6 +92,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     "diasServicio", "fechasEvento",
     "serviciosInteres", "ideasReferencias", "etapaContratacion", "momentoContratacion", "continuarPor",
     "descubrimientoCompleto", "posibleDuplicado",
+    // Artista del evento musical y giras (varias cotizaciones = plazas del mismo trato)
+    "artistaId", "esGira",
     // Selección de equipos del inventario
     "equiposInteres",
     // Proceso de ventas: rama del descubrimiento y preferencia del cliente

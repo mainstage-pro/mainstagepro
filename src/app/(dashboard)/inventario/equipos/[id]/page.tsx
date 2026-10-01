@@ -95,6 +95,7 @@ type Equipo = {
   activo: boolean;
   amperajeRequerido: number | null;
   voltajeRequerido: string | null;
+  pesoKg: number | null;
   imagenUrl: string | null;
   imagenesUrls: string | null;
   categoria: { id: string; nombre: string };
@@ -839,6 +840,56 @@ function DescripcionInternaSection({ equipoId, initial }: { equipoId: string; in
   );
 }
 
+/** Peso nominal por unidad. Es el dato que alimenta el total de carga del layout. */
+function PesoField({ equipoId, initial }: { equipoId: string; initial: number | null }) {
+  const toast = useToast();
+  const [valor, setValor] = useState(initial);
+  const [editando, setEditando] = useState(false);
+  const [borrador, setBorrador] = useState(initial != null ? String(initial) : "");
+  const [guardando, setGuardando] = useState(false);
+
+  async function guardar() {
+    const limpio = borrador.trim();
+    const num = limpio ? parseFloat(limpio) : null;
+    if (limpio && (num == null || !Number.isFinite(num) || num < 0)) { toast.error("Peso inválido"); return; }
+    setGuardando(true);
+    const r = await fetch(`/api/equipos/${equipoId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pesoKg: limpio || null }),
+    });
+    setGuardando(false);
+    if (!r.ok) { toast.error("No se pudo guardar el peso"); return; }
+    setValor(num);
+    setEditando(false);
+  }
+
+  return (
+    <div>
+      <dt className="text-[#6b7280] text-xs mb-0.5">Peso por unidad</dt>
+      {editando ? (
+        <dd className="flex items-center gap-1">
+          <input autoFocus type="number" step="0.1" min="0" value={borrador}
+            onChange={e => setBorrador(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") guardar(); if (e.key === "Escape") setEditando(false); }}
+            className="w-16 bg-[#0e0e0e] border border-[#1f1f1f] rounded px-1.5 py-0.5 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+          <span className="text-[#6b7280] text-xs">kg</span>
+          <button onClick={guardar} disabled={guardando} className="text-[10px] text-[#B3985B] hover:underline disabled:opacity-50">
+            {guardando ? "…" : "OK"}
+          </button>
+        </dd>
+      ) : (
+        <dd>
+          <button onClick={() => { setBorrador(valor != null ? String(valor) : ""); setEditando(true); }}
+            className="text-white hover:text-[#B3985B] transition-colors">
+            {valor != null ? `${valor} kg` : <span className="text-[#444] italic text-xs">Sin capturar</span>}
+          </button>
+        </dd>
+      )}
+    </div>
+  );
+}
+
 export default function EquipoFichaPage() {
   const { id } = useParams<{ id: string }>();
   const [equipo, setEquipo] = useState<Equipo | null>(null);
@@ -914,6 +965,7 @@ export default function EquipoFichaPage() {
             <dt className="text-[#6b7280] text-xs mb-0.5">Cantidad</dt>
             <dd className="text-white">{equipo.cantidadTotal}</dd>
           </div>
+          <PesoField equipoId={equipo.id} initial={equipo.pesoKg} />
           {(equipo.amperajeRequerido != null || equipo.voltajeRequerido != null) && (
             <div>
               <dt className="text-[#6b7280] text-xs mb-0.5">Eléctrico</dt>

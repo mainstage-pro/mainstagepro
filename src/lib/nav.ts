@@ -276,6 +276,7 @@ export const NAV: NavSection[] = [
           { key: "bd-proveedores", label: "Proveedores", href: "/catalogo/proveedores" },
           { key: "bd-tecnicos", label: "Técnicos freelance", href: "/catalogo/tecnicos" },
           { key: "bd-venues", accessKey: "catalogo", label: "Venues", href: "/catalogo/venues" },
+          { key: "bd-artistas", accessKey: "catalogo", label: "Artistas", href: "/catalogo/artistas" },
           { key: "bd-empresas", accessKey: "catalogo", label: "Empresas", href: "/catalogo/empresas" },
         ],
       },

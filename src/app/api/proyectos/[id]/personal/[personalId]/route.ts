@@ -47,6 +47,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if ("rolEnEvento" in body) data.rolEnEvento = body.rolEnEvento || null;
   if ("fechaJornada" in body) data.fechaJornada = body.fechaJornada || null;
   if ("coordinaEnSitio" in body) data.coordinaEnSitio = body.coordinaEnSitio === true;
+  if ("escenarioId" in body) data.escenarioId = body.escenarioId || null;
 
   // Leer el registro previo para detectar transiciones (técnico nuevo / estado de pago)
   const previo = await prisma.proyectoPersonal.findUnique({

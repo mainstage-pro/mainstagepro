@@ -5,6 +5,7 @@ import { Combobox } from "@/components/Combobox";
 import HoraInput from "@/components/ui/HoraInput";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
+import SelectorEscenario, { type EscenarioOpcion } from "@/components/proyectos/SelectorEscenario";
 import { fmt24to12 } from "@/lib/hora";
 import {
   FASES_PROVEEDOR,
@@ -39,6 +40,7 @@ export type ConceptoManual = { id?: string; descripcion: string; cantidad: numbe
 
 export type ProveedorEventoItem = {
   id: string;
+  escenarioId: string | null;
   proveedorId: string | null;
   nombreProveedor: string;
   servicioEquipo: string | null;
@@ -153,8 +155,11 @@ export function PanelProveedores({
   dias,
   evento,
   equipo = [],
+  escenarios = [],
 }: {
   proyectoId: string;
+  /** Escenarios del proyecto. Con menos de dos, el selector por renglón no aparece. */
+  escenarios?: EscenarioOpcion[];
   /** Días del evento en "YYYY-MM-DD". La operación siempre cae en uno de ellos. */
   dias: string[];
   /**
@@ -356,6 +361,16 @@ export function PanelProveedores({
     toast.success(d.creada ? "Cuenta por pagar generada" : "Cuenta por pagar actualizada");
   }
 
+  async function asignarEscenario(prov: ProveedorEventoItem, escenarioId: string | null) {
+    reemplazar({ ...prov, escenarioId });
+    const res = await fetch(`/api/proyectos/${proyectoId}/proveedores-evento/${prov.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ escenarioId }),
+    });
+    if (!res.ok) toast.error("No se pudo asignar el escenario");
+  }
+
   async function eliminar(prov: ProveedorEventoItem) {
     const ok = await confirm({
       message: `¿Quitar a ${prov.nombreProveedor} del evento? Sus horarios se borran y los equipos quedan sin proveedor asignado.`,
@@ -509,6 +524,12 @@ export function PanelProveedores({
                       </p>
                     </button>
                     <div className="flex items-center gap-1 shrink-0">
+                      <SelectorEscenario
+                        escenarios={escenarios}
+                        value={prov.escenarioId}
+                        onChange={(esc) => asignarEscenario(prov, esc)}
+                        className="mr-1"
+                      />
                       <button onClick={() => alternar(prov)} className="text-xs px-1.5 py-0.5 rounded border border-transparent text-gray-600 hover:text-gray-300 hover:border-[#333] transition-colors">
                         {expandido ? "Cerrar" : "Editar"}
                       </button>

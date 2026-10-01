@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect, useMemo, type ReactNode } fro
 import { ClipboardList, Settings, Truck, Handshake, Music, Wine, Building2, Calendar, Package, Palette, Sliders, DollarSign, Eye, Image as ImageIcon, Folder, FileText, PenLine, BarChart3, Paperclip, Lightbulb, Phone, List, Zap, Sparkles, PartyPopper, Clock, type LucideIcon } from "lucide-react";
 import TimePicker from "@/components/ui/TimePicker";
 import VenuePicker from "@/components/ui/VenuePicker";
+import ArtistaPicker from "@/components/ui/ArtistaPicker";
 import { SelectorEquiposInventario, type SeleccionEquipos, type PaquetePublico, type ProductoPublico } from '@/components/SelectorEquiposInventario';
 import { Combobox } from "@/components/Combobox";
 import Link from "next/link";
@@ -762,6 +763,9 @@ export default function DiscoveryForm({
     fechaEventoEstimada: "",
     lugarEstimado: "",
     venueId: null as string | null,
+    artistaId: null as string | null,
+    artistaNombre: "",
+    esGira: false,
     asistentesEstimados: "",
     diasServicio: "",
     // Días adicionales del evento (además del día 1 = fechaEventoEstimada). "YYYY-MM-DD"[]
@@ -944,6 +948,9 @@ export default function DiscoveryForm({
       fechaEventoEstimada: trato.fechaEventoEstimada ? String(trato.fechaEventoEstimada).split("T")[0] : "",
       lugarEstimado: trato.lugarEstimado === "Por definir" ? "por-definir" : (trato.lugarEstimado || ""),
       venueId: trato.venueId ?? null,
+      artistaId: trato.artistaId ?? null,
+      artistaNombre: trato.artista?.nombre ?? "",
+      esGira: !!trato.esGira,
       asistentesEstimados: trato.asistentesEstimados != null ? String(trato.asistentesEstimados) : "",
       diasServicio: trato.diasServicio != null ? String(trato.diasServicio) : "",
       // Días adicionales = todas las fechas guardadas menos el día 1 (fechaEventoEstimada)
@@ -1170,6 +1177,9 @@ export default function DiscoveryForm({
       fechasEvento,
       lugarEstimado: discForm.lugarEstimado === "por-definir" ? "Por definir" : (discForm.lugarEstimado || null),
       venueId: discForm.lugarEstimado === "por-definir" ? null : (discForm.venueId ?? null),
+      // El artista y la gira solo tienen sentido en evento musical: si cambian de tipo, se limpian.
+      artistaId: discForm.tipoEvento === "MUSICAL" ? (discForm.artistaId ?? null) : null,
+      esGira: discForm.tipoEvento === "MUSICAL" ? discForm.esGira : false,
       asistentesEstimados: discForm.asistentesEstimados ? parseInt(discForm.asistentesEstimados) : null,
       diasServicio: diasDerivados ?? (discForm.diasServicio ? parseInt(discForm.diasServicio) : null),
       presupuestoEstimado: discForm.presupuestoEstimado ? parseFloat(discForm.presupuestoEstimado) : null,
@@ -1495,6 +1505,29 @@ export default function DiscoveryForm({
                     {!clientMode && avisoPaso1 && !nichoOk && (
                       <p className="text-[11px] text-red-400 mt-2">Selecciona el nicho para continuar</p>
                     )}
+                  </div>
+                )}
+
+                {/* Artista y gira — solo evento musical */}
+                {!clientMode && discForm.tipoEvento === "MUSICAL" && (
+                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+                    <ArtistaPicker
+                      label="Artista"
+                      artistaId={discForm.artistaId}
+                      nombre={discForm.artistaNombre}
+                      onChange={(artistaId, artista) => setDiscForm(p => ({
+                        ...p, artistaId, artistaNombre: artista?.nombre ?? "",
+                      }))}
+                    />
+                    <button type="button" onClick={() => setDiscForm(p => ({ ...p, esGira: !p.esGira }))}
+                      className={`text-left px-3 py-2 rounded-lg border transition-colors ${discForm.esGira ? "border-[#B3985B] bg-[#B3985B]/10" : "border-[#333] bg-[#111] hover:border-[#444]"}`}>
+                      <p className={`text-sm font-semibold ${discForm.esGira ? "text-[#B3985B]" : "text-white"}`}>
+                        {discForm.esGira ? "✓ Es una gira" : "Es una gira"}
+                      </p>
+                      <p className="text-[10px] text-gray-500 leading-tight">
+                        Cada cotización del trato es una plaza, no una opción que compite.
+                      </p>
+                    </button>
                   </div>
                 )}
               </div>
