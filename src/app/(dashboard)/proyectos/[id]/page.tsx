@@ -5753,10 +5753,17 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       {/* "Encargado" no tiene chip: lo otorga la estrella de coordina en sitio. */}
                       {proyecto._canViewTecnicoCosts && p.estadoPago !== "PAGADO" && BONOS_PERSONAL.filter(b => b.campo !== "bonoEncargado").map(b => {
                         const activo = p[b.campo] != null;
+                        // El evento ya se cotizó fuera de la zona local: el bono foráneo
+                        // le toca y nadie lo ve si el chip queda apagado como los demás.
+                        const falta = !activo && b.campo === "bonoForaneo" && proyecto.zona !== "LOCAL" && p.tecnico != null;
                         return (
                           <button key={b.campo} type="button" onClick={() => toggleBono(p.id, b.campo, p[b.campo])}
-                            title={activo ? `Quitar bono de ${b.label.toLowerCase()} (${fmt(p[b.campo] ?? 0)})` : `${b.ayuda} — suma ${fmt(bonosCatalogo?.[b.campo] ?? 0)}`}
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors ${activo ? "border-[#B3985B]/60 text-[#B3985B] bg-[#B3985B]/10" : "border-[#2a2a2a] text-gray-600 hover:border-[#B3985B]/40 hover:text-[#B3985B]"}`}>
+                            title={activo
+                              ? `Quitar bono de ${b.label.toLowerCase()} (${fmt(p[b.campo] ?? 0)})`
+                              : falta
+                                ? `El evento es ${labelZona(proyecto.zona).toLowerCase() || proyecto.zona}, no local: le toca el bono foráneo de ${fmt(bonosCatalogo?.bonoForaneo ?? 0)}`
+                                : `${b.ayuda} — suma ${fmt(bonosCatalogo?.[b.campo] ?? 0)}`}
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors ${activo ? "border-[#B3985B]/60 text-[#B3985B] bg-[#B3985B]/10" : falta ? "border-amber-700/60 text-amber-400 bg-amber-900/10 hover:bg-amber-900/25" : "border-[#2a2a2a] text-gray-600 hover:border-[#B3985B]/40 hover:text-[#B3985B]"}`}>
                             {activo ? "✓ " : "+ "}{b.label}
                           </button>
                         );
