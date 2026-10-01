@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession, puedeVerCostosTecnicos } from "@/lib/auth";
-import { BONOS_PERSONAL, totalPagoPersonal } from "@/lib/pago-personal";
+import { BONOS_PERSONAL, CONFIG_BONOS_DEFAULT, totalPagoPersonal } from "@/lib/pago-personal";
 import { ensureOperacionTecnicaColumns } from "@/lib/migraciones-lazy";
 import { marcarFilaNominaPagada, revertirFilaNominaPagada } from "@/lib/nomina-pagos";
 
@@ -53,9 +53,24 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     where: { id: personalId },
     select: {
       tecnicoId: true, tarifaAcordada: true, proyectoId: true,
-      estadoPago: true, movimientoId: true,
+      estadoPago: true, movimientoId: true, bonoEncargado: true,
     },
   });
+
+  // Encargar a alguien y pagarle por encargarse es un solo acto: la estrella de
+  // "coordina en sitio" arrastra el bono, para no tener dos botones que dicen lo
+  // mismo y puedan quedar en desacuerdo. El monto se congela al aplicarse.
+  if ("coordinaEnSitio" in body && canEditTecnicoCosts && previo?.estadoPago !== "PAGADO") {
+    if (body.coordinaEnSitio === true) {
+      if (previo?.bonoEncargado == null) {
+        const cfg = await prisma.configPagoPersonal.findUnique({ where: { id: "singleton" } });
+        const monto = cfg?.bonoEncargado ?? CONFIG_BONOS_DEFAULT.bonoEncargado;
+        if (monto > 0) data.bonoEncargado = monto;
+      }
+    } else {
+      data.bonoEncargado = null;
+    }
+  }
 
   // ── Detectar transición de estado de pago ────────────────────────────────
   const nuevoEstado = "estadoPago" in body ? body.estadoPago : undefined;
@@ -69,6 +84,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       await tx.proyectoPersonal.updateMany({
         where: { proyectoId: previo.proyectoId, id: { not: personalId } },
         data: { coordinaEnSitio: false },
+      });
+      // Al relevado se le quita el bono, salvo que ya se le haya pagado: un pago
+      // hecho no se deshace desde aquí.
+      await tx.proyectoPersonal.updateMany({
+        where: {
+          proyectoId: previo.proyectoId, id: { not: personalId },
+          estadoPago: { not: "PAGADO" }, bonoEncargado: { not: null },
+        },
+        data: { bonoEncargado: null },
       });
     }
     // Aplicar primero los cambios de campos (tarifa, estado, rol, etc.) para

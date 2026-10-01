@@ -2998,11 +2998,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       body: JSON.stringify({ coordinaEnSitio: !yaEs }),
     });
     if (!res.ok) { toast.error("No se pudo marcar al coordinador"); return; }
-    // Se refleja igual que en la BD: nombrar a uno desmarca a todos los demás.
-    setProyecto(prev => prev ? {
-      ...prev,
-      personal: prev.personal.map(p => ({ ...p, coordinaEnSitio: !yaEs && p.id === pId })),
-    } : prev);
+    // Nombrar a uno releva a todos los demás y les mueve el bono de encargado, así
+    // que se relee en vez de adivinar el resultado desde aquí.
+    await load();
   }
 
   // El monto del bono se congela en el puesto al aplicarlo: si mañana cambia el
@@ -5668,7 +5666,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                         {p.tecnico && (
                           <button
                             onClick={() => marcarCoordinador(p.id, p.coordinaEnSitio)}
-                            title={p.coordinaEnSitio ? "Quitarle la coordinación en sitio" : "Marcar como quien manda en sitio"}
+                            title={p.coordinaEnSitio
+                              ? `Quitarle la coordinación en sitio${p.bonoEncargado != null ? ` (y su bono de ${fmt(p.bonoEncargado)})` : ""}`
+                              : `Marcar como quien manda en sitio — le suma el bono de encargado (${fmt(bonosCatalogo?.bonoEncargado ?? 0)})`}
                             className={`text-xs px-1.5 py-0.5 rounded border transition-colors ${p.coordinaEnSitio ? "border-[#B3985B]/60 text-[#B3985B]" : "border-transparent text-gray-700 hover:text-[#B3985B] hover:border-[#333]"}`}>
                             ★
                           </button>
@@ -5750,7 +5750,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                           </span>
                         );
                       })()}
-                      {proyecto._canViewTecnicoCosts && p.estadoPago !== "PAGADO" && BONOS_PERSONAL.map(b => {
+                      {/* "Encargado" no tiene chip: lo otorga la estrella de coordina en sitio. */}
+                      {proyecto._canViewTecnicoCosts && p.estadoPago !== "PAGADO" && BONOS_PERSONAL.filter(b => b.campo !== "bonoEncargado").map(b => {
                         const activo = p[b.campo] != null;
                         return (
                           <button key={b.campo} type="button" onClick={() => toggleBono(p.id, b.campo, p[b.campo])}
