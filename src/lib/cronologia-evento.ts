@@ -84,6 +84,10 @@ export type ItemCronologia = {
   /** Nombre del proveedor cuando el ítem es tipo PROVEEDOR. */
   proveedor?: string | null;
   responsable?: string | null;
+  /** Qué momento de la jornada representa; dos ítems con el mismo momento son lo mismo. */
+  momento?: MomentoJornada | null;
+  /** "RESUMEN" = la generó el resumen del proyecto; ausente = fila capturada. */
+  origen?: "RESUMEN";
 };
 
 export type BloqueCronologia = {
@@ -215,6 +219,7 @@ function bloqueAItem(b: BloqueTiempo, nombreProveedor?: string | null): ItemCron
     tipo: (b.tipo as TipoBloque) ?? "PROGRAMA",
     proveedor: b.tipo === "PROVEEDOR" ? nombreProveedor ?? null : null,
     responsable: b.responsable,
+    momento: b.tipo === "PROVEEDOR" ? null : MOMENTO_DE_ACTIVIDAD[b.titulo.trim()] ?? null,
   };
 }
 
@@ -228,6 +233,55 @@ export type HorariosResumen = {
   inicioDesmontaje: string | null;
   finDesmontaje: string | null;
 };
+
+/** Un instante de la jornada, sin importar quién lo escribió. */
+export type MomentoJornada = keyof HorariosResumen | "inicioEvento" | "finEvento";
+
+/**
+ * Qué momento de la jornada representa cada actividad de la plantilla de logística.
+ * El resumen y la plantilla describen la misma jornada con otras palabras ("Traslado a
+ * venue" es la salida de bodega), así que este mapa es lo que evita que el documento
+ * imprima dos veces el mismo instante.
+ */
+export const MOMENTO_DE_ACTIVIDAD: Record<string, MomentoJornada> = {
+  "Llamado en bodega": "llamadoBodega",
+  "Traslado a venue": "salidaBodega",
+  "Llegada a venue y descarga de equipos": "llegadaVenue",
+  "Inicio de montaje": "inicioMontaje",
+  "Fin de montaje": "finMontaje",
+  "Inicio de evento": "inicioEvento",
+  "Fin de evento": "finEvento",
+  "Inicio de desmontaje": "inicioDesmontaje",
+  "Fin de la jornada": "finDesmontaje",
+};
+
+/**
+ * Deja una sola fila por momento de la jornada. Manda la fila capturada —trae
+ * responsable e involucrados— salvo que haya nacido sin hora, en cuyo caso el resumen
+ * la cubre. El lugar, que solo el resumen conoce, se hereda a la que sobrevive.
+ */
+function unaFilaPorMomento(items: ItemCronologia[]): ItemCronologia[] {
+  const conHora = (it: ItemCronologia) => minutosDeHora(it.hora) != null;
+  const capturados = new Map<MomentoJornada, ItemCronologia>();
+  const derivados = new Map<MomentoJornada, ItemCronologia>();
+  items.forEach((it) => {
+    if (!it.momento) return;
+    const porMomento = it.origen === "RESUMEN" ? derivados : capturados;
+    const previo = porMomento.get(it.momento);
+    if (!previo || (!conHora(previo) && conHora(it))) porMomento.set(it.momento, it);
+  });
+
+  const sobran = new Set<ItemCronologia>();
+  capturados.forEach((capturado, momento) => {
+    const derivado = derivados.get(momento);
+    if (!derivado) return;
+    const gana = conHora(capturado) ? capturado : derivado;
+    const pierde = gana === capturado ? derivado : capturado;
+    gana.nota = gana.nota ?? pierde.nota;
+    sobran.add(pierde);
+  });
+  return items.filter((it) => !sobran.has(it));
+}
 
 /**
  * Traduce los campos sueltos de horario del proyecto a los momentos de la jornada.
@@ -274,13 +328,14 @@ export function derivadosLogistica(
         fecha: diaAparte ? fechaCorta(llamadoFecha ?? montajeFecha) : null,
         nota: p.lugarLlamado,
         tipo: "MONTAJE",
+        momento: "llamadoBodega",
       });
     }
     if (interno && h.salidaBodega) {
-      previos.push({ label: "Salida de bodega", hora: h.salidaBodega, fecha: null, nota: null, tipo: "MONTAJE" });
+      previos.push({ label: "Salida de bodega", hora: h.salidaBodega, fecha: null, nota: null, tipo: "MONTAJE", momento: "salidaBodega" });
     }
     if (h.llegadaVenue) {
-      previos.push({ label: "Llegada al venue", hora: h.llegadaVenue, fecha: null, nota: p.lugarEvento, tipo: "MONTAJE" });
+      previos.push({ label: "Llegada al venue", hora: h.llegadaVenue, fecha: null, nota: p.lugarEvento, tipo: "MONTAJE", momento: "llegadaVenue" });
     }
     if (h.inicioMontaje) {
       previos.push({
@@ -289,22 +344,24 @@ export function derivadosLogistica(
         fecha: null,
         nota: h.llegadaVenue ? null : p.lugarEvento,
         tipo: "MONTAJE",
+        momento: "inicioMontaje",
       });
     }
     if (h.finMontaje) {
-      posteriores.push({ label: "Término aprox. de montaje", hora: h.finMontaje, fecha: null, nota: null, tipo: "MONTAJE" });
+      posteriores.push({ label: "Término aprox. de montaje", hora: h.finMontaje, fecha: null, nota: null, tipo: "MONTAJE", momento: "finMontaje" });
     }
   } else if (interno) {
     if (h.inicioDesmontaje) {
-      previos.push({ label: "Inicio de desmontaje", hora: h.inicioDesmontaje, fecha: null, nota: null, tipo: "DESMONTAJE" });
+      previos.push({ label: "Inicio de desmontaje", hora: h.inicioDesmontaje, fecha: null, nota: null, tipo: "DESMONTAJE", momento: "inicioDesmontaje" });
     }
     if (h.finDesmontaje) {
-      posteriores.push({ label: "Término aprox. de desmontaje", hora: h.finDesmontaje, fecha: null, nota: null, tipo: "DESMONTAJE" });
+      posteriores.push({ label: "Término aprox. de desmontaje", hora: h.finDesmontaje, fecha: null, nota: null, tipo: "DESMONTAJE", momento: "finDesmontaje" });
     }
   }
 
   [...previos, ...posteriores].forEach((it) => {
     it.hora = horaAmPm(it.hora) ?? it.hora;
+    it.origen = "RESUMEN";
   });
   return { previos, posteriores };
 }
@@ -420,19 +477,19 @@ export function construirCronologia(
       items.push(...itemsMontaje);
     }
     if (conLogistica && interno && h.llamado) {
-      items.push({ label: "Llamado", hora: h.llamado, fecha: null, nota: p.lugarLlamado, tipo: "MONTAJE" });
+      items.push({ label: "Llamado", hora: h.llamado, fecha: null, nota: p.lugarLlamado, tipo: "MONTAJE", momento: "llamadoBodega", origen: "RESUMEN" });
     }
     if (conLogistica && interno && i > 0 && h.aplicaMontaje && h.montaje) {
-      items.push({ label: "Montaje", hora: h.montaje, fecha: null, nota: p.lugarEvento, tipo: "MONTAJE" });
+      items.push({ label: "Montaje", hora: h.montaje, fecha: null, nota: p.lugarEvento, tipo: "MONTAJE", origen: "RESUMEN" });
     }
     if (conEvento && h.inicio) {
-      items.push({ label: "Inicio del evento", hora: h.inicio, fecha: null, nota: p.lugarEvento });
+      items.push({ label: "Inicio del evento", hora: h.inicio, fecha: null, nota: p.lugarEvento, momento: "inicioEvento", origen: "RESUMEN" });
     }
     // El detalle del día (soundcheck, programa, ventanas de proveedor) vive entre el
     // inicio y el fin del evento, que es donde ocurre.
     items.push(...itemsExtra(fecha, interno ? ["SOUNDCHECK", "PROGRAMA", "PROVEEDOR"] : ["PROGRAMA"]));
     if (conEvento && h.fin) {
-      items.push({ label: "Fin del evento", hora: h.fin, fecha: null, nota: null });
+      items.push({ label: "Fin del evento", hora: h.fin, fecha: null, nota: null, momento: "finEvento", origen: "RESUMEN" });
     }
     // Desmontaje el mismo día → se agrega al final del último día del evento.
     if (!desmontajeDiaAparte && i === ultimoDia) {
@@ -487,7 +544,7 @@ export function construirCronologia(
       it.hora = horaAmPm(it.hora) ?? it.hora;
       if (it.horaFin) it.horaFin = horaAmPm(it.horaFin);
     });
-    b.items = ordenarPorReloj(b.items);
+    b.items = ordenarPorReloj(unaFilaPorMomento(b.items));
   });
 
   return bloques;

@@ -44,7 +44,7 @@ import { contarRespondidos, contarIncidencias, nivelResultado, getEvalConfig, ap
 import { getDireccionConfig, promedioDireccion, type EvaluacionDireccionData } from "@/lib/evaluacion-direccion";
 import { diasEvento, parseHorariosEvento, horarioDeDia, parseFechasEvento } from "@/lib/fechas-evento";
 import { useModoDiscreto } from "@/lib/modo-discreto";
-import { construirCronologia, horariosResumen, VISTAS_CRONOLOGIA, type BloqueTiempo, type HorariosResumen } from "@/lib/cronologia-evento";
+import { construirCronologia, horariosResumen, MOMENTO_DE_ACTIVIDAD, VISTAS_CRONOLOGIA, type BloqueTiempo } from "@/lib/cronologia-evento";
 import { checksAvanceProduccion } from "@/lib/proyecto-avance";
 import { requisitosDocumento, type ProyectoDocumentoInput, type RequisitosDocumento, type TipoDocumento } from "@/lib/proyecto-documentos";
 import { preguntasAlCliente, textoSolicitud } from "@/lib/solicitud-cliente";
@@ -1075,17 +1075,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   ];
   const mkCronoRows = (labels: string[], fase?: FaseCrono): CronoRow[] =>
     labels.map(a => ({ horaInicio: "", horaFin: "", actividad: a, responsable: "", involucrados: "", ...(fase ? { fase } : {}) }));
-  // Puente entre las actividades de la plantilla y los horarios que el resumen ya conoce,
-  // para que la fila nazca con su hora en vez de pedirla otra vez.
-  const HORA_RESUMEN_DE_ACTIVIDAD: Record<string, keyof HorariosResumen> = {
-    "Llamado en bodega": "llamadoBodega",
-    "Traslado a venue": "salidaBodega",
-    "Llegada a venue y descarga de equipos": "llegadaVenue",
-    "Inicio de montaje": "inicioMontaje",
-    "Fin de montaje": "finMontaje",
-    "Inicio de desmontaje": "inicioDesmontaje",
-    "Fin de la jornada": "finDesmontaje",
-  };
 
   // Estado de transportes (3 fichas JSON)
   const [transporteSlots, setTransporteSlots] = useState<TransporteSlot[]>([
@@ -2109,8 +2098,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     // El inicio y fin del evento se capturan por día, no en los campos de la jornada.
     if (nombre === "Inicio de evento") return horarioDelDia(dia).inicio;
     if (nombre === "Fin de evento") return horarioDelDia(dia).fin;
-    const key = HORA_RESUMEN_DE_ACTIVIDAD[nombre];
-    return key ? horariosResumen(datosCrono)[key] : null;
+    const momento = MOMENTO_DE_ACTIVIDAD[nombre];
+    if (!momento || momento === "inicioEvento" || momento === "finEvento") return null;
+    return horariosResumen(datosCrono)[momento];
   }
 
   /** Los bloques de la logística, en el orden en que se muestran. Multidía = un bloque de operación por día. */
