@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useEffect, useState, useRef, useMemo, useCallback, use } from "react";
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
-import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, MouseSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy, horizontalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { agruparRolesTecnicos } from "@/lib/rolesTecnicos";
 import { BONOS_PERSONAL, desgloseBonos, totalPagoPersonal, type CampoBono } from "@/lib/pago-personal";
@@ -44,6 +44,7 @@ import { contarRespondidos, contarIncidencias, nivelResultado, getEvalConfig, ap
 import { getDireccionConfig, promedioDireccion, type EvaluacionDireccionData } from "@/lib/evaluacion-direccion";
 import { diasEvento, parseHorariosEvento, horarioDeDia, parseFechasEvento } from "@/lib/fechas-evento";
 import { useModoDiscreto } from "@/lib/modo-discreto";
+import { useOrdenPestanas } from "@/lib/orden-pestanas";
 import { construirCronologia, horariosResumen, MOMENTO_DE_ACTIVIDAD, VISTAS_CRONOLOGIA, type BloqueTiempo } from "@/lib/cronologia-evento";
 import { checksAvanceProduccion } from "@/lib/proyecto-avance";
 import { requisitosDocumento, type ProyectoDocumentoInput, type RequisitosDocumento, type TipoDocumento } from "@/lib/proyecto-documentos";
@@ -145,6 +146,39 @@ function SortableCronoRow({ id, className, children }: {
     </tr>
   );
 }
+
+// Pestañas del proyecto. El orden que ve cada quien se guarda en su navegador
+// (useOrdenPestanas); esto es solo la lista completa y su texto.
+const PESTANAS_PROYECTO = {
+  resumen: "Resumen",
+  operacion: "Operación",
+  escenarios: "Escenarios",
+  extras: "Producción",
+  finanzas: "Finanzas",
+  tareas: "Tareas",
+} as const;
+type PestanaId = keyof typeof PESTANAS_PROYECTO;
+
+function PestanaArrastrable({ id, activa, onSelect, children }: {
+  id: string; activa: boolean; onSelect: () => void; children: React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  return (
+    <button
+      ref={setNodeRef}
+      onClick={onSelect}
+      {...attributes}
+      {...listeners}
+      style={{ transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 1 : undefined }}
+      className={`shrink-0 px-3.5 py-2.5 -mb-px text-xs font-semibold border-b-2 transition-colors cursor-grab active:cursor-grabbing select-none ${
+        isDragging ? "opacity-60" : ""
+      } ${activa ? "text-white border-[#B3985B]" : "text-gray-500 border-transparent hover:text-gray-300"}`}
+    >
+      {children}
+    </button>
+  );
+}
+
 interface TransporteSlot { vehiculoId: string; choferId: string; horaSalida: string; comentarios: string }
 interface ViaticoProyecto {
   id: string; tipo: string; concepto: string; monto: number; modalidad: string;
@@ -1301,6 +1335,20 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [confirmarBorrado, setConfirmarBorrado] = useState(false);
   const [borrando, setBorrando] = useState(false);
   const [activeTab, setActiveTab] = useState<'resumen'|'operacion'|'escenarios'|'extras'|'finanzas'|'tareas'>('resumen');
+
+  // Las pestañas se reordenan arrastrándolas; el orden es del navegador.
+  const idsPestanas = useMemo(
+    () => (Object.keys(PESTANAS_PROYECTO) as PestanaId[]).filter(p => p !== 'finanzas' || proyecto?._canViewFinances),
+    [proyecto?._canViewFinances],
+  );
+  const { orden: ordenPestanas, mover: moverPestana } = useOrdenPestanas("ms-proyecto-pestanas", idsPestanas);
+  // Mouse: 5px antes de arrastrar, para que el click siga seleccionando. Touch: se
+  // sostiene 250ms, así el swipe sigue deslizando la barra de pestañas.
+  const pestanaSensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   // Vista discreta: el proyecto se abre sin nada de dinero para poder repasarlo
   // con los técnicos. Es preferencia del navegador y aplica a todos los proyectos.
@@ -4021,28 +4069,26 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
         {/* ──── Sticky tab navigation ──── */}
         <div className="sticky top-0 z-30 -mx-3 md:-mx-6 px-3 md:px-6 bg-[#0a0a0a]/95 backdrop-blur-sm border-b border-[#1e1e1e]">
-          <div className="flex gap-0.5 overflow-x-auto ms-no-scrollbar">
-            {([
-              { id: 'resumen',   label: 'Resumen' },
-              { id: 'operacion', label: 'Operación' },
-              { id: 'escenarios', label: 'Escenarios' },
-              { id: 'extras',    label: 'Producción' },
-              ...(proyecto?._canViewFinances ? [{ id: 'finanzas', label: 'Finanzas' } as const] : []),
-              { id: 'tareas',    label: 'Tareas' },
-            ] as const).map(item => (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`shrink-0 px-3.5 py-2.5 -mb-px text-xs font-semibold border-b-2 transition-colors ${
-                  activeTab === item.id
-                    ? 'text-white border-[#B3985B]'
-                    : 'text-gray-500 border-transparent hover:text-gray-300'
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
+          <DndContext
+            sensors={pestanaSensors}
+            collisionDetection={closestCenter}
+            onDragEnd={e => { if (e.over) moverPestana(String(e.active.id), String(e.over.id)); }}
+          >
+            <SortableContext items={ordenPestanas} strategy={horizontalListSortingStrategy}>
+              <div className="flex gap-0.5 overflow-x-auto ms-no-scrollbar">
+                {ordenPestanas.map(pid => (
+                  <PestanaArrastrable
+                    key={pid}
+                    id={pid}
+                    activa={activeTab === pid}
+                    onSelect={() => setActiveTab(pid as PestanaId)}
+                  >
+                    {PESTANAS_PROYECTO[pid as PestanaId]}
+                  </PestanaArrastrable>
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
         </div>
 
         {/* ──── RESUMEN tab ──── */}
