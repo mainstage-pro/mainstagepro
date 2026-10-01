@@ -61,6 +61,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
   }
   if ("amperajeRequerido" in body) data.amperajeRequerido = body.amperajeRequerido !== "" && body.amperajeRequerido != null ? parseFloat(body.amperajeRequerido) : null;
+  if ("amperajeRequerido220" in body) data.amperajeRequerido220 = body.amperajeRequerido220 !== "" && body.amperajeRequerido220 != null ? parseFloat(body.amperajeRequerido220) : null;
   if ("voltajeRequerido" in body) data.voltajeRequerido = body.voltajeRequerido !== "" && body.voltajeRequerido != null ? String(body.voltajeRequerido) : null;
 
   // Estado previo, para detectar retorno a servicio y registrar el costo.
@@ -103,7 +104,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
 
   // Add the computed fields back manually so the list row can update
-  return NextResponse.json({ equipo: { ...equipo, amperajeRequerido: equipo.amperajeRequerido, voltajeRequerido: equipo.voltajeRequerido, notas: equipo.notas } });
+  return NextResponse.json({ equipo: { ...equipo, amperajeRequerido: equipo.amperajeRequerido, amperajeRequerido220: equipo.amperajeRequerido220, voltajeRequerido: equipo.voltajeRequerido, notas: equipo.notas } });
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

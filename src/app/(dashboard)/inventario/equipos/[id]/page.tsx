@@ -94,6 +94,7 @@ type Equipo = {
   descripcionInterna: string | null;
   activo: boolean;
   amperajeRequerido: number | null;
+  amperajeRequerido220: number | null;
   voltajeRequerido: string | null;
   pesoKg: number | null;
   huellaAnchoM: number | null;
@@ -1042,9 +1043,15 @@ export default function EquipoFichaPage() {
             <div>
               <dt className="text-[#6b7280] text-xs mb-0.5">Eléctrico</dt>
               <dd className="text-yellow-400 text-xs">
-                {equipo.amperajeRequerido != null ? `${equipo.amperajeRequerido}A` : ""}
-                {equipo.amperajeRequerido != null && equipo.voltajeRequerido != null ? " · " : ""}
-                {equipo.voltajeRequerido === "AMBOS" ? "110V + 220V" : equipo.voltajeRequerido != null ? `${equipo.voltajeRequerido}V` : ""}
+                {equipo.voltajeRequerido === "AMBOS"
+                  ? [
+                      equipo.amperajeRequerido != null ? `${equipo.amperajeRequerido}A a 110V` : "110V",
+                      equipo.amperajeRequerido220 != null ? `${equipo.amperajeRequerido220}A a 220V` : "220V",
+                    ].join(" · ")
+                  : [
+                      equipo.amperajeRequerido != null ? `${equipo.amperajeRequerido}A` : "",
+                      equipo.voltajeRequerido != null ? `${equipo.voltajeRequerido}V` : "",
+                    ].filter(Boolean).join(" · ")}
               </dd>
             </div>
           )}

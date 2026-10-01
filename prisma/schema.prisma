@@ -988,6 +988,9 @@ model ProyectoEquipo {
   confirmDisponible Boolean? // Respuesta del proveedor sobre disponibilidad
   confirmToken      String?                  @unique // Token para link de confirmación al proveedor
   notas             String? // Comentarios / instrucciones de carga para este equipo
+  // A qué voltaje se conecta en ESTE evento. Solo aplica a equipos que aceptan
+  // los dos ("110" | "220"); NULL = el equipo tiene un único voltaje o aún no se decide.
+  voltajeUso        String?
   necesitaRevision  Boolean                  @default(false) // El equipo se quitó/redujo en la cotización — revisar sin borrar (sync)
   // Cotización que pagó este equipo — ver nota en ProyectoPersonal.cotizacionId.
   cotizacionId      String?                  @map("cotizacion_id")
@@ -1114,7 +1117,11 @@ model Equipo {
   costoProveedor         Float? // Costo que nos cobra el proveedor (solo equipos externos)
   costoInternoEstimado   Float? // Costo interno estimado (mantenimiento, para equipos propios)
   estado                 String          @default("ACTIVO") // ACTIVO | EN_MANTENIMIENTO | DADO_DE_BAJA
-  amperajeRequerido      Float? // Consumo eléctrico en amperes
+  // Consumo en amperes. Un equipo que acepta los dos voltajes jala la mitad de
+  // corriente a 220, así que cada voltaje lleva su propio dato: amperajeRequerido
+  // es el de 110V y amperajeRequerido220 el de 220V (ver src/lib/consumo-electrico.ts).
+  amperajeRequerido      Float?
+  amperajeRequerido220   Float?
   voltajeRequerido       String? // Voltaje requerido ("110" | "220" | "AMBOS")
   // Peso nominal de catálogo por unidad. EquipoUnidad.pesoKg es el peso real de una unidad
   // física concreta y no se sincroniza con este.

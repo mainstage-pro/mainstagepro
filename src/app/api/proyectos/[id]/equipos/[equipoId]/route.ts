@@ -18,6 +18,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if ("tipo" in body) data.tipo = body.tipo;
   if ("confirmado" in body) data.confirmado = body.confirmado;
   if ("notas" in body) data.notas = body.notas || null;
+  if ("voltajeUso" in body) data.voltajeUso = body.voltajeUso || null;
   if ("escenarioId" in body) data.escenarioId = body.escenarioId || null;
 
   const item = await prisma.$transaction(async (tx) => {

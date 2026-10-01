@@ -42,12 +42,14 @@ export async function GET(
         select: {
           tipo: true,
           cantidad: true,
+          voltajeUso: true,
           equipo: {
             select: {
               descripcion: true,
               marca: true,
               modelo: true,
               amperajeRequerido: true,
+              amperajeRequerido220: true,
               voltajeRequerido: true,
               categoria: { select: { nombre: true, disciplina: true } },
             },

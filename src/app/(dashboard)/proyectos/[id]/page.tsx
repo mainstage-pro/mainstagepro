@@ -30,6 +30,7 @@ import { PanelProveedores } from "@/components/proyectos/PanelProveedores";
 import PanelEscenarios from "@/components/proyectos/PanelEscenarios";
 import SelectorEscenario from "@/components/proyectos/SelectorEscenario";
 import { PanelImprevistos } from "@/components/proyectos/PanelImprevistos";
+import { PanelConsumoElectrico } from "@/components/proyectos/PanelConsumoElectrico";
 import { PanelViaticos } from "@/components/proyectos/PanelViaticos";
 import { ResultadoFinanciero } from "@/components/proyectos/ResultadoFinanciero";
 import { calcularFinanzasProyecto } from "@/lib/finanzas-proyecto";
@@ -95,7 +96,7 @@ interface Bitacora { id: string; tipo: string; contenido: string; createdAt: str
 interface Gasto { id: string; fecha: string; concepto: string; monto: number; metodoPago: string; notas: string | null; referencia: string | null; categoriaId?: string | null; categoria: { id?: string; nombre: string } | null; proveedorId?: string | null; proveedor: { id?: string; nombre: string; empresa?: string | null } | null; cuentaOrigenId?: string | null; cuentaOrigen: { id: string; nombre: string; banco: string | null } | null; ligado?: boolean }
 interface EquipoAccesorioLib { id: string; nombre: string; categoria: string | null; accesorioId?: string | null }
 interface RiderAccesorio { id: string; nombre: string; cantidad: number; categoria: string | null; completado: boolean; esSugerencia: boolean; orden: number; origen?: string | null; accesorioId?: string | null }
-interface ProyectoEquipoItem { id: string; equipoId: string; proveedorId: string | null; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; confirmToken: string | null; confirmDisponible: boolean | null; notas: string | null; necesitaRevision: boolean; escenarioId: string | null; equipo: { descripcion: string; marca: string | null; modelo: string | null; imagenUrl: string | null; amperajeRequerido?: number | null; voltajeRequerido?: string | null; categoria: { nombre: string; disciplina?: string | null }; accesorios: EquipoAccesorioLib[] }; proveedor: { nombre: string; empresa: string | null; telefono: string | null } | null; cotizacion?: { numeroCotizacion: string } | null; riderAccesorios: RiderAccesorio[]; posiciones?: PosicionMontaje[] }
+interface ProyectoEquipoItem { id: string; equipoId: string; proveedorId: string | null; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; confirmToken: string | null; confirmDisponible: boolean | null; notas: string | null; voltajeUso: string | null; necesitaRevision: boolean; escenarioId: string | null; equipo: { descripcion: string; marca: string | null; modelo: string | null; imagenUrl: string | null; amperajeRequerido?: number | null; amperajeRequerido220?: number | null; voltajeRequerido?: string | null; categoria: { nombre: string; disciplina?: string | null }; accesorios: EquipoAccesorioLib[] }; proveedor: { nombre: string; empresa: string | null; telefono: string | null } | null; cotizacion?: { numeroCotizacion: string } | null; riderAccesorios: RiderAccesorio[]; posiciones?: PosicionMontaje[] }
 type FaseCrono = "montaje" | "soundcheck" | "operacion" | "desmontaje";
 const FASE_ORDEN: Record<FaseCrono, number> = { montaje: 0, soundcheck: 1, operacion: 2, desmontaje: 3 };
 const faseDe = (r: CronoRow): FaseCrono => r.fase ?? "operacion";
@@ -7566,6 +7567,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             <div className="mt-5">
               <PanelImprevistos proyectoId={id} />
             </div>
+
+            {/* ═══════ ZONA 2: QUÉ VA A JALAR EL EVENTO ═══════ */}
+            <SectionDivider label="Consumo eléctrico" />
+            <PanelConsumoElectrico proyectoId={id} equipos={riderEquipos} />
 
             {/* ═══════ ZONA 3: CIERRE — Protocolo · Evaluación ═══════ */}
             <SectionDivider label="Cierre & Evaluación" />

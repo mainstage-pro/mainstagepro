@@ -35,6 +35,7 @@ type Equipo = {
   noCotizable: boolean;
   notas: string | null;
   amperajeRequerido: number | null;
+  amperajeRequerido220: number | null;
   voltajeRequerido: string | null;
   pesoKg: number | null;
   huellaAnchoM: number | null;
@@ -57,7 +58,7 @@ type Form = {
   descripcion: string; marca: string; modelo: string; tipo: string;
   categoriaId: string; cantidadTotal: string; estado: string;
   proveedorDefaultId: string; notas: string;
-  amperajeRequerido: string; voltajeRequerido: string; pesoKg: string;
+  amperajeRequerido: string; amperajeRequerido220: string; voltajeRequerido: string; pesoKg: string;
   huellaAnchoM: string; huellaLargoM: string;
   precioRenta: string; costoProveedor: string;
 };
@@ -66,7 +67,7 @@ const FORM_EMPTY: Form = {
   descripcion: "", marca: "", modelo: "", tipo: "PROPIO",
   categoriaId: "", cantidadTotal: "1", estado: "ACTIVO",
   proveedorDefaultId: "", notas: "",
-  amperajeRequerido: "", voltajeRequerido: "", pesoKg: "",
+  amperajeRequerido: "", amperajeRequerido220: "", voltajeRequerido: "", pesoKg: "",
   huellaAnchoM: "", huellaLargoM: "",
   precioRenta: "", costoProveedor: "",
 };
@@ -354,18 +355,6 @@ function FormPanel({ panel, equipos, form, setForm, imagen, saving, categorias, 
           )}
 
           <div className="grid grid-cols-2 gap-2">
-            <FieldGroup label="Amperaje (A)">
-              <FInput type="number" value={form.amperajeRequerido} onChange={v => setForm(p => ({ ...p, amperajeRequerido: v }))} placeholder="Ej. 15" />
-            </FieldGroup>
-            <FieldGroup label="Peso por unidad (kg)">
-              <FInput type="number" value={form.pesoKg} onChange={v => setForm(p => ({ ...p, pesoKg: v }))} placeholder="Ej. 18" />
-            </FieldGroup>
-            <FieldGroup label="Huella: ancho (m)">
-              <FInput type="number" value={form.huellaAnchoM} onChange={v => setForm(p => ({ ...p, huellaAnchoM: v }))} placeholder="Ej. 0.4" />
-            </FieldGroup>
-            <FieldGroup label="Huella: fondo (m)">
-              <FInput type="number" value={form.huellaLargoM} onChange={v => setForm(p => ({ ...p, huellaLargoM: v }))} placeholder="Ej. 0.35" />
-            </FieldGroup>
             <div className="col-span-2">
             <FieldGroup label="Voltaje">
               <div className="flex gap-1">
@@ -386,6 +375,29 @@ function FormPanel({ panel, equipos, form, setForm, imagen, saving, categorias, 
               </div>
             </FieldGroup>
             </div>
+            {form.voltajeRequerido === "AMBOS" ? (
+              <>
+                <FieldGroup label="Amperaje a 110V (A)">
+                  <FInput type="number" value={form.amperajeRequerido} onChange={v => setForm(p => ({ ...p, amperajeRequerido: v }))} placeholder="Ej. 3.6" />
+                </FieldGroup>
+                <FieldGroup label="Amperaje a 220V (A)">
+                  <FInput type="number" value={form.amperajeRequerido220} onChange={v => setForm(p => ({ ...p, amperajeRequerido220: v }))} placeholder="Ej. 1.8" />
+                </FieldGroup>
+              </>
+            ) : (
+              <FieldGroup label="Amperaje (A)">
+                <FInput type="number" value={form.amperajeRequerido} onChange={v => setForm(p => ({ ...p, amperajeRequerido: v }))} placeholder="Ej. 15" />
+              </FieldGroup>
+            )}
+            <FieldGroup label="Peso por unidad (kg)">
+              <FInput type="number" value={form.pesoKg} onChange={v => setForm(p => ({ ...p, pesoKg: v }))} placeholder="Ej. 18" />
+            </FieldGroup>
+            <FieldGroup label="Huella: ancho (m)">
+              <FInput type="number" value={form.huellaAnchoM} onChange={v => setForm(p => ({ ...p, huellaAnchoM: v }))} placeholder="Ej. 0.4" />
+            </FieldGroup>
+            <FieldGroup label="Huella: fondo (m)">
+              <FInput type="number" value={form.huellaLargoM} onChange={v => setForm(p => ({ ...p, huellaLargoM: v }))} placeholder="Ej. 0.35" />
+            </FieldGroup>
           </div>
         </div>
 
@@ -931,6 +943,7 @@ export default function InventarioMaestroPage() {
       proveedorDefaultId: e.proveedorDefault?.id ?? "",
       notas: e.notas ?? "",
       amperajeRequerido: e.amperajeRequerido != null ? String(e.amperajeRequerido) : "",
+      amperajeRequerido220: e.amperajeRequerido220 != null ? String(e.amperajeRequerido220) : "",
       voltajeRequerido: e.voltajeRequerido != null ? String(e.voltajeRequerido) : "",
       pesoKg: e.pesoKg != null ? String(e.pesoKg) : "",
       huellaAnchoM: e.huellaAnchoM != null ? String(e.huellaAnchoM) : "",
@@ -998,6 +1011,7 @@ export default function InventarioMaestroPage() {
       proveedorDefaultId: form.proveedorDefaultId || null,
       notas: form.notas || null,
       amperajeRequerido: form.amperajeRequerido !== "" ? parseFloat(form.amperajeRequerido) : null,
+      amperajeRequerido220: form.voltajeRequerido === "AMBOS" && form.amperajeRequerido220 !== "" ? parseFloat(form.amperajeRequerido220) : null,
       voltajeRequerido: form.voltajeRequerido !== "" ? form.voltajeRequerido : null,
       pesoKg: form.pesoKg !== "" ? parseFloat(form.pesoKg) : null,
       huellaAnchoM: form.huellaAnchoM !== "" ? parseFloat(form.huellaAnchoM) : null,

@@ -41,7 +41,11 @@ export async function GET(req: NextRequest) {
         noCotizable: true,
         notas: true,
         amperajeRequerido: true,
+        amperajeRequerido220: true,
         voltajeRequerido: true,
+        pesoKg: true,
+        huellaAnchoM: true,
+        huellaLargoM: true,
         _count: { select: { accesorios: true } },
         proveedoresPrecios: {
           where: { activo: true },

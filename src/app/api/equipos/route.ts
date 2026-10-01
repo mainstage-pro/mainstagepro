@@ -21,6 +21,7 @@ const EQUIPO_SELECT = {
   descripcionInterna: true,
   activo: true,
   amperajeRequerido: true,
+  amperajeRequerido220: true,
   voltajeRequerido: true,
   pesoKg: true,
   huellaAnchoM: true,
@@ -66,7 +67,7 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await req.json();
-  const { descripcion, categoriaId, marca, modelo, tipo, precioRenta, costoProveedor, costoInternoEstimado, cantidadTotal, proveedorDefaultId, notas, amperajeRequerido, voltajeRequerido, imagenUrl, descripcionInterna, pesoKg, huellaAnchoM, huellaLargoM } = body;
+  const { descripcion, categoriaId, marca, modelo, tipo, precioRenta, costoProveedor, costoInternoEstimado, cantidadTotal, proveedorDefaultId, notas, amperajeRequerido, amperajeRequerido220, voltajeRequerido, imagenUrl, descripcionInterna, pesoKg, huellaAnchoM, huellaLargoM } = body;
 
   if (!descripcion || !categoriaId) {
     return NextResponse.json({ error: "descripcion y categoriaId son requeridos" }, { status: 400 });
@@ -88,6 +89,7 @@ export async function POST(req: NextRequest) {
       proveedorDefaultId: proveedorDefaultId || null,
       notas: notas || null,
       amperajeRequerido: amperajeRequerido !== "" && amperajeRequerido != null ? parseFloat(amperajeRequerido) : null,
+      amperajeRequerido220: amperajeRequerido220 !== "" && amperajeRequerido220 != null ? parseFloat(amperajeRequerido220) : null,
       voltajeRequerido: voltajeRequerido !== "" && voltajeRequerido != null ? String(voltajeRequerido) : null,
       pesoKg: pesoKg !== "" && pesoKg != null ? parseFloat(pesoKg) : null,
       huellaAnchoM: huellaAnchoM !== "" && huellaAnchoM != null ? parseFloat(huellaAnchoM) : null,

@@ -81,7 +81,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         },
         equipos: {
           include: {
-            equipo: { select: { descripcion: true, marca: true, modelo: true, imagenUrl: true, amperajeRequerido: true, voltajeRequerido: true, categoria: { select: { nombre: true, disciplina: true } }, accesorios: { select: { id: true, nombre: true, categoria: true, accesorioId: true }, orderBy: { createdAt: "asc" } } } },
+            equipo: { select: { descripcion: true, marca: true, modelo: true, imagenUrl: true, amperajeRequerido: true, amperajeRequerido220: true, voltajeRequerido: true, categoria: { select: { nombre: true, disciplina: true } }, accesorios: { select: { id: true, nombre: true, categoria: true, accesorioId: true }, orderBy: { createdAt: "asc" } } } },
             proveedor: { select: { nombre: true, empresa: true, telefono: true } },
             cotizacion: { select: { numeroCotizacion: true } },
             riderAccesorios: { orderBy: { orden: "asc" } },

@@ -6,17 +6,20 @@
  * por zona, el resumen de rigging y el orden de carga.
  */
 
+import { amperajeUnitario, voltajeEfectivo } from "./consumo-electrico";
 import { getEquipoDisplayName } from "./equipoNombre";
 import { labelConfiguracion, labelSoporte, labelZona, ordenDisciplina, ordenZona, soporteEsRigging } from "./montaje-vocabulario";
 
 export type EquipoConPosiciones = {
   tipo?: string;
   cantidad: number;
+  voltajeUso?: string | null;
   equipo: {
     descripcion: string | null;
     marca: string | null;
     modelo: string | null;
     amperajeRequerido?: number | null;
+    amperajeRequerido220?: number | null;
     voltajeRequerido?: string | null;
     categoria: { nombre: string; disciplina?: string | null } | null;
   };
@@ -94,8 +97,8 @@ export function aplanarPosiciones(equipos: EquipoConPosiciones[]): PosicionPlana
         zona: labelZona(p.zona) || "Sin zona",
         alturaM: p.alturaM,
         notas: p.notas,
-        amperajeUnitario: e.equipo.amperajeRequerido ?? 0,
-        voltaje: e.equipo.voltajeRequerido ?? "110",
+        amperajeUnitario: amperajeUnitario(e.equipo, e.voltajeUso) ?? 0,
+        voltaje: voltajeEfectivo(e.equipo, e.voltajeUso),
         esRigging: soporteEsRigging(p.soporte, categoria, disciplina),
       });
     }
