@@ -56,7 +56,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         trato: { select: { tipoEvento: true, tipoServicio: true, ideasReferencias: true, notas: true, familyAndFriends: true, tradeCalificado: true, ventanaMontajeInicio: true, ventanaMontajeFin: true, responsable: { select: { name: true } } } },
         cotizacion: {
           select: {
-            id: true, numeroCotizacion: true, granTotal: true, aplicaIva: true, diasComidas: true,
+            id: true, numeroCotizacion: true, granTotal: true, total: true, aplicaIva: true, diasComidas: true,
             subtotalComidas: true, subtotalOperacion: true, subtotalTransporte: true,
             subtotalHospedaje: true, subtotalEquiposNeto: true, subtotalTerceros: true,
             notasSecciones: true, observaciones: true,
@@ -103,6 +103,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
             categoria: { select: { id: true, nombre: true } },
             proveedor: { select: { id: true, nombre: true, empresa: true } },
             cuentaOrigen: { select: { id: true, nombre: true, banco: true } },
+            // Para saber si el pago ya pertenece a una cuenta que se cuenta en
+            // otro lado (y no sumarlo dos veces en el costo del evento).
+            cuentaPagar: { select: { id: true } },
+            proyectoPersonal: { select: { id: true } },
+            abonoPago: { select: { id: true } },
+            pagoNomina: { select: { id: true } },
           },
         },
         cierreFinanciero: { select: { cerradoEn: true, notas: true, totalCobrado: true, totalGastado: true, utilidadReal: true, margenReal: true, granTotalEstimado: true, costoEstimado: true, utilidadEstimada: true } },
@@ -120,7 +126,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         trato: { select: { tipoEvento: true, tipoServicio: true, ideasReferencias: true, notas: true, familyAndFriends: true, tradeCalificado: true, ventanaMontajeInicio: true, ventanaMontajeFin: true, responsable: { select: { name: true } } } },
         cotizacion: {
           select: {
-            id: true, numeroCotizacion: true, granTotal: true, aplicaIva: true, diasComidas: true,
+            id: true, numeroCotizacion: true, granTotal: true, total: true, aplicaIva: true, diasComidas: true,
             subtotalComidas: true, subtotalOperacion: true, subtotalTransporte: true,
             subtotalHospedaje: true, subtotalEquiposNeto: true, subtotalTerceros: true,
             notasSecciones: true, observaciones: true,
@@ -165,6 +171,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
             categoria: { select: { id: true, nombre: true } },
             proveedor: { select: { id: true, nombre: true, empresa: true } },
             cuentaOrigen: { select: { id: true, nombre: true, banco: true } },
+            // Para saber si el pago ya pertenece a una cuenta que se cuenta en
+            // otro lado (y no sumarlo dos veces en el costo del evento).
+            cuentaPagar: { select: { id: true } },
+            proyectoPersonal: { select: { id: true } },
+            abonoPago: { select: { id: true } },
+            pagoNomina: { select: { id: true } },
           },
         },
         cierreFinanciero: { select: { cerradoEn: true, notas: true, totalCobrado: true, totalGastado: true, utilidadReal: true, margenReal: true, granTotalEstimado: true, costoEstimado: true, utilidadEstimada: true } },
@@ -212,6 +224,29 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   });
   proyecto = { ...proyecto, movimientosIngresoSueltos } as unknown as typeof proyecto;
 
+  // Un gasto que es el pago de una cuenta ya contada (una CxP, el pago de un
+  // técnico, un abono) no es un costo aparte. Se marca aquí para que el costo
+  // del evento no lo sume dos veces.
+  type MovLigable = { cuentaPagar?: unknown; proyectoPersonal?: unknown; abonoPago?: unknown; pagoNomina?: unknown };
+  proyecto = {
+    ...proyecto,
+    movimientos: (proyecto.movimientos as (MovLigable & Record<string, unknown>)[]).map((m) => ({
+      ...m,
+      ligado: !!(m.cuentaPagar || m.proyectoPersonal || m.abonoPago || m.pagoNomina),
+    })),
+  } as unknown as typeof proyecto;
+
+  // Comidas y viáticos: se capturan en Operación, pero son costo del evento y
+  // finanzas tiene que verlos.
+  let gastosOperativos: unknown[] = [];
+  try {
+    gastosOperativos = await prisma.gastoOperativo.findMany({
+      where: { proyectoId: id },
+      orderBy: { createdAt: "asc" },
+    });
+  } catch { /* la tabla puede no existir todavía */ }
+  proyecto = { ...proyecto, gastosOperativos } as unknown as typeof proyecto;
+
   // Avance del control de carga. Va aparte y tolerando el fallo a propósito: si
   // las tablas del pase todavía no existen, la ficha del proyecto debe abrir igual.
   let cargas: unknown[] = [];
@@ -255,6 +290,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       cuentasPagar: [],
       movimientos: [],
       movimientosIngresoSueltos: [],
+      gastosOperativos: [],
       cierreFinanciero: null,
       equipos: Array.isArray(proyecto.equipos) ? proyecto.equipos.map((eq: any) => ({
         ...eq,

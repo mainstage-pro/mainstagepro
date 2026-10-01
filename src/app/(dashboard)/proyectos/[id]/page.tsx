@@ -28,6 +28,9 @@ import { MontajePosiciones, type Posicion as PosicionMontaje } from "@/component
 import { PanelProveedores } from "@/components/proyectos/PanelProveedores";
 import { PanelImprevistos } from "@/components/proyectos/PanelImprevistos";
 import { PanelViaticos } from "@/components/proyectos/PanelViaticos";
+import { ResultadoFinanciero } from "@/components/proyectos/ResultadoFinanciero";
+import { calcularFinanzasProyecto } from "@/lib/finanzas-proyecto";
+import { TIPOS_VIATICO, estadoViatico } from "@/lib/viaticos";
 import ModalRegistrarPago, { type GrupoPago, type PagoCapturado } from "@/components/finanzas/ModalRegistrarPago";
 import DatosBancariosAcreedor from "@/components/finanzas/DatosBancariosAcreedor";
 import { datosBancarios, fichaAcreedorHref, type DatosBancarios } from "@/lib/datos-bancarios";
@@ -83,7 +86,7 @@ interface AjusteEntry { fecha: string; de: number; a: number; motivo: string; us
 interface CxC { id: string; concepto: string; tipoPago: string; monto: number; montoCobrado: number; estado: string; fechaCompromiso: string; montoOriginal: number | null; ajustesLog: string | null }
 interface CxP { id: string; concepto: string; monto: number; montoPagado?: number; montoCompensado?: number; estado: string; fechaCompromiso: string; tipoAcreedor: string; montoOriginal: number | null; ajustesLog: string | null; notas: string | null; esNomina?: boolean; esDeuda?: boolean; esReparto?: boolean; gastoRecurrenteId?: string | null; proveedorId?: string | null; tecnicoId?: string | null }
 interface Bitacora { id: string; tipo: string; contenido: string; createdAt: string; usuario: { name: string } | null }
-interface Gasto { id: string; fecha: string; concepto: string; monto: number; metodoPago: string; notas: string | null; referencia: string | null; categoriaId?: string | null; categoria: { id?: string; nombre: string } | null; proveedorId?: string | null; proveedor: { id?: string; nombre: string; empresa?: string | null } | null; cuentaOrigenId?: string | null; cuentaOrigen: { id: string; nombre: string; banco: string | null } | null }
+interface Gasto { id: string; fecha: string; concepto: string; monto: number; metodoPago: string; notas: string | null; referencia: string | null; categoriaId?: string | null; categoria: { id?: string; nombre: string } | null; proveedorId?: string | null; proveedor: { id?: string; nombre: string; empresa?: string | null } | null; cuentaOrigenId?: string | null; cuentaOrigen: { id: string; nombre: string; banco: string | null } | null; ligado?: boolean }
 interface EquipoAccesorioLib { id: string; nombre: string; categoria: string | null; accesorioId?: string | null }
 interface RiderAccesorio { id: string; nombre: string; cantidad: number; categoria: string | null; completado: boolean; esSugerencia: boolean; orden: number; origen?: string | null; accesorioId?: string | null }
 interface ProyectoEquipoItem { id: string; equipoId: string; proveedorId: string | null; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; confirmToken: string | null; confirmDisponible: boolean | null; notas: string | null; necesitaRevision: boolean; equipo: { descripcion: string; marca: string | null; modelo: string | null; imagenUrl: string | null; amperajeRequerido?: number | null; voltajeRequerido?: string | null; categoria: { nombre: string; disciplina?: string | null }; accesorios: EquipoAccesorioLib[] }; proveedor: { nombre: string; empresa: string | null; telefono: string | null } | null; cotizacion?: { numeroCotizacion: string } | null; riderAccesorios: RiderAccesorio[]; posiciones?: PosicionMontaje[] }
@@ -134,6 +137,11 @@ function SortableCronoRow({ id, className, children }: {
   );
 }
 interface TransporteSlot { vehiculoId: string; choferId: string; horaSalida: string; comentarios: string }
+interface ViaticoProyecto {
+  id: string; tipo: string; concepto: string; monto: number; modalidad: string;
+  entregado: boolean; fechaEntrega: string | null; autorizadoEn: string | null; autorizadoPor: string | null;
+  responsable: string | null; personas: number | null; porDia: number | null; dias: number | null; costoUnitario: number | null;
+}
 interface Proyecto {
   id: string; numeroProyecto: string; nombre: string; estado: string;
   tipoEvento: string; tipoServicio: string | null;
@@ -157,7 +165,7 @@ interface Proyecto {
   encargado: { id: string; name: string } | null;
   tratoId: string | null;
   trato: { tipoEvento: string; tipoServicio: string | null; ideasReferencias: string | null; notas: string | null; familyAndFriends: boolean; tradeCalificado: boolean; ventanaMontajeInicio: string | null; ventanaMontajeFin: string | null; responsable: { name: string } | null } | null;
-  cotizacion: { id: string; numeroCotizacion: string; granTotal: number; diasComidas: number; subtotalComidas: number; subtotalOperacion: number; subtotalTransporte: number; subtotalHospedaje: number; subtotalEquiposNeto: number; subtotalTerceros: number; notasSecciones: string | null; observaciones: string | null; lineas: { id: string; tipo: string; descripcion: string; cantidad: number; nivel: string | null; jornada: string | null; precioUnitario: number; notas: string | null; marca: string | null; modelo: string | null; rolTecnicoId: string | null; rolTecnico: { id: string; nombre: string; disciplina: string | null } | null }[] } | null;
+  cotizacion: { id: string; numeroCotizacion: string; granTotal: number; total: number; aplicaIva: boolean; diasComidas: number; subtotalComidas: number; subtotalOperacion: number; subtotalTransporte: number; subtotalHospedaje: number; subtotalEquiposNeto: number; subtotalTerceros: number; notasSecciones: string | null; observaciones: string | null; lineas: { id: string; tipo: string; descripcion: string; cantidad: number; nivel: string | null; jornada: string | null; precioUnitario: number; notas: string | null; marca: string | null; modelo: string | null; rolTecnicoId: string | null; rolTecnico: { id: string; nombre: string; disciplina: string | null } | null }[] } | null;
   // Cotizaciones extra que se facturan solas pero se operan en este mismo proyecto.
   cotizacionesFusionadas?: CotizacionFusionada[];
   logisticaRenta: string | null;
@@ -184,6 +192,8 @@ interface Proyecto {
   cuentasPagar: CxP[];
   bitacora: Bitacora[];
   movimientos: Gasto[];
+  /** Comidas y viáticos que se capturan en Operación; Finanzas solo los lee. */
+  gastosOperativos?: ViaticoProyecto[];
   // Red de seguridad: ingresos ligados al proyecto sin Abono a una CxC (ver /api/proyectos/[id]).
   movimientosIngresoSueltos?: { id: string; fecha: string; concepto: string; monto: number }[];
   cierreFinanciero: { cerradoEn: string; notas: string | null; totalCobrado: number; totalGastado: number; utilidadReal: number; margenReal: number; granTotalEstimado: number; costoEstimado: number; utilidadEstimada: number } | null;
@@ -1272,7 +1282,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [editingCxPId, setEditingCxPId] = useState<string | null>(null);
   const [savingGasto, setSavingGasto] = useState(false);
   const [gastoEstado, setGastoEstado] = useState<"PENDIENTE" | "PAGADO">("PENDIENTE");
-  const [refCotOpen, setRefCotOpen] = useState(true);
   const [showGastoModal, setShowGastoModal] = useState(false);
   const [marcarPagadoId, setMarcarPagadoId] = useState<string | null>(null);
   const [marcarPagadoFecha, setMarcarPagadoFecha] = useState(new Date().toISOString().split("T")[0]);
@@ -1792,14 +1801,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       .catch(() => {});
   }, [id]);
 
-  // Cargar datos de pago a inversionistas al entrar a la pestaña finanzas
-  useEffect(() => {
-    if (activeTab === 'finanzas' && !pagoSocios && !loadingPagoSocios) {
-      loadPagoSocios();
-    }
-  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
-
   // ── Section nav — now managed by activeTab state (real tabs, no scroll) ──
+
+  // Cambiar de pestaña no cambia de ruta, así que el contenedor del dashboard
+  // conserva su scrollTop y la pestaña nueva abre a media página. Se regresa arriba.
+  useEffect(() => {
+    document.querySelector("main")?.scrollTo({ top: 0 });
+    window.scrollTo({ top: 0 });
+  }, [activeTab]);
 
   // ── Cambiar estado del proyecto ──
   async function cambiarEstado(estado: string) {
@@ -7573,125 +7582,24 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         {activeTab === 'finanzas' && (
           <div id="section-finanzas" className="scroll-mt-14">
       {(() => {
-        // ── P&L en tiempo real ──────────────────────────────────────────────
-        const ingresoContratado = proyecto.cotizacion?.granTotal ?? 0;
-        // Red de seguridad: suma también ingresos ligados al proyecto que nunca se
-        // convirtieron en Abono de una CxC (dinero "suelto" que de otro modo
-        // quedaría invisible en el P&L; ver /api/proyectos/[id]).
-        const ingresoCobradoSuelto = (proyecto.movimientosIngresoSueltos ?? []).reduce((s: number, m: { monto: number }) => s + m.monto, 0);
-        const ingresoCobrado = proyecto.cuentasCobrar.reduce((s, c) => s + c.montoCobrado, 0) + ingresoCobradoSuelto;
-        // Costos personal: usar CxP de técnicos si existen (fuente de verdad); fallback a tarifas acordadas
-        const tarifaTotal = proyecto.personal
-          .filter(p => p.tarifaAcordada && p.tarifaAcordada > 0)
-          .reduce((s, p) => s + (p.tarifaAcordada ?? 0), 0);
-        const tecnicoCxPTotal = proyecto.cuentasPagar
-          .filter(c => c.tipoAcreedor === "TECNICO")
-          .reduce((s, c) => s + c.monto, 0);
-        const costosPersonal = Math.max(tarifaTotal, tecnicoCxPTotal);
-        const gastosProyPendientes = proyecto.cuentasPagar
-          .filter(c => c.tipoAcreedor !== "TECNICO" && c.estado !== "LIQUIDADO")
-          .reduce((s, c) => s + c.monto, 0);
-        const gastosProyPagados = proyecto.movimientos.reduce((s, m) => s + m.monto, 0);
-        const gastosProyTotal = gastosProyPendientes + gastosProyPagados;
-        // Equipos externos: se suman siempre al costo real (igual que en el cierre)
-        const costoEquiposExternos = (proyecto.equipos ?? []).reduce(
-          (s: number, e: { costoExterno: number | null; cantidad: number }) => s + (e.costoExterno ?? 0) * e.cantidad, 0
-        );
-        const costosTotales = gastosProyTotal + costoEquiposExternos;
-        const utilidadBruta = ingresoContratado - costosTotales;
-        const margen = ingresoContratado > 0 ? (utilidadBruta / ingresoContratado) * 100 : 0;
+        // Un solo juego de números para toda la pestaña (ver src/lib/finanzas-proyecto.ts).
+        const viaticos = proyecto.gastosOperativos ?? [];
+        const fin = calcularFinanzasProyecto({
+          cotizacion: proyecto.cotizacion,
+          personal: proyecto.personal,
+          cuentasPagar: proyecto.cuentasPagar,
+          proveedoresEvento: proyecto.proveedoresEvento,
+          equipos: proyecto.equipos ?? [],
+          viaticos,
+          movimientos: proyecto.movimientos,
+          cuentasCobrar: proyecto.cuentasCobrar,
+          ingresosSueltos: proyecto.movimientosIngresoSueltos ?? [],
+        });
 
         return (
         <div className="space-y-4">
 
-          {/* ── Viabilidad del proyecto ── */}
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-gray-600 mb-3">Viabilidad del proyecto</p>
-            <ViabilidadWidget
-              viabilidadActiva={viabilidad?.viabilidadActiva ?? null}
-              historico={viabilidad?.historico ?? []}
-            />
-          </div>
-
-          {/* ── P&L Summary ── */}
-          <div className="ms-table-wrapper">
-            <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Estado de resultados</h3>
-              <span className={`text-xs font-bold px-2 py-1 rounded-full ${
-                margen >= 40 ? "bg-green-900/40 text-green-300" :
-                margen >= 20 ? "bg-[#B3985B]/20 text-[#B3985B]" :
-                margen >= 0  ? "bg-yellow-900/30 text-yellow-400" :
-                "bg-red-900/30 text-red-400"
-              }`}>
-                Margen: {margen.toFixed(1)}%
-              </span>
-            </div>
-            <div className="p-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {/* Ingresos */}
-              <div className="space-y-2">
-                <p className="text-xs text-gray-500 uppercase tracking-wider">Ingresos</p>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">Contratado</span>
-                  <span className="text-white font-medium">{fmt(ingresoContratado)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">Cobrado</span>
-                  <span className="text-green-400 font-medium">{fmt(ingresoCobrado)}</span>
-                </div>
-                <div className="flex justify-between text-sm border-t border-[#1a1a1a] pt-2">
-                  <span className="text-gray-500">Por cobrar</span>
-                  <span className="text-yellow-400">{fmt(ingresoContratado - ingresoCobrado)}</span>
-                </div>
-              </div>
-              {/* Costos */}
-              <div className="space-y-2">
-                <p className="text-xs text-gray-500 uppercase tracking-wider">Costos</p>
-                 {costosPersonal > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600 italic">Personal (ref.)</span>
-                    <span className="text-gray-600 italic">{fmt(costosPersonal)}</span>
-                  </div>
-                )}
-                {gastosProyPendientes > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-400">Por pagar</span>
-                    <span className="text-yellow-400">{fmt(gastosProyPendientes)}</span>
-                  </div>
-                )}
-                {gastosProyPagados > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-400">Pagado</span>
-                    <span className="text-red-300">{fmt(gastosProyPagados)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between text-sm border-t border-[#1a1a1a] pt-2">
-                  <span className="text-gray-500 font-medium">Total costos</span>
-                  <span className="text-red-400 font-semibold">{fmt(costosTotales)}</span>
-                </div>
-              </div>
-              {/* Resultado */}
-              <div className="space-y-2 border-l border-[#1a1a1a] pl-4">
-                <p className="text-xs text-gray-500 uppercase tracking-wider">Resultado</p>
-                <div className="mt-2">
-                  <p className="text-xs text-gray-500 mb-1">Utilidad bruta</p>
-                  <p className={`text-2xl font-bold ${utilidadBruta >= 0 ? "text-green-400" : "text-red-400"}`}>
-                    {fmt(utilidadBruta)}
-                  </p>
-                </div>
-                <div className="mt-2">
-                  <p className="text-xs text-gray-500 mb-1">Margen sobre contratado</p>
-                  <div className="h-2 bg-[#222] rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full ${
-                      margen >= 40 ? "bg-green-500" : margen >= 20 ? "bg-[#B3985B]" : margen >= 0 ? "bg-yellow-500" : "bg-red-600"
-                    }`} style={{ width: `${Math.min(Math.max(margen, 0), 100)}%` }} />
-                  </div>
-                  <p className={`text-sm font-semibold mt-1 ${
-                    margen >= 40 ? "text-green-400" : margen >= 20 ? "text-[#B3985B]" : margen >= 0 ? "text-yellow-400" : "text-red-400"
-                  }`}>{margen.toFixed(1)}%</p>
-                </div>
-              </div>
-            </div>
-          </div>
+          <ResultadoFinanciero fin={fin} />
 
           {/* CxC */}
           {(() => {
@@ -8033,9 +7941,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           })()}
 
           {/* Pagos a personal */}
-          <div className="ms-table-wrapper">
+          <div id="fin-personal" className="ms-table-wrapper scroll-mt-16">
             <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Pagos a personal</h3>
+              <h3 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Personal técnico</h3>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setActiveTab('operacion')}
@@ -8079,7 +7987,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 COMPLETA: "Completa", MEDIA: "Media", CUARTO: "Cuarto",
               };
               const personal = proyecto.personal;
-              const totalPersonal = personal.reduce((s, p) => s + (p.tarifaAcordada ?? 0), 0);
+              // Refuerzos contratados por fuera: su cuenta no es la tarifa de ningún puesto.
+              const conPuesto = new Set(personal.map(p => p.tecnico?.id).filter((x): x is string => !!x));
+              const ligadaAProveedor = new Set(proyecto.proveedoresEvento.map(pe => pe.cuentaPagarId).filter((x): x is string => !!x));
+              const cxpExtra = proyecto.cuentasPagar.filter(c =>
+                c.tipoAcreedor === "TECNICO" && !ligadaAProveedor.has(c.id) && !(c.tecnicoId && conPuesto.has(c.tecnicoId))
+              );
+              const totalPersonal =
+                personal.reduce((s, p) => s + (p.tarifaAcordada ?? 0), 0) +
+                cxpExtra.reduce((s, c) => s + c.monto, 0);
               const hayPendientes = personal.some(p => p.tecnico && p.estadoPago !== "PAGADO");
 
               // Agrupar por participacion
@@ -8094,7 +8010,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 .filter(k => grupos.has(k))
                 .map(k => [k, grupos.get(k)!] as [string, typeof personal]);
 
-              if (personal.length === 0) return (
+              if (personal.length === 0 && cxpExtra.length === 0) return (
                 <p className="text-gray-600 text-sm text-center py-6 italic">Sin personal registrado</p>
               );
 
@@ -8146,6 +8062,27 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     </div>
                   ))}
 
+                  {cxpExtra.length > 0 && (
+                    <div>
+                      <div className="px-5 py-1.5 bg-[#0d0d0d]">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-cyan-400">Refuerzos por cuenta aparte</span>
+                      </div>
+                      {cxpExtra.map(c => (
+                        <div key={c.id} className="px-5 py-2.5 border-b border-[#0d0d0d] flex items-center justify-between gap-3">
+                          <p className="text-sm text-gray-300 truncate">{c.concepto}</p>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-sm text-white font-medium tabular-nums">{fmt(c.monto)}</span>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                              c.estado === "LIQUIDADO" ? "bg-green-900/40 text-green-400"
+                              : c.estado === "PARCIAL" ? "bg-yellow-900/30 text-yellow-400"
+                              : "bg-orange-900/20 text-orange-400"
+                            }`}>{c.estado === "LIQUIDADO" ? "Pagado" : c.estado === "PARCIAL" ? "Parcial" : "Pend."}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   {/* Footer con presupuesto/real/diferencia */}
                   {(() => {
                     const presupuesto = proyecto.cotizacion?.subtotalOperacion ?? 0;
@@ -8188,6 +8125,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           </div>
 
           {/* Pagos a proveedores — todo lo que el evento debe fuera de su nómina */}
+          <div id="fin-proveedores" className="scroll-mt-16" />
           {(() => {
             const cxpPorId = new Map(proyecto.cuentasPagar.map(c => [c.id, c]));
             const yaEnRenglon = new Set(
@@ -8251,7 +8189,17 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               });
             }
 
-            if (filas.length === 0) return null;
+            // Equipo externo del rider al que nadie le puso proveedor: cuesta igual,
+            // pero no hay a quién pagarle hasta que se asigne en Operación.
+            const conRenglon = new Set(proyecto.proveedoresEvento.map(pe => pe.proveedorId).filter((x): x is string => !!x));
+            const equiposSinProveedor = (proyecto.equipos ?? []).filter(e =>
+              e.tipo === "EXTERNO" && (e.costoExterno ?? 0) > 0 && !(e.proveedorId && conRenglon.has(e.proveedorId))
+            );
+            const totalSinProveedor = equiposSinProveedor.reduce(
+              (s, e) => s + (e.costoExterno ?? 0) * e.cantidad * Math.max(1, e.dias), 0,
+            );
+
+            if (filas.length === 0 && equiposSinProveedor.length === 0) return null;
 
             const ORDEN_ORIGEN = ["COORDINADO", "IMPREVISTO", "DIRECTO"] as const;
             const ORIGEN_LABEL: Record<string, string> = {
@@ -8271,7 +8219,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               .map(o => [o, filas.filter(f => f.origen === o)] as const)
               .filter(([, fs]) => fs.length > 0);
 
-            const total = filas.reduce((s, f) => s + f.monto, 0);
+            const total = filas.reduce((s, f) => s + f.monto, 0) + totalSinProveedor;
             const presupuesto = proyecto.cotizacion?.subtotalTerceros ?? 0;
             const diff = presupuesto - total;
             const sinFormalizar = filas.filter(f => f.estado === "SIN_CXP" && f.monto > 0);
@@ -8299,7 +8247,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               <div className="ms-table-wrapper">
                 <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between gap-3 flex-wrap">
                   <div className="flex items-center gap-3">
-                    <h3 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Pagos a proveedores</h3>
+                    <h3 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Proveedores y equipo externo</h3>
                     <span className="text-xs text-gray-500">{fmt(total)}</span>
                   </div>
                   <Link href="/finanzas/pagos-proveedores"
@@ -8394,6 +8342,29 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   </div>
                 ))}
 
+                {equiposSinProveedor.length > 0 && (
+                  <div>
+                    <div className="px-5 py-2 bg-[#0a0a0a] border-y border-[#141414] flex items-center justify-between gap-2">
+                      <p className="text-[10px] uppercase tracking-[0.12em] font-semibold text-red-400/80">Equipo externo sin proveedor</p>
+                      <button onClick={() => setActiveTab('operacion')}
+                        className="text-[10px] text-gray-600 hover:text-gray-400 transition-colors">Asignar en Operación →</button>
+                    </div>
+                    {equiposSinProveedor.map(e => (
+                      <div key={e.id} className="px-5 py-2.5 border-b border-[#0d0d0d] flex items-center justify-between gap-3">
+                        <p className="text-sm text-gray-300 truncate">
+                          {e.equipo.descripcion}
+                          <span className="text-gray-600 text-xs">
+                            {e.cantidad > 1 ? ` ×${e.cantidad}` : ""}{e.dias > 1 ? ` · ${e.dias}d` : ""}
+                          </span>
+                        </p>
+                        <span className="text-sm text-red-400/90 font-medium tabular-nums shrink-0">
+                          {fmt((e.costoExterno ?? 0) * e.cantidad * Math.max(1, e.dias))}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 <div className="px-5 py-3 bg-[#0d0d0d] border-t border-[#111] flex items-center justify-between gap-3 flex-wrap">
                   <div className="flex items-center gap-5 flex-wrap">
                     {presupuesto > 0 ? (
@@ -8429,60 +8400,107 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             );
           })()}
 
-          {/* ── Gastos del proyecto ── */}
+          {/* ── Comidas y viáticos — se capturan en Operación, aquí solo cuentan ── */}
           {(() => {
-            const cot = proyecto.cotizacion;
-            // Bloque 1: Referencia cotización
-            const TIPO_LABEL: Record<string, string> = {
-              EQUIPO_EXTERNO: "Proveedores externos",
-              OPERACION_TECNICA: "Operación técnica",
-              COMIDA: "Comidas",
-              TRANSPORTE: "Transporte",
-              HOSPEDAJE: "Hospedaje",
-              OTRO: "Otros",
-            };
-            type LinCot = { id: string; tipo: string; descripcion: string; cantidad: number; dias?: number; precioUnitario: number };
-            const lineasConCosto: LinCot[] = (cot?.lineas ?? []).filter(l =>
-              l.precioUnitario > 0 && !["EQUIPO_PROPIO","DESCUENTO_BENEFICIO","PAQUETE"].includes(l.tipo)
-            );
-            const grouped: Record<string, LinCot[]> = {};
-            for (const l of lineasConCosto) {
-              const key = ["EQUIPO_EXTERNO","OPERACION_TECNICA","COMIDA","TRANSPORTE","HOSPEDAJE"].includes(l.tipo) ? l.tipo : "OTRO";
-              if (!grouped[key]) grouped[key] = [];
-              grouped[key].push(l);
-            }
-            const estimadoTotal = cot
-              ? cot.subtotalComidas + cot.subtotalOperacion + cot.subtotalTransporte + cot.subtotalHospedaje + cot.subtotalTerceros
-              : 0;
+            const renglones = proyecto.gastosOperativos ?? [];
+            const total = renglones.reduce((s, v) => s + v.monto, 0);
+            const entregado = renglones.reduce((s, v) => s + (v.entregado ? v.monto : 0), 0);
+            const presupuesto = fin.costos.renglones.find(r => r.clave === "VIATICOS")?.presupuesto ?? 0;
+            const labelTipo = (t: string) => TIPOS_VIATICO.find(x => x.valor === t)?.label ?? "Otro";
+            return (
+              <div id="fin-viaticos" className="ms-table-wrapper scroll-mt-16">
+                <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Comidas y viáticos</h3>
+                    {total > 0 && <span className="text-xs text-gray-500">{fmt(total)}</span>}
+                  </div>
+                  <button onClick={() => setActiveTab('operacion')}
+                    className="text-xs px-3 py-1 rounded-md border border-[#333] text-gray-300 hover:text-white hover:border-[#555] transition-colors">
+                    Editar en Operación →
+                  </button>
+                </div>
 
-            // Bloque 2: Gastos registrados
-            const cxpPendientes = proyecto.cuentasPagar.filter(c => c.tipoAcreedor !== "TECNICO" && c.estado !== "LIQUIDADO");
-            // Lo que ya vive en la tabla de "Pagos a proveedores" no se repite
-            // aquí: en este bloque solo quedan deudas, repartos y recurrentes.
-            const cxpGastos = cxpPendientes.filter(c =>
-              c.esNomina || c.esDeuda || c.esReparto || !!c.gastoRecurrenteId
+                {renglones.length === 0 ? (
+                  <div className="px-5 py-8 text-center">
+                    <p className="text-gray-600 text-sm">Sin comidas ni viáticos capturados</p>
+                    <p className="text-gray-700 text-xs mt-1">
+                      {presupuesto > 0
+                        ? `La cotización previó ${fmt(presupuesto)}. Se capturan en la pestaña Operación.`
+                        : "Se capturan en la pestaña Operación."}
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    {renglones.map(v => {
+                      const estado = estadoViatico(v);
+                      const desglose = v.personas && v.porDia && v.dias && v.costoUnitario
+                        ? `${v.personas} pers. × ${v.porDia}/día × ${v.dias} día${v.dias !== 1 ? "s" : ""} × ${fmt(v.costoUnitario)}`
+                        : null;
+                      return (
+                        <div key={v.id} className="px-5 py-3 border-b border-[#1a1a1a] flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm text-white">{v.concepto}</span>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#1a1a1a] text-gray-500 shrink-0">{labelTipo(v.tipo)}</span>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${
+                                estado === "ENTREGADO" ? "bg-green-900/30 text-green-400"
+                                : estado === "AUTORIZADO" ? "bg-[#B3985B]/20 text-[#B3985B]"
+                                : "bg-orange-900/20 text-orange-400"
+                              }`}>{estado}</span>
+                            </div>
+                            <p className="text-[11px] text-gray-600 mt-0.5">
+                              {v.modalidad === "SERVICIO" ? "Servicio de comida" : "Efectivo"}
+                              {v.responsable ? ` · ${v.responsable}` : ""}
+                              {desglose ? ` · ${desglose}` : ""}
+                            </p>
+                          </div>
+                          <span className={`text-sm font-semibold shrink-0 tabular-nums ${v.entregado ? "text-green-400" : "text-yellow-400"}`}>
+                            {fmt(v.monto)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                    <div className="px-5 py-3 bg-[#0d0d0d] grid grid-cols-3 gap-4 text-center">
+                      <div>
+                        <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Presupuestado</p>
+                        <p className="text-sm text-gray-300 font-semibold tabular-nums">{presupuesto > 0 ? fmt(presupuesto) : "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Comprometido</p>
+                        <p className="text-sm text-white font-semibold tabular-nums">{fmt(total)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Entregado</p>
+                        <p className="text-sm text-green-400 font-semibold tabular-nums">{fmt(entregado)}</p>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
             );
-            const pagados = proyecto.movimientos;
-            const totalPendiente = cxpPendientes.reduce((s, c) => s + c.monto, 0);
+          })()}
+
+          {/* ── Otros gastos — deudas, repartos, recurrentes y pagos sueltos ── */}
+          {(() => {
+            // Lo que ya vive en personal, proveedores o viáticos no se repite aquí.
+            const ligadaAProveedor = new Set(proyecto.proveedoresEvento.map(pe => pe.cuentaPagarId).filter((x): x is string => !!x));
+            const cxpGastos = proyecto.cuentasPagar.filter(c =>
+              c.tipoAcreedor !== "TECNICO" && !ligadaAProveedor.has(c.id) &&
+              (c.esNomina || c.esDeuda || c.esReparto || !!c.gastoRecurrenteId)
+            );
+            // Un pago ligado a una cuenta ya se ve en el bloque de esa cuenta.
+            const pagados = proyecto.movimientos.filter(m => !m.ligado);
             const totalPagado = pagados.reduce((s, m) => s + m.monto, 0);
-            // Equipos externos con costo registrado (fuente: campo costoExterno en rider)
-            const costoEquipExt = (proyecto.equipos ?? []).reduce(
-              (s: number, e: { costoExterno: number | null; cantidad: number }) => s + (e.costoExterno ?? 0) * e.cantidad, 0
-            );
-            const totalGastosProy = totalPendiente + totalPagado + costoEquipExt;
-
-            // Bloque 3: Desviacion
-            const desviacion = totalGastosProy - estimadoTotal;
-            const pctDesviacion = estimadoTotal > 0 ? (desviacion / estimadoTotal) * 100 : 0;
+            const totalBloque = cxpGastos.reduce((s, c) => s + c.monto, 0) + totalPagado;
 
             return (
-              <div className="ms-table-wrapper">
+              <div id="fin-otros" className="ms-table-wrapper scroll-mt-16">
 
                 {/* Header */}
                 <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <h3 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Gastos del proyecto</h3>
-                    {totalGastosProy > 0 && <span className="text-xs text-gray-500">{fmt(totalGastosProy)}</span>}
+                    <h3 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Otros gastos</h3>
+                    {totalBloque > 0 && <span className="text-xs text-gray-500">{fmt(totalBloque)}</span>}
                   </div>
                   <button onClick={() => {
                     setGastoEstado("PENDIENTE"); setGastoConcepto(""); setGastoMonto("");
@@ -8494,51 +8512,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   </button>
                 </div>
 
-                {/* Bloque 1: Referencia cotizacion */}
-                {cot && (
-                  <div className="border-b border-[#1a1a1a]">
-                    <button onClick={() => setRefCotOpen(v => !v)}
-                      className="w-full px-5 py-2.5 bg-[#0a0a0a] flex items-center justify-between hover:bg-[#0d0d0d] transition-colors">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-[10px] text-gray-600 uppercase tracking-[0.12em] font-semibold shrink-0">Referencia — {cot.numeroCotizacion}</span>
-                        <span className="text-gray-700 text-[10px]">·</span>
-                        <span className="text-[10px] text-gray-700">Estimado costos: {fmt(estimadoTotal)}</span>
-                      </div>
-                      <span className="text-gray-600 text-[10px] shrink-0 ml-2">{refCotOpen ? "▲ Colapsar" : "▼ Ver"}</span>
-                    </button>
-                    {refCotOpen && (
-                      <div className="px-5 pt-3 pb-4 bg-[#0a0a0a] space-y-3">
-                        {lineasConCosto.length === 0 ? (
-                          <p className="text-xs text-gray-700 italic">Sin líneas de costo en la cotización</p>
-                        ) : (
-                          Object.entries(grouped).map(([tipo, lineas]) => {
-                            const grupoTotal = lineas.reduce((s, l) => s + l.precioUnitario * l.cantidad * (l.dias || 1), 0);
-                            return (
-                              <div key={tipo}>
-                                <div className="flex items-center justify-between mb-1">
-                                  <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">{TIPO_LABEL[tipo] ?? "Otros"}</p>
-                                  <span className="text-[10px] text-gray-400 font-semibold">{fmt(grupoTotal)}</span>
-                                </div>
-                                {lineas.map(l => (
-                                  <div key={l.id} className="flex items-center justify-between py-0.5 pl-3">
-                                    <span className="text-xs text-gray-600 truncate mr-2">· {l.descripcion}{l.cantidad > 1 ? ` ×${Math.round(l.cantidad)}` : ""}{(l.dias ?? 1) > 1 ? ` · ${l.dias}d` : ""}</span>
-                                    <span className="text-xs text-gray-600 shrink-0">{fmt(l.precioUnitario * l.cantidad * (l.dias || 1))}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            );
-                          })
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Bloque 2: POR PAGAR */}
+                {/* Cuentas del evento que no son de personal ni de proveedor */}
                 {cxpGastos.length > 0 && (
                   <div>
                     <div className="px-5 pt-3 pb-1 flex items-center justify-between border-b border-[#1a1a1a]">
-                      <p className="text-[10px] text-yellow-600/90 uppercase tracking-[0.12em] font-semibold">Por pagar</p>
+                      <p className="text-[10px] text-yellow-600/90 uppercase tracking-[0.12em] font-semibold">Cuentas por pagar</p>
                       <span className="text-xs text-yellow-400 font-semibold">{fmt(cxpGastos.reduce((s, c) => s + c.monto, 0))}</span>
                     </div>
                     {cxpGastos.map(c => (
@@ -8549,6 +8527,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                               <span className="text-sm text-white">{c.concepto}</span>
                               {c.tipoAcreedor !== "OTRO" && (
                                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#1a1a1a] text-gray-600 shrink-0">{c.tipoAcreedor}</span>
+                              )}
+                              {c.estado === "LIQUIDADO" && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-900/40 text-green-400 shrink-0">Pagado</span>
+                              )}
+                              {c.estado === "PARCIAL" && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-900/30 text-yellow-400 shrink-0">Parcial</span>
                               )}
                             </div>
                             {c.fechaCompromiso && (
@@ -8564,7 +8548,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             <button onClick={() => eliminarCxP(c.id)} className="text-gray-700 hover:text-red-400 text-xs transition-colors">✕</button>
                           </div>
                         </div>
-                        <div className="mt-2">
+                        <div className={c.estado === "LIQUIDADO" ? "hidden" : "mt-2"}>
                           {marcarPagadoId === c.id ? (
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="text-xs text-gray-500">Fecha en que se pagó:</span>
@@ -8621,36 +8605,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 {/* Empty state */}
                 {cxpGastos.length === 0 && pagados.length === 0 && (
                   <div className="px-5 py-10 text-center">
-                    <p className="text-gray-600 text-sm">Sin gastos registrados</p>
-                    <p className="text-gray-700 text-xs mt-1">Usa "+ Agregar gasto" para registrar un pago pendiente o ya realizado</p>
+                    <p className="text-gray-600 text-sm">Sin otros gastos</p>
+                    <p className="text-gray-700 text-xs mt-1">Lo de personal, proveedores y viáticos vive en sus propios bloques. Aquí van los gastos que no caben ahí.</p>
                   </div>
                 )}
 
-                {/* Bloque 3: Resumen de desviacion */}
-                <div className={`px-5 py-3 border-t border-[#1a1a1a] bg-[#0a0a0a] grid gap-4 ${cot && estimadoTotal > 0 ? "grid-cols-3" : "grid-cols-1"}`}>
-                  {cot && estimadoTotal > 0 && (
-                    <div className="text-center">
-                      <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Estimado (cotización)</p>
-                      <p className="text-sm text-gray-300 font-semibold">{fmt(estimadoTotal)}</p>
-                    </div>
-                  )}
-                  <div className="text-center">
-                    <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Real registrado</p>
-                    <p className="text-sm text-white font-semibold">{fmt(totalGastosProy)}</p>
-                    <p className="text-[10px] text-gray-700 mt-0.5">{fmt(totalPendiente)} pendiente + {fmt(totalPagado)} pagado</p>
-                  </div>
-                  {cot && estimadoTotal > 0 && (
-                    <div className="text-center">
-                      <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Desviación</p>
-                      <p className={`text-sm font-bold ${desviacion > 0 ? "text-red-400" : desviacion < 0 ? "text-green-400" : "text-gray-400"}`}>
-                        {desviacion === 0 ? "Sin desviación" : `${desviacion > 0 ? "+" : ""}${fmt(desviacion)}`}
-                        {desviacion !== 0 && (
-                          <span className="text-xs ml-1 font-normal">({desviacion > 0 ? "+" : ""}{pctDesviacion.toFixed(0)}%)</span>
-                        )}
-                      </p>
-                    </div>
-                  )}
-                </div>
               </div>
             );
           })()}
@@ -8735,17 +8694,35 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             );
           })()}
 
+          {/* ── Histórico de viabilidad de la cotización (referencia, no el resultado) ── */}
+          {(viabilidad?.viabilidadActiva || (viabilidad?.historico?.length ?? 0) > 0) && (
+            <details className="ms-table-wrapper group">
+              <summary className="px-5 py-3 cursor-pointer flex items-center justify-between text-xs text-gray-600 hover:text-gray-400 transition-colors list-none">
+                <span className="uppercase tracking-wider font-semibold">Viabilidad de la cotización</span>
+                <span className="text-[10px] group-open:hidden">▼ Ver</span>
+                <span className="text-[10px] hidden group-open:inline">▲ Cerrar</span>
+              </summary>
+              <div className="px-5 pb-4 border-t border-[#1a1a1a] pt-4">
+                <p className="text-[11px] text-gray-600 mb-3">
+                  Lo que proyectaba la cotización al momento de venderse. El resultado del evento es el de arriba.
+                </p>
+                <ViabilidadWidget
+                  viabilidadActiva={viabilidad?.viabilidadActiva ?? null}
+                  historico={viabilidad?.historico ?? []}
+                />
+              </div>
+            </details>
+          )}
+
           {/* ── Liquidación a inversionistas por uso de equipos propios ── */}
-          <div className="ms-table-wrapper">
-            <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">
-                Liquidación a inversionistas · Equipos propios
-              </h3>
-              <button onClick={loadPagoSocios} disabled={loadingPagoSocios}
-                className="text-[10px] text-gray-600 hover:text-gray-400 transition-colors disabled:opacity-40">
-                {loadingPagoSocios ? "Calculando..." : "↻ Recalcular"}
-              </button>
-            </div>
+          <details className="ms-table-wrapper group"
+            onToggle={e => { if ((e.currentTarget as HTMLDetailsElement).open && !pagoSocios && !loadingPagoSocios) loadPagoSocios(); }}>
+            <summary className="px-5 py-3 cursor-pointer flex items-center justify-between text-xs text-gray-600 hover:text-gray-400 transition-colors list-none">
+              <span className="uppercase tracking-wider font-semibold">Liquidación a inversionistas · Equipos propios</span>
+              <span className="text-[10px] group-open:hidden">▼ Ver</span>
+              <span className="text-[10px] hidden group-open:inline">▲ Cerrar</span>
+            </summary>
+            <div className="border-t border-[#1a1a1a]" />
 
             {loadingPagoSocios ? (
               <div className="p-5 space-y-2">
@@ -8928,7 +8905,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
               </div>
             )}
-          </div>
+          </details>
 
         </div>
         );
