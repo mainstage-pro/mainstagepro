@@ -33,7 +33,34 @@ export type Pieza = {
   pesoKg?: number;
 };
 
-export type LayoutGuardado = { piezas: Pieza[] };
+/**
+ * Un rectángulo rotulado del plano. Representa una ZONA del evento (escenario,
+ * pista, FOH…) o una SUBZONA: la configuración de montaje dentro de esa zona
+ * (PA principal, sidefill, tótem…). Las dos salen del rider, pero una vez
+ * dibujadas viven en el documento: moverlas no toca el rider.
+ */
+export type Area = {
+  id: string;
+  clase: "ZONA" | "SUBZONA";
+  /**
+   * Llave del grupo del rider que representa, para reencontrar su equipo al abrir
+   * el detalle. Las zonas que alguien agregó a mano no corresponden a ningún grupo
+   * y la llevan vacía.
+   */
+  clave: string;
+  /** Id de `ZONAS`, `SIN_ZONA`, o `LIBRE_*` para las agregadas a mano. */
+  zona: string;
+  /** Solo subzonas: la configuración de montaje. */
+  funcion?: string;
+  etiqueta: string;
+  color: string;
+  x: number;
+  y: number;
+  anchoM: number;
+  largoM: number;
+};
+
+export type LayoutGuardado = { piezas: Pieza[]; areas?: Area[] };
 
 export type ItemPaleta = {
   tipo: string;
@@ -70,6 +97,10 @@ export function nuevoIdPieza() {
   return `pz_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
+export function nuevoIdArea() {
+  return `ar_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+}
+
 /**
  * Caja envolvente de la pieza ya rotada. Con rotación libre la huella real es un
  * rombo; se usa su caja alineada a los ejes porque es lo único que sirve para no
@@ -85,17 +116,22 @@ export function cajaDe(p: Pieza) {
   };
 }
 
-export function parsearLayout(raw: string | null | undefined): Pieza[] {
-  if (!raw) return [];
+export function parsearLayout(raw: string | null | undefined): { piezas: Pieza[]; areas: Area[] } {
+  const vacio = { piezas: [] as Pieza[], areas: [] as Area[] };
+  if (!raw) return vacio;
   try {
     const d = JSON.parse(raw) as LayoutGuardado | Pieza[];
-    const piezas = Array.isArray(d) ? d : d.piezas;
-    if (!Array.isArray(piezas)) return [];
-    return piezas
-      .filter(p => p && typeof p.id === "string")
-      .map(p => ({ ...p, rot: Number(p.rot) || 0 }));
+    const crudas = Array.isArray(d) ? d : d.piezas;
+    const piezas = Array.isArray(crudas)
+      ? crudas.filter(p => p && typeof p.id === "string").map(p => ({ ...p, rot: Number(p.rot) || 0 }))
+      : [];
+    const areasCrudas = Array.isArray(d) ? [] : d.areas;
+    const areas = Array.isArray(areasCrudas)
+      ? areasCrudas.filter(a => a && typeof a.id === "string")
+      : [];
+    return { piezas, areas };
   } catch {
-    return [];
+    return vacio;
   }
 }
 

@@ -27,6 +27,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
         select: {
           id: true, marca: true, modelo: true, descripcion: true, pesoKg: true,
           imagenUrl: true, huellaAnchoM: true, huellaLargoM: true,
+          amperajeRequerido: true, amperajeRequerido220: true, voltajeRequerido: true,
           categoria: { select: { nombre: true, disciplina: true } },
         },
       },
