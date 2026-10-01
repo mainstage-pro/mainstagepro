@@ -691,7 +691,7 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
                         {/* Main equipment row */}
                         <View style={[
                           i % 2 === 0 ? s.tableRow : s.tableRowAlt,
-                          hasAcc ? { borderBottomWidth: 0 } : {}
+                          (hasAcc || eq.montaje) ? { borderBottomWidth: 0 } : {}
                         ]}>
                           <View style={[s.colModelo, { flexDirection: "row", alignItems: "center", gap: 4 }]}>
                             {eq.equipo?.imagenUrl ? (
@@ -699,9 +699,6 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
                             ) : null}
                             <View style={{ flex: 1 }}>
                               <Text style={[s.cellText, { fontFamily: "Helvetica-Bold" }]}>{nombre}</Text>
-                              {eq.montaje ? (
-                                <Text style={{ fontSize: 6, color: GOLD, marginTop: 1 }}>{eq.montaje}</Text>
-                              ) : null}
                             </View>
                           </View>
                           <View style={s.colQty}>
@@ -712,10 +709,10 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
                           </View>
                         </View>
                         {/* Accessory sub-rows inline */}
-                        {(eq.riderAccesorios ?? []).map((acc, ai) => (
+                        {(eq.riderAccesorios ?? []).map((acc, ai, arr) => (
                           <View key={ai} style={{
                             flexDirection: "row",
-                            borderBottomWidth: 1,
+                            borderBottomWidth: (eq.montaje && ai === arr.length - 1) ? 0 : 1,
                             borderBottomColor: "#EBEBEB",
                             minHeight: 16,
                             backgroundColor: i % 2 === 0 ? "#FAFAF8" : "#F5F3EE",
@@ -734,6 +731,21 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
                             </View>
                           </View>
                         ))}
+                        {eq.montaje ? (
+                          <View style={{
+                            flexDirection: "row",
+                            borderBottomWidth: 1,
+                            borderBottomColor: "#EBEBEB",
+                            minHeight: 14,
+                            backgroundColor: i % 2 === 0 ? "#FAFAF8" : "#F5F3EE",
+                          }}>
+                            <View style={[s.colModelo, { paddingLeft: 16 }]}>
+                              <Text style={{ fontSize: 6, color: GOLD }}>{eq.montaje}</Text>
+                            </View>
+                            <View style={s.colQty} />
+                            <View style={[s.colSerie, { borderRightWidth: 0 }]} />
+                          </View>
+                        ) : null}
                       </View>
                     );
                   })}

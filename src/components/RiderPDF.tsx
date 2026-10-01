@@ -354,13 +354,6 @@ export function RiderPDF({ data }: { data: RiderPDFData }) {
                   )}
                 </View>
 
-                {/* Montaje capturado por el coordinador */}
-                {eq.montaje ? (
-                  <View style={s.montajeRow}>
-                    <Text style={s.montajeTxt}>{eq.montaje}</Text>
-                  </View>
-                ) : null}
-
                 {/* Notas del equipo */}
                 {eq.notas && (
                   <View style={s.notaRow}>
@@ -382,6 +375,13 @@ export function RiderPDF({ data }: { data: RiderPDFData }) {
                     ))}
                   </View>
                 )}
+
+                {/* Montaje capturado por el coordinador */}
+                {eq.montaje ? (
+                  <View style={s.montajeRow}>
+                    <Text style={s.montajeTxt}>{eq.montaje}</Text>
+                  </View>
+                ) : null}
               </View>
             ))}
           </View>

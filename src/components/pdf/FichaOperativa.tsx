@@ -590,13 +590,6 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                           )}
                         </View>
 
-                        {/* Montaje capturado por el coordinador */}
-                        {e.montaje ? (
-                          <View style={s.riderMontajeRow}>
-                            <Text style={s.riderMontajeTxt}>{e.montaje}</Text>
-                          </View>
-                        ) : null}
-
                         {/* Nota del concepto (viene de la cotización o del proyecto) */}
                         {nota && (
                           <View style={s.riderNotaRow}>
@@ -620,6 +613,13 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                             ))}
                           </View>
                         )}
+
+                        {/* Montaje capturado por el coordinador */}
+                        {e.montaje ? (
+                          <View style={s.riderMontajeRow}>
+                            <Text style={s.riderMontajeTxt}>{e.montaje}</Text>
+                          </View>
+                        ) : null}
                       </View>
                     );
                   })}

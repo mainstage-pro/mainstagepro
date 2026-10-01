@@ -166,10 +166,6 @@ export function Equipo({ orden }: { orden: OrdenProduccion }) {
                       {e.tipo === "EXTERNO" && <Chip tono="ambar">Externo</Chip>}
                     </div>
 
-                    {e.montaje && (
-                      <p className="px-3 pb-2 text-[#9A7A3F] text-[11.5px] leading-snug">{e.montaje}</p>
-                    )}
-
                     {e.notas && (
                       <p className="px-3 py-2 bg-[#f8f8f8] border-t border-[#e8e8e8] text-[#5a5a5a] text-[11.5px] italic leading-snug">
                         Nota: {e.notas}
@@ -189,6 +185,10 @@ export function Equipo({ orden }: { orden: OrdenProduccion }) {
                           </div>
                         ))}
                       </div>
+                    )}
+
+                    {e.montaje && (
+                      <p className="px-3 py-2 border-t border-[#e8e8e8] text-[#9A7A3F] text-[11.5px] leading-snug">{e.montaje}</p>
                     )}
                   </Cuadro>
                 );
