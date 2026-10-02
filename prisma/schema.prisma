@@ -183,6 +183,9 @@ model Cliente {
   prospecciones         Prospeccion[]
   solicitudesCotizacion SolicitudCotizacion[]
   tareas                Tarea[]                @relation("TareasDeCliente")
+  artistas              Artista[]
+  giras                 Gira[]
+  propuestasServicio    PropuestaServicio[]
 
   @@map("clientes")
 }
@@ -363,6 +366,8 @@ model Trato {
   apoyoDe                TratoApoyo[]
   solicitudOrigen        SolicitudCotizacion?
   tareas                 Tarea[]                 @relation("TareasDeTrato")
+  giras                  Gira[]
+  propuestasServicio     PropuestaServicio[]
 
   @@map("tratos")
 }
@@ -792,6 +797,7 @@ model Proyecto {
   cargas             ProyectoCarga[]
   cargaVerificadores ProyectoCargaVerificador[]
   escenarios         ProyectoEscenario[]
+  giraShow           GiraShow?
 
   @@map("proyectos")
 }
@@ -1176,6 +1182,9 @@ model Equipo {
   accesoriosMigrados           Accesorio[]                    @relation("AccesorioEquipoOrigen")
   plantillas_cotizacion_lineas plantillas_cotizacion_lineas[]
   fallas                       FallaEquipo[]
+  artistaRiderLineas           ArtistaRiderLinea[]
+  showRiderLineas              ShowRiderLinea[]
+  propuestaLineas              PropuestaServicioLinea[]
 
   @@map("equipos")
 }
@@ -1497,6 +1506,8 @@ model RolTecnico {
   tecnicos         Tecnico[]
   tecnicoRoles     TecnicoRol[]
   paqueteConceptos PaqueteConcepto[]
+  giraCrew         GiraCrew[]
+  propuestaLineas  PropuestaServicioLinea[]
 
   @@map("roles_tecnicos")
 }
@@ -1530,6 +1541,7 @@ model Tecnico {
   cuentasPagar        CuentaPagar[]
   pagosNomina         PagoNomina[]
   cargaVerificaciones ProyectoCargaVerificador[]
+  giraCrew            GiraCrew[]
 
   @@map("tecnicos")
 }
@@ -1551,6 +1563,9 @@ model Proveedor {
   empresaId      String?
   compania       Empresa? @relation("ProveedorEmpresa", fields: [empresaId], references: [id])
   giro           String?
+  // Cobertura, para filtrar proveedores por plaza al resolver un advance de gira
+  ciudades       String? // JSON: ["Monterrey","Guadalajara"]
+  disciplinas    String? // JSON: ["AUDIO","ILUMINACION"]
   telefono       String?
   correo         String?
   notas          String?
@@ -1579,6 +1594,7 @@ model Proveedor {
   accesorios        Accesorio[]
   gastosRecurrentes GastoRecurrente[]
   eventos           ProveedorEvento[]
+  showRiderLineas   ShowRiderLinea[]
 
   @@map("proveedores")
 }
@@ -3638,18 +3654,32 @@ model Venue {
   restriccionDecibeles   String?
   restriccionHorario     String?
   restriccionInstalacion String?
+  // Ficha técnica del foro (para advance de gira)
+  contactoTecnicoNombre   String?
+  contactoTecnicoTelefono String?
+  contactoTecnicoEmail    String?
+  medidasEscenario        String? // "10 x 8 m, 1.2 m de alto"
+  alturaRejaM             Float?
+  accesoEscenario         String?
+  camerinos               String?
+  horarioCarga            String?
+  riderCasaUrl            String?
+  notasTecnicas           String?
+
   // Información adicional
-  tiposEvento            String? // JSON: ["MUSICAL","SOCIAL","EMPRESARIAL"]
-  calificacion           Float? // 1-5
-  notas                  String?
-  fotoPortada            String? // base64
-  activo                 Boolean  @default(true)
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
+  tiposEvento   String? // JSON: ["MUSICAL","SOCIAL","EMPRESARIAL"]
+  calificacion  Float? // 1-5
+  notas         String?
+  fotoPortada   String? // base64
+  activo        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   tratos       Trato[]
   cotizaciones Cotizacion[]
   proyectos    Proyecto[]
+  inventario   VenueInventario[]
+  giraShows    GiraShow[]
 
   @@index([nombre])
   @@index([ciudad])
@@ -3672,12 +3702,24 @@ model Artista {
   instagram        String?
   sitioWeb         String?
   notas            String?
-  activo           Boolean  @default(true)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
 
-  tratos    Trato[]
-  proyectos Proyecto[]
+  // El artista nace del Cliente que lo contrata o lo representa
+  clienteId      String?
+  cliente        Cliente? @relation(fields: [clienteId], references: [id])
+  logoUrl        String? // encabeza riders, day sheets e input lists
+  tipoFormacion  String? // BANDA|SOLISTA|DJ|ENSAMBLE|COLECTIVO
+  integrantesNum Int?
+
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tratos     Trato[]
+  proyectos  Proyecto[]
+  personas   ArtistaPersona[]
+  riders     ArtistaRider[]
+  giras      Gira[]
+  propuestas PropuestaServicio[]
 
   @@index([nombre])
   @@map("artistas")
@@ -5791,4 +5833,681 @@ model GastoRecurrenteHistorial {
   createdAt DateTime @default(now())
 
   @@map("gastos_recurrentes_historial")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GIRAS — PRODUCTION MANAGEMENT DE ARTISTAS
+//
+// El rider es del ARTISTA (maestro, versionado) y cada plaza deriva su advance.
+// El show es entidad propia porque Proyecto.cotizacionId es requerido y @unique:
+// cinco plazas no pueden colgar de una sola cotización de gira. Si una plaza
+// además requiere renta de equipo propio, se genera un Proyecto y se enlaza.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/// Integrantes de la banda y contactos clave del artista (manager, FOH, monitores).
+model ArtistaPersona {
+  id        String  @id @default(cuid())
+  artistaId String
+  artista   Artista @relation(fields: [artistaId], references: [id], onDelete: Cascade)
+
+  nombre          String
+  rol             String // PERSONAL_MANAGER|TOUR_MANAGER|MUSICO|FOH|MONITORES|LUCES|VIDEO|STAGE_MANAGER|BACKLINE|BOOKING|PROMOTOR|PRENSA|OTRO
+  instrumento     String?
+  esIntegrante    Boolean @default(false)
+  esContactoClave Boolean @default(false)
+
+  telefono String?
+  email    String?
+
+  tallaPlayera      String?
+  notasHospitalidad String?
+  notas             String?
+
+  orden     Int      @default(0)
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  mixes    ArtistaRiderCanal[]
+  crew     GiraCrew[]
+  roomings GiraRooming[]
+  giras    Gira[]              @relation("GiraContactoPrincipal")
+
+  @@index([artistaId])
+  @@map("artista_personas")
+}
+
+/// Rider técnico maestro del artista. Se versiona; uno activo a la vez.
+model ArtistaRider {
+  id        String  @id @default(cuid())
+  artistaId String
+  artista   Artista @relation(fields: [artistaId], references: [id], onDelete: Cascade)
+
+  nombre    String // "Rider 2026 — banda completa"
+  version   Int     @default(1)
+  esActivo  Boolean @default(true)
+  formacion String? // "5 piezas"
+
+  requerimientosGenerales String?
+  notasFoh                String?
+  notasMonitoreo          String?
+  notasBackline           String?
+  notasIluminacion        String?
+  notasVideo              String?
+  notasEnergia            String?
+  notasEscenario          String?
+  notasHospitalidad       String?
+  notasCrewRequerido      String?
+
+  escenarioAnchoM    Float?
+  escenarioProfundoM Float?
+  escenarioAlturaM   Float?
+  stagePlotUrl       String?
+
+  canalesMinimos      Int?
+  mixesMonitor        Int?
+  tiempoSoundcheckMin Int?
+  tiempoCambioMin     Int?
+
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  canales ArtistaRiderCanal[]
+  lineas  ArtistaRiderLinea[]
+  giras   Gira[]
+
+  @@index([artistaId])
+  @@map("artista_riders")
+}
+
+/// Input list y output list en una sola tabla, discriminadas por `tipo`.
+model ArtistaRiderCanal {
+  id      String       @id @default(cuid())
+  riderId String
+  rider   ArtistaRider @relation(fields: [riderId], references: [id], onDelete: Cascade)
+
+  tipo   String // INPUT | OUTPUT
+  numero Int
+  nombre String
+
+  // INPUT
+  instrumento  String?
+  microfono    String?
+  alternativas String?
+  soporte      String? // TRIPIE_CORTO|TRIPIE_LARGO|CLIP|DI|SUBSNAKE|NINGUNO
+  phantom      Boolean @default(false)
+  inserto      String?
+
+  // OUTPUT
+  tipoSalida String? // IEM|WEDGE|SIDEFILL|DRUM_FILL|SUB_DRUM|PA|SHOUT
+  estereo    Boolean @default(false)
+  personaId  String?
+  persona    ArtistaPersona? @relation(fields: [personaId], references: [id])
+
+  notas     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([riderId, tipo, numero])
+  @@map("artista_rider_canales")
+}
+
+/// Rider maestro de equipo: lo que se cotejará contra cada venue.
+model ArtistaRiderLinea {
+  id      String       @id @default(cuid())
+  riderId String
+  rider   ArtistaRider @relation(fields: [riderId], references: [id], onDelete: Cascade)
+
+  disciplina String // AUDIO|ILUMINACION|VIDEO|BACKLINE|ESCENARIO|ENERGIA|COMUNICACION|RIGGING|OTRO
+  concepto   String
+  cantidad   Int     @default(1)
+  unidad     String?
+
+  equipoId String?
+  equipo   Equipo? @relation(fields: [equipoId], references: [id])
+
+  preferido   String?
+  aceptables  String?
+  noAceptable String?
+
+  prioridad   String @default("INDISPENSABLE") // INDISPENSABLE|IMPORTANTE|DESEABLE
+  provistoPor String @default("CASA") // CASA|ARTISTA|MAINSTAGE|POR_DEFINIR
+
+  notas     String?
+  orden     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  showLineas ShowRiderLinea[]
+
+  @@index([riderId])
+  @@map("artista_rider_lineas")
+}
+
+/// La gira: agrupa las plazas de un artista bajo un mismo rider y un mismo alcance.
+model Gira {
+  id     String  @id @default(cuid())
+  nombre String
+  slug   String? @unique
+
+  artistaId String
+  artista   Artista @relation(fields: [artistaId], references: [id])
+
+  clienteId String?
+  cliente   Cliente? @relation(fields: [clienteId], references: [id])
+
+  tratoId String?
+  trato   Trato?  @relation(fields: [tratoId], references: [id])
+
+  riderId String?
+  rider   ArtistaRider? @relation(fields: [riderId], references: [id])
+
+  estado      String    @default("PLANEACION") // PLANEACION|CONFIRMADA|EN_CURSO|CERRADA|CANCELADA
+  fechaInicio DateTime?
+  fechaFin    DateTime?
+
+  rolMainstage String? // JSON: claves de ServicioPM que asumimos en esta gira
+  moneda       String  @default("MXN")
+
+  contactoPrincipalId String?
+  contactoPrincipal   ArtistaPersona? @relation("GiraContactoPrincipal", fields: [contactoPrincipalId], references: [id])
+
+  notas       String?
+  portalToken String? @unique
+
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  shows      GiraShow[]
+  crew       GiraCrew[]
+  hospedajes GiraHospedaje[]
+  roomings   GiraRooming[]
+  viajes     GiraViaje[]
+  setlists   GiraSetlist[]
+  archivos   GiraArchivo[]
+  propuestas PropuestaServicio[]
+
+  @@index([artistaId])
+  @@map("giras")
+}
+
+/// Una plaza/fecha de la gira.
+model GiraShow {
+  id     String @id @default(cuid())
+  giraId String
+  gira   Gira   @relation(fields: [giraId], references: [id], onDelete: Cascade)
+
+  orden  Int      @default(0)
+  fecha  DateTime
+  ciudad String?
+
+  venueId String?
+  venue   Venue?  @relation(fields: [venueId], references: [id])
+
+  proyectoId String?   @unique
+  proyecto   Proyecto? @relation(fields: [proyectoId], references: [id])
+
+  estado   String  @default("POR_CONFIRMAR") // POR_CONFIRMAR|CONFIRMADO|EJECUTADO|CANCELADO
+  tipoShow String? // HEADLINE|SOPORTE|FESTIVAL|SHOWCASE|PRIVADO
+
+  promotorNombre   String?
+  promotorContacto String?
+  promotorTelefono String?
+  promotorEmail    String?
+  aforoEsperado    Int?
+
+  horaLoadIn    String?
+  horaMontaje   String?
+  horaLineCheck String?
+  horaSoundcheck String?
+  horaDoors     String?
+  horaShow      String?
+  horaFin       String?
+  horaLoadOut   String?
+  curfew        String?
+
+  contactoCasaNombre   String?
+  contactoCasaTelefono String?
+  contactoCasaEmail    String?
+
+  riderEnviadoEn   DateTime?
+  advanceCerradoEn DateTime?
+
+  notas      String?
+  docsToken  String?  @unique
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  riderLineas     ShowRiderLinea[]
+  bloques         GiraShowBloque[]
+  crew            GiraCrew[]
+  roomings        GiraRooming[]
+  viajes          GiraViaje[]
+  setlists        GiraSetlist[]
+  archivos        GiraArchivo[]
+  propuestaLineas PropuestaServicioLinea[]
+
+  @@index([giraId, fecha])
+  @@map("gira_shows")
+}
+
+/// El advance: una fila por concepto del rider, por plaza. Rider pedido vs. casa vs. faltante.
+model ShowRiderLinea {
+  id     String   @id @default(cuid())
+  showId String
+  show   GiraShow @relation(fields: [showId], references: [id], onDelete: Cascade)
+
+  riderLineaId String?
+  riderLinea   ArtistaRiderLinea? @relation(fields: [riderLineaId], references: [id])
+
+  disciplina     String
+  concepto       String
+  cantidadPedida Int    @default(1)
+  prioridad      String @default("INDISPENSABLE")
+
+  ofrecidoCasa String? // lo que responde el contra-rider de la casa
+  cantidadCasa Int     @default(0)
+
+  cubiertoPor      String @default("POR_DEFINIR") // CASA|MAINSTAGE|PROVEEDOR|ARTISTA|NO_CUBIERTO|SUSTITUIDO|NO_APLICA
+  cantidadCubierta Int    @default(0)
+
+  equipoId String?
+  equipo   Equipo? @relation(fields: [equipoId], references: [id])
+
+  proveedorId String?
+  proveedor   Proveedor? @relation(fields: [proveedorId], references: [id])
+
+  costoEstimado   Float?
+  costoConfirmado Float?
+
+  estado             String  @default("PENDIENTE") // PENDIENTE|SOLICITADO|COTIZANDO|CONFIRMADO|RECHAZADO|SUSTITUCION_APROBADA
+  aprobadoPorArtista Boolean @default(false)
+
+  notas     String?
+  orden     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([showId])
+  @@map("show_rider_lineas")
+}
+
+/// Minuto a minuto del día del show.
+model GiraShowBloque {
+  id     String   @id @default(cuid())
+  showId String
+  show   GiraShow @relation(fields: [showId], references: [id], onDelete: Cascade)
+
+  hora        String?
+  horaFin     String?
+  titulo      String
+  tipo        String  @default("PROGRAMA") // LOGISTICA|MONTAJE|SOUNDCHECK|PROGRAMA|DESMONTAJE|VIAJE|COMIDA
+  responsable String?
+  lugar       String?
+  notas       String?
+
+  orden     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([showId])
+  @@map("gira_show_bloques")
+}
+
+/// Quién va: crew de Mainstage, integrantes del artista, técnicos de casa o de proveedor.
+model GiraCrew {
+  id     String @id @default(cuid())
+  giraId String
+  gira   Gira   @relation(fields: [giraId], references: [id], onDelete: Cascade)
+
+  showId String?
+  show   GiraShow? @relation(fields: [showId], references: [id], onDelete: Cascade)
+
+  origen String @default("MAINSTAGE") // MAINSTAGE|ARTISTA|CASA|PROVEEDOR|EXTERNO
+
+  tecnicoId String?
+  tecnico   Tecnico? @relation(fields: [tecnicoId], references: [id])
+
+  personaId String?
+  persona   ArtistaPersona? @relation(fields: [personaId], references: [id])
+
+  nombreLibre String?
+
+  funcion      String
+  rolTecnicoId String?
+  rolTecnico   RolTecnico? @relation(fields: [rolTecnicoId], references: [id])
+
+  telefono String?
+  email    String?
+  llamado  String?
+  notas    String?
+
+  activo    Boolean  @default(true)
+  orden     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  roomings GiraRooming[]
+  viajes   GiraViaje[]
+
+  @@index([giraId])
+  @@map("gira_crew")
+}
+
+/// Hotel por ciudad/tramo de la gira.
+model GiraHospedaje {
+  id     String @id @default(cuid())
+  giraId String
+  gira   Gira   @relation(fields: [giraId], references: [id], onDelete: Cascade)
+
+  ciudad       String?
+  hotelNombre  String
+  direccion    String?
+  telefono     String?
+  linkMaps     String?
+  checkIn      DateTime?
+  checkOut     DateTime?
+  confirmacion String?
+  costoTotal   Float?
+  notas        String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  roomings GiraRooming[]
+
+  @@index([giraId])
+  @@map("gira_hospedajes")
+}
+
+/// Rooming list: asignación de cuarto por persona.
+model GiraRooming {
+  id     String @id @default(cuid())
+  giraId String
+  gira   Gira   @relation(fields: [giraId], references: [id], onDelete: Cascade)
+
+  hospedajeId String?
+  hospedaje   GiraHospedaje? @relation(fields: [hospedajeId], references: [id], onDelete: Cascade)
+
+  showId String?
+  show   GiraShow? @relation(fields: [showId], references: [id], onDelete: Cascade)
+
+  crewId String?
+  crew   GiraCrew? @relation(fields: [crewId], references: [id], onDelete: Cascade)
+
+  personaId String?
+  persona   ArtistaPersona? @relation(fields: [personaId], references: [id])
+
+  nombreLibre    String?
+  habitacion     String?
+  tipoHabitacion String? // SENCILLA|DOBLE|TWIN|SUITE
+  comparteCon    String?
+  notas          String?
+
+  orden     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([giraId])
+  @@map("gira_roomings")
+}
+
+/// Vuelos y traslados de crew y artistas.
+model GiraViaje {
+  id     String @id @default(cuid())
+  giraId String
+  gira   Gira   @relation(fields: [giraId], references: [id], onDelete: Cascade)
+
+  showId String?
+  show   GiraShow? @relation(fields: [showId], references: [id], onDelete: Cascade)
+
+  crewId String?
+  crew   GiraCrew? @relation(fields: [crewId], references: [id], onDelete: Cascade)
+
+  tipo          String    @default("VUELO") // VUELO|VAN|AUTOBUS|TREN|TAXI|TERRESTRE
+  concepto      String?
+  origen        String?
+  destino       String?
+  salida        DateTime?
+  llegada       DateTime?
+  operador      String? // aerolínea o proveedor de transporte
+  identificador String? // número de vuelo o unidad
+  reserva       String?
+  costo         Float?
+  esGrupal      Boolean   @default(false)
+  notas         String?
+
+  orden     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([giraId])
+  @@map("gira_viajes")
+}
+
+/// Setlist de la gira; una variante por show cuando hace falta.
+model GiraSetlist {
+  id     String @id @default(cuid())
+  giraId String
+  gira   Gira   @relation(fields: [giraId], references: [id], onDelete: Cascade)
+
+  showId String?
+  show   GiraShow? @relation(fields: [showId], references: [id], onDelete: Cascade)
+
+  nombre      String
+  esBase      Boolean @default(false)
+  duracionMin Int?
+  notas       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  canciones GiraSetlistCancion[]
+
+  @@index([giraId])
+  @@map("gira_setlists")
+}
+
+/// Canción del setlist con las notas de operación de audio, luces y video.
+model GiraSetlistCancion {
+  id         String      @id @default(cuid())
+  setlistId  String
+  setlist    GiraSetlist @relation(fields: [setlistId], references: [id], onDelete: Cascade)
+
+  orden             Int     @default(0)
+  titulo            String
+  duracionSeg       Int?
+  tonalidad         String?
+  bpm               Int?
+  conTrack          Boolean @default(false)
+  notasAudio        String?
+  notasLuces        String?
+  notasVideo        String?
+  cambioInstrumento String?
+  notas             String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([setlistId])
+  @@map("gira_setlist_canciones")
+}
+
+/// Archivos de la gira o de una plaza: rider de la casa, contratos, planos, hospitality.
+model GiraArchivo {
+  id     String @id @default(cuid())
+  giraId String
+  gira   Gira   @relation(fields: [giraId], references: [id], onDelete: Cascade)
+
+  showId String?
+  show   GiraShow? @relation(fields: [showId], references: [id], onDelete: Cascade)
+
+  nombre      String
+  url         String
+  tipo        String? // RIDER_CASA|CONTRATO|PLANO|STAGE_PLOT|HOSPITALIDAD|INPUT_LIST|OTRO
+  tamanoBytes Int?
+  subidoPor   String?
+
+  createdAt DateTime @default(now())
+
+  @@index([giraId])
+  @@map("gira_archivos")
+}
+
+/// Catálogo de servicios de la división de production management.
+model ServicioPM {
+  id    String @id @default(cuid())
+  clave String @unique // AUDIO_BANDA, ADVANCE_PLAZA, PM_GIRA...
+
+  nombre      String
+  categoria   String? // PRODUCTION_MANAGEMENT|AUDIO|ILUMINACION|VIDEO|LOGISTICA|DOCUMENTACION|EQUIPO
+  descripcion String?
+  entregables String?
+  incluye     String?
+  noIncluye   String?
+
+  unidadDefault  String @default("SHOW") // SHOW|DIA|PERSONA_DIA|PLAZA|GIRA|PIEZA|MES|HORA|GLOBAL
+  tipoLinea      String @default("HONORARIO")
+  precioSugerido Float?
+  costoSugerido  Float?
+
+  activo    Boolean  @default(true)
+  orden     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lineas PropuestaServicioLinea[]
+
+  @@map("servicios_pm")
+}
+
+/// Propuesta de servicios de production management. Hermana de Cotizacion, no la reemplaza:
+/// aquí se cobra alcance y honorarios por plaza/día, no renta de inventario.
+model PropuestaServicio {
+  id      String @id @default(cuid())
+  numero  String @unique
+  version Int    @default(1)
+
+  clienteId String?
+  cliente   Cliente? @relation(fields: [clienteId], references: [id])
+
+  artistaId String?
+  artista   Artista? @relation(fields: [artistaId], references: [id])
+
+  giraId String?
+  gira   Gira?   @relation(fields: [giraId], references: [id])
+
+  tratoId String?
+  trato   Trato?  @relation(fields: [tratoId], references: [id])
+
+  creadaPorId String?
+
+  titulo String?
+  estado String @default("BORRADOR") // BORRADOR|ENVIADA|EN_REVISION|APROBADA|RECHAZADA|VENCIDA
+
+  modeloCobro   String    @default("POR_SHOW") // POR_SHOW|POR_DIA|POR_GIRA|RETAINER|PORCENTAJE
+  moneda        String    @default("MXN")
+  vigenciaHasta DateTime?
+
+  alcance         String?
+  exclusiones     String?
+  supuestos       String?
+  condicionesPago String?
+  notasInternas   String?
+
+  aplicaIva Boolean @default(true)
+
+  subtotalHonorarios    Float   @default(0)
+  subtotalEquipo        Float   @default(0)
+  subtotalLogistica     Float   @default(0)
+  subtotalReembolsables Float   @default(0)
+  descuentoMonto        Float   @default(0)
+  descuentoRazon        String?
+  subtotal              Float   @default(0)
+  montoIva              Float   @default(0)
+  granTotal             Float   @default(0)
+  costoEstimado         Float   @default(0)
+
+  aprobacionToken  String?   @unique
+  aprobacionFecha  DateTime?
+  aprobacionNombre String?
+  enviadaEn        DateTime?
+
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lineas PropuestaServicioLinea[]
+
+  @@map("propuestas_servicio")
+}
+
+model PropuestaServicioLinea {
+  id          String            @id @default(cuid())
+  propuestaId String
+  propuesta   PropuestaServicio @relation(fields: [propuestaId], references: [id], onDelete: Cascade)
+
+  tipo        String // HONORARIO|ADVANCE|COORDINACION|DOCUMENTACION|EQUIPO|VIAJE|HOSPEDAJE|VIATICO|PRODUCCION_LOCAL|REEMBOLSABLE|DESCUENTO
+  concepto    String
+  descripcion String?
+
+  unidad         String @default("SHOW")
+  cantidad       Float  @default(1)
+  precioUnitario Float  @default(0)
+  costoUnitario  Float  @default(0)
+  subtotal       Float  @default(0)
+
+  esIncluido     Boolean @default(false)
+  esReembolsable Boolean @default(false)
+
+  servicioId String?
+  servicio   ServicioPM? @relation(fields: [servicioId], references: [id])
+
+  equipoId String?
+  equipo   Equipo? @relation(fields: [equipoId], references: [id])
+
+  rolTecnicoId String?
+  rolTecnico   RolTecnico? @relation(fields: [rolTecnicoId], references: [id])
+
+  showId String?
+  show   GiraShow? @relation(fields: [showId], references: [id])
+
+  notas     String?
+  orden     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([propuestaId])
+  @@map("propuesta_servicio_lineas")
+}
+
+/// Ficha técnica de casa del venue, línea por línea. Es el activo que hace que la
+/// segunda visita a una plaza cueste la mitad de esfuerzo que la primera.
+model VenueInventario {
+  id      String @id @default(cuid())
+  venueId String
+  venue   Venue  @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  disciplina String // AUDIO|ILUMINACION|VIDEO|BACKLINE|ESCENARIO|ENERGIA|COMUNICACION|RIGGING
+  concepto   String
+  cantidad   Int     @default(1)
+  marca      String?
+  modelo     String?
+  condicion  String? // BUENO|REGULAR|MALO|DESCONOCIDO
+
+  incluidoEnRenta Boolean @default(true)
+  costoExtra      Float?
+
+  verificadoEn  DateTime?
+  verificadoPor String?
+  notas         String?
+
+  orden     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([venueId, disciplina])
+  @@map("venue_inventario")
 }
