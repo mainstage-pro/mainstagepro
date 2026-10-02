@@ -1269,6 +1269,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   type DispInv = { disponible: number; comprometido: number; total: number; eventos: { ref: string; nombre: string; estado: string }[] };
   const [dispInventario, setDispInventario] = useState<Record<string, DispInv>>({});
   const [origenGuardando, setOrigenGuardando] = useState<string | null>(null);
+  // Reparto de un renglón entre varios orígenes: id del equipo con el campo abierto
+  const [dividirEquipoId, setDividirEquipoId] = useState<string | null>(null);
+  const [dividirCantidad, setDividirCantidad] = useState(1);
 
   // Proveedores de subarriendo (manuales)
   type ProveedorRenta = { id: string; nombre: string; contacto: string; equipos: string[] };
@@ -1569,6 +1572,23 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     }
   }
 
+
+  async function dividirEquipo(eqId: string, cantidad: number) {
+    setOrigenGuardando(eqId);
+    try {
+      const res = await fetch(`/api/proyectos/${id}/equipos/${eqId}/dividir`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cantidad }),
+      });
+      const d = await res.json();
+      if (!res.ok) { toast.error(d.error ?? "No se pudo dividir"); return; }
+      setDividirEquipoId(null);
+      await load();
+      toast.success(`Se separaron ${cantidad} en un renglón de renta`);
+    } finally {
+      setOrigenGuardando(null);
+    }
+  }
 
   async function eliminarCxP(cxpId: string) {
     const ok = await confirm({ message: "¿Eliminar esta cuenta por pagar? Esta acción no se puede deshacer." });
@@ -7090,7 +7110,20 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                   <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg p-3 space-y-2.5">
                                     <div className="flex items-center justify-between flex-wrap gap-2">
                                       <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold">Origen del equipo</p>
-                                      <div className="flex gap-1 bg-[#111] rounded-lg p-0.5">
+                                      {e.cantidad > 1 && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setDividirEquipoId(prev => prev === e.id ? null : e.id);
+                                            setDividirCantidad(Math.min(Math.max(faltan || 1, 1), e.cantidad - 1));
+                                          }}
+                                          className="text-[10px] px-2 py-1 rounded-full border border-[#2a2a2a] text-gray-500 hover:text-white hover:border-[#444] transition-colors"
+                                          title="Parte este renglón para cubrirlo desde varios orígenes"
+                                        >
+                                          Dividir
+                                        </button>
+                                      )}
+                                      <div className="flex gap-1 bg-[#111] rounded-lg p-0.5 ml-auto">
                                         {(["PROPIO", "EXTERNO"] as const).map(t => (
                                           <button
                                             key={t}
@@ -7104,6 +7137,42 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                         ))}
                                       </div>
                                     </div>
+
+                                    {dividirEquipoId === e.id && (
+                                      <div className="bg-[#111] border border-[#262626] rounded-lg p-2.5 space-y-2">
+                                        <p className="text-[11px] text-gray-400 leading-relaxed">
+                                          Separa parte de las {e.cantidad} unidades en otro renglón para rentarlas a un proveedor distinto. Los accesorios y el montaje se quedan en este renglón.
+                                        </p>
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <input
+                                            type="number"
+                                            min={1}
+                                            max={e.cantidad - 1}
+                                            value={dividirCantidad}
+                                            onChange={ev => setDividirCantidad(parseInt(ev.target.value) || 1)}
+                                            className="w-20 bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]/50"
+                                          />
+                                          <span className="text-[11px] text-gray-600">
+                                            se van a renta · quedan {Math.max(0, e.cantidad - dividirCantidad)} aquí
+                                          </span>
+                                          <button
+                                            type="button"
+                                            disabled={origenGuardando === e.id || dividirCantidad < 1 || dividirCantidad >= e.cantidad}
+                                            onClick={() => dividirEquipo(e.id, dividirCantidad)}
+                                            className="ml-auto px-3 py-1.5 bg-[#B3985B] text-black text-[11px] font-semibold rounded-lg disabled:opacity-40"
+                                          >
+                                            Dividir
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => setDividirEquipoId(null)}
+                                            className="px-3 py-1.5 text-gray-500 border border-[#2a2a2a] text-[11px] rounded-lg hover:text-white"
+                                          >
+                                            Cancelar
+                                          </button>
+                                        </div>
+                                      </div>
+                                    )}
 
                                     {esExterno ? (
                                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">

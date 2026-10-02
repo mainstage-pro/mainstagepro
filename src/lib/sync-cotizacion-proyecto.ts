@@ -162,30 +162,52 @@ export async function sincronizarProyectoDesdeCotizacion(
       existentesPorKey.set(key, arr);
     }
 
+    // Un equipo cotizado se puede partir a mano en varias filas para cubrirlo desde
+    // varios orígenes (2 nuestros + 4 de proveedor). Ese reparto cruza el `tipo`, así
+    // que el diff por `tipo:equipoId` lo vería como una fila corta más un sobrante.
+    // Medimos también por equipo: si el reparto suma lo cotizado, no se toca.
+    const totalPorEquipo = (filas: { equipoId: string; cantidad: number }[]) => {
+      const m = new Map<string, number>();
+      for (const f of filas) m.set(f.equipoId, (m.get(f.equipoId) ?? 0) + f.cantidad);
+      return m;
+    };
+    const deseadoPorEquipo = totalPorEquipo([...deseadosMap.values()]);
+    const actualPorEquipo = totalPorEquipo(existentes);
+    const filasPorEquipo = new Map<string, number>();
+    for (const pe of existentes) filasPorEquipo.set(pe.equipoId, (filasPorEquipo.get(pe.equipoId) ?? 0) + 1);
+    const repartido = (equipoId: string) => (filasPorEquipo.get(equipoId) ?? 0) > 1;
+    const cuadra = (equipoId: string) =>
+      (actualPorEquipo.get(equipoId) ?? 0) === (deseadoPorEquipo.get(equipoId) ?? 0);
+
     const equiposACrear: EquipoDeseado[] = [];
     for (const [key, d] of deseadosMap) {
+      if (repartido(d.equipoId)) continue; // se resuelve abajo, mirando todas sus filas
       const filas = existentesPorKey.get(key);
       if (!filas || filas.length === 0) {
         equiposACrear.push(d);
         continue;
       }
-      // El equipo sigue en la cotización → quitar bandera de revisión y, si hay
-      // exactamente una fila, ajustar cantidad/días. Con varias filas (edición
-      // manual) no tocamos cantidades para no romper el reparto manual.
-      if (filas.length === 1) {
-        const f = filas[0];
-        const data: { cantidad?: number; dias?: number; necesitaRevision: boolean } = {
-          necesitaRevision: false,
-        };
-        if (f.cantidad !== d.cantidad) data.cantidad = d.cantidad;
-        if (f.dias !== d.dias) data.dias = d.dias;
-        await prisma.proyectoEquipo.update({ where: { id: f.id }, data });
-      } else {
-        await prisma.proyectoEquipo.updateMany({
-          where: { id: { in: filas.map((f) => f.id) } },
-          data: { necesitaRevision: false },
-        });
-      }
+      // El equipo sigue en la cotización → quitar bandera de revisión y ajustar
+      // cantidad/días.
+      const f = filas[0];
+      const data: { cantidad?: number; dias?: number; necesitaRevision: boolean } = {
+        necesitaRevision: false,
+      };
+      if (f.cantidad !== d.cantidad) data.cantidad = d.cantidad;
+      if (f.dias !== d.dias) data.dias = d.dias;
+      await prisma.proyectoEquipo.update({ where: { id: f.id }, data });
+    }
+
+    // Equipos repartidos a mano: no tocamos cantidades ni orígenes. Solo se marcan
+    // para revisión cuando la suma del reparto dejó de dar lo cotizado.
+    const equiposRepartidos = [...new Set(existentes.map((pe) => pe.equipoId))].filter(
+      (eq) => repartido(eq) && deseadoPorEquipo.has(eq),
+    );
+    for (const eq of equiposRepartidos) {
+      await prisma.proyectoEquipo.updateMany({
+        where: { id: { in: existentes.filter((pe) => pe.equipoId === eq).map((pe) => pe.id) } },
+        data: { necesitaRevision: !cuadra(eq) },
+      });
     }
 
     if (equiposACrear.length > 0) {
@@ -206,7 +228,11 @@ export async function sincronizarProyectoDesdeCotizacion(
     // Equipos que ya no están en la cotización. Los que no cargan nada capturado a
     // mano se borran (si no, quedarían de fantasmas en el rider y en la carga del
     // camión); los que sí, se marcan para que una persona decida.
-    const sobrantes = existentes.filter((pe) => !deseadosMap.has(`${pe.tipo}:${pe.equipoId}`));
+    const sobrantes = existentes.filter(
+      (pe) =>
+        !deseadosMap.has(`${pe.tipo}:${pe.equipoId}`) &&
+        !(repartido(pe.equipoId) && deseadoPorEquipo.has(pe.equipoId)),
+    );
     if (sobrantes.length > 0) {
       const conTrabajo = await prisma.proyectoEquipo.findMany({
         where: {
