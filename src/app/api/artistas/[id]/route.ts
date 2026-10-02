@@ -19,8 +19,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const data: Record<string, unknown> = {};
   const textFields = ["nombre", "genero", "origen", "contactoNombre", "contactoTelefono",
-    "contactoEmail", "instagram", "sitioWeb", "notas"];
+    "contactoEmail", "instagram", "sitioWeb", "notas",
+    // Campos de Giras: el logo encabeza riders y day sheets.
+    "clienteId", "logoUrl", "tipoFormacion"];
   for (const f of textFields) if (f in body) data[f] = body[f] || null;
+  if ("integrantesNum" in body) {
+    const n = Number(body.integrantesNum);
+    data.integrantesNum = body.integrantesNum === null || body.integrantesNum === "" || !Number.isFinite(n)
+      ? null
+      : Math.trunc(n);
+  }
   if ("activo" in body) data.activo = body.activo;
 
   const artista = await prisma.artista.update({ where: { id }, data });

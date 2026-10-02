@@ -20,8 +20,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const data: Record<string, unknown> = {};
   const textFields = ["nombre", "tipo", "direccion", "ciudad", "estado", "linkMaps", "contacto", "telefonoContacto", "emailContacto",
     "accesoVehicular", "puntoDescarga", "voltajeDisponible", "fases", "ubicacionTablero",
-    "restriccionDecibeles", "restriccionHorario", "restriccionInstalacion", "notas", "fotoPortada"];
-  const numFields = ["largoM", "anchoM", "alturaMaximaM", "amperajeTotal", "calificacion"];
+    "restriccionDecibeles", "restriccionHorario", "restriccionInstalacion", "notas", "fotoPortada",
+    // Ficha técnica del foro: la usa el advance de gira para cotejar contra el rider.
+    "contactoTecnicoNombre", "contactoTecnicoTelefono", "contactoTecnicoEmail",
+    "medidasEscenario", "accesoEscenario", "camerinos", "horarioCarga", "riderCasaUrl", "notasTecnicas"];
+  const numFields = ["largoM", "anchoM", "alturaMaximaM", "amperajeTotal", "calificacion", "alturaRejaM"];
   const intFields = ["capacidadPersonas"];
 
   for (const f of textFields) if (f in body) data[f] = body[f] ?? null;

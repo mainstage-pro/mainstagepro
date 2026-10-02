@@ -1,0 +1,141 @@
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { getSession } from "@/lib/auth";
+import { SOPORTES_MIC, TIPOS_SALIDA } from "@/lib/giras";
+
+type Tipo = "INPUT" | "OUTPUT";
+
+interface CanalEntrante {
+  id?: string | null;
+  numero?: number | string | null;
+  nombre?: string | null;
+  instrumento?: string | null;
+  microfono?: string | null;
+  alternativas?: string | null;
+  soporte?: string | null;
+  phantom?: boolean;
+  inserto?: string | null;
+  tipoSalida?: string | null;
+  estereo?: boolean;
+  personaId?: string | null;
+  notas?: string | null;
+}
+
+interface CanalDatos {
+  tipo: Tipo;
+  numero: number;
+  nombre: string;
+  instrumento: string | null;
+  microfono: string | null;
+  alternativas: string | null;
+  soporte: string | null;
+  phantom: boolean;
+  inserto: string | null;
+  tipoSalida: string | null;
+  estereo: boolean;
+  personaId: string | null;
+  notas: string | null;
+}
+
+function texto(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const s = v.trim();
+  return s ? s : null;
+}
+
+export async function GET(req: NextRequest, { params }: { params: Promise<{ riderId: string }> }) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  const { riderId } = await params;
+  const tipo = req.nextUrl.searchParams.get("tipo");
+
+  const canales = await prisma.artistaRiderCanal.findMany({
+    where: { riderId, ...(tipo === "INPUT" || tipo === "OUTPUT" ? { tipo } : {}) },
+    orderBy: [{ tipo: "asc" }, { numero: "asc" }],
+  });
+
+  return NextResponse.json({ canales });
+}
+
+/// Guardado completo de una lista (INPUT u OUTPUT) en un solo viaje: la captura de
+/// 24-32 renglones se edita en pantalla y se persiste con un solo Guardar. Los
+/// renglones que el usuario quitó de la tabla se borran aquí.
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ riderId: string }> }) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  const { riderId } = await params;
+  const body = await req.json();
+
+  const tipo: Tipo | null = body.tipo === "INPUT" || body.tipo === "OUTPUT" ? body.tipo : null;
+  if (!tipo) return NextResponse.json({ error: "tipo debe ser INPUT u OUTPUT" }, { status: 400 });
+  if (!Array.isArray(body.canales)) {
+    return NextResponse.json({ error: "canales debe ser un arreglo" }, { status: 400 });
+  }
+
+  const rider = await prisma.artistaRider.findUnique({
+    where: { id: riderId },
+    select: { id: true, artistaId: true },
+  });
+  if (!rider) return NextResponse.json({ error: "Rider no encontrado" }, { status: 404 });
+
+  const personasValidas = new Set(
+    (
+      await prisma.artistaPersona.findMany({
+        where: { artistaId: rider.artistaId },
+        select: { id: true },
+      })
+    ).map((p) => p.id),
+  );
+
+  const entrantes = (body.canales as CanalEntrante[])
+    .map((c, i): { id: string | null; datos: CanalDatos } | null => {
+      const nombre = texto(c.nombre);
+      if (!nombre) return null;
+      const n = Number(c.numero);
+      const personaId = c.personaId && personasValidas.has(c.personaId) ? c.personaId : null;
+      const soporte = c.soporte && (SOPORTES_MIC as readonly string[]).includes(c.soporte) ? c.soporte : null;
+      const tipoSalida =
+        c.tipoSalida && (TIPOS_SALIDA as readonly string[]).includes(c.tipoSalida) ? c.tipoSalida : null;
+      return {
+        id: c.id || null,
+        datos: {
+          tipo,
+          numero: Number.isFinite(n) ? Math.trunc(n) : i + 1,
+          nombre,
+          instrumento: tipo === "INPUT" ? texto(c.instrumento) : null,
+          microfono: tipo === "INPUT" ? texto(c.microfono) : null,
+          alternativas: tipo === "INPUT" ? texto(c.alternativas) : null,
+          soporte: tipo === "INPUT" ? soporte : null,
+          phantom: tipo === "INPUT" ? c.phantom === true : false,
+          inserto: tipo === "INPUT" ? texto(c.inserto) : null,
+          tipoSalida: tipo === "OUTPUT" ? tipoSalida : null,
+          estereo: tipo === "OUTPUT" ? c.estereo === true : false,
+          personaId: tipo === "OUTPUT" ? personaId : null,
+          notas: texto(c.notas),
+        },
+      };
+    })
+    .filter((c): c is { id: string | null; datos: CanalDatos } => c !== null);
+
+  const conservados = entrantes.map((e) => e.id).filter((id): id is string => !!id);
+
+  await prisma.$transaction(async (tx) => {
+    await tx.artistaRiderCanal.deleteMany({
+      where: { riderId, tipo, ...(conservados.length ? { id: { notIn: conservados } } : {}) },
+    });
+    for (const e of entrantes) {
+      if (e.id) {
+        await tx.artistaRiderCanal.update({ where: { id: e.id }, data: e.datos });
+      } else {
+        await tx.artistaRiderCanal.create({ data: { ...e.datos, riderId } });
+      }
+    }
+  });
+
+  const canales = await prisma.artistaRiderCanal.findMany({
+    where: { riderId, tipo },
+    orderBy: { numero: "asc" },
+  });
+
+  return NextResponse.json({ canales });
+}

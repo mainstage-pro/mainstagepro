@@ -6,7 +6,7 @@ import {
   PenTool, Megaphone, BarChart3, SlidersHorizontal, BadgeDollarSign,
   Package, TrendingUp, Settings, Speaker, BookUser, ClipboardCheck,
   ShieldCheck, ScrollText, Settings2, Building2, LayoutGrid, GraduationCap,
-  Network, Truck, Compass,
+  Network, Truck, Compass, Mic2,
 } from "lucide-react";
 
 // Dueño de la plataforma. Ciertos módulos (ej. "Inicio") se muestran solo a él.
@@ -80,6 +80,18 @@ export const NAV: NavSection[] = [
         children: [
           { key: "proyectos-resumen", accessKey: "proyectos", label: "Resumen", href: "/proyectos/resumen" },
           { key: "proyectos-lista", accessKey: "proyectos", label: "Proyectos", href: "/proyectos/lista" },
+        ],
+      },
+      {
+        key: "giras",
+        label: "Giras de artistas",
+        href: "/giras",
+        icon: Mic2,
+        children: [
+          { key: "giras-resumen", accessKey: "giras", label: "Resumen", href: "/giras/resumen" },
+          { key: "giras-lista", accessKey: "giras", label: "Giras", href: "/giras/lista" },
+          { key: "giras-artistas", accessKey: "giras", label: "Artistas", href: "/giras/artistas" },
+          { key: "giras-propuestas", accessKey: "giras", label: "Propuestas", href: "/giras/propuestas" },
         ],
       },
       { key: "proyectos-empresa", accessKey: "proyectos", label: "Proyectos de empresa", href: "/proyectos-de-empresa", icon: Building2 },
@@ -451,7 +463,7 @@ export const AREA_MODULE_PRESETS: Record<string, string[]> = {
   ],
   PRODUCCION: [
     "plan-trabajo", "operaciones", "calendario", "vision-semanal", "reporte-area-mensual", "cultura",
-    "proyectos", "produccion-tablero", "inventario", "inv-maestro", "catalogo", "bd-proveedores", "bd-tecnicos",
+    "proyectos", "giras", "produccion-tablero", "inventario", "inv-maestro", "catalogo", "bd-proveedores", "bd-tecnicos",
     "tareas-produccion",
   ],
   RRHH: [

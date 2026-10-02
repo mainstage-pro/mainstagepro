@@ -4,8 +4,10 @@ import { useEffect, useState, useRef } from "react";
 import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
 import { coincide } from "@/lib/buscar";
+import { upload } from "@vercel/blob/client";
 import { Landmark, Users, Ruler, Zap, Phone, Volume2, Clock, Wrench, Merge } from "lucide-react";
 import { VENUE_TIPOS, etiquetaTipoVenue } from "@/lib/venues";
+import VenueInventarioPanel from "./VenueInventarioPanel";
 
 interface Venue {
   id: string;
@@ -32,6 +34,17 @@ interface Venue {
   restriccionDecibeles: string | null;
   restriccionHorario: string | null;
   restriccionInstalacion: string | null;
+  // Ficha técnica del foro (la cotejamos contra el rider en el advance de gira)
+  contactoTecnicoNombre: string | null;
+  contactoTecnicoTelefono: string | null;
+  contactoTecnicoEmail: string | null;
+  medidasEscenario: string | null;
+  alturaRejaM: number | null;
+  accesoEscenario: string | null;
+  camerinos: string | null;
+  horarioCarga: string | null;
+  riderCasaUrl: string | null;
+  notasTecnicas: string | null;
   tiposEvento: string | null;
   calificacion: number | null;
   notas: string | null;
@@ -46,6 +59,9 @@ type FormData = {
   accesoVehicular: string; puntoDescarga: string;
   voltajeDisponible: string; amperajeTotal: string; fases: string; ubicacionTablero: string;
   restriccionDecibeles: string; restriccionHorario: string; restriccionInstalacion: string;
+  contactoTecnicoNombre: string; contactoTecnicoTelefono: string; contactoTecnicoEmail: string;
+  medidasEscenario: string; alturaRejaM: string; accesoEscenario: string;
+  camerinos: string; horarioCarga: string; riderCasaUrl: string; notasTecnicas: string;
   tiposEvento: string[]; calificacion: string; notas: string; fotoPortada: string;
 };
 
@@ -56,8 +72,53 @@ const FORM_DEFAULTS: FormData = {
   accesoVehicular: "", puntoDescarga: "",
   voltajeDisponible: "", amperajeTotal: "", fases: "", ubicacionTablero: "",
   restriccionDecibeles: "", restriccionHorario: "", restriccionInstalacion: "",
+  contactoTecnicoNombre: "", contactoTecnicoTelefono: "", contactoTecnicoEmail: "",
+  medidasEscenario: "", alturaRejaM: "", accesoEscenario: "",
+  camerinos: "", horarioCarga: "", riderCasaUrl: "", notasTecnicas: "",
   tiposEvento: [], calificacion: "", notas: "", fotoPortada: "",
 };
+
+/// Un solo armador de payload para el guardado manual y el autosave: no pueden divergir.
+function payloadDe(form: FormData) {
+  return {
+    nombre: form.nombre,
+    tipo: form.tipo || null,
+    estado: form.estado || null,
+    linkMaps: form.linkMaps || null,
+    direccion: form.direccion || null,
+    ciudad: form.ciudad || null,
+    contacto: form.contacto || null,
+    telefonoContacto: form.telefonoContacto || null,
+    emailContacto: form.emailContacto || null,
+    capacidadPersonas: form.capacidadPersonas || null,
+    largoM: form.largoM || null,
+    anchoM: form.anchoM || null,
+    alturaMaximaM: form.alturaMaximaM || null,
+    accesoVehicular: form.accesoVehicular || null,
+    puntoDescarga: form.puntoDescarga || null,
+    voltajeDisponible: form.voltajeDisponible || null,
+    amperajeTotal: form.amperajeTotal || null,
+    fases: form.fases || null,
+    ubicacionTablero: form.ubicacionTablero || null,
+    restriccionDecibeles: form.restriccionDecibeles || null,
+    restriccionHorario: form.restriccionHorario || null,
+    restriccionInstalacion: form.restriccionInstalacion || null,
+    contactoTecnicoNombre: form.contactoTecnicoNombre || null,
+    contactoTecnicoTelefono: form.contactoTecnicoTelefono || null,
+    contactoTecnicoEmail: form.contactoTecnicoEmail || null,
+    medidasEscenario: form.medidasEscenario || null,
+    alturaRejaM: form.alturaRejaM || null,
+    accesoEscenario: form.accesoEscenario || null,
+    camerinos: form.camerinos || null,
+    horarioCarga: form.horarioCarga || null,
+    riderCasaUrl: form.riderCasaUrl || null,
+    notasTecnicas: form.notasTecnicas || null,
+    tiposEvento: form.tiposEvento,
+    calificacion: form.calificacion || null,
+    notas: form.notas || null,
+    fotoPortada: form.fotoPortada || null,
+  };
+}
 
 const TIPOS_EVENTO = [
   { id: "MUSICAL", label: "Musical" },
@@ -103,6 +164,7 @@ export default function VenuesPage() {
   const [fusionandoId, setFusionandoId] = useState<string | null>(null);
   const [fusionDestino, setFusionDestino] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [subiendoRider, setSubiendoRider] = useState(false);
   const [historialVenue, setHistorialVenue] = useState<Record<string, {id:string;nombre:string;numeroProyecto:string;fechaEvento:string|null;estado:string;cliente:{nombre:string}}[]>>({});
 
   useEffect(() => {
@@ -136,6 +198,16 @@ export default function VenuesPage() {
       restriccionDecibeles: v.restriccionDecibeles ?? "",
       restriccionHorario: v.restriccionHorario ?? "",
       restriccionInstalacion: v.restriccionInstalacion ?? "",
+      contactoTecnicoNombre: v.contactoTecnicoNombre ?? "",
+      contactoTecnicoTelefono: v.contactoTecnicoTelefono ?? "",
+      contactoTecnicoEmail: v.contactoTecnicoEmail ?? "",
+      medidasEscenario: v.medidasEscenario ?? "",
+      alturaRejaM: v.alturaRejaM?.toString() ?? "",
+      accesoEscenario: v.accesoEscenario ?? "",
+      camerinos: v.camerinos ?? "",
+      horarioCarga: v.horarioCarga ?? "",
+      riderCasaUrl: v.riderCasaUrl ?? "",
+      notasTecnicas: v.notasTecnicas ?? "",
       tiposEvento: v.tiposEvento ? JSON.parse(v.tiposEvento) : [],
       calificacion: v.calificacion?.toString() ?? "",
       notas: v.notas ?? "",
@@ -148,7 +220,7 @@ export default function VenuesPage() {
     if (!editing || editing.id !== currentEditId.current) return;
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(async () => {
-      const payload = { nombre: form.nombre, tipo: form.tipo || null, estado: form.estado || null, linkMaps: form.linkMaps || null, direccion: form.direccion || null, ciudad: form.ciudad || null, contacto: form.contacto || null, telefonoContacto: form.telefonoContacto || null, emailContacto: form.emailContacto || null, capacidadPersonas: form.capacidadPersonas || null, largoM: form.largoM || null, anchoM: form.anchoM || null, alturaMaximaM: form.alturaMaximaM || null, accesoVehicular: form.accesoVehicular || null, puntoDescarga: form.puntoDescarga || null, voltajeDisponible: form.voltajeDisponible || null, amperajeTotal: form.amperajeTotal || null, fases: form.fases || null, ubicacionTablero: form.ubicacionTablero || null, restriccionDecibeles: form.restriccionDecibeles || null, restriccionHorario: form.restriccionHorario || null, restriccionInstalacion: form.restriccionInstalacion || null, tiposEvento: form.tiposEvento, calificacion: form.calificacion || null, notas: form.notas || null, fotoPortada: form.fotoPortada || null };
+      const payload = payloadDe(form);
       const res = await fetch(`/api/venues/${editing.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const d = await res.json();
       if (d.venue) setVenues(prev => prev.map(v => v.id === editing.id ? d.venue : v));
@@ -172,34 +244,7 @@ export default function VenuesPage() {
 
   async function guardar() {
     setSaving(true);
-    const payload = {
-      nombre: form.nombre,
-      tipo: form.tipo || null,
-      estado: form.estado || null,
-      linkMaps: form.linkMaps || null,
-      direccion: form.direccion || null,
-      ciudad: form.ciudad || null,
-      contacto: form.contacto || null,
-      telefonoContacto: form.telefonoContacto || null,
-      emailContacto: form.emailContacto || null,
-      capacidadPersonas: form.capacidadPersonas || null,
-      largoM: form.largoM || null,
-      anchoM: form.anchoM || null,
-      alturaMaximaM: form.alturaMaximaM || null,
-      accesoVehicular: form.accesoVehicular || null,
-      puntoDescarga: form.puntoDescarga || null,
-      voltajeDisponible: form.voltajeDisponible || null,
-      amperajeTotal: form.amperajeTotal || null,
-      fases: form.fases || null,
-      ubicacionTablero: form.ubicacionTablero || null,
-      restriccionDecibeles: form.restriccionDecibeles || null,
-      restriccionHorario: form.restriccionHorario || null,
-      restriccionInstalacion: form.restriccionInstalacion || null,
-      tiposEvento: form.tiposEvento,
-      calificacion: form.calificacion || null,
-      notas: form.notas || null,
-      fotoPortada: form.fotoPortada || null,
-    };
+    const payload = payloadDe(form);
 
     if (editing) {
       const res = await fetch(`/api/venues/${editing.id}`, {
@@ -479,6 +524,62 @@ export default function VenuesPage() {
                         <p className="text-gray-300 text-sm leading-relaxed">{v.notas}</p>
                       </div>
                     )}
+                    {/* Ficha técnica del foro */}
+                    {(v.contactoTecnicoNombre || v.medidasEscenario || v.alturaRejaM || v.accesoEscenario || v.camerinos || v.horarioCarga || v.riderCasaUrl || v.notasTecnicas) && (
+                      <div>
+                        <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">Ficha técnica del foro</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                          {v.contactoTecnicoNombre && (
+                            <div>
+                              <p className="text-gray-500 text-xs mb-0.5">Contacto técnico</p>
+                              <p className="text-white text-sm">{v.contactoTecnicoNombre}</p>
+                              {v.contactoTecnicoTelefono && <p className="text-gray-400 text-xs">{v.contactoTecnicoTelefono}</p>}
+                              {v.contactoTecnicoEmail && <p className="text-gray-400 text-xs">{v.contactoTecnicoEmail}</p>}
+                            </div>
+                          )}
+                          {v.medidasEscenario && (
+                            <div>
+                              <p className="text-gray-500 text-xs mb-0.5">Escenario</p>
+                              <p className="text-white text-sm">{v.medidasEscenario}</p>
+                            </div>
+                          )}
+                          {v.alturaRejaM && (
+                            <div>
+                              <p className="text-gray-500 text-xs mb-0.5">Altura de reja</p>
+                              <p className="text-white text-sm">{v.alturaRejaM} m</p>
+                            </div>
+                          )}
+                          {v.accesoEscenario && (
+                            <div>
+                              <p className="text-gray-500 text-xs mb-0.5">Acceso al escenario</p>
+                              <p className="text-white text-sm">{v.accesoEscenario}</p>
+                            </div>
+                          )}
+                          {v.camerinos && (
+                            <div>
+                              <p className="text-gray-500 text-xs mb-0.5">Camerinos</p>
+                              <p className="text-white text-sm">{v.camerinos}</p>
+                            </div>
+                          )}
+                          {v.horarioCarga && (
+                            <div>
+                              <p className="text-gray-500 text-xs mb-0.5">Horario de carga</p>
+                              <p className="text-white text-sm">{v.horarioCarga}</p>
+                            </div>
+                          )}
+                        </div>
+                        {v.notasTecnicas && <p className="text-gray-300 text-sm leading-relaxed mt-3">{v.notasTecnicas}</p>}
+                        {v.riderCasaUrl && (
+                          <a href={v.riderCasaUrl} target="_blank" rel="noopener noreferrer" className="text-[#B3985B] text-sm hover:underline mt-2 inline-block">
+                            Abrir el rider de la casa →
+                          </a>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Inventario de casa, editable renglón por renglón */}
+                    <VenueInventarioPanel venueId={v.id} />
+
                     {/* Historial de proyectos en este venue */}
                     <div>
                       <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">Historial de eventos</p>
@@ -678,6 +779,89 @@ export default function VenuesPage() {
                         placeholder={placeholder} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
                     </div>
                   ))}
+                </div>
+              </div>
+
+              {/* Ficha técnica del foro — lo que el advance de gira necesita saber */}
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Ficha técnica del foro</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {[
+                    { label: "Contacto técnico", field: "contactoTecnicoNombre" as const, placeholder: "Jefe técnico del foro" },
+                    { label: "Teléfono técnico", field: "contactoTecnicoTelefono" as const, placeholder: "" },
+                    { label: "Email técnico", field: "contactoTecnicoEmail" as const, placeholder: "" },
+                  ].map(({ label, field, placeholder }) => (
+                    <div key={field}>
+                      <label className="text-xs text-gray-400 block mb-1">{label}</label>
+                      <input value={form[field]} onChange={e => setForm(p => ({ ...p, [field]: e.target.value }))}
+                        placeholder={placeholder} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                    </div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+                  <div className="md:col-span-2">
+                    <label className="text-xs text-gray-400 block mb-1">Medidas del escenario</label>
+                    <input value={form.medidasEscenario} onChange={e => setForm(p => ({ ...p, medidasEscenario: e.target.value }))}
+                      placeholder="10 × 8 m, 1.2 m de alto" className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Altura de reja (m)</label>
+                    <input type="number" step="0.1" value={form.alturaRejaM} onChange={e => setForm(p => ({ ...p, alturaRejaM: e.target.value }))}
+                      className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+                  {[
+                    { label: "Acceso al escenario", field: "accesoEscenario" as const, placeholder: "Rampa por la izquierda, 2.2 m de alto" },
+                    { label: "Camerinos", field: "camerinos" as const, placeholder: "2 camerinos con baño" },
+                    { label: "Horario de carga", field: "horarioCarga" as const, placeholder: "Load-in desde 09:00" },
+                  ].map(({ label, field, placeholder }) => (
+                    <div key={field}>
+                      <label className="text-xs text-gray-400 block mb-1">{label}</label>
+                      <input value={form[field]} onChange={e => setForm(p => ({ ...p, [field]: e.target.value }))}
+                        placeholder={placeholder} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3">
+                  <label className="text-xs text-gray-400 block mb-1">Notas técnicas</label>
+                  <textarea value={form.notasTecnicas} onChange={e => setForm(p => ({ ...p, notasTecnicas: e.target.value }))}
+                    rows={3} placeholder="Lo que hay que saber del foro antes de llegar: tomas, puntos de rigging, limitaciones…"
+                    className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
+                </div>
+                <div className="mt-3">
+                  <label className="text-xs text-gray-400 block mb-1">Rider de la casa (PDF)</label>
+                  {form.riderCasaUrl ? (
+                    <div className="flex items-center gap-3">
+                      <a href={form.riderCasaUrl} target="_blank" rel="noopener noreferrer" className="text-[#B3985B] text-sm hover:underline">
+                        Abrir el rider de la casa →
+                      </a>
+                      <button onClick={() => setForm(p => ({ ...p, riderCasaUrl: "" }))} className="text-xs text-red-500 hover:underline">
+                        Quitar
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex items-center gap-2 cursor-pointer text-sm text-[#B3985B] hover:text-[#c9a96a]">
+                      <span>{subiendoRider ? "Subiendo…" : "+ Subir el rider / ficha técnica del foro"}</span>
+                      <input type="file" accept="application/pdf,image/*" className="hidden" onChange={async e => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setSubiendoRider(true);
+                        try {
+                          const ext = file.name.split(".").pop() ?? "pdf";
+                          const blob = await upload(`venues/rider-casa/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`, file, {
+                            access: "public",
+                            handleUploadUrl: "/api/upload/token",
+                          });
+                          setForm(p => ({ ...p, riderCasaUrl: blob.url }));
+                        } catch {
+                          toast.error("No se pudo subir el archivo");
+                        } finally {
+                          setSubiendoRider(false);
+                        }
+                      }} />
+                    </label>
+                  )}
                 </div>
               </div>
 

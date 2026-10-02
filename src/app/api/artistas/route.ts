@@ -15,6 +15,14 @@ export async function GET(req: NextRequest) {
   const q = searchParams.get("q");
   const incluirInactivos = searchParams.get("incluirInactivos") === "1";
   const conUso = searchParams.get("conUso") === "1";
+  // El catálogo de Giras necesita saber si el artista ya tiene rider y cuántas giras
+  // trae; se pide aparte para no cargarle el conteo a los consumidores viejos.
+  const conGiras = searchParams.get("conGiras") === "1";
+
+  const countSelect = {
+    ...(conUso ? { tratos: true, proyectos: true } : {}),
+    ...(conGiras ? { giras: true, personas: true } : {}),
+  };
 
   const artistas = await prisma.artista.findMany({
     where: {
@@ -22,7 +30,22 @@ export async function GET(req: NextRequest) {
       ...(q ? { id: { in: await idsPorTexto("Artista", ["nombre", "genero", "origen"], q) } } : {}),
     },
     orderBy: { nombre: "asc" },
-    ...(conUso ? { include: { _count: { select: { tratos: true, proyectos: true } } } } : {}),
+    ...(conUso || conGiras
+      ? {
+          include: {
+            _count: { select: countSelect },
+            ...(conGiras
+              ? {
+                  riders: {
+                    where: { activo: true, esActivo: true },
+                    select: { id: true, nombre: true, version: true },
+                    take: 1,
+                  },
+                }
+              : {}),
+          },
+        }
+      : {}),
   });
 
   return NextResponse.json({ artistas });
@@ -34,7 +57,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
   const { nombre, genero, origen, contactoNombre, contactoTelefono, contactoEmail,
-    instagram, sitioWeb, notas } = body;
+    instagram, sitioWeb, notas, clienteId, logoUrl, tipoFormacion, integrantesNum } = body;
 
   if (!nombre?.trim()) return NextResponse.json({ error: "Nombre requerido" }, { status: 400 });
 
@@ -57,6 +80,12 @@ export async function POST(req: NextRequest) {
       instagram: instagram || null,
       sitioWeb: sitioWeb || null,
       notas: notas || null,
+      clienteId: clienteId || null,
+      logoUrl: logoUrl || null,
+      tipoFormacion: tipoFormacion || null,
+      integrantesNum: Number.isFinite(Number(integrantesNum)) && integrantesNum !== null && integrantesNum !== ""
+        ? Number(integrantesNum)
+        : null,
     },
   });
 

@@ -1,0 +1,165 @@
+import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+import { getSession } from "@/lib/auth";
+import { logActividad } from "@/lib/actividad";
+import { contarGira, cantidadSugerida, subtotalLinea } from "@/lib/propuesta-servicio";
+import { recalcularPropuesta } from "../../recalcular";
+
+/// Las líneas típicas de una gira de production management, en orden de lectura.
+/// `veces` dice de dónde sale la cantidad; el precio sale del catálogo, así que
+/// cambiar la tarifa en /giras/servicios cambia lo que arma este botón.
+const PLANTILLA: { clave: string; veces: "SHOWS" | "PLAZAS" | "CIUDADES" | "UNA" | "UNIDAD" }[] = [
+  { clave: "DOCUMENTACION_TOUR", veces: "UNA" },
+  { clave: "ADVANCE_PLAZA", veces: "PLAZAS" },
+  { clave: "COORD_PROVEEDORES", veces: "PLAZAS" },
+  { clave: "AUDIO_BANDA", veces: "SHOWS" },
+  { clave: "DIA_VIAJE", veces: "CIUDADES" },
+];
+
+/// Gastos de viaje: van a costo, en su propio subtotal, para que no se coman el
+/// honorario. Nacen en cero porque el monto real sale de cotizar vuelos y hotel.
+const REEMBOLSABLES: { tipo: string; concepto: string; descripcion: string; unidad: string; veces: "CIUDADES" | "SHOWS" }[] = [
+  {
+    tipo: "VIAJE",
+    concepto: "Vuelos y traslados",
+    descripcion: "Vuelos y traslados tierra del responsable de Mainstage. Se factura a costo comprobable.",
+    unidad: "GLOBAL",
+    veces: "CIUDADES",
+  },
+  {
+    tipo: "HOSPEDAJE",
+    concepto: "Hospedaje",
+    descripcion: "Noches de hotel en cada plaza. Habitación sencilla, a costo comprobable.",
+    unidad: "DIA",
+    veces: "SHOWS",
+  },
+  {
+    tipo: "VIATICO",
+    concepto: "Per diem",
+    descripcion: "Alimentos y gastos menores por día de gira.",
+    unidad: "PERSONA_DIA",
+    veces: "SHOWS",
+  },
+];
+
+// POST: siembra las líneas típicas de la gira ligada, ya cuantificadas.
+// Todo queda editable después: esto es un punto de partida, no un candado.
+export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  const { id } = await params;
+
+  const propuesta = await prisma.propuestaServicio.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      numero: true,
+      giraId: true,
+      gira: {
+        select: {
+          nombre: true,
+          shows: { select: { id: true, venueId: true, ciudad: true, estado: true }, orderBy: { fecha: "asc" } },
+        },
+      },
+      lineas: { select: { concepto: true, servicio: { select: { clave: true } } } },
+    },
+  });
+  if (!propuesta) return NextResponse.json({ error: "Propuesta no encontrada" }, { status: 404 });
+  if (!propuesta.giraId || !propuesta.gira) {
+    return NextResponse.json({ error: "Liga una gira antes de armar la propuesta" }, { status: 400 });
+  }
+
+  const conteo = contarGira(propuesta.gira.shows);
+  if (conteo.shows === 0) {
+    return NextResponse.json({ error: "La gira todavía no tiene fechas" }, { status: 400 });
+  }
+
+  const clavesPuestas = new Set(propuesta.lineas.map((l) => l.servicio?.clave).filter(Boolean) as string[]);
+  const conceptosPuestos = new Set(propuesta.lineas.map((l) => l.concepto.toLowerCase()));
+
+  const servicios = await prisma.servicioPM.findMany({
+    where: { clave: { in: PLANTILLA.map((p) => p.clave) } },
+  });
+  const porClave = new Map(servicios.map((s) => [s.clave, s]));
+
+  const faltanEnCatalogo = PLANTILLA.filter((p) => !porClave.has(p.clave)).map((p) => p.clave);
+
+  let orden = propuesta.lineas.length * 10;
+  const nuevas: Prisma.PropuestaServicioLineaUncheckedCreateInput[] = [];
+
+  for (const item of PLANTILLA) {
+    const servicio = porClave.get(item.clave);
+    if (!servicio || clavesPuestas.has(item.clave)) continue;
+
+    const cantidad =
+      item.veces === "SHOWS"
+        ? conteo.shows
+        : item.veces === "PLAZAS"
+          ? conteo.plazas
+          : item.veces === "CIUDADES"
+            ? Math.max(1, conteo.ciudades)
+            : item.veces === "UNA"
+              ? 1
+              : cantidadSugerida(servicio.unidadDefault, conteo);
+
+    orden += 10;
+    const datos = {
+      propuestaId: id,
+      servicioId: servicio.id,
+      tipo: servicio.tipoLinea,
+      unidad: servicio.unidadDefault,
+      concepto: servicio.nombre,
+      descripcion: servicio.descripcion,
+      cantidad,
+      precioUnitario: servicio.precioSugerido ?? 0,
+      costoUnitario: servicio.costoSugerido ?? 0,
+      esIncluido: false,
+      esReembolsable: false,
+      orden,
+    };
+    nuevas.push({ ...datos, subtotal: subtotalLinea(datos) });
+  }
+
+  for (const r of REEMBOLSABLES) {
+    if (conceptosPuestos.has(r.concepto.toLowerCase())) continue;
+    orden += 10;
+    const datos = {
+      propuestaId: id,
+      tipo: r.tipo,
+      unidad: r.unidad,
+      concepto: r.concepto,
+      descripcion: r.descripcion,
+      cantidad: r.veces === "SHOWS" ? conteo.shows : Math.max(1, conteo.ciudades),
+      precioUnitario: 0,
+      costoUnitario: 0,
+      esIncluido: false,
+      esReembolsable: true,
+      orden,
+    };
+    nuevas.push({ ...datos, subtotal: subtotalLinea(datos) });
+  }
+
+  if (nuevas.length) {
+    await prisma.$transaction(nuevas.map((data) => prisma.propuestaServicioLinea.create({ data })));
+  }
+
+  const resumen = await recalcularPropuesta(id);
+
+  await logActividad(
+    session.id,
+    "EDITAR",
+    "propuesta_servicio",
+    id,
+    `Propuesta ${propuesta.numero} armada desde la gira ${propuesta.gira.nombre} (${nuevas.length} líneas)`,
+  );
+
+  return NextResponse.json({
+    ok: true,
+    agregadas: nuevas.length,
+    conteo,
+    faltanEnCatalogo,
+    resumen,
+  });
+}

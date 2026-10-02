@@ -1,0 +1,75 @@
+import { notFound, redirect } from "next/navigation";
+import { getSession } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { avanceGira, fmtRango } from "@/lib/giras";
+import CabeceraGira from "./CabeceraGira";
+import type { EnlaceSub } from "./SubNav";
+
+export const dynamic = "force-dynamic";
+
+export default async function GiraLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode;
+  params: Promise<{ id: string }>;
+}) {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const { id } = await params;
+
+  const gira = await prisma.gira.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      nombre: true,
+      estado: true,
+      fechaInicio: true,
+      fechaFin: true,
+      artista: { select: { nombre: true } },
+      shows: {
+        orderBy: { fecha: "asc" },
+        select: { fecha: true, riderLineas: { select: { prioridad: true, estado: true, cubiertoPor: true } } },
+      },
+    },
+  });
+
+  if (!gira) notFound();
+
+  const resumen = avanceGira(gira.shows);
+
+  // El rango de la cabecera prefiere las fechas capturadas, pero si están vacías
+  // se lee de las plazas: la gira nunca debe verse "sin fechas" si ya tiene shows.
+  const rango =
+    gira.fechaInicio || gira.fechaFin
+      ? fmtRango(gira.fechaInicio, gira.fechaFin)
+      : gira.shows.length
+        ? fmtRango(gira.shows[0].fecha, gira.shows[gira.shows.length - 1].fecha)
+        : "Sin fechas";
+
+  const enlaces: EnlaceSub[] = [
+    { href: `/giras/${id}`, label: "Resumen", exacto: true },
+    { href: `/giras/${id}/shows`, label: "Plazas" },
+    { href: `/giras/${id}/crew`, label: "Crew" },
+    { href: `/giras/${id}/logistica`, label: "Viajes y hotel" },
+    { href: `/giras/${id}/setlist`, label: "Setlist" },
+  ];
+
+  return (
+    <div className="flex flex-col min-h-full">
+      <CabeceraGira
+        giraId={id}
+        nombre={gira.nombre}
+        artista={gira.artista.nombre}
+        rango={rango}
+        estado={gira.estado}
+        plazas={gira.shows.length}
+        avance={resumen.avance}
+        semaforo={resumen.semaforo}
+        enlaces={enlaces}
+      />
+      <div className="flex-1">{children}</div>
+    </div>
+  );
+}
