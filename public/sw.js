@@ -58,6 +58,13 @@ self.addEventListener("fetch", (event) => {
   if (url.pathname.startsWith("/monitoring")) return;
   if (url.pathname.startsWith("/api/auth")) return;
 
+  // Los documentos del proyecto se regeneran en cada visita a propósito: servir
+  // uno desde caché mostraría un proyecto viejo, que es justo lo que el enlace
+  // en línea viene a evitar. Además son PDF de cientos de KB que no tienen por
+  // qué vivir en el caché de páginas, y generarlos puede pasarse del timeout.
+  if (url.pathname.startsWith("/doc/")) return;
+  if (/^\/api\/proyectos\/[^/]+\/(fichas\/operativa|rider-pdf|brief-tecnico|hoja-entrega)$/.test(url.pathname)) return;
+
   // La página de rescate y el propio SW nunca deben pasar por esta lógica: si el SW
   // está atorado, /clear.html es la única salida y no puede depender de que la red
   // responda a tiempo dentro de este mismo worker.
