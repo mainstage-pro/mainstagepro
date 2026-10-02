@@ -31,7 +31,7 @@ export default function CabeceraRider(p: Props) {
           <h1 className="ms-h1 truncate">{p.nombre}</h1>
           <p className="ms-subtitle mt-0.5">
             v{p.version}
-            {p.formacion ? ` · ${p.formacion}` : ""} · {p.inputs} inputs · {p.outputs} outputs · {p.conceptos}{" "}
+            {p.formacion ? ` · ${p.formacion}` : ""} · {p.inputs} inputs · {p.outputs} mixes · {p.conceptos}{" "}
             {p.conceptos === 1 ? "concepto" : "conceptos"} de equipo
           </p>
         </div>

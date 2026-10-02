@@ -95,6 +95,42 @@ export const TIPO_SALIDA_LABEL: Record<string, string> = {
   SHOUT: "Shout / talkback",
 };
 
+/// Un mix estéreo ocupa DOS salidas de consola (L y R); uno mono, una. Por eso el
+/// número de una salida es su primer canal y no su posición en la lista: si el IEM
+/// de voz es estéreo y arranca en 1, el siguiente mix empieza en 3. Numerar por
+/// posición haría pedir la mitad de las salidas que de verdad se parchan.
+export function canalesDeSalida(estereo: boolean): number {
+  return estereo ? 2 : 1;
+}
+
+export function numerarSalidas<T extends { estereo: boolean }>(salidas: T[]): (T & { canal: number })[] {
+  let canal = 1;
+  return salidas.map((s) => {
+    const numerada = { ...s, canal };
+    canal += canalesDeSalida(s.estereo);
+    return numerada;
+  });
+}
+
+export function etiquetaCanalSalida(canal: number, estereo: boolean): string {
+  return estereo ? `${canal}/${canal + 1}` : String(canal);
+}
+
+export function totalCanalesSalida(salidas: { estereo: boolean }[]): number {
+  return salidas.reduce((n, s) => n + canalesDeSalida(s.estereo), 0);
+}
+
+/// Para el documento que lee el ingeniero de la casa: lo que él parcha son canales,
+/// no mixes, así que el estéreo se abre en dos renglones marcados L y R.
+export function expandirSalida(canal: number, estereo: boolean): { canal: number; lado: "L" | "R" | null }[] {
+  return estereo
+    ? [
+        { canal, lado: "L" },
+        { canal: canal + 1, lado: "R" },
+      ]
+    : [{ canal, lado: null }];
+}
+
 // ── Rider maestro: prioridad y quién provee ──────────────────────────────────
 // La prioridad es lo que permite negociar con la casa sin regalar lo que no se negocia.
 export const PRIORIDADES = ["INDISPENSABLE", "IMPORTANTE", "DESEABLE"] as const;

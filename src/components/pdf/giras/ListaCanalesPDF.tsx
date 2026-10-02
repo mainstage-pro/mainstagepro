@@ -11,6 +11,7 @@ import {
   BandaGira, Cuerpo, Document, HeroGira, PaginaGira, PieGira, Seccion, Tabla,
   type ColumnaTabla, type ItemBanda, type RenglonTabla,
 } from "./GiraDocBase";
+import { expandirSalida, numerarSalidas, totalCanalesSalida } from "@/lib/giras";
 
 export interface CanalInput {
   id: string;
@@ -82,17 +83,21 @@ export function ListaCanales({ inputs, outputs }: { inputs: CanalInput[]; output
     ],
   }));
 
-  const filasOutput: RenglonTabla[] = outputs.map((c) => ({
-    tipo: "fila",
-    clave: c.id,
-    celdas: [
-      { texto: String(c.numero), fuerte: true },
-      { texto: c.nombre, sub: c.notas, fuerte: true },
-      { texto: c.tipoSalidaLabel ?? "—" },
-      { texto: c.estereo ? "Estéreo" : "Mono" },
-      { texto: c.paraQuien ?? "—" },
-    ],
-  }));
+  // Un renglón por canal de consola: el mix estéreo se abre en L y R porque lo
+  // que el ingeniero de la casa parcha son canales, no mixes.
+  const filasOutput: RenglonTabla[] = numerarSalidas(outputs).flatMap((c) =>
+    expandirSalida(c.canal, c.estereo).map(({ canal, lado }) => ({
+      tipo: "fila" as const,
+      clave: lado ? `${c.id}-${lado}` : c.id,
+      celdas: [
+        { texto: String(canal), fuerte: true },
+        { texto: lado ? `${c.nombre} ${lado}` : c.nombre, sub: c.notas, fuerte: true },
+        { texto: c.tipoSalidaLabel ?? "—" },
+        { texto: c.estereo ? "Estéreo" : "Mono" },
+        { texto: c.paraQuien ?? "—" },
+      ],
+    })),
+  );
 
   return (
     <>
@@ -100,7 +105,7 @@ export function ListaCanales({ inputs, outputs }: { inputs: CanalInput[]; output
         <Tabla columnas={COLS_INPUT} renglones={filasInput} />
       </Seccion>
 
-      <Seccion titulo="Output list" nota="Un mix por renglón; el estéreo ocupa dos salidas de consola.">
+      <Seccion titulo="Output list" nota="Un renglón por salida de consola: el mix estéreo se abre en L y R.">
         <Tabla columnas={COLS_OUTPUT} renglones={filasOutput} />
       </Seccion>
     </>
@@ -110,9 +115,9 @@ export function ListaCanales({ inputs, outputs }: { inputs: CanalInput[]; output
 export function ListaCanalesPDF({ data }: { data: ListaCanalesData }) {
   const banda: ItemBanda[] = [
     { label: "Entradas", valor: String(data.inputs.length) },
-    { label: "Salidas", valor: String(data.outputs.length) },
+    { label: "Salidas", valor: String(totalCanalesSalida(data.outputs)) },
     { label: "Phantom", valor: String(data.inputs.filter((i) => i.phantom).length) },
-    { label: "Mixes estéreo", valor: String(data.outputs.filter((o) => o.estereo).length) },
+    { label: "Mixes", valor: String(data.outputs.length) },
   ];
 
   return (

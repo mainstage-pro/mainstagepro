@@ -9,6 +9,7 @@ import { useConfirm } from "@/components/Confirm";
 import {
   PLANTILLA_INPUT_BANDA,
   PLANTILLA_OUTPUT_BANDA,
+  numerarSalidas,
   PLANTILLA_RIDER_BANDA,
   TIPO_FORMACION_LABEL,
   fmtFechaCorta,
@@ -67,7 +68,12 @@ export default function RidersArtistaClient({ artistaId, artistaNombre, tipoForm
       (
         [
           { tipo: "INPUT", canales: PLANTILLA_INPUT_BANDA.map((c, i) => ({ ...c, numero: i + 1 })) },
-          { tipo: "OUTPUT", canales: PLANTILLA_OUTPUT_BANDA.map((c, i) => ({ ...c, numero: i + 1 })) },
+          {
+            tipo: "OUTPUT",
+            canales: numerarSalidas(
+              PLANTILLA_OUTPUT_BANDA.map((c) => ({ ...c, estereo: c.estereo === true })),
+            ).map(({ canal, ...c }) => ({ ...c, numero: canal })),
+          },
         ] as const
       ).map((carga) =>
         fetch(`/api/artista-riders/${riderId}/canales`, {

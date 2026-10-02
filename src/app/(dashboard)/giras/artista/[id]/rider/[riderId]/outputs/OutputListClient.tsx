@@ -5,7 +5,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Combobox, type ComboboxOption } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
-import { PLANTILLA_OUTPUT_BANDA, ROL_PERSONA_LABEL, TIPOS_SALIDA, TIPO_SALIDA_LABEL } from "@/lib/giras";
+import {
+  PLANTILLA_OUTPUT_BANDA,
+  ROL_PERSONA_LABEL,
+  TIPOS_SALIDA,
+  TIPO_SALIDA_LABEL,
+  etiquetaCanalSalida,
+  numerarSalidas,
+  totalCanalesSalida,
+} from "@/lib/giras";
 
 export interface CanalOutput {
   id: string;
@@ -37,11 +45,11 @@ function aFila(c: CanalOutput): Fila {
   return { ...c, clave: c.id };
 }
 
-function filaVacia(numero: number): Fila {
+function filaVacia(): Fila {
   return {
     id: null,
     clave: nuevaClave(),
-    numero,
+    numero: 0,
     nombre: "",
     tipoSalida: null,
     estereo: false,
@@ -83,11 +91,11 @@ export default function OutputListClient({
   }
 
   function agregar() {
-    setFilas((prev) => [...prev, filaVacia(prev.length + 1)]);
+    setFilas((prev) => [...prev, filaVacia()]);
   }
 
   function quitar(clave: string) {
-    setFilas((prev) => prev.filter((f) => f.clave !== clave).map((f, i) => ({ ...f, numero: i + 1 })));
+    setFilas((prev) => prev.filter((f) => f.clave !== clave));
   }
 
   function mover(clave: string, delta: number) {
@@ -97,15 +105,15 @@ export default function OutputListClient({
       if (i < 0 || j < 0 || j >= prev.length) return prev;
       const copia = [...prev];
       [copia[i], copia[j]] = [copia[j], copia[i]];
-      return copia.map((f, k) => ({ ...f, numero: k + 1 }));
+      return copia;
     });
   }
 
   function sembrarPlantilla() {
     setFilas((prev) => [
       ...prev,
-      ...PLANTILLA_OUTPUT_BANDA.map((c, i) => ({
-        ...filaVacia(prev.length + i + 1),
+      ...PLANTILLA_OUTPUT_BANDA.map((c) => ({
+        ...filaVacia(),
         nombre: c.nombre,
         tipoSalida: c.tipoSalida,
         estereo: c.estereo === true,
@@ -114,7 +122,9 @@ export default function OutputListClient({
   }
 
   async function guardar() {
-    const utiles = filas.filter((f) => f.nombre.trim());
+    // Se guarda el primer canal de consola del mix, no su posición: el estéreo se
+    // llevó dos números y la lista tiene que poder reconstruirse tal cual.
+    const utiles = numerarSalidas(filas.filter((f) => f.nombre.trim()));
     setGuardando(true);
     try {
       const res = await fetch(`/api/artista-riders/${riderId}/canales`, {
@@ -122,9 +132,9 @@ export default function OutputListClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tipo: "OUTPUT",
-          canales: utiles.map((f, i) => ({
+          canales: utiles.map((f) => ({
             id: f.id,
-            numero: i + 1,
+            numero: f.canal,
             nombre: f.nombre,
             tipoSalida: f.tipoSalida,
             estereo: f.estereo,
@@ -141,15 +151,18 @@ export default function OutputListClient({
       const frescas: Fila[] = (d.canales as CanalOutput[]).map(aFila);
       setFilas(frescas);
       setOriginal(JSON.stringify(frescas));
-      toast.success(`Output list guardada: ${frescas.length} salidas`);
+      toast.success(`Output list guardada: ${frescas.length} mixes en ${totalCanalesSalida(frescas)} canales`);
       router.refresh();
     } finally {
       setGuardando(false);
     }
   }
 
-  const conNombre = filas.filter((f) => f.nombre.trim()).length;
+  const utiles = filas.filter((f) => f.nombre.trim());
+  const conNombre = utiles.length;
+  const canales = totalCanalesSalida(utiles);
   const descuadre = mixesMonitor !== null && mixesMonitor !== conNombre;
+  const numeradas = numerarSalidas(filas);
 
   return (
     <div className="ms-page space-y-4">
@@ -157,7 +170,8 @@ export default function OutputListClient({
         <div>
           <h2 className="ms-h2">Output list</h2>
           <p className="ms-subtitle mt-1">
-            Los mixes de monitor con dueño: quién oye qué. De aquí sale cuántos in-ears y cuántas wedges se piden.
+            Los mixes de monitor con dueño: quién oye qué. De aquí sale cuántos in-ears y cuántas wedges se piden. El
+            canal lo numera la lista: un mix estéreo ocupa dos salidas de consola y uno mono, una.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -175,10 +189,15 @@ export default function OutputListClient({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="ms-stat-card">
-          <p className="ms-label">Salidas capturadas</p>
+          <p className="ms-label">Mixes capturados</p>
           <p className="text-xl font-semibold mt-1 text-white">{conNombre}</p>
+        </div>
+        <div className="ms-stat-card">
+          <p className="ms-label">Canales de consola</p>
+          <p className="text-xl font-semibold mt-1 text-white">{canales}</p>
+          <p className="ms-micro mt-0.5">El estéreo se lleva dos: L y R.</p>
         </div>
         <div className="ms-stat-card">
           <p className="ms-label">Mixes declarados en la ficha</p>
@@ -214,7 +233,7 @@ export default function OutputListClient({
           <table className="w-full min-w-[1040px]">
             <thead className="ms-thead">
               <tr>
-                <th className="ms-th text-left w-[60px]">#</th>
+                <th className="ms-th text-left w-[76px]">Canal</th>
                 <th className="ms-th text-left w-[200px]">Salida / mix</th>
                 <th className="ms-th text-left w-[180px]">Tipo</th>
                 <th className="ms-th text-center w-[80px]">Estéreo</th>
@@ -224,16 +243,13 @@ export default function OutputListClient({
               </tr>
             </thead>
             <tbody>
-              {filas.map((f, i) => (
+              {numeradas.map((f, i) => (
                 <tr key={f.clave} className="ms-tr align-top">
                   <td className="ms-td">
-                    <input
-                      type="number"
-                      min={1}
-                      className="ms-input-inline w-full"
-                      value={f.numero}
-                      onChange={(e) => set(f.clave, { numero: Number(e.target.value) })}
-                    />
+                    <span className="font-semibold text-white tabular-nums">
+                      {etiquetaCanalSalida(f.canal, f.estereo)}
+                    </span>
+                    {f.estereo && <p className="ms-micro">L y R</p>}
                   </td>
                   <td className="ms-td">
                     <input
