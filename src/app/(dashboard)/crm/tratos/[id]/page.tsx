@@ -1736,11 +1736,11 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             </div>
             <div>
               <h2 className="text-sm font-bold text-white tracking-tight">
-                {trato.esGira ? `Plazas de la gira${trato.artista ? ` · ${trato.artista.nombre}` : ""}` : "Cotizaciones del proyecto"}
+                {trato.esGira ? `Shows de la gira${trato.artista ? ` · ${trato.artista.nombre}` : ""}` : "Cotizaciones del proyecto"}
               </h2>
               <p className="text-[10px] text-gray-600 mt-0.5">
                 {trato.esGira
-                  ? `${trato.cotizaciones.length} plaza${trato.cotizaciones.length !== 1 ? "s" : ""}`
+                  ? `${trato.cotizaciones.length} show${trato.cotizaciones.length !== 1 ? "s" : ""}`
                   : `${trato.cotizaciones.length} cotización${trato.cotizaciones.length !== 1 ? "es" : ""}`} · {fmt(trato.cotizaciones.reduce((s, c) => s + c.granTotal, 0))} total
               </p>
             </div>

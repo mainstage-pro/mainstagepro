@@ -2,8 +2,8 @@
 
 /**
  * Quién va a la gira y de dónde sale. Sirve en dos alcances con la misma tabla:
- * la lista completa de la gira y el crew de una plaza. Un renglón sin plaza
- * viaja toda la gira; con plaza es refuerzo de ese día, y el alcance se cambia
+ * la lista completa de la gira y el crew de un show. Un renglón sin show
+ * viaja toda la gira; con show es refuerzo de ese día, y el alcance se cambia
  * desde el propio renglón.
  */
 
@@ -47,7 +47,7 @@ export interface CandidatoPersonaUI {
   grupo: string;
 }
 
-export interface PlazaCrew {
+export interface ShowCrew {
   id: string;
   fecha: Date | string;
   ciudad: string | null;
@@ -55,13 +55,13 @@ export interface PlazaCrew {
 
 interface Props {
   giraId: string;
-  /// GIRA = toda la gira; SHOW = el crew que trabaja esa plaza.
+  /// GIRA = toda la gira; SHOW = el crew que trabaja ese show.
   alcance: "GIRA" | "SHOW";
   showId?: string;
   crewInicial: CrewFila[];
   personas: CandidatoPersonaUI[];
   roles: { id: string; nombre: string; disciplina: string | null }[];
-  plazas?: PlazaCrew[];
+  shows?: ShowCrew[];
 }
 
 type Campos = Partial<Record<keyof CrewFila, unknown>>;
@@ -85,7 +85,7 @@ export default function CrewPanel({
   crewInicial,
   personas,
   roles,
-  plazas = [],
+  shows = [],
 }: Props) {
   const toast = useToast();
   const confirmar = useConfirm();
@@ -248,13 +248,13 @@ export default function CrewPanel({
   });
 
   const deLaGira = visibles.filter((c) => !c.showId);
-  const deLaPlaza = visibles.filter((c) => c.showId);
+  const delShow = visibles.filter((c) => c.showId);
 
   const grupos =
     alcance === "SHOW"
       ? [
           { titulo: "Viaja toda la gira", filas: deLaGira },
-          { titulo: "Solo esta plaza", filas: deLaPlaza },
+          { titulo: "Solo este show", filas: delShow },
         ].filter((g) => g.filas.length > 0)
       : [{ titulo: "", filas: visibles }];
 
@@ -265,7 +265,7 @@ export default function CrewPanel({
         <div className="ms-stat-card">
           <p className="ms-label mb-1">Personas</p>
           <p className="text-white text-xl font-semibold">{crew.length}</p>
-          <p className="ms-meta">{alcance === "SHOW" ? "trabajan esta plaza" : "en el crew de la gira"}</p>
+          <p className="ms-meta">{alcance === "SHOW" ? "trabajan este show" : "en el crew de la gira"}</p>
         </div>
         <div className="ms-stat-card">
           <p className="ms-label mb-1">De Mainstage</p>
@@ -315,7 +315,7 @@ export default function CrewPanel({
           </button>
         ))}
         <button onClick={() => setNuevo((n) => (n ? null : NUEVO))} className="ms-btn-ghost ml-auto">
-          {nuevo ? "Cerrar" : alcance === "SHOW" ? "+ Sumar a esta plaza" : "+ Sumar al crew"}
+          {nuevo ? "Cerrar" : alcance === "SHOW" ? "+ Sumar a este show" : "+ Sumar al crew"}
         </button>
       </div>
 
@@ -397,7 +397,7 @@ export default function CrewPanel({
                 <th className="ms-th w-[140px]">Teléfono</th>
                 <th className="ms-th w-[180px]">Correo</th>
                 <th className="ms-th w-[120px]">Llamado</th>
-                <th className="ms-th w-[180px]">{alcance === "SHOW" ? "Aplica a" : "Plaza"}</th>
+                <th className="ms-th w-[180px]">{alcance === "SHOW" ? "Aplica a" : "Show"}</th>
                 <th className="ms-th w-[180px]">Notas</th>
                 <th className="ms-th w-[40px]" />
               </tr>
@@ -495,10 +495,10 @@ export default function CrewPanel({
                         className="ms-input-inline w-full"
                       >
                         <option value="">Toda la gira</option>
-                        {alcance === "SHOW" && showId && !plazas.length && (
-                          <option value={showId}>Solo esta plaza</option>
+                        {alcance === "SHOW" && showId && !shows.length && (
+                          <option value={showId}>Solo este show</option>
                         )}
-                        {plazas.map((p) => (
+                        {shows.map((p) => (
                           <option key={p.id} value={p.id}>
                             {fmtFechaCorta(p.fecha)} · {p.ciudad ?? "Sin ciudad"}
                           </option>

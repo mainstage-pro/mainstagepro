@@ -4,8 +4,8 @@
  * Los papeles de la gira. Tres bloques, en el orden en que se usan:
  *
  *  1. Documentos de la gira — rider y listas de canales. Salen del rider
- *     maestro, así que valen para todas las plazas.
- *  2. Documentos por plaza — day sheet y advance. Un renglón por fecha, con su
+ *     maestro, así que valen para todos los shows.
+ *  2. Documentos por show — day sheet y advance. Un renglón por fecha, con su
  *     botón de descarga y su enlace público.
  *  3. Archivero — lo que llega de afuera y hay que tener a mano.
  *
@@ -28,7 +28,7 @@ import {
   fmtTamano,
 } from "@/lib/giras";
 
-export interface PlazaDoc {
+export interface ShowDoc {
   id: string;
   fecha: string;
   ciudad: string | null;
@@ -64,7 +64,7 @@ interface Props {
   rider: RiderResuelto | null;
   /// El rider no está enganchado a la gira: se tomó el activo del artista.
   riderHeredado: boolean;
-  plazas: PlazaDoc[];
+  shows: ShowDoc[];
   archivosIniciales: ArchivoFila[];
 }
 
@@ -86,7 +86,7 @@ const DOCS_PLAZA = [
   { slug: "advance", label: "Advance" },
 ] as const;
 
-function etiquetaPlaza(p: { fecha: string; ciudad: string | null }): string {
+function etiquetaShow(p: { fecha: string; ciudad: string | null }): string {
   return [fmtFechaCorta(p.fecha), p.ciudad].filter(Boolean).join(" · ");
 }
 
@@ -97,15 +97,15 @@ export default function DocumentosClient({
   portalToken,
   rider,
   riderHeredado,
-  plazas,
+  shows,
   archivosIniciales,
 }: Props) {
   const toast = useToast();
   const confirmar = useConfirm();
 
   const [token, setToken] = useState(portalToken);
-  const [tokensPlaza, setTokensPlaza] = useState<Record<string, string | null>>(
-    Object.fromEntries(plazas.map((p) => [p.id, p.docsToken])),
+  const [tokensShow, setTokensShow] = useState<Record<string, string | null>>(
+    Object.fromEntries(shows.map((p) => [p.id, p.docsToken])),
   );
   const [archivos, setArchivos] = useState<ArchivoFila[]>(archivosIniciales);
   const [ocupado, setOcupado] = useState<string | null>(null);
@@ -138,42 +138,42 @@ export default function DocumentosClient({
     }
   }
 
-  /// El token de la plaza abre los cuatro documentos: quien está en el foro
+  /// El token del show abre los cuatro documentos: quien está en el foro
   /// necesita el day sheet y el rider, y no se le van a mandar dos ligas.
-  async function compartirDePlaza(plazaId: string, slug: string) {
-    setOcupado(`plaza:${plazaId}:${slug}`);
+  async function compartirDeShow(showId: string, slug: string) {
+    setOcupado(`show:${showId}:${slug}`);
     try {
-      let actual = tokensPlaza[plazaId] ?? null;
+      let actual = tokensShow[showId] ?? null;
       if (!actual) {
-        const res = await fetch(`/api/gira-shows/${plazaId}/docs-token`, { method: "POST" });
+        const res = await fetch(`/api/gira-shows/${showId}/docs-token`, { method: "POST" });
         const d = await res.json().catch(() => ({}));
         if (!res.ok) {
           toast.error(d.error ?? "No se pudo generar el enlace");
           return;
         }
         actual = d.token as string;
-        setTokensPlaza((prev) => ({ ...prev, [plazaId]: actual }));
+        setTokensShow((prev) => ({ ...prev, [showId]: actual }));
       }
-      copiar(`${window.location.origin}/gira-doc/${actual}/${slug}`, "Enlace copiado — se actualiza solo con la plaza");
+      copiar(`${window.location.origin}/gira-doc/${actual}/${slug}`, "Enlace copiado — se actualiza solo con el show");
     } finally {
       setOcupado(null);
     }
   }
 
-  async function revocarPlaza(plazaId: string) {
+  async function revocarShow(showId: string) {
     const ok = await confirmar({
       message:
-        "¿Revocar el enlace de esta plaza? Quien lo tenga dejará de ver los documentos y habrá que compartirle uno nuevo.",
+        "¿Revocar el enlace de este show? Quien lo tenga dejará de ver los documentos y habrá que compartirle uno nuevo.",
       danger: true,
       confirmText: "Revocar",
     });
     if (!ok) return;
-    const res = await fetch(`/api/gira-shows/${plazaId}/docs-token`, { method: "DELETE" });
+    const res = await fetch(`/api/gira-shows/${showId}/docs-token`, { method: "DELETE" });
     if (!res.ok) {
       toast.error("No se pudo revocar el enlace");
       return;
     }
-    setTokensPlaza((prev) => ({ ...prev, [plazaId]: null }));
+    setTokensShow((prev) => ({ ...prev, [showId]: null }));
     toast.success("Enlace revocado");
   }
 
@@ -196,7 +196,7 @@ export default function DocumentosClient({
   // ── Archivero ──────────────────────────────────────────────────────────────
   const inputArchivo = useRef<HTMLInputElement>(null);
   const [tipoNuevo, setTipoNuevo] = useState("RIDER_CASA");
-  const [plazaNueva, setPlazaNueva] = useState("");
+  const [showNuevo, setShowNuevo] = useState("");
   const [subiendo, setSubiendo] = useState(false);
 
   async function subir(e: React.ChangeEvent<HTMLInputElement>) {
@@ -220,7 +220,7 @@ export default function DocumentosClient({
           nombre: file.name,
           tipo: tipoNuevo,
           tamanoBytes: file.size,
-          showId: plazaNueva || null,
+          showId: showNuevo || null,
         }),
       });
       const d = await res.json().catch(() => ({}));
@@ -339,20 +339,20 @@ export default function DocumentosClient({
         )}
       </section>
 
-      {/* ── Documentos por plaza ── */}
+      {/* ── Documentos por show ── */}
       <section className="space-y-3">
         <div>
-          <h2 className="ms-h2">Documentos por plaza</h2>
+          <h2 className="ms-h2">Documentos por show</h2>
           <p className="ms-meta mt-1">
-            El day sheet y el advance hablan de una fecha, así que se emiten desde el renglón de la plaza. El enlace de
-            una plaza abre además el rider: es el único que se le manda al foro.
+            El day sheet y el advance hablan de una fecha, así que se emiten desde el renglón del show. El enlace de
+            un show abre además el rider: es el único que se le manda al foro.
           </p>
         </div>
 
-        {plazas.length === 0 ? (
+        {shows.length === 0 ? (
           <div className="ms-empty-state">
             <p className="text-sm text-[#6b7280]">
-              La gira {giraNombre} todavía no tiene plazas. Agrégalas para poder emitir day sheets.
+              La gira {giraNombre} todavía no tiene shows. Agrégalos para poder emitir day sheets.
             </p>
           </div>
         ) : (
@@ -360,7 +360,7 @@ export default function DocumentosClient({
             <table className="w-full min-w-[840px]">
               <thead className="ms-thead">
                 <tr>
-                  <th className="ms-th text-left">Plaza</th>
+                  <th className="ms-th text-left">Show</th>
                   <th className="ms-th text-left">Estado</th>
                   <th className="ms-th text-left">Corrida</th>
                   <th className="ms-th text-left">Advance</th>
@@ -368,7 +368,7 @@ export default function DocumentosClient({
                 </tr>
               </thead>
               <tbody>
-                {plazas.map((p) => (
+                {shows.map((p) => (
                   <tr key={p.id} className="ms-tr">
                     <td className="ms-td">
                       <div className="text-white text-[13px]">{fmtFechaLarga(p.fecha)}</div>
@@ -410,15 +410,15 @@ export default function DocumentosClient({
                             <button
                               className="ms-btn-ghost"
                               title={`Copiar enlace público del ${d.label.toLowerCase()}`}
-                              disabled={ocupado === `plaza:${p.id}:${d.slug}`}
-                              onClick={() => compartirDePlaza(p.id, d.slug)}
+                              disabled={ocupado === `show:${p.id}:${d.slug}`}
+                              onClick={() => compartirDeShow(p.id, d.slug)}
                             >
-                              {ocupado === `plaza:${p.id}:${d.slug}` ? "…" : "Enlace"}
+                              {ocupado === `show:${p.id}:${d.slug}` ? "…" : "Enlace"}
                             </button>
                           </span>
                         ))}
-                        {tokensPlaza[p.id] && (
-                          <button className="ms-btn-ghost text-red-400" onClick={() => revocarPlaza(p.id)}>
+                        {tokensShow[p.id] && (
+                          <button className="ms-btn-ghost text-red-400" onClick={() => revocarShow(p.id)}>
                             Revocar
                           </button>
                         )}
@@ -438,7 +438,7 @@ export default function DocumentosClient({
           <h2 className="ms-h2">Archivero de la gira</h2>
           <p className="ms-meta mt-1">
             Lo que llega de afuera: el rider de la casa, el contrato, el plano del foro, la input list que mandó el
-            ingeniero local. Un archivo puede ser de la gira completa o de una plaza.
+            ingeniero local. Un archivo puede ser de la gira completa o de un show.
           </p>
         </div>
 
@@ -455,12 +455,12 @@ export default function DocumentosClient({
               </select>
             </label>
             <label className="flex flex-col gap-1">
-              <span className="ms-label">De qué plaza</span>
-              <select className="ms-input" value={plazaNueva} onChange={(e) => setPlazaNueva(e.target.value)}>
+              <span className="ms-label">De qué show</span>
+              <select className="ms-input" value={showNuevo} onChange={(e) => setShowNuevo(e.target.value)}>
                 <option value="">Toda la gira</option>
-                {plazas.map((p) => (
+                {shows.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {etiquetaPlaza(p)}
+                    {etiquetaShow(p)}
                   </option>
                 ))}
               </select>
@@ -501,7 +501,7 @@ export default function DocumentosClient({
                   <tr>
                     <th className="ms-th text-left">Archivo</th>
                     <th className="ms-th text-left">Qué es</th>
-                    <th className="ms-th text-left">Plaza</th>
+                    <th className="ms-th text-left">Show</th>
                     <th className="ms-th text-left">Tamaño</th>
                     <th className="ms-th text-left">Subido</th>
                     <th className="ms-th" />
@@ -526,7 +526,7 @@ export default function DocumentosClient({
                         </span>
                       </td>
                       <td className="ms-td text-[13px] text-[#9ca3af]">
-                        {a.show ? etiquetaPlaza(a.show) : "Toda la gira"}
+                        {a.show ? etiquetaShow(a.show) : "Toda la gira"}
                       </td>
                       <td className="ms-td text-[13px] text-[#9ca3af]">{fmtTamano(a.tamanoBytes)}</td>
                       <td className="ms-td text-[13px] text-[#9ca3af]">{fmtFechaCorta(a.createdAt)}</td>

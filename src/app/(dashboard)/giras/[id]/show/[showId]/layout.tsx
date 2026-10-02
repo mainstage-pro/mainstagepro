@@ -42,7 +42,7 @@ export default async function ShowLayout({
     },
   });
 
-  // La plaza tiene que pertenecer a la gira de la URL: si no, el enlace está roto
+  // El show tiene que pertenecer a la gira de la URL: si no, el enlace está roto
   // y mostrarla daría la impresión de que la gira la incluye.
   if (!show || show.giraId !== id) notFound();
 
@@ -64,7 +64,7 @@ export default async function ShowLayout({
           </Link>
           <span>/</span>
           <Link href={`/giras/${id}/shows`} className="hover:text-[#B3985B] transition-colors">
-            Plazas
+            Venues
           </Link>
         </div>
 

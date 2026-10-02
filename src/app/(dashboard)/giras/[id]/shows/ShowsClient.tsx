@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import VenuePicker from "@/components/ui/VenuePicker";
@@ -20,7 +20,7 @@ import {
   fmtFechaCorta,
 } from "@/lib/giras";
 
-export interface PlazaEditable {
+export interface ShowEditable {
   id: string;
   fecha: string;
   ciudad: string | null;
@@ -47,14 +47,12 @@ export interface PlazaEditable {
   indispensablesAbiertos: number;
 }
 
-interface Borrador {
-  fecha: string;
-  ciudad: string;
+/// Lo que es del lugar y no de la fecha: tres noches en el mismo foro comparten
+/// promotor y contacto de la casa, así que se capturan una vez por venue.
+interface VenueBorrador {
   venueId: string | null;
   venueNombre: string;
-  estado: string;
-  tipoShow: string;
-  aforoEsperado: string;
+  ciudad: string;
   promotorNombre: string;
   promotorContacto: string;
   promotorTelefono: string;
@@ -62,37 +60,29 @@ interface Borrador {
   contactoCasaNombre: string;
   contactoCasaTelefono: string;
   contactoCasaEmail: string;
+}
+
+/// Lo que cambia de una función a otra aunque el foro sea el mismo.
+interface ShowBorrador {
+  fecha: string;
+  tipoShow: string;
+  estado: string;
+  aforoEsperado: string;
   notas: string;
 }
 
-function aBorrador(p: PlazaEditable): Borrador {
-  return {
-    fecha: fechaInput(p.fecha),
-    ciudad: p.ciudad ?? "",
-    venueId: p.venueId,
-    venueNombre: p.venueNombre ?? "",
-    estado: p.estado,
-    tipoShow: p.tipoShow ?? "",
-    aforoEsperado: p.aforoEsperado?.toString() ?? "",
-    promotorNombre: p.promotorNombre ?? "",
-    promotorContacto: p.promotorContacto ?? "",
-    promotorTelefono: p.promotorTelefono ?? "",
-    promotorEmail: p.promotorEmail ?? "",
-    contactoCasaNombre: p.contactoCasaNombre ?? "",
-    contactoCasaTelefono: p.contactoCasaTelefono ?? "",
-    contactoCasaEmail: p.contactoCasaEmail ?? "",
-    notas: p.notas ?? "",
-  };
+interface Grupo {
+  clave: string;
+  venueId: string | null;
+  venueNombre: string | null;
+  ciudad: string | null;
+  shows: ShowEditable[];
 }
 
-const NUEVA: Borrador = {
-  fecha: "",
-  ciudad: "",
+const VENUE_NUEVO: VenueBorrador = {
   venueId: null,
   venueNombre: "",
-  estado: "POR_CONFIRMAR",
-  tipoShow: "HEADLINE",
-  aforoEsperado: "",
+  ciudad: "",
   promotorNombre: "",
   promotorContacto: "",
   promotorTelefono: "",
@@ -100,17 +90,68 @@ const NUEVA: Borrador = {
   contactoCasaNombre: "",
   contactoCasaTelefono: "",
   contactoCasaEmail: "",
+};
+
+const SHOW_NUEVO: ShowBorrador = {
+  fecha: "",
+  tipoShow: "HEADLINE",
+  estado: "POR_CONFIRMAR",
+  aforoEsperado: "",
   notas: "",
 };
 
-function cuerpo(b: Borrador) {
+/**
+ * Los shows se agrupan por el venue del catálogo. Un show sin venue ligado es su
+ * propio grupo: dos fechas sueltas en la misma ciudad no son el mismo foro
+ * mientras nadie lo diga, y adivinarlo mezclaría promotores distintos.
+ */
+function agrupar(shows: ShowEditable[]): Grupo[] {
+  const grupos = new Map<string, Grupo>();
+  for (const s of shows) {
+    const clave = s.venueId ?? `suelto:${s.id}`;
+    const grupo = grupos.get(clave);
+    if (grupo) grupo.shows.push(s);
+    else
+      grupos.set(clave, {
+        clave,
+        venueId: s.venueId,
+        venueNombre: s.venueNombre,
+        ciudad: s.ciudad,
+        shows: [s],
+      });
+  }
+  return [...grupos.values()];
+}
+
+function venueDe(s: ShowEditable): VenueBorrador {
   return {
-    fecha: b.fecha,
-    ciudad: b.ciudad,
+    venueId: s.venueId,
+    venueNombre: s.venueNombre ?? "",
+    ciudad: s.ciudad ?? "",
+    promotorNombre: s.promotorNombre ?? "",
+    promotorContacto: s.promotorContacto ?? "",
+    promotorTelefono: s.promotorTelefono ?? "",
+    promotorEmail: s.promotorEmail ?? "",
+    contactoCasaNombre: s.contactoCasaNombre ?? "",
+    contactoCasaTelefono: s.contactoCasaTelefono ?? "",
+    contactoCasaEmail: s.contactoCasaEmail ?? "",
+  };
+}
+
+function showDe(s: ShowEditable): ShowBorrador {
+  return {
+    fecha: fechaInput(s.fecha),
+    tipoShow: s.tipoShow ?? "",
+    estado: s.estado,
+    aforoEsperado: s.aforoEsperado?.toString() ?? "",
+    notas: s.notas ?? "",
+  };
+}
+
+function cuerpoVenue(b: VenueBorrador) {
+  return {
     venueId: b.venueId,
-    estado: b.estado,
-    tipoShow: b.tipoShow || null,
-    aforoEsperado: b.aforoEsperado === "" ? null : Number(b.aforoEsperado),
+    ciudad: b.ciudad,
     promotorNombre: b.promotorNombre,
     promotorContacto: b.promotorContacto,
     promotorTelefono: b.promotorTelefono,
@@ -118,29 +159,107 @@ function cuerpo(b: Borrador) {
     contactoCasaNombre: b.contactoCasaNombre,
     contactoCasaTelefono: b.contactoCasaTelefono,
     contactoCasaEmail: b.contactoCasaEmail,
+  };
+}
+
+function cuerpoShow(b: ShowBorrador) {
+  return {
+    fecha: b.fecha,
+    tipoShow: b.tipoShow || null,
+    estado: b.estado,
+    aforoEsperado: b.aforoEsperado === "" ? null : Number(b.aforoEsperado),
     notas: b.notas,
   };
 }
 
-export default function ShowsClient({ giraId, plazas }: { giraId: string; plazas: PlazaEditable[] }) {
+function tituloGrupo(g: Grupo): string {
+  const nombre = g.venueNombre ?? "Sin venue";
+  return g.ciudad ? `${nombre} · ${g.ciudad}` : nombre;
+}
+
+function rangoGrupo(g: Grupo): string {
+  const fechas = g.shows.map((s) => s.fecha);
+  const primera = fmtFechaCorta(fechas[0]);
+  const ultima = fmtFechaCorta(fechas[fechas.length - 1]);
+  return primera === ultima ? primera : `${primera} – ${ultima}`;
+}
+
+export default function ShowsClient({ giraId, shows }: { giraId: string; shows: ShowEditable[] }) {
   const router = useRouter();
   const toast = useToast();
   const confirmar = useConfirm();
 
-  const [editando, setEditando] = useState<string | null>(null);
-  const [borrador, setBorrador] = useState<Borrador>(NUEVA);
-  const [nueva, setNueva] = useState<Borrador | null>(null);
+  const grupos = useMemo(() => agrupar(shows), [shows]);
+
+  const [venueAbierto, setVenueAbierto] = useState<string | null>(null);
+  const [borradorVenue, setBorradorVenue] = useState<VenueBorrador>(VENUE_NUEVO);
+
+  const [showAbierto, setShowAbierto] = useState<string | null>(null);
+  const [borradorShow, setBorradorShow] = useState<ShowBorrador>(SHOW_NUEVO);
+
+  const [fechaEn, setFechaEn] = useState<string | null>(null);
+  const [fechaNueva, setFechaNueva] = useState("");
+
+  const [venueNuevo, setVenueNuevo] = useState<(VenueBorrador & ShowBorrador) | null>(null);
   const [guardando, setGuardando] = useState(false);
 
-  function abrir(p: PlazaEditable) {
-    setNueva(null);
-    setEditando(p.id);
-    setBorrador(aBorrador(p));
+  function cerrarTodo() {
+    setVenueAbierto(null);
+    setShowAbierto(null);
+    setFechaEn(null);
+    setVenueNuevo(null);
   }
 
-  async function guardar(id: string) {
-    if (!borrador.fecha) {
-      toast.error("La plaza necesita fecha.");
+  function abrirVenue(g: Grupo) {
+    cerrarTodo();
+    setVenueAbierto(g.clave);
+    setBorradorVenue(venueDe(g.shows[0]));
+  }
+
+  function abrirShow(s: ShowEditable) {
+    cerrarTodo();
+    setShowAbierto(s.id);
+    setBorradorShow(showDe(s));
+  }
+
+  function abrirFecha(g: Grupo) {
+    cerrarTodo();
+    setFechaEn(g.clave);
+    setFechaNueva("");
+  }
+
+  /// El venue vive repartido en sus shows: cambiar el promotor del Lunario tiene
+  /// que alcanzar a las tres noches, o la segunda llamaría a quien ya no es.
+  async function guardarVenue(g: Grupo) {
+    setGuardando(true);
+    try {
+      const cuerpo = cuerpoVenue(borradorVenue);
+      const respuestas = await Promise.all(
+        g.shows.map((s) =>
+          fetch(`/api/gira-shows/${s.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(cuerpo),
+          }),
+        ),
+      );
+      if (respuestas.some((r) => !r.ok)) {
+        toast.error("No se pudo guardar el venue.");
+        return;
+      }
+      toast.success(g.shows.length > 1 ? `Venue actualizado en sus ${g.shows.length} shows` : "Venue actualizado");
+      setVenueAbierto(null);
+      router.refresh();
+    } catch {
+      toast.error("No se pudo guardar el venue.");
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  async function guardarShow(id: string) {
+    if (!borradorShow.fecha) {
+      toast.error("El show necesita fecha.");
       return;
     }
     setGuardando(true);
@@ -148,111 +267,100 @@ export default function ShowsClient({ giraId, plazas }: { giraId: string; plazas
       const res = await fetch(`/api/gira-shows/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(cuerpo(borrador)),
+        body: JSON.stringify(cuerpoShow(borradorShow)),
       });
       const d = await res.json();
       if (!res.ok) {
-        toast.error(d.error ?? "No se pudo guardar la plaza.");
+        toast.error(d.error ?? "No se pudo guardar el show.");
         return;
       }
-      toast.success("Plaza actualizada");
-      setEditando(null);
+      toast.success("Show actualizado");
+      setShowAbierto(null);
       router.refresh();
     } catch {
-      toast.error("No se pudo guardar la plaza.");
+      toast.error("No se pudo guardar el show.");
     } finally {
       setGuardando(false);
     }
   }
 
-  async function crear() {
-    if (!nueva?.fecha) {
-      toast.error("La plaza necesita fecha.");
-      return;
-    }
+  async function crear(cuerpo: Record<string, unknown>, exito: string) {
     setGuardando(true);
     try {
       const res = await fetch(`/api/giras/${giraId}/shows`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(cuerpo(nueva)),
+        body: JSON.stringify(cuerpo),
       });
       const d = await res.json();
       if (!res.ok) {
-        toast.error(d.error ?? "No se pudo agregar la plaza.");
+        toast.error(d.error ?? "No se pudo agregar el show.");
         return;
       }
-      toast.success("Plaza agregada");
-      setNueva(null);
+      toast.success(exito);
+      cerrarTodo();
       router.refresh();
     } catch {
-      toast.error("No se pudo agregar la plaza.");
+      toast.error("No se pudo agregar el show.");
     } finally {
       setGuardando(false);
     }
   }
 
-  async function quitar(p: PlazaEditable) {
+  /// Otra función en un venue que ya existe: el foro, el promotor y el contacto
+  /// de la casa se heredan del show anterior; lo único que se pregunta es el día.
+  function agregarFecha(g: Grupo) {
+    if (!fechaNueva) {
+      toast.error("El show necesita fecha.");
+      return;
+    }
+    const ultimo = g.shows[g.shows.length - 1];
+    crear(
+      {
+        ...cuerpoVenue(venueDe(ultimo)),
+        fecha: fechaNueva,
+        tipoShow: ultimo.tipoShow,
+        aforoEsperado: ultimo.aforoEsperado,
+        estado: "POR_CONFIRMAR",
+      },
+      "Show agregado al venue",
+    );
+  }
+
+  function agregarVenue() {
+    if (!venueNuevo?.fecha) {
+      toast.error("El show necesita fecha.");
+      return;
+    }
+    crear({ ...cuerpoVenue(venueNuevo), ...cuerpoShow(venueNuevo) }, "Venue agregado");
+  }
+
+  async function quitar(s: ShowEditable, g: Grupo) {
+    const arrastra = s.renglones > 0 || s.crew > 0 || s.bloques > 0;
     const ok = await confirmar({
-      title: "Quitar la plaza",
-      message:
-        p.renglones > 0 || p.crew > 0 || p.bloques > 0
-          ? `Se borran también sus ${p.renglones} renglones de advance, ${p.crew} de crew y ${p.bloques} bloques del día. No se puede deshacer.`
-          : "La plaza se borra de la gira. No se puede deshacer.",
-      confirmText: "Quitar plaza",
+      title: "Quitar el show",
+      message: arrastra
+        ? `Se borran también sus ${s.renglones} renglones de advance, ${s.crew} de crew y ${s.bloques} bloques del día. No se puede deshacer.`
+        : g.shows.length === 1
+          ? "Es el único show de este venue, así que el venue sale de la gira. No se puede deshacer."
+          : "El show se borra de la gira. No se puede deshacer.",
+      confirmText: "Quitar show",
       danger: true,
     });
     if (!ok) return;
-    const res = await fetch(`/api/gira-shows/${p.id}`, { method: "DELETE" });
+    const res = await fetch(`/api/gira-shows/${s.id}`, { method: "DELETE" });
     if (!res.ok) {
-      toast.error("No se pudo quitar la plaza.");
+      toast.error("No se pudo quitar el show.");
       return;
     }
-    toast.success("Plaza eliminada");
-    setEditando(null);
+    toast.success("Show eliminado");
+    setShowAbierto(null);
     router.refresh();
   }
 
-  function campos(b: Borrador, set: (patch: Partial<Borrador>) => void) {
+  function camposVenue(b: VenueBorrador, set: (patch: Partial<VenueBorrador>) => void) {
     return (
       <div className="space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-          <div>
-            <label className="ms-label block mb-1.5">Fecha</label>
-            <input type="date" value={b.fecha} onChange={(e) => set({ fecha: e.target.value })} className="ms-input" />
-          </div>
-          <div>
-            <label className="ms-label block mb-1.5">Ciudad</label>
-            <input
-              value={b.ciudad}
-              onChange={(e) => set({ ciudad: e.target.value })}
-              placeholder="ej. Monterrey"
-              className="ms-input"
-            />
-          </div>
-          <div>
-            <label className="ms-label block mb-1.5">Tipo de show</label>
-            <select value={b.tipoShow} onChange={(e) => set({ tipoShow: e.target.value })} className="ms-input">
-              <option value="">Sin definir</option>
-              {TIPOS_SHOW.map((t) => (
-                <option key={t} value={t}>
-                  {TIPO_SHOW_LABEL[t]}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="ms-label block mb-1.5">Estado</label>
-            <select value={b.estado} onChange={(e) => set({ estado: e.target.value })} className="ms-input">
-              {ESTADOS_SHOW.map((e) => (
-                <option key={e} value={e}>
-                  {ESTADO_SHOW_LABEL[e]}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
         <div className="grid grid-cols-1 sm:grid-cols-[2fr_1fr] gap-3">
           <VenuePicker
             label="Venue del catálogo"
@@ -268,13 +376,11 @@ export default function ShowsClient({ giraId, plazas }: { giraId: string; plazas
             }
           />
           <div>
-            <label className="ms-label block mb-1.5">Aforo esperado</label>
+            <label className="ms-label block mb-1.5">Ciudad</label>
             <input
-              type="number"
-              min={0}
-              value={b.aforoEsperado}
-              onChange={(e) => set({ aforoEsperado: e.target.value })}
-              placeholder="Personas"
+              value={b.ciudad}
+              onChange={(e) => set({ ciudad: e.target.value })}
+              placeholder="ej. Monterrey"
               className="ms-input"
             />
           </div>
@@ -335,15 +441,55 @@ export default function ShowsClient({ giraId, plazas }: { giraId: string; plazas
             </div>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  function camposShow(b: ShowBorrador, set: (patch: Partial<ShowBorrador>) => void) {
+    return (
+      <div className="space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+          <div>
+            <label className="ms-label block mb-1.5">Fecha</label>
+            <input type="date" value={b.fecha} onChange={(e) => set({ fecha: e.target.value })} className="ms-input" />
+          </div>
+          <div>
+            <label className="ms-label block mb-1.5">Tipo de show</label>
+            <select value={b.tipoShow} onChange={(e) => set({ tipoShow: e.target.value })} className="ms-input">
+              <option value="">Sin definir</option>
+              {TIPOS_SHOW.map((t) => (
+                <option key={t} value={t}>
+                  {TIPO_SHOW_LABEL[t]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="ms-label block mb-1.5">Estado</label>
+            <select value={b.estado} onChange={(e) => set({ estado: e.target.value })} className="ms-input">
+              {ESTADOS_SHOW.map((e) => (
+                <option key={e} value={e}>
+                  {ESTADO_SHOW_LABEL[e]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="ms-label block mb-1.5">Aforo esperado</label>
+            <input
+              type="number"
+              min={0}
+              value={b.aforoEsperado}
+              onChange={(e) => set({ aforoEsperado: e.target.value })}
+              placeholder="Personas"
+              className="ms-input"
+            />
+          </div>
+        </div>
 
         <div>
-          <label className="ms-label block mb-1.5">Notas de la plaza</label>
-          <textarea
-            value={b.notas}
-            onChange={(e) => set({ notas: e.target.value })}
-            rows={2}
-            className="ms-textarea"
-          />
+          <label className="ms-label block mb-1.5">Notas del show</label>
+          <textarea value={b.notas} onChange={(e) => set({ notas: e.target.value })} rows={2} className="ms-textarea" />
         </div>
       </div>
     );
@@ -353,100 +499,198 @@ export default function ShowsClient({ giraId, plazas }: { giraId: string; plazas
     <div className="ms-page space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="ms-h2">Plazas</h2>
+          <h2 className="ms-h2">Venues</h2>
           <p className="ms-subtitle mt-0.5">
-            Se ordenan solas por fecha. Los horarios del día se capturan en el resumen de cada plaza.
+            Cada venue agrupa sus funciones: tres noches en el Lunario son un venue y tres shows. El promotor y el
+            contacto de la casa se capturan una vez; la fecha, el estado y el advance son de cada show.
           </p>
         </div>
         <button
           onClick={() => {
-            setEditando(null);
-            setNueva(NUEVA);
+            cerrarTodo();
+            setVenueNuevo({ ...VENUE_NUEVO, ...SHOW_NUEVO });
           }}
           className="ms-btn-primary"
         >
-          Agregar plaza
+          Agregar venue
         </button>
       </div>
 
-      {nueva && (
-        <section className="ms-card border-[#B3985B]/30 p-4">
-          <h3 className="ms-section-label mb-3.5">Plaza nueva</h3>
-          {campos(nueva, (patch) => setNueva((p) => ({ ...(p ?? NUEVA), ...patch })))}
-          <div className="flex items-center gap-2 mt-3.5">
-            <button onClick={crear} disabled={guardando} className="ms-btn-primary disabled:opacity-50">
-              {guardando ? "Agregando…" : "Agregar plaza"}
+      {venueNuevo && (
+        <section className="ms-card border-[#B3985B]/30 p-4 space-y-3">
+          <h3 className="ms-section-label">Venue nuevo</h3>
+          {camposVenue(venueNuevo, (patch) => setVenueNuevo((v) => (v ? { ...v, ...patch } : v)))}
+          <div className="border-t border-[#1a1a1a] pt-3">
+            <p className="ms-micro text-[#B3985B] mb-2">Primer show</p>
+            {camposShow(venueNuevo, (patch) => setVenueNuevo((v) => (v ? { ...v, ...patch } : v)))}
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={agregarVenue} disabled={guardando} className="ms-btn-primary disabled:opacity-50">
+              {guardando ? "Agregando…" : "Agregar venue"}
             </button>
-            <button onClick={() => setNueva(null)} className="ms-btn-ghost">
+            <button onClick={() => setVenueNuevo(null)} className="ms-btn-ghost">
               Cancelar
             </button>
           </div>
         </section>
       )}
 
-      {plazas.length === 0 && !nueva ? (
+      {grupos.length === 0 && !venueNuevo ? (
         <div className="ms-card px-4 py-10 text-center">
-          <p className="ms-meta">La gira todavía no tiene plazas. Agrega la primera para empezar el advance.</p>
+          <p className="ms-meta">La gira todavía no tiene venues. Agrega el primero para empezar el advance.</p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {plazas.map((p, i) => {
-            const abierto = editando === p.id;
-            const dias = diasRestantes(p.fecha);
+        <div className="space-y-3">
+          {grupos.map((g, i) => {
+            const editandoVenue = venueAbierto === g.clave;
             return (
-              <section key={p.id} className={`ms-card ${abierto ? "border-[#B3985B]/30" : ""}`}>
+              <section key={g.clave} className={`ms-card ${editandoVenue ? "border-[#B3985B]/30" : ""}`}>
                 <div className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-4 px-4 py-3">
                   <span className="ms-micro text-[#555] tabular-nums shrink-0 w-6">{i + 1}</span>
 
                   <div className="min-w-0 flex-1">
-                    <p className="text-[13px] text-white truncate">
-                      {fmtFechaCorta(p.fecha)} · {p.ciudad ?? "Sin ciudad"}
-                      {p.venueNombre ? ` · ${p.venueNombre}` : " · Sin venue"}
-                    </p>
+                    <p className="text-[13px] text-white truncate">{tituloGrupo(g)}</p>
                     <p className="ms-meta truncate mt-0.5">
-                      {fmtDiasRestantes(dias)}
-                      {p.tipoShow ? ` · ${TIPO_SHOW_LABEL[p.tipoShow] ?? p.tipoShow}` : ""}
-                      {p.aforoEsperado ? ` · ${p.aforoEsperado.toLocaleString("es-MX")} pax` : ""}
-                      {p.promotorNombre ? ` · ${p.promotorNombre}` : ""}
+                      {g.shows.length === 1 ? "1 show" : `${g.shows.length} shows`} · {rangoGrupo(g)}
+                      {g.shows[0].promotorNombre ? ` · ${g.shows[0].promotorNombre}` : ""}
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2 flex-wrap shrink-0">
-                    <span className={`text-[11px] px-2 py-0.5 rounded-full border ${ESTADO_SHOW_COLOR[p.estado] ?? ""}`}>
-                      {ESTADO_SHOW_LABEL[p.estado] ?? p.estado}
-                    </span>
-                    <span className={`text-[11px] px-2 py-0.5 rounded-full border ${SEMAFORO_COLOR[p.semaforo] ?? ""}`}>
-                      {p.renglones ? `Advance ${p.avance}%` : SEMAFORO_LABEL[p.semaforo]}
-                    </span>
-                    <Link
-                      href={`/giras/${giraId}/show/${p.id}`}
-                      className="ms-micro text-[#B3985B] hover:text-white transition-colors"
-                    >
-                      Abrir plaza →
-                    </Link>
+                  <div className="flex items-center gap-3 flex-wrap shrink-0">
+                    {/* Sin venue del catálogo no hay a qué agrupar: cada fecha suelta
+                        seguiría siendo su propia tarjeta y nadie entendería por qué. */}
+                    {g.venueId && (
+                      <button
+                        onClick={() => (fechaEn === g.clave ? setFechaEn(null) : abrirFecha(g))}
+                        className="ms-micro text-[#B3985B] hover:text-white transition-colors"
+                      >
+                        + Agregar show
+                      </button>
+                    )}
                     <button
-                      onClick={() => (abierto ? setEditando(null) : abrir(p))}
+                      onClick={() => (editandoVenue ? setVenueAbierto(null) : abrirVenue(g))}
                       className="ms-micro text-[#6b7280] hover:text-white transition-colors"
                     >
-                      {abierto ? "Cerrar" : "Editar"}
+                      {editandoVenue ? "Cerrar" : "Editar venue"}
                     </button>
                   </div>
                 </div>
 
-                {abierto && (
+                {editandoVenue && (
                   <div className="px-4 pb-4 pt-1 border-t border-[#1a1a1a]">
-                    {campos(borrador, (patch) => setBorrador((b) => ({ ...b, ...patch })))}
+                    {camposVenue(borradorVenue, (patch) => setBorradorVenue((b) => ({ ...b, ...patch })))}
                     <div className="flex flex-wrap items-center gap-2 mt-3.5">
-                      <button onClick={() => guardar(p.id)} disabled={guardando} className="ms-btn-primary disabled:opacity-50">
-                        {guardando ? "Guardando…" : "Guardar plaza"}
+                      <button
+                        onClick={() => guardarVenue(g)}
+                        disabled={guardando}
+                        className="ms-btn-primary disabled:opacity-50"
+                      >
+                        {guardando ? "Guardando…" : "Guardar venue"}
                       </button>
-                      <button onClick={() => setEditando(null)} className="ms-btn-ghost">
+                      <button onClick={() => setVenueAbierto(null)} className="ms-btn-ghost">
                         Cancelar
                       </button>
-                      <button onClick={() => quitar(p)} className="ms-btn-ghost text-red-400/80 hover:text-red-300 ml-auto">
-                        Quitar plaza
-                      </button>
+                      {g.shows.length > 1 && (
+                        <p className="ms-micro text-[#6b7280]">Se aplica a los {g.shows.length} shows del venue.</p>
+                      )}
                     </div>
+                  </div>
+                )}
+
+                <div className="border-t border-[#1a1a1a]">
+                  {g.shows.map((s) => {
+                    const abierto = showAbierto === s.id;
+                    const dias = diasRestantes(s.fecha);
+                    return (
+                      <div key={s.id} className="border-b border-[#111] last:border-b-0">
+                        <div className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-4 pl-10 pr-4 py-2.5">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[13px] text-white truncate">{fmtFechaCorta(s.fecha)}</p>
+                            <p className="ms-meta truncate mt-0.5">
+                              {fmtDiasRestantes(dias)}
+                              {s.tipoShow ? ` · ${TIPO_SHOW_LABEL[s.tipoShow] ?? s.tipoShow}` : ""}
+                              {s.aforoEsperado ? ` · ${s.aforoEsperado.toLocaleString("es-MX")} pax` : ""}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-2 flex-wrap shrink-0">
+                            <span
+                              className={`text-[11px] px-2 py-0.5 rounded-full border ${ESTADO_SHOW_COLOR[s.estado] ?? ""}`}
+                            >
+                              {ESTADO_SHOW_LABEL[s.estado] ?? s.estado}
+                            </span>
+                            <span
+                              className={`text-[11px] px-2 py-0.5 rounded-full border ${SEMAFORO_COLOR[s.semaforo] ?? ""}`}
+                            >
+                              {s.renglones ? `Advance ${s.avance}%` : SEMAFORO_LABEL[s.semaforo]}
+                            </span>
+                            <Link
+                              href={`/giras/${giraId}/show/${s.id}`}
+                              className="ms-micro text-[#B3985B] hover:text-white transition-colors"
+                            >
+                              Abrir show →
+                            </Link>
+                            <button
+                              onClick={() => (abierto ? setShowAbierto(null) : abrirShow(s))}
+                              className="ms-micro text-[#6b7280] hover:text-white transition-colors"
+                            >
+                              {abierto ? "Cerrar" : "Editar"}
+                            </button>
+                          </div>
+                        </div>
+
+                        {abierto && (
+                          <div className="pl-10 pr-4 pb-4 pt-1">
+                            {camposShow(borradorShow, (patch) => setBorradorShow((b) => ({ ...b, ...patch })))}
+                            <div className="flex flex-wrap items-center gap-2 mt-3.5">
+                              <button
+                                onClick={() => guardarShow(s.id)}
+                                disabled={guardando}
+                                className="ms-btn-primary disabled:opacity-50"
+                              >
+                                {guardando ? "Guardando…" : "Guardar show"}
+                              </button>
+                              <button onClick={() => setShowAbierto(null)} className="ms-btn-ghost">
+                                Cancelar
+                              </button>
+                              <button
+                                onClick={() => quitar(s, g)}
+                                className="ms-btn-ghost text-red-400/80 hover:text-red-300 ml-auto"
+                              >
+                                Quitar show
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {fechaEn === g.clave && (
+                  <div className="flex flex-wrap items-end gap-2 pl-10 pr-4 py-3 border-t border-[#1a1a1a]">
+                    <div>
+                      <label className="ms-label block mb-1.5">Otra fecha en {g.venueNombre ?? "este venue"}</label>
+                      <input
+                        type="date"
+                        value={fechaNueva}
+                        onChange={(e) => setFechaNueva(e.target.value)}
+                        className="ms-input"
+                      />
+                    </div>
+                    <button
+                      onClick={() => agregarFecha(g)}
+                      disabled={guardando}
+                      className="ms-btn-primary disabled:opacity-50"
+                    >
+                      {guardando ? "Agregando…" : "Agregar show"}
+                    </button>
+                    <button onClick={() => setFechaEn(null)} className="ms-btn-ghost">
+                      Cancelar
+                    </button>
+                    <p className="ms-micro text-[#6b7280] w-full">
+                      Hereda el venue, el promotor y el contacto de la casa. El advance de la fecha nueva se arma aparte.
+                    </p>
                   </div>
                 )}
               </section>

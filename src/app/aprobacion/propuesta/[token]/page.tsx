@@ -169,7 +169,7 @@ export default function AprobacionPropuestaPage({ params }: { params: Promise<{ 
                 <li key={s.id} className="flex justify-between gap-4 text-sm border-b border-white/5 pb-2">
                   <span className="text-white/80 capitalize">{fmtFecha(s.fecha)}</span>
                   <span className="text-white/40 text-right">
-                    {[s.ciudad, s.venue?.nombre].filter(Boolean).join(" · ") || "Plaza por confirmar"}
+                    {[s.ciudad, s.venue?.nombre].filter(Boolean).join(" · ") || "Venue por confirmar"}
                   </span>
                 </li>
               ))}

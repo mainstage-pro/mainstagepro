@@ -1,4 +1,4 @@
-// Descarga con sesión de los documentos de una plaza.
+// Descarga con sesión de los documentos de un show.
 //
 // Mismo generador que el enlace público, única diferencia el
 // Content-Disposition: adentro se descarga, afuera se ve en línea.
@@ -21,7 +21,7 @@ export async function GET(
   }
 
   const show = await prisma.giraShow.findUnique({ where: { id: showId }, select: { giraId: true } });
-  if (!show) return NextResponse.json({ error: "La plaza no existe" }, { status: 404 });
+  if (!show) return NextResponse.json({ error: "El show no existe" }, { status: 404 });
 
   const pdf = await generarDocDeShow(documento, showId, show.giraId);
   if (!pdf) {

@@ -44,14 +44,14 @@ export default async function GirasListaPage() {
       estado: g.estado,
       artista: g.artista.nombre,
       cliente: g.cliente ? g.cliente.empresa || g.cliente.nombre : null,
-      // La gira puede no tener fechas capturadas todavía; las plazas son el respaldo.
+      // La gira puede no tener fechas capturadas todavía; los shows son el respaldo.
       fechaInicio: (g.fechaInicio ?? g.shows[0]?.fecha ?? null)?.toISOString() ?? null,
       fechaFin: (g.fechaFin ?? g.shows[g.shows.length - 1]?.fecha ?? null)?.toISOString() ?? null,
-      plazas: g.shows.length,
+      shows: g.shows.length,
       ciudades: [...new Set(g.shows.map((s) => s.ciudad).filter((c): c is string => !!c))],
       avance: resumen.avance,
       semaforo: resumen.semaforo,
-      plazasEnRiesgo: resumen.enRiesgo + resumen.sinArmar,
+      showsEnRiesgo: resumen.enRiesgo + resumen.sinArmar,
     };
   });
 

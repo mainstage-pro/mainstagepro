@@ -41,7 +41,7 @@ interface Props {
 const NOTAS: { campo: keyof RiderFicha; titulo: string; ayuda: string }[] = [
   { campo: "notasFoh", titulo: DISCIPLINA_LABEL.AUDIO + " — FOH", ayuda: "Consola, procesamiento, posición de la cabina, quién mezcla." },
   { campo: "notasMonitoreo", titulo: "Monitoreo", ayuda: "In-ears, wedges, quién mezcla monitores, mixes por persona." },
-  { campo: "notasBackline", titulo: DISCIPLINA_LABEL.BACKLINE, ayuda: "Lo que el artista trae y lo que espera encontrar en la plaza." },
+  { campo: "notasBackline", titulo: DISCIPLINA_LABEL.BACKLINE, ayuda: "Lo que el artista trae y lo que espera encontrar en el venue." },
   { campo: "notasIluminacion", titulo: DISCIPLINA_LABEL.ILUMINACION, ayuda: "Consola, intención de diseño, lo que no se negocia." },
   { campo: "notasVideo", titulo: DISCIPLINA_LABEL.VIDEO, ayuda: "Pantallas, contenido, resolución, quién opera." },
   { campo: "notasEnergia", titulo: DISCIPLINA_LABEL.ENERGIA, ayuda: "Alimentación, tierras, planta de respaldo." },
@@ -143,7 +143,7 @@ export default function RiderFichaClient({ artistaId, rider }: Props) {
       </section>
 
       <section className="ms-card p-4 space-y-4">
-        <p className="ms-section-label">Números que condicionan la plaza</p>
+        <p className="ms-section-label">Números que condicionan el show</p>
         <p className="ms-micro">
           Son los que descalifican un foro antes de ver el detalle: si no caben los canales ni el escenario, no hay
           show.

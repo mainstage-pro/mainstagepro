@@ -36,7 +36,7 @@ export default async function CrewGiraPage({ params }: { params: Promise<{ id: s
       <div>
         <h1 className="ms-h1">Crew de la gira</h1>
         <p className="ms-subtitle">
-          Quién va, de dónde sale y con qué función. Un renglón sin plaza viaja toda la gira; uno con plaza es refuerzo
+          Quién va, de dónde sale y con qué función. Un renglón sin show viaja toda la gira; uno con show es refuerzo
           de ese día.
         </p>
       </div>
@@ -47,7 +47,7 @@ export default async function CrewGiraPage({ params }: { params: Promise<{ id: s
         crewInicial={crew}
         personas={candidatos.personas}
         roles={candidatos.roles}
-        plazas={gira.shows}
+        shows={gira.shows}
       />
     </div>
   );

@@ -44,7 +44,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ se
     data.duracionMin = body.duracionMin === null || body.duracionMin === "" || !Number.isFinite(n) ? null : Math.trunc(n);
   }
 
-  // Solo el setlist de toda la gira puede ser el base; el de una plaza es variante.
+  // Solo el setlist de toda la gira puede ser el base; el de un show es variante.
   if ("esBase" in body) {
     const esBase = !!body.esBase && !existente.showId;
     if (esBase) {

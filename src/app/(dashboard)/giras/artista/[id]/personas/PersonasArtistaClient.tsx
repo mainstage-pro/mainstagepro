@@ -386,7 +386,7 @@ export default function PersonasArtistaClient({ artistaId, integrantesNum, perso
 
       <p className="ms-micro">
         Cada celda se guarda sola al dejar de escribir. Las personas marcadas «en escena» son el elenco; las «clave»
-        son a quienes se les llama cuando algo se mueve en una plaza.
+        son a quienes se les llama cuando algo se mueve en un show.
       </p>
     </div>
   );

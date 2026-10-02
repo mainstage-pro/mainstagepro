@@ -1,8 +1,8 @@
 // src/lib/pdf-gira/day-sheet.ts
 //
-// El day sheet de una plaza. Lee la plaza, su corrida, el crew que la trabaja y
+// El day sheet de un show. Lee el show, su corrida, el crew que lo trabaja y
 // los contactos, y arma el PDF. Si nadie capturó bloques todavía, la corrida se
-// deriva de los horarios gruesos de la plaza con SIEMBRA_BLOQUES: un day sheet
+// deriva de los horarios gruesos del show con SIEMBRA_BLOQUES: un day sheet
 // vacío no sirve de nada y el tour manager lo pide igual.
 
 import React from "react";
@@ -52,7 +52,7 @@ export async function generarDaySheet(showId: string): Promise<PdfGira | null> {
 
   if (!show) return null;
 
-  // El crew de la plaza son los que viajan toda la gira más los refuerzos del
+  // El crew del show son los que viajan toda la gira más los refuerzos del
   // día: el day sheet se reparte a los dos grupos por igual.
   const [crew, viajes, hospedajes, setlist] = await Promise.all([
     prisma.giraCrew.findMany({
@@ -212,7 +212,7 @@ export async function generarDaySheet(showId: string): Promise<PdfGira | null> {
       operador: v.operador,
       identificador: v.identificador,
     })),
-    // Un hotel por ciudad: se muestra el de la plaza y, si la ciudad no coincide
+    // Un hotel por ciudad: se muestra el del show y, si la ciudad no coincide
     // con ninguno, se callan todos antes que mandar al crew al hotel equivocado.
     hoteles: hospedajes
       .filter((h) => !ciudad || !h.ciudad || h.ciudad.toLowerCase() === ciudad.toLowerCase())

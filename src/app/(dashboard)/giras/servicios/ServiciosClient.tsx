@@ -355,7 +355,7 @@ function ModalServicio({
               <label className="ms-label">Nombre</label>
               <input
                 className="ms-input mt-1"
-                placeholder="Advance técnico por plaza"
+                placeholder="Advance técnico por venue"
                 value={nombre}
                 onChange={(e) => {
                   setNombre(e.target.value);
@@ -474,7 +474,7 @@ function ModalServicio({
             <textarea
               className="ms-textarea mt-1"
               rows={2}
-              placeholder="Ficha técnica de la plaza, input list conciliado, day sheet…"
+              placeholder="Ficha técnica del venue, input list conciliado, day sheet…"
               value={entregables}
               onChange={(e) => setEntregables(e.target.value)}
             />

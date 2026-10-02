@@ -76,13 +76,13 @@ export default async function AdvanceGiraPage({ params }: { params: Promise<{ id
       <div>
         <h1 className="ms-h1">Advance de toda la gira</h1>
         <p className="ms-subtitle">
-          {gira.artista.nombre} · {gira.nombre} · un renglón por concepto del rider, una columna por plaza
+          {gira.artista.nombre} · {gira.nombre} · un renglón por concepto del rider, una columna por show
         </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="ms-stat-card">
-          <p className="ms-label mb-1">Plazas</p>
+          <p className="ms-label mb-1">Shows</p>
           <p className="text-white text-xl font-semibold">{matriz.columnas.length}</p>
         </div>
         <div className="ms-stat-card">
@@ -97,11 +97,11 @@ export default async function AdvanceGiraPage({ params }: { params: Promise<{ id
         </div>
       </div>
 
-      {/* Matriz concepto × plaza */}
+      {/* Matriz concepto × show */}
       {matriz.filas.length === 0 ? (
         <div className="ms-empty-state">
           <p className="text-sm text-gray-400">
-            Todavía no hay advance en ninguna plaza. Entra a un show y ármalo desde el rider maestro.
+            Todavía no hay advance en ningún show. Entra a un show y ármalo desde el rider maestro.
           </p>
         </div>
       ) : (
@@ -149,9 +149,9 @@ export default async function AdvanceGiraPage({ params }: { params: Promise<{ id
                     <tr className="ms-tr">
                       <td className="ms-td text-white">
                         {f.concepto}
-                        {f.plazasConFaltante > 1 && (
+                        {f.showsConFaltante > 1 && (
                           <span className="ms-micro text-amber-300 block">
-                            falta en {f.plazasConFaltante} plazas — conviene conseguirlo una sola vez
+                            falta en {f.showsConFaltante} shows — conviene conseguirlo una sola vez
                           </span>
                         )}
                       </td>
@@ -198,7 +198,7 @@ export default async function AdvanceGiraPage({ params }: { params: Promise<{ id
 
       {/* Qué falta y con quién conseguirlo */}
       <div className="space-y-3">
-        <h2 className="ms-h2">Qué falta conseguir, por plaza y disciplina</h2>
+        <h2 className="ms-h2">Qué falta conseguir, por show y disciplina</h2>
         {grupos.length === 0 ? (
           <div className="ms-empty-state">
             <p className="text-sm text-gray-400">No hay faltantes abiertos en la gira.</p>
@@ -223,7 +223,7 @@ export default async function AdvanceGiraPage({ params }: { params: Promise<{ id
                   <thead className="ms-thead">
                     <tr>
                       <th className="ms-th">Concepto</th>
-                      <th className="ms-th">Plaza</th>
+                      <th className="ms-th">Show</th>
                       <th className="ms-th">Falta</th>
                       <th className="ms-th">Prioridad</th>
                       <th className="ms-th">Estado</th>
@@ -259,7 +259,7 @@ export default async function AdvanceGiraPage({ params }: { params: Promise<{ id
                 <p className="ms-label mb-1.5">Proveedores con cobertura en {g.ciudad}</p>
                 {g.proveedores.length === 0 ? (
                   <p className="ms-meta">
-                    Ninguno declarado para esta plaza y disciplina. Captura ciudades y disciplinas en el{" "}
+                    Ninguno declarado para este show y disciplina. Captura ciudades y disciplinas en el{" "}
                     <Link href="/directorio/proveedores" className="ms-link-gold">
                       directorio de proveedores
                     </Link>

@@ -116,7 +116,7 @@ export default function ArtistasCatalogoClient({ artistas, clientes }: Props) {
         <div>
           <h1 className="ms-h1">Artistas</h1>
           <p className="ms-subtitle mt-1">
-            El rider maestro vive aquí: lo que el artista pide una vez y cada plaza tiene que resolver.
+            El rider maestro vive aquí: lo que el artista pide una vez y cada show tiene que resolver.
           </p>
         </div>
         <button

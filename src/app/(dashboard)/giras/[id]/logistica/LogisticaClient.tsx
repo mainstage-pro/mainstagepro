@@ -96,7 +96,7 @@ export interface CrewLigero {
   funcion: string;
 }
 
-export interface PlazaLigera {
+export interface ShowLigero {
   id: string;
   fecha: Date | string;
   ciudad: string | null;
@@ -108,7 +108,7 @@ interface Props {
   viajesIniciales: ViajeFila[];
   ocupantes: OcupanteCandidato[];
   crew: CrewLigero[];
-  plazas: PlazaLigera[];
+  shows: ShowLigero[];
 }
 
 const DEMORA_GUARDADO = 700;
@@ -127,7 +127,7 @@ export default function LogisticaClient({
   viajesIniciales,
   ocupantes,
   crew,
-  plazas,
+  shows,
 }: Props) {
   const toast = useToast();
   const confirmar = useConfirm();
@@ -651,7 +651,7 @@ export default function LogisticaClient({
                               className="ms-input-inline w-full"
                             >
                               <option value="">Toda la estancia</option>
-                              {plazas.map((p) => (
+                              {shows.map((p) => (
                                 <option key={p.id} value={p.id} className="bg-[#111] text-white">
                                   {fmtFechaCorta(p.fecha)}
                                   {p.ciudad ? ` · ${p.ciudad}` : ""}
@@ -742,7 +742,7 @@ export default function LogisticaClient({
                   <th className="ms-th w-[110px]">Costo</th>
                   <th className="ms-th w-[70px]">Grupal</th>
                   <th className="ms-th w-[220px]">Quién viaja</th>
-                  <th className="ms-th w-[170px]">Plaza</th>
+                  <th className="ms-th w-[170px]">Show</th>
                   <th className="ms-th w-[40px]" />
                 </tr>
               </thead>
@@ -863,8 +863,8 @@ export default function LogisticaClient({
                         onChange={(e) => editarViaje(v.id, { showId: e.target.value || null }, true)}
                         className="ms-input-inline w-full"
                       >
-                        <option value="">Sin plaza</option>
-                        {plazas.map((p) => (
+                        <option value="">Sin show</option>
+                        {shows.map((p) => (
                           <option key={p.id} value={p.id} className="bg-[#111] text-white">
                             {fmtFechaCorta(p.fecha)}
                             {p.ciudad ? ` · ${p.ciudad}` : ""}

@@ -40,7 +40,7 @@ export default async function GiraLayout({
   const resumen = avanceGira(gira.shows);
 
   // El rango de la cabecera prefiere las fechas capturadas, pero si están vacías
-  // se lee de las plazas: la gira nunca debe verse "sin fechas" si ya tiene shows.
+  // se lee de los shows: la gira nunca debe verse "sin fechas" si ya tiene shows.
   const rango =
     gira.fechaInicio || gira.fechaFin
       ? fmtRango(gira.fechaInicio, gira.fechaFin)
@@ -50,7 +50,7 @@ export default async function GiraLayout({
 
   const enlaces: EnlaceSub[] = [
     { href: `/giras/${id}`, label: "Resumen", exacto: true },
-    { href: `/giras/${id}/shows`, label: "Plazas" },
+    { href: `/giras/${id}/shows`, label: "Venues" },
     { href: `/giras/${id}/crew`, label: "Crew" },
     { href: `/giras/${id}/logistica`, label: "Viajes y hotel" },
     { href: `/giras/${id}/setlist`, label: "Setlist" },
@@ -65,7 +65,7 @@ export default async function GiraLayout({
         artista={gira.artista.nombre}
         rango={rango}
         estado={gira.estado}
-        plazas={gira.shows.length}
+        shows={gira.shows.length}
         avance={resumen.avance}
         semaforo={resumen.semaforo}
         enlaces={enlaces}

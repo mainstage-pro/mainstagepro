@@ -37,7 +37,7 @@ interface GiraFila {
   estado: string;
   fechaInicio: string | null;
   fechaFin: string | null;
-  plazas: number;
+  shows: number;
 }
 
 interface Props {
@@ -315,7 +315,7 @@ export default function DatosArtistaClient({ artista, clientes, giras }: Props) 
                     <div className="min-w-0">
                       <p className="text-[13px] text-white truncate">{g.nombre}</p>
                       <p className="ms-micro">
-                        {fmtRango(g.fechaInicio, g.fechaFin)} · {g.plazas} {g.plazas === 1 ? "plaza" : "plazas"}
+                        {fmtRango(g.fechaInicio, g.fechaFin)} · {g.shows} {g.shows === 1 ? "show" : "shows"}
                       </p>
                     </div>
                     <span className={`ms-badge shrink-0 ${ESTADO_GIRA_COLOR[g.estado] ?? ""}`}>

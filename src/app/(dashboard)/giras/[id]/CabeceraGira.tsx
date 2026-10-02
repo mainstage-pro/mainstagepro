@@ -11,7 +11,7 @@ interface Props {
   artista: string;
   rango: string;
   estado: string;
-  plazas: number;
+  shows: number;
   avance: number;
   semaforo: string;
   enlaces: EnlaceSub[];
@@ -20,7 +20,7 @@ interface Props {
 export default function CabeceraGira(p: Props) {
   const pathname = usePathname();
 
-  // Dentro de una plaza manda la cabecera del show: dos barras de navegación
+  // Dentro de un show manda la cabecera del propio show: dos barras de navegación
   // encimadas no orientan, estorban.
   if (pathname.startsWith(`/giras/${p.giraId}/show/`)) return null;
 
@@ -34,7 +34,7 @@ export default function CabeceraGira(p: Props) {
         <div className="min-w-0">
           <h1 className="ms-h1 truncate">{p.nombre}</h1>
           <p className="ms-subtitle mt-0.5">
-            {p.artista} · {p.rango} · {p.plazas} {p.plazas === 1 ? "plaza" : "plazas"}
+            {p.artista} · {p.rango} · {p.shows} {p.shows === 1 ? "show" : "shows"}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">

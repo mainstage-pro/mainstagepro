@@ -65,7 +65,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ sho
     },
   });
 
-  if (!show) return NextResponse.json({ error: "La plaza no existe" }, { status: 404 });
+  if (!show) return NextResponse.json({ error: "El show no existe" }, { status: 404 });
 
   return NextResponse.json({ show });
 }
@@ -79,21 +79,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ sh
     where: { id: showId },
     select: { id: true, giraId: true, fecha: true, estado: true, ciudad: true },
   });
-  if (!existente) return NextResponse.json({ error: "La plaza no existe" }, { status: 404 });
+  if (!existente) return NextResponse.json({ error: "El show no existe" }, { status: 404 });
 
   const body = await req.json();
   const data: Record<string, unknown> = {};
 
   if ("fecha" in body) {
     const fecha = parseFechaGira(body.fecha);
-    if (!fecha) return NextResponse.json({ error: "La fecha de la plaza es obligatoria" }, { status: 400 });
+    if (!fecha) return NextResponse.json({ error: "La fecha del show es obligatoria" }, { status: 400 });
     data.fecha = fecha;
   }
 
   if ("venueId" in body) {
     data.venueId = body.venueId || null;
-    // Al ligar el venue se siembra la ciudad si la plaza no tenía: el advance se
-    // ordena por ciudad y una plaza sin ciudad desaparece de la logística.
+    // Al ligar el venue se siembra la ciudad si el show no tenía: el advance se
+    // ordena por ciudad y un show sin ciudad desaparece de la logística.
     if (body.venueId && !existente.ciudad && !("ciudad" in body)) {
       const venue = await prisma.venue.findUnique({ where: { id: body.venueId }, select: { ciudad: true } });
       if (venue?.ciudad) data.ciudad = venue.ciudad;
@@ -155,9 +155,9 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     where: { id: showId },
     select: { id: true, giraId: true, ciudad: true, fecha: true, _count: { select: { riderLineas: true } } },
   });
-  if (!existente) return NextResponse.json({ error: "La plaza no existe" }, { status: 404 });
+  if (!existente) return NextResponse.json({ error: "El show no existe" }, { status: 404 });
 
-  // GiraShow no tiene bandera `activo`: quitar la plaza borra en cascada su advance,
+  // GiraShow no tiene bandera `activo`: quitar el show borra en cascada su advance,
   // sus bloques y su crew. La UI lo advierte antes de llegar aquí.
   await prisma.giraShow.delete({ where: { id: showId } });
   await reordenarShows(existente.giraId);
@@ -167,7 +167,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     "ELIMINAR",
     "GiraShow",
     showId,
-    `Quitó la plaza del ${existente.fecha.toISOString().slice(0, 10)}${existente.ciudad ? ` en ${existente.ciudad}` : ""}`,
+    `Quitó el show del ${existente.fecha.toISOString().slice(0, 10)}${existente.ciudad ? ` en ${existente.ciudad}` : ""}`,
     { renglonesAdvance: existente._count.riderLineas },
   );
 

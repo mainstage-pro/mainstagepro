@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Day sheet de la plaza: la jornada bloque por bloque. Los horarios gruesos del
+ * Day sheet del show: la jornada bloque por bloque. Los horarios gruesos del
  * resumen (load in, soundcheck, show) son el esqueleto; aquí se abren en el
  * detalle que se imprime y se reparte, con responsable y lugar de cada cosa.
  */
@@ -36,9 +36,9 @@ export interface BloqueFila {
 interface Props {
   showId: string;
   bloquesIniciales: BloqueFila[];
-  /// Cuántos horarios gruesos tiene capturada la plaza: si son cero, sembrar no
+  /// Cuántos horarios gruesos tiene capturados el show: si son cero, sembrar no
   /// serviría de nada y hay que decirlo en vez de dejar el botón mintiendo.
-  horariosPlaza: number;
+  horariosShow: number;
 }
 
 type Campos = Partial<Record<keyof BloqueFila, unknown>>;
@@ -53,7 +53,7 @@ interface Nuevo {
 
 const NUEVO: Nuevo = { titulo: "", tipo: "LOGISTICA", hora: "" };
 
-export default function DiaShowTabla({ showId, bloquesIniciales, horariosPlaza }: Props) {
+export default function DiaShowTabla({ showId, bloquesIniciales, horariosShow }: Props) {
   const toast = useToast();
   const confirmar = useConfirm();
 
@@ -127,7 +127,7 @@ export default function DiaShowTabla({ showId, bloquesIniciales, horariosPlaza }
         return;
       }
       setAviso(
-        `Se agregaron ${d.agregados} bloques desde los horarios de la plaza` +
+        `Se agregaron ${d.agregados} bloques desde los horarios del show` +
           (d.existentes ? `, ${d.existentes} ya estaban y no se tocaron` : "") +
           (d.sinHora ? `, ${d.sinHora} horarios siguen vacíos en el resumen` : "") +
           ".",
@@ -160,7 +160,7 @@ export default function DiaShowTabla({ showId, bloquesIniciales, horariosPlaza }
 
   async function quitar(b: BloqueFila) {
     const ok = await confirmar({
-      message: `¿Quitar «${b.titulo}» del día? Los horarios gruesos de la plaza no se tocan.`,
+      message: `¿Quitar «${b.titulo}» del día? Los horarios gruesos del show no se tocan.`,
       danger: true,
       confirmText: "Quitar",
     });
@@ -222,20 +222,20 @@ export default function DiaShowTabla({ showId, bloquesIniciales, horariosPlaza }
       <div className="flex flex-wrap gap-2 items-center">
         <button
           onClick={() => void sembrar()}
-          disabled={trabajando || horariosPlaza === 0}
+          disabled={trabajando || horariosShow === 0}
           className="ms-btn-primary disabled:opacity-50"
-          title={horariosPlaza === 0 ? "La plaza todavía no tiene horarios capturados en el resumen" : undefined}
+          title={horariosShow === 0 ? "El show todavía no tiene horarios capturados en el resumen" : undefined}
         >
-          {trabajando ? "Armando…" : "Armar el día desde los horarios de la plaza"}
+          {trabajando ? "Armando…" : "Armar el día desde los horarios del show"}
         </button>
         <button onClick={() => setNuevo((n) => (n ? null : { ...NUEVO }))} className="ms-btn-ghost">
           {nuevo ? "Cerrar" : "+ Bloque"}
         </button>
       </div>
 
-      {horariosPlaza === 0 && (
+      {horariosShow === 0 && (
         <p className="text-xs text-amber-300">
-          La plaza no tiene horarios gruesos capturados. Llénalos en el resumen de la plaza y vuelve para armar el día de
+          El show no tiene horarios gruesos capturados. Llénalos en el resumen del show y vuelve para armar el día de
           un golpe, o captura los bloques a mano aquí.
         </p>
       )}
@@ -286,7 +286,7 @@ export default function DiaShowTabla({ showId, bloquesIniciales, horariosPlaza }
       {ordenados.length === 0 ? (
         <div className="ms-empty-state">
           <p className="text-sm text-gray-400">
-            El día está en blanco. Ármalo desde los horarios de la plaza y luego abre los bloques que necesiten detalle.
+            El día está en blanco. Ármalo desde los horarios del show y luego abre los bloques que necesiten detalle.
           </p>
         </div>
       ) : (

@@ -121,7 +121,7 @@ export const PROVISTO_POR_LABEL: Record<string, string> = {
   POR_DEFINIR: "Por definir",
 };
 
-// ── Advance por plaza ────────────────────────────────────────────────────────
+// ── Advance por show ─────────────────────────────────────────────────────────
 export const CUBIERTO_POR = [
   "POR_DEFINIR",
   "CASA",
@@ -317,7 +317,7 @@ export function fmtDuracion(minutos: number | null): string {
   return m ? `${h} h ${m} min` : `${h} h`;
 }
 
-/// Los horarios gruesos de la plaza se convierten en bloques del day sheet. El
+/// Los horarios gruesos del show se convierten en bloques del day sheet. El
 /// show toma su hora de fin del propio campo horaFin, para no dejar un bloque
 /// "Fin del show" sin cuerpo.
 export const SIEMBRA_BLOQUES: { campo: string; campoFin?: string; titulo: string; tipo: string }[] = [
@@ -476,7 +476,7 @@ export const UNIDAD_COBRO_LABEL: Record<string, string> = {
   SHOW: "por show",
   DIA: "por día",
   PERSONA_DIA: "por persona/día",
-  PLAZA: "por plaza",
+  PLAZA: "por venue",
   GIRA: "por gira",
   PIEZA: "por pieza",
   MES: "por mes",
@@ -595,7 +595,7 @@ export interface ResumenAdvance {
 }
 
 /// Un renglón cuenta como resuelto si está confirmado, o si se decidió que no aplica
-/// en esta plaza. "No cubierto" nunca cuenta como resuelto, aunque sea una decisión.
+/// en este show. "No cubierto" nunca cuenta como resuelto, aunque sea una decisión.
 function estaResuelta(l: LineaAdvanceResumible): boolean {
   if (l.cubiertoPor === "NO_APLICA") return true;
   if (l.cubiertoPor === "NO_CUBIERTO") return false;
@@ -689,9 +689,9 @@ export interface ShowResumible {
 
 export interface ResumenGira {
   shows: number;
-  /// Promedio simple del avance de cada plaza: una plaza pesa igual que otra,
-  /// aunque tenga menos renglones. Si se promediaran renglones, la plaza chica
-  /// desaparecería detrás de la grande y es justo la que se olvida.
+  /// Promedio simple del avance de cada show: un show pesa igual que otro,
+  /// aunque tenga menos renglones. Si se promediaran renglones, el show chico
+  /// desaparecería detrás del grande y es justo el que se olvida.
   avance: number;
   semaforo: ResumenAdvance["semaforo"];
   enRiesgo: number;

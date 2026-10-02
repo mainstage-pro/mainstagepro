@@ -82,7 +82,7 @@ export default async function GirasResumenPage() {
     <div className="ms-page">
       <EncabezadoResumen
         titulo="Resumen de giras"
-        subtitulo="Las plazas que vienen y lo que todavía le falta a cada una para poder suceder"
+        subtitulo="Los shows que vienen y lo que todavía le falta a cada uno para poder suceder"
         acciones={
           <Link href="/giras/lista" className="ms-btn-secondary">
             Ver giras
@@ -91,11 +91,11 @@ export default async function GirasResumenPage() {
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-        <Kpi label="Giras en curso" valor={girasActivas} nota={`${proximos.length} plazas por delante`} href="/giras/lista" />
+        <Kpi label="Giras en curso" valor={girasActivas} nota={`${proximos.length} shows por delante`} href="/giras/lista" />
         <Kpi
-          label="Siguiente plaza"
+          label="Siguiente show"
           valor={siguiente ? fmtDiasRestantes(siguiente.dias) : "—"}
-          nota={siguiente ? `${fmtFechaCorta(siguiente.fecha)} · ${siguiente.lugar}` : "Sin plazas agendadas"}
+          nota={siguiente ? `${fmtFechaCorta(siguiente.fecha)} · ${siguiente.lugar}` : "Sin shows agendados"}
           tono={siguiente && siguiente.dias !== null && siguiente.dias <= 7 ? "oro" : "neutro"}
           href={siguiente?.href}
         />
@@ -106,7 +106,7 @@ export default async function GirasResumenPage() {
           tono={avancePromedio >= 100 ? "verde" : avancePromedio >= 60 ? "ambar" : "rojo"}
         />
         <Kpi
-          label="Plazas sin resolver"
+          label="Shows sin resolver"
           valor={enRiesgo}
           nota="En riesgo o sin advance armado"
           tono={enRiesgo > 0 ? "rojo" : "verde"}
@@ -115,14 +115,14 @@ export default async function GirasResumenPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Panel
-          titulo="Próximas plazas"
-          nota="Ordenadas por fecha; el porcentaje es de los renglones indispensables"
+          titulo="Próximos shows"
+          nota="Ordenados por fecha; el porcentaje es de los renglones indispensables"
           href="/giras/lista"
           hrefLabel="Ver giras"
           className="lg:col-span-2"
         >
           {proximos.length === 0 ? (
-            <Vacio texto="No hay plazas por delante." />
+            <Vacio texto="No hay shows por delante." />
           ) : (
             proximos.map((s) => (
               <Fila
@@ -143,9 +143,9 @@ export default async function GirasResumenPage() {
           )}
         </Panel>
 
-        <Panel titulo="Plazas sin venue" nota="Sin foro no hay ficha técnica contra la que cotejar el rider">
+        <Panel titulo="Shows sin venue" nota="Sin foro no hay ficha técnica contra la que cotejar el rider">
           {sinVenue.length === 0 ? (
-            <Vacio texto="Todas las plazas tienen venue." />
+            <Vacio texto="Todos los shows tienen venue." />
           ) : (
             sinVenue.map((s) => (
               <Fila
@@ -160,9 +160,9 @@ export default async function GirasResumenPage() {
           )}
         </Panel>
 
-        <Panel titulo="Advance sin armar" nota="La plaza no tiene ni un renglón derivado del rider">
+        <Panel titulo="Advance sin armar" nota="El show no tiene ni un renglón derivado del rider">
           {sinAdvance.length === 0 ? (
-            <Vacio texto="Todas las plazas tienen su advance armado." />
+            <Vacio texto="Todos los shows tienen su advance armado." />
           ) : (
             sinAdvance.map((s) => (
               <Fila
@@ -179,7 +179,7 @@ export default async function GirasResumenPage() {
 
         <Panel
           titulo="Indispensables sin resolver"
-          nota="Lo que decide si la plaza va o no va"
+          nota="Lo que decide si el show va o no va"
           className="lg:col-span-2"
         >
           {conIndispensablesAbiertos.length === 0 ? (
@@ -216,9 +216,9 @@ export default async function GirasResumenPage() {
           )}
         </Panel>
 
-        <Panel titulo="Plazas sin crew" nota="Nadie asignado todavía, ni de Mainstage ni de la casa">
+        <Panel titulo="Shows sin crew" nota="Nadie asignado todavía, ni de Mainstage ni de la casa">
           {sinCrew.length === 0 ? (
-            <Vacio texto="Todas las plazas tienen crew." />
+            <Vacio texto="Todos los shows tienen crew." />
           ) : (
             sinCrew.map((s) => (
               <Fila
@@ -235,8 +235,8 @@ export default async function GirasResumenPage() {
 
         {pasadosAbiertos.length > 0 && (
           <Panel
-            titulo="Plazas que ya pasaron sin cerrar"
-            nota="Quedaron sin marcar como ejecutadas"
+            titulo="Shows que ya pasaron sin cerrar"
+            nota="Quedaron sin marcar como ejecutados"
             className="lg:col-span-2"
           >
             {pasadosAbiertos.map((s) => (

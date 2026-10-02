@@ -183,23 +183,23 @@ export interface ShowCuantificable {
 
 export interface ConteoGira {
   shows: number;
-  /// Plazas = venues distintos. Tres fechas en el Lunario son 3 shows y 1 plaza:
+  /// Venues distintos. Tres fechas en el Lunario son 3 shows y 1 venue:
   /// el advance técnico se hace una vez por venue, no una por fecha.
-  plazas: number;
+  venues: number;
   ciudades: number;
 }
 
 export function contarGira(shows: ShowCuantificable[]): ConteoGira {
   const vivos = shows.filter((s) => s.estado !== "CANCELADO");
-  const plazas = new Set<string>();
+  const venues = new Set<string>();
   const ciudades = new Set<string>();
   for (const s of vivos) {
     // Sin venue en catálogo, la ciudad hace de llave; sin ninguna de las dos,
-    // el propio id — una plaza desconocida es una plaza distinta.
-    plazas.add(s.venueId ?? (s.ciudad ? `ciudad:${s.ciudad.trim().toLowerCase()}` : `show:${s.id}`));
+    // el propio id — un venue desconocido es un venue distinto.
+    venues.add(s.venueId ?? (s.ciudad ? `ciudad:${s.ciudad.trim().toLowerCase()}` : `show:${s.id}`));
     if (s.ciudad?.trim()) ciudades.add(s.ciudad.trim().toLowerCase());
   }
-  return { shows: vivos.length, plazas: plazas.size, ciudades: ciudades.size };
+  return { shows: vivos.length, venues: venues.size, ciudades: ciudades.size };
 }
 
 /// Cuántas unidades pide una línea según su unidad de cobro y el tamaño de la gira.
@@ -208,7 +208,7 @@ export function cantidadSugerida(unidad: string, conteo: ConteoGira): number {
     case "SHOW":
       return conteo.shows || 1;
     case "PLAZA":
-      return conteo.plazas || 1;
+      return conteo.venues || 1;
     case "DIA":
     case "PERSONA_DIA":
       return conteo.shows || 1;

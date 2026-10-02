@@ -2,7 +2,7 @@
 //
 // Reusa `Gira.portalToken`: es el token con el que la gira se comparte hacia
 // afuera, y los documentos que no dependen de una fecha (rider, listas de
-// canales) cuelgan de él. Los de plaza tienen su propio token por show.
+// canales) cuelgan de él. Cada show tiene además su propio token.
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";

@@ -1525,7 +1525,7 @@ export default function DiscoveryForm({
                         {discForm.esGira ? "✓ Es una gira" : "Es una gira"}
                       </p>
                       <p className="text-[10px] text-gray-500 leading-tight">
-                        Cada cotización del trato es una plaza, no una opción que compite.
+                        Cada cotización del trato es un show, no una opción que compite.
                       </p>
                     </button>
                   </div>

@@ -202,7 +202,7 @@ export default function AdvanceTabla({
 
   async function quitar(l: LineaAdvance) {
     const ok = await confirm({
-      message: `¿Quitar «${l.concepto}» del advance de esta plaza? El rider maestro no se toca.`,
+      message: `¿Quitar «${l.concepto}» del advance de este show? El rider maestro no se toca.`,
       danger: true,
       confirmText: "Quitar",
     });
@@ -230,7 +230,7 @@ export default function AdvanceTabla({
       ...proveedores.map((p) => ({
         value: p.id,
         label: p.empresa && p.empresa !== p.nombre ? `${p.nombre} — ${p.empresa}` : p.nombre,
-        group: p.enLaCiudad ? `En ${ciudad ?? "la plaza"}` : "Otras plazas",
+        group: p.enLaCiudad ? `En ${ciudad ?? "la ciudad del show"}` : "Otras ciudades",
       })),
     ],
     [proveedores, ciudad],
@@ -478,10 +478,10 @@ export default function AdvanceTabla({
       )}
 
       <p className="ms-micro">
-        Cada celda se guarda sola al dejar de escribir. El advance de esta plaza es independiente del rider maestro:
+        Cada celda se guarda sola al dejar de escribir. El advance de este show es independiente del rider maestro:
         editar aquí nunca cambia el rider del artista.{" "}
         <Link href={`/giras/${giraId}/advance`} className="ms-link-gold">
-          Ver el cotejo de todas las plazas →
+          Ver el cotejo de todos los shows →
         </Link>
       </p>
     </div>

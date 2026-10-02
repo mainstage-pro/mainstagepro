@@ -35,14 +35,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ cr
     data.funcion = funcion;
   }
 
-  // Mover el alcance: de toda la gira a una plaza y de vuelta. La plaza tiene que
+  // Mover el alcance: de toda la gira a un show y de vuelta. El show tiene que
   // ser de la misma gira.
   if ("showId" in body) {
     const showId = typeof body.showId === "string" && body.showId ? body.showId : null;
     if (showId) {
       const show = await prisma.giraShow.findUnique({ where: { id: showId }, select: { giraId: true } });
       if (!show || show.giraId !== existente.giraId) {
-        return NextResponse.json({ error: "La plaza no es de esta gira" }, { status: 400 });
+        return NextResponse.json({ error: "El show no es de esta gira" }, { status: 400 });
       }
     }
     data.showId = showId;

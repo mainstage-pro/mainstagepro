@@ -4,7 +4,7 @@
  * Es lo que se manda a la casa cuando se abre el advance: lo que el artista
  * pide, con qué prioridad y quién lo tiene que poner. Se arma del rider maestro
  * versionado, así que el PDF siempre dice qué versión está leyendo quien lo
- * recibe; si no, cada plaza negociaría contra un rider distinto.
+ * recibe; si no, cada show negociaría contra un rider distinto.
  */
 import React from "react";
 import {

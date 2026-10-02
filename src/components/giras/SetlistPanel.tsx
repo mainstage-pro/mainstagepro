@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Setlist de la gira y sus variantes por plaza. El repertorio se teclea una vez
- * en el base; la plaza que necesita otro orden o menos tiempo lo copia y lo
+ * Setlist de la gira y sus variantes por show. El repertorio se teclea una vez
+ * en el base; el show que necesita otro orden o menos tiempo lo copia y lo
  * ajusta, para que las notas de audio, luces y video no se vuelvan a escribir.
  */
 
@@ -52,7 +52,7 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
 
   const [setlists, setSetlists] = useState<SetlistFila[]>(setlistsIniciales);
   const [abierto, setAbierto] = useState<string | null>(
-    // En la plaza se abre directo el setlist de ese día: es el que se va a leer.
+    // En el show se abre directo el setlist de ese día: es el que se va a leer.
     setlistsIniciales.find((s) => s.showId === showId)?.id ?? setlistsIniciales[0]?.id ?? null,
   );
   const [trabajando, setTrabajando] = useState(false);
@@ -200,14 +200,14 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
           <h2 className="ms-h2">Setlist</h2>
           <p className="ms-subtitle mt-0.5">
             {alcance === "SHOW"
-              ? "El repertorio de esta plaza. Copia el base y ajústalo si el tiempo o el orden cambian."
-              : "El base es el repertorio de la gira; cada plaza puede tener su variante."}
+              ? "El repertorio de este show. Copia el base y ajústalo si el tiempo o el orden cambian."
+              : "El base es el repertorio de la gira; cada show puede tener su variante."}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           {alcance === "SHOW" && base && (
             <button onClick={() => void crear(base.id)} disabled={trabajando} className="ms-btn-primary disabled:opacity-50">
-              {trabajando ? "Copiando…" : "Copiar el setlist base a esta plaza"}
+              {trabajando ? "Copiando…" : "Copiar el setlist base a este show"}
             </button>
           )}
           <button onClick={() => void crear()} disabled={trabajando} className="ms-btn-secondary disabled:opacity-50">
@@ -219,7 +219,7 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
       {visibles.length === 0 ? (
         <div className="ms-empty-state">
           <p className="text-sm text-gray-400">
-            Todavía no hay setlist. Crea el base de la gira y las plazas lo heredan con un clic.
+            Todavía no hay setlist. Crea el base de la gira y los shows lo heredan con un clic.
           </p>
         </div>
       ) : (
@@ -301,7 +301,7 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
                         onChange={(e) => editarSetlist(s.id, { esBase: e.target.checked }, true)}
                         className="accent-[#B3985B] w-4 h-4"
                       />
-                      Es el setlist base de la gira (del que copian las plazas)
+                      Es el setlist base de la gira (del que copian los shows)
                     </label>
                   )}
 
@@ -429,7 +429,7 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
                     </button>
                     {alcance === "SHOW" && s.esBase && s.showId === null && (
                       <button onClick={() => void crear(s.id)} className="ms-btn-ghost">
-                        Copiar este base a la plaza
+                        Copiar este base al show
                       </button>
                     )}
                     <button

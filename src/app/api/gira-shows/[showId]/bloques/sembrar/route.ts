@@ -5,10 +5,10 @@ import { logActividad } from "@/lib/actividad";
 import { SIEMBRA_BLOQUES } from "@/lib/giras";
 
 /**
- * Arma el day sheet con los horarios gruesos que ya tiene la plaza (load in,
+ * Arma el day sheet con los horarios gruesos que ya tiene el show (load in,
  * montaje, soundcheck, doors, show, load out, curfew). Es idempotente: un bloque
  * con el mismo título no se duplica y nunca se sobrescribe lo capturado a mano,
- * porque el minuto a minuto es más fino que los horarios de la plaza.
+ * porque el minuto a minuto es más fino que los horarios del show.
  */
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ showId: string }> }) {
   const session = await getSession();
@@ -16,7 +16,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ sh
 
   const { showId } = await params;
   const show = await prisma.giraShow.findUnique({ where: { id: showId } });
-  if (!show) return NextResponse.json({ error: "La plaza no existe" }, { status: 404 });
+  if (!show) return NextResponse.json({ error: "El show no existe" }, { status: 404 });
 
   const existentesFilas = await prisma.giraShowBloque.findMany({
     where: { showId },
@@ -61,7 +61,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ sh
     "SEMBRAR_DIA_SHOW",
     "GiraShow",
     showId,
-    `Armó el día del show desde los horarios de la plaza: ${agregados} bloques nuevos`,
+    `Armó el día del show desde sus horarios gruesos: ${agregados} bloques nuevos`,
     { agregados, existentes, sinHora },
   );
 

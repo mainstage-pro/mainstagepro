@@ -6,7 +6,7 @@ import { INCLUDE_SETLIST } from "@/lib/logistica-gira";
 
 /**
  * Setlists de la gira. Uno es el base (`esBase`) y de él salen las variantes por
- * plaza: el festival que recorta a 40 minutos no reescribe el repertorio, copia
+ * show: el festival que recorta a 40 minutos no reescribe el repertorio, copia
  * el base y lo acorta.
  */
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -38,10 +38,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   if (showId) {
     const show = await prisma.giraShow.findUnique({ where: { id: showId }, select: { giraId: true } });
-    if (!show || show.giraId !== id) return NextResponse.json({ error: "La plaza no es de esta gira" }, { status: 400 });
+    if (!show || show.giraId !== id) return NextResponse.json({ error: "El show no es de esta gira" }, { status: 400 });
   }
 
-  // Copiar el base es lo normal al abrir el setlist de una plaza: nadie teclea
+  // Copiar el base es lo normal al abrir el setlist de un show: nadie teclea
   // 22 canciones otra vez.
   const copiarDeId = typeof body.copiarDeId === "string" && body.copiarDeId ? body.copiarDeId : null;
   const origen = copiarDeId
@@ -54,10 +54,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const nombre =
     (typeof body.nombre === "string" && body.nombre.trim()) ||
-    (origen ? `${origen.nombre} (copia)` : showId ? "Setlist de la plaza" : "Setlist base");
+    (origen ? `${origen.nombre} (copia)` : showId ? "Setlist del show" : "Setlist base");
 
   // Solo puede haber un base: marcar uno nuevo desmarca el anterior, si no la
-  // copia para una plaza no sabría de dónde salir.
+  // copia para un show no sabría de dónde salir.
   const esBase = !showId && !!body.esBase;
   if (esBase) await prisma.giraSetlist.updateMany({ where: { giraId: id, esBase: true }, data: { esBase: false } });
 

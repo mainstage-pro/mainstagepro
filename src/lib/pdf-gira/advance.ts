@@ -1,6 +1,6 @@
 // src/lib/pdf-gira/advance.ts
 //
-// El advance de la plaza: lo que pide el rider contra lo que pone la casa. El
+// El advance del show: lo que pide el rider contra lo que pone la casa. El
 // PDF se manda al foro tal cual, así que aquí NO entra ni el costo ni el nombre
 // del proveedor aunque el modelo los traiga: eso se queda del lado nuestro.
 
@@ -23,15 +23,15 @@ import {
 } from "@/lib/giras";
 import { logoBase64, nowStr, resolvePdfImage } from "@/components/pdf/PdfShared";
 import {
-  AdvancePlazaPDF,
+  AdvanceShowPDF,
   type AdvanceLineaDoc,
-  type AdvancePlazaData,
-} from "@/components/pdf/giras/AdvancePlazaPDF";
+  type AdvanceShowData,
+} from "@/components/pdf/giras/AdvanceShowPDF";
 import { bufferDePdf, type PdfGira } from "./render";
 
 const ORDEN_DISCIPLINA: Record<string, number> = Object.fromEntries(DISCIPLINAS.map((d, i) => [d, i]));
 
-export async function generarAdvancePlaza(showId: string): Promise<PdfGira | null> {
+export async function generarAdvanceShow(showId: string): Promise<PdfGira | null> {
   const show = await prisma.giraShow.findUnique({
     where: { id: showId },
     include: {
@@ -83,7 +83,7 @@ export async function generarAdvancePlaza(showId: string): Promise<PdfGira | nul
   const ciudad = show.ciudad ?? show.venue?.ciudad ?? null;
   const publicDir = path.join(process.cwd(), "public");
 
-  const data: AdvancePlazaData = {
+  const data: AdvanceShowData = {
     giraNombre: show.gira.nombre,
     artistaNombre: show.gira.artista.nombre,
     riderNombre: show.gira.rider?.nombre ?? null,
@@ -122,7 +122,7 @@ export async function generarAdvancePlaza(showId: string): Promise<PdfGira | nul
   };
 
   const buf = await bufferDePdf(
-    React.createElement(AdvancePlazaPDF, { data }) as React.ReactElement<React.ComponentProps<typeof Document>>,
+    React.createElement(AdvanceShowPDF, { data }) as React.ReactElement<React.ComponentProps<typeof Document>>,
   );
 
   const slug = [ciudad, show.fecha.toISOString().slice(0, 10)].filter(Boolean).join("-").replace(/[^\w-]+/g, "");

@@ -86,7 +86,7 @@ export default async function LogisticaGiraPage({ params }: { params: Promise<{ 
         viajesIniciales={viajes}
         ocupantes={ocupantes}
         crew={crewLigero}
-        plazas={gira.shows}
+        shows={gira.shows}
       />
     </div>
   );

@@ -24,11 +24,11 @@ export interface GiraFila {
   cliente: string | null;
   fechaInicio: string | null;
   fechaFin: string | null;
-  plazas: number;
+  shows: number;
   ciudades: string[];
   avance: number;
   semaforo: string;
-  plazasEnRiesgo: number;
+  showsEnRiesgo: number;
 }
 
 interface Props {
@@ -171,8 +171,8 @@ export default function ListaGirasClient({ giras, artistas, clientes }: Props) {
                 <div className="text-left md:text-right">
                   <p className="text-[13px] text-white tabular-nums">{fmtRango(g.fechaInicio, g.fechaFin)}</p>
                   <p className="ms-micro">
-                    {g.plazas} {g.plazas === 1 ? "plaza" : "plazas"}
-                    {g.plazasEnRiesgo > 0 ? ` · ${g.plazasEnRiesgo} sin resolver` : ""}
+                    {g.shows} {g.shows === 1 ? "show" : "shows"}
+                    {g.showsEnRiesgo > 0 ? ` · ${g.showsEnRiesgo} sin resolver` : ""}
                   </p>
                 </div>
 
@@ -292,7 +292,7 @@ export default function ListaGirasClient({ giras, artistas, clientes }: Props) {
 
           <div className="flex items-center gap-2 pt-1">
             <button onClick={crear} disabled={guardando} className="ms-btn-primary disabled:opacity-50">
-              {guardando ? "Creando…" : "Crear y agregar plazas"}
+              {guardando ? "Creando…" : "Crear y agregar shows"}
             </button>
             <button onClick={() => setAbierto(false)} className="ms-btn-ghost">
               Cancelar

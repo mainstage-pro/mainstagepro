@@ -2,13 +2,13 @@
  * El advance de gira: cotejar el rider maestro contra lo que ofrece cada casa.
  *
  * Tres movimientos, siempre en el mismo orden:
- *   1. sembrarAdvance       — el rider maestro baja a la plaza (una fila por concepto).
+ *   1. sembrarAdvance       — el rider maestro baja al show (una fila por concepto).
  *   2. precargarDesdeVenue  — lo que ya sabíamos del foro llena la columna "ofrece la casa".
  *   3. volcarAlVenue        — al cerrar el advance, lo que realmente había queda escrito
  *                             en la ficha del venue, para que la próxima vez se arme solo.
  *
  * Y `faltantesPorProveedor`, que mira la gira completa para conseguir de una sola
- * vez lo que falta en varias plazas.
+ * vez lo que falta en varios shows.
  */
 
 import { prisma } from "@/lib/prisma";
@@ -90,11 +90,11 @@ function textoOfrecido(item: {
 // ── 1. Siembra desde el rider maestro ────────────────────────────────────────
 
 /**
- * Baja el rider maestro vigente a la plaza. Es idempotente en dos niveles:
+ * Baja el rider maestro vigente al show. Es idempotente en dos niveles:
  * no duplica una fila que ya nació de la misma `riderLineaId`, y tampoco duplica
  * un concepto que el usuario capturó a mano (lo adopta y le pone su `riderLineaId`).
  * Nada de lo ya capturado se sobreescribe: Mauricio edita el rider después de
- * haber trabajado el advance y no puede perder el avance de la plaza.
+ * haber trabajado el advance y no puede perder el avance del show.
  */
 export async function sembrarAdvance(showId: string): Promise<ResultadoSiembra> {
   const show = await prisma.giraShow.findUnique({
@@ -485,13 +485,13 @@ export async function faltantesPorProveedor(giraId: string): Promise<GrupoFaltan
   );
 }
 
-// ── Proveedores ordenados para el selector de una plaza ──────────────────────
+// ── Proveedores ordenados para el selector de un show ───────────────────────
 
 /**
  * Catálogo de proveedores para el selector del advance: los de la ciudad del
  * venue arriba, el resto después pero disponible (en gira se renta donde se puede).
  */
-export async function proveedoresParaPlaza(ciudad: string | null | undefined): Promise<ProveedorCandidato[]> {
+export async function proveedoresParaShow(ciudad: string | null | undefined): Promise<ProveedorCandidato[]> {
   const proveedores = await prisma.proveedor.findMany({
     where: { activo: true },
     orderBy: [{ nombre: "asc" }],
@@ -523,7 +523,7 @@ export async function proveedoresParaPlaza(ciudad: string | null | undefined): P
     .sort((a, b) => Number(b.enLaCiudad) - Number(a.enLaCiudad) || a.nombre.localeCompare(b.nombre, "es"));
 }
 
-// ── Matriz de la gira: un concepto por fila, una plaza por columna ───────────
+// ── Matriz de la gira: un concepto por fila, un show por columna ─────────────
 
 export interface CeldaMatriz {
   showId: string;
@@ -542,9 +542,9 @@ export interface FilaMatriz {
   disciplina: string;
   concepto: string;
   prioridad: string;
-  /// Indexado por showId; ausente = esa plaza no tiene el concepto en su advance.
+  /// Indexado por showId; ausente = ese show no tiene el concepto en su advance.
   celdas: Record<string, CeldaMatriz>;
-  plazasConFaltante: number;
+  showsConFaltante: number;
 }
 
 export interface ColumnaMatriz {
@@ -560,7 +560,7 @@ export interface MatrizAdvance {
   filas: FilaMatriz[];
 }
 
-/// La prioridad más alta gana cuando el mismo concepto viene con distinta prioridad por plaza.
+/// La prioridad más alta gana cuando el mismo concepto viene con distinta prioridad por show.
 const PESO_PRIORIDAD: Record<string, number> = { INDISPENSABLE: 3, IMPORTANTE: 2, DESEABLE: 1 };
 
 export async function matrizAdvance(giraId: string): Promise<MatrizAdvance> {
@@ -611,7 +611,7 @@ export async function matrizAdvance(giraId: string): Promise<MatrizAdvance> {
           concepto: l.concepto,
           prioridad: l.prioridad,
           celdas: {},
-          plazasConFaltante: 0,
+          showsConFaltante: 0,
         };
         filas.set(clave, f);
       }
@@ -629,14 +629,14 @@ export async function matrizAdvance(giraId: string): Promise<MatrizAdvance> {
         prioridad: l.prioridad,
         proveedorNombre: l.proveedor?.nombre ?? null,
       };
-      if (faltante > 0) f.plazasConFaltante++;
+      if (faltante > 0) f.showsConFaltante++;
     }
   }
 
   const ordenadas = [...filas.values()].sort(
     (a, b) =>
       a.disciplina.localeCompare(b.disciplina, "es") ||
-      b.plazasConFaltante - a.plazasConFaltante ||
+      b.showsConFaltante - a.showsConFaltante ||
       a.concepto.localeCompare(b.concepto, "es"),
   );
 

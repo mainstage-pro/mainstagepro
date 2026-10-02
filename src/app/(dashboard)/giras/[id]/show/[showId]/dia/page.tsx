@@ -40,7 +40,7 @@ export default async function DiaShowPage({ params }: { params: Promise<{ id: st
 
   if (!show) notFound();
 
-  // El crew de la plaza son los que viajan toda la gira más los refuerzos de ese
+  // El crew del show son los que viajan toda la gira más los refuerzos de ese
   // día: el day sheet se reparte a los dos grupos por igual.
   const [crew, setlists, candidatos] = await Promise.all([
     prisma.giraCrew.findMany({
@@ -56,7 +56,7 @@ export default async function DiaShowPage({ params }: { params: Promise<{ id: st
     candidatosCrew(id),
   ]);
 
-  const horariosPlaza = SIEMBRA_BLOQUES.filter(
+  const horariosShow = SIEMBRA_BLOQUES.filter(
     (s) => !!(show as unknown as Record<string, string | null>)[s.campo],
   ).length;
 
@@ -66,7 +66,7 @@ export default async function DiaShowPage({ params }: { params: Promise<{ id: st
     <div className="ms-page space-y-6 pb-16">
       <div className="flex flex-col gap-1">
         <Link href={`/giras/${id}/show/${showId}`} className="ms-link-gold text-xs">
-          ← Resumen de la plaza
+          ← Resumen del show
         </Link>
         <h1 className="ms-h1">Día del show</h1>
         <p className="ms-subtitle">
@@ -86,13 +86,13 @@ export default async function DiaShowPage({ params }: { params: Promise<{ id: st
         <DiaShowTabla
           showId={show.id}
           bloquesIniciales={ordenarBloques(show.bloques)}
-          horariosPlaza={horariosPlaza}
+          horariosShow={horariosShow}
         />
       </section>
 
       <section className="space-y-3">
         <div>
-          <h2 className="ms-h2">Quién trabaja esta plaza</h2>
+          <h2 className="ms-h2">Quién trabaja este show</h2>
           <p className="ms-meta">
             Los que viajan toda la gira salen aquí solos; lo que agregues sin cambiar el alcance queda como refuerzo de
             este día.
@@ -105,7 +105,7 @@ export default async function DiaShowPage({ params }: { params: Promise<{ id: st
           crewInicial={crew}
           personas={candidatos.personas}
           roles={candidatos.roles}
-          plazas={[{ id: show.id, fecha: show.fecha, ciudad }]}
+          shows={[{ id: show.id, fecha: show.fecha, ciudad }]}
         />
       </section>
 
@@ -113,7 +113,7 @@ export default async function DiaShowPage({ params }: { params: Promise<{ id: st
         <div>
           <h2 className="ms-h2">Setlist de la noche</h2>
           <p className="ms-meta">
-            Si esta plaza toca el repertorio de la gira, se lee el base. Copíalo solo cuando el orden o el tiempo cambien.
+            Si este show toca el repertorio de la gira, se lee el base. Copíalo solo cuando el orden o el tiempo cambien.
           </p>
         </div>
         <SetlistPanel giraId={id} alcance="SHOW" showId={show.id} setlistsIniciales={setlists} />

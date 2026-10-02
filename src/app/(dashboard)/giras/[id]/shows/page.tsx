@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resumirAdvance } from "@/lib/giras";
-import ShowsClient, { type PlazaEditable } from "./ShowsClient";
+import ShowsClient, { type ShowEditable } from "./ShowsClient";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +30,7 @@ export default async function GiraShowsPage({ params }: { params: Promise<{ id: 
 
   if (!gira) notFound();
 
-  const plazas: PlazaEditable[] = gira.shows.map((s) => {
+  const shows: ShowEditable[] = gira.shows.map((s) => {
     const resumen = resumirAdvance(s.riderLineas);
     return {
       id: s.id,
@@ -60,5 +60,5 @@ export default async function GiraShowsPage({ params }: { params: Promise<{ id: 
     };
   });
 
-  return <ShowsClient giraId={gira.id} plazas={plazas} />;
+  return <ShowsClient giraId={gira.id} shows={shows} />;
 }

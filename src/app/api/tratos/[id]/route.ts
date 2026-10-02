@@ -92,7 +92,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     "diasServicio", "fechasEvento",
     "serviciosInteres", "ideasReferencias", "etapaContratacion", "momentoContratacion", "continuarPor",
     "descubrimientoCompleto", "posibleDuplicado",
-    // Artista del evento musical y giras (varias cotizaciones = plazas del mismo trato)
+    // Artista del evento musical y giras (varias cotizaciones = shows del mismo trato)
     "artistaId", "esGira",
     // Selección de equipos del inventario
     "equiposInteres",

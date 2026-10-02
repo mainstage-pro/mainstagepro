@@ -68,7 +68,7 @@ export default async function ArtistaDatosPage({ params }: { params: Promise<{ i
         estado: g.estado,
         fechaInicio: g.fechaInicio?.toISOString() ?? null,
         fechaFin: g.fechaFin?.toISOString() ?? null,
-        plazas: g._count.shows,
+        shows: g._count.shows,
       }))}
     />
   );

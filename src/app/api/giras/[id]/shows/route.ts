@@ -4,7 +4,7 @@ import { getSession } from "@/lib/auth";
 import { logActividad } from "@/lib/actividad";
 import { ESTADOS_SHOW, TIPOS_SHOW, parseFechaGira } from "@/lib/giras";
 
-/// El orden de las plazas es la cronología de la gira, no una preferencia: se
+/// El orden de los shows es la cronología de la gira, no una preferencia: se
 /// reescribe cada vez que una fecha se mueve. Un route handler no puede exportar
 /// nada además de sus verbos, así que el gemelo de esta función vive en
 /// api/gira-shows/[showId]/route.ts.
@@ -17,6 +17,10 @@ async function reordenarShows(giraId: string) {
   for (const [i, s] of shows.entries()) {
     if (s.orden !== i + 1) await prisma.giraShow.update({ where: { id: s.id }, data: { orden: i + 1 } });
   }
+}
+
+function texto(v: unknown): string | null {
+  return typeof v === "string" && v.trim() ? v.trim() : null;
 }
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -47,7 +51,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const body = await req.json();
   const fecha = parseFechaGira(body.fecha);
-  if (!fecha) return NextResponse.json({ error: "La fecha de la plaza es obligatoria" }, { status: 400 });
+  if (!fecha) return NextResponse.json({ error: "La fecha del show es obligatoria" }, { status: 400 });
 
   let ciudad: string | null = typeof body.ciudad === "string" && body.ciudad.trim() ? body.ciudad.trim() : null;
   const venueId = typeof body.venueId === "string" && body.venueId ? body.venueId : null;
@@ -74,12 +78,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       promotorContacto: typeof body.promotorContacto === "string" && body.promotorContacto.trim() ? body.promotorContacto.trim() : null,
       promotorTelefono: typeof body.promotorTelefono === "string" && body.promotorTelefono.trim() ? body.promotorTelefono.trim() : null,
       promotorEmail: typeof body.promotorEmail === "string" && body.promotorEmail.trim() ? body.promotorEmail.trim() : null,
+      contactoCasaNombre: texto(body.contactoCasaNombre),
+      contactoCasaTelefono: texto(body.contactoCasaTelefono),
+      contactoCasaEmail: texto(body.contactoCasaEmail),
       notas: typeof body.notas === "string" && body.notas.trim() ? body.notas.trim() : null,
     },
   });
 
   await reordenarShows(id);
-  await logActividad(session.id, "CREAR", "GiraShow", show.id, `Agregó una plaza a la gira ${gira.nombre}`);
+  await logActividad(session.id, "CREAR", "GiraShow", show.id, `Agregó un show a la gira ${gira.nombre}`);
 
   return NextResponse.json({ show });
 }

@@ -1,5 +1,5 @@
 /**
- * AdvancePlazaPDF.tsx — El advance de la plaza.
+ * AdvanceShowPDF.tsx — El advance del show.
  *
  * Tres columnas y una pregunta: qué pide el rider, qué pone la casa y qué falta.
  * Es el documento con el que se cierra el advance por escrito, así que no lleva
@@ -28,7 +28,7 @@ export interface AdvanceLineaDoc {
   notas: string | null;
 }
 
-export interface AdvancePlazaData {
+export interface AdvanceShowData {
   giraNombre: string;
   artistaNombre: string;
   riderNombre: string | null;
@@ -72,8 +72,8 @@ const COLS: ColumnaTabla[] = [
   { label: "Estado", ancho: 68 },
 ];
 
-export function AdvancePlazaPDF({ data }: { data: AdvancePlazaData }) {
-  const lugar = [data.venue?.nombre, data.ciudad].filter(Boolean).join(" · ") || "Plaza sin lugar";
+export function AdvanceShowPDF({ data }: { data: AdvanceShowData }) {
+  const lugar = [data.venue?.nombre, data.ciudad].filter(Boolean).join(" · ") || "Venue por definir";
 
   const banda: ItemBanda[] = [
     { label: "Avance", valor: `${data.resumen.avance}%`, sub: data.resumen.semaforoLabel },
@@ -145,7 +145,7 @@ export function AdvancePlazaPDF({ data }: { data: AdvancePlazaData }) {
     <Document title={`Advance — ${data.artistaNombre} — ${lugar}`} author="Mainstage Pro" creator="Mainstage Pro">
       <PaginaGira>
         <HeroGira
-          tag="Advance técnico de la plaza"
+          tag="Advance técnico del show"
           titulo={lugar}
           subtitulo={data.fechaLarga}
           meta={[

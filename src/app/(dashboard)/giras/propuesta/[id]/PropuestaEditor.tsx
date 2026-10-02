@@ -239,7 +239,7 @@ export default function PropuestaEditor({ inicial, servicios, equipos, roles, cl
     if (d.agregadas === 0) {
       toast.info("Las líneas típicas ya estaban puestas");
     } else {
-      toast.success(`${d.agregadas} líneas agregadas · ${d.conteo.shows} shows en ${d.conteo.plazas} plazas`);
+      toast.success(`${d.agregadas} líneas agregadas · ${d.conteo.shows} shows en ${d.conteo.venues} venues`);
     }
     if (Array.isArray(d.faltanEnCatalogo) && d.faltanEnCatalogo.length) {
       toast.warning(`Faltan en el catálogo: ${d.faltanEnCatalogo.join(", ")}`);
@@ -295,7 +295,7 @@ export default function PropuestaEditor({ inicial, servicios, equipos, roles, cl
     { value: "", label: "Toda la gira" },
     ...shows.map((s) => ({
       value: s.id,
-      label: `${fmtFechaCorta(s.fecha)} · ${s.venueNombre ?? s.ciudad ?? "Plaza sin nombre"}`,
+      label: `${fmtFechaCorta(s.fecha)} · ${s.venueNombre ?? s.ciudad ?? "Venue sin nombre"}`,
     })),
   ];
 
@@ -320,8 +320,8 @@ export default function PropuestaEditor({ inicial, servicios, equipos, roles, cl
             <p className="ms-subtitle mt-1">
               {inicial.gira ? (
                 <>
-                  {inicial.gira.nombre} · {conteo.shows} shows en {conteo.plazas}{" "}
-                  {conteo.plazas === 1 ? "plaza" : "plazas"}
+                  {inicial.gira.nombre} · {conteo.shows} shows en {conteo.venues}{" "}
+                  {conteo.venues === 1 ? "venue" : "venues"}
                 </>
               ) : (
                 "Sin gira ligada"
@@ -414,7 +414,7 @@ export default function PropuestaEditor({ inicial, servicios, equipos, roles, cl
               </Campo>
               <Campo
                 label="Gira"
-                ayuda={inicial.gira ? `${conteo.shows} shows · ${conteo.plazas} plazas · ${conteo.ciudades} ciudades` : undefined}
+                ayuda={inicial.gira ? `${conteo.shows} shows · ${conteo.venues} venues · ${conteo.ciudades} ciudades` : undefined}
               >
                 <Combobox
                   value={cab.giraId ?? ""}
@@ -472,7 +472,7 @@ export default function PropuestaEditor({ inicial, servicios, equipos, roles, cl
               label="Alcance del servicio"
               valor={cab.alcance ?? ""}
               onCommit={(v) => editarCabecera("alcance", v || null)}
-              placeholder="Mainstage Pro asume la responsabilidad de audio del artista y la coordinación técnica de las cinco plazas…"
+              placeholder="Mainstage Pro asume la responsabilidad de audio del artista y la coordinación técnica de los cinco shows…"
               filas={7}
             />
             <CampoLargo
@@ -774,7 +774,7 @@ function FilaLinea({
               ))}
             </select>
             <button className="ms-micro hover:text-[#B3985B] transition-colors" onClick={() => setAbierto(!abierto)}>
-              {abierto ? "ocultar detalle" : "equipo · rol · plaza"}
+              {abierto ? "ocultar detalle" : "equipo · rol · show"}
             </button>
           </div>
         </td>
@@ -874,7 +874,7 @@ function FilaLinea({
                   options={[{ value: "", label: "Sin rol" }, ...roles.map((r) => ({ value: r.id, label: r.nombre }))]}
                 />
               </Campo>
-              <Campo label="Plaza" ayuda="Prorratea la línea a una fecha concreta">
+              <Campo label="Show" ayuda="Prorratea la línea a una fecha concreta">
                 <Combobox
                   value={linea.showId ?? ""}
                   onChange={(v) => onPatch(linea.id, { showId: v || null })}
@@ -907,7 +907,7 @@ function ModalCatalogo({
   onAgregar,
 }: {
   servicios: ServicioUI[];
-  conteo: { shows: number; plazas: number; ciudades: number };
+  conteo: { shows: number; venues: number; ciudades: number };
   onCerrar: () => void;
   onAgregar: (body: Record<string, unknown>) => Promise<void>;
 }) {
@@ -925,11 +925,11 @@ function ModalCatalogo({
     setTipo(s.tipoLinea);
     setPrecio(s.precioSugerido ?? 0);
     setCosto(s.costoSugerido ?? 0);
-    // Las plazas son venues distintos; los shows son fechas. El advance se cobra
-    // por plaza y la operación por show, así que la cantidad depende de la unidad.
+    // Un mismo venue puede repetirse en varias fechas: el advance se cobra por
+    // venue y la operación por show, así que la cantidad depende de la unidad.
     setCantidad(
       s.unidadDefault === "PLAZA"
-        ? Math.max(1, conteo.plazas)
+        ? Math.max(1, conteo.venues)
         : s.unidadDefault === "SHOW" || s.unidadDefault === "DIA" || s.unidadDefault === "PERSONA_DIA"
           ? Math.max(1, conteo.shows)
           : 1,

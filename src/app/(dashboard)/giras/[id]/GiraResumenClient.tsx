@@ -19,7 +19,7 @@ import {
   fmtFechaCorta,
 } from "@/lib/giras";
 
-export interface PlazaResumen {
+export interface ShowResumen {
   id: string;
   fecha: string;
   ciudad: string | null;
@@ -72,7 +72,7 @@ interface Persona {
 
 interface Props {
   gira: GiraDetalle;
-  plazas: PlazaResumen[];
+  shows: ShowResumen[];
   artistas: { id: string; nombre: string }[];
   clientes: { id: string; nombre: string; empresa: string | null }[];
   riders: { id: string; nombre: string; version: number; esActivo: boolean }[];
@@ -90,7 +90,7 @@ function parseRoles(json: string | null): string[] {
   }
 }
 
-export default function GiraResumenClient({ gira, plazas, artistas, clientes, riders, personas, servicios }: Props) {
+export default function GiraResumenClient({ gira, shows, artistas, clientes, riders, personas, servicios }: Props) {
   const router = useRouter();
   const toast = useToast();
   const confirmar = useConfirm();
@@ -109,16 +109,16 @@ export default function GiraResumenClient({ gira, plazas, artistas, clientes, ri
   });
   const [guardando, setGuardando] = useState(false);
 
-  // Las fechas de la gira son editables, pero si no cuadran con las plazas hay
+  // Las fechas de la gira son editables, pero si no cuadran con los shows hay
   // que decirlo: es el error que descuadra viajes y hoteles.
   const derivadas = useMemo(() => {
-    if (plazas.length === 0) return null;
-    return { inicio: plazas[0].fecha.slice(0, 10), fin: plazas[plazas.length - 1].fecha.slice(0, 10) };
-  }, [plazas]);
+    if (shows.length === 0) return null;
+    return { inicio: shows[0].fecha.slice(0, 10), fin: shows[shows.length - 1].fecha.slice(0, 10) };
+  }, [shows]);
 
   const descuadre =
     derivadas && (form.fechaInicio !== derivadas.inicio || form.fechaFin !== derivadas.fin)
-      ? `Las plazas van del ${fmtFechaCorta(derivadas.inicio)} al ${fmtFechaCorta(derivadas.fin)}.`
+      ? `Los shows van del ${fmtFechaCorta(derivadas.inicio)} al ${fmtFechaCorta(derivadas.fin)}.`
       : null;
 
   const contacto = personas.find((p) => p.id === form.contactoPrincipalId) ?? null;
@@ -163,7 +163,7 @@ export default function GiraResumenClient({ gira, plazas, artistas, clientes, ri
   async function archivar() {
     const ok = await confirmar({
       title: "Archivar la gira",
-      message: "La gira deja de aparecer en la lista. Sus plazas, advance y documentos se conservan.",
+      message: "La gira deja de aparecer en la lista. Sus shows, advance y documentos se conservan.",
       confirmText: "Archivar",
     });
     if (!ok) return;
@@ -250,7 +250,7 @@ export default function GiraResumenClient({ gira, plazas, artistas, clientes, ri
                   onClick={() => setForm((p) => ({ ...p, fechaInicio: derivadas.inicio, fechaFin: derivadas.fin }))}
                   className="ms-micro text-amber-300 hover:text-white transition-colors shrink-0"
                 >
-                  Usar las fechas de las plazas
+                  Usar las fechas de los shows
                 </button>
               </div>
             )}
@@ -420,7 +420,7 @@ export default function GiraResumenClient({ gira, plazas, artistas, clientes, ri
           ) : (
             <div className="space-y-2.5">
               <p className="ms-meta">
-                La gira no tiene rider maestro ligado. Sin rider no hay de dónde derivar el advance de cada plaza.
+                La gira no tiene rider maestro ligado. Sin rider no hay de dónde derivar el advance de cada show.
               </p>
               <Link href={`/giras/artista/${gira.artistaId}`} className="ms-btn-secondary block w-full text-center">
                 Armar el rider de {gira.artistaNombre}
@@ -433,23 +433,23 @@ export default function GiraResumenClient({ gira, plazas, artistas, clientes, ri
       <section className="ms-card">
         <div className="flex items-center justify-between gap-2 px-4 pt-3.5 pb-2.5">
           <div>
-            <h2 className="ms-section-label">Plazas de la gira</h2>
+            <h2 className="ms-section-label">Shows de la gira</h2>
             <p className="ms-meta mt-0.5">El porcentaje es de renglones indispensables resueltos</p>
           </div>
           <Link href={`/giras/${gira.id}/shows`} className="ms-micro text-[#B3985B] hover:text-white transition-colors">
-            Editar plazas →
+            Editar shows →
           </Link>
         </div>
 
-        {plazas.length === 0 ? (
+        {shows.length === 0 ? (
           <div className="px-4 py-8 text-center border-t border-[#1a1a1a]">
-            <p className="ms-meta mb-3">La gira todavía no tiene plazas.</p>
+            <p className="ms-meta mb-3">La gira todavía no tiene shows.</p>
             <Link href={`/giras/${gira.id}/shows`} className="ms-btn-primary">
-              Agregar la primera plaza
+              Agregar el primer show
             </Link>
           </div>
         ) : (
-          plazas.map((p) => (
+          shows.map((p) => (
             <Link
               key={p.id}
               href={`/giras/${gira.id}/show/${p.id}`}

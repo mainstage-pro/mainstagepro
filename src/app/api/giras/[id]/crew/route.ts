@@ -6,8 +6,8 @@ import { ORIGENES_CREW, nombreCrew } from "@/lib/giras";
 import { INCLUDE_CREW } from "@/lib/logistica-gira";
 
 /**
- * Crew de la gira. `showId` nulo = viaja toda la gira; `showId` con plaza =
- * refuerzo que solo entra a esa plaza (el técnico local, el de la casa). Con
+ * Crew de la gira. `showId` nulo = viaja toda la gira; `showId` con valor =
+ * refuerzo que solo entra a ese show (el técnico local, el de la casa). Con
  * ?showId= se devuelve lo que trabaja ese día: los de toda la gira más los suyos.
  */
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -53,11 +53,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const funcion = typeof body.funcion === "string" && body.funcion.trim() ? body.funcion.trim() : "Por definir";
   const showId = typeof body.showId === "string" && body.showId ? body.showId : null;
 
-  // Si llega plaza, tiene que ser de esta gira: un crew colgado de otra gira
+  // Si llega un show, tiene que ser de esta gira: un crew colgado de otra gira
   // aparecería en un day sheet ajeno.
   if (showId) {
     const show = await prisma.giraShow.findUnique({ where: { id: showId }, select: { giraId: true } });
-    if (!show || show.giraId !== id) return NextResponse.json({ error: "La plaza no es de esta gira" }, { status: 400 });
+    if (!show || show.giraId !== id) return NextResponse.json({ error: "El show no es de esta gira" }, { status: 400 });
   }
 
   const max = await prisma.giraCrew.aggregate({ where: { giraId: id }, _max: { orden: true } });

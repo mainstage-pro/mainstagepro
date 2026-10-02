@@ -201,7 +201,7 @@ export default function RiderEquipoClient({ riderId, lineasIniciales, equipos }:
         <div>
           <h2 className="ms-h2">Equipo que pide el artista</h2>
           <p className="ms-subtitle mt-1">
-            Un renglón por concepto, con prioridad y quién lo pone. Esto es lo que cada plaza tiene que resolver en su
+            Un renglón por concepto, con prioridad y quién lo pone. Esto es lo que cada show tiene que resolver en su
             advance.
           </p>
         </div>

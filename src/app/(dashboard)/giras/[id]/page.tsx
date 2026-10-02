@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resumirAdvance } from "@/lib/giras";
-import GiraResumenClient, { type GiraDetalle, type PlazaResumen } from "./GiraResumenClient";
+import GiraResumenClient, { type GiraDetalle, type ShowResumen } from "./GiraResumenClient";
 
 export const dynamic = "force-dynamic";
 
@@ -70,7 +70,7 @@ export default async function GiraResumenPage({ params }: { params: Promise<{ id
     }),
   ]);
 
-  const plazas: PlazaResumen[] = gira.shows.map((s) => {
+  const shows: ShowResumen[] = gira.shows.map((s) => {
     const resumen = resumirAdvance(s.riderLineas);
     return {
       id: s.id,
@@ -121,7 +121,7 @@ export default async function GiraResumenPage({ params }: { params: Promise<{ id
   return (
     <GiraResumenClient
       gira={detalle}
-      plazas={plazas}
+      shows={shows}
       artistas={artistas}
       clientes={clientes}
       riders={riders}

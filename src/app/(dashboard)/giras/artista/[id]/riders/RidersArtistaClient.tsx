@@ -174,7 +174,7 @@ export default function RidersArtistaClient({ artistaId, artistaNombre, tipoForm
         <div>
           <h2 className="ms-h2">Riders del artista</h2>
           <p className="ms-subtitle mt-1">
-            El rider maestro es lo que el artista pide una vez; cada plaza lo resuelve en su advance. Solo una versión
+            El rider maestro es lo que el artista pide una vez; cada show lo resuelve en su advance. Solo una versión
             es la vigente.
           </p>
         </div>

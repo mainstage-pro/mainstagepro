@@ -1,7 +1,7 @@
 // Archivero de la gira: lo que llega de afuera y hay que tener a mano.
 //
 // El rider de la casa, el contrato, el plano del foro, la input list que mandó
-// el ingeniero local. Un archivo puede colgar de la gira completa o de una plaza
+// el ingeniero local. Un archivo puede colgar de la gira completa o de un show
 // (`showId`): el rider de la casa es de un foro, el contrato es de la gira.
 //
 // El binario NO pasa por aquí: sube del navegador directo a Vercel Blob con
@@ -56,13 +56,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       ? Math.round(body.tamanoBytes)
       : null;
 
-  // Si el archivo se cuelga de una plaza, tiene que ser de esta gira: si no,
+  // Si el archivo se cuelga de un show, tiene que ser de esta gira: si no,
   // aparecería en el archivero de otro artista.
   let showId: string | null = null;
   if (typeof body.showId === "string" && body.showId) {
     const show = await prisma.giraShow.findUnique({ where: { id: body.showId }, select: { giraId: true } });
     if (!show || show.giraId !== id) {
-      return NextResponse.json({ error: "La plaza no es de esta gira" }, { status: 400 });
+      return NextResponse.json({ error: "El show no es de esta gira" }, { status: 400 });
     }
     showId = body.showId;
   }

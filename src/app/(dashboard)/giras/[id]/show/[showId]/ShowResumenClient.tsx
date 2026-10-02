@@ -183,7 +183,7 @@ export default function ShowResumenClient({
 
   async function guardar() {
     if (!form.fecha) {
-      toast.error("La plaza necesita fecha.");
+      toast.error("El show necesita fecha.");
       return;
     }
     setGuardando(true);
@@ -219,13 +219,13 @@ export default function ShowResumenClient({
       });
       const d = await res.json();
       if (!res.ok) {
-        toast.error(d.error ?? "No se pudo guardar la plaza.");
+        toast.error(d.error ?? "No se pudo guardar el show.");
         return;
       }
-      toast.success("Plaza actualizada");
+      toast.success("Show actualizado");
       router.refresh();
     } catch {
-      toast.error("No se pudo guardar la plaza.");
+      toast.error("No se pudo guardar el show.");
     } finally {
       setGuardando(false);
     }
@@ -258,7 +258,7 @@ export default function ShowResumenClient({
   return (
     <div className="ms-page space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="ms-h2">La plaza</h2>
+        <h2 className="ms-h2">El show</h2>
         <button onClick={guardar} disabled={guardando} className="ms-btn-primary disabled:opacity-50">
           {guardando ? "Guardando…" : "Guardar cambios"}
         </button>
@@ -425,7 +425,7 @@ export default function ShowResumenClient({
           </div>
 
           <div>
-            <label className="ms-label block mb-1.5">Notas de la plaza</label>
+            <label className="ms-label block mb-1.5">Notas del show</label>
             <textarea value={form.notas} onChange={(e) => set({ notas: e.target.value })} rows={3} className="ms-textarea" />
           </div>
 
@@ -438,7 +438,7 @@ export default function ShowResumenClient({
 
         <div className="space-y-4">
           <section className="ms-card p-4">
-            <h3 className="ms-section-label mb-3">Advance de la plaza</h3>
+            <h3 className="ms-section-label mb-3">Advance del show</h3>
             <div className="flex items-center justify-between gap-2">
               <span className={`text-[11px] px-2 py-0.5 rounded-full border ${SEMAFORO_COLOR[advance.semaforo] ?? ""}`}>
                 {SEMAFORO_LABEL[advance.semaforo] ?? advance.semaforo}
@@ -475,7 +475,7 @@ export default function ShowResumenClient({
           </section>
 
           <section className="ms-card p-4">
-            <h3 className="ms-section-label mb-3">Sellos de la plaza</h3>
+            <h3 className="ms-section-label mb-3">Sellos del show</h3>
             <div className="space-y-2.5">
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
@@ -545,7 +545,7 @@ export default function ShowResumenClient({
 
         {!venue ? (
           <p className="ms-meta">
-            La plaza no tiene venue del catálogo. Sin foro no hay ficha técnica contra la que cotejar el rider.
+            El show no tiene venue del catálogo. Sin foro no hay ficha técnica contra la que cotejar el rider.
           </p>
         ) : (
           <div className="space-y-3">

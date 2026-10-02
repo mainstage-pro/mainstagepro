@@ -4,7 +4,7 @@ import { getSession } from "@/lib/auth";
 import { logActividad } from "@/lib/actividad";
 import { TIPOS_BLOQUE, ordenarBloques } from "@/lib/giras";
 
-/// Bloques del day sheet de una plaza. El orden que se devuelve es el
+/// Bloques del day sheet de un show. El orden que se devuelve es el
 /// cronológico de la jornada, no el de captura: se arma en memoria porque
 /// la madrugada va al final y Postgres no sabe de eso.
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ showId: string }> }) {
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ sho
 
   const { showId } = await params;
   const show = await prisma.giraShow.findUnique({ where: { id: showId }, select: { id: true } });
-  if (!show) return NextResponse.json({ error: "La plaza no existe" }, { status: 404 });
+  if (!show) return NextResponse.json({ error: "El show no existe" }, { status: 404 });
 
   const body = await req.json();
   const titulo = typeof body.titulo === "string" ? body.titulo.trim() : "";

@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import DocumentosClient, { type ArchivoFila, type PlazaDoc } from "./DocumentosClient";
+import DocumentosClient, { type ArchivoFila, type ShowDoc } from "./DocumentosClient";
 
 export const dynamic = "force-dynamic";
 
@@ -64,7 +64,7 @@ export default async function DocumentosGiraPage({ params }: { params: Promise<{
     include: { show: { select: { id: true, fecha: true, ciudad: true } } },
   });
 
-  const plazas: PlazaDoc[] = gira.shows.map((s) => ({
+  const shows: ShowDoc[] = gira.shows.map((s) => ({
     id: s.id,
     fecha: s.fecha.toISOString(),
     ciudad: s.ciudad,
@@ -102,7 +102,7 @@ export default async function DocumentosGiraPage({ params }: { params: Promise<{
         portalToken={gira.portalToken}
         rider={rider}
         riderHeredado={!gira.rider && !!riderFallback}
-        plazas={plazas}
+        shows={shows}
         archivosIniciales={filas}
       />
     </div>

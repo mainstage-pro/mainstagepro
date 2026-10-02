@@ -9,10 +9,10 @@ import { recalcularPropuesta } from "../../recalcular";
 /// Las líneas típicas de una gira de production management, en orden de lectura.
 /// `veces` dice de dónde sale la cantidad; el precio sale del catálogo, así que
 /// cambiar la tarifa en /giras/servicios cambia lo que arma este botón.
-const PLANTILLA: { clave: string; veces: "SHOWS" | "PLAZAS" | "CIUDADES" | "UNA" | "UNIDAD" }[] = [
+const PLANTILLA: { clave: string; veces: "SHOWS" | "VENUES" | "CIUDADES" | "UNA" | "UNIDAD" }[] = [
   { clave: "DOCUMENTACION_TOUR", veces: "UNA" },
-  { clave: "ADVANCE_PLAZA", veces: "PLAZAS" },
-  { clave: "COORD_PROVEEDORES", veces: "PLAZAS" },
+  { clave: "ADVANCE_PLAZA", veces: "VENUES" },
+  { clave: "COORD_PROVEEDORES", veces: "VENUES" },
   { clave: "AUDIO_BANDA", veces: "SHOWS" },
   { clave: "DIA_VIAJE", veces: "CIUDADES" },
 ];
@@ -30,7 +30,7 @@ const REEMBOLSABLES: { tipo: string; concepto: string; descripcion: string; unid
   {
     tipo: "HOSPEDAJE",
     concepto: "Hospedaje",
-    descripcion: "Noches de hotel en cada plaza. Habitación sencilla, a costo comprobable.",
+    descripcion: "Noches de hotel en cada show. Habitación sencilla, a costo comprobable.",
     unidad: "DIA",
     veces: "SHOWS",
   },
@@ -96,8 +96,8 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     const cantidad =
       item.veces === "SHOWS"
         ? conteo.shows
-        : item.veces === "PLAZAS"
-          ? conteo.plazas
+        : item.veces === "VENUES"
+          ? conteo.venues
           : item.veces === "CIUDADES"
             ? Math.max(1, conteo.ciudades)
             : item.veces === "UNA"

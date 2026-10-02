@@ -1,5 +1,5 @@
 /**
- * DaySheetPDF.tsx — El day sheet de la plaza.
+ * DaySheetPDF.tsx — El day sheet del show.
  *
  * Es el documento que se reparte todos los días: a qué hora pasa cada cosa,
  * quién contesta por ella, dónde es y a quién se le marca si algo se cae. Se
@@ -93,7 +93,7 @@ export interface DaySheetData {
     curfew: string | null;
   };
   bloques: DaySheetBloque[];
-  /// true cuando la corrida se armó con los horarios gruesos de la plaza porque
+  /// true cuando la corrida se armó con los horarios gruesos del show porque
   /// nadie ha capturado bloques: el documento lo dice para que no se lea como
   /// un day sheet terminado.
   bloquesDerivados: boolean;
@@ -147,7 +147,7 @@ const COLS_HOTEL: ColumnaTabla[] = [
 ];
 
 export function DaySheetPDF({ data }: { data: DaySheetData }) {
-  const lugar = [data.venue?.nombre, data.ciudad].filter(Boolean).join(" · ") || "Plaza sin lugar";
+  const lugar = [data.venue?.nombre, data.ciudad].filter(Boolean).join(" · ") || "Venue por definir";
 
   const banda: ItemBanda[] = (
     [
@@ -264,14 +264,14 @@ export function DaySheetPDF({ data }: { data: DaySheetData }) {
             titulo="Corrida del día"
             nota={
               data.bloquesDerivados
-                ? "Armada con los horarios gruesos de la plaza: todavía no hay bloques capturados en el día del show."
+                ? "Armada con los horarios gruesos del show: todavía no hay bloques capturados en el día del show."
                 : null
             }
           >
             <Tabla columnas={COLS_CORRIDA} renglones={corrida} />
           </Seccion>
 
-          <Seccion titulo="Quién trabaja esta plaza">
+          <Seccion titulo="Quién trabaja este show">
             <Tabla columnas={COLS_CREW} renglones={crew} />
           </Seccion>
 
@@ -303,7 +303,7 @@ export function DaySheetPDF({ data }: { data: DaySheetData }) {
           ) : null}
 
           {data.notas ? (
-            <Seccion titulo="Notas de la plaza">
+            <Seccion titulo="Notas del show">
               <Nota label="Pendientes y avisos" texto={data.notas} />
             </Seccion>
           ) : null}

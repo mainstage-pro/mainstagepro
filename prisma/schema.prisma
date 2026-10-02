@@ -283,7 +283,7 @@ model Trato {
   // Artista del evento musical, capturado en el descubrimiento.
   artistaId           String?
   artista             Artista?  @relation(fields: [artistaId], references: [id])
-  // Una gira no compite entre opciones: sus cotizaciones son plazas distintas del mismo
+  // Una gira no compite entre opciones: sus cotizaciones son shows distintos del mismo
   // trato, cada una con su fecha y su venue.
   esGira              Boolean   @default(false)
   fechaEventoEstimada DateTime?
@@ -1563,7 +1563,7 @@ model Proveedor {
   empresaId      String?
   compania       Empresa? @relation("ProveedorEmpresa", fields: [empresaId], references: [id])
   giro           String?
-  // Cobertura, para filtrar proveedores por plaza al resolver un advance de gira
+  // Cobertura, para filtrar proveedores por ciudad al resolver un advance de gira
   ciudades       String? // JSON: ["Monterrey","Guadalajara"]
   disciplinas    String? // JSON: ["AUDIO","ILUMINACION"]
   telefono       String?
@@ -3690,7 +3690,7 @@ model Venue {
 
 // Catálogo de artistas del Directorio. Se captura en el descubrimiento de los tratos
 // musicales; cuando el trato es una gira, el artista es el sujeto de la gira y las
-// cotizaciones de abajo son sus plazas.
+// cotizaciones de abajo son sus shows.
 model Artista {
   id               String   @id @default(cuid())
   nombre           String
@@ -5838,9 +5838,9 @@ model GastoRecurrenteHistorial {
 // ═══════════════════════════════════════════════════════════════════════════════
 // GIRAS — PRODUCTION MANAGEMENT DE ARTISTAS
 //
-// El rider es del ARTISTA (maestro, versionado) y cada plaza deriva su advance.
+// El rider es del ARTISTA (maestro, versionado) y cada show deriva su advance.
 // El show es entidad propia porque Proyecto.cotizacionId es requerido y @unique:
-// cinco plazas no pueden colgar de una sola cotización de gira. Si una plaza
+// cinco shows no pueden colgar de una sola cotización de gira. Si un show
 // además requiere renta de equipo propio, se genera un Proyecto y se enlaza.
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -5985,7 +5985,7 @@ model ArtistaRiderLinea {
   @@map("artista_rider_lineas")
 }
 
-/// La gira: agrupa las plazas de un artista bajo un mismo rider y un mismo alcance.
+/// La gira: agrupa los shows de un artista bajo un mismo rider y un mismo alcance.
 model Gira {
   id     String  @id @default(cuid())
   nombre String
@@ -6033,7 +6033,7 @@ model Gira {
   @@map("giras")
 }
 
-/// Una plaza/fecha de la gira.
+/// Un show: una fecha concreta de la gira en un venue.
 model GiraShow {
   id     String @id @default(cuid())
   giraId String
@@ -6093,7 +6093,7 @@ model GiraShow {
   @@map("gira_shows")
 }
 
-/// El advance: una fila por concepto del rider, por plaza. Rider pedido vs. casa vs. faltante.
+/// El advance: una fila por concepto del rider, por show. Rider pedido vs. casa vs. faltante.
 model ShowRiderLinea {
   id     String   @id @default(cuid())
   showId String
@@ -6335,7 +6335,7 @@ model GiraSetlistCancion {
   @@map("gira_setlist_canciones")
 }
 
-/// Archivos de la gira o de una plaza: rider de la casa, contratos, planos, hospitality.
+/// Archivos de la gira o de un show: rider de la casa, contratos, planos, hospitality.
 model GiraArchivo {
   id     String @id @default(cuid())
   giraId String
@@ -6384,7 +6384,7 @@ model ServicioPM {
 }
 
 /// Propuesta de servicios de production management. Hermana de Cotizacion, no la reemplaza:
-/// aquí se cobra alcance y honorarios por plaza/día, no renta de inventario.
+/// aquí se cobra alcance y honorarios por venue/día, no renta de inventario.
 model PropuestaServicio {
   id      String @id @default(cuid())
   numero  String @unique
@@ -6484,7 +6484,7 @@ model PropuestaServicioLinea {
 }
 
 /// Ficha técnica de casa del venue, línea por línea. Es el activo que hace que la
-/// segunda visita a una plaza cueste la mitad de esfuerzo que la primera.
+/// segunda visita a un venue cueste la mitad de esfuerzo que la primera.
 model VenueInventario {
   id      String @id @default(cuid())
   venueId String

@@ -1,6 +1,6 @@
 // Descarga con sesión de los documentos de gira (rider y listas de canales).
 //
-// Los documentos de plaza no salen por aquí: necesitan fecha y foro, y viven en
+// Los documentos de show no salen por aquí: necesitan fecha y foro, y viven en
 // /api/gira-shows/[showId]/documentos/[documento].
 
 import { NextRequest, NextResponse } from "next/server";
@@ -17,7 +17,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: "Ese documento no existe" }, { status: 404 });
   }
   if (DOCUMENTOS_GIRA[documento].ambito === "SHOW") {
-    return NextResponse.json({ error: "Ese documento se emite desde una plaza, no desde la gira" }, { status: 400 });
+    return NextResponse.json({ error: "Ese documento se emite desde un show, no desde la gira" }, { status: 400 });
   }
 
   const gira = await prisma.gira.findUnique({ where: { id }, select: { id: true } });

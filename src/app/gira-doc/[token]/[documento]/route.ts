@@ -5,9 +5,9 @@
 // se le manda al foro sin pedirle que entre a ningún sistema. Se regenera en
 // cada visita, así que el enlace siempre refleja la gira como está hoy.
 //
-// Un mismo token puede ser de plaza (GiraShow.docsToken) o de gira
-// (Gira.portalToken). El de plaza abre los cuatro documentos; el de gira solo
-// los que no dependen de una fecha, porque un day sheet sin plaza no existe.
+// Un mismo token puede ser de show (GiraShow.docsToken) o de gira
+// (Gira.portalToken). El de show abre los cuatro documentos; el de gira solo
+// los que no dependen de una fecha, porque un day sheet sin show no existe.
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -54,8 +54,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
   }
   const doc = DOCUMENTOS_GIRA[documento];
 
-  // Primero se busca como plaza: es el caso normal, el day sheet se comparte por
-  // fecha. Si no es de plaza, se intenta como gira completa.
+  // Primero se busca como show: es el caso normal, el day sheet se comparte por
+  // fecha. Si no es de show, se intenta como gira completa.
   const show = await prisma.giraShow.findUnique({
     where: { docsToken: token },
     select: { id: true, giraId: true, fecha: true, ciudad: true, gira: { select: { activo: true } } },
@@ -86,7 +86,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
     if (!pdf) {
       return aviso(
         `${doc.label} todavía no se puede armar`,
-        `A la plaza del ${fmtFechaLarga(show.fecha)}${show.ciudad ? ` en ${show.ciudad}` : ""} le falta información para este documento.`,
+        `Al show del ${fmtFechaLarga(show.fecha)}${show.ciudad ? ` en ${show.ciudad}` : ""} le falta información para este documento.`,
         409,
       );
     }
@@ -95,8 +95,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
 
   if (doc.ambito === "SHOW") {
     return aviso(
-      `${doc.label} se comparte por plaza`,
-      "Este enlace es de la gira completa y este documento habla de una fecha concreta. Pide el enlace de la plaza que te interesa.",
+      `${doc.label} se comparte por show`,
+      "Este enlace es de la gira completa y este documento habla de una fecha concreta. Pide el enlace del show que te interesa.",
       404,
     );
   }

@@ -107,7 +107,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   await prisma.$transaction(async (tx) => {
     await tx.artistaRider.update({ where: { id: riderId }, data: { activo: false, esActivo: false } });
     // Si se dio de baja la versión vigente, la más reciente que quede toma el relevo:
-    // un artista sin rider activo rompe el advance de sus plazas.
+    // un artista sin rider activo rompe el advance de sus shows.
     if (rider.esActivo) {
       const sustituta = await tx.artistaRider.findFirst({
         where: { artistaId: rider.artistaId, activo: true },
