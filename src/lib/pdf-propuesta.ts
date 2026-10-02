@@ -93,6 +93,7 @@ export async function generarPropuestaServicio(id: string): Promise<PdfPropuesta
     entregables: l.servicio?.entregables ?? null,
     unidadLabel: UNIDAD_COBRO_LABEL[l.unidad] ?? l.unidad,
     cantidad: l.cantidad,
+    precioUnitario: l.precioUnitario,
     subtotal: l.esIncluido ? 0 : l.cantidad * l.precioUnitario,
     esIncluido: l.esIncluido,
     esReembolsable: l.esReembolsable,

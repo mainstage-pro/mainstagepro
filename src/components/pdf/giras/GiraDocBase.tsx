@@ -18,11 +18,14 @@ import { C } from "../PdfShared";
 export const DORADO_TXT = "#8a6f33";
 
 export const g = StyleSheet.create({
+  // El padding de arriba existe para las páginas de continuación, que no
+  // llevan hero y si no arrancan pegadas al borde. En la primera lo cancela
+  // el margen negativo del hero, que sí tiene que sangrar hasta el filo.
   page: {
     backgroundColor: C.blanco,
     fontFamily: "Helvetica",
-    paddingTop: 0,
-    paddingBottom: 44,
+    paddingTop: 28,
+    paddingBottom: 50,
     paddingHorizontal: 0,
     fontSize: 8.5,
     color: C.negro,
@@ -30,6 +33,7 @@ export const g = StyleSheet.create({
   // Hero negro de ancho completo
   hero: {
     backgroundColor: C.negro,
+    marginTop: -28,
     paddingHorizontal: 34,
     paddingTop: 20,
     paddingBottom: 16,

@@ -109,6 +109,7 @@ export interface PropuestaLineaDoc {
   entregables: string | null;
   unidadLabel: string;
   cantidad: number;
+  precioUnitario: number;
   subtotal: number;
   esIncluido: boolean;
   esReembolsable: boolean;
@@ -215,6 +216,9 @@ export function PropuestaServicioPDF({ data }: { data: PropuestaServicioData }) 
         celdas: [
           { texto: l.concepto, sub: detalle || null, fuerte: true },
           { texto: l.tipoLabel, sub: l.unidadLabel },
+          // Una línea sin cargo no lleva precio unitario: poner el tarifario
+          // al lado de un importe en cero invita a discutir el descuento.
+          { texto: l.esIncluido ? "—" : m(l.precioUnitario) },
           { texto: String(l.cantidad) },
           l.esIncluido
             ? { texto: "Incluido", color: DORADO_TXT }
@@ -282,7 +286,8 @@ export function PropuestaServicioPDF({ data }: { data: PropuestaServicioData }) 
             <Tabla
               columnas={[
                 { label: "Concepto", flex: 4 },
-                { label: "Concepto / unidad", flex: 1.7 },
+                { label: "Concepto / unidad", flex: 1.5 },
+                { label: "P. unitario", ancho: 62, alinear: "right" },
                 { label: "Cant.", ancho: 30, alinear: "right" },
                 { label: "Importe", ancho: 64, alinear: "right" },
               ]}
