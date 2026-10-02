@@ -303,6 +303,23 @@ export default function AprobacionPropuestaPage({ params }: { params: Promise<{ 
           )}
         </div>
 
+        <div className="mt-8 flex flex-wrap justify-center gap-3">
+          <a
+            href={`/api/propuestas-servicio/publica/${token}/pdf?inline=1`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="border border-white/12 rounded-lg px-5 py-2.5 text-xs text-white/70 hover:text-white hover:border-white/25 transition-colors"
+          >
+            Ver en PDF
+          </a>
+          <a
+            href={`/api/propuestas-servicio/publica/${token}/pdf`}
+            className="border border-white/12 rounded-lg px-5 py-2.5 text-xs text-white/70 hover:text-white hover:border-white/25 transition-colors"
+          >
+            Descargar PDF
+          </a>
+        </div>
+
         <p className="mt-10 text-center text-[11px] text-white/20">
           Mainstage Pro · Producción técnica para eventos
         </p>

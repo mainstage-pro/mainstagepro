@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { getConfig } from "@/lib/config";
 import PropuestaEditor from "./PropuestaEditor";
 
 export const dynamic = "force-dynamic";
@@ -38,7 +39,10 @@ export default async function PropuestaPage({ params }: { params: Promise<{ id: 
 
   if (!propuesta || !propuesta.activo) notFound();
 
-  const [servicios, equipos, roles, clientes, artistas, giras] = await Promise.all([
+  // El link que se le copia al cliente usa el dominio público configurado, el
+  // mismo que arma el endpoint de envío: no el dominio desde el que se trabaja.
+  const [appUrl, servicios, equipos, roles, clientes, artistas, giras] = await Promise.all([
+    getConfig("empresa.appUrl", process.env.NEXTAUTH_URL ?? "https://mainstagepro.vercel.app"),
     prisma.servicioPM.findMany({
       where: { activo: true },
       select: {
@@ -114,6 +118,7 @@ export default async function PropuestaPage({ params }: { params: Promise<{ id: 
           orden: l.orden,
         })),
       }}
+      appUrl={appUrl ?? "https://mainstagepro.vercel.app"}
       servicios={servicios}
       equipos={equipos}
       roles={roles}
