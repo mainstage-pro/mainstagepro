@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { ensureSyncColumns, ensureCotizacionHorarioColumns } from "@/lib/migraciones-lazy";
 import { sembrarNotasEquiposProyecto } from "@/lib/notas-equipos";
 import { sembrarViaticosProyecto } from "@/lib/viaticos-proyecto";
+import { recortarPosicionesSobrantes } from "@/lib/posiciones-montaje";
 
 /**
  * Motor de sincronización cotización → proyecto.
@@ -196,6 +197,7 @@ export async function sincronizarProyectoDesdeCotizacion(
       if (f.cantidad !== d.cantidad) data.cantidad = d.cantidad;
       if (f.dias !== d.dias) data.dias = d.dias;
       await prisma.proyectoEquipo.update({ where: { id: f.id }, data });
+      if (data.cantidad != null) await recortarPosicionesSobrantes(prisma, f.id, data.cantidad);
     }
 
     // Equipos repartidos a mano: no tocamos cantidades ni orígenes. Solo se marcan

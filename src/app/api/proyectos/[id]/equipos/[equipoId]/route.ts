@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { sincronizarProveedoresDeEquipos } from "@/lib/proveedor-equipos";
+import { recortarPosicionesSobrantes } from "@/lib/posiciones-montaje";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string; equipoId: string }> }) {
   const session = await getSession();
@@ -37,6 +38,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         proveedor: { select: { nombre: true } },
       },
     });
+
+    if (typeof data.cantidad === "number") await recortarPosicionesSobrantes(tx, equipoId, actualizado.cantidad);
 
     await sincronizarProveedoresDeEquipos(tx, id, [previo?.proveedorId, actualizado.proveedorId]);
     return actualizado;
