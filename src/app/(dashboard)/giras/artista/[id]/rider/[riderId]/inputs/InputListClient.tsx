@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { useToast } from "@/components/Toast";
+import { useCallback, useState } from "react";
 import { PLANTILLA_INPUT_BANDA, SOPORTES_MIC, SOPORTE_MIC_LABEL } from "@/lib/giras";
+import { useAutoguardadoCanales } from "@/hooks/useAutoguardadoCanales";
+import EstadoGuardado from "@/components/EstadoGuardado";
 
 export interface CanalInput {
   id: string;
@@ -54,14 +54,37 @@ function filaVacia(numero: number): Fila {
 }
 
 export default function InputListClient({ riderId, canalesMinimos, canalesIniciales }: Props) {
-  const router = useRouter();
-  const toast = useToast();
-
   const [filas, setFilas] = useState<Fila[]>(canalesIniciales.map(aFila));
-  const [original, setOriginal] = useState(JSON.stringify(canalesIniciales.map(aFila)));
-  const [guardando, setGuardando] = useState(false);
 
-  const sucio = JSON.stringify(filas) !== original;
+  const aPayload = useCallback(
+    (fs: Fila[]) =>
+      fs
+        .filter((f) => f.nombre.trim())
+        .map((f, i) => ({
+          clave: f.clave,
+          canal: {
+            id: f.id,
+            numero: i + 1,
+            nombre: f.nombre,
+            instrumento: f.instrumento,
+            microfono: f.microfono,
+            alternativas: f.alternativas,
+            soporte: f.soporte,
+            phantom: f.phantom,
+            inserto: f.inserto,
+            notas: f.notas,
+          },
+        })),
+    [],
+  );
+
+  const { estado, guardarYa } = useAutoguardadoCanales({
+    riderId,
+    tipo: "INPUT",
+    filas,
+    setFilas,
+    aPayload,
+  });
 
   function set(clave: string, campos: Partial<Fila>) {
     setFilas((prev) => prev.map((f) => (f.clave === clave ? { ...f, ...campos } : f)));
@@ -105,44 +128,6 @@ export default function InputListClient({ riderId, canalesMinimos, canalesInicia
     ]);
   }
 
-  async function guardar() {
-    const utiles = filas.filter((f) => f.nombre.trim());
-    setGuardando(true);
-    try {
-      const res = await fetch(`/api/artista-riders/${riderId}/canales`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tipo: "INPUT",
-          canales: utiles.map((f, i) => ({
-            id: f.id,
-            numero: i + 1,
-            nombre: f.nombre,
-            instrumento: f.instrumento,
-            microfono: f.microfono,
-            alternativas: f.alternativas,
-            soporte: f.soporte,
-            phantom: f.phantom,
-            inserto: f.inserto,
-            notas: f.notas,
-          })),
-        }),
-      });
-      const d = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        toast.error(d.error ?? "No se pudo guardar la input list");
-        return;
-      }
-      const frescas: Fila[] = (d.canales as CanalInput[]).map(aFila);
-      setFilas(frescas);
-      setOriginal(JSON.stringify(frescas));
-      toast.success(`Input list guardada: ${frescas.length} canales`);
-      router.refresh();
-    } finally {
-      setGuardando(false);
-    }
-  }
-
   const conNombre = filas.filter((f) => f.nombre.trim()).length;
   const faltanCanales = canalesMinimos !== null && conNombre > canalesMinimos;
 
@@ -165,9 +150,7 @@ export default function InputListClient({ riderId, canalesMinimos, canalesInicia
           <button className="ms-btn-ghost" onClick={agregar}>
             + Canal
           </button>
-          <button onClick={() => void guardar()} disabled={guardando || !sucio} className="ms-btn-primary disabled:opacity-40">
-            {guardando ? "Guardando…" : "Guardar lista"}
-          </button>
+          <EstadoGuardado estado={estado} onReintentar={guardarYa} />
         </div>
       </div>
 
@@ -334,18 +317,13 @@ export default function InputListClient({ riderId, canalesMinimos, canalesInicia
 
       {filas.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
-          <button onClick={() => void guardar()} disabled={guardando || !sucio} className="ms-btn-primary disabled:opacity-40">
-            {guardando ? "Guardando…" : "Guardar lista"}
-          </button>
           <button onClick={renumerar} className="ms-btn-ghost">
             Renumerar 1…{filas.length}
           </button>
           <button className="ms-btn-ghost" onClick={agregar}>
             + Canal
           </button>
-          <span className="ms-micro">
-            {sucio ? "Hay cambios sin guardar; la lista se guarda completa." : "Sin cambios por guardar."}
-          </span>
+          <EstadoGuardado estado={estado} onReintentar={guardarYa} />
         </div>
       )}
     </div>

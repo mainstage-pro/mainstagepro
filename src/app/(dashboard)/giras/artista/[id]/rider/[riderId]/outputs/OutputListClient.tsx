@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Combobox, type ComboboxOption } from "@/components/Combobox";
-import { useToast } from "@/components/Toast";
+import { useAutoguardadoCanales } from "@/hooks/useAutoguardadoCanales";
+import EstadoGuardado from "@/components/EstadoGuardado";
 import {
   PLANTILLA_OUTPUT_BANDA,
   ROL_PERSONA_LABEL,
@@ -65,14 +65,34 @@ export default function OutputListClient({
   canalesIniciales,
   personas,
 }: Props) {
-  const router = useRouter();
-  const toast = useToast();
-
   const [filas, setFilas] = useState<Fila[]>(canalesIniciales.map(aFila));
-  const [original, setOriginal] = useState(JSON.stringify(canalesIniciales.map(aFila)));
-  const [guardando, setGuardando] = useState(false);
 
-  const sucio = JSON.stringify(filas) !== original;
+  // Se guarda el primer canal de consola del mix, no su posición: el estéreo se
+  // llevó dos números y la lista tiene que poder reconstruirse tal cual.
+  const aPayload = useCallback(
+    (fs: Fila[]) =>
+      numerarSalidas(fs.filter((f) => f.nombre.trim())).map((f) => ({
+        clave: f.clave,
+        canal: {
+          id: f.id,
+          numero: f.canal,
+          nombre: f.nombre,
+          tipoSalida: f.tipoSalida,
+          estereo: f.estereo,
+          personaId: f.personaId,
+          notas: f.notas,
+        },
+      })),
+    [],
+  );
+
+  const { estado, guardarYa } = useAutoguardadoCanales({
+    riderId,
+    tipo: "OUTPUT",
+    filas,
+    setFilas,
+    aPayload,
+  });
 
   const opcionesPersona: ComboboxOption[] = useMemo(
     () => [
@@ -121,43 +141,6 @@ export default function OutputListClient({
     ]);
   }
 
-  async function guardar() {
-    // Se guarda el primer canal de consola del mix, no su posición: el estéreo se
-    // llevó dos números y la lista tiene que poder reconstruirse tal cual.
-    const utiles = numerarSalidas(filas.filter((f) => f.nombre.trim()));
-    setGuardando(true);
-    try {
-      const res = await fetch(`/api/artista-riders/${riderId}/canales`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tipo: "OUTPUT",
-          canales: utiles.map((f) => ({
-            id: f.id,
-            numero: f.canal,
-            nombre: f.nombre,
-            tipoSalida: f.tipoSalida,
-            estereo: f.estereo,
-            personaId: f.personaId,
-            notas: f.notas,
-          })),
-        }),
-      });
-      const d = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        toast.error(d.error ?? "No se pudo guardar la output list");
-        return;
-      }
-      const frescas: Fila[] = (d.canales as CanalOutput[]).map(aFila);
-      setFilas(frescas);
-      setOriginal(JSON.stringify(frescas));
-      toast.success(`Output list guardada: ${frescas.length} mixes en ${totalCanalesSalida(frescas)} canales`);
-      router.refresh();
-    } finally {
-      setGuardando(false);
-    }
-  }
-
   const utiles = filas.filter((f) => f.nombre.trim());
   const conNombre = utiles.length;
   const canales = totalCanalesSalida(utiles);
@@ -183,9 +166,7 @@ export default function OutputListClient({
           <button className="ms-btn-ghost" onClick={agregar}>
             + Salida
           </button>
-          <button onClick={() => void guardar()} disabled={guardando || !sucio} className="ms-btn-primary disabled:opacity-40">
-            {guardando ? "Guardando…" : "Guardar lista"}
-          </button>
+          <EstadoGuardado estado={estado} onReintentar={guardarYa} />
         </div>
       </div>
 
@@ -337,15 +318,10 @@ export default function OutputListClient({
 
       {filas.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
-          <button onClick={() => void guardar()} disabled={guardando || !sucio} className="ms-btn-primary disabled:opacity-40">
-            {guardando ? "Guardando…" : "Guardar lista"}
-          </button>
           <button className="ms-btn-ghost" onClick={agregar}>
             + Salida
           </button>
-          <span className="ms-micro">
-            {sucio ? "Hay cambios sin guardar; la lista se guarda completa." : "Sin cambios por guardar."}
-          </span>
+          <EstadoGuardado estado={estado} onReintentar={guardarYa} />
         </div>
       )}
     </div>

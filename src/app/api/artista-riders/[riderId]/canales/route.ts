@@ -57,9 +57,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ ride
   return NextResponse.json({ canales });
 }
 
-/// Guardado completo de una lista (INPUT u OUTPUT) en un solo viaje: la captura de
-/// 24-32 renglones se edita en pantalla y se persiste con un solo Guardar. Los
-/// renglones que el usuario quitó de la tabla se borran aquí.
+/// Guardado completo de una lista (INPUT u OUTPUT) en un solo viaje: la tabla se
+/// autoguarda entera cada vez que el usuario deja de escribir. Los renglones que
+/// el usuario quitó de la tabla se borran aquí.
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ riderId: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -87,6 +87,15 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ ride
     ).map((p) => p.id),
   );
 
+  /// Con autoguardado el cliente puede mandar el id de una fila que un guardado
+  /// anterior ya borró (le quitaron el nombre y se lo devolvieron). Esos ids se
+  /// tratan como fila nueva en vez de reventar el update.
+  const idsVivos = new Set(
+    (
+      await prisma.artistaRiderCanal.findMany({ where: { riderId, tipo }, select: { id: true } })
+    ).map((c) => c.id),
+  );
+
   const entrantes = (body.canales as CanalEntrante[])
     .map((c, i): { id: string | null; datos: CanalDatos } | null => {
       const nombre = texto(c.nombre);
@@ -97,7 +106,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ ride
       const tipoSalida =
         c.tipoSalida && (TIPOS_SALIDA as readonly string[]).includes(c.tipoSalida) ? c.tipoSalida : null;
       return {
-        id: c.id || null,
+        id: c.id && idsVivos.has(c.id) ? c.id : null,
         datos: {
           tipo,
           numero: Number.isFinite(n) ? Math.trunc(n) : i + 1,
