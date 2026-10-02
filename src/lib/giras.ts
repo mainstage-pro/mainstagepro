@@ -923,3 +923,46 @@ export const CONDICION_CASA_COLOR: Record<string, string> = {
   MALO: "text-red-300 bg-red-500/10 border-red-500/30",
   DESCONOCIDO: "text-[#9ca3af] bg-white/5 border-white/10",
 };
+
+// ── Archivero de la gira ─────────────────────────────────────────────────────
+// Lo que llega de afuera y no se captura: el contra-rider en PDF de la casa, el
+// contrato del promotor, planos. Vive como archivo porque nadie va a transcribir
+// un plano a campos, pero sí tiene que estar a un clic del advance.
+export const TIPOS_ARCHIVO_GIRA = [
+  "RIDER_CASA",
+  "CONTRATO",
+  "PLANO",
+  "STAGE_PLOT",
+  "INPUT_LIST",
+  "HOSPITALIDAD",
+  "OTRO",
+] as const;
+
+export const TIPO_ARCHIVO_GIRA_LABEL: Record<string, string> = {
+  RIDER_CASA: "Rider de la casa",
+  CONTRATO: "Contrato",
+  PLANO: "Plano del foro",
+  STAGE_PLOT: "Stage plot",
+  INPUT_LIST: "Input list recibida",
+  HOSPITALIDAD: "Hospitalidad",
+  OTRO: "Otro",
+};
+
+export const TIPO_ARCHIVO_GIRA_COLOR: Record<string, string> = {
+  RIDER_CASA: "ms-badge-gold",
+  CONTRATO: "ms-badge-blue",
+  PLANO: "ms-badge-sky",
+  STAGE_PLOT: "ms-badge-purple",
+  INPUT_LIST: "ms-badge-emerald",
+  HOSPITALIDAD: "ms-badge-pink",
+  OTRO: "ms-badge-gray",
+};
+
+/// Peso del archivo como se lee en pantalla. El modelo lo guarda en bytes porque
+/// es lo que reporta Blob; nadie lee "4823910".
+export function fmtTamano(bytes: number | null | undefined): string {
+  if (!bytes || bytes <= 0) return "—";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}

@@ -37,5 +37,5 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   await logActividad(session.id, "EDITAR", "propuesta_servicio", id, `Propuesta ${propuesta.numero} marcada enviada`);
 
   const appUrl = await getConfig("empresa.appUrl", process.env.NEXTAUTH_URL ?? "https://mainstagepro.vercel.app");
-  return NextResponse.json({ ok: true, token, url: `${appUrl}/propuesta/${token}` });
+  return NextResponse.json({ ok: true, token, url: `${appUrl}/aprobacion/propuesta/${token}` });
 }

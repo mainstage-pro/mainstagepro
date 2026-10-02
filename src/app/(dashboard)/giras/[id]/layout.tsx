@@ -54,6 +54,7 @@ export default async function GiraLayout({
     { href: `/giras/${id}/crew`, label: "Crew" },
     { href: `/giras/${id}/logistica`, label: "Viajes y hotel" },
     { href: `/giras/${id}/setlist`, label: "Setlist" },
+    { href: `/giras/${id}/documentos`, label: "Documentos" },
   ];
 
   return (
