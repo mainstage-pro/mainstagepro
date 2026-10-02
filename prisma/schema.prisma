@@ -828,6 +828,7 @@ model ProyectoEscenario {
   personal    ProyectoPersonal[]
   bloques     ProyectoBloqueTiempo[]
   proveedores ProveedorEvento[]
+  archivos    ProyectoArchivo[]
 
   @@index([proyectoId])
   @@map("proyecto_escenarios")
@@ -1080,16 +1081,23 @@ model ProyectoChecklist {
   @@map("proyecto_checklist")
 }
 
+// El archivero del proyecto: lo que llega de afuera (rider del artista, contrato,
+// plano del lugar, input list del ingeniero de casa). Un archivo puede ser de todo
+// el proyecto o de un escenario, igual que en giras un archivo es de la gira o de un show.
 model ProyectoArchivo {
-  id         String   @id @default(cuid())
-  proyectoId String
-  proyecto   Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
-  tipo       String // RENDER | PLOT_PATCH | INPUT_LIST | RIDER | ITINERARIO | DOCUMENTO | OTRO
-  nombre     String
-  url        String
-  subidoPor  String?
-  createdAt  DateTime @default(now())
+  id          String             @id @default(cuid())
+  proyectoId  String
+  proyecto    Proyecto           @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  escenarioId String?
+  escenario   ProyectoEscenario? @relation(fields: [escenarioId], references: [id], onDelete: SetNull)
+  tipo        String // ver TIPOS_ARCHIVO_PROYECTO en src/lib/proyecto-archivos.ts
+  nombre      String
+  url         String
+  tamanoBytes Int?
+  subidoPor   String?
+  createdAt   DateTime           @default(now())
 
+  @@index([proyectoId])
   @@map("proyecto_archivos")
 }
 

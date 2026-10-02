@@ -23,6 +23,7 @@ export async function register() {
         ensureMarketingColumns,
         ensureSeguimientoColumns,
         ensureSyncColumns,
+        ensureProyectoArchiveroColumns,
         ensureContactoInicialRetirado,
         ensureEtapaNegociacion,
       } = await import("@/lib/migraciones-lazy");
@@ -35,6 +36,7 @@ export async function register() {
         ensureMarketingColumns(),
         ensureSeguimientoColumns(),
         ensureSyncColumns(),
+        ensureProyectoArchiveroColumns(),
         ensureContactoInicialRetirado(),
         ensureEtapaNegociacion(),
       ]);

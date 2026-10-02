@@ -43,6 +43,7 @@ import { DISCIPLINA_COLORS, DISCIPLINA_LABELS } from "@/lib/disciplinaColors";
 import { contarRespondidos, contarIncidencias, nivelResultado, getEvalConfig, aplicaEvaluacion, type EvalPostEventoData } from "@/lib/evaluacion-post-evento";
 import { getDireccionConfig, promedioDireccion, type EvaluacionDireccionData } from "@/lib/evaluacion-direccion";
 import { diasEvento, parseHorariosEvento, horarioDeDia, parseFechasEvento } from "@/lib/fechas-evento";
+import { TIPOS_ARCHIVO_PROYECTO, TIPO_ARCHIVO_PROYECTO_COLOR, TIPO_ARCHIVO_PROYECTO_LABEL, fmtTamanoArchivo } from "@/lib/proyecto-archivos";
 import { useModoDiscreto } from "@/lib/modo-discreto";
 import { useOrdenPestanas } from "@/lib/orden-pestanas";
 import { construirCronologia, horariosResumen, MOMENTO_DE_ACTIVIDAD, VISTAS_CRONOLOGIA, type BloqueTiempo } from "@/lib/cronologia-evento";
@@ -90,7 +91,7 @@ interface CandidataFusion extends CotizacionFusionada { fechaEvento: string | nu
 interface CatFinanciera { id: string; nombre: string; tipo: string }
 interface Proveedor { id: string; nombre: string; empresa: string | null; compania: { id: string; nombre: string } | null; telefono: string | null; giro: string | null; banco?: string | null; titularCuenta?: string | null; cuentaBancaria?: string | null; clabe?: string | null; noTarjeta?: string | null; rfc?: string | null }
 interface CheckItem { id: string; item: string; completado: boolean; orden: number; tipo: string }
-interface Archivo { id: string; tipo: string; nombre: string; url: string; createdAt: string }
+interface Archivo { id: string; tipo: string; nombre: string; url: string; tamanoBytes: number | null; createdAt: string; escenario: { id: string; nombre: string } | null }
 interface AjusteEntry { fecha: string; de: number; a: number; motivo: string; usuario: string }
 interface CxC { id: string; concepto: string; tipoPago: string; monto: number; montoCobrado: number; estado: string; fechaCompromiso: string; montoOriginal: number | null; ajustesLog: string | null }
 interface CxP { id: string; concepto: string; monto: number; montoPagado?: number; montoCompensado?: number; estado: string; fechaCompromiso: string; tipoAcreedor: string; montoOriginal: number | null; ajustesLog: string | null; notas: string | null; esNomina?: boolean; esDeuda?: boolean; esReparto?: boolean; gastoRecurrenteId?: string | null; proveedorId?: string | null; tecnicoId?: string | null }
@@ -1184,8 +1185,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const cateringLoaded = useRef(false);
   const cateringTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Estado para documentos
+  // Estado del archivero: qué es el archivo y de qué escenario, antes de elegirlo.
   const [uploadingTipo, setUploadingTipo] = useState<string | null>(null);
+  const [tipoArchivo, setTipoArchivo] = useState<string>("RIDER");
+  const [escenarioArchivo, setEscenarioArchivo] = useState<string>("");
+  const inputArchivo = useRef<HTMLInputElement>(null);
 
   // Estados para equipos
   const [showAddEquipo, setShowAddEquipo] = useState(false);
@@ -2641,13 +2645,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, "_blank");
   }
 
-  // ── Subir archivo ──
+  // ── Archivero del proyecto ──
   async function subirArchivo(e: React.ChangeEvent<HTMLInputElement>, tipo: string) {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadingTipo(tipo);
     try {
-      // Client upload: directo browser → Vercel Blob, sin límite de tamaño
+      // Client upload: directo browser → Vercel Blob, sin límite de tamaño. Así un
+      // plano de 30 MB no choca con el límite de las funciones.
       const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
       const pathname = `proyectos/${id}/${Date.now()}-${tipo.toLowerCase()}.${ext}`;
       const blob = await upload(pathname, file, {
@@ -2658,13 +2663,20 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       const res = await fetch(`/api/proyectos/${id}/archivos`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: blob.url, tipo, nombre: file.name }),
+        body: JSON.stringify({
+          url: blob.url,
+          tipo,
+          nombre: file.name,
+          tamanoBytes: file.size,
+          escenarioId: escenarioArchivo || null,
+        }),
       });
       const d = await res.json();
       if (!res.ok) {
         toast.error(d.error ?? "Error al guardar archivo");
       } else if (d.archivo) {
-        setProyecto(prev => prev ? { ...prev, archivos: [...prev.archivos, d.archivo] } : prev);
+        setProyecto(prev => prev ? { ...prev, archivos: [d.archivo, ...prev.archivos] } : prev);
+        toast.success("Archivo guardado en el archivero");
       }
     } catch {
       toast.error("Error de conexión al subir archivo");
@@ -2674,9 +2686,20 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     }
   }
 
-  async function eliminarArchivo(archivoId: string) {
-    await fetch(`/api/proyectos/${id}/archivos/${archivoId}`, { method: "DELETE" });
-    setProyecto(prev => prev ? { ...prev, archivos: prev.archivos.filter(a => a.id !== archivoId) } : prev);
+  async function eliminarArchivo(a: Archivo) {
+    const ok = await confirm({
+      message: `¿Quitar "${a.nombre}" del archivero? El archivo se borra y no se puede recuperar desde aquí.`,
+      danger: true,
+      confirmText: "Quitar",
+    });
+    if (!ok) return;
+    const res = await fetch(`/api/proyectos/${id}/archivos/${a.id}`, { method: "DELETE" });
+    if (!res.ok) {
+      toast.error("No se pudo quitar el archivo");
+      return;
+    }
+    setProyecto(prev => prev ? { ...prev, archivos: prev.archivos.filter(x => x.id !== a.id) } : prev);
+    toast.success("Archivo quitado");
   }
 
   // ── Toggle checklist ──
@@ -6214,37 +6237,92 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             );
           })()}
 
-          {/* ── Documentos operativos ── */}
-          {!esRenta && <div className="ms-card p-5">
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">Documentos operativos</p>
-              <label className={`cursor-pointer text-xs border px-3 py-1.5 rounded-lg transition-colors ${
-                uploadingTipo ? "border-gray-700 text-gray-600" : "border-[#B3985B]/40 text-[#B3985B] hover:border-[#B3985B] hover:text-white"
-              }`}>
-                {uploadingTipo ? "Subiendo..." : "+ Subir archivo"}
-                <input type="file" className="hidden" disabled={!!uploadingTipo}
-                  onChange={e => subirArchivo(e, "OTRO")} />
-              </label>
+          {/* ── Archivero del proyecto ── */}
+          {!esRenta && <div className="ms-card p-5 space-y-3">
+            <div>
+              <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">Archivero del proyecto</p>
+              <p className="text-[11px] text-gray-600 mt-1">
+                Lo que llega de afuera: el rider del artista, el contrato, el plano del salón, la input list que mandó el
+                ingeniero de casa.{multiEscenario ? " Un archivo puede ser de todo el proyecto o de un escenario." : ""}
+              </p>
             </div>
-            <p className="text-[11px] text-gray-600 mb-4">
-              {esRenta
-                ? "Contrato de renta · Fotos de entrega · Rider técnico · Otros"
-                : "Render · Plot / patch · Input list · Rider · Ficha técnica · Itinerario · Otros"}
-            </p>
+
+            <div className={`grid grid-cols-1 gap-2 ${multiEscenario ? "sm:grid-cols-2 lg:grid-cols-3" : "sm:grid-cols-2"}`}>
+              <label className="flex flex-col gap-1">
+                <span className="ms-label">Qué es</span>
+                <select className="ms-input" value={tipoArchivo} onChange={e => setTipoArchivo(e.target.value)}>
+                  {TIPOS_ARCHIVO_PROYECTO.map(t => (
+                    <option key={t} value={t}>{TIPO_ARCHIVO_PROYECTO_LABEL[t]}</option>
+                  ))}
+                </select>
+              </label>
+              {multiEscenario && (
+                <label className="flex flex-col gap-1">
+                  <span className="ms-label">De qué escenario</span>
+                  <select className="ms-input" value={escenarioArchivo} onChange={e => setEscenarioArchivo(e.target.value)}>
+                    <option value="">Todo el proyecto</option>
+                    {escenarios.map(esc => (
+                      <option key={esc.id} value={esc.id}>{esc.nombre}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <div className="flex items-end">
+                <button className="ms-btn-primary w-full" disabled={!!uploadingTipo}
+                  onClick={() => inputArchivo.current?.click()}>
+                  {uploadingTipo ? "Subiendo…" : "Subir archivo"}
+                </button>
+                <input ref={inputArchivo} type="file" className="hidden"
+                  onChange={e => subirArchivo(e, tipoArchivo)} />
+              </div>
+            </div>
+
             {proyecto.archivos.length === 0 ? (
-              <p className="text-gray-700 text-xs italic">Sin archivos cargados</p>
+              <div className="ms-empty-state">
+                <p className="text-sm text-[#6b7280]">
+                  El archivero está vacío. Sube el rider del artista o el contrato en cuanto lleguen: aquí los encuentra
+                  cualquiera del equipo.
+                </p>
+              </div>
             ) : (
-              <div className="space-y-1">
-                {proyecto.archivos.map(a => (
-                  <div key={a.id} className="flex items-center justify-between bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2">
-                    <a href={a.url} target="_blank" rel="noopener noreferrer"
-                      className="text-xs text-blue-400 hover:text-blue-300 hover:underline truncate flex-1 mr-3">
-                      {a.nombre}
-                    </a>
-                    <button onClick={() => eliminarArchivo(a.id)}
-                      className="text-gray-600 hover:text-red-400 text-sm leading-none transition-colors shrink-0">×</button>
-                  </div>
-                ))}
+              <div className="ms-table-wrapper overflow-x-auto">
+                <table className="w-full min-w-[640px]">
+                  <thead className="ms-thead">
+                    <tr>
+                      <th className="ms-th text-left">Archivo</th>
+                      <th className="ms-th text-left">Qué es</th>
+                      {multiEscenario && <th className="ms-th text-left">Escenario</th>}
+                      <th className="ms-th text-left">Tamaño</th>
+                      <th className="ms-th text-left">Subido</th>
+                      <th className="ms-th" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {proyecto.archivos.map(a => (
+                      <tr key={a.id} className="ms-tr">
+                        <td className="ms-td">
+                          <a href={a.url} target="_blank" rel="noopener noreferrer"
+                            className="text-[13px] text-white hover:text-[#B3985B]">
+                            {a.nombre}
+                          </a>
+                        </td>
+                        <td className="ms-td">
+                          <span className={`ms-badge ${TIPO_ARCHIVO_PROYECTO_COLOR[a.tipo] ?? "ms-badge-gray"}`}>
+                            {TIPO_ARCHIVO_PROYECTO_LABEL[a.tipo] ?? a.tipo}
+                          </span>
+                        </td>
+                        {multiEscenario && (
+                          <td className="ms-td text-[13px] text-[#9ca3af]">{a.escenario?.nombre ?? "Todo el proyecto"}</td>
+                        )}
+                        <td className="ms-td text-[13px] text-[#9ca3af]">{fmtTamanoArchivo(a.tamanoBytes)}</td>
+                        <td className="ms-td text-[13px] text-[#9ca3af]">{fmtDate(a.createdAt)}</td>
+                        <td className="ms-td text-right">
+                          <button className="ms-btn-ghost text-red-400" onClick={() => eliminarArchivo(a)}>Quitar</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>}

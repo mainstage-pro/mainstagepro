@@ -330,6 +330,34 @@ export async function ensureSyncColumns() {
 }
 
 /**
+ * Archivero del proyecto (patrón Neon). proyecto_archivos.escenarioId / tamanoBytes:
+ * de qué escenario es el archivo y cuánto pesa. Declaradas en schema.prisma → Prisma
+ * las pide en cualquier lectura de proyecto_archivos sin select, por eso el DDL aditivo
+ * se aplica a prod ANTES del deploy (scripts/ddl-proyecto-archivero.ts); esto es
+ * respaldo idempotente para dev/local.
+ */
+let _archiveroReady = false;
+
+export async function ensureProyectoArchiveroColumns() {
+  if (_archiveroReady) return;
+  if (!await columnExists('proyecto_archivos', 'escenarioId')) {
+    try {
+      await prisma.$executeRawUnsafe(
+        `ALTER TABLE proyecto_archivos ADD COLUMN IF NOT EXISTS "escenarioId" TEXT REFERENCES proyecto_escenarios(id) ON DELETE SET NULL`
+      );
+    } catch { /* ya existe */ }
+  }
+  if (!await columnExists('proyecto_archivos', 'tamanoBytes')) {
+    try {
+      await prisma.$executeRawUnsafe(
+        `ALTER TABLE proyecto_archivos ADD COLUMN IF NOT EXISTS "tamanoBytes" INTEGER`
+      );
+    } catch { /* ya existe */ }
+  }
+  _archiveroReady = true;
+}
+
+/**
  * Migraciones lazy de finanzas (patrón Neon: ADD COLUMN IF NOT EXISTS).
  * - cuentas_pagar.categoriaId: liga la CxP con una categoría financiera (FK opcional).
  *   El dashboard lee CuentaPagar con findMany sin select, así que esta columna DEBE

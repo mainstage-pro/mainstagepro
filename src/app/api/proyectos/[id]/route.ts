@@ -93,7 +93,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
           orderBy: { id: "asc" },
         },
         checklist: { orderBy: { orden: "asc" } },
-        archivos: { orderBy: { createdAt: "asc" } },
+        archivos: {
+          include: { escenario: { select: { id: true, nombre: true } } },
+          orderBy: { createdAt: "desc" },
+        },
         bitacora: {
           include: { usuario: { select: { name: true } } },
           orderBy: { createdAt: "desc" },
@@ -161,7 +164,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
           orderBy: { id: "asc" },
         },
         checklist: { orderBy: { orden: "asc" } },
-        archivos: { orderBy: { createdAt: "asc" } },
+        archivos: {
+          include: { escenario: { select: { id: true, nombre: true } } },
+          orderBy: { createdAt: "desc" },
+        },
         bitacora: {
           include: { usuario: { select: { name: true } } },
           orderBy: { createdAt: "desc" },
