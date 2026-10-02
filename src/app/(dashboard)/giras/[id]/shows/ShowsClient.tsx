@@ -203,6 +203,25 @@ export default function ShowsClient({ giraId, shows }: { giraId: string; shows: 
   const [venueNuevo, setVenueNuevo] = useState<(VenueBorrador & ShowBorrador) | null>(null);
   const [guardando, setGuardando] = useState(false);
 
+  const [plegados, setPlegados] = useState<Set<string>>(new Set());
+
+  function alternarPliegue(clave: string) {
+    setPlegados((prev) => {
+      const siguiente = new Set(prev);
+      if (!siguiente.delete(clave)) siguiente.add(clave);
+      return siguiente;
+    });
+  }
+
+  function desplegar(clave: string) {
+    setPlegados((prev) => {
+      if (!prev.has(clave)) return prev;
+      const siguiente = new Set(prev);
+      siguiente.delete(clave);
+      return siguiente;
+    });
+  }
+
   function cerrarTodo() {
     setVenueAbierto(null);
     setShowAbierto(null);
@@ -224,6 +243,7 @@ export default function ShowsClient({ giraId, shows }: { giraId: string; shows: 
 
   function abrirFecha(g: Grupo) {
     cerrarTodo();
+    desplegar(g.clave);
     setFechaEn(g.clave);
     setFechaNueva("");
   }
@@ -543,18 +563,50 @@ export default function ShowsClient({ giraId, shows }: { giraId: string; shows: 
         <div className="space-y-3">
           {grupos.map((g, i) => {
             const editandoVenue = venueAbierto === g.clave;
+            const plegado = plegados.has(g.clave);
             return (
-              <section key={g.clave} className={`ms-card ${editandoVenue ? "border-[#B3985B]/30" : ""}`}>
-                <div className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-4 px-4 py-3">
-                  <span className="ms-micro text-[#555] tabular-nums shrink-0 w-6">{i + 1}</span>
+              <section
+                key={g.clave}
+                className={`ms-card overflow-hidden ${editandoVenue ? "border-[#B3985B]/30" : ""}`}
+              >
+                <div
+                  className={`relative flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-4 bg-[#161616] px-4 py-3 ${
+                    plegado && !editandoVenue ? "" : "border-b border-[#232323]"
+                  }`}
+                >
+                  <span className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#B3985B]" />
 
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[13px] text-white truncate">{tituloGrupo(g)}</p>
-                    <p className="ms-meta truncate mt-0.5">
-                      {g.shows.length === 1 ? "1 show" : `${g.shows.length} shows`} · {rangoGrupo(g)}
-                      {g.shows[0].promotorNombre ? ` · ${g.shows[0].promotorNombre}` : ""}
-                    </p>
-                  </div>
+                  <button
+                    onClick={() => alternarPliegue(g.clave)}
+                    className="flex items-center gap-3 min-w-0 flex-1 text-left group"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2.5}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className={`w-3.5 h-3.5 shrink-0 text-[#B3985B] transition-transform ${plegado ? "" : "rotate-90"}`}
+                    >
+                      <path d="m9 18 6-6-6-6" />
+                    </svg>
+                    <span className="text-[10px] font-semibold text-[#B3985B]/50 tabular-nums shrink-0 w-4">
+                      {i + 1}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold text-white tracking-tight truncate group-hover:text-[#B3985B] transition-colors">
+                        {tituloGrupo(g)}
+                      </span>
+                      <span className="block ms-meta truncate mt-0.5">
+                        <span className="text-[#B3985B]/70 font-medium">
+                          {g.shows.length === 1 ? "1 show" : `${g.shows.length} shows`}
+                        </span>
+                        {` · ${rangoGrupo(g)}`}
+                        {g.shows[0].promotorNombre ? ` · ${g.shows[0].promotorNombre}` : ""}
+                      </span>
+                    </span>
+                  </button>
 
                   <div className="flex items-center gap-3 flex-wrap shrink-0">
                     {/* Sin venue del catálogo no hay a qué agrupar: cada fecha suelta
@@ -562,7 +614,7 @@ export default function ShowsClient({ giraId, shows }: { giraId: string; shows: 
                     {g.venueId && (
                       <button
                         onClick={() => (fechaEn === g.clave ? setFechaEn(null) : abrirFecha(g))}
-                        className="ms-micro text-[#B3985B] hover:text-white transition-colors"
+                        className="ms-micro font-medium text-[#B3985B] hover:text-white transition-colors"
                       >
                         + Agregar show
                       </button>
@@ -577,7 +629,7 @@ export default function ShowsClient({ giraId, shows }: { giraId: string; shows: 
                 </div>
 
                 {editandoVenue && (
-                  <div className="px-4 pb-4 pt-1 border-t border-[#1a1a1a]">
+                  <div className="px-4 pb-4 pt-4 border-b border-[#1a1a1a]">
                     {camposVenue(borradorVenue, (patch) => setBorradorVenue((b) => ({ ...b, ...patch })))}
                     <div className="flex flex-wrap items-center gap-2 mt-3.5">
                       <button
@@ -597,15 +649,20 @@ export default function ShowsClient({ giraId, shows }: { giraId: string; shows: 
                   </div>
                 )}
 
-                <div className="border-t border-[#1a1a1a]">
+                <div className={plegado ? "hidden" : ""}>
                   {g.shows.map((s) => {
                     const abierto = showAbierto === s.id;
                     const dias = diasRestantes(s.fecha);
                     return (
-                      <div key={s.id} className="border-b border-[#111] last:border-b-0">
-                        <div className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-4 pl-10 pr-4 py-2.5">
+                      <div
+                        key={s.id}
+                        className={`border-b border-[#171717] last:border-b-0 ${abierto ? "bg-[#0d0d0d]" : "hover:bg-[#141414] transition-colors"}`}
+                      >
+                        <div className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-4 ml-[18px] border-l border-[#B3985B]/20 pl-5 pr-4 py-2.5">
                           <div className="min-w-0 flex-1">
-                            <p className="text-[13px] text-white truncate">{fmtFechaCorta(s.fecha)}</p>
+                            <p className="text-[13px] font-medium text-white tabular-nums truncate">
+                              {fmtFechaCorta(s.fecha)}
+                            </p>
                             <p className="ms-meta truncate mt-0.5">
                               {fmtDiasRestantes(dias)}
                               {s.tipoShow ? ` · ${TIPO_SHOW_LABEL[s.tipoShow] ?? s.tipoShow}` : ""}
@@ -640,7 +697,7 @@ export default function ShowsClient({ giraId, shows }: { giraId: string; shows: 
                         </div>
 
                         {abierto && (
-                          <div className="pl-10 pr-4 pb-4 pt-1">
+                          <div className="ml-[18px] border-l border-[#B3985B]/20 pl-5 pr-4 pb-4 pt-1">
                             {camposShow(borradorShow, (patch) => setBorradorShow((b) => ({ ...b, ...patch })))}
                             <div className="flex flex-wrap items-center gap-2 mt-3.5">
                               <button
@@ -668,7 +725,7 @@ export default function ShowsClient({ giraId, shows }: { giraId: string; shows: 
                 </div>
 
                 {fechaEn === g.clave && (
-                  <div className="flex flex-wrap items-end gap-2 pl-10 pr-4 py-3 border-t border-[#1a1a1a]">
+                  <div className="flex flex-wrap items-end gap-2 ml-[18px] border-l border-l-[#B3985B]/20 border-t border-t-[#1a1a1a] pl-5 pr-4 py-3">
                     <div>
                       <label className="ms-label block mb-1.5">Otra fecha en {g.venueNombre ?? "este venue"}</label>
                       <input
