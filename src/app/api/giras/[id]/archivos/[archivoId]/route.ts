@@ -23,7 +23,7 @@ export async function DELETE(
     select: { id: true, giraId: true, nombre: true, url: true, tipo: true },
   });
   if (!archivo || archivo.giraId !== id) {
-    return NextResponse.json({ error: "El archivo no existe en esta gira" }, { status: 404 });
+    return NextResponse.json({ error: "El archivo no existe en este registro" }, { status: 404 });
   }
 
   await prisma.giraArchivo.delete({ where: { id: archivoId } });

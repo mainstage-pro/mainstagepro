@@ -152,7 +152,7 @@ export default function RidersArtistaClient({ artistaId, artistaNombre, tipoForm
     const ok = await confirm({
       message:
         r.giras > 0
-          ? `«${r.nombre}» está ligado a ${r.giras} ${r.giras === 1 ? "gira" : "giras"}. ¿Darlo de baja de todos modos? Las giras conservan su advance.`
+          ? `«${r.nombre}» está ligado a ${r.giras} ${r.giras === 1 ? "registro" : "registros"}. ¿Darlo de baja de todos modos? Conservan su advance.`
           : `¿Dar de baja «${r.nombre}»? Se oculta, no se borra.`,
       danger: true,
       confirmText: "Dar de baja",
@@ -208,7 +208,7 @@ export default function RidersArtistaClient({ artistaId, artistaNombre, tipoForm
                 <th className="ms-th text-left">Formación</th>
                 <th className="ms-th text-right">Canales</th>
                 <th className="ms-th text-right">Conceptos</th>
-                <th className="ms-th text-right">Giras</th>
+                <th className="ms-th text-right">En uso</th>
                 <th className="ms-th text-left">Actualizado</th>
                 <th className="ms-th text-right">Acciones</th>
               </tr>

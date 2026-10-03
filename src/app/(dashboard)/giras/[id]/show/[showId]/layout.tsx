@@ -8,6 +8,7 @@ import {
   SEMAFORO_COLOR,
   SEMAFORO_LABEL,
   diasRestantes,
+  esGira,
   fmtDiasRestantes,
   fmtFechaLarga,
   resumirAdvance,
@@ -37,7 +38,7 @@ export default async function ShowLayout({
       ciudad: true,
       estado: true,
       venue: { select: { id: true, nombre: true, ciudad: true } },
-      gira: { select: { id: true, nombre: true, artista: { select: { nombre: true } } } },
+      gira: { select: { id: true, nombre: true, tipo: true, artista: { select: { nombre: true } } } },
       riderLineas: { select: { prioridad: true, estado: true, cubiertoPor: true } },
     },
   });
@@ -64,7 +65,7 @@ export default async function ShowLayout({
           </Link>
           <span>/</span>
           <Link href={`/giras/${id}/shows`} className="hover:text-[#B3985B] transition-colors">
-            Venues
+            {esGira(show.gira.tipo) ? "Shows" : "Show"}
           </Link>
         </div>
 

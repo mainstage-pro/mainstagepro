@@ -29,7 +29,15 @@ export default async function ArtistaDatosPage({ params }: { params: Promise<{ i
         giras: {
           where: { activo: true },
           orderBy: { createdAt: "desc" },
-          select: { id: true, nombre: true, estado: true, fechaInicio: true, fechaFin: true, _count: { select: { shows: true } } },
+          select: {
+            id: true,
+            nombre: true,
+            tipo: true,
+            estado: true,
+            fechaInicio: true,
+            fechaFin: true,
+            _count: { select: { shows: true } },
+          },
           take: 20,
         },
       },
@@ -65,6 +73,7 @@ export default async function ArtistaDatosPage({ params }: { params: Promise<{ i
       giras={artista.giras.map((g) => ({
         id: g.id,
         nombre: g.nombre,
+        tipo: g.tipo,
         estado: g.estado,
         fechaInicio: g.fechaInicio?.toISOString() ?? null,
         fechaFin: g.fechaFin?.toISOString() ?? null,

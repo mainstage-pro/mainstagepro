@@ -19,6 +19,8 @@ export interface TareaItem {
   proyectoEvento?: { id: string; nombre: string; fechaEvento?: string | null } | null;
   trato?: { id: string; nombreEvento: string | null; cliente?: { nombre: string } | null } | null;
   cliente?: { id: string; nombre: string } | null;
+  gira?: { id: string; nombre: string; tipo?: string | null; artista?: { nombre: string } | null } | null;
+  giraShow?: { id: string; fecha: string; ciudad: string | null } | null;
   proyectoInterno?: { id: string; nombre: string; area?: string | null } | null;
   seccion: { id: string; nombre: string } | null;
   asignadoA: { id: string; name: string } | null;
@@ -46,6 +48,7 @@ const TIPO_ORIGEN: Record<string, { label: string; color: string; bg: string; bo
   EVENTO:   { label: "Evento",   color: "#60a5fa", bg: "rgba(59,130,246,0.14)",  border: "rgba(59,130,246,0.35)" },
   TRATO:    { label: "Trato",    color: "#2dd4bf", bg: "rgba(45,212,191,0.14)",  border: "rgba(45,212,191,0.35)" },
   CLIENTE:  { label: "Cliente",  color: "#f472b6", bg: "rgba(244,114,182,0.14)", border: "rgba(244,114,182,0.35)" },
+  GIRA:     { label: "Gira",     color: "#c084fc", bg: "rgba(192,132,252,0.14)", border: "rgba(192,132,252,0.35)" },
 };
 
 const PRIO: Record<string, { ring: string; dot: string; glow: string; fill: string; dotSize: string }> = {
@@ -279,6 +282,10 @@ export default function TaskItem({
     : tarea.tipoOrigen === "TRATO"    && tarea.trato           ? (tarea.trato.nombreEvento || tarea.trato.cliente?.nombre || tipoTag?.label)
     : tarea.tipoOrigen === "PROYECTO" && tarea.proyectoInterno ? tarea.proyectoInterno.nombre
     : tarea.tipoOrigen === "CLIENTE"  && tarea.cliente          ? tarea.cliente.nombre
+    // En una gira el dato útil es la fecha, no el nombre de la gira: una gira de 5
+    // ciudades produce 5 veces el mismo pendiente y hay que saber de cuál es.
+    : tarea.tipoOrigen === "GIRA"     && tarea.gira
+      ? (tarea.giraShow?.ciudad ? `${tarea.gira.nombre} · ${tarea.giraShow.ciudad}` : tarea.gira.nombre)
     : tipoTag?.label;
   // Punto de estado de verificación: ámbar=pendiente, verde=verificada, rojo=rechazada
   const verifDot = (() => {

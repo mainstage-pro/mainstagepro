@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logActividad } from "@/lib/actividad";
-import { ESTADOS_SHOW, TIPOS_SHOW, parseFechaGira } from "@/lib/giras";
+import { ESTADOS_SHOW, TIPOS_SHOW, esGira, parseFechaGira } from "@/lib/giras";
 
 /// Gemelo de la función en api/giras/[id]/shows/route.ts: un route handler no
 /// puede exportar nada además de sus verbos.
@@ -137,6 +137,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ sh
 
   if (data.fecha && new Date(String(data.fecha)).getTime() !== existente.fecha.getTime()) {
     await reordenarShows(existente.giraId);
+    // En un show suelto la fecha del show ES la fecha del registro: si no se
+    // arrastra, la lista y el resumen quedan mintiendo.
+    const gira = await prisma.gira.findUnique({ where: { id: existente.giraId }, select: { tipo: true } });
+    if (!esGira(gira?.tipo)) {
+      await prisma.gira.update({
+        where: { id: existente.giraId },
+        data: { fechaInicio: show.fecha, fechaFin: show.fecha },
+      });
+    }
   }
 
   if ("riderEnviado" in body && body.riderEnviado) {

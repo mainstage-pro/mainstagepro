@@ -135,7 +135,7 @@ export default function ArtistasCatalogoClient({ artistas, clientes }: Props) {
         <Metrica titulo="Artistas" valor={String(totales.artistas)} />
         <Metrica titulo="Con rider vigente" valor={String(totales.conRider)} dorado />
         <Metrica titulo="Sin rider" valor={String(totales.sinRider)} />
-        <Metrica titulo="Con giras registradas" valor={String(totales.enGira)} />
+        <Metrica titulo="Con shows registrados" valor={String(totales.enGira)} />
       </div>
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -187,7 +187,7 @@ export default function ArtistasCatalogoClient({ artistas, clientes }: Props) {
                 <th className="ms-th text-left">Rider vigente</th>
                 <th className="ms-th text-right">Versiones</th>
                 <th className="ms-th text-right">Personas</th>
-                <th className="ms-th text-right">Giras</th>
+                <th className="ms-th text-right">Shows y giras</th>
               </tr>
             </thead>
             <tbody>

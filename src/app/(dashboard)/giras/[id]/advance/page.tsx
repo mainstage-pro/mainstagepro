@@ -74,7 +74,7 @@ export default async function AdvanceGiraPage({ params }: { params: Promise<{ id
   return (
     <div className="ms-page space-y-6 pb-16">
       <div>
-        <h1 className="ms-h1">Advance de toda la gira</h1>
+        <h1 className="ms-h1">Advance consolidado</h1>
         <p className="ms-subtitle">
           {gira.artista.nombre} · {gira.nombre} · un renglón por concepto del rider, una columna por show
         </p>
@@ -86,7 +86,7 @@ export default async function AdvanceGiraPage({ params }: { params: Promise<{ id
           <p className="text-white text-xl font-semibold">{matriz.columnas.length}</p>
         </div>
         <div className="ms-stat-card">
-          <p className="ms-label mb-1">Piezas por conseguir en la gira</p>
+          <p className="ms-label mb-1">Piezas por conseguir</p>
           <p className={`text-xl font-semibold ${piezasTotal > 0 ? "text-amber-300" : "text-emerald-300"}`}>
             {piezasTotal}
           </p>
@@ -201,7 +201,7 @@ export default async function AdvanceGiraPage({ params }: { params: Promise<{ id
         <h2 className="ms-h2">Qué falta conseguir, por show y disciplina</h2>
         {grupos.length === 0 ? (
           <div className="ms-empty-state">
-            <p className="text-sm text-gray-400">No hay faltantes abiertos en la gira.</p>
+            <p className="text-sm text-gray-400">No hay faltantes abiertos.</p>
           </div>
         ) : (
           grupos.map((g) => (

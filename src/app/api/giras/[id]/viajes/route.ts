@@ -30,7 +30,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { id } = await params;
   const gira = await prisma.gira.findUnique({ where: { id }, select: { id: true, nombre: true } });
-  if (!gira) return NextResponse.json({ error: "La gira no existe" }, { status: 404 });
+  if (!gira) return NextResponse.json({ error: "El show o la gira no existe" }, { status: 404 });
 
   const body = await req.json();
   const tipo = typeof body.tipo === "string" && TIPOS_VIAJE.includes(body.tipo) ? body.tipo : "VUELO";

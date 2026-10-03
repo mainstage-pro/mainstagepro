@@ -242,7 +242,7 @@ export default function PropuestaEditor({
 
   async function armarDesdeGira() {
     if (!cab.giraId) {
-      toast.error("Liga una gira primero");
+      toast.error("Liga un show o una gira primero");
       return;
     }
     setGuardando(true);
@@ -346,7 +346,7 @@ export default function PropuestaEditor({
 
   const gruposUsados = TIPOS_LINEA_PROPUESTA.filter((t) => lineas.some((l) => l.tipo === t));
   const opcionesShow = [
-    { value: "", label: "Toda la gira" },
+    { value: "", label: "General" },
     ...shows.map((s) => ({
       value: s.id,
       label: `${fmtFechaCorta(s.fecha)} · ${s.venueNombre ?? s.ciudad ?? "Venue sin nombre"}`,
@@ -359,7 +359,10 @@ export default function PropuestaEditor({
       <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div className="flex items-start gap-3 min-w-0">
           <div className="pt-1">
-            <BackButton href="/giras/propuestas" />
+            <BackButton
+              href={inicial.gira ? `/giras/${inicial.gira.id}/propuestas` : "/giras/propuestas"}
+              label={inicial.gira ? inicial.gira.nombre : undefined}
+            />
           </div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
@@ -374,11 +377,13 @@ export default function PropuestaEditor({
             <p className="ms-subtitle mt-1">
               {inicial.gira ? (
                 <>
-                  {inicial.gira.nombre} · {conteo.shows} shows en {conteo.venues}{" "}
-                  {conteo.venues === 1 ? "venue" : "venues"}
+                  <Link href={`/giras/${inicial.gira.id}`} className="ms-link-gold">
+                    {inicial.gira.nombre}
+                  </Link>{" "}
+                  · {conteo.shows} shows en {conteo.venues} {conteo.venues === 1 ? "venue" : "venues"}
                 </>
               ) : (
-                "Sin gira ligada"
+                "Sin show ni gira ligados"
               )}
             </p>
           </div>
@@ -522,7 +527,7 @@ export default function PropuestaEditor({
                 />
               </Campo>
               <Campo
-                label="Gira"
+                label="Show o gira"
                 ayuda={inicial.gira ? `${conteo.shows} shows · ${conteo.venues} venues · ${conteo.ciudades} ciudades` : undefined}
               >
                 <Combobox
@@ -531,9 +536,9 @@ export default function PropuestaEditor({
                     editarCabecera("giraId", v || null);
                     router.refresh();
                   }}
-                  placeholder="Sin gira ligada"
+                  placeholder="Sin show ni gira ligados"
                   options={[
-                    { value: "", label: "Sin gira ligada" },
+                    { value: "", label: "Sin show ni gira ligados" },
                     ...giras.map((g) => ({ value: g.id, label: `${g.nombre} (${g._count.shows} fechas)` })),
                   ]}
                 />
@@ -629,9 +634,9 @@ export default function PropuestaEditor({
                   className="ms-btn-secondary"
                   onClick={armarDesdeGira}
                   disabled={!cab.giraId || guardando}
-                  title={cab.giraId ? undefined : "Liga una gira para sembrar las líneas típicas"}
+                  title={cab.giraId ? undefined : "Liga un show o una gira para sembrar las líneas típicas"}
                 >
-                  Armar desde la gira
+                  Armar desde el registro
                 </button>
                 <button className="ms-btn-secondary" onClick={() => setCatalogoAbierto(true)}>
                   Agregar del catálogo
@@ -650,8 +655,8 @@ export default function PropuestaEditor({
             {lineas.length === 0 ? (
               <div className="ms-empty-state">
                 <p className="text-sm text-[#6b7280] px-6">
-                  Sin líneas todavía. Con una gira ligada, &ldquo;Armar propuesta de gira&rdquo; siembra las líneas típicas ya
-                  cuantificadas.
+                  Sin líneas todavía. Con un show o una gira ligados, &ldquo;Armar desde el registro&rdquo; siembra las
+                  líneas típicas ya cuantificadas.
                 </p>
               </div>
             ) : (
@@ -981,7 +986,7 @@ function FilaLinea({
             <Combobox
               value={linea.showId ?? ""}
               onChange={(v) => onPatch(linea.id, { showId: v || null })}
-              placeholder="Toda la gira"
+              placeholder="General"
               options={opcionesShow}
             />
           </Campo>

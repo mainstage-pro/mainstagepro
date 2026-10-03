@@ -210,6 +210,27 @@ export const ESTADO_ADVANCE_COLOR: Record<string, string> = {
 /// Un renglón del advance está resuelto cuando ya sabemos de dónde sale y está confirmado.
 export const ESTADOS_RESUELTOS = ["CONFIRMADO", "SUSTITUCION_APROBADA"];
 
+// ── Show suelto o gira ───────────────────────────────────────────────────────
+// La mayoría de lo que producimos para un artista es una sola fecha, no una gira.
+// El registro es el mismo (un show es una gira de una fecha) y este tipo decide
+// cómo se nombra y cómo se navega.
+export const TIPOS_REGISTRO = ["SHOW", "GIRA"] as const;
+export type TipoRegistro = (typeof TIPOS_REGISTRO)[number];
+
+export const TIPO_REGISTRO_LABEL: Record<string, string> = {
+  SHOW: "Show",
+  GIRA: "Gira",
+};
+
+export const TIPO_REGISTRO_COLOR: Record<string, string> = {
+  SHOW: "text-sky-300 bg-sky-500/10 border-sky-500/30",
+  GIRA: "text-[#B3985B] bg-[#B3985B]/10 border-[#B3985B]/30",
+};
+
+export function esGira(tipo: string | null | undefined): boolean {
+  return tipo !== "SHOW";
+}
+
 // ── Gira y show ──────────────────────────────────────────────────────────────
 export const ESTADOS_GIRA = ["PLANEACION", "CONFIRMADA", "EN_CURSO", "CERRADA", "CANCELADA"] as const;
 
@@ -220,6 +241,19 @@ export const ESTADO_GIRA_LABEL: Record<string, string> = {
   CERRADA: "Cerrada",
   CANCELADA: "Cancelada",
 };
+
+/// El mismo estado leído de un show suelto: "confirmada" de un show chirría.
+export const ESTADO_SHOW_SUELTO_LABEL: Record<string, string> = {
+  PLANEACION: "En planeación",
+  CONFIRMADA: "Confirmado",
+  EN_CURSO: "En curso",
+  CERRADA: "Cerrado",
+  CANCELADA: "Cancelado",
+};
+
+export function estadoRegistroLabel(estado: string, tipo?: string | null): string {
+  return (esGira(tipo) ? ESTADO_GIRA_LABEL : ESTADO_SHOW_SUELTO_LABEL)[estado] ?? estado;
+}
 
 export const ESTADO_GIRA_COLOR: Record<string, string> = {
   PLANEACION: "text-amber-300 bg-amber-500/10 border-amber-500/30",

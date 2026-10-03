@@ -61,7 +61,7 @@ export default async function LogisticaGiraPage({ params }: { params: Promise<{ 
     ...crewLigero.map((c) => ({
       valor: `crew:${c.id}`,
       etiqueta: `${c.nombre} — ${c.funcion}`,
-      grupo: "Crew de la gira",
+      grupo: "Crew",
     })),
     ...personas.map((p) => ({
       valor: `persona:${p.id}`,
@@ -75,7 +75,7 @@ export default async function LogisticaGiraPage({ params }: { params: Promise<{ 
       <div>
         <h1 className="ms-h1">Viajes y hotel</h1>
         <p className="ms-subtitle">
-          Dónde duerme cada quién y cómo se mueve la gira. El rooming se asigna de a uno y el traslado grupal cuenta por
+          Dónde duerme cada quién y cómo se mueve el equipo. El rooming se asigna de a uno y el traslado grupal cuenta por
           el grupo, no por persona.
         </p>
       </div>

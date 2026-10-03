@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Viajes y hotel de la gira. Dos listas que se leen juntas porque se arman el
+ * Viajes y hotel del show o la gira. Dos listas que se leen juntas porque se arman el
  * mismo día: el hotel con su rooming (un renglón por persona, nunca un cuarto
  * sin dueño) y los traslados en orden de salida.
  */
@@ -214,7 +214,7 @@ export default function LogisticaClient({
   async function quitarHotel(h: HospedajeFila) {
     const ok = await confirmar({
       message:
-        `¿Quitar ${h.hotelNombre} de la gira?` +
+        `¿Quitar ${h.hotelNombre}?` +
         (h.roomings.length ? ` Se van con él los ${h.roomings.length} cuartos de su rooming.` : ""),
       danger: true,
       confirmText: "Quitar",
@@ -351,7 +351,7 @@ export default function LogisticaClient({
   const opcionesCrew: ComboboxOption[] = useMemo(
     () => [
       { value: "", label: "— Todo el grupo —" },
-      ...crew.map((c) => ({ value: c.id, label: `${c.nombre} — ${c.funcion}`, group: "Crew de la gira" })),
+      ...crew.map((c) => ({ value: c.id, label: `${c.nombre} — ${c.funcion}`, group: "Crew" })),
     ],
     [crew],
   );
@@ -403,7 +403,7 @@ export default function LogisticaClient({
           <p className={`text-lg font-semibold ${sinCuarto.length > 0 ? "text-amber-300" : "text-emerald-300"}`}>
             {sinCuarto.length}
           </p>
-          <p className="ms-meta">de {crew.length} personas en la gira</p>
+          <p className="ms-meta">de {crew.length} personas en el crew</p>
         </div>
         <div className="ms-stat-card">
           <p className="ms-label mb-1">Traslados</p>
@@ -463,7 +463,7 @@ export default function LogisticaClient({
           <div className="ms-empty-state">
             <p className="text-sm text-gray-400">
               {hospedajes.length === 0
-                ? "Todavía no hay hoteles en la gira. Agrega uno y reparte el rooming desde ahí."
+                ? "Todavía no hay hoteles. Agrega uno y reparte el rooming desde ahí."
                 : "Ningún hotel coincide con la búsqueda."}
             </p>
           </div>

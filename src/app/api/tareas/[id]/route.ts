@@ -61,6 +61,10 @@ const SELECT = {
   tratoId: true,
   clienteId: true,
   cliente:       { select: { id: true, nombre: true } },
+  giraId: true,
+  gira:          { select: { id: true, nombre: true, tipo: true, artista: { select: { nombre: true } } } },
+  giraShowId: true,
+  giraShow:      { select: { id: true, fecha: true, ciudad: true } },
   iniciativaId: true,
   proyectoTareaId: true,
   seccionId: true,
@@ -167,7 +171,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // al pasar a TAREA/PLAN desligamos la entidad de origen para que la clasificación
   // sea coherente y la tarea aterrice en Bandeja / Plan.
   if (puedeConfig && "tipoOrigen" in body) {
-    const TIPOS_VALIDOS = ["TAREA", "PLAN", "PROYECTO", "EVENTO", "TRATO"];
+    const TIPOS_VALIDOS = ["TAREA", "PLAN", "PROYECTO", "EVENTO", "TRATO", "GIRA"];
     const nuevoTipo = typeof body.tipoOrigen === "string" ? body.tipoOrigen : null;
     if (!nuevoTipo || !TIPOS_VALIDOS.includes(nuevoTipo)) {
       return NextResponse.json({ error: "Tipo de tarea inválido." }, { status: 400 });
@@ -188,6 +192,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       data.proyectoEventoId = null;
       data.proyectoInternoId = null;
       data.faseInternaId = null;
+      data.giraId = null;
+      data.giraShowId = null;
     }
   }
 

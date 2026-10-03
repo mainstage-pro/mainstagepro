@@ -7,6 +7,7 @@ import { Badge, EncabezadoResumen, Fila, Kpi, Panel, Vacio, type Tono } from "@/
 import {
   ESTADO_SHOW_LABEL,
   SEMAFORO_LABEL,
+  esGira,
   diasRestantes,
   fmtDiasRestantes,
   fmtFechaCorta,
@@ -42,7 +43,7 @@ export default async function GirasResumenPage() {
       riderEnviadoEn: true,
       advanceCerradoEn: true,
       venue: { select: { id: true, nombre: true } },
-      gira: { select: { id: true, nombre: true, artista: { select: { nombre: true } } } },
+      gira: { select: { id: true, nombre: true, tipo: true, artista: { select: { nombre: true } } } },
       riderLineas: { select: { prioridad: true, estado: true, cubiertoPor: true } },
       _count: { select: { crew: true } },
     },
@@ -55,6 +56,9 @@ export default async function GirasResumenPage() {
       resumen,
       dias: diasRestantes(s.fecha),
       lugar: [s.ciudad, s.venue?.nombre].filter(Boolean).join(" · ") || "Sin ciudad ni venue",
+      // De un show suelto el nombre del registro es su propia fecha y ciudad: repetirlo
+      // en el renglón no dice nada. De una gira sí: ubica el show dentro del tour.
+      contexto: esGira(s.gira.tipo) ? `${s.gira.artista.nombre} — ${s.gira.nombre}` : s.gira.artista.nombre,
       href: `/giras/${s.gira.id}/show/${s.id}`,
     };
   });
@@ -81,17 +85,22 @@ export default async function GirasResumenPage() {
   return (
     <div className="ms-page">
       <EncabezadoResumen
-        titulo="Resumen de giras"
+        titulo="Resumen de shows de artistas"
         subtitulo="Los shows que vienen y lo que todavía le falta a cada uno para poder suceder"
         acciones={
           <Link href="/giras/lista" className="ms-btn-secondary">
-            Ver giras
+            Ver shows y giras
           </Link>
         }
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-        <Kpi label="Giras en curso" valor={girasActivas} nota={`${proximos.length} shows por delante`} href="/giras/lista" />
+        <Kpi
+          label="Shows y giras activos"
+          valor={girasActivas}
+          nota={`${proximos.length} shows por delante`}
+          href="/giras/lista"
+        />
         <Kpi
           label="Siguiente show"
           valor={siguiente ? fmtDiasRestantes(siguiente.dias) : "—"}
@@ -118,7 +127,7 @@ export default async function GirasResumenPage() {
           titulo="Próximos shows"
           nota="Ordenados por fecha; el porcentaje es de los renglones indispensables"
           href="/giras/lista"
-          hrefLabel="Ver giras"
+          hrefLabel="Ver shows y giras"
           className="lg:col-span-2"
         >
           {proximos.length === 0 ? (
@@ -129,7 +138,7 @@ export default async function GirasResumenPage() {
                 key={s.id}
                 href={s.href}
                 titulo={`${fmtFechaCorta(s.fecha)} · ${s.lugar}`}
-                meta={`${s.gira.artista.nombre} — ${s.gira.nombre} · ${ESTADO_SHOW_LABEL[s.estado] ?? s.estado} · ${fmtDiasRestantes(s.dias)}`}
+                meta={`${s.contexto} · ${ESTADO_SHOW_LABEL[s.estado] ?? s.estado} · ${fmtDiasRestantes(s.dias)}`}
                 tono={SEMAFORO_TONO[s.resumen.semaforo] ?? "neutro"}
                 valor={s.resumen.total ? `${s.resumen.avance}%` : "—"}
                 valorNota={
@@ -152,7 +161,7 @@ export default async function GirasResumenPage() {
                 key={s.id}
                 href={`/giras/${s.gira.id}/shows`}
                 titulo={`${fmtFechaCorta(s.fecha)} · ${s.ciudad ?? "Sin ciudad"}`}
-                meta={`${s.gira.nombre} · ${fmtDiasRestantes(s.dias)}`}
+                meta={`${s.contexto} · ${fmtDiasRestantes(s.dias)}`}
                 tono="rojo"
                 valor="Elegir venue"
               />
@@ -169,7 +178,7 @@ export default async function GirasResumenPage() {
                 key={s.id}
                 href={`${s.href}/advance`}
                 titulo={`${fmtFechaCorta(s.fecha)} · ${s.lugar}`}
-                meta={`${s.gira.nombre} · ${fmtDiasRestantes(s.dias)}`}
+                meta={`${s.contexto} · ${fmtDiasRestantes(s.dias)}`}
                 tono="rojo"
                 valor="Armar advance"
               />
@@ -190,7 +199,7 @@ export default async function GirasResumenPage() {
                 key={s.id}
                 href={`${s.href}/advance`}
                 titulo={`${fmtFechaCorta(s.fecha)} · ${s.lugar}`}
-                meta={`${s.gira.nombre} · ${fmtDiasRestantes(s.dias)}`}
+                meta={`${s.contexto} · ${fmtDiasRestantes(s.dias)}`}
                 tono={SEMAFORO_TONO[s.resumen.semaforo] ?? "neutro"}
                 valor={s.resumen.indispensablesTotal - s.resumen.indispensablesResueltas}
                 valorNota="renglones abiertos"
@@ -208,7 +217,7 @@ export default async function GirasResumenPage() {
                 key={s.id}
                 href={s.href}
                 titulo={`${fmtFechaCorta(s.fecha)} · ${s.lugar}`}
-                meta={`${s.gira.nombre} · ${fmtDiasRestantes(s.dias)}`}
+                meta={`${s.contexto} · ${fmtDiasRestantes(s.dias)}`}
                 tono={s.dias !== null && s.dias <= 10 ? "rojo" : "ambar"}
                 valor="Enviar rider"
               />
@@ -225,7 +234,7 @@ export default async function GirasResumenPage() {
                 key={s.id}
                 href={`/giras/${s.gira.id}/crew`}
                 titulo={`${fmtFechaCorta(s.fecha)} · ${s.lugar}`}
-                meta={`${s.gira.nombre} · ${fmtDiasRestantes(s.dias)}`}
+                meta={`${s.contexto} · ${fmtDiasRestantes(s.dias)}`}
                 tono={s.dias !== null && s.dias <= 10 ? "rojo" : "ambar"}
                 valor="Asignar crew"
               />
@@ -244,9 +253,9 @@ export default async function GirasResumenPage() {
                 key={s.id}
                 href={s.href}
                 titulo={`${fmtFechaCorta(s.fecha)} · ${s.lugar}`}
-                meta={`${s.gira.nombre} · ${ESTADO_SHOW_LABEL[s.estado] ?? s.estado} · ${fmtDiasRestantes(s.dias)}`}
+                meta={`${s.contexto} · ${ESTADO_SHOW_LABEL[s.estado] ?? s.estado} · ${fmtDiasRestantes(s.dias)}`}
                 tono="ambar"
-                valor="Marcar ejecutada"
+                valor="Marcar ejecutado"
               />
             ))}
           </Panel>

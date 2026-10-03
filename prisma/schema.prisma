@@ -3099,8 +3099,13 @@ model Tarea {
   faseInternaId            String?
   faseInterna              FaseProyectoInterno? @relation("TareasDeFase", fields: [faseInternaId], references: [id], onDelete: SetNull)
   esSeguimiento            Boolean              @default(false) // seguimiento agendado de un proyecto interno
+  // ── Gira / show de artista ───────────────────────────────────────────────
+  giraId                   String?
+  gira                     Gira?                @relation("TareasDeGira", fields: [giraId], references: [id], onDelete: SetNull)
+  giraShowId               String?
+  giraShow                 GiraShow?            @relation("TareasDeShow", fields: [giraShowId], references: [id], onDelete: SetNull)
   // ── Capa aditiva: hub de ejecución ────────────────────────────────────────
-  tipoOrigen               String               @default("TAREA") // TAREA | PLAN | PROYECTO | EVENTO | TRATO
+  tipoOrigen               String               @default("TAREA") // TAREA | PLAN | PROYECTO | EVENTO | TRATO | CLIENTE | GIRA
   requiereEvidencia        Boolean              @default(false)
   tipoEvidencia            String? // FOTO | ARCHIVO | ENLACE_MODULO | NOTA
   evidenciaNota            String?              @db.Text
@@ -3148,6 +3153,7 @@ model Tarea {
   @@index([ptTemplateId])
   @@index([tratoId])
   @@index([clienteId])
+  @@index([giraId])
   @@map("tareas")
 }
 
@@ -5993,11 +5999,14 @@ model ArtistaRiderLinea {
   @@map("artista_rider_lineas")
 }
 
-/// La gira: agrupa los shows de un artista bajo un mismo rider y un mismo alcance.
+/// El registro de artista: agrupa los shows de un artista bajo un mismo rider y un
+/// mismo alcance. Puede ser una gira de varias fechas o un show suelto (tipo SHOW,
+/// una sola fecha), porque no todo lo que producimos para un artista es gira.
 model Gira {
   id     String  @id @default(cuid())
   nombre String
   slug   String? @unique
+  tipo   String  @default("GIRA") // GIRA|SHOW
 
   artistaId String
   artista   Artista @relation(fields: [artistaId], references: [id])
@@ -6036,6 +6045,8 @@ model Gira {
   setlists   GiraSetlist[]
   archivos   GiraArchivo[]
   propuestas PropuestaServicio[]
+  checklist  GiraChecklistItem[]
+  tareas     Tarea[]             @relation("TareasDeGira")
 
   @@index([artistaId])
   @@map("giras")
@@ -6096,9 +6107,43 @@ model GiraShow {
   setlists        GiraSetlist[]
   archivos        GiraArchivo[]
   propuestaLineas PropuestaServicioLinea[]
+  checklist       GiraChecklistItem[]
+  tareas          Tarea[]                 @relation("TareasDeShow")
 
   @@index([giraId, fecha])
   @@map("gira_shows")
+}
+
+/// El checklist del advance: qué hay que arrancarle a management, al venue y al
+/// promotor antes de la fecha. Un renglón sin show es de alcance gira (se pide
+/// una vez); uno con show se pide por fecha, porque cada venue responde distinto.
+model GiraChecklistItem {
+  id     String @id @default(cuid())
+  giraId String
+  gira   Gira   @relation(fields: [giraId], references: [id], onDelete: Cascade)
+
+  showId String?
+  show   GiraShow? @relation(fields: [showId], references: [id], onDelete: Cascade)
+
+  frente String // MANAGEMENT|VENUE|PROMOTOR|INTERNO
+  item   String
+  detalle String? @db.Text
+
+  /// Llave de plantilla: permite resembrar sin duplicar. Null = renglón manual.
+  llave String?
+
+  estado      String  @default("PENDIENTE") // PENDIENTE|PEDIDO|LISTO|NO_APLICA
+  responsable String?
+  notas       String? @db.Text
+
+  orden         Int       @default(0)
+  actualizadoEn DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([giraId])
+  @@index([showId])
+  @@map("gira_checklist_items")
 }
 
 /// El advance: una fila por concepto del rider, por show. Rider pedido vs. casa vs. faltante.

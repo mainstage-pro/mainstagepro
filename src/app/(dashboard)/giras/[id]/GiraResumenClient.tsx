@@ -8,13 +8,16 @@ import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import {
   ESTADOS_GIRA,
-  ESTADO_GIRA_LABEL,
   ESTADO_SHOW_COLOR,
   ESTADO_SHOW_LABEL,
   ROL_PERSONA_LABEL,
   SEMAFORO_COLOR,
   SEMAFORO_LABEL,
+  TIPOS_REGISTRO,
+  TIPO_REGISTRO_LABEL,
   TIPO_SHOW_LABEL,
+  esGira,
+  estadoRegistroLabel,
   fechaInput,
   fmtFechaCorta,
 } from "@/lib/giras";
@@ -37,6 +40,7 @@ export interface ShowResumen {
 export interface GiraDetalle {
   id: string;
   nombre: string;
+  tipo: string;
   estado: string;
   fechaInicio: string | null;
   fechaFin: string | null;
@@ -97,6 +101,7 @@ export default function GiraResumenClient({ gira, shows, artistas, clientes, rid
 
   const [form, setForm] = useState({
     nombre: gira.nombre,
+    tipo: gira.tipo,
     estado: gira.estado,
     fechaInicio: fechaInput(gira.fechaInicio),
     fechaFin: fechaInput(gira.fechaFin),
@@ -108,6 +113,8 @@ export default function GiraResumenClient({ gira, shows, artistas, clientes, rid
     notas: gira.notas ?? "",
   });
   const [guardando, setGuardando] = useState(false);
+
+  const tour = esGira(form.tipo);
 
   // Las fechas de la gira son editables, pero si no cuadran con los shows hay
   // que decirlo: es el error que descuadra viajes y hoteles.
@@ -125,7 +132,7 @@ export default function GiraResumenClient({ gira, shows, artistas, clientes, rid
 
   async function guardar() {
     if (!form.nombre.trim()) {
-      toast.error("La gira necesita nombre.");
+      toast.error("Necesita nombre.");
       return;
     }
     setGuardando(true);
@@ -135,6 +142,7 @@ export default function GiraResumenClient({ gira, shows, artistas, clientes, rid
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           nombre: form.nombre.trim(),
+          tipo: form.tipo,
           estado: form.estado,
           fechaInicio: form.fechaInicio || null,
           fechaFin: form.fechaFin || null,
@@ -151,7 +159,7 @@ export default function GiraResumenClient({ gira, shows, artistas, clientes, rid
         toast.error(d.error ?? "No se pudo guardar.");
         return;
       }
-      toast.success("Gira actualizada");
+      toast.success(tour ? "Gira actualizada" : "Show actualizado");
       router.refresh();
     } catch {
       toast.error("No se pudo guardar.");
@@ -162,8 +170,8 @@ export default function GiraResumenClient({ gira, shows, artistas, clientes, rid
 
   async function archivar() {
     const ok = await confirmar({
-      title: "Archivar la gira",
-      message: "La gira deja de aparecer en la lista. Sus shows, advance y documentos se conservan.",
+      title: tour ? "Archivar la gira" : "Archivar el show",
+      message: "Deja de aparecer en la lista. Su advance, su crew y sus documentos se conservan.",
       confirmText: "Archivar",
     });
     if (!ok) return;
@@ -172,7 +180,7 @@ export default function GiraResumenClient({ gira, shows, artistas, clientes, rid
       toast.error("No se pudo archivar.");
       return;
     }
-    toast.success("Gira archivada");
+    toast.success(tour ? "Gira archivada" : "Show archivado");
     router.push("/giras/lista");
   }
 
@@ -190,14 +198,14 @@ export default function GiraResumenClient({ gira, shows, artistas, clientes, rid
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <section className="ms-card p-4 lg:col-span-2">
           <div className="flex items-center justify-between gap-2 mb-3.5">
-            <h2 className="ms-section-label">Ficha de la gira</h2>
+            <h2 className="ms-section-label">{tour ? "Ficha de la gira" : "Ficha del show"}</h2>
             <button onClick={guardar} disabled={guardando} className="ms-btn-primary disabled:opacity-50">
               {guardando ? "Guardando…" : "Guardar"}
             </button>
           </div>
 
           <div className="space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-[2fr_1fr] gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-[2fr_1fr_1fr] gap-3">
               <div>
                 <label className="ms-label block mb-1.5">Nombre</label>
                 <input
@@ -205,6 +213,20 @@ export default function GiraResumenClient({ gira, shows, artistas, clientes, rid
                   onChange={(e) => setForm((p) => ({ ...p, nombre: e.target.value }))}
                   className="ms-input w-full"
                 />
+              </div>
+              <div>
+                <label className="ms-label block mb-1.5">Es</label>
+                <select
+                  value={form.tipo}
+                  onChange={(e) => setForm((p) => ({ ...p, tipo: e.target.value }))}
+                  className="ms-input w-full"
+                >
+                  {TIPOS_REGISTRO.map((t) => (
+                    <option key={t} value={t}>
+                      {TIPO_REGISTRO_LABEL[t]}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="ms-label block mb-1.5">Estado</label>
@@ -215,14 +237,14 @@ export default function GiraResumenClient({ gira, shows, artistas, clientes, rid
                 >
                   {ESTADOS_GIRA.map((e) => (
                     <option key={e} value={e}>
-                      {ESTADO_GIRA_LABEL[e]}
+                      {estadoRegistroLabel(e, form.tipo)}
                     </option>
                   ))}
                 </select>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 ${tour ? "" : "hidden"}`}>
               <div>
                 <label className="ms-label block mb-1.5">Primera fecha</label>
                 <input
@@ -243,7 +265,21 @@ export default function GiraResumenClient({ gira, shows, artistas, clientes, rid
               </div>
             </div>
 
-            {descuadre && derivadas && (
+            {!tour && shows[0] && (
+              <div className="flex flex-wrap items-center justify-between gap-2 ms-card-inset px-3 py-2">
+                <p className="ms-meta">
+                  Fecha: <span className="text-white">{fmtFechaCorta(shows[0].fecha)}</span>
+                </p>
+                <Link
+                  href={`/giras/${gira.id}/show/${shows[0].id}`}
+                  className="ms-micro text-[#B3985B] hover:text-white transition-colors"
+                >
+                  La manda el show →
+                </Link>
+              </div>
+            )}
+
+            {tour && descuadre && derivadas && (
               <div className="flex flex-wrap items-center gap-2 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2">
                 <p className="text-amber-300 text-xs flex-1 min-w-0">{descuadre}</p>
                 <button
@@ -281,7 +317,7 @@ export default function GiraResumenClient({ gira, shows, artistas, clientes, rid
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="ms-label block mb-1.5">Rider maestro de la gira</label>
+                <label className="ms-label block mb-1.5">Rider maestro</label>
                 <select
                   value={form.riderId}
                   onChange={(e) => setForm((p) => ({ ...p, riderId: e.target.value }))}
@@ -327,11 +363,13 @@ export default function GiraResumenClient({ gira, shows, artistas, clientes, rid
             </div>
 
             <div>
-              <label className="ms-label block mb-1.5">Lo que asume Mainstage en esta gira</label>
+              <label className="ms-label block mb-1.5">
+                {tour ? "Lo que asume Mainstage en esta gira" : "Lo que asume Mainstage en este show"}
+              </label>
               {servicios.length === 0 ? (
                 <p className="ms-meta">
                   Todavía no hay catálogo de servicios de production management.{" "}
-                  <Link href="/giras/propuestas" className="ms-link-gold">
+                  <Link href="/giras/servicios" className="ms-link-gold">
                     Armarlo
                   </Link>
                 </p>
@@ -359,7 +397,7 @@ export default function GiraResumenClient({ gira, shows, artistas, clientes, rid
             </div>
 
             <div>
-              <label className="ms-label block mb-1.5">Notas de la gira</label>
+              <label className="ms-label block mb-1.5">Notas</label>
               <textarea
                 value={form.notas}
                 onChange={(e) => setForm((p) => ({ ...p, notas: e.target.value }))}
@@ -371,7 +409,7 @@ export default function GiraResumenClient({ gira, shows, artistas, clientes, rid
 
             <div className="flex justify-end pt-1">
               <button onClick={archivar} className="ms-btn-ghost text-red-400/80 hover:text-red-300">
-                Archivar gira
+                {tour ? "Archivar gira" : "Archivar show"}
               </button>
             </div>
           </div>
@@ -409,7 +447,7 @@ export default function GiraResumenClient({ gira, shows, artistas, clientes, rid
 
               {!gira.rider.esActivo && (
                 <p className="text-amber-300 text-xs bg-amber-500/10 border border-amber-500/30 rounded-lg px-2.5 py-1.5">
-                  Esta gira quedó amarrada a una versión que ya no es la vigente del artista.
+                  {tour ? "Esta gira" : "Este show"} quedó amarrado a una versión que ya no es la vigente del artista.
                 </p>
               )}
 
@@ -420,7 +458,7 @@ export default function GiraResumenClient({ gira, shows, artistas, clientes, rid
           ) : (
             <div className="space-y-2.5">
               <p className="ms-meta">
-                La gira no tiene rider maestro ligado. Sin rider no hay de dónde derivar el advance de cada show.
+                No hay rider maestro ligado. Sin rider no hay de dónde derivar el advance del show.
               </p>
               <Link href={`/giras/artista/${gira.artistaId}`} className="ms-btn-secondary block w-full text-center">
                 Armar el rider de {gira.artistaNombre}
@@ -433,17 +471,17 @@ export default function GiraResumenClient({ gira, shows, artistas, clientes, rid
       <section className="ms-card">
         <div className="flex items-center justify-between gap-2 px-4 pt-3.5 pb-2.5">
           <div>
-            <h2 className="ms-section-label">Shows de la gira</h2>
+            <h2 className="ms-section-label">{tour ? "Shows de la gira" : "El show"}</h2>
             <p className="ms-meta mt-0.5">El porcentaje es de renglones indispensables resueltos</p>
           </div>
           <Link href={`/giras/${gira.id}/shows`} className="ms-micro text-[#B3985B] hover:text-white transition-colors">
-            Editar shows →
+            {tour ? "Editar shows →" : "Editar venue y promotor →"}
           </Link>
         </div>
 
         {shows.length === 0 ? (
           <div className="px-4 py-8 text-center border-t border-[#1a1a1a]">
-            <p className="ms-meta mb-3">La gira todavía no tiene shows.</p>
+            <p className="ms-meta mb-3">Todavía no hay shows.</p>
             <Link href={`/giras/${gira.id}/shows`} className="ms-btn-primary">
               Agregar el primer show
             </Link>

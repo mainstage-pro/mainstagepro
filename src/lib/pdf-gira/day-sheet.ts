@@ -117,7 +117,7 @@ export async function generarDaySheet(showId: string): Promise<PdfGira | null> {
   const contactos: DaySheetContacto[] = [];
   if (show.gira.contactoPrincipal) {
     contactos.push({
-      rol: ROL_PERSONA_LABEL[show.gira.contactoPrincipal.rol] ?? "Contacto de la gira",
+      rol: ROL_PERSONA_LABEL[show.gira.contactoPrincipal.rol] ?? "Contacto principal",
       nombre: show.gira.contactoPrincipal.nombre,
       telefono: show.gira.contactoPrincipal.telefono,
       email: show.gira.contactoPrincipal.email,

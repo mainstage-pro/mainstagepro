@@ -6,7 +6,7 @@ import DocumentosClient, { type ArchivoFila, type ShowDoc } from "./DocumentosCl
 export const dynamic = "force-dynamic";
 
 /**
- * Los papeles de la gira en una sola página: lo que emitimos nosotros (day
+ * Los papeles del show o la gira en una sola página: lo que emitimos nosotros (day
  * sheet, rider, advance, listas de canales) y lo que nos llega de afuera (rider
  * de la casa, contrato, plano del foro).
  *
@@ -90,7 +90,7 @@ export default async function DocumentosGiraPage({ params }: { params: Promise<{
       <div>
         <h1 className="ms-h1">Documentos</h1>
         <p className="ms-subtitle mt-1">
-          Lo que esta gira emite y lo que le llega. Los documentos se generan al momento, así que el enlace que compartes
+          Lo que emitimos y lo que nos llega. Los documentos se generan al momento, así que el enlace que compartes
           hoy sigue bueno mañana: no hay que reenviar nada cuando algo cambia.
         </p>
       </div>

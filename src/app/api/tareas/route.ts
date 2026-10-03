@@ -67,6 +67,10 @@ const SELECT = {
   trato:         { select: { id: true, nombreEvento: true, cliente: { select: { nombre: true } } } },
   clienteId: true,
   cliente:       { select: { id: true, nombre: true } },
+  giraId: true,
+  gira:          { select: { id: true, nombre: true, tipo: true, artista: { select: { nombre: true } } } },
+  giraShowId: true,
+  giraShow:      { select: { id: true, fecha: true, ciudad: true } },
   proyectoInterno:{ select: { id: true, nombre: true, area: true } },
   seccion:       { select: { id: true, nombre: true } },
   carpeta:       { select: { id: true, nombre: true } },
@@ -116,10 +120,10 @@ export async function GET(req: NextRequest) {
   };
 
   // Las tareas derivadas de una fuente (trato / proyecto de evento / proyecto
-  // interno / cliente) solo entran a gestión operativa cuando ya tienen fecha Y
-  // responsable. Sin agendar generan ruido; se gestionan en su vista de origen
-  // (Tratos / Proyectos / Clientes), no en las listas operativas (búsqueda, hoy,
-  // próximas, equipo, área).
+  // interno / cliente / gira) solo entran a gestión operativa cuando ya tienen
+  // fecha Y responsable. Sin agendar generan ruido; se gestionan en su vista de
+  // origen (Tratos / Proyectos / Clientes / Giras), no en las listas operativas
+  // (búsqueda, hoy, próximas, equipo, área).
   // Se filtra por tipoOrigen y NO por la FK (tratoId/proyectoEventoId/...) porque
   // esas FKs son onDelete:SetNull — si se borra el trato/proyecto/cliente de origen,
   // la tarea queda huérfana (FK null) pero tipoOrigen sigue marcándola como derivada;
@@ -127,7 +131,7 @@ export async function GET(req: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const soloDerivadasAgendadas: Record<string, any> = {
     OR: [
-      { tipoOrigen: { notIn: ["TRATO", "EVENTO", "PROYECTO", "CLIENTE"] } },
+      { tipoOrigen: { notIn: ["TRATO", "EVENTO", "PROYECTO", "CLIENTE", "GIRA"] } },
       { AND: [{ fecha: { not: null } }, { asignadoAId: { not: null } }] },
     ],
   };
@@ -347,6 +351,7 @@ export async function POST(req: NextRequest) {
     titulo, descripcion, prioridad, area, asignadoAId, colaboradorIds, notas, etiquetas,
     iniciativaId, proyectoTareaId, seccionId, carpetaId,
     proyectoInternoId, faseInternaId, proyectoEventoId, tratoId, clienteId, esSeguimiento,
+    giraId, giraShowId,
     parentId, fecha, fechaVencimiento, recurrencia, orden, juntaOrigenId,
     // Hub unificado: tipo de registro + comprobación
     tipoOrigen, tipoEvidencia, requiereEvidencia,
@@ -373,7 +378,17 @@ export async function POST(req: NextRequest) {
   // Deriva tipoOrigen automáticamente si no viene explícito, según el vínculo.
   const tipoResuelto: string =
     (typeof tipoOrigen === "string" && tipoOrigen) ||
-    (tratoId ? "TRATO" : proyectoEventoId ? "EVENTO" : proyectoInternoId ? "PROYECTO" : clienteId ? "CLIENTE" : "TAREA");
+    (tratoId
+      ? "TRATO"
+      : proyectoEventoId
+        ? "EVENTO"
+        : proyectoInternoId
+          ? "PROYECTO"
+          : clienteId
+            ? "CLIENTE"
+            : giraId
+              ? "GIRA"
+              : "TAREA");
 
   // La comprobación (NOTA | FOTO | ARCHIVO | ENLACE_MODULO) implica requiereEvidencia.
   const evidenciaTipo = typeof tipoEvidencia === "string" && tipoEvidencia ? tipoEvidencia : null;
@@ -409,6 +424,8 @@ export async function POST(req: NextRequest) {
       proyectoEventoId: proyectoEventoId || null,
       tratoId:         tratoId          || null,
       clienteId:       clienteId        || null,
+      giraId:          giraId           || null,
+      giraShowId:      giraShowId       || null,
       proyectoInternoId: proyectoInternoId || null,
       faseInternaId:   faseInternaId    || null,
       esSeguimiento:   esSeguimiento === true,

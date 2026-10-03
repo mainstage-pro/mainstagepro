@@ -31,6 +31,7 @@ export default async function PropuestasPage() {
       select: {
         id: true,
         nombre: true,
+        tipo: true,
         artista: { select: { id: true, nombre: true } },
         _count: { select: { shows: true } },
       },

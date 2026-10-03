@@ -32,7 +32,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { id } = await params;
   const gira = await prisma.gira.findUnique({ where: { id }, select: { id: true } });
-  if (!gira) return NextResponse.json({ error: "La gira no existe" }, { status: 404 });
+  if (!gira) return NextResponse.json({ error: "El show o la gira no existe" }, { status: 404 });
 
   const body = await req.json();
 
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       select: { giraId: true },
     });
     if (!hospedaje || hospedaje.giraId !== id) {
-      return NextResponse.json({ error: "El hotel no es de esta gira" }, { status: 400 });
+      return NextResponse.json({ error: "El hotel no pertenece a este registro" }, { status: 400 });
     }
   }
 

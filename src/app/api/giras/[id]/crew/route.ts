@@ -36,7 +36,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { id } = await params;
   const gira = await prisma.gira.findUnique({ where: { id }, select: { id: true, nombre: true } });
-  if (!gira) return NextResponse.json({ error: "La gira no existe" }, { status: 404 });
+  if (!gira) return NextResponse.json({ error: "El show o la gira no existe" }, { status: 404 });
 
   const body = await req.json();
 
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // aparecería en un day sheet ajeno.
   if (showId) {
     const show = await prisma.giraShow.findUnique({ where: { id: showId }, select: { giraId: true } });
-    if (!show || show.giraId !== id) return NextResponse.json({ error: "El show no es de esta gira" }, { status: 400 });
+    if (!show || show.giraId !== id) return NextResponse.json({ error: "El show no pertenece a este registro" }, { status: 400 });
   }
 
   const max = await prisma.giraCrew.aggregate({ where: { giraId: id }, _max: { orden: true } });

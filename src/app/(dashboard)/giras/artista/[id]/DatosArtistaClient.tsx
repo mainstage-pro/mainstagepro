@@ -8,9 +8,10 @@ import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import {
   ESTADO_GIRA_COLOR,
-  ESTADO_GIRA_LABEL,
   TIPOS_FORMACION,
   TIPO_FORMACION_LABEL,
+  esGira,
+  estadoRegistroLabel,
   fmtRango,
 } from "@/lib/giras";
 
@@ -34,6 +35,7 @@ interface Artista {
 interface GiraFila {
   id: string;
   nombre: string;
+  tipo: string;
   estado: string;
   fechaInicio: string | null;
   fechaFin: string | null;
@@ -112,7 +114,7 @@ export default function DatosArtistaClient({ artista, clientes, giras }: Props) 
 
   async function darDeBaja() {
     const ok = await confirm({
-      message: `¿Dar de baja a «${artista.nombre}» del catálogo? Sus riders y giras se conservan.`,
+      message: `¿Dar de baja a «${artista.nombre}» del catálogo? Sus riders, shows y giras se conservan.`,
       danger: true,
       confirmText: "Dar de baja",
     });
@@ -301,9 +303,9 @@ export default function DatosArtistaClient({ artista, clientes, giras }: Props) 
           </section>
 
           <section className="ms-card p-4 space-y-3">
-            <p className="ms-section-label">Giras del artista</p>
+            <p className="ms-section-label">Shows y giras del artista</p>
             {giras.length === 0 ? (
-              <p className="ms-meta">Todavía no tiene giras registradas.</p>
+              <p className="ms-meta">Todavía no tiene shows ni giras registrados.</p>
             ) : (
               <div className="divide-y divide-[#1a1a1a] -mx-4">
                 {giras.map((g) => (
@@ -315,11 +317,12 @@ export default function DatosArtistaClient({ artista, clientes, giras }: Props) 
                     <div className="min-w-0">
                       <p className="text-[13px] text-white truncate">{g.nombre}</p>
                       <p className="ms-micro">
-                        {fmtRango(g.fechaInicio, g.fechaFin)} · {g.shows} {g.shows === 1 ? "show" : "shows"}
+                        {fmtRango(g.fechaInicio, g.fechaFin)}
+                        {esGira(g.tipo) ? ` · ${g.shows} ${g.shows === 1 ? "show" : "shows"}` : " · Show suelto"}
                       </p>
                     </div>
                     <span className={`ms-badge shrink-0 ${ESTADO_GIRA_COLOR[g.estado] ?? ""}`}>
-                      {ESTADO_GIRA_LABEL[g.estado] ?? g.estado}
+                      {estadoRegistroLabel(g.estado, g.tipo)}
                     </span>
                   </Link>
                 ))}
@@ -330,7 +333,7 @@ export default function DatosArtistaClient({ artista, clientes, giras }: Props) 
           <section className="ms-card p-4 space-y-2">
             <p className="ms-section-label">Baja del catálogo</p>
             <p className="ms-micro">
-              El artista se oculta del catálogo pero no se borra: sus riders, giras y propuestas quedan intactos.
+              El artista se oculta del catálogo pero no se borra: sus riders, shows y propuestas quedan intactos.
             </p>
             <button onClick={darDeBaja} className="ms-btn-danger">
               Dar de baja

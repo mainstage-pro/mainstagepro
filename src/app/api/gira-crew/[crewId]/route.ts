@@ -42,7 +42,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ cr
     if (showId) {
       const show = await prisma.giraShow.findUnique({ where: { id: showId }, select: { giraId: true } });
       if (!show || show.giraId !== existente.giraId) {
-        return NextResponse.json({ error: "El show no es de esta gira" }, { status: 400 });
+        return NextResponse.json({ error: "El show no pertenece a este registro" }, { status: 400 });
       }
     }
     data.showId = showId;

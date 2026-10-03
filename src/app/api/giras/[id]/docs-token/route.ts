@@ -16,7 +16,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 
   const { id } = await params;
   const gira = await prisma.gira.findUnique({ where: { id }, select: { id: true, nombre: true } });
-  if (!gira) return NextResponse.json({ error: "La gira no existe" }, { status: 404 });
+  if (!gira) return NextResponse.json({ error: "El show o la gira no existe" }, { status: 404 });
 
   const actualizada = await prisma.gira.update({
     where: { id },
@@ -41,7 +41,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
 
   const { id } = await params;
   const gira = await prisma.gira.findUnique({ where: { id }, select: { id: true, nombre: true } });
-  if (!gira) return NextResponse.json({ error: "La gira no existe" }, { status: 404 });
+  if (!gira) return NextResponse.json({ error: "El show o la gira no existe" }, { status: 404 });
 
   await prisma.gira.update({ where: { id }, data: { portalToken: null } });
 

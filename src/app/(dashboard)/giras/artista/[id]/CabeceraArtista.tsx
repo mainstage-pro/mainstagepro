@@ -70,7 +70,7 @@ export default function CabeceraArtista(p: Props) {
             {p.personas} {p.personas === 1 ? "persona" : "personas"}
           </span>
           <span className="ms-badge ms-badge-gray">
-            {p.giras} {p.giras === 1 ? "gira" : "giras"}
+            {p.giras} {p.giras === 1 ? "show o gira" : "shows y giras"}
           </span>
         </div>
       </div>

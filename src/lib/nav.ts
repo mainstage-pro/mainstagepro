@@ -84,14 +84,15 @@ export const NAV: NavSection[] = [
       },
       {
         key: "giras",
-        label: "Giras de artistas",
+        label: "Shows de artistas",
         href: "/giras",
         icon: Mic2,
         children: [
           { key: "giras-resumen", accessKey: "giras", label: "Resumen", href: "/giras/resumen" },
-          { key: "giras-lista", accessKey: "giras", label: "Giras", href: "/giras/lista" },
+          { key: "giras-lista", accessKey: "giras", label: "Shows y giras", href: "/giras/lista" },
           { key: "giras-artistas", accessKey: "giras", label: "Artistas", href: "/giras/artistas" },
           { key: "giras-propuestas", accessKey: "giras", label: "Propuestas", href: "/giras/propuestas" },
+          { key: "giras-servicios", accessKey: "giras", label: "Servicios", href: "/giras/servicios" },
         ],
       },
       { key: "proyectos-empresa", accessKey: "proyectos", label: "Proyectos de empresa", href: "/proyectos-de-empresa", icon: Building2 },

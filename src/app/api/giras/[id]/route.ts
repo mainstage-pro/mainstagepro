@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logActividad } from "@/lib/actividad";
-import { ESTADOS_GIRA, parseFechaGira } from "@/lib/giras";
+import { ESTADOS_GIRA, TIPOS_REGISTRO, esGira, parseFechaGira } from "@/lib/giras";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -39,7 +39,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     },
   });
 
-  if (!gira) return NextResponse.json({ error: "La gira no existe" }, { status: 404 });
+  if (!gira) return NextResponse.json({ error: "El show o la gira no existe" }, { status: 404 });
 
   return NextResponse.json({ gira });
 }
@@ -49,11 +49,29 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
-  const existente = await prisma.gira.findUnique({ where: { id }, select: { id: true, estado: true, nombre: true } });
-  if (!existente) return NextResponse.json({ error: "La gira no existe" }, { status: 404 });
+  const existente = await prisma.gira.findUnique({
+    where: { id },
+    select: { id: true, estado: true, nombre: true, tipo: true, _count: { select: { shows: true } } },
+  });
+  if (!existente) return NextResponse.json({ error: "El show o la gira no existe" }, { status: 404 });
 
   const body = await req.json();
   const data: Record<string, unknown> = {};
+
+  if (typeof body.tipo === "string") {
+    if (!TIPOS_REGISTRO.includes(body.tipo as (typeof TIPOS_REGISTRO)[number])) {
+      return NextResponse.json({ error: "Tipo inválido" }, { status: 400 });
+    }
+    // Un show suelto es de una sola fecha: pasar a show una gira con varias
+    // escondería shows que ya existen.
+    if (!esGira(body.tipo) && existente._count.shows > 1) {
+      return NextResponse.json(
+        { error: "Esta gira tiene varios shows. Déjala como gira o borra los shows que sobran." },
+        { status: 400 },
+      );
+    }
+    data.tipo = body.tipo;
+  }
 
   if (typeof body.nombre === "string") {
     if (!body.nombre.trim()) return NextResponse.json({ error: "El nombre es obligatorio" }, { status: 400 });
@@ -93,7 +111,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       "ACTUALIZAR",
       "Gira",
       id,
-      `Movió la gira ${gira.nombre} a ${String(data.estado)}`,
+      `Movió ${esGira(gira.tipo) ? "la gira" : "el show"} ${gira.nombre} a ${String(data.estado)}`,
       { antes: existente.estado, despues: data.estado },
     );
   }
@@ -106,11 +124,11 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
-  const existente = await prisma.gira.findUnique({ where: { id }, select: { nombre: true } });
-  if (!existente) return NextResponse.json({ error: "La gira no existe" }, { status: 404 });
+  const existente = await prisma.gira.findUnique({ where: { id }, select: { nombre: true, tipo: true } });
+  if (!existente) return NextResponse.json({ error: "El show o la gira no existe" }, { status: 404 });
 
   await prisma.gira.update({ where: { id }, data: { activo: false } });
-  await logActividad(session.id, "ELIMINAR", "Gira", id, `Archivó la gira ${existente.nombre}`);
+  await logActividad(session.id, "ELIMINAR", "Gira", id, `Archivó ${esGira(existente.tipo) ? "la gira" : "el show"} ${existente.nombre}`);
 
   return NextResponse.json({ ok: true });
 }

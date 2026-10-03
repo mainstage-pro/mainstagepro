@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { coincide } from "@/lib/buscar";
 import { useToast } from "@/components/Toast";
-import { BackButton } from "@/components/BackButton";
 import {
   CATEGORIAS_SERVICIO,
   CATEGORIA_SERVICIO_LABEL,
@@ -104,8 +103,6 @@ export default function ServiciosClient({ servicios }: Props) {
 
   return (
     <div className="ms-page space-y-5">
-      <BackButton href="/giras/propuestas" label="Propuestas" />
-
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="ms-h1">Catálogo de servicios</h1>

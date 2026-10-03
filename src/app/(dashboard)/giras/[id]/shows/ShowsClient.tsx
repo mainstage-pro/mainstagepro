@@ -362,8 +362,8 @@ export default function ShowsClient({ giraId, shows }: { giraId: string; shows: 
       message: arrastra
         ? `Se borran también sus ${s.renglones} renglones de advance, ${s.crew} de crew y ${s.bloques} bloques del día. No se puede deshacer.`
         : g.shows.length === 1
-          ? "Es el único show de este venue, así que el venue sale de la gira. No se puede deshacer."
-          : "El show se borra de la gira. No se puede deshacer.",
+          ? "Es el único show de este venue, así que el venue sale del registro. No se puede deshacer."
+          : "El show se borra del registro. No se puede deshacer.",
       confirmText: "Quitar show",
       danger: true,
     });
@@ -519,10 +519,11 @@ export default function ShowsClient({ giraId, shows }: { giraId: string; shows: 
     <div className="ms-page space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="ms-h2">Venues</h2>
+          <h2 className="ms-h2">Shows por venue</h2>
           <p className="ms-subtitle mt-0.5">
-            Cada venue agrupa sus funciones: tres noches en el Lunario son un venue y tres shows. El promotor y el
-            contacto de la casa se capturan una vez; la fecha, el estado y el advance son de cada show.
+            La unidad es el show; el venue solo los agrupa: tres noches en el Lunario son un venue y tres shows. El
+            promotor y el contacto de la casa se capturan una vez por venue; la fecha, el estado y el advance son de
+            cada show.
           </p>
         </div>
         <button
@@ -557,7 +558,7 @@ export default function ShowsClient({ giraId, shows }: { giraId: string; shows: 
 
       {grupos.length === 0 && !venueNuevo ? (
         <div className="ms-card px-4 py-10 text-center">
-          <p className="ms-meta">La gira todavía no tiene venues. Agrega el primero para empezar el advance.</p>
+          <p className="ms-meta">Todavía no hay venues. Agrega el primero para empezar el advance.</p>
         </div>
       ) : (
         <div className="space-y-3">

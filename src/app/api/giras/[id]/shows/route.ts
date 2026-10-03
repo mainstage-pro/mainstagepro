@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logActividad } from "@/lib/actividad";
-import { ESTADOS_SHOW, TIPOS_SHOW, parseFechaGira } from "@/lib/giras";
+import { ESTADOS_SHOW, TIPOS_SHOW, esGira, parseFechaGira } from "@/lib/giras";
 
 /// El orden de los shows es la cronología de la gira, no una preferencia: se
 /// reescribe cada vez que una fecha se mueve. Un route handler no puede exportar
@@ -46,8 +46,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
-  const gira = await prisma.gira.findUnique({ where: { id }, select: { id: true, nombre: true } });
-  if (!gira) return NextResponse.json({ error: "La gira no existe" }, { status: 404 });
+  const gira = await prisma.gira.findUnique({
+    where: { id },
+    select: { id: true, nombre: true, tipo: true, _count: { select: { shows: true } } },
+  });
+  if (!gira) return NextResponse.json({ error: "El show o la gira no existe" }, { status: 404 });
+
+  // Un show suelto es de una sola fecha. La segunda fecha lo convierte en gira y
+  // esa es una decisión del usuario, no un efecto secundario de agregar un show.
+  if (!esGira(gira.tipo) && gira._count.shows > 0) {
+    return NextResponse.json(
+      { error: "Este registro es un show suelto. Pásalo a gira para agregarle más fechas." },
+      { status: 400 },
+    );
+  }
 
   const body = await req.json();
   const fecha = parseFechaGira(body.fecha);
@@ -86,7 +98,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   });
 
   await reordenarShows(id);
-  await logActividad(session.id, "CREAR", "GiraShow", show.id, `Agregó un show a la gira ${gira.nombre}`);
+  await logActividad(session.id, "CREAR", "GiraShow", show.id, `Agregó un show a ${gira.nombre}`);
 
   return NextResponse.json({ show });
 }

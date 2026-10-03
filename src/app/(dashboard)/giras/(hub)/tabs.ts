@@ -5,7 +5,8 @@ import type { ModuleNavTab } from "@/components/ModuleTabsLayout";
 // no choquen con estas rutas de lista.
 export const girasTabs: ModuleNavTab[] = [
   { href: "/giras/resumen", label: "Resumen", accessKey: "giras" },
-  { href: "/giras/lista", label: "Giras", accessKey: "giras" },
+  { href: "/giras/lista", label: "Shows y giras", accessKey: "giras" },
   { href: "/giras/artistas", label: "Artistas", accessKey: "giras" },
   { href: "/giras/propuestas", label: "Propuestas", accessKey: "giras" },
+  { href: "/giras/servicios", label: "Servicios", accessKey: "giras" },
 ];

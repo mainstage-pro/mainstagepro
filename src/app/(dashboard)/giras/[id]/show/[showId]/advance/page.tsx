@@ -58,7 +58,7 @@ export default async function AdvanceShowPage({
     <div className="ms-page space-y-5 pb-16">
       <div className="flex flex-col gap-1">
         <Link href={`/giras/${show.giraId}/advance`} className="ms-link-gold text-xs">
-          ← Advance de toda la gira
+          ← Advance consolidado
         </Link>
         <h1 className="ms-h1">Advance técnico</h1>
         <p className="ms-subtitle">

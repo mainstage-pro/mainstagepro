@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logActividad } from "@/lib/actividad";
 import { idsPorTexto } from "@/lib/buscar-servidor";
-import { ESTADOS_GIRA, parseFechaGira } from "@/lib/giras";
+import { ESTADOS_GIRA, TIPOS_REGISTRO, esGira, parseFechaGira } from "@/lib/giras";
 
 function slugify(nombre: string): string {
   return nombre
@@ -32,11 +32,13 @@ export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const q = searchParams.get("q");
   const estado = searchParams.get("estado");
+  const tipo = searchParams.get("tipo");
 
   const giras = await prisma.gira.findMany({
     where: {
       ...(searchParams.get("incluirInactivas") === "1" ? {} : { activo: true }),
       ...(estado && ESTADOS_GIRA.includes(estado as (typeof ESTADOS_GIRA)[number]) ? { estado } : {}),
+      ...(tipo && TIPOS_REGISTRO.includes(tipo as (typeof TIPOS_REGISTRO)[number]) ? { tipo } : {}),
       ...(q ? { id: { in: await idsPorTexto("Gira", ["nombre", "notas"], q) } } : {}),
     },
     include: {
@@ -68,23 +70,44 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await req.json();
-  const nombre = typeof body.nombre === "string" ? body.nombre.trim() : "";
-  if (!nombre) return NextResponse.json({ error: "El nombre de la gira es obligatorio" }, { status: 400 });
+  const tipo = TIPOS_REGISTRO.includes(body.tipo) ? body.tipo : "GIRA";
+  const tour = esGira(tipo);
+
+  let nombre = typeof body.nombre === "string" ? body.nombre.trim() : "";
+  if (tour && !nombre) return NextResponse.json({ error: "El nombre de la gira es obligatorio" }, { status: 400 });
+
+  // Un show suelto nace con su única fecha: sin ella el registro no sirve para nada
+  // (ni advance, ni day sheet, ni logística) y el nombre se arma solo.
+  const fechaShow = tour ? null : parseFechaGira(body.fecha);
+  if (!tour && !fechaShow) return NextResponse.json({ error: "La fecha del show es obligatoria" }, { status: 400 });
 
   let artistaId: string | null = typeof body.artistaId === "string" && body.artistaId ? body.artistaId : null;
 
-  // Alta al vuelo: la gira no puede existir sin artista y no vale mandar al usuario
-  // al catálogo a media captura.
+  // Alta al vuelo: el registro no puede existir sin artista y no vale mandar al
+  // usuario al catálogo a media captura.
   if (!artistaId && typeof body.artistaNombre === "string" && body.artistaNombre.trim()) {
     const artista = await prisma.artista.create({ data: { nombre: body.artistaNombre.trim() } });
     artistaId = artista.id;
   }
-  if (!artistaId) return NextResponse.json({ error: "Elige o registra el artista de la gira" }, { status: 400 });
+  if (!artistaId) return NextResponse.json({ error: "Elige o registra el artista" }, { status: 400 });
 
-  const artista = await prisma.artista.findUnique({ where: { id: artistaId }, select: { id: true } });
+  const artista = await prisma.artista.findUnique({ where: { id: artistaId }, select: { id: true, nombre: true } });
   if (!artista) return NextResponse.json({ error: "El artista no existe" }, { status: 400 });
 
   const estado = ESTADOS_GIRA.includes(body.estado) ? body.estado : "PLANEACION";
+
+  const venueId = typeof body.venueId === "string" && body.venueId ? body.venueId : null;
+  let ciudad = typeof body.ciudad === "string" && body.ciudad.trim() ? body.ciudad.trim() : null;
+  let venueNombre: string | null = null;
+  if (!tour && venueId) {
+    const venue = await prisma.venue.findUnique({ where: { id: venueId }, select: { nombre: true, ciudad: true } });
+    venueNombre = venue?.nombre ?? null;
+    ciudad = ciudad ?? venue?.ciudad ?? null;
+  }
+  if (!nombre && fechaShow) {
+    const fecha = fechaShow.toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+    nombre = [artista.nombre, ciudad ?? venueNombre, fecha].filter(Boolean).join(" · ");
+  }
 
   // El rider activo del artista es el que manda mientras nadie elija otro.
   const riderActivo = await prisma.artistaRider.findFirst({
@@ -97,13 +120,14 @@ export async function POST(req: NextRequest) {
     data: {
       nombre,
       slug: await slugDisponible(slugify(nombre)),
+      tipo,
       artistaId,
       clienteId: typeof body.clienteId === "string" && body.clienteId ? body.clienteId : null,
       tratoId: typeof body.tratoId === "string" && body.tratoId ? body.tratoId : null,
       riderId: typeof body.riderId === "string" && body.riderId ? body.riderId : riderActivo?.id ?? null,
       estado,
-      fechaInicio: parseFechaGira(body.fechaInicio),
-      fechaFin: parseFechaGira(body.fechaFin),
+      fechaInicio: fechaShow ?? parseFechaGira(body.fechaInicio),
+      fechaFin: fechaShow ?? parseFechaGira(body.fechaFin),
       rolMainstage: Array.isArray(body.rolMainstage) ? JSON.stringify(body.rolMainstage) : null,
       moneda: typeof body.moneda === "string" && body.moneda ? body.moneda : "MXN",
       notas: typeof body.notas === "string" && body.notas.trim() ? body.notas.trim() : null,
@@ -111,7 +135,22 @@ export async function POST(req: NextRequest) {
     include: { artista: { select: { id: true, nombre: true } } },
   });
 
-  await logActividad(session.id, "CREAR", "Gira", gira.id, `Creó la gira ${gira.nombre} (${gira.artista.nombre})`);
+  // El show suelto se queda sin fecha ni venue si nadie crea su único show: el
+  // registro y su fecha se capturan de una vez, no en dos pasos.
+  const show = fechaShow
+    ? await prisma.giraShow.create({
+        data: { giraId: gira.id, orden: 1, fecha: fechaShow, ciudad, venueId },
+        select: { id: true },
+      })
+    : null;
 
-  return NextResponse.json({ gira });
+  await logActividad(
+    session.id,
+    "CREAR",
+    "Gira",
+    gira.id,
+    `Creó ${tour ? "la gira" : "el show"} ${gira.nombre} (${gira.artista.nombre})`,
+  );
+
+  return NextResponse.json({ gira, show });
 }

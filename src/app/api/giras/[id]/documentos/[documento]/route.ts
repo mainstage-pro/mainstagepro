@@ -17,16 +17,16 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: "Ese documento no existe" }, { status: 404 });
   }
   if (DOCUMENTOS_GIRA[documento].ambito === "SHOW") {
-    return NextResponse.json({ error: "Ese documento se emite desde un show, no desde la gira" }, { status: 400 });
+    return NextResponse.json({ error: "Ese documento se emite desde un show" }, { status: 400 });
   }
 
   const gira = await prisma.gira.findUnique({ where: { id }, select: { id: true } });
-  if (!gira) return NextResponse.json({ error: "La gira no existe" }, { status: 404 });
+  if (!gira) return NextResponse.json({ error: "El show o la gira no existe" }, { status: 404 });
 
   const pdf = await generarDocDeGira(documento, id);
   if (!pdf) {
     return NextResponse.json(
-      { error: "La gira no tiene un rider técnico capturado: engancha uno para poder emitir este documento" },
+      { error: "No hay rider técnico capturado: engancha uno para poder emitir este documento" },
       { status: 409 },
     );
   }

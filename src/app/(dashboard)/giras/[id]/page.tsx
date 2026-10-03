@@ -91,6 +91,7 @@ export default async function GiraResumenPage({ params }: { params: Promise<{ id
   const detalle: GiraDetalle = {
     id: gira.id,
     nombre: gira.nombre,
+    tipo: gira.tipo,
     estado: gira.estado,
     fechaInicio: gira.fechaInicio?.toISOString() ?? null,
     fechaFin: gira.fechaFin?.toISOString() ?? null,

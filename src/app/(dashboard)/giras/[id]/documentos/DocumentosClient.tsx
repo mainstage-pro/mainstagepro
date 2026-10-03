@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * Los papeles de la gira. Tres bloques, en el orden en que se usan:
+ * Los papeles del show o la gira. Tres bloques, en el orden en que se usan:
  *
- *  1. Documentos de la gira — rider y listas de canales. Salen del rider
+ *  1. Documentos generales — rider y listas de canales. Salen del rider
  *     maestro, así que valen para todos los shows.
  *  2. Documentos por show — day sheet y advance. Un renglón por fecha, con su
  *     botón de descarga y su enlace público.
@@ -116,7 +116,7 @@ export default function DocumentosClient({
     toast.success(mensaje);
   }
 
-  /// El token de la gira cubre los documentos que no dependen de una fecha; se
+  /// El token del registro cubre los documentos que no dependen de una fecha; se
   /// crea la primera vez que alguien comparte uno.
   async function compartirDeGira(slug: string) {
     setOcupado(`gira:${slug}`);
@@ -132,7 +132,7 @@ export default function DocumentosClient({
         actual = d.token as string;
         setToken(actual);
       }
-      copiar(`${window.location.origin}/gira-doc/${actual}/${slug}`, "Enlace copiado — se actualiza solo con la gira");
+      copiar(`${window.location.origin}/gira-doc/${actual}/${slug}`, "Enlace copiado — se actualiza solo con el rider");
     } finally {
       setOcupado(null);
     }
@@ -179,7 +179,7 @@ export default function DocumentosClient({
 
   async function revocarGira() {
     const ok = await confirmar({
-      message: "¿Revocar el enlace de la gira? Quien lo tenga dejará de ver el rider y las listas de canales.",
+      message: "¿Revocar el enlace del rider? Quien lo tenga dejará de ver el rider y las listas de canales.",
       danger: true,
       confirmText: "Revocar",
     });
@@ -275,13 +275,13 @@ export default function DocumentosClient({
 
   return (
     <div className="space-y-6">
-      {/* ── Documentos de la gira ── */}
+      {/* ── Documentos generales ── */}
       <section className="space-y-3">
         <div>
-          <h2 className="ms-h2">Documentos de la gira</h2>
+          <h2 className="ms-h2">Documentos del rider</h2>
           <p className="ms-meta mt-1">
             {rider
-              ? `Salen de ${rider.nombre} · versión ${rider.version}${riderHeredado ? " (rider activo del artista, no está enganchado a esta gira)" : ""}`
+              ? `Salen de ${rider.nombre} · versión ${rider.version}${riderHeredado ? " (rider activo del artista, no está enganchado a este registro)" : ""}`
               : `${artistaNombre} no tiene un rider técnico capturado: sin él no se pueden emitir estos documentos.`}
           </p>
         </div>
@@ -289,7 +289,7 @@ export default function DocumentosClient({
         {!rider ? (
           <div className="ms-empty-state">
             <p className="text-sm text-[#6b7280]">
-              Captura el rider del artista y engánchalo a la gira para poder emitir el rider técnico y las listas de
+              Captura el rider del artista y engánchalo aquí para poder emitir el rider técnico y las listas de
               canales.
             </p>
           </div>
@@ -329,7 +329,7 @@ export default function DocumentosClient({
         {token && (
           <div className="ms-card-deep p-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <p className="ms-meta">
-              Esta gira tiene un enlace público activo para el rider y las listas de canales. Caduca en 180 días desde
+              Hay un enlace público activo para el rider y las listas de canales. Caduca en 180 días desde
               que se generó.
             </p>
             <button className="ms-btn-ghost shrink-0" onClick={revocarGira}>
@@ -352,7 +352,7 @@ export default function DocumentosClient({
         {shows.length === 0 ? (
           <div className="ms-empty-state">
             <p className="text-sm text-[#6b7280]">
-              La gira {giraNombre} todavía no tiene shows. Agrégalos para poder emitir day sheets.
+              {giraNombre} todavía no tiene shows. Agrégalos para poder emitir day sheets.
             </p>
           </div>
         ) : (
@@ -435,10 +435,10 @@ export default function DocumentosClient({
       {/* ── Archivero ── */}
       <section className="space-y-3">
         <div>
-          <h2 className="ms-h2">Archivero de la gira</h2>
+          <h2 className="ms-h2">Archivero</h2>
           <p className="ms-meta mt-1">
             Lo que llega de afuera: el rider de la casa, el contrato, el plano del foro, la input list que mandó el
-            ingeniero local. Un archivo puede ser de la gira completa o de un show.
+            ingeniero local. Un archivo puede ser general o de un show.
           </p>
         </div>
 
@@ -457,7 +457,7 @@ export default function DocumentosClient({
             <label className="flex flex-col gap-1">
               <span className="ms-label">De qué show</span>
               <select className="ms-input" value={showNuevo} onChange={(e) => setShowNuevo(e.target.value)}>
-                <option value="">Toda la gira</option>
+                <option value="">General</option>
                 {shows.map((p) => (
                   <option key={p.id} value={p.id}>
                     {etiquetaShow(p)}
@@ -526,7 +526,7 @@ export default function DocumentosClient({
                         </span>
                       </td>
                       <td className="ms-td text-[13px] text-[#9ca3af]">
-                        {a.show ? etiquetaShow(a.show) : "Toda la gira"}
+                        {a.show ? etiquetaShow(a.show) : "General"}
                       </td>
                       <td className="ms-td text-[13px] text-[#9ca3af]">{fmtTamano(a.tamanoBytes)}</td>
                       <td className="ms-td text-[13px] text-[#9ca3af]">{fmtFechaCorta(a.createdAt)}</td>

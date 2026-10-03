@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { coincide } from "@/lib/buscar";
 import { Combobox } from "@/components/Combobox";
@@ -12,6 +11,7 @@ import {
   ESTADO_PROPUESTA_LABEL,
   MODELOS_COBRO,
   MODELO_COBRO_LABEL,
+  esGira,
   fmtFechaCorta,
   fmtMoneda,
 } from "@/lib/giras";
@@ -37,6 +37,7 @@ interface Propuesta {
 interface GiraOpcion {
   id: string;
   nombre: string;
+  tipo: string;
   artista: { id: string; nombre: string };
   _count: { shows: number };
 }
@@ -93,14 +94,9 @@ export default function PropuestasClient({ propuestas, giras, clientes, artistas
             Production management de artistas: alcance y honorarios, no renta de inventario.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Link href="/giras/servicios" className="ms-btn-secondary">
-            Catálogo de servicios
-          </Link>
-          <button className="ms-btn-primary" onClick={() => setNueva(true)}>
-            Nueva propuesta
-          </button>
-        </div>
+        <button className="ms-btn-primary shrink-0" onClick={() => setNueva(true)}>
+          Nueva propuesta
+        </button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -113,7 +109,7 @@ export default function PropuestasClient({ propuestas, giras, clientes, artistas
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <input
           className="ms-input-search flex-1"
-          placeholder="Buscar por folio, título, cliente, artista o gira…"
+          placeholder="Buscar por folio, título, cliente, artista, show o gira…"
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
         />
@@ -135,7 +131,7 @@ export default function PropuestasClient({ propuestas, giras, clientes, artistas
         <div className="ms-empty-state">
           <p className="text-sm text-[#6b7280]">
             {propuestas.length === 0
-              ? "Todavía no hay propuestas de servicios. Arma la primera desde una gira."
+              ? "Todavía no hay propuestas de servicios. Arma la primera desde un show o una gira."
               : "Ninguna propuesta coincide con el filtro."}
           </p>
         </div>
@@ -147,7 +143,7 @@ export default function PropuestasClient({ propuestas, giras, clientes, artistas
                 <th className="ms-th text-left">Folio</th>
                 <th className="ms-th text-left">Propuesta</th>
                 <th className="ms-th text-left">Cliente / artista</th>
-                <th className="ms-th text-left">Gira</th>
+                <th className="ms-th text-left">Show o gira</th>
                 <th className="ms-th text-left">Cobro</th>
                 <th className="ms-th text-right">Gran total</th>
                 <th className="ms-th text-left">Vigencia</th>
@@ -275,7 +271,7 @@ function ModalNueva({
       <div className="ms-modal max-w-lg" onClick={(e) => e.stopPropagation()}>
         <div className="p-5 border-b border-[#1e1e1e]">
           <h2 className="ms-h2">Nueva propuesta de servicios</h2>
-          <p className="ms-subtitle mt-1">El cliente y el artista se heredan de la gira si la ligas aquí.</p>
+          <p className="ms-subtitle mt-1">El cliente y el artista se heredan del show o la gira si los ligas aquí.</p>
         </div>
         <div className="p-5 space-y-4">
           <div>
@@ -290,21 +286,21 @@ function ModalNueva({
           </div>
 
           <div>
-            <label className="ms-label">Gira (opcional)</label>
+            <label className="ms-label">Show o gira (opcional)</label>
             <Combobox
               className="mt-1"
               value={giraId}
               onChange={setGiraId}
-              placeholder="Sin gira ligada"
+              placeholder="Sin show ni gira ligados"
               options={[
-                { value: "", label: "Sin gira ligada" },
+                { value: "", label: "Sin show ni gira ligados" },
                 ...giras.map((g) => ({
                   value: g.id,
-                  label: `${g.nombre} — ${g.artista.nombre} (${g._count.shows} fechas)`,
+                  label: `${g.nombre} — ${g.artista.nombre} (${esGira(g.tipo) ? `${g._count.shows} fechas` : "show suelto"})`,
                 })),
               ]}
             />
-            {gira && <p className="ms-micro mt-1">Hereda cliente, artista y moneda de la gira.</p>}
+            {gira && <p className="ms-micro mt-1">Hereda cliente, artista y moneda del registro.</p>}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -314,9 +310,9 @@ function ModalNueva({
                 className="mt-1"
                 value={clienteId}
                 onChange={setClienteId}
-                placeholder={gira ? "Hereda de la gira" : "Seleccionar cliente"}
+                placeholder={gira ? "Hereda del registro" : "Seleccionar cliente"}
                 options={[
-                  { value: "", label: gira ? "Heredar de la gira" : "Sin cliente" },
+                  { value: "", label: gira ? "Heredar del registro" : "Sin cliente" },
                   ...clientes.map((c) => ({
                     value: c.id,
                     label: c.empresa ? `${c.nombre} — ${c.empresa}` : c.nombre,
@@ -330,9 +326,9 @@ function ModalNueva({
                 className="mt-1"
                 value={artistaId}
                 onChange={setArtistaId}
-                placeholder={gira ? "Hereda de la gira" : "Seleccionar artista"}
+                placeholder={gira ? "Hereda del registro" : "Seleccionar artista"}
                 options={[
-                  { value: "", label: gira ? "Heredar de la gira" : "Sin artista" },
+                  { value: "", label: gira ? "Heredar del registro" : "Sin artista" },
                   ...artistas.map((a) => ({ value: a.id, label: a.nombre })),
                 ]}
               />

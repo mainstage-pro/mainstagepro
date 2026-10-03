@@ -3,11 +3,20 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import SubNav, { type EnlaceSub } from "./SubNav";
-import { ESTADO_GIRA_COLOR, ESTADO_GIRA_LABEL, SEMAFORO_COLOR, SEMAFORO_LABEL } from "@/lib/giras";
+import {
+  ESTADO_GIRA_COLOR,
+  SEMAFORO_COLOR,
+  SEMAFORO_LABEL,
+  TIPO_REGISTRO_COLOR,
+  TIPO_REGISTRO_LABEL,
+  esGira,
+  estadoRegistroLabel,
+} from "@/lib/giras";
 
 interface Props {
   giraId: string;
   nombre: string;
+  tipo: string;
   artista: string;
   rango: string;
   estado: string;
@@ -24,22 +33,28 @@ export default function CabeceraGira(p: Props) {
   // encimadas no orientan, estorban.
   if (pathname.startsWith(`/giras/${p.giraId}/show/`)) return null;
 
+  const tour = esGira(p.tipo);
+
   return (
     <div className="px-4 md:px-6 pt-4 md:pt-6 border-b border-[#1a1a1a]">
       <Link href="/giras/lista" className="ms-micro text-[#555] hover:text-[#B3985B] transition-colors">
-        ← Giras
+        ← Shows y giras
       </Link>
 
       <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2 mt-1.5 mb-3">
         <div className="min-w-0">
           <h1 className="ms-h1 truncate">{p.nombre}</h1>
           <p className="ms-subtitle mt-0.5">
-            {p.artista} · {p.rango} · {p.shows} {p.shows === 1 ? "show" : "shows"}
+            {p.artista} · {p.rango}
+            {tour ? ` · ${p.shows} ${p.shows === 1 ? "show" : "shows"}` : ""}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <span className={`text-[11px] px-2 py-0.5 rounded-full border ${TIPO_REGISTRO_COLOR[p.tipo] ?? ""}`}>
+            {TIPO_REGISTRO_LABEL[p.tipo] ?? p.tipo}
+          </span>
           <span className={`text-[11px] px-2 py-0.5 rounded-full border ${ESTADO_GIRA_COLOR[p.estado] ?? ""}`}>
-            {ESTADO_GIRA_LABEL[p.estado] ?? p.estado}
+            {estadoRegistroLabel(p.estado, p.tipo)}
           </span>
           <span className={`text-[11px] px-2 py-0.5 rounded-full border ${SEMAFORO_COLOR[p.semaforo] ?? ""}`}>
             Advance {p.avance}% · {SEMAFORO_LABEL[p.semaforo] ?? p.semaforo}

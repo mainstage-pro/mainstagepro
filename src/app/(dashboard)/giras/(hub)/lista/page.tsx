@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { avanceGira } from "@/lib/giras";
+import { avanceGira, esGira } from "@/lib/giras";
 import ListaGirasClient, { type GiraFila } from "./ListaGirasClient";
 
 export const dynamic = "force-dynamic";
@@ -10,12 +10,13 @@ export default async function GirasListaPage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const [giras, artistas, clientes] = await Promise.all([
+  const [giras, artistas, clientes, venues] = await Promise.all([
     prisma.gira.findMany({
       where: { activo: true },
       select: {
         id: true,
         nombre: true,
+        tipo: true,
         estado: true,
         fechaInicio: true,
         fechaFin: true,
@@ -24,8 +25,10 @@ export default async function GirasListaPage() {
         shows: {
           orderBy: { fecha: "asc" },
           select: {
+            id: true,
             fecha: true,
             ciudad: true,
+            venue: { select: { nombre: true } },
             riderLineas: { select: { prioridad: true, estado: true, cubiertoPor: true } },
           },
         },
@@ -34,20 +37,30 @@ export default async function GirasListaPage() {
     }),
     prisma.artista.findMany({ where: { activo: true }, select: { id: true, nombre: true }, orderBy: { nombre: "asc" } }),
     prisma.cliente.findMany({ select: { id: true, nombre: true, empresa: true }, orderBy: { nombre: "asc" }, take: 400 }),
+    prisma.venue.findMany({
+      where: { activo: true },
+      select: { id: true, nombre: true, ciudad: true },
+      orderBy: { nombre: "asc" },
+    }),
   ]);
 
   const filas: GiraFila[] = giras.map((g) => {
     const resumen = avanceGira(g.shows);
+    const unico = g.shows[0];
     return {
       id: g.id,
       nombre: g.nombre,
+      tipo: g.tipo,
       estado: g.estado,
       artista: g.artista.nombre,
       cliente: g.cliente ? g.cliente.empresa || g.cliente.nombre : null,
-      // La gira puede no tener fechas capturadas todavía; los shows son el respaldo.
-      fechaInicio: (g.fechaInicio ?? g.shows[0]?.fecha ?? null)?.toISOString() ?? null,
+      // El registro puede no tener fechas capturadas todavía; los shows son el respaldo.
+      fechaInicio: (g.fechaInicio ?? unico?.fecha ?? null)?.toISOString() ?? null,
       fechaFin: (g.fechaFin ?? g.shows[g.shows.length - 1]?.fecha ?? null)?.toISOString() ?? null,
       shows: g.shows.length,
+      // Un show suelto se abre en su propio show: su resumen de gira no agrega nada.
+      showId: esGira(g.tipo) ? null : (unico?.id ?? null),
+      venue: esGira(g.tipo) ? null : (unico?.venue?.nombre ?? null),
       ciudades: [...new Set(g.shows.map((s) => s.ciudad).filter((c): c is string => !!c))],
       avance: resumen.avance,
       semaforo: resumen.semaforo,
@@ -55,5 +68,5 @@ export default async function GirasListaPage() {
     };
   });
 
-  return <ListaGirasClient giras={filas} artistas={artistas} clientes={clientes} />;
+  return <ListaGirasClient giras={filas} artistas={artistas} clientes={clientes} venues={venues} />;
 }

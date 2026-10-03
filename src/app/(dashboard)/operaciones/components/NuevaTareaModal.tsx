@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ClipboardList, Repeat, Calendar, Building2,
-  ChevronLeft, X, FileText, Camera, Paperclip, Check, Handshake, Link2, Contact,
+  ChevronLeft, X, FileText, Camera, Paperclip, Check, Handshake, Link2, Contact, Music,
 } from "lucide-react";
 import DatePicker from "@/components/ui/DatePicker";
 import RecurrenciaInput from "./RecurrenciaInput";
@@ -11,7 +11,7 @@ import { Combobox } from "@/components/Combobox";
 import { enqueueRequest } from "@/lib/offline-queue";
 
 // ── Tipos de registro (los sistemas del hub unificado) ──────────────────────────
-type TipoKey = "TAREA" | "PLAN" | "EVENTO" | "PROYECTO" | "TRATO" | "CLIENTE";
+type TipoKey = "TAREA" | "PLAN" | "EVENTO" | "PROYECTO" | "TRATO" | "CLIENTE" | "GIRA";
 
 const TIPOS: { key: TipoKey; titulo: string; desc: string; Icon: typeof ClipboardList; color: string }[] = [
   { key: "TAREA",    titulo: "Tarea",                          desc: "Una tarea puntual del día a día",        Icon: ClipboardList, color: "#9ca3af" },
@@ -21,6 +21,8 @@ const TIPOS: { key: TipoKey; titulo: string; desc: string; Icon: typeof Clipboar
   { key: "TRATO",    titulo: "Tarea de trato de ventas",       desc: "Ligada a un trato/prospecto",             Icon: Handshake,     color: "#B3985B" },
   // CLIENTE es contextual (se abre desde la ventana del cliente); se oculta del selector genérico.
   { key: "CLIENTE",  titulo: "Tarea del cliente",              desc: "Atención específica: cumpleaños, aniversarios, fechas especiales", Icon: Contact, color: "#f472b6" },
+  // GIRA también es contextual: se abre desde los pendientes de una gira o de un show.
+  { key: "GIRA",     titulo: "Pendiente de gira",              desc: "Advance de una gira o de una fecha", Icon: Music, color: "#c084fc" },
 ];
 
 // ── Métodos de comprobación (evidencia de cumplimiento) ─────────────────────────
@@ -79,6 +81,12 @@ interface Props {
   // Fija el cliente y bloquea el selector (al crear desde la ventana del cliente).
   clienteIdInicial?: string | null;
   clienteNombre?: string | null;
+  // Fija la gira y bloquea el selector (al crear desde los pendientes de la gira).
+  // `giraShowIdInicial` ancla la tarea a una fecha concreta; nulo = toda la gira.
+  giraIdInicial?: string | null;
+  giraNombre?: string | null;
+  giraShowIdInicial?: string | null;
+  giraShowLabel?: string | null;
   // Fija el proyecto de empresa y bloquea el selector (al crear desde su detalle).
   proyectoInternoIdInicial?: string | null;
   proyectoInternoNombre?: string | null;
@@ -95,6 +103,7 @@ export default function NuevaTareaModal({
   proyectoEventoIdInicial = null, proyectoEventoNombre = null,
   tratoIdInicial = null, tratoNombre = null,
   clienteIdInicial = null, clienteNombre = null,
+  giraIdInicial = null, giraNombre = null, giraShowIdInicial = null, giraShowLabel = null,
   proyectoInternoIdInicial = null, proyectoInternoNombre = null, faseInicialId = null,
   tareaIdEdicion = null, onCreated,
 }: Props) {
@@ -119,6 +128,8 @@ export default function NuevaTareaModal({
   const [proyectoInternoId, setProyectoInternoId] = useState<string | null>(null);
   const [tratoId, setTratoId]     = useState<string | null>(null);
   const [clienteId, setClienteId] = useState<string | null>(null);
+  const [giraId, setGiraId]       = useState<string | null>(null);
+  const [giraShowId, setGiraShowId] = useState<string | null>(null);
   const [faseId, setFaseId]       = useState<string | null>(null);
   const [error, setError]         = useState<string | null>(null);
   const [saving, setSaving]       = useState(false);
@@ -156,11 +167,12 @@ export default function NuevaTareaModal({
       setProyectoInternoId(proyectoInternoIdInicial ?? null); setFaseId(faseInicialId ?? null);
       setTratoId(tratoIdInicial ?? null);
       setClienteId(clienteIdInicial ?? null);
+      setGiraId(giraIdInicial ?? null); setGiraShowId(giraShowIdInicial ?? null);
       setError(null); setSaving(false);
       setLineasLote(null); setCreadasLote(0);
       setAdjuntos([]); setArchivosExistentes([]); setAddingUrl(false); setUrlManual(""); setNombreManual("");
     }
-  }, [open, tipoInicial, tituloInicial, defaultArea, defaultAsignadoId, fechaInicial, proyectoTareaId, seccionId, proyectoEventoIdInicial, tratoIdInicial, clienteIdInicial, proyectoInternoIdInicial, faseInicialId]);
+  }, [open, tipoInicial, tituloInicial, defaultArea, defaultAsignadoId, fechaInicial, proyectoTareaId, seccionId, proyectoEventoIdInicial, tratoIdInicial, clienteIdInicial, giraIdInicial, giraShowIdInicial, proyectoInternoIdInicial, faseInicialId]);
 
   // Modo edición: carga la tarea y precarga los campos (corre después del reset).
   useEffect(() => {
@@ -171,7 +183,7 @@ export default function NuevaTareaModal({
       .then(d => {
         const t = d.tarea;
         if (!t) return;
-        setTipo((t.tratoId ? "TRATO" : t.clienteId ? "CLIENTE" : (t.tipoOrigen as TipoKey)) ?? "EVENTO");
+        setTipo((t.tratoId ? "TRATO" : t.clienteId ? "CLIENTE" : t.giraId ? "GIRA" : (t.tipoOrigen as TipoKey)) ?? "EVENTO");
         setTitulo(t.titulo ?? "");
         setDescripcion(t.descripcion ?? "");
         setPrioridad(t.prioridad ?? "MEDIA");
@@ -188,6 +200,8 @@ export default function NuevaTareaModal({
         setModuloTexto(t.moduloTexto ?? "");
         setTratoId(t.tratoId ?? tratoIdInicial ?? null);
         setClienteId(t.clienteId ?? clienteIdInicial ?? null);
+        setGiraId(t.giraId ?? giraIdInicial ?? null);
+        setGiraShowId(t.giraShowId ?? giraShowIdInicial ?? null);
         setProyectoEventoId(t.proyectoEventoId ?? null);
         setProyectoInternoId(t.proyectoInternoId ?? proyectoInternoIdInicial ?? null);
         setFaseId(t.faseInternaId ?? null);
@@ -300,6 +314,7 @@ export default function NuevaTareaModal({
     if (tipo === "PROYECTO" && !proyectoInternoId) { setError("Selecciona el proyecto de empresa."); return; }
     if (tipo === "TRATO" && !tratoId) { setError("Selecciona el trato correspondiente."); return; }
     if (tipo === "CLIENTE" && !clienteId) { setError("Falta el cliente de la tarea."); return; }
+    if (tipo === "GIRA" && !giraId) { setError("Falta la gira del pendiente."); return; }
     if (tipo === "CLIENTE" && !recurrencia && !fecha) { setError("Define una recurrencia o una fecha para la tarea del cliente."); return; }
 
     setSaving(true);
@@ -357,6 +372,8 @@ export default function NuevaTareaModal({
       faseInternaId: tipo === "PROYECTO" ? (faseId || null) : null,
       tratoId: tipo === "TRATO" ? tratoId : null,
       clienteId: tipo === "CLIENTE" ? clienteId : null,
+      giraId: tipo === "GIRA" ? giraId : null,
+      giraShowId: tipo === "GIRA" ? giraShowId : null,
       tipoEvidencia: comprobacion || null,
       requiereEvidencia: !!comprobacion,
       moduloDestino: moduloDestino || null,
@@ -475,7 +492,7 @@ export default function NuevaTareaModal({
         {/* ── Paso 1: selector de tipo ───────────────────────────────────── */}
         {!tipo && (
           <div className="p-3 grid grid-cols-1 gap-2">
-            {TIPOS.filter(t => t.key !== "CLIENTE").map(t => (
+            {TIPOS.filter(t => t.key !== "CLIENTE" && t.key !== "GIRA").map(t => (
               <button key={t.key} onClick={() => setTipo(t.key)}
                 className="group flex items-center gap-3.5 px-4 py-3 rounded-xl border border-[#161616] bg-[#0d0d0d] hover:bg-[#111] hover:border-[#262626] transition-all text-left">
                 <span className="flex items-center justify-center w-10 h-10 rounded-lg shrink-0 transition-colors"
@@ -649,6 +666,24 @@ export default function NuevaTareaModal({
                   <Contact size={14} className="text-[#f472b6] shrink-0" />
                   <span className="truncate">{clienteNombre ?? "Este cliente"}</span>
                 </div>
+              </Campo>
+            )}
+
+            {tipo === "GIRA" && (
+              <Campo label={giraShowLabel ? "Fecha de la gira" : "Gira"}>
+                <div className="w-full bg-[#0f0f0f] border border-[#1e1e1e] rounded-lg px-3 py-2 text-[13px] text-white/80 flex items-center gap-2">
+                  <Music size={14} className="text-[#c084fc] shrink-0" />
+                  <span className="truncate">
+                    {giraShowLabel
+                      ? `${giraNombre ?? "Esta gira"} · ${giraShowLabel}`
+                      : (giraNombre ?? "Esta gira")}
+                  </span>
+                </div>
+                <p className="text-[10.5px] text-[#555] mt-1.5">
+                  {giraShowLabel
+                    ? "El pendiente queda anclado a esa fecha."
+                    : "Pendiente de toda la gira. Para anclarlo a una fecha, créalo desde el show."}
+                </p>
               </Campo>
             )}
 

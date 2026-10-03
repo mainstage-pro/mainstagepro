@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { avanceGira, fmtRango } from "@/lib/giras";
+import { avanceGira, esGira, fmtRango } from "@/lib/giras";
 import CabeceraGira from "./CabeceraGira";
 import type { EnlaceSub } from "./SubNav";
 
@@ -24,6 +24,7 @@ export default async function GiraLayout({
     select: {
       id: true,
       nombre: true,
+      tipo: true,
       estado: true,
       fechaInicio: true,
       fechaFin: true,
@@ -48,9 +49,14 @@ export default async function GiraLayout({
         ? fmtRango(gira.shows[0].fecha, gira.shows[gira.shows.length - 1].fecha)
         : "Sin fechas";
 
+  const tour = esGira(gira.tipo);
+
   const enlaces: EnlaceSub[] = [
     { href: `/giras/${id}`, label: "Resumen", exacto: true },
-    { href: `/giras/${id}/shows`, label: "Venues" },
+    { href: `/giras/${id}/propuestas`, label: "Propuestas" },
+    { href: `/giras/${id}/shows`, label: tour ? "Shows" : "Show" },
+    { href: `/giras/${id}/advance`, label: "Advance" },
+    { href: `/giras/${id}/pendientes`, label: "Pendientes" },
     { href: `/giras/${id}/crew`, label: "Crew" },
     { href: `/giras/${id}/logistica`, label: "Viajes y hotel" },
     { href: `/giras/${id}/setlist`, label: "Setlist" },
@@ -62,6 +68,7 @@ export default async function GiraLayout({
       <CabeceraGira
         giraId={id}
         nombre={gira.nombre}
+        tipo={gira.tipo}
         artista={gira.artista.nombre}
         rango={rango}
         estado={gira.estado}
