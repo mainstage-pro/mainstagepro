@@ -9,23 +9,35 @@ import type { Document } from "@react-pdf/renderer";
 import path from "path";
 import { prisma } from "@/lib/prisma";
 import {
+  CONTEXTO_RIDER_LABEL,
   DISCIPLINAS,
   DISCIPLINA_LABEL,
   PRIORIDAD_LABEL,
   PROVISTO_POR_LABEL,
+  ROL_PERSONA_LABEL,
   SOPORTE_MIC_LABEL,
+  TIPO_ARCHIVO_RIDER_LABEL,
   TIPO_FORMACION_LABEL,
   TIPO_SALIDA_LABEL,
   UNIDAD_RIDER_LABEL,
+  esImagenArchivo,
 } from "@/lib/giras";
 import { logoBase64, nowStr, resolvePdfImage } from "@/components/pdf/PdfShared";
-import { RiderArtistaPDF, type RiderArtistaData, type RiderLineaDoc } from "@/components/pdf/giras/RiderArtistaPDF";
+import {
+  PortadaAnexosPDF,
+  RiderArtistaPDF,
+  type RiderAnexoDoc,
+  type RiderArtistaData,
+  type RiderContactoDoc,
+  type RiderLineaDoc,
+} from "@/components/pdf/giras/RiderArtistaPDF";
 import {
   ListaCanalesPDF,
   type CanalInput,
   type CanalOutput,
   type ListaCanalesData,
 } from "@/components/pdf/giras/ListaCanalesPDF";
+import { leerPdfAnexo, resolverImagenAnexo, unirPdfs } from "./anexos";
 import { bufferDePdf, type PdfGira } from "./render";
 
 const ORDEN_DISCIPLINA: Record<string, number> = Object.fromEntries(DISCIPLINAS.map((d, i) => [d, i]));
@@ -44,6 +56,8 @@ async function leerRider(riderId: string) {
         include: { persona: { select: { nombre: true } } },
       },
       lineas: { orderBy: [{ orden: "asc" }, { createdAt: "asc" }] },
+      contactos: { where: { enPdf: true }, orderBy: [{ orden: "asc" }, { createdAt: "asc" }] },
+      archivos: { where: { incluirEnPdf: true }, orderBy: [{ orden: "asc" }, { createdAt: "asc" }] },
     },
   });
 }
@@ -114,8 +128,87 @@ function lineasPorDisciplina(rider: RiderCompleto): RiderLineaDoc[] {
     }));
 }
 
+/// Contactos y anexos del rider, ya resueltos para el documento. Los anexos en
+/// PDF no se dibujan: se separan para pegarlos al final del buffer.
+function leerContactos(rider: RiderCompleto): RiderContactoDoc[] {
+  return rider.contactos.map((c) => ({
+    id: c.id,
+    nombre: c.nombre,
+    rolLabel: ROL_PERSONA_LABEL[c.rol] ?? c.rol,
+    telefono: c.telefono,
+    email: c.email,
+    notas: c.notas,
+  }));
+}
+
+async function leerAnexos(
+  rider: RiderCompleto,
+  publicDir: string,
+): Promise<{ imagenes: RiderAnexoDoc[]; pdfs: { id: string; nombre: string; tipoLabel: string; notas: string | null; url: string }[] }> {
+  const imagenes: RiderAnexoDoc[] = [];
+  const pdfs: { id: string; nombre: string; tipoLabel: string; notas: string | null; url: string }[] = [];
+
+  for (const a of rider.archivos) {
+    const tipoLabel = TIPO_ARCHIVO_RIDER_LABEL[a.tipo] ?? a.tipo;
+    if (esImagenArchivo(a.url, a.mime)) {
+      const img = await resolverImagenAnexo(a.url, publicDir);
+      // Si la imagen no se pudo leer se cae a la lista de adjuntos: el rider dice
+      // que existe un plano en vez de callárselo.
+      if (img) {
+        imagenes.push({
+          id: a.id,
+          nombre: a.nombre,
+          tipoLabel,
+          notas: a.notas,
+          imagenSrc: img.dataUri,
+          proporcion: img.proporcion,
+        });
+        continue;
+      }
+    }
+    pdfs.push({ id: a.id, nombre: a.nombre, tipoLabel, notas: a.notas, url: a.url });
+  }
+
+  return { imagenes, pdfs };
+}
+
+/// Pega los anexos en PDF después del documento, con su portada. Los que no se
+/// puedan descargar se ignoran: el rider sale igual.
+async function anexarPdfs(
+  base: Buffer,
+  rider: RiderCompleto,
+  pdfs: { id: string; nombre: string; tipoLabel: string; notas: string | null; url: string }[],
+  publicDir: string,
+): Promise<Buffer> {
+  if (pdfs.length === 0) return base;
+
+  const leidos: { meta: (typeof pdfs)[number]; bytes: Buffer }[] = [];
+  for (const p of pdfs) {
+    const bytes = await leerPdfAnexo(p.url, publicDir);
+    if (bytes) leidos.push({ meta: p, bytes });
+  }
+  if (leidos.length === 0) return base;
+
+  const portada = await bufferDePdf(
+    React.createElement(PortadaAnexosPDF, {
+      data: {
+        artistaNombre: rider.artista.nombre,
+        riderNombre: rider.nombre,
+        version: rider.version,
+        logoSrc: logoBase64(publicDir),
+        generadoEn: nowStr(),
+      },
+      anexos: leidos.map((l) => l.meta),
+    }) as React.ReactElement<React.ComponentProps<typeof Document>>,
+  );
+
+  return unirPdfs([base, portada, ...leidos.map((l) => l.bytes)]);
+}
+
 /// Resuelve el rider a imprimir desde una gira: el enganchado o, en su defecto,
-/// el activo del artista de la gira.
+/// el vigente del artista. Con riders por contexto puede haber varios vigentes a
+/// la vez, así que se prefiere el general y, si no hay, el más reciente: la gira
+/// que quiera el de festival lo engancha explícitamente.
 export async function riderDeGira(giraId: string): Promise<{ riderId: string; giraNombre: string } | null> {
   const gira = await prisma.gira.findUnique({
     where: { id: giraId },
@@ -124,12 +217,13 @@ export async function riderDeGira(giraId: string): Promise<{ riderId: string; gi
   if (!gira) return null;
   if (gira.riderId) return { riderId: gira.riderId, giraNombre: gira.nombre };
 
-  const activo = await prisma.artistaRider.findFirst({
+  const vigentes = await prisma.artistaRider.findMany({
     where: { artistaId: gira.artistaId, activo: true, esActivo: true },
     orderBy: { version: "desc" },
-    select: { id: true },
+    select: { id: true, contexto: true },
   });
-  return activo ? { riderId: activo.id, giraNombre: gira.nombre } : null;
+  const elegido = vigentes.find((r) => r.contexto === "GENERAL") ?? vigentes[0];
+  return elegido ? { riderId: elegido.id, giraNombre: gira.nombre } : null;
 }
 
 export async function generarRiderArtista(riderId: string, giraNombre: string | null): Promise<PdfGira | null> {
@@ -137,7 +231,22 @@ export async function generarRiderArtista(riderId: string, giraNombre: string | 
   if (!rider) return null;
 
   const publicDir = path.join(process.cwd(), "public");
+  const nombreArchivo = `Rider-${slugArchivo(rider.artista.nombre)}-v${rider.version}.pdf`;
+
+  // Rider cargado: el documento es el del artista. No se re-maqueta (perdería el
+  // formato que ellos negocian) pero sí se le pegan los anexos que se hayan
+  // subido aparte, que es lo que hace falta al mandarlo.
+  if (rider.origen === "CARGADO" && rider.archivoUrl) {
+    const original = await leerPdfAnexo(rider.archivoUrl, publicDir);
+    if (original) {
+      const { pdfs } = await leerAnexos(rider, publicDir);
+      const buf = await anexarPdfs(original, rider, pdfs, publicDir);
+      return { buf, filename: rider.archivoNombre || nombreArchivo };
+    }
+  }
+
   const { inputs, outputs } = partirCanales(rider);
+  const { imagenes, pdfs } = await leerAnexos(rider, publicDir);
 
   const data: RiderArtistaData = {
     artistaNombre: rider.artista.nombre,
@@ -147,6 +256,7 @@ export async function generarRiderArtista(riderId: string, giraNombre: string | 
     riderNombre: rider.nombre,
     version: rider.version,
     esActivo: rider.esActivo,
+    contextoLabel: CONTEXTO_RIDER_LABEL[rider.contexto] ?? rider.contexto,
     formacion: rider.formacion,
     giraNombre,
     requerimientosGenerales: rider.requerimientosGenerales,
@@ -174,16 +284,19 @@ export async function generarRiderArtista(riderId: string, giraNombre: string | 
     lineas: lineasPorDisciplina(rider),
     inputs,
     outputs,
+    contactos: leerContactos(rider),
+    anexos: imagenes,
     logoSrc: logoBase64(publicDir),
     logoArtistaSrc: await resolvePdfImage(rider.artista.logoUrl, publicDir),
     generadoEn: nowStr(),
   };
 
-  const buf = await bufferDePdf(
+  const base = await bufferDePdf(
     React.createElement(RiderArtistaPDF, { data }) as React.ReactElement<React.ComponentProps<typeof Document>>,
   );
 
-  return { buf, filename: `Rider-${slugArchivo(rider.artista.nombre)}-v${rider.version}.pdf` };
+  const buf = await anexarPdfs(base, rider, pdfs, publicDir);
+  return { buf, filename: nombreArchivo };
 }
 
 export async function generarListaCanales(riderId: string, giraNombre: string | null): Promise<PdfGira | null> {

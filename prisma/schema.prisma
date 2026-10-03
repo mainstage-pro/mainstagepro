@@ -5882,10 +5882,11 @@ model ArtistaPersona {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  mixes    ArtistaRiderCanal[]
-  crew     GiraCrew[]
-  roomings GiraRooming[]
-  giras    Gira[]              @relation("GiraContactoPrincipal")
+  mixes          ArtistaRiderCanal[]
+  riderContactos ArtistaRiderContacto[]
+  crew           GiraCrew[]
+  roomings       GiraRooming[]
+  giras          Gira[]                 @relation("GiraContactoPrincipal")
 
   @@index([artistaId])
   @@map("artista_personas")
@@ -5899,8 +5900,21 @@ model ArtistaRider {
 
   nombre    String // "Rider 2026 — banda completa"
   version   Int     @default(1)
+  /// Vigente DENTRO de su contexto, no del artista: el rider de festival no
+  /// apaga al de tour.
   esActivo  Boolean @default(true)
   formacion String? // "5 piezas"
+
+  /// TOUR|FESTIVAL|PRIVADO|TEATRO|SHOWCASE|ACUSTICO|GENERAL
+  contexto String @default("GENERAL")
+
+  /// GENERADO (se arma aquí) | CARGADO (el artista trajo su propio PDF).
+  /// En el cargado los números críticos se capturan igual: el advance y la
+  /// cotización leen esos campos, no el documento.
+  origen             String  @default("GENERADO")
+  archivoUrl         String?
+  archivoNombre      String?
+  archivoTamanoBytes Int?
 
   requerimientosGenerales String?
   notasFoh                String?
@@ -5927,12 +5941,72 @@ model ArtistaRider {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  canales ArtistaRiderCanal[]
-  lineas  ArtistaRiderLinea[]
-  giras   Gira[]
+  canales   ArtistaRiderCanal[]
+  lineas    ArtistaRiderLinea[]
+  contactos ArtistaRiderContacto[]
+  archivos  ArtistaRiderArchivo[]
+  giras     Gira[]
 
   @@index([artistaId])
+  @@index([artistaId, contexto])
   @@map("artista_riders")
+}
+
+/// A quién le habla la casa cuando lee el rider. El crew del artista vive en
+/// ArtistaPersona, pero no todo el crew va en todos los riders: en festival va el
+/// tour manager y el FOH, en tour va la plantilla completa. Esta tabla es la
+/// selección por rider, con nombre y datos copiados para que el PDF de una
+/// versión histórica siga diciendo lo que decía cuando se mandó.
+model ArtistaRiderContacto {
+  id      String       @id @default(cuid())
+  riderId String
+  rider   ArtistaRider @relation(fields: [riderId], references: [id], onDelete: Cascade)
+
+  /// Nulo cuando el contacto no está dado de alta como persona del artista
+  /// (el ingeniero que contrataron solo para esta gira).
+  personaId String?
+  persona   ArtistaPersona? @relation(fields: [personaId], references: [id], onDelete: SetNull)
+
+  nombre   String
+  rol      String // ROLES_PERSONA
+  telefono String?
+  email    String?
+  notas    String?
+
+  /// El contacto puede servir internamente y no salir en el documento que ve la
+  /// casa (el personal manager rara vez quiere su celular impreso).
+  enPdf Boolean @default(true)
+
+  orden     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([riderId])
+  @@map("artista_rider_contactos")
+}
+
+/// Stage plots, patches y planos del rider. Una imagen se dibuja en su propia
+/// página del PDF a escala; un PDF se anexa al final con sus páginas intactas.
+model ArtistaRiderArchivo {
+  id      String       @id @default(cuid())
+  riderId String
+  rider   ArtistaRider @relation(fields: [riderId], references: [id], onDelete: Cascade)
+
+  nombre String
+  url    String
+  tipo   String  @default("STAGE_PLOT") // STAGE_PLOT|PATCH|PLANO|OTRO
+  mime   String?
+
+  tamanoBytes  Int?
+  incluirEnPdf Boolean @default(true)
+  notas        String?
+
+  orden     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([riderId])
+  @@map("artista_rider_archivos")
 }
 
 /// Input list y output list en una sola tabla, discriminadas por `tipo`.

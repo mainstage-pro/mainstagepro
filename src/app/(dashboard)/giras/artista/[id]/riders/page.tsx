@@ -22,10 +22,13 @@ export default async function ArtistaRidersPage({ params }: { params: Promise<{ 
       version: true,
       esActivo: true,
       formacion: true,
+      contexto: true,
+      origen: true,
+      archivoNombre: true,
       canalesMinimos: true,
       mixesMonitor: true,
       updatedAt: true,
-      _count: { select: { canales: true, lineas: true, giras: true } },
+      _count: { select: { canales: true, lineas: true, giras: true, contactos: true, archivos: true } },
     },
   });
 
@@ -35,12 +38,17 @@ export default async function ArtistaRidersPage({ params }: { params: Promise<{ 
     version: r.version,
     esActivo: r.esActivo,
     formacion: r.formacion,
+    contexto: r.contexto,
+    origen: r.origen,
+    archivoNombre: r.archivoNombre,
     canalesMinimos: r.canalesMinimos,
     mixesMonitor: r.mixesMonitor,
     actualizado: r.updatedAt.toISOString(),
     canales: r._count.canales,
     lineas: r._count.lineas,
     giras: r._count.giras,
+    contactos: r._count.contactos,
+    anexos: r._count.archivos,
   }));
 
   return (

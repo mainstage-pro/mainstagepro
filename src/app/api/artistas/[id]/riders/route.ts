@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { CONTEXTOS_RIDER, ORIGENES_RIDER } from "@/lib/giras";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -10,15 +11,19 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const riders = await prisma.artistaRider.findMany({
     where: { artistaId: id, activo: true },
     orderBy: { version: "desc" },
-    include: { _count: { select: { canales: true, lineas: true } } },
+    include: { _count: { select: { canales: true, lineas: true, contactos: true, archivos: true } } },
   });
 
   return NextResponse.json({ riders });
 }
 
-/// Crea una versión del rider. Si se pide clonar, copia cabecera, canales y líneas
-/// de la versión origen: una versión nueva casi siempre es "la anterior con cambios",
-/// no una hoja en blanco.
+/// Crea una versión del rider. Si se pide clonar, copia cabecera, canales, líneas,
+/// contactos y anexos de la versión origen: una versión nueva casi siempre es "la
+/// anterior con cambios", no una hoja en blanco.
+///
+/// El contexto (tour, festival, privado…) es su propia línea de versiones: la
+/// nueva queda vigente en SU contexto y apaga a la anterior de ese mismo contexto,
+/// no a todas las del artista.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -42,12 +47,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const origen = origenId
     ? await prisma.artistaRider.findFirst({
         where: { id: origenId, artistaId: id },
-        include: { canales: true, lineas: true },
+        include: { canales: true, lineas: true, contactos: true, archivos: true },
       })
     : null;
   if (origenId && !origen) {
     return NextResponse.json({ error: "Versión de origen no encontrada" }, { status: 404 });
   }
+
+  // El contexto pedido manda; si no viene, se hereda del clonado y en última
+  // instancia es GENERAL.
+  const contexto: string =
+    typeof body.contexto === "string" && (CONTEXTOS_RIDER as readonly string[]).includes(body.contexto)
+      ? body.contexto
+      : (origen?.contexto ?? "GENERAL");
+
+  const tipoOrigen: string =
+    typeof body.origen === "string" && (ORIGENES_RIDER as readonly string[]).includes(body.origen)
+      ? body.origen
+      : "GENERADO";
 
   const nombre: string =
     (typeof body.nombre === "string" && body.nombre.trim()) ||
@@ -55,7 +72,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const rider = await prisma.$transaction(async (tx) => {
     await tx.artistaRider.updateMany({
-      where: { artistaId: id, esActivo: true },
+      where: { artistaId: id, contexto, esActivo: true },
       data: { esActivo: false },
     });
 
@@ -65,6 +82,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         nombre,
         version,
         esActivo: true,
+        contexto,
+        origen: tipoOrigen,
+        archivoUrl: typeof body.archivoUrl === "string" ? body.archivoUrl : null,
+        archivoNombre: typeof body.archivoNombre === "string" ? body.archivoNombre : null,
+        archivoTamanoBytes:
+          typeof body.archivoTamanoBytes === "number" && Number.isFinite(body.archivoTamanoBytes)
+            ? Math.round(body.archivoTamanoBytes)
+            : null,
         formacion: origen?.formacion ?? null,
         requerimientosGenerales: origen?.requerimientosGenerales ?? null,
         notasFoh: origen?.notasFoh ?? null,
@@ -124,6 +149,40 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           provistoPor: l.provistoPor,
           notas: l.notas,
           orden: l.orden,
+        })),
+      });
+    }
+
+    if (origen?.contactos.length) {
+      await tx.artistaRiderContacto.createMany({
+        data: origen.contactos.map((c) => ({
+          riderId: creado.id,
+          personaId: c.personaId,
+          nombre: c.nombre,
+          rol: c.rol,
+          telefono: c.telefono,
+          email: c.email,
+          notas: c.notas,
+          enPdf: c.enPdf,
+          orden: c.orden,
+        })),
+      });
+    }
+
+    // Los anexos se clonan apuntando al mismo blob: el stage plot no cambió solo
+    // porque se abrió una versión nueva, y duplicar el archivo no gana nada.
+    if (origen?.archivos.length) {
+      await tx.artistaRiderArchivo.createMany({
+        data: origen.archivos.map((a) => ({
+          riderId: creado.id,
+          nombre: a.nombre,
+          url: a.url,
+          tipo: a.tipo,
+          mime: a.mime,
+          tamanoBytes: a.tamanoBytes,
+          incluirEnPdf: a.incluirEnPdf,
+          notas: a.notas,
+          orden: a.orden,
         })),
       });
     }

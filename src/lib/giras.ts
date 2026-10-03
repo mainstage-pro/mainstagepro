@@ -32,6 +32,7 @@ export const DISCIPLINA_LABEL: Record<string, string> = {
 export const ROLES_PERSONA = [
   "PERSONAL_MANAGER",
   "TOUR_MANAGER",
+  "PRODUCTION_MANAGER",
   "MUSICO",
   "FOH",
   "MONITORES",
@@ -48,6 +49,7 @@ export const ROLES_PERSONA = [
 export const ROL_PERSONA_LABEL: Record<string, string> = {
   PERSONAL_MANAGER: "Personal manager",
   TOUR_MANAGER: "Tour manager",
+  PRODUCTION_MANAGER: "Production manager",
   MUSICO: "Músico",
   FOH: "Ingeniero de FOH",
   MONITORES: "Ingeniero de monitores",
@@ -867,6 +869,88 @@ export const TIPO_FORMACION_LABEL: Record<string, string> = {
   COLECTIVO: "Colectivo",
 };
 
+// ── Rider: contexto y origen ─────────────────────────────────────────────────
+// Un artista no tiene "un" rider: tiene el de su tour, el que manda a festivales
+// y el que acepta en un privado. Mientras todos vivieron como versiones de la
+// misma línea, el vigente del tour apagaba al de festival. El contexto separa las
+// líneas: hay un rider vigente POR CONTEXTO, no uno por artista.
+
+export const CONTEXTOS_RIDER = ["TOUR", "FESTIVAL", "PRIVADO", "TEATRO", "SHOWCASE", "ACUSTICO", "GENERAL"] as const;
+export type ContextoRider = (typeof CONTEXTOS_RIDER)[number];
+
+export const CONTEXTO_RIDER_LABEL: Record<string, string> = {
+  TOUR: "Tour",
+  FESTIVAL: "Festival",
+  PRIVADO: "Evento privado",
+  TEATRO: "Teatro",
+  SHOWCASE: "Showcase",
+  ACUSTICO: "Acústico",
+  GENERAL: "General",
+};
+
+export const CONTEXTO_RIDER_AYUDA: Record<string, string> = {
+  TOUR: "El montaje completo de la gira: lo que piden cuando ellos arman la producción.",
+  FESTIVAL: "Lo que entra en un cambio de 20 minutos compartiendo backline y consola.",
+  PRIVADO: "Boda, corporativo, fiesta: formato reducido y presupuesto de cliente final.",
+  TEATRO: "Recinto sentado, acústica controlada, niveles bajos.",
+  SHOWCASE: "Set corto para industria o prensa.",
+  ACUSTICO: "Formato desenchufado, mucho menos canal y nada de backline pesado.",
+  GENERAL: "El rider de cajón, el que aplica mientras no haya uno específico.",
+};
+
+export const CONTEXTO_RIDER_COLOR: Record<string, string> = {
+  TOUR: "ms-badge-gold",
+  FESTIVAL: "ms-badge-purple",
+  PRIVADO: "ms-badge-blue",
+  TEATRO: "ms-badge-sky",
+  SHOWCASE: "ms-badge-emerald",
+  ACUSTICO: "ms-badge-pink",
+  GENERAL: "ms-badge-gray",
+};
+
+export function contextoRiderLabel(contexto: string | null | undefined): string {
+  if (!contexto) return CONTEXTO_RIDER_LABEL.GENERAL;
+  return CONTEXTO_RIDER_LABEL[contexto] ?? contexto;
+}
+
+/// GENERADO: la ficha se captura aquí y el PDF lo arma la plataforma.
+/// CARGADO: el artista ya trae su PDF y solo lo guardamos; los números críticos
+/// se capturan igual para que el advance y la cotización sigan funcionando.
+export const ORIGENES_RIDER = ["GENERADO", "CARGADO"] as const;
+export type OrigenRider = (typeof ORIGENES_RIDER)[number];
+
+export const ORIGEN_RIDER_LABEL: Record<string, string> = {
+  GENERADO: "Armado en la plataforma",
+  CARGADO: "Documento del artista",
+};
+
+// ── Rider: anexos (stage plots y planos) ─────────────────────────────────────
+export const TIPOS_ARCHIVO_RIDER = ["STAGE_PLOT", "PATCH", "PLANO", "OTRO"] as const;
+
+export const TIPO_ARCHIVO_RIDER_LABEL: Record<string, string> = {
+  STAGE_PLOT: "Stage plot",
+  PATCH: "Patch / lista de canales",
+  PLANO: "Plano o diagrama",
+  OTRO: "Otro anexo",
+};
+
+export const TIPO_ARCHIVO_RIDER_COLOR: Record<string, string> = {
+  STAGE_PLOT: "ms-badge-purple",
+  PATCH: "ms-badge-emerald",
+  PLANO: "ms-badge-sky",
+  OTRO: "ms-badge-gray",
+};
+
+const EXT_IMAGEN = ["png", "jpg", "jpeg", "webp", "gif", "avif", "heic", "heif"];
+
+/// Un anexo se imprime distinto según sea imagen o PDF: la imagen se dibuja en su
+/// propia página a escala, el PDF se pega al final con sus páginas intactas.
+export function esImagenArchivo(url: string, mime?: string | null): boolean {
+  if (mime) return mime.startsWith("image/");
+  const ext = url.split("?")[0].split(".").pop()?.toLowerCase() ?? "";
+  return EXT_IMAGEN.includes(ext);
+}
+
 // ── Rider de equipo: unidades ────────────────────────────────────────────────
 export const UNIDADES_RIDER = ["PZA", "JGO", "PAR", "CANAL", "MIX", "METRO", "SERVICIO"] as const;
 
@@ -1026,6 +1110,42 @@ export const TIPO_ARCHIVO_GIRA_COLOR: Record<string, string> = {
   INPUT_LIST: "ms-badge-emerald",
   HOSPITALIDAD: "ms-badge-pink",
   OTRO: "ms-badge-gray",
+};
+
+// ── Secciones del libro de gira ──────────────────────────────────────────────
+// El libro es un documento maestro recortable: estas llaves viajan en el
+// querystring `?secciones=`, así que la UI, el generador y el PDF hablan del
+// mismo vocabulario. Viven aquí y no en el componente del PDF porque la pantalla
+// que las elige corre en el cliente y no debe arrastrar el renderer.
+export const SECCIONES_LIBRO = [
+  "resumen",
+  "shows",
+  "crew",
+  "logistica",
+  "setlist",
+  "advance",
+  "pendientes",
+] as const;
+export type SeccionLibro = (typeof SECCIONES_LIBRO)[number];
+
+export const SECCION_LIBRO_LABEL: Record<SeccionLibro, string> = {
+  resumen: "Resumen de la gira",
+  shows: "Calendario de shows",
+  crew: "Crew y contactos",
+  logistica: "Logística y rooming",
+  setlist: "Repertorio",
+  advance: "Estado del advance",
+  pendientes: "Pendientes por cerrar",
+};
+
+export const SECCION_LIBRO_AYUDA: Record<SeccionLibro, string> = {
+  resumen: "Artista, fechas, estado y qué asume Mainstage.",
+  shows: "Una fila por fecha: ciudad, foro, horarios clave y promotor.",
+  crew: "Quién viaja y a quién se le marca en cada plaza.",
+  logistica: "Vuelos y traslados, hoteles y la rooming list.",
+  setlist: "El setlist base y las variantes por show.",
+  advance: "Semáforo por show y los indispensables que siguen abiertos.",
+  pendientes: "El checklist del advance agrupado por frente.",
 };
 
 /// Peso del archivo como se lee en pantalla. El modelo lo guarda en bytes porque

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import OutputListClient, { type CanalOutput } from "./OutputListClient";
+import type { RiderOrigen } from "../ImportarCanales";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +38,25 @@ export default async function RiderOutputsPage({ params }: { params: Promise<{ i
     select: { id: true, nombre: true, rol: true, instrumento: true },
   });
 
+  const otras = await prisma.artistaRider.findMany({
+    where: { artistaId: id, activo: true, id: { not: riderId }, canales: { some: { tipo: "OUTPUT" } } },
+    orderBy: { version: "desc" },
+    select: {
+      id: true,
+      nombre: true,
+      version: true,
+      contexto: true,
+      _count: { select: { canales: { where: { tipo: "OUTPUT" } } } },
+    },
+  });
+  const origenes: RiderOrigen[] = otras.map((o) => ({
+    id: o.id,
+    nombre: o.nombre,
+    version: o.version,
+    contexto: o.contexto,
+    canales: o._count.canales,
+  }));
+
   return (
     <OutputListClient
       artistaId={id}
@@ -44,6 +64,7 @@ export default async function RiderOutputsPage({ params }: { params: Promise<{ i
       mixesMonitor={rider.mixesMonitor}
       canalesIniciales={rider.canales as CanalOutput[]}
       personas={personas}
+      origenes={origenes}
     />
   );
 }

@@ -1,12 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { upload } from "@vercel/blob/client";
 import { Modal } from "@/components/Modal";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import {
+  CONTEXTOS_RIDER,
+  CONTEXTO_RIDER_AYUDA,
+  CONTEXTO_RIDER_COLOR,
+  CONTEXTO_RIDER_LABEL,
+  ORIGEN_RIDER_LABEL,
   PLANTILLA_INPUT_BANDA,
   PLANTILLA_OUTPUT_BANDA,
   numerarSalidas,
@@ -21,12 +27,17 @@ export interface RiderFila {
   version: number;
   esActivo: boolean;
   formacion: string | null;
+  contexto: string;
+  origen: string;
+  archivoNombre: string | null;
   canalesMinimos: number | null;
   mixesMonitor: number | null;
   actualizado: string;
   canales: number;
   lineas: number;
   giras: number;
+  contactos: number;
+  anexos: number;
 }
 
 interface Props {
@@ -36,7 +47,7 @@ interface Props {
   ridersIniciales: RiderFila[];
 }
 
-type Arranque = "VACIO" | "PLANTILLA" | "CLON";
+type Arranque = "VACIO" | "PLANTILLA" | "CLON" | "CARGADO";
 
 export default function RidersArtistaClient({ artistaId, artistaNombre, tipoFormacion, ridersIniciales }: Props) {
   const router = useRouter();
@@ -46,17 +57,22 @@ export default function RidersArtistaClient({ artistaId, artistaNombre, tipoForm
   const [riders, setRiders] = useState<RiderFila[]>(ridersIniciales);
   const [abierto, setAbierto] = useState(false);
   const [nombre, setNombre] = useState("");
+  const [contexto, setContexto] = useState("GENERAL");
   const [arranque, setArranque] = useState<Arranque>("PLANTILLA");
   const [clonarDeId, setClonarDeId] = useState("");
+  const [pdf, setPdf] = useState<File | null>(null);
   const [trabajando, setTrabajando] = useState(false);
   const [trabajandoFila, setTrabajandoFila] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const inputPdf = useRef<HTMLInputElement>(null);
 
   function abrirModal() {
     const siguiente = (riders[0]?.version ?? 0) + 1;
     setNombre(`Rider ${artistaNombre} v${siguiente}`);
+    setContexto("GENERAL");
     setArranque(riders.length ? "CLON" : "PLANTILLA");
     setClonarDeId(riders[0]?.id ?? "");
+    setPdf(null);
     setError(null);
     setAbierto(true);
   }
@@ -102,15 +118,33 @@ export default function RidersArtistaClient({ artistaId, artistaNombre, tipoForm
       setError("Elige de cuál versión se copia.");
       return;
     }
+    if (arranque === "CARGADO" && !pdf) {
+      setError("Elige el PDF del rider del artista.");
+      return;
+    }
     setTrabajando(true);
     setError(null);
     try {
+      // El PDF sube antes de crear la versión: si falla la subida no queda un
+      // rider cargado apuntando a nada.
+      let archivo: { archivoUrl: string; archivoNombre: string; archivoTamanoBytes: number } | null = null;
+      if (arranque === "CARGADO" && pdf) {
+        const blob = await upload(`riders/${artistaId}/${Date.now()}-rider.pdf`, pdf, {
+          access: "public",
+          handleUploadUrl: "/api/upload/token",
+        });
+        archivo = { archivoUrl: blob.url, archivoNombre: pdf.name, archivoTamanoBytes: pdf.size };
+      }
+
       const res = await fetch(`/api/artistas/${artistaId}/riders`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           nombre: nombre.trim(),
+          contexto,
           clonarDeId: arranque === "CLON" ? clonarDeId : null,
+          origen: arranque === "CARGADO" ? "CARGADO" : "GENERADO",
+          ...(archivo ?? {}),
         }),
       });
       const d = await res.json().catch(() => ({}));
@@ -119,7 +153,9 @@ export default function RidersArtistaClient({ artistaId, artistaNombre, tipoForm
         return;
       }
       if (arranque === "PLANTILLA") await sembrarPlantilla(d.rider.id);
-      toast.success(`Rider v${d.rider.version} creado y marcado como vigente`);
+      toast.success(
+        `Rider v${d.rider.version} creado y vigente en ${CONTEXTO_RIDER_LABEL[contexto] ?? contexto}`,
+      );
       router.push(`/giras/artista/${artistaId}/rider/${d.rider.id}`);
     } catch {
       setError("No se pudo crear la versión.");
@@ -140,8 +176,11 @@ export default function RidersArtistaClient({ artistaId, artistaNombre, tipoForm
         toast.error("No se pudo marcar como vigente");
         return;
       }
-      setRiders((prev) => prev.map((x) => ({ ...x, esActivo: x.id === r.id })));
-      toast.success(`v${r.version} es ahora el rider vigente`);
+      // Solo apaga a las de su mismo tipo de show: el de festival no toca al de tour.
+      setRiders((prev) =>
+        prev.map((x) => (x.contexto === r.contexto ? { ...x, esActivo: x.id === r.id } : x)),
+      );
+      toast.success(`v${r.version} es ahora el rider vigente en ${CONTEXTO_RIDER_LABEL[r.contexto] ?? r.contexto}`);
       router.refresh();
     } finally {
       setTrabajandoFila(null);
@@ -174,14 +213,21 @@ export default function RidersArtistaClient({ artistaId, artistaNombre, tipoForm
     }
   }
 
+  // Agrupadas por tipo de show, en el orden del vocabulario: cada tipo es su
+  // propia línea de versiones y leerlas revueltas es justo la confusión que se
+  // está quitando.
+  const grupos: [string, RiderFila[]][] = CONTEXTOS_RIDER.map(
+    (c) => [c as string, riders.filter((r) => r.contexto === c)] as [string, RiderFila[]],
+  ).filter(([, del]) => del.length > 0);
+
   return (
     <div className="ms-page space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="ms-h2">Riders del artista</h2>
           <p className="ms-subtitle mt-1">
-            El rider maestro es lo que el artista pide una vez; cada show lo resuelve en su advance. Solo una versión
-            es la vigente.
+            Un rider por tipo de show, no uno para todo: lo que pide en festival no es lo que pide en un privado.
+            Cada tipo tiene su propia versión vigente y su propio historial.
           </p>
         </div>
         <button className="ms-btn-primary" onClick={abrirModal}>
@@ -200,21 +246,34 @@ export default function RidersArtistaClient({ artistaId, artistaNombre, tipoForm
           </button>
         </div>
       ) : (
+        grupos.map(([ctx, delGrupo]) => (
+        <div key={ctx} className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`ms-badge ${CONTEXTO_RIDER_COLOR[ctx] ?? "ms-badge-gray"}`}>
+              {CONTEXTO_RIDER_LABEL[ctx] ?? ctx}
+            </span>
+            <span className="ms-micro">
+              {delGrupo.length} {delGrupo.length === 1 ? "versión" : "versiones"} ·{" "}
+              {CONTEXTO_RIDER_AYUDA[ctx] ?? ""}
+            </span>
+          </div>
         <div className="ms-table-wrapper overflow-x-auto">
-          <table className="w-full min-w-[900px]">
+          <table className="w-full min-w-[980px]">
             <thead className="ms-thead">
               <tr>
                 <th className="ms-th text-left">Versión</th>
                 <th className="ms-th text-left">Formación</th>
                 <th className="ms-th text-right">Canales</th>
                 <th className="ms-th text-right">Conceptos</th>
+                <th className="ms-th text-right">Contactos</th>
+                <th className="ms-th text-right">Anexos</th>
                 <th className="ms-th text-right">En uso</th>
                 <th className="ms-th text-left">Actualizado</th>
                 <th className="ms-th text-right">Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {riders.map((r) => (
+              {delGrupo.map((r) => (
                 <tr key={r.id} className="ms-tr">
                   <td className="ms-td">
                     <Link
@@ -223,9 +282,14 @@ export default function RidersArtistaClient({ artistaId, artistaNombre, tipoForm
                     >
                       {r.nombre}
                     </Link>
-                    <div className="mt-0.5 flex items-center gap-1.5">
+                    <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
                       <span className="ms-micro">v{r.version}</span>
                       {r.esActivo && <span className="ms-badge ms-badge-gold">Vigente</span>}
+                      {r.origen === "CARGADO" && (
+                        <span className="ms-badge ms-badge-gray" title={r.archivoNombre ?? undefined}>
+                          {ORIGEN_RIDER_LABEL.CARGADO}
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td className="ms-td text-[#9ca3af] text-[13px]">
@@ -233,10 +297,14 @@ export default function RidersArtistaClient({ artistaId, artistaNombre, tipoForm
                     {r.mixesMonitor ? <div className="ms-micro">{r.mixesMonitor} mixes de monitor</div> : null}
                   </td>
                   <td className="ms-td text-right text-[#9ca3af] text-[13px] tabular-nums">
-                    {r.canales}
+                    {r.origen === "CARGADO" ? "—" : r.canales}
                     {r.canalesMinimos ? <div className="ms-micro">mín. {r.canalesMinimos}</div> : null}
                   </td>
-                  <td className="ms-td text-right text-[#9ca3af] text-[13px] tabular-nums">{r.lineas}</td>
+                  <td className="ms-td text-right text-[#9ca3af] text-[13px] tabular-nums">
+                    {r.origen === "CARGADO" ? "—" : r.lineas}
+                  </td>
+                  <td className="ms-td text-right text-[#9ca3af] text-[13px] tabular-nums">{r.contactos}</td>
+                  <td className="ms-td text-right text-[#9ca3af] text-[13px] tabular-nums">{r.anexos}</td>
                   <td className="ms-td text-right text-[#9ca3af] text-[13px] tabular-nums">{r.giras}</td>
                   <td className="ms-td text-[#9ca3af] text-[13px]">{fmtFechaCorta(r.actualizado)}</td>
                   <td className="ms-td">
@@ -268,6 +336,8 @@ export default function RidersArtistaClient({ artistaId, artistaNombre, tipoForm
             </tbody>
           </table>
         </div>
+        </div>
+        ))
       )}
 
       <Modal open={abierto} onClose={() => setAbierto(false)} title="Nueva versión del rider" maxWidth="max-w-xl">
@@ -281,6 +351,18 @@ export default function RidersArtistaClient({ artistaId, artistaNombre, tipoForm
               onChange={(e) => setNombre(e.target.value)}
               placeholder="ej. Rider 2026 — banda completa"
             />
+          </div>
+
+          <div>
+            <label className="ms-label block mb-1.5">Para qué tipo de show</label>
+            <select className="ms-input w-full" value={contexto} onChange={(e) => setContexto(e.target.value)}>
+              {CONTEXTOS_RIDER.map((c) => (
+                <option key={c} value={c}>
+                  {CONTEXTO_RIDER_LABEL[c]}
+                </option>
+              ))}
+            </select>
+            <p className="ms-micro mt-1">{CONTEXTO_RIDER_AYUDA[contexto] ?? ""}</p>
           </div>
 
           <div className="space-y-2">
@@ -317,6 +399,27 @@ export default function RidersArtistaClient({ artistaId, artistaNombre, tipoForm
               detalle="Solo la cabecera; las listas se capturan a mano."
               onClick={() => setArranque("VACIO")}
             />
+            <Opcion
+              activa={arranque === "CARGADO"}
+              titulo="Cargar el rider que ya usa el artista"
+              detalle="Su PDF se manda tal cual, sin recapturarlo. La plataforma le pega los anexos y lo distribuye."
+              onClick={() => setArranque("CARGADO")}
+            />
+            {arranque === "CARGADO" && (
+              <div className="ms-card-deep p-3 flex flex-wrap items-center gap-2">
+                <button className="ms-btn-secondary" onClick={() => inputPdf.current?.click()}>
+                  {pdf ? "Cambiar PDF" : "Elegir PDF"}
+                </button>
+                <span className="ms-micro">{pdf ? pdf.name : "Ningún archivo elegido"}</span>
+                <input
+                  ref={inputPdf}
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={(e) => setPdf(e.target.files?.[0] ?? null)}
+                />
+              </div>
+            )}
           </div>
 
           {tipoFormacion && tipoFormacion !== "BANDA" && arranque === "PLANTILLA" && (
@@ -326,7 +429,10 @@ export default function RidersArtistaClient({ artistaId, artistaNombre, tipoForm
             </p>
           )}
 
-          <p className="ms-micro">La versión nueva queda marcada como vigente y apaga a la anterior.</p>
+          <p className="ms-micro">
+            Queda vigente en {CONTEXTO_RIDER_LABEL[contexto] ?? contexto} y apaga a la anterior de ese mismo tipo. Las
+            de otros tipos de show no se tocan.
+          </p>
 
           {error && <p className="text-red-400 text-xs">{error}</p>}
 

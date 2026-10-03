@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Combobox, type ComboboxOption } from "@/components/Combobox";
 import { useAutoguardadoCanales } from "@/hooks/useAutoguardadoCanales";
 import EstadoGuardado from "@/components/EstadoGuardado";
+import ImportarCanales, { type RiderOrigen } from "../ImportarCanales";
 import {
   PLANTILLA_OUTPUT_BANDA,
   ROL_PERSONA_LABEL,
@@ -33,6 +34,7 @@ interface Props {
   mixesMonitor: number | null;
   canalesIniciales: CanalOutput[];
   personas: { id: string; nombre: string; rol: string; instrumento: string | null }[];
+  origenes: RiderOrigen[];
 }
 
 let contador = 0;
@@ -64,6 +66,7 @@ export default function OutputListClient({
   mixesMonitor,
   canalesIniciales,
   personas,
+  origenes,
 }: Props) {
   const [filas, setFilas] = useState<Fila[]>(canalesIniciales.map(aFila));
 
@@ -163,6 +166,13 @@ export default function OutputListClient({
               Sembrar plantilla de banda
             </button>
           )}
+          <ImportarCanales
+            riderId={riderId}
+            tipo="OUTPUT"
+            origenes={origenes}
+            actuales={filas.length}
+            onImportado={() => window.location.reload()}
+          />
           <button className="ms-btn-ghost" onClick={agregar}>
             + Salida
           </button>

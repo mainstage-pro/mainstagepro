@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { PLANTILLA_INPUT_BANDA, SOPORTES_MIC, SOPORTE_MIC_LABEL } from "@/lib/giras";
 import { useAutoguardadoCanales } from "@/hooks/useAutoguardadoCanales";
 import EstadoGuardado from "@/components/EstadoGuardado";
+import ImportarCanales, { type RiderOrigen } from "../ImportarCanales";
 
 export interface CanalInput {
   id: string;
@@ -25,6 +26,7 @@ interface Props {
   riderId: string;
   canalesMinimos: number | null;
   canalesIniciales: CanalInput[];
+  origenes: RiderOrigen[];
 }
 
 let contador = 0;
@@ -53,7 +55,7 @@ function filaVacia(numero: number): Fila {
   };
 }
 
-export default function InputListClient({ riderId, canalesMinimos, canalesIniciales }: Props) {
+export default function InputListClient({ riderId, canalesMinimos, canalesIniciales, origenes }: Props) {
   const [filas, setFilas] = useState<Fila[]>(canalesIniciales.map(aFila));
 
   const aPayload = useCallback(
@@ -147,6 +149,13 @@ export default function InputListClient({ riderId, canalesMinimos, canalesInicia
               Sembrar plantilla de banda
             </button>
           )}
+          <ImportarCanales
+            riderId={riderId}
+            tipo="INPUT"
+            origenes={origenes}
+            actuales={filas.length}
+            onImportado={() => window.location.reload()}
+          />
           <button className="ms-btn-ghost" onClick={agregar}>
             + Canal
           </button>
