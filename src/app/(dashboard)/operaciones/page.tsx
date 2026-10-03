@@ -646,6 +646,21 @@ export default function OperacionesPage() {
   }, [vista, proyectoDetalle]);
 
 
+  // ── Vistas agrupadas: un solo lugar para el optimistic update ──────────────
+  // Tratos, proyectos, clientes y giras guardan su PROPIA copia de las tareas
+  // (vienen de /api/tareas/por-*, no de `tareas`). Si un cambio sólo toca
+  // `tareas`/`proyectoDetalle`, el renglón que acabas de editar sigue mostrando
+  // los datos viejos —y los contadores derivados, como el "sin agendar" de la
+  // gira, siguen mal— hasta que le piques a "Actualizar". Todo updater de tarea
+  // debe pasar también por aquí. Es un no-op en las vistas planas (listas vacías).
+  const aplicarEnGrupos = useCallback((upd: (arr: TareaItem[]) => TareaItem[]) => {
+    setProyectosEvento(gs  => gs.map(g => ({ ...g, tareas: upd(g.tareas) })));
+    setProyectosEmpresa(gs => gs.map(g => ({ ...g, tareas: upd(g.tareas) })));
+    setTratosOp(gs         => gs.map(g => ({ ...g, tareas: upd(g.tareas) })));
+    setClientesOp(gs       => gs.map(g => ({ ...g, tareas: upd(g.tareas) })));
+    setGirasOp(gs          => gs.map(g => ({ ...g, tareas: upd(g.tareas) })));
+  }, []);
+
   const completeTarea = useCallback(async (id: string) => {
     // Find titulo for undo toast
     let titulo = "Tarea";
@@ -673,6 +688,7 @@ export default function OperacionesPage() {
         ...prev, tareas: reprogram(prev.tareas),
         secciones: prev.secciones.map(s => ({ ...s, tareas: reprogram(s.tareas) })),
       } : null);
+      aplicarEnGrupos(reprogram);
 
       celebrate("tarea");
 
@@ -700,6 +716,7 @@ export default function OperacionesPage() {
       ...prev, tareas: markCompleted(prev.tareas),
       secciones: prev.secciones.map(s => ({ ...s, tareas: markCompleted(s.tareas) })),
     } : null);
+    aplicarEnGrupos(markCompleted);
 
     // Micro-celebración
     celebrate("tarea");
@@ -780,8 +797,9 @@ export default function OperacionesPage() {
       ...prev, tareas: restore(prev.tareas),
       secciones: prev.secciones.map(s => ({ ...s, tareas: restore(s.tareas) })),
     } : null);
+    aplicarEnGrupos(restore);
     setUndoState(null);
-  }, [undoState]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [undoState, aplicarEnGrupos]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDismissUndo = useCallback(() => {
     clearTimeout(undoTimer.current);
@@ -822,6 +840,7 @@ export default function OperacionesPage() {
               ...prev, tareas: setFecha(prev.tareas),
               secciones: prev.secciones.map(s => ({ ...s, tareas: setFecha(s.tareas) })),
             } : null);
+            aplicarEnGrupos(setFecha);
             setSelectedTask(prev => prev && prev.id === id
               ? { ...prev, fecha: saved.fecha, recurrencia: saved.recurrencia } : prev);
           }
@@ -890,7 +909,8 @@ export default function OperacionesPage() {
       ...prev, tareas: upd(prev.tareas),
       secciones: prev.secciones.map(s => ({ ...s, tareas: upd(s.tareas) })),
     } : null);
-  }, [vista, selectedId, usuarios, proyectosNav]); // eslint-disable-line react-hooks/exhaustive-deps
+    aplicarEnGrupos(upd);
+  }, [vista, selectedId, usuarios, proyectosNav, aplicarEnGrupos]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const deleteTarea = useCallback(async (id: string) => {
     const res = await fetch(`/api/tareas/${id}`, { method: "DELETE" });
@@ -905,8 +925,9 @@ export default function OperacionesPage() {
       ...prev, tareas: rm(prev.tareas),
       secciones: prev.secciones.map(s => ({ ...s, tareas: rm(s.tareas) })),
     } : null);
+    aplicarEnGrupos(rm);
     if (selectedId === id) setSelectedId(null);
-  }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedId, aplicarEnGrupos]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const addSubtarea = useCallback(async (parentId: string, data: { titulo: string; fecha: string | null; prioridad: string }) => {
     const res = await fetch("/api/tareas", {
