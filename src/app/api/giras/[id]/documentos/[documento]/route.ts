@@ -23,10 +23,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const gira = await prisma.gira.findUnique({ where: { id }, select: { id: true } });
   if (!gira) return NextResponse.json({ error: "El show o la gira no existe" }, { status: 404 });
 
-  const pdf = await generarDocDeGira(documento, id);
+  const pdf = await generarDocDeGira(documento, id, req.nextUrl.searchParams.get("secciones"));
   if (!pdf) {
     return NextResponse.json(
-      { error: "No hay rider técnico capturado: engancha uno para poder emitir este documento" },
+      { error: `No se pudo armar el ${DOCUMENTOS_GIRA[documento].label.toLowerCase()}: falta el rider técnico` },
       { status: 409 },
     );
   }

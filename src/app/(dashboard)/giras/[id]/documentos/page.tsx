@@ -25,6 +25,7 @@ export default async function DocumentosGiraPage({ params }: { params: Promise<{
     select: {
       id: true,
       nombre: true,
+      tipo: true,
       portalToken: true,
       artistaId: true,
       artista: { select: { nombre: true } },
@@ -98,6 +99,7 @@ export default async function DocumentosGiraPage({ params }: { params: Promise<{
       <DocumentosClient
         giraId={id}
         giraNombre={gira.nombre}
+        giraTipo={gira.tipo}
         artistaNombre={gira.artista.nombre}
         portalToken={gira.portalToken}
         rider={rider}

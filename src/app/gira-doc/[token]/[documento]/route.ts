@@ -46,8 +46,9 @@ function aviso(titulo: string, detalle: string, status: number, puntos: string[]
 
 const SIN_ENLACE = "Este enlace ya no existe o fue revocado. Pide uno nuevo a tu contacto en Mainstage Pro.";
 
-export async function GET(_req: Request, { params }: { params: Promise<{ token: string; documento: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ token: string; documento: string }> }) {
   const { token, documento } = await params;
+  const secciones = new URL(req.url).searchParams.get("secciones");
 
   if (!esSlugDocGira(documento)) {
     return aviso("Documento no encontrado", "El enlace apunta a un documento que no existe.", 404);
@@ -82,7 +83,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
   }
 
   if (show) {
-    const pdf = await generarDocDeShow(documento, show.id, show.giraId);
+    const pdf = await generarDocDeShow(documento, show.id, show.giraId, secciones);
     if (!pdf) {
       return aviso(
         `${doc.label} todavía no se puede armar`,
@@ -101,11 +102,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
     );
   }
 
-  const pdf = await generarDocDeGira(documento, gira!.id);
+  const pdf = await generarDocDeGira(documento, gira!.id, secciones);
   if (!pdf) {
     return aviso(
       `${doc.label} todavía no se puede armar`,
-      `La gira "${gira!.nombre}" no tiene un rider técnico capturado.`,
+      `A la gira "${gira!.nombre}" le falta información para este documento: el rider técnico todavía no está capturado.`,
       409,
     );
   }
