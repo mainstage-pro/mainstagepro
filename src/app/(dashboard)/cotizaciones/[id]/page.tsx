@@ -885,7 +885,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
           </span>
           {cot.tipoServicio && (
             <span className="px-2.5 py-1 rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] text-[#B3985B] text-xs">
-              {cot.tipoServicio === "RENTA" ? "Renta de Equipo" : cot.tipoServicio === "PRODUCCION_TECNICA" ? "Producción Técnica" : cot.tipoServicio === "DIRECCION_TECNICA" ? "Dirección Técnica" : cot.tipoServicio}
+              {cot.tipoServicio === "RENTA" ? "Renta de Equipo" : cot.tipoServicio === "PRODUCCION_TECNICA" ? "Producción Técnica" : cot.tipoServicio === "DIRECCION_TECNICA" ? "Dirección y operaciones" : cot.tipoServicio}
             </span>
           )}
           {cot.creadaPor && (

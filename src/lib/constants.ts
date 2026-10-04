@@ -252,7 +252,7 @@ export const ORIGEN_LEAD_OPTIONS: { value: string; label: string }[] = [
 export const TIPO_SERVICIO_LABELS: Record<string, string> = {
   RENTA: "Renta de Equipo",
   PRODUCCION_TECNICA: "Producción Técnica",
-  DIRECCION_TECNICA: "Dirección Técnica",
+  DIRECCION_TECNICA: "Dirección y operaciones",
 };
 
 // Clasificación cliente

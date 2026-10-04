@@ -624,7 +624,7 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
               </View>
               <View style={s.infoRow}>
                 <Text style={s.infoLabel}>TIPO DE SERVICIO</Text>
-                <Text style={s.infoValue}>{proyecto.tipoServicio === "RENTA" ? "Renta de Equipo" : proyecto.tipoServicio === "PRODUCCION_TECNICA" ? "Producción Técnica" : proyecto.tipoServicio === "DIRECCION_TECNICA" ? "Dirección Técnica" : proyecto.tipoServicio ?? "Renta de Equipo"}</Text>
+                <Text style={s.infoValue}>{proyecto.tipoServicio === "RENTA" ? "Renta de Equipo" : proyecto.tipoServicio === "PRODUCCION_TECNICA" ? "Producción Técnica" : proyecto.tipoServicio === "DIRECCION_TECNICA" ? "Dirección y operaciones" : proyecto.tipoServicio ?? "Renta de Equipo"}</Text>
               </View>
               <View style={s.infoRow}>
                 <Text style={s.infoLabel}>MODALIDAD</Text>

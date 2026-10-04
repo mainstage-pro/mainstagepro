@@ -12,7 +12,7 @@ import { ToastProvider } from "@/components/Toast";
 // ahora redirige aquí (ver next.config.ts).
 
 const SERVICIO_LABELS: Record<string, string> = {
-  PRODUCCION_TECNICA: "Producción técnica", RENTA: "Renta de equipo", DIRECCION_TECNICA: "Dirección técnica",
+  PRODUCCION_TECNICA: "Producción técnica", RENTA: "Renta de equipo", DIRECCION_TECNICA: "Dirección y operaciones",
 };
 const EVENTO_LABELS: Record<string, string> = {
   MUSICAL: "Musical", SOCIAL: "Social", EMPRESARIAL: "Empresarial", OTRO: "Otro",

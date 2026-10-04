@@ -277,7 +277,7 @@ export const ESTADO_LABEL: Record<string, string> = {
 export const SERVICIO_LABEL: Record<string, string> = {
   PRODUCCION_TECNICA: "Producción técnica integral",
   RENTA: "Renta de equipo",
-  DIRECCION_TECNICA: "Dirección técnica",
+  DIRECCION_TECNICA: "Dirección y operaciones",
 };
 export const EVENTO_LABEL: Record<string, string> = {
   MUSICAL: "Musical", SOCIAL: "Social", EMPRESARIAL: "Empresarial", OTRO: "Otro",

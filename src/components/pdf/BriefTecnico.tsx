@@ -238,7 +238,7 @@ export function BriefTecnico({ proyecto, logoSrc }: BriefTecnicoData) {
   const TIPO_SERVICIO_MAP: Record<string, string> = {
     PRODUCCION_TECNICA: "Producción técnica integral",
     RENTA: "Renta de equipo",
-    DIRECCION_TECNICA: "Dirección técnica",
+    DIRECCION_TECNICA: "Dirección y operaciones",
   };
 
   const tipoEventoLabel = TIPO_EVENTO_MAP[p.tipoEvento] ?? p.tipoEvento;

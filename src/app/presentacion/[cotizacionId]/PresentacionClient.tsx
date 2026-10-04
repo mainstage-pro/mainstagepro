@@ -39,7 +39,7 @@ interface Cotizacion {
 const SERVICIO_CONFIG: Record<string, { heroTagline: string }> = {
   RENTA:             { heroTagline: "El equipo que necesitas, disponible para tu fecha." },
   PRODUCCION_TECNICA:{ heroTagline: "Producción técnica en un solo servicio." },
-  DIRECCION_TECNICA: { heroTagline: "Dirección técnica integral — de principio a fin." },
+  DIRECCION_TECNICA: { heroTagline: "Dirección y operaciones — una sola cabeza, de principio a fin." },
 };
 const DEFAULT_SVC = { heroTagline: "Producción técnica profesional." };
 

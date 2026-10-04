@@ -118,7 +118,7 @@ const TIPO_EVENTO_LABEL: Record<string, string> = {
 };
 const TIPO_SERVICIO_LABEL: Record<string, string> = {
   RENTA: "Renta de Equipo", PRODUCCION_TECNICA: "Producción Técnica",
-  DIRECCION_TECNICA: "Dirección Técnica", OTRO: "Otro",
+  DIRECCION_TECNICA: "Dirección y operaciones", OTRO: "Otro",
 };
 const ORIGEN_VENTA_LABEL: Record<string, string> = {
   CLIENTE_PROPIO: "Cliente Propio", PUBLICIDAD: "Publicidad", ASIGNADO: "Asignado",

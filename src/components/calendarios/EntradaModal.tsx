@@ -10,7 +10,7 @@ const labelCls = "block text-[11px] uppercase tracking-wider text-gray-500 mb-1"
 const SERVICIOS = ["RENTA", "PRODUCCION_TECNICA", "DIRECCION_TECNICA", "MULTISERVICIO"];
 const SERVICIO_LABEL: Record<string, string> = {
   RENTA: "Renta", PRODUCCION_TECNICA: "Producción técnica",
-  DIRECCION_TECNICA: "Dirección técnica", MULTISERVICIO: "Multiservicio",
+  DIRECCION_TECNICA: "Dirección y operaciones", MULTISERVICIO: "Multiservicio",
 };
 
 export interface TipoEventoOpt { slug: string; nombre: string; emoji?: string | null }

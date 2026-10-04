@@ -27,6 +27,7 @@ import { Package, AlertTriangle, Smartphone, Truck, Home, Radio, MessageCircle, 
 import { ViabilidadWidget, type ViabilidadActiva, type ViabilidadHistoricoItem } from "@/components/proyectos/ViabilidadWidget";
 import { MontajePosiciones, type Posicion as PosicionMontaje } from "@/components/proyectos/MontajePosiciones";
 import { PanelProveedores } from "@/components/proyectos/PanelProveedores";
+import { parseServicios } from "@/lib/servicios-trato";
 import PanelEscenarios from "@/components/proyectos/PanelEscenarios";
 import SelectorEscenario from "@/components/proyectos/SelectorEscenario";
 import { PanelImprevistos } from "@/components/proyectos/PanelImprevistos";
@@ -208,7 +209,7 @@ interface Proyecto {
   cliente: { id: string; nombre: string; empresa: string | null; telefono: string | null; correo: string | null };
   encargado: { id: string; name: string } | null;
   tratoId: string | null;
-  trato: { tipoEvento: string; tipoServicio: string | null; ideasReferencias: string | null; notas: string | null; familyAndFriends: boolean; tradeCalificado: boolean; ventanaMontajeInicio: string | null; ventanaMontajeFin: string | null; responsable: { name: string } | null } | null;
+  trato: { tipoEvento: string; tipoServicio: string | null; servicios: string | null; ideasReferencias: string | null; notas: string | null; familyAndFriends: boolean; tradeCalificado: boolean; ventanaMontajeInicio: string | null; ventanaMontajeFin: string | null; responsable: { name: string } | null } | null;
   cotizacion: { id: string; numeroCotizacion: string; granTotal: number; total: number; aplicaIva: boolean; diasComidas: number; subtotalComidas: number; subtotalOperacion: number; subtotalTransporte: number; subtotalHospedaje: number; subtotalEquiposNeto: number; subtotalTerceros: number; notasSecciones: string | null; observaciones: string | null; lineas: { id: string; tipo: string; descripcion: string; cantidad: number; nivel: string | null; jornada: string | null; precioUnitario: number; notas: string | null; marca: string | null; modelo: string | null; rolTecnicoId: string | null; rolTecnico: { id: string; nombre: string; disciplina: string | null } | null }[] } | null;
   // Cotizaciones extra que se facturan solas pero se operan en este mismo proyecto.
   cotizacionesFusionadas?: CotizacionFusionada[];
@@ -4112,7 +4113,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             </span>
             {proyecto.tipoServicio && (<>
               <span className="text-[#2f2f2f]">·</span>
-              <span className="text-gray-500">{proyecto.tipoServicio === "RENTA" ? "Renta de equipo" : proyecto.tipoServicio === "PRODUCCION_TECNICA" ? "Producción técnica" : proyecto.tipoServicio === "DIRECCION_TECNICA" ? "Dirección técnica" : proyecto.tipoServicio}</span>
+              <span className="text-gray-500">{proyecto.tipoServicio === "RENTA" ? "Renta de equipo" : proyecto.tipoServicio === "PRODUCCION_TECNICA" ? "Producción técnica" : proyecto.tipoServicio === "DIRECCION_TECNICA" ? "Dirección y operaciones" : proyecto.tipoServicio}</span>
             </>)}
           </div>
 
@@ -4543,7 +4544,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     return <span className="px-2 py-1 rounded-md border border-[#2a2a2a] text-gray-400 text-[11px]">{TE[proyecto.tipoEvento] ?? proyecto.tipoEvento}</span>;
                   })()}
                   {proyecto.tipoServicio && (() => {
-                    const TS: Record<string, string> = { PRODUCCION_TECNICA: "Producción técnica", RENTA: "Renta de equipo", DIRECCION_TECNICA: "Dirección técnica" };
+                    const TS: Record<string, string> = { PRODUCCION_TECNICA: "Producción técnica", RENTA: "Renta de equipo", DIRECCION_TECNICA: "Dirección y operaciones" };
                     return <span className="px-2 py-1 rounded-md border border-[#2a2a2a] text-gray-400 text-[11px]">{TS[proyecto.tipoServicio] ?? proyecto.tipoServicio}</span>;
                   })()}
                   {!esRenta && (
@@ -6165,6 +6166,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           <PanelProveedores
             proyectoId={id}
             sinPrecios={!proyecto._canViewFinances}
+            frentes={parseServicios(proyecto.trato?.servicios).includes("DIRECCION_OPERACIONES")}
             dias={diasDelEvento}
             evento={{
               numeroProyecto: proyecto.numeroProyecto,
@@ -9917,7 +9919,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       const TIPO_SERVICIO_LABEL: Record<string, string> = {
         PRODUCCION_TECNICA: "Producción técnica",
         RENTA: "Renta de equipo",
-        DIRECCION_TECNICA: "Dirección técnica",
+        DIRECCION_TECNICA: "Dirección y operaciones",
       };
       const tipoServicioLabel = proyecto.tipoServicio ? (TIPO_SERVICIO_LABEL[proyecto.tipoServicio] ?? proyecto.tipoServicio) : null;
 

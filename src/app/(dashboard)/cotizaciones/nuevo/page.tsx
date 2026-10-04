@@ -2220,7 +2220,7 @@ function CotizadorForm() {
                 <Combobox
                   value={evento.tipoServicio}
                   onChange={v => setEvento(p => ({ ...p, tipoServicio: v }))}
-                  options={[{ value: "", label: "— Selecciona —" }, { value: "RENTA", label: "Renta de Equipo" }, { value: "PRODUCCION_TECNICA", label: "Producción Técnica" }, { value: "DIRECCION_TECNICA", label: "Dirección Técnica" }]}
+                  options={[{ value: "", label: "— Selecciona —" }, { value: "RENTA", label: "Renta de Equipo" }, { value: "PRODUCCION_TECNICA", label: "Producción Técnica" }, { value: "DIRECCION_TECNICA", label: "Dirección y operaciones" }]}
                   className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
                 />
               </div>

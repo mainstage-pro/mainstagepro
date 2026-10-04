@@ -15,6 +15,7 @@ import {
   labelModalidad,
   type FaseProveedor,
 } from "@/lib/proveedor-evento";
+import { FRENTES, frenteLabel } from "@/lib/frentes-produccion";
 
 export type BloqueProveedor = {
   id: string;
@@ -44,6 +45,8 @@ export type ProveedorEventoItem = {
   proveedorId: string | null;
   nombreProveedor: string;
   servicioEquipo: string | null;
+  /** Frente de producción que cubre. NULL = equipo técnico, el caso de siempre. */
+  frente: string | null;
   telefonoProveedor: string | null;
   responsable: string | null;
   notas: string | null;
@@ -81,6 +84,7 @@ type Ventana = { fase: Fase; fecha: string; horaInicio: string; horaFin: string;
 
 type Borrador = {
   servicioEquipo: string;
+  frente: string;
   telefonoProveedor: string;
   responsable: string;
   notas: string;
@@ -121,6 +125,7 @@ function ventanasDe(prov: ProveedorEventoItem): Ventana[] {
 function borradorDe(prov: ProveedorEventoItem): Borrador {
   return {
     servicioEquipo: prov.servicioEquipo ?? "",
+    frente: prov.frente ?? "",
     telefonoProveedor: prov.telefonoProveedor ?? "",
     responsable: prov.responsable ?? "",
     notas: prov.notas ?? "",
@@ -157,8 +162,14 @@ export function PanelProveedores({
   equipo = [],
   escenarios = [],
   sinPrecios = false,
+  frentes = false,
 }: {
   proyectoId: string;
+  /**
+   * El trato incluye dirección y operaciones: además del equipo se coordinan frentes
+   * (energía, entarimado, estructura, vallas…). Apagado, el panel es el de siempre.
+   */
+  frentes?: boolean;
   /** Vista discreta: el panel sirve igual para operar, pero sin el costo acordado. */
   sinPrecios?: boolean;
   /** Escenarios del proyecto. Con menos de dos, el selector por renglón no aparece. */
@@ -196,6 +207,7 @@ export function PanelProveedores({
   const [altaNombre, setAltaNombre] = useState("");
   const [altaCelular, setAltaCelular] = useState("");
   const [altaServicio, setAltaServicio] = useState("");
+  const [altaFrente, setAltaFrente] = useState("");
   const [altaNuevo, setAltaNuevo] = useState(false);
   const [agregando, setAgregando] = useState(false);
 
@@ -229,6 +241,20 @@ export function PanelProveedores({
   /** Lo que trae cada proveedor, según el rider. */
   const equiposDe = (proveedorId: string | null) =>
     proveedorId ? equiposTercero.filter((e) => e.proveedor?.id === proveedorId) : [];
+
+  /**
+   * Quién cubre cada frente. El tablero no guarda nada: lee el frente que ya trae
+   * cada proveedor, para que marcarlo una vez sirva de checklist de lo que falta.
+   */
+  const porFrente = useMemo(
+    () => FRENTES.map((f) => ({ ...f, cubren: proveedores.filter((p) => p.frente === f.valor) })),
+    [proveedores],
+  );
+
+  function asignarFrente(valor: string) {
+    setAltaFrente(valor);
+    setMostrarAlta(true);
+  }
 
   const diasSeleccionables = useMemo(
     () => rangoDias(dias, aDiaISO(evento.fechaMontaje ?? null) || null, aDiaISO(evento.fechaDesmontaje ?? null) || null),
@@ -278,6 +304,7 @@ export function PanelProveedores({
         nombreProveedor: nombre,
         telefonoProveedor: altaNuevo ? altaCelular : delCatalogo?.telefono ?? null,
         servicioEquipo: altaServicio || null,
+        frente: altaFrente || null,
       }),
     });
     if (res.ok) {
@@ -286,7 +313,7 @@ export function PanelProveedores({
       if (altaNuevo && proveedor.proveedorId) {
         setCatalogo((prev) => [...prev, { id: proveedor.proveedorId, nombre, empresa: null, telefono: altaCelular || null }]);
       }
-      setAltaCatalogoId(""); setAltaNombre(""); setAltaCelular(""); setAltaServicio(""); setAltaNuevo(false);
+      setAltaCatalogoId(""); setAltaNombre(""); setAltaCelular(""); setAltaServicio(""); setAltaFrente(""); setAltaNuevo(false);
       setMostrarAlta(false);
       alternar(proveedor);
     } else {
@@ -305,6 +332,7 @@ export function PanelProveedores({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           servicioEquipo: b.servicioEquipo,
+          frente: b.frente || null,
           telefonoProveedor: b.telefonoProveedor,
           responsable: b.responsable,
           notas: b.notas,
@@ -470,9 +498,22 @@ export function PanelProveedores({
                 {altaNuevo ? "← Elegir uno del catálogo" : "¿Es nuevo? Regístralo aquí con nombre y celular"}
               </button>
             </div>
-            <div>
-              <label className="text-xs text-gray-500 block mb-1">Equipo / servicio que provee</label>
-              <input value={altaServicio} onChange={(e) => setAltaServicio(e.target.value)} placeholder="Ej. Pantalla LED 4×3" className={inputCls} />
+            <div className={frentes ? "grid grid-cols-2 gap-3" : undefined}>
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Equipo / servicio que provee</label>
+                <input value={altaServicio} onChange={(e) => setAltaServicio(e.target.value)} placeholder="Ej. Pantalla LED 4×3" className={inputCls} />
+              </div>
+              {frentes && (
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Frente</label>
+                  <select value={altaFrente} onChange={(e) => setAltaFrente(e.target.value)} className={inputCls}>
+                    <option value="">— Equipo técnico —</option>
+                    {FRENTES.map((f) => (
+                      <option key={f.valor} value={f.valor}>{f.label}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
             <button
               disabled={agregando || (altaNuevo ? !altaNombre.trim() : !altaCatalogoId)}
@@ -484,6 +525,37 @@ export function PanelProveedores({
           </div>
         )}
       </div>
+
+      {frentes && (
+        <div className="ms-stat-card">
+          <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em]">Frentes de producción</p>
+          <p className="text-gray-500 text-xs mt-1">
+            Lo que se coordina además del equipo técnico. Un frente sin nadie es un frente que nadie va a reclamar.
+          </p>
+          <div className="mt-3 divide-y divide-[#1a1a1a]">
+            {porFrente.map((f) => (
+              <div key={f.valor} className="flex items-center justify-between gap-3 py-2">
+                <div className="min-w-0">
+                  <p className="text-white text-xs font-medium">{f.label}</p>
+                  <p className="text-gray-600 text-[11px] truncate">
+                    {f.cubren.length ? f.cubren.map((p) => p.nombreProveedor).join(" · ") : f.detalle}
+                  </p>
+                </div>
+                {f.cubren.length ? (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-900/40 text-green-400 shrink-0">cubierto</span>
+                ) : (
+                  <button
+                    onClick={() => asignarFrente(f.valor)}
+                    className="text-[11px] px-2 py-1 rounded border border-[#333] text-gray-400 hover:text-[#B3985B] hover:border-[#B3985B]/40 transition-colors shrink-0"
+                  >
+                    Asignar
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {proveedores.length > 0 && (
         <div className="ms-table-wrapper">
@@ -498,6 +570,11 @@ export function PanelProveedores({
                     <button onClick={() => alternar(prov)} className="flex-1 text-left">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-white text-sm font-medium">{prov.nombreProveedor}</p>
+                        {frenteLabel(prov.frente) && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#B3985B]/15 text-[#B3985B]">
+                            {frenteLabel(prov.frente)}
+                          </span>
+                        )}
                         {!prov.proveedorId && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-900/40 text-yellow-400">sin catálogo</span>
                         )}
@@ -548,6 +625,17 @@ export function PanelProveedores({
                           <label className="text-xs text-gray-500 block mb-1">Equipo / servicio</label>
                           <input value={b.servicioEquipo} onChange={(e) => editar(prov.id, { servicioEquipo: e.target.value })} className={inputCls} />
                         </div>
+                        {frentes && (
+                          <div>
+                            <label className="text-xs text-gray-500 block mb-1">Frente</label>
+                            <select value={b.frente} onChange={(e) => editar(prov.id, { frente: e.target.value })} className={inputCls}>
+                              <option value="">— Equipo técnico —</option>
+                              {FRENTES.map((f) => (
+                                <option key={f.valor} value={f.valor}>{f.label}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
                         <div>
                           <label className="text-xs text-gray-500 block mb-1">Quién lo atiende</label>
                           {equipo.length > 0 ? (

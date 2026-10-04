@@ -13,7 +13,7 @@ const TIPO_EVENTO_LABELS: Record<string, string> = {
   MUSICAL: "Musical", SOCIAL: "Social", EMPRESARIAL: "Empresarial", OTRO: "Otro", SIN_DEFINIR: "Sin definir",
 };
 const TIPO_SERVICIO_LABELS: Record<string, string> = {
-  RENTA: "Renta", PRODUCCION_TECNICA: "Producción técnica", DIRECCION_TECNICA: "Dirección técnica",
+  RENTA: "Renta", PRODUCCION_TECNICA: "Producción técnica", DIRECCION_TECNICA: "Dirección y operaciones",
   MULTISERVICIO: "Multiservicio", SIN_DEFINIR: "Sin definir",
 };
 const TIPO_EVENTO_COLORS: Record<string, string> = {

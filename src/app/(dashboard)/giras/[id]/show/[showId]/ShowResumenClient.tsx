@@ -15,6 +15,7 @@ import {
   TIPO_SHOW_LABEL,
   fechaInput,
   fmtFechaCorta,
+  fmtMoneda,
   type ResumenAdvance,
 } from "@/lib/giras";
 
@@ -79,6 +80,17 @@ export interface ShowDetalle {
   crew: number;
   bloques: number;
   archivos: number;
+  // Lo que se cobra y lo que se opera en esta fecha. El proyecto del show no se
+  // captura: nace de aprobar o adelantar una de sus cotizaciones.
+  proyecto: { id: string; numeroProyecto: string } | null;
+  cotizaciones: {
+    id: string;
+    numeroCotizacion: string;
+    nombreCotizacion: string | null;
+    estado: string;
+    granTotal: number;
+    proyecto: { id: string; numeroProyecto: string } | null;
+  }[];
 }
 
 /// El orden es la jornada real: así se lee como un day sheet, no como un formulario.
@@ -174,6 +186,7 @@ export default function ShowResumenClient({
   const [form, setForm] = useState<Form>(aForm(show));
   const [guardando, setGuardando] = useState(false);
   const [sellando, setSellando] = useState(false);
+  const [cotizando, setCotizando] = useState(false);
 
   const base = `/giras/${show.giraId}/show/${show.id}`;
 
@@ -249,6 +262,23 @@ export default function ShowResumenClient({
       toast.error("No se pudo registrar.");
     } finally {
       setSellando(false);
+    }
+  }
+
+  async function cotizarEquipo() {
+    setCotizando(true);
+    try {
+      const res = await fetch(`/api/gira-shows/${show.id}/cotizacion`, { method: "POST" });
+      const d = await res.json();
+      if (!res.ok) {
+        toast.error(d.error ?? "No se pudo abrir la cotización.");
+        return;
+      }
+      router.push(`/cotizaciones/nuevo?editId=${d.id}`);
+    } catch {
+      toast.error("No se pudo abrir la cotización.");
+    } finally {
+      setCotizando(false);
     }
   }
 
@@ -530,6 +560,53 @@ export default function ShowResumenClient({
                   <p className="text-sm text-white tabular-nums mt-0.5">{d.valor}</p>
                 </Link>
               ))}
+            </div>
+          </section>
+
+          {/* El equipo de la gira se cobra fecha por fecha, y el proyecto operativo
+              de la fecha sale de ahí: no se captura dos veces el mismo evento. */}
+          <section className="ms-card p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <h3 className="ms-section-label">Equipo y proyecto</h3>
+              <button onClick={cotizarEquipo} disabled={cotizando} className="ms-btn-ghost disabled:opacity-50">
+                {cotizando ? "Abriendo…" : "+ Cotizar equipo"}
+              </button>
+            </div>
+
+            {show.cotizaciones.length === 0 ? (
+              <p className="ms-meta">
+                Sin cotización de equipo para esta fecha. El total de la gira es la suma de las de cada show.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {show.cotizaciones.map((c) => (
+                  <Link
+                    key={c.id}
+                    href={`/cotizaciones/${c.id}`}
+                    className="ms-card-inset px-2.5 py-2 flex items-center justify-between gap-2 hover:border-[#B3985B]/40 transition-colors"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-[13px] text-white truncate">{c.nombreCotizacion || c.numeroCotizacion}</p>
+                      <p className="ms-micro mt-0.5">
+                        {c.numeroCotizacion} · {c.estado.toLowerCase()}
+                      </p>
+                    </div>
+                    <p className="text-[13px] text-white tabular-nums shrink-0">{fmtMoneda(c.granTotal)}</p>
+                  </Link>
+                ))}
+              </div>
+            )}
+
+            <div className="border-t border-[#1a1a1a] mt-3 pt-2.5">
+              {show.proyecto ? (
+                <Link href={`/proyectos/${show.proyecto.id}`} className="ms-btn-secondary block w-full text-center">
+                  Proyecto {show.proyecto.numeroProyecto} →
+                </Link>
+              ) : (
+                <p className="ms-meta">
+                  La fecha se queda con su proyecto operativo cuando se aprueba o se adelanta una de sus cotizaciones.
+                </p>
+              )}
             </div>
           </section>
         </div>

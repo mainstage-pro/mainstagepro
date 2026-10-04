@@ -73,7 +73,7 @@ export const RUTA_LABELS: Record<string, string> = {
 export const SERVICIO_LABELS: Record<string, string> = {
   PRODUCCION_TECNICA: "Producción técnica",
   RENTA:              "Renta de equipo",
-  DIRECCION_TECNICA:  "Dirección técnica",
+  DIRECCION_TECNICA:  "Dirección y operaciones",
   POR_DESCUBRIR:      "Por descubrir",
 };
 

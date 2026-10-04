@@ -250,7 +250,7 @@ export default function AlineacionClient() {
               {[
                 { n: "D1", title: "Calidad humana",          body: "Actitud y profesionalismo bajo presión." },
                 { n: "D2", title: "Descubrimiento profundo", body: "Entendemos el proyecto antes de cotizar." },
-                { n: "D3", title: "Dirección técnica integral", body: "Un responsable para todo lo técnico." },
+                { n: "D3", title: "Dirección y operaciones", body: "Un responsable para todo lo técnico." },
                 { n: "D4", title: "Inventario + aliados",    body: "Cobertura en Querétaro y todo México." },
                 { n: "D5", title: "Ritmo y seguimiento",     body: "Reuniones, entregables y control de cambios." },
                 { n: "D6", title: "Replicabilidad",          body: "Cada proyecto se convierte en modelo mejorable." },

@@ -17,6 +17,18 @@ export default async function ShowResumenPage({ params }: { params: Promise<{ id
     include: {
       venue: true,
       riderLineas: { select: { prioridad: true, estado: true, cubiertoPor: true } },
+      proyecto: { select: { id: true, numeroProyecto: true } },
+      cotizaciones: {
+        select: {
+          id: true,
+          numeroCotizacion: true,
+          nombreCotizacion: true,
+          estado: true,
+          granTotal: true,
+          proyecto: { select: { id: true, numeroProyecto: true } },
+        },
+        orderBy: { createdAt: "asc" },
+      },
       _count: { select: { crew: true, bloques: true, archivos: true } },
     },
   });
@@ -88,6 +100,15 @@ export default async function ShowResumenPage({ params }: { params: Promise<{ id
     crew: show._count.crew,
     bloques: show._count.bloques,
     archivos: show._count.archivos,
+    proyecto: show.proyecto,
+    cotizaciones: show.cotizaciones.map((c) => ({
+      id: c.id,
+      numeroCotizacion: c.numeroCotizacion,
+      nombreCotizacion: c.nombreCotizacion,
+      estado: c.estado,
+      granTotal: c.granTotal,
+      proyecto: c.proyecto,
+    })),
   };
 
   return <ShowResumenClient show={detalle} venue={venue} advance={resumen} />;

@@ -65,7 +65,7 @@ export const PRESENTACION_CATEGORIAS: PresentacionCategoria[] = [
     servicios: [
       { titulo: "Renta de equipo", texto: "Sistemas de sonido, consolas y microfonía de gama profesional, listos para tu producción con entrega y recolección." },
       { titulo: "Producción técnica", texto: "Diseño del sistema, montaje, calibración e ingeniería de sonido en vivo a cargo de nuestro equipo." },
-      { titulo: "Dirección técnica", texto: "Coordinación integral del audio dentro de una producción completa, alineado con iluminación, video y escenario." },
+      { titulo: "Dirección y operaciones", texto: "Coordinación integral del audio dentro de una producción completa, alineado con iluminación, video y escenario." },
     ],
     grupos: [
       { label: "Sistemas de sonido", rol: "principal", categorias: ["Bocinas y Subwoofers"], descripcion: "Line arrays, subwoofers y sistemas de refuerzo para cualquier escala de evento." },
@@ -97,7 +97,7 @@ export const PRESENTACION_CATEGORIAS: PresentacionCategoria[] = [
     servicios: [
       { titulo: "Renta de equipo", texto: "Luminarias, efectos y consolas de iluminación de gama profesional para tu producción." },
       { titulo: "Producción técnica", texto: "Diseño de iluminación, montaje y programación de escenas a cargo de nuestro equipo." },
-      { titulo: "Dirección técnica", texto: "Operación en vivo y coordinación de la iluminación dentro de una producción integral." },
+      { titulo: "Dirección y operaciones", texto: "Operación en vivo y coordinación de la iluminación dentro de una producción integral." },
     ],
     grupos: [
       { label: "Luminarias y efectos", rol: "principal", categorias: ["Equipo de Iluminación"], descripcion: "Cabezas robóticas, PARs, wash y efectos para diseñar cualquier escena." },
@@ -127,7 +127,7 @@ export const PRESENTACION_CATEGORIAS: PresentacionCategoria[] = [
     servicios: [
       { titulo: "Renta de equipo", texto: "Controladoras, mezcladoras y booths de DJ listos para tu evento." },
       { titulo: "Producción técnica", texto: "Montaje, conexión al sistema de audio y soporte durante el evento." },
-      { titulo: "Dirección técnica", texto: "Coordinación de la cabina dentro de una producción completa." },
+      { titulo: "Dirección y operaciones", texto: "Coordinación de la cabina dentro de una producción completa." },
     ],
     grupos: [
       { label: "Equipo para DJ", rol: "principal", categorias: ["Consolas/Equipo para DJ"], descripcion: "Controladoras y mezcladoras profesionales estándar de la industria." },
@@ -156,7 +156,7 @@ export const PRESENTACION_CATEGORIAS: PresentacionCategoria[] = [
     servicios: [
       { titulo: "Renta de equipo", texto: "Pantallas LED y sistemas de video de gama profesional para tu producción." },
       { titulo: "Producción técnica", texto: "Montaje, configuración y operación del sistema de video a cargo de nuestro equipo." },
-      { titulo: "Dirección técnica", texto: "Coordinación del contenido y el video dentro de una producción integral." },
+      { titulo: "Dirección y operaciones", texto: "Coordinación del contenido y el video dentro de una producción integral." },
     ],
     grupos: [
       { label: "Pantallas y video", rol: "principal", categorias: ["Pantalla / Video"], descripcion: "Pantallas LED y sistemas de video para refuerzo visual y contenido." },
@@ -184,7 +184,7 @@ export const PRESENTACION_CATEGORIAS: PresentacionCategoria[] = [
     servicios: [
       { titulo: "Renta de equipo", texto: "Rigging, truss, tarimas y toldos para armar la estructura de tu evento." },
       { titulo: "Producción técnica", texto: "Cálculo, montaje y desmontaje de la estructura a cargo de nuestro equipo." },
-      { titulo: "Dirección técnica", texto: "Coordinación del escenario dentro de una producción integral." },
+      { titulo: "Dirección y operaciones", texto: "Coordinación del escenario dentro de una producción integral." },
     ],
     grupos: [
       { label: "Rigging y estructuras", rol: "principal", categorias: ["Rigging y Estructuras"], descripcion: "Truss, torres y soportes para sostener todo el montaje con seguridad." },
@@ -214,7 +214,7 @@ export const PRESENTACION_CATEGORIAS: PresentacionCategoria[] = [
     servicios: [
       { titulo: "Renta de equipo", texto: "Distribución eléctrica y accesorios de montaje para tu producción." },
       { titulo: "Producción técnica", texto: "Planeación eléctrica, montaje y logística a cargo de nuestro equipo." },
-      { titulo: "Dirección técnica", texto: "Coordinación de la energía y la logística dentro de una producción integral." },
+      { titulo: "Dirección y operaciones", texto: "Coordinación de la energía y la logística dentro de una producción integral." },
     ],
     grupos: [
       { label: "Corriente y distribución", rol: "principal", categorias: ["Corriente Eléctrica"], descripcion: "Distribución eléctrica y respaldo de energía para todo el montaje." },
@@ -244,7 +244,7 @@ export const PRESENTACION_CATEGORIAS: PresentacionCategoria[] = [
     servicios: [
       { titulo: "Renta de equipo", texto: "Escenografía, mamparas decorativas y pistas de baile para vestir tu evento." },
       { titulo: "Producción técnica", texto: "Diseño, montaje y desmontaje de la ambientación a cargo de nuestro equipo." },
-      { titulo: "Dirección técnica", texto: "Coordinación de la escenografía dentro de una producción integral." },
+      { titulo: "Dirección y operaciones", texto: "Coordinación de la escenografía dentro de una producción integral." },
     ],
     grupos: [
       { label: "Escenografía y mamparas", rol: "principal", categorias: ["Escenografía", "Mamparas decorativas"], descripcion: "Fondos, paneles y estructuras decorativas que visten el escenario y el recinto." },

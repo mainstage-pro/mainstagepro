@@ -364,7 +364,7 @@ export default function AsistenteCotizacion({ onClose }: { onClose: () => void }
                   { value: "", label: "— Selecciona —" },
                   { value: "RENTA", label: "Renta de Equipo" },
                   { value: "PRODUCCION_TECNICA", label: "Producción Técnica" },
-                  { value: "DIRECCION_TECNICA", label: "Dirección Técnica" },
+                  { value: "DIRECCION_TECNICA", label: "Dirección y operaciones" },
                 ]}
               />
               <DatoSelect

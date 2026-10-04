@@ -343,7 +343,7 @@ const TIPO_EVENTO_MAP: Record<string, string> = {
 const TIPO_SERVICIO_MAP: Record<string, string> = {
   PRODUCCION_TECNICA: "Producción técnica integral",
   RENTA: "Renta de equipo",
-  DIRECCION_TECNICA: "Dirección técnica",
+  DIRECCION_TECNICA: "Dirección y operaciones",
 };
 const ZONA_MAP: Record<string, string> = {
   LOCAL: "Local (Querétaro)", BAJIO: "Bajío", NACIONAL: "Nacional",

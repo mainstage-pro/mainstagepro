@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { proveedorEventoInclude } from "../route";
+import { esFrente } from "@/lib/frentes-produccion";
 
 export async function PATCH(
   req: NextRequest,
@@ -36,6 +37,7 @@ export async function PATCH(
     data.fechaSolicitud = body.fechaSolicitud ? new Date(body.fechaSolicitud) : null;
   }
   if (body.escenarioId !== undefined) data.escenarioId = body.escenarioId || null;
+  if (body.frente !== undefined) data.frente = esFrente(body.frente) ? body.frente : null;
 
   // Alta rápida al catálogo desde un bloque que nació como nombre suelto.
   if (!body.proveedorId && body.crearEnCatalogo) {

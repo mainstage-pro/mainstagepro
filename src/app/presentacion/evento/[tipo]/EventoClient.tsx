@@ -51,10 +51,10 @@ const SERVICIOS = [
   {
     key: "DIRECCION_TECNICA",
     n: "03",
-    title: "Dirección técnica",
+    title: "Dirección y operaciones",
     tagline: "Un solo responsable de que todo llegue junto.",
-    detail: "Un director de producción coordina cada área: el rider, los cues de iluminación por escena, la señal de video y la comunicación directa con el artista y su equipo. La cabeza que hace que audio, iluminación y video lleguen al mismo tiempo.",
-    incluye: ["Coordinación del rider", "Cues por escena", "Enlace directo con el artista", "Guion técnico del evento"],
+    detail: "Un director de producción coordina cada frente: el rider y los cues por escena, pero también la energía, el entarimado, la estructura y las vallas, más el manejo de stage el día del evento. La cabeza que hace que todo llegue al mismo tiempo.",
+    incluye: ["Coordinación del rider", "Frentes de producción y proveedores", "Manejo de stage y corridas", "Guion técnico del evento"],
   },
 ] as const;
 

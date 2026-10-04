@@ -540,7 +540,7 @@ model Cotizacion {
   // Cuadro de viáticos: la gente de casa que va al evento. NULL = se usa el número que
   // sale de los puestos cotizados; con valor, el vendedor lo ajustó a mano.
   personasViaticos Int?
-  comidasPorDia    Int @default(1)
+  comidasPorDia    Int  @default(1)
 
   subtotalEquiposBruto      Float   @default(0)
   descuentoVolumenPct       Float   @default(0)
@@ -610,12 +610,19 @@ model Cotizacion {
   proyectoFusionadoId String?   @map("proyecto_fusionado_id")
   proyectoFusionado   Proyecto? @relation("CotizacionesFusionadas", fields: [proyectoFusionadoId], references: [id])
 
+  // Fecha de gira que cotiza este equipo. NULL = cotización de evento, el caso normal.
+  // No es único: una fecha puede tener varias opciones o versiones. Es lo que hace que
+  // el proyecto operativo del show nazca de la cotización y no se capture dos veces.
+  giraShowId String?
+  giraShow   GiraShow? @relation(fields: [giraShowId], references: [id])
+
   lineas           CotizacionLinea[]
   proyecto         Proyecto?
   cuentasCobrar    CuentaCobrar[]
   proyectoEquipos  ProyectoEquipo[]
   proyectoPersonal ProyectoPersonal[]
 
+  @@index([giraShowId])
   @@map("cotizaciones")
 }
 
@@ -667,18 +674,18 @@ model CotizacionLinea {
 // ─── PROYECTO ────────────────────────────────────────────────────────────────
 
 model Proyecto {
-  id             String     @id @default(cuid())
-  numeroProyecto String     @unique
-  tratoId        String?
-  trato          Trato?     @relation(fields: [tratoId], references: [id])
-  cotizacionId   String     @unique
-  cotizacion     Cotizacion @relation(fields: [cotizacionId], references: [id])
+  id                     String       @id @default(cuid())
+  numeroProyecto         String       @unique
+  tratoId                String?
+  trato                  Trato?       @relation(fields: [tratoId], references: [id])
+  cotizacionId           String       @unique
+  cotizacion             Cotizacion   @relation(fields: [cotizacionId], references: [id])
   // Cotizaciones extra fusionadas a este proyecto (además de `cotizacion`, la de origen).
   cotizacionesFusionadas Cotizacion[] @relation("CotizacionesFusionadas")
-  clienteId      String
-  cliente        Cliente    @relation(fields: [clienteId], references: [id])
-  encargadoId    String?
-  encargado      User?      @relation(fields: [encargadoId], references: [id])
+  clienteId              String
+  cliente                Cliente      @relation(fields: [clienteId], references: [id])
+  encargadoId            String?
+  encargado              User?        @relation(fields: [encargadoId], references: [id])
 
   nombre                   String
   estado                   String    @default("PLANEACION") // PLANEACION | CONFIRMADO | EN_CURSO | COMPLETADO | CANCELADO
@@ -2710,24 +2717,24 @@ model ItemTemplateBodega {
 // aparte de Equipo: no se cotizan ni se asignan a un rider, y la pregunta no es
 // "¿está?" sino "¿cuánto queda contra el mínimo?".
 model Insumo {
-  id             String    @id @default(cuid())
-  nombre         String
-  descripcion    String?
-  usoPrincipal   String?
+  id              String    @id @default(cuid())
+  nombre          String
+  descripcion     String?
+  usoPrincipal    String?
   porQueNecesario String?
-  categoria      String    @default("GENERAL")
-  unidad         String    @default("pieza") // pieza | rollo | litro | paquete | caja
-  cantidadActual Int       @default(0)
-  minimo         Int       @default(1)
-  dondeSeCompra  String?
-  costoAprox     Float?
-  notas          String?
-  orden          Int       @default(0)
-  activo         Boolean   @default(true)
-  revisadoEn     DateTime?
-  revisadoPor    String?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  categoria       String    @default("GENERAL")
+  unidad          String    @default("pieza") // pieza | rollo | litro | paquete | caja
+  cantidadActual  Int       @default(0)
+  minimo          Int       @default(1)
+  dondeSeCompra   String?
+  costoAprox      Float?
+  notas           String?
+  orden           Int       @default(0)
+  activo          Boolean   @default(true)
+  revisadoEn      DateTime?
+  revisadoPor     String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@map("insumos")
 }
@@ -3652,33 +3659,33 @@ model LevantamientoContenido {
 // ─── VENUES ──────────────────────────────────────────────────────────────────
 
 model Venue {
-  id                     String   @id @default(cuid())
-  nombre                 String
-  tipo                   String? // SALON|HACIENDA|JARDIN|VINEDO|HOTEL|FORO|TEATRO|AUDITORIO|MUSEO|HISTORICO|CLUB|CLUB_GOLF|BAR|RESTAURANTE|COLEGIO|PARQUE|PLAZA|PLAZA_TOROS|ESTADIO|GALERIA|RANCHO|ESPACIO_PUBLICO|OTRO
-  direccion              String?
-  ciudad                 String?
-  estado                 String?
-  linkMaps               String?
-  contacto               String?
-  telefonoContacto       String?
-  emailContacto          String?
-  capacidadPersonas      Int?
+  id                      String  @id @default(cuid())
+  nombre                  String
+  tipo                    String? // SALON|HACIENDA|JARDIN|VINEDO|HOTEL|FORO|TEATRO|AUDITORIO|MUSEO|HISTORICO|CLUB|CLUB_GOLF|BAR|RESTAURANTE|COLEGIO|PARQUE|PLAZA|PLAZA_TOROS|ESTADIO|GALERIA|RANCHO|ESPACIO_PUBLICO|OTRO
+  direccion               String?
+  ciudad                  String?
+  estado                  String?
+  linkMaps                String?
+  contacto                String?
+  telefonoContacto        String?
+  emailContacto           String?
+  capacidadPersonas       Int?
   // Dimensiones
-  largoM                 Float?
-  anchoM                 Float?
-  alturaMaximaM          Float?
+  largoM                  Float?
+  anchoM                  Float?
+  alturaMaximaM           Float?
   // Acceso
-  accesoVehicular        String?
-  puntoDescarga          String?
+  accesoVehicular         String?
+  puntoDescarga           String?
   // Electricidad
-  voltajeDisponible      String?
-  amperajeTotal          Float?
-  fases                  String?
-  ubicacionTablero       String?
+  voltajeDisponible       String?
+  amperajeTotal           Float?
+  fases                   String?
+  ubicacionTablero        String?
   // Restricciones
-  restriccionDecibeles   String?
-  restriccionHorario     String?
-  restriccionInstalacion String?
+  restriccionDecibeles    String?
+  restriccionHorario      String?
+  restriccionInstalacion  String?
   // Ficha técnica del foro (para advance de gira)
   contactoTecnicoNombre   String?
   contactoTecnicoTelefono String?
@@ -3692,19 +3699,20 @@ model Venue {
   notasTecnicas           String?
 
   // Información adicional
-  tiposEvento   String? // JSON: ["MUSICAL","SOCIAL","EMPRESARIAL"]
-  calificacion  Float? // 1-5
-  notas         String?
-  fotoPortada   String? // base64
-  activo        Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  tiposEvento  String? // JSON: ["MUSICAL","SOCIAL","EMPRESARIAL"]
+  calificacion Float? // 1-5
+  notas        String?
+  fotoPortada  String? // base64
+  activo       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   tratos       Trato[]
   cotizaciones Cotizacion[]
   proyectos    Proyecto[]
   inventario   VenueInventario[]
   giraShows    GiraShow[]
+  sitePlanes   SitePlan[]
 
   @@index([nombre])
   @@index([ciudad])
@@ -3717,7 +3725,7 @@ model Venue {
 // musicales; cuando el trato es una gira, el artista es el sujeto de la gira y las
 // cotizaciones de abajo son sus shows.
 model Artista {
-  id               String   @id @default(cuid())
+  id               String  @id @default(cuid())
   nombre           String
   genero           String? // género musical
   origen           String? // ciudad / país de origen
@@ -4365,27 +4373,31 @@ model ReportePostEvento {
 // responde, cuánto nos cuesta y sus ventanas de instalación/operación/recolección
 // (filas de ProyectoBloqueTiempo con tipo PROVEEDOR).
 model ProveedorEvento {
-  id                String       @id @default(cuid())
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  id                String             @id @default(cuid())
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
   proyectoId        String
-  proyecto          Proyecto     @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  proyecto          Proyecto           @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
   // Quién puso lo que se ocupó. El proveedor es el caso normal y el único posible en lo
   // coordinado en preproducción; el técnico y la gente de casa aparecen en imprevistos,
   // cuando lo pagaron de su bolsa y hay que reembolsarles.
-  tipoAcreedor      String       @default("PROVEEDOR") // PROVEEDOR | TECNICO | PERSONAL_INTERNO
+  tipoAcreedor      String             @default("PROVEEDOR") // PROVEEDOR | TECNICO | PERSONAL_INTERNO
   // Null mientras el proveedor solo exista como nombre suelto; el alta rápida lo liga.
   proveedorId       String?
-  proveedor         Proveedor?   @relation(fields: [proveedorId], references: [id])
+  proveedor         Proveedor?         @relation(fields: [proveedorId], references: [id])
   tecnicoId         String?
-  tecnico           Tecnico?     @relation(fields: [tecnicoId], references: [id])
+  tecnico           Tecnico?           @relation(fields: [tecnicoId], references: [id])
   personalId        String?
-  personal          PersonalInterno? @relation(fields: [personalId], references: [id])
+  personal          PersonalInterno?   @relation(fields: [personalId], references: [id])
   nombreProveedor   String
+  // Frente de producción que cubre: lo que no es audio/luz/video y que en dirección
+  // y operaciones se coordina igual. NULL = equipo técnico, el caso de siempre.
+  // Valores en src/lib/frentes-produccion.ts.
+  frente            String?
   servicioEquipo    String?
   telefonoProveedor String?
   responsable       String?
-  notas             String?      @db.Text
+  notas             String?            @db.Text
   // Cómo llega el equipo y cómo se regresa. Se capturan por separado porque
   // muchas veces no coinciden (nos lo deja en bodega pero lo recoge en el venue).
   // Entrega: DEJA_BODEGA | LLEVA_VENUE | RECOGEMOS_NOSOTROS
@@ -4397,14 +4409,14 @@ model ProveedorEvento {
   // Renta o servicio que salió sobre la marcha, no coordinado en preproducción. El
   // registro se captura en un renglón (servicioEquipo + unidades + costoAcordado) y no
   // abre ventanas en la cronología: el evento ya está corriendo cuando se pide.
-  imprevisto        Boolean      @default(false)
+  imprevisto        Boolean            @default(false)
   fechaSolicitud    DateTime?
   solicitadoPor     String?
   // Cantidad de la captura rápida del imprevisto; los proveedores planeados llevan
   // sus cantidades en `items` y `lineas`.
   unidades          Int?
-  cuentaPagarId     String?      @unique
-  cuentaPagar       CuentaPagar? @relation(fields: [cuentaPagarId], references: [id])
+  cuentaPagarId     String?            @unique
+  cuentaPagar       CuentaPagar?       @relation(fields: [cuentaPagarId], references: [id])
   // Escenario que atiende este proveedor. NULL = el proyecto no usa escenarios.
   escenarioId       String?
   escenario         ProyectoEscenario? @relation(fields: [escenarioId], references: [id], onDelete: SetNull)
@@ -4440,13 +4452,13 @@ model ProveedorEventoItem {
 // Los horarios base del proyecto (llamado, salida de bodega, inicio/fin de evento) NO
 // viven aquí — siguen en los campos de Proyecto y los inyecta construirCronologia().
 model ProyectoBloqueTiempo {
-  id                String           @id @default(cuid())
+  id                String             @id @default(cuid())
   proyectoId        String
-  proyecto          Proyecto         @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
-  tipo              String           @default("PROGRAMA") // MONTAJE | SOUNDCHECK | PROGRAMA | PROVEEDOR | DESMONTAJE
+  proyecto          Proyecto           @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  tipo              String             @default("PROGRAMA") // MONTAJE | SOUNDCHECK | PROGRAMA | PROVEEDOR | DESMONTAJE
   fase              String? // Solo tipo PROVEEDOR: INSTALACION | OPERACION | RECOLECCION
   proveedorEventoId String?
-  proveedorEvento   ProveedorEvento? @relation(fields: [proveedorEventoId], references: [id], onDelete: Cascade)
+  proveedorEvento   ProveedorEvento?   @relation(fields: [proveedorEventoId], references: [id], onDelete: Cascade)
   fecha             DateTime? // Día del bloque; null = el día 1 del evento
   horaInicio        String? // "HH:MM" 24h canónico (se formatea a 12h al presentar)
   horaFin           String?
@@ -4454,12 +4466,12 @@ model ProyectoBloqueTiempo {
   detalle           String?
   responsable       String?
   involucrados      String?
-  orden             Int              @default(0)
+  orden             Int                @default(0)
   // Escenario al que pertenece el bloque. NULL = el proyecto no usa escenarios.
   escenarioId       String?
   escenario         ProyectoEscenario? @relation(fields: [escenarioId], references: [id], onDelete: SetNull)
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 
   @@index([proyectoId, tipo])
   @@index([proveedorEventoId])
@@ -4962,23 +4974,23 @@ model AreaEstrategica {
 }
 
 model ObjetivoArea {
-  id           String      @id @default(cuid())
-  areaId       String      @map("area_id")
+  id           String          @id @default(cuid())
+  areaId       String          @map("area_id")
   area         AreaEstrategica @relation(fields: [areaId], references: [id], onDelete: Cascade)
-  metaGlobalId String?     @map("meta_global_id")
-  metaGlobal   MetaGlobal? @relation(fields: [metaGlobalId], references: [id], onDelete: SetNull)
-  descripcion  String      @db.Text
+  metaGlobalId String?         @map("meta_global_id")
+  metaGlobal   MetaGlobal?     @relation(fields: [metaGlobalId], references: [id], onDelete: SetNull)
+  descripcion  String          @db.Text
   metrica      String // el KPI con el que se declara el éxito
-  unidad       String      @default("número") // % | $ | número | días | ratio
-  lineaBase    Float?      @map("linea_base")
-  valorMeta    Float?      @map("valor_meta")
-  valorActual  Float?      @map("valor_actual")
-  kpiSlug      String?     @map("kpi_slug")
-  fechaLimite  DateTime?   @map("fecha_limite")
-  orden        Int         @default(0)
-  activo       Boolean     @default(true)
-  createdAt    DateTime    @default(now()) @map("created_at")
-  updatedAt    DateTime    @updatedAt @map("updated_at")
+  unidad       String          @default("número") // % | $ | número | días | ratio
+  lineaBase    Float?          @map("linea_base")
+  valorMeta    Float?          @map("valor_meta")
+  valorActual  Float?          @map("valor_actual")
+  kpiSlug      String?         @map("kpi_slug")
+  fechaLimite  DateTime?       @map("fecha_limite")
+  orden        Int             @default(0)
+  activo       Boolean         @default(true)
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
 
   tacticas Tactica[]
 
@@ -6040,7 +6052,7 @@ model ArtistaRiderCanal {
 
   // OUTPUT
   tipoSalida String? // IEM|WEDGE|SIDEFILL|DRUM_FILL|SUB_DRUM|PA|SHOUT
-  estereo    Boolean @default(false)
+  estereo    Boolean         @default(false)
   personaId  String?
   persona    ArtistaPersona? @relation(fields: [personaId], references: [id])
 
@@ -6162,15 +6174,15 @@ model GiraShow {
   promotorEmail    String?
   aforoEsperado    Int?
 
-  horaLoadIn    String?
-  horaMontaje   String?
-  horaLineCheck String?
+  horaLoadIn     String?
+  horaMontaje    String?
+  horaLineCheck  String?
   horaSoundcheck String?
-  horaDoors     String?
-  horaShow      String?
-  horaFin       String?
-  horaLoadOut   String?
-  curfew        String?
+  horaDoors      String?
+  horaShow       String?
+  horaFin        String?
+  horaLoadOut    String?
+  curfew         String?
 
   contactoCasaNombre   String?
   contactoCasaTelefono String?
@@ -6179,11 +6191,12 @@ model GiraShow {
   riderEnviadoEn   DateTime?
   advanceCerradoEn DateTime?
 
-  notas      String?
-  docsToken  String?  @unique
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  notas     String?
+  docsToken String?  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
+  cotizaciones    Cotizacion[]
   riderLineas     ShowRiderLinea[]
   bloques         GiraShowBloque[]
   crew            GiraCrew[]
@@ -6193,7 +6206,8 @@ model GiraShow {
   archivos        GiraArchivo[]
   propuestaLineas PropuestaServicioLinea[]
   checklist       GiraChecklistItem[]
-  tareas          Tarea[]                 @relation("TareasDeShow")
+  tareas          Tarea[]                  @relation("TareasDeShow")
+  sitePlanes      SitePlan[]
 
   @@index([giraId, fecha])
   @@map("gira_shows")
@@ -6210,8 +6224,8 @@ model GiraChecklistItem {
   showId String?
   show   GiraShow? @relation(fields: [showId], references: [id], onDelete: Cascade)
 
-  frente String // MANAGEMENT|VENUE|PROMOTOR|INTERNO
-  item   String
+  frente  String // MANAGEMENT|VENUE|PROMOTOR|INTERNO
+  item    String
   detalle String? @db.Text
 
   /// Llave de plantilla: permite resembrar sin duplicar. Null = renglón manual.
@@ -6450,9 +6464,9 @@ model GiraSetlist {
 
 /// Canción del setlist con las notas de operación de audio, luces y video.
 model GiraSetlistCancion {
-  id         String      @id @default(cuid())
-  setlistId  String
-  setlist    GiraSetlist @relation(fields: [setlistId], references: [id], onDelete: Cascade)
+  id        String      @id @default(cuid())
+  setlistId String
+  setlist   GiraSetlist @relation(fields: [setlistId], references: [id], onDelete: Cascade)
 
   orden             Int     @default(0)
   titulo            String
@@ -6543,7 +6557,7 @@ model PropuestaServicio {
   creadaPorId String?
 
   titulo String?
-  estado String @default("BORRADOR") // BORRADOR|ENVIADA|EN_REVISION|APROBADA|RECHAZADA|VENCIDA
+  estado String  @default("BORRADOR") // BORRADOR|ENVIADA|EN_REVISION|APROBADA|RECHAZADA|VENCIDA
 
   modeloCobro   String    @default("POR_SHOW") // POR_SHOW|POR_DIA|POR_GIRA|RETAINER|PORCENTAJE
   moneda        String    @default("MXN")
@@ -6648,4 +6662,48 @@ model VenueInventario {
 
   @@index([venueId, disciplina])
   @@map("venue_inventario")
+}
+
+// ─── SITE PLAN ───────────────────────────────────────────────────────────────
+
+/// El plano aéreo del lugar: una foto satelital o el plano del venue con zonas,
+/// rutas y puntos de servicio dibujados encima. Vive aparte de `ProyectoEscenario`
+/// porque aquel es el plano cenital del escenario y se deriva del rider; este es
+/// el plano del predio completo y se dibuja a mano.
+///
+/// Un plano sin `showId` y con `venueId` es una plantilla del venue, reusable en
+/// cualquier fecha que caiga ahí.
+model SitePlan {
+  id     String @id @default(cuid())
+  nombre String
+
+  showId String?
+  show   GiraShow? @relation(fields: [showId], references: [id], onDelete: Cascade)
+
+  venueId String?
+  venue   Venue?  @relation(fields: [venueId], references: [id])
+
+  /// Imagen de fondo (satelital o plano) en Vercel Blob.
+  fondoUrl     String?
+  /// Tamaño natural de esa imagen. Define el sistema de coordenadas del dibujo:
+  /// todo se guarda en píxeles de la imagen, no en metros, para que recalibrar la
+  /// escala no mueva lo ya trazado.
+  fondoAncho   Int?
+  fondoAlto    Int?
+  /// Metros que mide un píxel de la imagen, medido con la herramienta de escala.
+  /// Null = sin calibrar: se dibuja igual pero no hay áreas ni distancias.
+  escalaMPorPx Float?
+
+  /// JSON `ContenidoPlano`: { capas: Capa[], objetos: ObjetoPlano[] }.
+  contenido String? @db.Text
+
+  notas String? @db.Text
+
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([showId])
+  @@index([venueId])
+  @@map("site_planes")
 }

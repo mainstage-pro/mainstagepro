@@ -170,7 +170,7 @@ const TIPO_EVENTO: Record<string, string> = {
   MUSICAL: "Musical", SOCIAL: "Social", EMPRESARIAL: "Empresarial", OTRO: "Otro",
 };
 const TIPO_SERVICIO: Record<string, string> = {
-  PRODUCCION_TECNICA: "Producción técnica", RENTA: "Renta de equipo", DIRECCION_TECNICA: "Dirección técnica",
+  PRODUCCION_TECNICA: "Producción técnica", RENTA: "Renta de equipo", DIRECCION_TECNICA: "Dirección y operaciones",
 };
 const ZONA: Record<string, string> = { LOCAL: "Local", BAJIO: "Bajío", NACIONAL: "Nacional" };
 const ARCHIVO_TIPO: Record<string, string> = {

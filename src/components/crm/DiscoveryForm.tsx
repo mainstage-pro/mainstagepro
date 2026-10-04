@@ -1540,7 +1540,7 @@ export default function DiscoveryForm({
                   {([
                     { value: "RENTA", label: "Renta de equipo", icon: Package, desc: "Solo equipo sin operación técnica compleja." },
                     { value: "PRODUCCION_TECNICA", label: "Producción Técnica", icon: Settings, desc: "Equipo, montaje y operación técnica." },
-                    { value: "DIRECCION_TECNICA", label: "Dirección Técnica", icon: ClipboardList, desc: "Desarrollo conceptual, producción técnica y gestión completa de producción." }
+                    { value: "DIRECCION_TECNICA", label: "Dirección y operaciones", icon: ClipboardList, desc: "Desarrollo conceptual, producción técnica y gestión completa de producción." }
                   ] as const).map(ts => (
                     <button key={ts.value} type="button" onClick={() => setDiscForm(p => ({ ...p, tipoServicio: ts.value }))}
                       className={`text-left p-4 rounded-xl border transition-all ${discForm.tipoServicio === ts.value ? "border-[#B3985B] bg-[#B3985B]/10" : "border-[#222] bg-[#111] hover:border-[#444]"}`}>

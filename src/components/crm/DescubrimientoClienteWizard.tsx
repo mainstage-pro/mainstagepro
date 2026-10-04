@@ -80,7 +80,7 @@ function iconoAdicional(nombre: string): LucideIcon {
 const SERVICIOS = [
   { value: "PRODUCCION_TECNICA", titulo: "Producción completa", desc: "Quiero que todo suene y se vea increíble. Ustedes se encargan de todo.", icon: Wand2 },
   { value: "RENTA",             titulo: "Renta de equipo",     desc: "Solo necesito rentar equipo para mi evento.", icon: Wrench },
-  { value: "DIRECCION_TECNICA", titulo: "Dirección técnica",   desc: "Ya tengo equipo o proveedores, necesito quien dirija la producción.", icon: ClipboardCheck },
+  { value: "DIRECCION_TECNICA", titulo: "Dirección y operaciones",   desc: "Ya tengo equipo o proveedores, necesito quien dirija la producción.", icon: ClipboardCheck },
 ];
 
 // Bandas de presupuesto (rangos, nunca cifra exacta). Guardamos el tope como referencia.

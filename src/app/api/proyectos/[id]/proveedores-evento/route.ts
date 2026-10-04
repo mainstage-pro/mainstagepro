@@ -9,6 +9,7 @@ import {
   esTipoAcreedor,
   type TipoAcreedor,
 } from "@/lib/proveedor-evento";
+import { esFrente } from "@/lib/frentes-produccion";
 
 export const proveedorEventoInclude: Prisma.ProveedorEventoInclude = {
   proveedor: { select: { id: true, nombre: true, telefono: true } },
@@ -133,6 +134,7 @@ export async function POST(
       personalId: acreedor.personalId,
       nombreProveedor: nombre,
       servicioEquipo: body.servicioEquipo?.trim() || null,
+      frente: esFrente(body.frente) ? body.frente : null,
       telefonoProveedor: telefono,
       responsable: body.responsable?.trim() || null,
       notas: body.notas?.trim() || null,

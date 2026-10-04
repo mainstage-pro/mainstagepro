@@ -319,6 +319,17 @@ export async function crearProyectoDesdeCotizacion(
     },
   });
 
+  // 6. La fecha de gira se queda con su proyecto operativo. Va aquí y no en el
+  // endpoint porque son dos los que crean proyecto (/aprobar y /generar-proyecto)
+  // y el show no debe depender de por cuál se pasó. Si ya tenía proyecto no se
+  // pisa: esa fecha ya se está operando en otro lado.
+  if (cot.giraShowId) {
+    await tx.giraShow.updateMany({
+      where: { id: cot.giraShowId, proyectoId: null },
+      data: { proyectoId: proy.id },
+    });
+  }
+
   // 7. Entrada en bitácora
   await tx.proyectoBitacora.create({
     data: {
