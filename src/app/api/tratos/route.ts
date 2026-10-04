@@ -4,6 +4,13 @@ import { getSession } from "@/lib/auth";
 import { cotejarOCrearCliente } from "@/lib/cotejo-cliente";
 import { ensureProcesoVentaColumns, ensureTratoFechaApartadaColumn } from "@/lib/migraciones-lazy";
 import { defaultEtapaInterna } from "@/lib/etapasInternas";
+import {
+  parseServicios,
+  serializeServicios,
+  espejoTipoServicio,
+  serviciosDesdeTipo,
+  parseCanal,
+} from "@/lib/servicios-trato";
 
 // Mapeo momento de contratación → etapa por defecto del pipeline (el vendedor puede sobreescribir).
 const MOMENTO_ETAPA: Record<string, string> = {
@@ -123,6 +130,12 @@ export async function POST(request: NextRequest) {
       : (body.etapa || (momento && MOMENTO_ETAPA[momento]) || 'DESCUBRIMIENTO');
     const trato_etapaInterna = esNurturing ? 'NURTURING' : defaultEtapaInterna(trato_etapa);
 
+    // El alta puede traer `servicios` (header nuevo) o `tipoServicio` suelto (discovery).
+    // Lo que llegue siembra al otro: el espejo nunca nace en desacuerdo.
+    const servicios = body.servicios
+      ? parseServicios(typeof body.servicios === "string" ? body.servicios : JSON.stringify(body.servicios))
+      : serviciosDesdeTipo(body.tipoServicio);
+
     const trato = await prisma.trato.create({
       data: {
         clienteId,
@@ -137,7 +150,9 @@ export async function POST(request: NextRequest) {
         etapa: trato_etapa,
         etapaInterna: trato_etapaInterna,
         clasificacion: body.clasificacion || "PROSPECTO",
-        tipoServicio: body.tipoServicio || null,
+        servicios: serializeServicios(servicios),
+        tipoServicio: espejoTipoServicio(servicios),
+        canalOperativo: parseCanal(body.canalOperativo),
         tipoProspecto: body.tipoProspecto || "ACTIVO",
         canalAtencion: body.canalAtencion || null,
         rutaEntrada: body.rutaEntrada || "DESCUBRIR",

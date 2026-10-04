@@ -5,6 +5,7 @@ import { syncFechaProximaAccion } from "@/app/api/seguimientos/route";
 import { ensureProcesoVentaColumns, ensureMultidiaColumns, ensureNavegacionColumns } from "@/lib/migraciones-lazy";
 import { defaultEtapaInterna, esEtapaInternaValida } from "@/lib/etapasInternas";
 import { parsePerfiles, serializePerfiles, MAX_PERFILES } from "@/lib/proceso/perfiles";
+import { parseServicios, serializeServicios, espejoTipoServicio, serviciosDesdeTipo } from "@/lib/servicios-trato";
 
 // Migración lazy YA APLICADA en prod (verificado 2026-08-19: tratos.vendedorId,
 // briefToken, briefRecibidoEn, requiereRevision, momentoContratacion y
@@ -94,6 +95,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     "descubrimientoCompleto", "posibleDuplicado",
     // Artista del evento musical y giras (varias cotizaciones = shows del mismo trato)
     "artistaId", "esGira",
+    // Qué vendemos y dónde se opera (ver espejo con tipoServicio más abajo)
+    "servicios", "canalOperativo",
     // Selección de equipos del inventario
     "equiposInteres",
     // Proceso de ventas: rama del descubrimiento y preferencia del cliente
@@ -146,6 +149,19 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         data[key] = body[key] || null;
       }
     }
+  }
+
+  // El espejo se mantiene aquí, de los dos lados: el header del trato escribe
+  // `servicios` y el discovery todavía escribe `tipoServicio` suelto. Cualquiera
+  // que llegue siembra al otro, así que nunca quedan en desacuerdo.
+  if ("servicios" in body) {
+    const servicios = parseServicios(
+      typeof body.servicios === "string" ? body.servicios : JSON.stringify(body.servicios ?? []),
+    );
+    data.servicios = serializeServicios(servicios);
+    data.tipoServicio = espejoTipoServicio(servicios);
+  } else if ("tipoServicio" in body) {
+    data.servicios = serializeServicios(serviciosDesdeTipo(body.tipoServicio as string | null));
   }
 
   // Auto-set fechaCierre y etapaCambiadaEn cuando etapa cambia

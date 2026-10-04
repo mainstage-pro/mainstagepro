@@ -27,6 +27,14 @@ import {
 import { resolvePerfil, parsePerfiles, type PerfilCategoria, PERFIL_CATEGORIAS } from '@/lib/proceso/perfiles';
 import { PerfilSelect, usePerfilesCustom } from '@/components/crm/PerfilSelect';
 import { MOMENTO_OPTIONS, ORIGEN_LEAD_OPTIONS } from '@/lib/constants';
+// Aliados: la página ya tiene un SERVICIOS (chips del descubrimiento) y un
+// CANALES (canalAtencion), que son otra cosa.
+import {
+  SERVICIOS as ESCALERA_SERVICIOS, SERVICIO_LABELS, SERVICIO_DESCRIPCIONES,
+  CANALES as CANALES_OPERATIVOS, CANAL_LABELS, CANAL_DESCRIPCIONES,
+  parseServicios, serializeServicios, listoParaCotizar,
+  type Servicio, type CanalOperativo,
+} from '@/lib/servicios-trato';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface TratoArchivo {
@@ -51,6 +59,8 @@ interface Trato {
   momentoContratacion: string | null;
   vendedorOrigen: { id: string; name: string } | null;
   tipoServicio: string | null;
+  servicios: string | null;
+  canalOperativo: string | null;
   lugarEstimado: string | null;
   fechaEventoEstimada: string | null;
   fechaApartada: boolean;
@@ -1097,6 +1107,28 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     setSaving(false);
   }
 
+  // Los servicios se palomean de uno en uno: el PATCH recibe la lista completa y
+  // el espejo de `tipoServicio` lo recalcula el endpoint, no el cliente.
+  async function alternarServicio(servicio: Servicio) {
+    if (!trato) return;
+    const actuales = parseServicios(trato.servicios);
+    const siguientes = actuales.includes(servicio)
+      ? actuales.filter(s => s !== servicio)
+      : [...actuales, servicio];
+    setSaving(true);
+    const d = await patch({ servicios: serializeServicios(siguientes) });
+    if (d) setTrato(prev => prev ? { ...prev, servicios: d.trato.servicios, tipoServicio: d.trato.tipoServicio } : prev);
+    setSaving(false);
+  }
+
+  async function seleccionarCanalOperativo(canal: CanalOperativo) {
+    if (!trato) return;
+    setSaving(true);
+    const d = await patch({ canalOperativo: trato.canalOperativo === canal ? null : canal });
+    if (d) setTrato(prev => prev ? { ...prev, canalOperativo: d.trato.canalOperativo } : prev);
+    setSaving(false);
+  }
+
   async function crearNuevaCotizacion() {
     if (!trato) return;
     const nombre = window.prompt(
@@ -1643,7 +1675,54 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             </a>
           )}
         </div>
-        <div className="flex items-center gap-3 pt-3 border-t border-[#1a1a1a] flex-wrap">
+        {/* Qué vendemos y dónde se opera. Se contesta antes de cotizar, pero queda editable. */}
+        <div className="pt-3 border-t border-[#1a1a1a] space-y-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] text-gray-600 uppercase tracking-wider shrink-0 w-[72px]">Servicios:</span>
+            {ESCALERA_SERVICIOS.map(s => {
+              const activo = parseServicios(trato.servicios).includes(s);
+              return (
+                <button
+                  key={s}
+                  onClick={() => alternarServicio(s)}
+                  disabled={saving}
+                  title={SERVICIO_DESCRIPCIONES[s]}
+                  className={`px-3 py-1.5 text-xs rounded-lg border transition-colors disabled:opacity-40 ${
+                    activo
+                      ? "bg-[#B3985B]/15 border-[#B3985B]/40 text-[#B3985B] font-semibold"
+                      : "bg-[#1a1a1a] border-[#2a2a2a] text-gray-500 hover:text-gray-300 hover:border-[#444]"
+                  }`}
+                >
+                  {SERVICIO_LABELS[s]}
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] text-gray-600 uppercase tracking-wider shrink-0 w-[72px]">Se lleva en:</span>
+            {CANALES_OPERATIVOS.map(c => (
+              <button
+                key={c}
+                onClick={() => seleccionarCanalOperativo(c)}
+                disabled={saving}
+                title={CANAL_DESCRIPCIONES[c]}
+                className={`px-3 py-1.5 text-xs rounded-lg border transition-colors disabled:opacity-40 ${
+                  trato.canalOperativo === c
+                    ? "bg-[#B3985B]/15 border-[#B3985B]/40 text-[#B3985B] font-semibold"
+                    : "bg-[#1a1a1a] border-[#2a2a2a] text-gray-500 hover:text-gray-300 hover:border-[#444]"
+                }`}
+              >
+                {CANAL_LABELS[c]}
+              </button>
+            ))}
+            {!listoParaCotizar(trato.servicios, trato.canalOperativo) && (
+              <span className="text-[11px] text-gray-600 ml-1">
+                Define servicios y canal para poder cotizar.
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-3 pt-3 mt-3 border-t border-[#1a1a1a] flex-wrap">
           <span className="text-[10px] text-gray-600 uppercase tracking-wider shrink-0">Etapa:</span>
           <select
             value={trato.etapa}
@@ -1666,8 +1745,9 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           )}
           <button
             onClick={crearNuevaCotizacion}
-            disabled={creandoCotizacion}
-            className="ml-auto px-3 py-1.5 bg-[#B3985B] text-black text-xs font-semibold rounded-lg hover:bg-[#c9a96a] transition-colors disabled:opacity-40"
+            disabled={creandoCotizacion || !listoParaCotizar(trato.servicios, trato.canalOperativo)}
+            title={listoParaCotizar(trato.servicios, trato.canalOperativo) ? undefined : "Primero define qué servicios se venden y dónde se opera"}
+            className="ml-auto px-3 py-1.5 bg-[#B3985B] text-black text-xs font-semibold rounded-lg hover:bg-[#c9a96a] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {creandoCotizacion ? "Creando..." : "+ Nueva cotización"}
           </button>

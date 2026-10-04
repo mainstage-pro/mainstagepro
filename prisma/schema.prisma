@@ -250,8 +250,19 @@ model Trato {
   nurturingData       String? // @deprecated JSON de nurturing
   preferenciaContacto String? // @deprecated LLAMADA | PROPUESTA
   etapaContratacion   String? // @deprecated duplicado de momentoContratacion
+  // Espejo del nivel más alto de `servicios`, en los valores históricos, para que todo
+  // lo que ya lee este campo siga funcionando sin leer el JSON. Nunca se captura directo.
   tipoServicio        String? // RENTA | PRODUCCION_TECNICA | DIRECCION_TECNICA
   subtipoEvento       String? // CONCIERTO | FESTIVAL | ELECTRONICA | PRESENTACION_MUSICAL | FIESTA_PRIVADA | BODA | XV_ANOS | BAUTIZO | CUMPLEANIOS | CONGRESO | TALLER | LANZAMIENTO | FERIA | OTRO
+
+  // ── Qué vendemos y dónde se opera (se define antes de cotizar) ─────────────
+  // Combinación de servicios contratados. JSON: ["RENTA","PRODUCCION_TECNICA","DIRECCION_OPERACIONES"].
+  // Es la fuente; `tipoServicio` es su espejo. Ver src/lib/servicios-trato.ts.
+  servicios      String?
+  // Dónde se lleva el trato: EVENTO va a Proyectos, SHOW va a Shows y artistas.
+  // Es una decisión, no se deriva de tener artista: un promotor puede pedir un
+  // rider suelto y eso es una cotización simple, no una gira.
+  canalOperativo String? // EVENTO | SHOW
 
   // ── Descubrimiento ────────────────────────────────────────────────────────
   canalAtencion            String? // WHATSAPP | FORMULARIO | LLAMADA | REUNION | SCOUTING | INFORMACION
