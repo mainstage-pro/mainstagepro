@@ -782,6 +782,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   // Paso activo del wizard de descubrimiento (persisted in localStorage)
   const [pasoActivo, setPasoActivo] = useState(1);
   const [creandoCotizacion, setCreandoCotizacion] = useState(false);
+  const [creandoPropuesta, setCreandoPropuesta] = useState(false);
   const [eliminandoCotizacion, setEliminandoCotizacion] = useState<string | null>(null);
 
   // ── Estado de navegación interna (Fase 1) ──────────────────────────────────
@@ -1151,6 +1152,32 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       }
     } finally {
       setCreandoCotizacion(false);
+    }
+  }
+
+  // Lo que se cobra con honorario no cabe en la cotización de equipo: abre (o
+  // reusa) la propuesta de servicios del trato. Reusa en lugar de duplicar
+  // porque un trato tiene una sola propuesta de dirección y operaciones.
+  async function abrirPropuestaServicio() {
+    if (!trato) return;
+    setCreandoPropuesta(true);
+    try {
+      const existentes = await fetch(`/api/propuestas-servicio?tratoId=${trato.id}`).then(r => r.json());
+      const ya = existentes?.propuestas?.[0];
+      if (ya) {
+        router.push(`/giras/propuesta/${ya.id}`);
+        return;
+      }
+      const res = await fetch("/api/propuestas-servicio", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tratoId: trato.id }),
+      });
+      const d = await res.json();
+      if (res.ok) router.push(`/giras/propuesta/${d.propuesta.id}`);
+      else toast.error(d.error ?? "Error al crear la propuesta");
+    } finally {
+      setCreandoPropuesta(false);
     }
   }
 
@@ -1751,6 +1778,16 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           >
             {creandoCotizacion ? "Creando..." : "+ Nueva cotización"}
           </button>
+          {parseServicios(trato.servicios).includes("DIRECCION_OPERACIONES") && (
+            <button
+              onClick={abrirPropuestaServicio}
+              disabled={creandoPropuesta}
+              title="Honorarios de dirección, operaciones, stage y diseño"
+              className="px-3 py-1.5 text-xs font-semibold text-[#B3985B] border border-[#B3985B]/30 rounded-lg hover:bg-[#B3985B]/10 transition-colors disabled:opacity-40"
+            >
+              {creandoPropuesta ? "Abriendo..." : "Propuesta de servicio →"}
+            </button>
+          )}
           <Link
             href={`/crm/tratos/nuevo?clienteId=${trato.cliente.id}`}
             className="px-3 py-1.5 text-xs text-gray-500 hover:text-white border border-[#2a2a2a] hover:border-[#444] rounded-lg transition-colors"

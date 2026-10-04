@@ -522,11 +522,12 @@ export const TIPO_VIAJE_LABEL: Record<string, string> = {
 };
 
 // ── Propuesta de servicios ───────────────────────────────────────────────────
-export const MODELOS_COBRO = ["POR_SHOW", "POR_DIA", "POR_GIRA", "RETAINER", "PORCENTAJE"] as const;
+export const MODELOS_COBRO = ["POR_SHOW", "POR_DIA", "POR_EVENTO", "POR_GIRA", "RETAINER", "PORCENTAJE"] as const;
 
 export const MODELO_COBRO_LABEL: Record<string, string> = {
   POR_SHOW: "Por show",
   POR_DIA: "Por día",
+  POR_EVENTO: "Por evento",
   POR_GIRA: "Por gira",
   RETAINER: "Retainer mensual",
   PORCENTAJE: "Porcentaje",
@@ -589,6 +590,7 @@ export const CATEGORIAS_SERVICIO = [
   "AUDIO",
   "ILUMINACION",
   "VIDEO",
+  "DISENO",
   "LOGISTICA",
   "DOCUMENTACION",
   "EQUIPO",
@@ -599,6 +601,7 @@ export const CATEGORIA_SERVICIO_LABEL: Record<string, string> = {
   AUDIO: "Audio",
   ILUMINACION: "Iluminación",
   VIDEO: "Video",
+  DISENO: "Diseño y renders",
   LOGISTICA: "Logística",
   DOCUMENTACION: "Documentación",
   EQUIPO: "Equipo",

@@ -12,12 +12,14 @@ export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
   const estado = sp.get("estado");
   const giraId = sp.get("giraId");
+  const tratoId = sp.get("tratoId");
 
   const propuestas = await prisma.propuestaServicio.findMany({
     where: {
       activo: true,
       ...(estado ? { estado } : {}),
       ...(giraId ? { giraId } : {}),
+      ...(tratoId ? { tratoId } : {}),
     },
     select: {
       id: true,
@@ -50,11 +52,13 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const numero = await siguienteNumero();
 
-  // Al nacer desde una gira, la propuesta hereda su cliente, artista y moneda:
-  // volver a capturarlos sería pedir dos veces el mismo dato.
+  // Al nacer desde una gira o desde un trato, la propuesta hereda su cliente,
+  // artista y moneda: volver a capturarlos sería pedir dos veces el mismo dato.
   const giraId = textoOpcional(body.giraId) ?? null;
-  let heredado: { clienteId: string | null; artistaId: string | null; tratoId: string | null; moneda: string } | null =
+  const tratoIdPedido = textoOpcional(body.tratoId) ?? null;
+  let heredado: { clienteId: string | null; artistaId: string | null; tratoId: string | null; moneda?: string } | null =
     null;
+  let tituloHeredado: string | null = null;
   if (giraId) {
     const gira = await prisma.gira.findUnique({
       where: { id: giraId },
@@ -68,20 +72,32 @@ export async function POST(req: NextRequest) {
         moneda: gira.moneda,
       };
     }
+  } else if (tratoIdPedido) {
+    const trato = await prisma.trato.findUnique({
+      where: { id: tratoIdPedido },
+      select: { clienteId: true, artistaId: true, nombreEvento: true },
+    });
+    if (trato) {
+      heredado = { clienteId: trato.clienteId, artistaId: trato.artistaId, tratoId: tratoIdPedido };
+      tituloHeredado = trato.nombreEvento;
+    }
   }
 
   const propuesta = await prisma.propuestaServicio.create({
     data: {
       numero,
       creadaPorId: session.id,
-      titulo: textoOpcional(body.titulo) ?? null,
+      titulo: textoOpcional(body.titulo) ?? tituloHeredado,
       giraId,
       clienteId: textoOpcional(body.clienteId) ?? heredado?.clienteId ?? null,
       artistaId: textoOpcional(body.artistaId) ?? heredado?.artistaId ?? null,
       tratoId: textoOpcional(body.tratoId) ?? heredado?.tratoId ?? null,
       moneda: (textoOpcional(body.moneda) ?? heredado?.moneda ?? "MXN") as string,
       ...soloDefinidos({
-        modeloCobro: textoOpcional(body.modeloCobro) ?? undefined,
+        // Una propuesta nacida de un trato de evento se cobra por evento; el
+        // default del modelo (`POR_SHOW`) solo tiene sentido en gira.
+        modeloCobro:
+          textoOpcional(body.modeloCobro) ?? (!giraId && tratoIdPedido ? "POR_EVENTO" : undefined),
         vigenciaHasta: fecha(body.vigenciaHasta),
         aplicaIva: booleano(body.aplicaIva),
         alcance: textoOpcional(body.alcance),

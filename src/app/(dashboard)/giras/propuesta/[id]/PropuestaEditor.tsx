@@ -78,9 +78,11 @@ interface PropuestaUI {
   clienteId: string | null;
   artistaId: string | null;
   giraId: string | null;
+  tratoId: string | null;
   cliente: { id: string; nombre: string; empresa: string | null } | null;
   artista: { id: string; nombre: string } | null;
   gira: { id: string; nombre: string; shows: ShowUI[] } | null;
+  trato: { id: string; nombre: string; diasServicio: number | null } | null;
   lineas: LineaUI[];
 }
 
@@ -105,6 +107,7 @@ interface Props {
   clientes: { id: string; nombre: string; empresa: string | null }[];
   artistas: { id: string; nombre: string }[];
   giras: { id: string; nombre: string; _count: { shows: number } }[];
+  tratos: { id: string; nombre: string }[];
 }
 
 type CabeceraEditable = Pick<
@@ -125,6 +128,7 @@ type CabeceraEditable = Pick<
   | "clienteId"
   | "artistaId"
   | "giraId"
+  | "tratoId"
 >;
 
 // ── Componente ───────────────────────────────────────────────────────────────
@@ -138,6 +142,7 @@ export default function PropuestaEditor({
   clientes,
   artistas,
   giras,
+  tratos,
 }: Props) {
   const router = useRouter();
   const toast = useToast();
@@ -160,6 +165,7 @@ export default function PropuestaEditor({
     clienteId: inicial.clienteId,
     artistaId: inicial.artistaId,
     giraId: inicial.giraId,
+    tratoId: inicial.tratoId,
   });
   const [lineas, setLineas] = useState<LineaUI[]>(inicial.lineas);
   const [guardando, setGuardando] = useState(false);
@@ -240,9 +246,11 @@ export default function PropuestaEditor({
     }
   }
 
-  async function armarDesdeGira() {
-    if (!cab.giraId) {
-      toast.error("Liga un show o una gira primero");
+  // Arma desde la gira o desde el trato de evento, según lo que esté ligado.
+  // El servidor decide la plantilla; aquí solo se evita el viaje en vano.
+  async function armarDesdeRegistro() {
+    if (!cab.giraId && !cab.tratoId) {
+      toast.error("Liga un trato de evento o una gira primero");
       return;
     }
     setGuardando(true);
@@ -256,7 +264,7 @@ export default function PropuestaEditor({
     if (d.agregadas === 0) {
       toast.info("Las líneas típicas ya estaban puestas");
     } else {
-      toast.success(`${d.agregadas} líneas agregadas · ${d.conteo.shows} shows en ${d.conteo.venues} venues`);
+      toast.success(`${d.agregadas} líneas agregadas · ${d.detalle}`);
     }
     if (Array.isArray(d.faltanEnCatalogo) && d.faltanEnCatalogo.length) {
       toast.warning(`Faltan en el catálogo: ${d.faltanEnCatalogo.join(", ")}`);
@@ -382,8 +390,16 @@ export default function PropuestaEditor({
                   </Link>{" "}
                   · {conteo.shows} shows en {conteo.venues} {conteo.venues === 1 ? "venue" : "venues"}
                 </>
+              ) : inicial.trato ? (
+                <>
+                  <Link href={`/crm/tratos/${inicial.trato.id}`} className="ms-link-gold">
+                    {inicial.trato.nombre}
+                  </Link>{" "}
+                  · {inicial.trato.diasServicio ?? 1}{" "}
+                  {(inicial.trato.diasServicio ?? 1) === 1 ? "día" : "días"} de servicio
+                </>
               ) : (
-                "Sin show ni gira ligados"
+                "Sin trato ni gira ligados"
               )}
             </p>
           </div>
@@ -543,6 +559,29 @@ export default function PropuestaEditor({
                   ]}
                 />
               </Campo>
+              {/* El trato es la otra cara: una propuesta de evento no tiene gira,
+                  y de aquí salen los días de servicio con los que se cuantifica. */}
+              <Campo
+                label="Trato de evento"
+                ayuda={
+                  inicial.trato
+                    ? `${inicial.trato.diasServicio ?? 1} ${(inicial.trato.diasServicio ?? 1) === 1 ? "día" : "días"} de servicio`
+                    : undefined
+                }
+              >
+                <Combobox
+                  value={cab.tratoId ?? ""}
+                  onChange={(v) => {
+                    editarCabecera("tratoId", v || null);
+                    router.refresh();
+                  }}
+                  placeholder="Sin trato ligado"
+                  options={[
+                    { value: "", label: "Sin trato ligado" },
+                    ...tratos.map((t) => ({ value: t.id, label: t.nombre })),
+                  ]}
+                />
+              </Campo>
               <Campo label="Modelo de cobro">
                 <select
                   className="ms-input"
@@ -632,9 +671,13 @@ export default function PropuestaEditor({
               <div className="flex flex-wrap gap-2">
                 <button
                   className="ms-btn-secondary"
-                  onClick={armarDesdeGira}
-                  disabled={!cab.giraId || guardando}
-                  title={cab.giraId ? undefined : "Liga un show o una gira para sembrar las líneas típicas"}
+                  onClick={armarDesdeRegistro}
+                  disabled={(!cab.giraId && !cab.tratoId) || guardando}
+                  title={
+                    cab.giraId || cab.tratoId
+                      ? undefined
+                      : "Liga un trato de evento o una gira para sembrar las líneas típicas"
+                  }
                 >
                   Armar desde el registro
                 </button>
@@ -655,8 +698,8 @@ export default function PropuestaEditor({
             {lineas.length === 0 ? (
               <div className="ms-empty-state">
                 <p className="text-sm text-[#6b7280] px-6">
-                  Sin líneas todavía. Con un show o una gira ligados, &ldquo;Armar desde el registro&rdquo; siembra las
-                  líneas típicas ya cuantificadas.
+                  Sin líneas todavía. Con un trato de evento o una gira ligados, &ldquo;Armar desde el
+                  registro&rdquo; siembra las líneas típicas ya cuantificadas.
                 </p>
               </div>
             ) : (

@@ -9,7 +9,7 @@ import { recalcularPropuesta } from "../../recalcular";
 /// Las líneas típicas de una gira de production management, en orden de lectura.
 /// `veces` dice de dónde sale la cantidad; el precio sale del catálogo, así que
 /// cambiar la tarifa en /giras/servicios cambia lo que arma este botón.
-const PLANTILLA: { clave: string; veces: "SHOWS" | "VENUES" | "CIUDADES" | "UNA" | "UNIDAD" }[] = [
+const PLANTILLA_GIRA: { clave: string; veces: "SHOWS" | "VENUES" | "CIUDADES" | "UNA" | "UNIDAD" }[] = [
   { clave: "DOCUMENTACION_TOUR", veces: "UNA" },
   { clave: "ADVANCE_PLAZA", veces: "VENUES" },
   { clave: "COORD_PROVEEDORES", veces: "VENUES" },
@@ -17,8 +17,20 @@ const PLANTILLA: { clave: string; veces: "SHOWS" | "VENUES" | "CIUDADES" | "UNA"
   { clave: "DIA_VIAJE", veces: "CIUDADES" },
 ];
 
+/// Lo típico de un evento de un solo sitio. Más corto que la gira a propósito:
+/// aquí no hay plazas ni días de viaje, y los renders y el plano se agregan
+/// desde el catálogo cuando el evento los pide.
+const PLANTILLA_EVENTO: { clave: string; veces: "UNA" | "DIAS" }[] = [
+  { clave: "PM_EVENTO", veces: "UNA" },
+  { clave: "COORD_FRENTES", veces: "UNA" },
+  { clave: "OPERACIONES_SITIO", veces: "DIAS" },
+  { clave: "STAGE_MANAGER", veces: "DIAS" },
+  { clave: "RENDER_PRODUCCION", veces: "UNA" },
+];
+
 /// Gastos de viaje: van a costo, en su propio subtotal, para que no se coman el
 /// honorario. Nacen en cero porque el monto real sale de cotizar vuelos y hotel.
+/// Solo aplican a gira: un evento local no mueve a nadie en avión.
 const REEMBOLSABLES: { tipo: string; concepto: string; descripcion: string; unidad: string; veces: "CIUDADES" | "SHOWS" }[] = [
   {
     tipo: "VIAJE",
@@ -43,8 +55,11 @@ const REEMBOLSABLES: { tipo: string; concepto: string; descripcion: string; unid
   },
 ];
 
-// POST: siembra las líneas típicas de la gira ligada, ya cuantificadas.
+// POST: siembra las líneas típicas del registro ligado, ya cuantificadas.
 // Todo queda editable después: esto es un punto de partida, no un candado.
+//
+// Hay dos caminos porque hay dos negocios: la gira cuantifica por fechas y
+// plazas, el evento por días en sitio. La gira gana si están ligadas las dos.
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -63,33 +78,45 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
           shows: { select: { id: true, venueId: true, ciudad: true, estado: true }, orderBy: { fecha: "asc" } },
         },
       },
+      tratoId: true,
+      trato: { select: { nombreEvento: true, diasServicio: true, cliente: { select: { nombre: true } } } },
       lineas: { select: { concepto: true, servicio: { select: { clave: true } } } },
     },
   });
   if (!propuesta) return NextResponse.json({ error: "Propuesta no encontrada" }, { status: 404 });
-  if (!propuesta.giraId || !propuesta.gira) {
-    return NextResponse.json({ error: "Liga una gira antes de armar la propuesta" }, { status: 400 });
+
+  const esGira = Boolean(propuesta.giraId && propuesta.gira);
+  if (!esGira && !propuesta.trato) {
+    return NextResponse.json(
+      { error: "Liga un trato de evento o una gira antes de armar la propuesta" },
+      { status: 400 },
+    );
   }
 
-  const conteo = contarGira(propuesta.gira.shows);
-  if (conteo.shows === 0) {
+  // Un evento sin días declarados se arma como un día: es lo más común y el
+  // renglón queda editable. Una gira sin fechas no se puede cuantificar.
+  const conteo = esGira ? contarGira(propuesta.gira!.shows) : { shows: 0, venues: 0, ciudades: 0 };
+  const dias = Math.max(1, propuesta.trato?.diasServicio ?? 1);
+  if (esGira && conteo.shows === 0) {
     return NextResponse.json({ error: "La gira todavía no tiene fechas" }, { status: 400 });
   }
+
+  const plantilla: { clave: string; veces: string }[] = esGira ? PLANTILLA_GIRA : PLANTILLA_EVENTO;
 
   const clavesPuestas = new Set(propuesta.lineas.map((l) => l.servicio?.clave).filter(Boolean) as string[]);
   const conceptosPuestos = new Set(propuesta.lineas.map((l) => l.concepto.toLowerCase()));
 
   const servicios = await prisma.servicioPM.findMany({
-    where: { clave: { in: PLANTILLA.map((p) => p.clave) } },
+    where: { clave: { in: plantilla.map((p) => p.clave) } },
   });
   const porClave = new Map(servicios.map((s) => [s.clave, s]));
 
-  const faltanEnCatalogo = PLANTILLA.filter((p) => !porClave.has(p.clave)).map((p) => p.clave);
+  const faltanEnCatalogo = plantilla.filter((p) => !porClave.has(p.clave)).map((p) => p.clave);
 
   let orden = propuesta.lineas.length * 10;
   const nuevas: Prisma.PropuestaServicioLineaUncheckedCreateInput[] = [];
 
-  for (const item of PLANTILLA) {
+  for (const item of plantilla) {
     const servicio = porClave.get(item.clave);
     if (!servicio || clavesPuestas.has(item.clave)) continue;
 
@@ -100,9 +127,11 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
           ? conteo.venues
           : item.veces === "CIUDADES"
             ? Math.max(1, conteo.ciudades)
-            : item.veces === "UNA"
-              ? 1
-              : cantidadSugerida(servicio.unidadDefault, conteo);
+            : item.veces === "DIAS"
+              ? dias
+              : item.veces === "UNA"
+                ? 1
+                : cantidadSugerida(servicio.unidadDefault, conteo);
 
     orden += 10;
     const datos = {
@@ -122,23 +151,25 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     nuevas.push({ ...datos, subtotal: subtotalLinea(datos) });
   }
 
-  for (const r of REEMBOLSABLES) {
-    if (conceptosPuestos.has(r.concepto.toLowerCase())) continue;
-    orden += 10;
-    const datos = {
-      propuestaId: id,
-      tipo: r.tipo,
-      unidad: r.unidad,
-      concepto: r.concepto,
-      descripcion: r.descripcion,
-      cantidad: r.veces === "SHOWS" ? conteo.shows : Math.max(1, conteo.ciudades),
-      precioUnitario: 0,
-      costoUnitario: 0,
-      esIncluido: false,
-      esReembolsable: true,
-      orden,
-    };
-    nuevas.push({ ...datos, subtotal: subtotalLinea(datos) });
+  if (esGira) {
+    for (const r of REEMBOLSABLES) {
+      if (conceptosPuestos.has(r.concepto.toLowerCase())) continue;
+      orden += 10;
+      const datos = {
+        propuestaId: id,
+        tipo: r.tipo,
+        unidad: r.unidad,
+        concepto: r.concepto,
+        descripcion: r.descripcion,
+        cantidad: r.veces === "SHOWS" ? conteo.shows : Math.max(1, conteo.ciudades),
+        precioUnitario: 0,
+        costoUnitario: 0,
+        esIncluido: false,
+        esReembolsable: true,
+        orden,
+      };
+      nuevas.push({ ...datos, subtotal: subtotalLinea(datos) });
+    }
   }
 
   if (nuevas.length) {
@@ -147,17 +178,25 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
 
   const resumen = await recalcularPropuesta(id);
 
+  const origen = esGira
+    ? `la gira ${propuesta.gira!.nombre}`
+    : `el trato de ${propuesta.trato!.nombreEvento || propuesta.trato!.cliente.nombre}`;
+  const detalle = esGira
+    ? `${conteo.shows} shows en ${conteo.venues} venues`
+    : `${dias} ${dias === 1 ? "día" : "días"} de servicio`;
+
   await logActividad(
     session.id,
     "EDITAR",
     "propuesta_servicio",
     id,
-    `Propuesta ${propuesta.numero} armada desde la gira ${propuesta.gira.nombre} (${nuevas.length} líneas)`,
+    `Propuesta ${propuesta.numero} armada desde ${origen} (${nuevas.length} líneas)`,
   );
 
   return NextResponse.json({
     ok: true,
     agregadas: nuevas.length,
+    detalle,
     conteo,
     faltanEnCatalogo,
     resumen,

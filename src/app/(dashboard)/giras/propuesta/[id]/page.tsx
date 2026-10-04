@@ -30,6 +30,14 @@ export default async function PropuestaPage({ params }: { params: Promise<{ id: 
           },
         },
       },
+      trato: {
+        select: {
+          id: true,
+          nombreEvento: true,
+          diasServicio: true,
+          cliente: { select: { nombre: true } },
+        },
+      },
       lineas: {
         include: { servicio: { select: { id: true, clave: true, nombre: true } } },
         orderBy: [{ orden: "asc" }, { createdAt: "asc" }],
@@ -41,7 +49,7 @@ export default async function PropuestaPage({ params }: { params: Promise<{ id: 
 
   // El link que se le copia al cliente usa el dominio público configurado, el
   // mismo que arma el endpoint de envío: no el dominio desde el que se trabaja.
-  const [appUrl, servicios, equipos, roles, clientes, artistas, giras] = await Promise.all([
+  const [appUrl, servicios, equipos, roles, clientes, artistas, giras, tratos] = await Promise.all([
     getConfig("empresa.appUrl", process.env.NEXTAUTH_URL ?? "https://mainstagepro.vercel.app"),
     prisma.servicioPM.findMany({
       where: { activo: true },
@@ -75,6 +83,14 @@ export default async function PropuestaPage({ params }: { params: Promise<{ id: 
       select: { id: true, nombre: true, _count: { select: { shows: true } } },
       orderBy: { createdAt: "desc" },
     }),
+    // Un trato perdido ya no se cotiza; los demás sí, incluso los cerrados,
+    // porque la propuesta de servicios suele firmarse después de la venta.
+    prisma.trato.findMany({
+      where: { etapa: { not: "VENTA_PERDIDA" } },
+      select: { id: true, nombreEvento: true, cliente: { select: { nombre: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+    }),
   ]);
 
   return (
@@ -96,6 +112,13 @@ export default async function PropuestaPage({ params }: { params: Promise<{ id: 
                 venueId: s.venueId,
                 venueNombre: s.venue?.nombre ?? null,
               })),
+            }
+          : null,
+        trato: propuesta.trato
+          ? {
+              id: propuesta.trato.id,
+              nombre: propuesta.trato.nombreEvento || propuesta.trato.cliente.nombre,
+              diasServicio: propuesta.trato.diasServicio,
             }
           : null,
         lineas: propuesta.lineas.map((l) => ({
@@ -125,6 +148,7 @@ export default async function PropuestaPage({ params }: { params: Promise<{ id: 
       clientes={clientes}
       artistas={artistas}
       giras={giras}
+      tratos={tratos.map((t) => ({ id: t.id, nombre: t.nombreEvento || t.cliente.nombre }))}
     />
   );
 }
