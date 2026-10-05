@@ -182,8 +182,10 @@ export async function crearProyectoDesdeCotizacion(
         const tipoSrv = cot.tipoServicio || cot.trato?.tipoServicio;
         if (tipoSrv !== "RENTA") {
           try {
+            // Solo los que existen en el catálogo: los tratos viejos traen códigos
+            // de otra época que no significan nada para quien lee el brief.
             const claves: string[] = cot.trato?.serviciosInteres ? JSON.parse(cot.trato.serviciosInteres) : [];
-            const nombres = claves.map((c) => nombresServicio.get(c) ?? c);
+            const nombres = claves.map((c) => nombresServicio.get(c)).filter(Boolean);
             if (nombres.length > 0) partes.push(`Servicios contratados: ${nombres.join(", ")}`);
           } catch { /* ignore */ }
           if (cot.trato?.nivelInvolucramiento) {
