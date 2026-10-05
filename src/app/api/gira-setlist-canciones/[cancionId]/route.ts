@@ -55,6 +55,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ca
 
   if ("conTrack" in body) data.conTrack = !!body.conTrack;
 
+  // El color termina pintado en un style inline y en el relleno del PDF, así que
+  // entra como hexadecimal o no entra. Vacío significa "el de la paleta".
+  if ("bloqueColor" in body) {
+    const v = typeof body.bloqueColor === "string" ? body.bloqueColor.trim() : "";
+    if (v && !/^#[0-9a-f]{6}$/i.test(v)) {
+      return NextResponse.json({ error: "Ese color no es un hexadecimal" }, { status: 400 });
+    }
+    data.bloqueColor = v || null;
+  }
+
   if (!Object.keys(data).length) return NextResponse.json({ error: "Nada por actualizar" }, { status: 400 });
 
   try {

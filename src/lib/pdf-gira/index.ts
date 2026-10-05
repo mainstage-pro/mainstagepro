@@ -10,6 +10,7 @@ import { generarDaySheet } from "./day-sheet";
 import { generarAdvanceShow } from "./advance";
 import { generarListaCanales, generarRiderArtista, riderDeGira } from "./rider";
 import { generarLibroGira, parseSecciones } from "./libro";
+import { generarSetlistDoc } from "./setlist-doc";
 
 export type { PdfGira } from "./render";
 export { respuestaPdf } from "./render";
@@ -27,6 +28,9 @@ export interface DocumentoGira {
   /// El documento acepta `?secciones=` para recortar lo que imprime. Solo el
   /// libro: los demás son de una pieza y recortarlos no significa nada.
   modular?: boolean;
+  /// Qué hay que capturar cuando el generador no devuelve nada. "No se pudo
+  /// armar" a secas manda a buscar el problema a ciegas.
+  falta?: string;
 }
 
 export const DOCUMENTOS_GIRA = {
@@ -51,11 +55,20 @@ export const DOCUMENTOS_GIRA = {
     ambito: "GIRA",
     label: "Rider técnico",
     descripcion: "El rider del artista con su versión, notas por disciplina e input/output list.",
+    falta: "el rider técnico del artista",
   },
   "input-list": {
     ambito: "GIRA",
     label: "Input y output list",
     descripcion: "Solo las dos listas de canales, para el ingeniero de la casa.",
+    falta: "el rider técnico del artista",
+  },
+  setlist: {
+    ambito: "GIRA",
+    label: "Setlist",
+    descripcion:
+      "El repertorio por bloques con duración, tono, BPM, track y los cues de audio, luces y video. Desde un show sale el de esa fecha.",
+    falta: "el repertorio en la pestaña de Setlist",
   },
 } satisfies Record<string, DocumentoGira>;
 
@@ -75,6 +88,9 @@ export async function generarDocDeShow(
 ): Promise<PdfGira | null> {
   if (slug === "day-sheet") return generarDaySheet(showId);
   if (slug === "advance") return generarAdvanceShow(showId);
+  // El setlist es de gira, pero cada fecha puede tener su variante: desde un
+  // show se emite la de ese show y, si no la capturaron, el base avisando.
+  if (slug === "setlist") return generarSetlistDoc(giraId, showId);
   return generarDocDeGira(slug, giraId, secciones);
 }
 
@@ -87,6 +103,7 @@ export async function generarDocDeGira(
 ): Promise<PdfGira | null> {
   if (DOCUMENTOS_GIRA[slug].ambito === "SHOW") return null;
   if (slug === "libro-gira") return generarLibroGira(giraId, parseSecciones(secciones));
+  if (slug === "setlist") return generarSetlistDoc(giraId);
 
   // El rider y las listas salen del rider maestro; sin rider no hay documento.
   const resuelto = await riderDeGira(giraId);

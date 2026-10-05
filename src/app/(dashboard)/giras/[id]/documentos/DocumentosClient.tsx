@@ -6,10 +6,11 @@
  *  1. Libro de gira — el documento maestro. Se arma con las secciones que se
  *     elijan, así que una sola plantilla cubre desde el libro completo hasta la
  *     hoja de rooming suelta.
- *  2. Documentos del rider — rider y listas de canales. Salen del rider
- *     maestro, así que valen para todos los shows.
- *  3. Documentos por show — day sheet y advance. Un renglón por fecha, con su
- *     botón de descarga y su enlace público.
+ *  2. Documentos de la gira — rider, listas de canales y setlist. Valen para
+ *     todos los shows: los dos primeros salen del rider maestro y el setlist
+ *     del repertorio base.
+ *  3. Documentos por show — day sheet, advance y el setlist de la fecha. Un
+ *     renglón por show, con su botón de descarga y su enlace público.
  *  4. Archivero — lo que llega de afuera y hay que tener a mano.
  *
  * Cada documento se descarga o se comparte desde su propio renglón: no hay
@@ -80,22 +81,35 @@ interface Props {
   archivosIniciales: ArchivoFila[];
 }
 
+/// Los documentos que valen para toda la gira. El rider y las listas salen del
+/// rider maestro y sin él no existen; el setlist sale del repertorio, así que se
+/// puede emitir aunque el rider todavía no esté capturado.
 const DOCS_GIRA = [
   {
     slug: "rider",
     label: "Rider técnico",
     descripcion: "Lo que pide el artista, con prioridad y quién lo pone. Dos páginas: equipo e input/output list.",
+    necesitaRider: true,
   },
   {
     slug: "input-list",
     label: "Input y output list",
     descripcion: "Solo las dos listas de canales. Es lo que pide el ingeniero de la casa para parchar.",
+    necesitaRider: true,
+  },
+  {
+    slug: "setlist",
+    label: "Setlist",
+    descripcion:
+      "El repertorio por bloques con duración, tono, BPM, track y los cues de audio, luces y video. Aquí sale el base de la gira; el de una fecha se emite desde el renglón del show.",
+    necesitaRider: false,
   },
 ] as const;
 
 const DOCS_PLAZA = [
   { slug: "day-sheet", label: "Day sheet" },
   { slug: "advance", label: "Advance" },
+  { slug: "setlist", label: "Setlist" },
 ] as const;
 
 function etiquetaShow(p: { fecha: string; ciudad: string | null }): string {
@@ -376,59 +390,59 @@ export default function DocumentosClient({
       {/* ── Documentos generales ── */}
       <section className="space-y-3">
         <div>
-          <h2 className="ms-h2">Documentos del rider</h2>
+          <h2 className="ms-h2">Documentos de la gira</h2>
           <p className="ms-meta mt-1">
             {rider
-              ? `Salen de ${rider.nombre} · versión ${rider.version}${riderHeredado ? " (rider activo del artista, no está enganchado a este registro)" : ""}`
-              : `${artistaNombre} no tiene un rider técnico capturado: sin él no se pueden emitir estos documentos.`}
+              ? `El rider y las listas salen de ${rider.nombre} · versión ${rider.version}${riderHeredado ? " (rider activo del artista, no está enganchado a este registro)" : ""}. El setlist sale del repertorio capturado en la pestaña de Setlist.`
+              : `${artistaNombre} no tiene un rider técnico capturado: sin él no se pueden emitir el rider ni las listas de canales. El setlist sí, porque sale del repertorio.`}
           </p>
         </div>
 
-        {!rider ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          {DOCS_GIRA.filter((d) => rider || !d.necesitaRider).map((d) => (
+            <div key={d.slug} className="ms-card p-4 flex flex-col gap-3">
+              <div>
+                <p className="text-sm font-medium text-white">{d.label}</p>
+                <p className="ms-meta mt-1 leading-relaxed">{d.descripcion}</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 mt-auto">
+                <a
+                  className="ms-btn-secondary"
+                  href={`/api/giras/${giraId}/documentos/${d.slug}?inline=1`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Ver
+                </a>
+                <a className="ms-btn-ghost" href={`/api/giras/${giraId}/documentos/${d.slug}`}>
+                  Descargar
+                </a>
+                <button
+                  className="ms-btn-ghost"
+                  disabled={ocupado === `gira:${d.slug}`}
+                  onClick={() => compartirDeGira(d.slug)}
+                >
+                  {ocupado === `gira:${d.slug}` ? "Generando…" : "Copiar enlace"}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {!rider && (
           <div className="ms-empty-state">
             <p className="text-sm text-[#6b7280]">
               Captura el rider del artista y engánchalo aquí para poder emitir el rider técnico y las listas de
               canales.
             </p>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            {DOCS_GIRA.map((d) => (
-              <div key={d.slug} className="ms-card p-4 flex flex-col gap-3">
-                <div>
-                  <p className="text-sm font-medium text-white">{d.label}</p>
-                  <p className="ms-meta mt-1 leading-relaxed">{d.descripcion}</p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 mt-auto">
-                  <a
-                    className="ms-btn-secondary"
-                    href={`/api/giras/${giraId}/documentos/${d.slug}?inline=1`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Ver
-                  </a>
-                  <a className="ms-btn-ghost" href={`/api/giras/${giraId}/documentos/${d.slug}`}>
-                    Descargar
-                  </a>
-                  <button
-                    className="ms-btn-ghost"
-                    disabled={ocupado === `gira:${d.slug}`}
-                    onClick={() => compartirDeGira(d.slug)}
-                  >
-                    {ocupado === `gira:${d.slug}` ? "Generando…" : "Copiar enlace"}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
         )}
 
         {token && (
           <div className="ms-card-deep p-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <p className="ms-meta">
-              Hay un enlace público activo para el libro de gira, el rider y las listas de canales. Caduca en 180
-              días desde que se generó.
+              Hay un enlace público activo para el libro de gira, el rider, las listas de canales y el setlist.
+              Caduca en 180 días desde que se generó.
             </p>
             <button className="ms-btn-ghost shrink-0" onClick={revocarGira}>
               Revocar enlace
@@ -442,8 +456,9 @@ export default function DocumentosClient({
         <div>
           <h2 className="ms-h2">Documentos por show</h2>
           <p className="ms-meta mt-1">
-            El day sheet y el advance hablan de una fecha, así que se emiten desde el renglón del show. El enlace de
-            un show abre además el rider: es el único que se le manda al foro.
+            El day sheet y el advance hablan de una fecha, así que se emiten desde el renglón del show; el setlist de
+            aquí es el de esa fecha, y si el show no capturó el suyo sale el base avisándolo. El enlace de un show
+            abre además el rider: es el único que se le manda al foro.
           </p>
         </div>
 

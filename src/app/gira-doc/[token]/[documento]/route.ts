@@ -18,6 +18,7 @@ import {
   generarDocDeGira,
   generarDocDeShow,
   respuestaPdf,
+  type DocumentoGira,
 } from "@/lib/pdf-gira";
 import { fmtFechaLarga } from "@/lib/giras";
 
@@ -53,7 +54,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ token: s
   if (!esSlugDocGira(documento)) {
     return aviso("Documento no encontrado", "El enlace apunta a un documento que no existe.", 404);
   }
-  const doc = DOCUMENTOS_GIRA[documento];
+  const doc: DocumentoGira = DOCUMENTOS_GIRA[documento];
 
   // Primero se busca como show: es el caso normal, el day sheet se comparte por
   // fecha. Si no es de show, se intenta como gira completa.
@@ -106,7 +107,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ token: s
   if (!pdf) {
     return aviso(
       `${doc.label} todavía no se puede armar`,
-      `A la gira "${gira!.nombre}" le falta información para este documento: el rider técnico todavía no está capturado.`,
+      `A la gira "${gira!.nombre}" le falta información para este documento: falta capturar ${doc.falta ?? "lo que lo alimenta"}.`,
       409,
     );
   }

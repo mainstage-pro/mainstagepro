@@ -31,10 +31,11 @@ import { CSS } from "@dnd-kit/utilities";
 import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
 import {
+  bloquesNormalizados,
+  COLORES_BLOQUE,
   esCancion,
   fmtFechaCorta,
   fmtMinSeg,
-  nombresDeBloqueNormalizados,
   segmentarSetlist,
   segundosDesdeTexto,
   TIPOS_FILA_SETLIST,
@@ -47,6 +48,7 @@ export interface CancionFila {
   orden: number;
   titulo: string;
   bloqueNombre: string | null;
+  bloqueColor: string | null;
   duracionSeg: number | null;
   tonalidad: string | null;
   bpm: number | null;
@@ -121,6 +123,10 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
     setlistsIniciales.find((s) => s.showId === showId)?.id ?? setlistsIniciales[0]?.id ?? null,
   );
   const [trabajando, setTrabajando] = useState(false);
+  // Qué bloque tiene la paleta abierta, por el id de su ancla. La paleta se
+  // despliega en el mismo renglón y no flotando: la tabla va dentro de un
+  // contenedor con scroll horizontal, que recortaría cualquier popover.
+  const [paleta, setPaleta] = useState<string | null>(null);
 
   // Los temporizadores viven en un ref: si se recrearan en cada render, cada
   // tecla abriría un guardado nuevo en vez de reemplazar el pendiente.
@@ -200,12 +206,15 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
     const hasta = s.canciones.findIndex((c) => c.id === over.id);
     if (desde < 0 || hasta < 0) return;
 
-    // El nombre del bloque se reacomoda igual que en el servidor para que la
-    // pantalla no muestre un bloque bautizado que al recargar aparece sin
-    // nombre.
+    // El nombre y el color del bloque se reacomodan igual que en el servidor
+    // para que la pantalla no muestre un bloque bautizado que al recargar
+    // aparece sin nombre.
     const movidas = arrayMove(s.canciones, desde, hasta).map((c, i) => ({ ...c, orden: i * 10 }));
-    const nombres = new Map(nombresDeBloqueNormalizados(movidas).map((c) => [c.id, c.bloqueNombre]));
-    const finales = movidas.map((c) => (nombres.has(c.id) ? { ...c, bloqueNombre: nombres.get(c.id)! } : c));
+    const bloques = new Map(bloquesNormalizados(movidas).map((c) => [c.id, c]));
+    const finales = movidas.map((c) => {
+      const b = bloques.get(c.id);
+      return b ? { ...c, bloqueNombre: b.bloqueNombre, bloqueColor: b.bloqueColor } : c;
+    });
 
     setSetlists((prev) => prev.map((x) => (x.id === setlistId ? { ...x, canciones: finales } : x)));
 
@@ -372,9 +381,9 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
                     <a
                       href={`/api/gira-setlists/${s.id}/escenario`}
                       className="ms-micro text-[#6b7280] hover:text-white transition-colors"
-                      title="Hoja de letra grande para pegar en el escenario"
+                      title="PDF de letra gigante para pegar en el piso del escenario. El formato con membrete está en Documentos."
                     >
-                      Hoja de escenario
+                      Descargar PDF de escenario
                     </a>
                   )}
                   <button
@@ -527,12 +536,14 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
                                 <tr className="bg-[#0d0d0d]">
                                   <td className="ms-td" colSpan={13}>
                                     <span className="inline-flex items-center gap-2">
-                                      <span
+                                      <button
+                                        onClick={() => setPaleta(paleta === seg.anclaId ? null : seg.anclaId)}
                                         className="inline-flex items-center justify-center w-5 h-5 rounded-sm text-[11px] font-bold text-black"
                                         style={{ backgroundColor: seg.color }}
+                                        title="Cambiar el color del bloque"
                                       >
                                         {seg.numero}
-                                      </span>
+                                      </button>
                                       <input
                                         value={seg.nombre ?? ""}
                                         onChange={(e) => editarCancion(s.id, seg.anclaId, { bloqueNombre: e.target.value })}
@@ -540,10 +551,39 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
                                         title="Cómo le dice el crew a esta tanda"
                                         className="ms-input-inline w-[200px] text-white"
                                       />
-                                      <span className="ms-micro text-[#9ca3af]">
-                                        {seg.canciones.length} canciones
-                                        {segundosBloque > 0 ? ` · ${Math.round(segundosBloque / 60)} min` : ""}
-                                      </span>
+                                      {paleta === seg.anclaId ? (
+                                        <span className="inline-flex items-center gap-1">
+                                          {COLORES_BLOQUE.map((col) => (
+                                            <button
+                                              key={col}
+                                              onClick={() => {
+                                                editarCancion(s.id, seg.anclaId, { bloqueColor: col }, true);
+                                                setPaleta(null);
+                                              }}
+                                              className={`w-5 h-5 rounded-sm ${
+                                                seg.color === col ? "ring-2 ring-white ring-offset-1 ring-offset-[#0d0d0d]" : ""
+                                              }`}
+                                              style={{ backgroundColor: col }}
+                                              title={col}
+                                            />
+                                          ))}
+                                          <button
+                                            onClick={() => {
+                                              editarCancion(s.id, seg.anclaId, { bloqueColor: null }, true);
+                                              setPaleta(null);
+                                            }}
+                                            className="ms-micro text-[#9ca3af] hover:text-white px-1"
+                                            title="Volver al color que le toca por su número"
+                                          >
+                                            Automático
+                                          </button>
+                                        </span>
+                                      ) : (
+                                        <span className="ms-micro text-[#9ca3af]">
+                                          {seg.canciones.length} canciones
+                                          {segundosBloque > 0 ? ` · ${Math.round(segundosBloque / 60)} min` : ""}
+                                        </span>
+                                      )}
                                     </span>
                                   </td>
                                 </tr>

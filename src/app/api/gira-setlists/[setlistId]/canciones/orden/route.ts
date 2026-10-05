@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { nombresDeBloqueNormalizados } from "@/lib/giras";
+import { bloquesNormalizados } from "@/lib/giras";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ setlistId: string }> }) {
   const session = await getSession();
@@ -22,7 +22,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ se
 
   const actuales = await prisma.giraSetlistCancion.findMany({
     where: { setlistId },
-    select: { id: true, tipo: true, bloqueNombre: true },
+    select: { id: true, tipo: true, bloqueNombre: true, bloqueColor: true },
   });
 
   // Que lleguen los mismos ids del setlist y ninguno más: si la lista llega
@@ -34,15 +34,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ se
 
   const porId = new Map(actuales.map((c) => [c.id, c]));
   const ordenadas = (ids as string[]).map((id) => porId.get(id)!);
-  const nombres = new Map(nombresDeBloqueNormalizados(ordenadas).map((c) => [c.id, c.bloqueNombre]));
+  const bloques = new Map(bloquesNormalizados(ordenadas).map((c) => [c.id, c]));
 
   await prisma.$transaction(
-    (ids as string[]).map((id, i) =>
-      prisma.giraSetlistCancion.update({
+    (ids as string[]).map((id, i) => {
+      const b = bloques.get(id);
+      return prisma.giraSetlistCancion.update({
         where: { id },
-        data: nombres.has(id) ? { orden: i * 10, bloqueNombre: nombres.get(id) } : { orden: i * 10 },
-      }),
-    ),
+        data: b ? { orden: i * 10, bloqueNombre: b.bloqueNombre, bloqueColor: b.bloqueColor } : { orden: i * 10 },
+      });
+    }),
   );
 
   const canciones = await prisma.giraSetlistCancion.findMany({ where: { setlistId }, orderBy: { orden: "asc" } });

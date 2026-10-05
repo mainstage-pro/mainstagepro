@@ -79,6 +79,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                 orden: c.orden,
                 titulo: c.titulo,
                 bloqueNombre: c.bloqueNombre,
+                bloqueColor: c.bloqueColor,
                 duracionSeg: c.duracionSeg,
                 tonalidad: c.tonalidad,
                 bpm: c.bpm,

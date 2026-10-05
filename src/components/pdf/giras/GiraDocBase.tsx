@@ -96,6 +96,7 @@ export const g = StyleSheet.create({
     fontSize: 6.4, fontFamily: "Helvetica-Bold", color: C.negro,
     textTransform: "uppercase", letterSpacing: 0.8,
   },
+  tablaGrupoChip: { width: 6, height: 6, borderRadius: 1.5, marginRight: 5, marginTop: 0.6 },
   celda: { fontSize: 8.2, color: C.negro, lineHeight: 1.35 },
   celdaFuerte: { fontSize: 8.4, fontFamily: "Helvetica-Bold", color: C.negro },
   celdaSub: { fontSize: 6.6, color: C.grisMedio, marginTop: 1, lineHeight: 1.35 },
@@ -246,7 +247,9 @@ export interface CeldaTabla {
 }
 
 export type RenglonTabla =
-  | { tipo: "grupo"; clave: string; texto: string }
+  /// `color` pinta una viñeta del color del grupo, para cruzar el papel con otro
+  /// donde el mismo grupo ya viene de color (el setlist y su hoja de escenario).
+  | { tipo: "grupo"; clave: string; texto: string; color?: string | null }
   | { tipo: "fila"; clave: string; celdas: CeldaTabla[] };
 
 function estiloColumna(c: ColumnaTabla): { width?: number; flex?: number; paddingRight: number } {
@@ -274,6 +277,7 @@ export function Tabla({ columnas, renglones }: { columnas: ColumnaTabla[]; rengl
           alterna = 0;
           return (
             <View key={r.clave} style={g.tablaGrupo} wrap={false}>
+              {r.color ? <View style={[g.tablaGrupoChip, { backgroundColor: r.color }]} /> : null}
               <Text style={g.tablaGrupoTxt}>{r.texto}</Text>
             </View>
           );

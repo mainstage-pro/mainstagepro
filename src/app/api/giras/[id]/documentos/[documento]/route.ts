@@ -1,4 +1,5 @@
-// Descarga con sesión de los documentos de gira (rider y listas de canales).
+// Descarga con sesión de los documentos de gira (libro, rider, listas de
+// canales y setlist).
 //
 // Los documentos de show no salen por aquí: necesitan fecha y foro, y viven en
 // /api/gira-shows/[showId]/documentos/[documento].
@@ -6,7 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { DOCUMENTOS_GIRA, esSlugDocGira, generarDocDeGira, respuestaPdf } from "@/lib/pdf-gira";
+import { DOCUMENTOS_GIRA, esSlugDocGira, generarDocDeGira, respuestaPdf, type DocumentoGira } from "@/lib/pdf-gira";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string; documento: string }> }) {
   const session = await getSession();
@@ -16,7 +17,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!esSlugDocGira(documento)) {
     return NextResponse.json({ error: "Ese documento no existe" }, { status: 404 });
   }
-  if (DOCUMENTOS_GIRA[documento].ambito === "SHOW") {
+  const doc: DocumentoGira = DOCUMENTOS_GIRA[documento];
+  if (doc.ambito === "SHOW") {
     return NextResponse.json({ error: "Ese documento se emite desde un show" }, { status: 400 });
   }
 
@@ -26,7 +28,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const pdf = await generarDocDeGira(documento, id, req.nextUrl.searchParams.get("secciones"));
   if (!pdf) {
     return NextResponse.json(
-      { error: `No se pudo armar el ${DOCUMENTOS_GIRA[documento].label.toLowerCase()}: falta el rider técnico` },
+      {
+        error: `No se pudo armar el ${doc.label.toLowerCase()}: falta capturar ${doc.falta ?? "la información que lo alimenta"}`,
+      },
       { status: 409 },
     );
   }
