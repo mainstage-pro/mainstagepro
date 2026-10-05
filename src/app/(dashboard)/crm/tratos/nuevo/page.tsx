@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-import { Telescope, Search, ClipboardList, CheckCircle2, AlertTriangle, Smartphone, CalendarClock, type LucideIcon } from "lucide-react";
+import { Telescope, Search, ClipboardList, CheckCircle2, AlertTriangle, Smartphone, CalendarClock, Package, Settings, PartyPopper, Music, type LucideIcon } from "lucide-react";
 
 import { Combobox } from "@/components/Combobox";
 import { ORIGEN_LEAD_OPTIONS, MOMENTO_OPTIONS } from "@/lib/constants";
@@ -65,6 +65,19 @@ const ETAPAS_CARDS = [
   },
 ] as const;
 
+// Los iconos son los mismos del selector del descubrimiento: el vendedor
+// reconoce la tarjeta, no vuelve a leerla.
+const SERVICIO_ICONOS: Record<Servicio, LucideIcon> = {
+  RENTA: Package,
+  PRODUCCION_TECNICA: Settings,
+  DIRECCION_OPERACIONES: ClipboardList,
+};
+
+const CANAL_ICONOS: Record<CanalOperativo, LucideIcon> = {
+  EVENTO: PartyPopper,
+  SHOW: Music,
+};
+
 const ORIGEN_VENTA_OPTIONS = [
   { value: "CLIENTE_PROPIO", label: "Cliente propio (10% comisión)" },
   { value: "PUBLICIDAD",     label: "Lead por publicidad (5%)" },
@@ -83,6 +96,9 @@ export default function NuevoContactoPage() {
   const prospectAplicadoRef = useRef<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  // El alta son dos pantallas: primero qué vendemos (de eso depende todo el
+  // camino siguiente), después de quién es el trato.
+  const [paso, setPaso] = useState<1 | 2>(1);
 
 
   const [clienteId, setClienteId] = useState("");
@@ -277,9 +293,9 @@ export default function NuevoContactoPage() {
         return;
       }
       const { trato } = await res.json();
-      // El trato ahora es un registro único: al crearlo se abre su página en el
-      // panel de descubrimiento para capturar el brief (ya no hay wizard aparte).
-      router.push(`/crm/tratos/${trato.id}?panel=descubrimiento`);
+      // Aterriza en el descubrimiento en modo foco: la captura del evento sin el
+      // resto de la página del trato encima. De ahí se sale con "Ver trato completo".
+      router.push(`/crm/tratos/${trato.id}?panel=descubrimiento&foco=1`);
     } catch {
       setError("Error de conexión");
       setLoading(false);
@@ -292,12 +308,26 @@ export default function NuevoContactoPage() {
 
 
   return (
-    <div className="p-4 md:p-6 max-w-2xl mx-auto">
+    <div className={`p-4 md:p-6 mx-auto ${paso === 1 ? "max-w-3xl" : "max-w-2xl"}`}>
       {/* Header */}
       <div className="mb-6">
-        <button onClick={() => router.back()} className="text-gray-600 hover:text-white text-sm mb-2 transition-colors">← Atrás</button>
-        <h1 className="ms-h1">Nuevo trato</h1>
-        <p className="text-gray-600 text-xs mt-1">Registra un nuevo trato en el funnel de ventas</p>
+        <button
+          onClick={() => (paso === 2 ? (setPaso(1), setError("")) : router.back())}
+          className="text-gray-600 hover:text-white text-sm mb-2 transition-colors"
+        >
+          ← Atrás
+        </button>
+        <h1 className="ms-h1">{paso === 1 ? "Qué vendemos" : "De quién es el trato"}</h1>
+        <p className="text-gray-600 text-xs mt-1">
+          {paso === 1
+            ? "Paso 1 de 2 · El servicio y el canal deciden todo el camino siguiente."
+            : "Paso 2 de 2 · Cliente, etapa y origen. El evento se captura en el descubrimiento."}
+        </p>
+        <div className="flex gap-1.5 mt-3">
+          {[1, 2].map(n => (
+            <div key={n} className={`h-1 flex-1 rounded-full transition-colors ${paso >= n ? "bg-[#B3985B]" : "bg-[#222]"}`} />
+          ))}
+        </div>
       </div>
 
       {error && (
@@ -305,6 +335,107 @@ export default function NuevoContactoPage() {
       )}
 
       <div className="space-y-4">
+
+        {paso === 1 && (<>
+        {/* ── Paso 1: qué vendemos y dónde se opera ── */}
+        <div className="ms-card p-5">
+          <h2 className="text-xs font-semibold text-[#B3985B] mb-1 uppercase tracking-wider">Qué vendemos</h2>
+          <p className="text-[11px] text-gray-600 mb-4">
+            La escalera es acumulativa pero se contrata por separado. Puedes marcar más de uno.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {SERVICIOS.map(s => {
+              const Icono = SERVICIO_ICONOS[s];
+              const isActive = servicios.includes(s);
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setServicios(prev =>
+                    prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s],
+                  )}
+                  className={`text-left p-4 rounded-xl border transition-all ${
+                    isActive ? "border-[#B3985B] bg-[#B3985B]/10" : "border-[#222] bg-[#111] hover:border-[#444]"
+                  }`}
+                >
+                  <div className="mb-2">
+                    <Icono strokeWidth={1.75} className={`w-6 h-6 ${isActive ? "text-[#B3985B]" : "text-gray-500"}`} />
+                  </div>
+                  <p className={`text-sm font-semibold mb-1 ${isActive ? "text-[#B3985B]" : "text-white"}`}>
+                    {SERVICIO_LABELS[s]}
+                  </p>
+                  <p className="text-xs text-gray-500 leading-relaxed">{SERVICIO_DESCRIPCIONES[s]}</p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="ms-card p-5">
+          <h2 className="text-xs font-semibold text-[#B3985B] mb-1 uppercase tracking-wider">Se lleva en</h2>
+          <p className="text-[11px] text-gray-600 mb-4">
+            De esto depende el resto del proceso: no se pregunta ni se opera igual un evento que una gira.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {CANALES.map(c => {
+              const Icono = CANAL_ICONOS[c];
+              const isActive = canal === c;
+              return (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setCanal(c)}
+                  className={`text-left p-4 rounded-xl border transition-all ${
+                    isActive ? "border-[#B3985B] bg-[#B3985B]/10" : "border-[#222] bg-[#111] hover:border-[#444]"
+                  }`}
+                >
+                  <div className="mb-2">
+                    <Icono strokeWidth={1.75} className={`w-6 h-6 ${isActive ? "text-[#B3985B]" : "text-gray-500"}`} />
+                  </div>
+                  <p className={`text-sm font-semibold mb-1 ${isActive ? "text-[#B3985B]" : "text-white"}`}>
+                    {CANAL_LABELS[c]}
+                  </p>
+                  <p className="text-xs text-gray-500 leading-relaxed">{CANAL_DESCRIPCIONES[c]}</p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="flex gap-3 justify-between pb-6">
+          <button
+            onClick={() => router.back()}
+            className="px-5 py-2.5 rounded-xl border border-[#333] text-gray-400 hover:text-white text-sm transition-colors"
+          >
+            ← Cancelar
+          </button>
+          <button
+            onClick={() => { setError(""); setPaso(2); }}
+            disabled={!servicios.length || !canal}
+            title={!servicios.length || !canal ? "Elige el servicio y el canal para continuar" : undefined}
+            className="px-6 py-2.5 rounded-xl text-sm font-semibold bg-[#B3985B] text-black transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Continuar →
+          </button>
+        </div>
+        </>)}
+
+        {paso === 2 && (<>
+        {/* ── Lo elegido en el paso 1: se lee, no se vuelve a preguntar ── */}
+        <div className="flex items-center gap-2 flex-wrap px-1">
+          <span className="text-[10px] text-gray-600 uppercase tracking-wider shrink-0">Vendemos:</span>
+          <span className="text-xs text-[#B3985B] font-medium">
+            {servicios.map(s => SERVICIO_LABELS[s]).join(" · ")}
+          </span>
+          <span className="text-[10px] text-gray-600 uppercase tracking-wider shrink-0 ml-2">Se lleva en:</span>
+          <span className="text-xs text-[#B3985B] font-medium">{canal ? CANAL_LABELS[canal] : ""}</span>
+          <button
+            onClick={() => { setPaso(1); setError(""); }}
+            className="text-[11px] text-gray-600 hover:text-[#B3985B] underline transition-colors ml-1"
+          >
+            Cambiar
+          </button>
+        </div>
 
         {/* ── Sección 1: Cliente ── */}
         <div className="ms-card p-5">
@@ -434,61 +565,6 @@ export default function NuevoContactoPage() {
               )}
             </div>
           )}
-        </div>
-
-        {/* ── Sección: Qué vendemos y dónde se opera ── */}
-        <div className="ms-card p-5">
-          <h2 className="text-xs font-semibold text-[#B3985B] mb-1 uppercase tracking-wider">Qué vendemos</h2>
-          <p className="text-[11px] text-gray-600 mb-4">
-            La escalera es acumulativa pero se contrata por separado. Puedes marcar más de uno.
-          </p>
-          <div className="space-y-2">
-            {SERVICIOS.map(s => {
-              const isActive = servicios.includes(s);
-              return (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => setServicios(prev =>
-                    prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s],
-                  )}
-                  className={`w-full text-left p-3 rounded-xl border transition-all ${
-                    isActive ? "border-[#B3985B] bg-[#B3985B]/10" : "border-[#2a2a2a] hover:border-[#3a3a3a]"
-                  }`}
-                >
-                  <p className={`text-sm font-semibold ${isActive ? "text-[#B3985B]" : "text-white"}`}>
-                    {SERVICIO_LABELS[s]}
-                  </p>
-                  <p className="text-gray-500 text-[11px] mt-0.5 leading-snug">{SERVICIO_DESCRIPCIONES[s]}</p>
-                </button>
-              );
-            })}
-          </div>
-
-          <h2 className="text-xs font-semibold text-[#B3985B] mb-1 mt-5 uppercase tracking-wider">Se lleva en</h2>
-          <p className="text-[11px] text-gray-600 mb-3">
-            De esto depende el resto del proceso: no se pregunta ni se opera igual un evento que una gira.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {CANALES.map(c => {
-              const isActive = canal === c;
-              return (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setCanal(c)}
-                  className={`text-left p-3 rounded-xl border transition-all ${
-                    isActive ? "border-[#B3985B] bg-[#B3985B]/10" : "border-[#2a2a2a] hover:border-[#3a3a3a]"
-                  }`}
-                >
-                  <p className={`text-sm font-semibold ${isActive ? "text-[#B3985B]" : "text-white"}`}>
-                    {CANAL_LABELS[c]}
-                  </p>
-                  <p className="text-gray-500 text-[11px] mt-0.5 leading-snug">{CANAL_DESCRIPCIONES[c]}</p>
-                </button>
-              );
-            })}
-          </div>
         </div>
 
         {/* ── Sección: Momento de contratación ── */}
@@ -706,10 +782,10 @@ export default function NuevoContactoPage() {
         {/* ── CTA ── */}
         <div className="flex gap-3 justify-between pb-6">
           <button
-            onClick={() => router.back()}
+            onClick={() => { setPaso(1); setError(""); }}
             className="px-5 py-2.5 rounded-xl border border-[#333] text-gray-400 hover:text-white text-sm transition-colors"
           >
-            ← Cancelar
+            ← Atrás
           </button>
           <button
             onClick={crear}
@@ -723,6 +799,7 @@ export default function NuevoContactoPage() {
             {loading ? "Creando..." : `Crear trato en ${etapaSeleccionada?.label ?? "..."} →`}
           </button>
         </div>
+        </>)}
       </div>
     </div>
   );

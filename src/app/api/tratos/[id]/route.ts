@@ -161,7 +161,15 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     data.servicios = serializeServicios(servicios);
     data.tipoServicio = espejoTipoServicio(servicios);
   } else if ("tipoServicio" in body) {
-    data.servicios = serializeServicios(serviciosDesdeTipo(body.tipoServicio as string | null));
+    // El autoguardado del descubrimiento manda `tipoServicio` en cada pasada. Si
+    // ya es el espejo de la combinación guardada, no se toca: sembrar desde el
+    // espejo borraría los niveles inferiores (RENTA + DIRECCION_OPERACIONES
+    // espeja a DIRECCION_TECNICA y volvería a un solo servicio).
+    const actual = await prisma.trato.findUnique({ where: { id }, select: { servicios: true } });
+    const guardados = parseServicios(actual?.servicios);
+    if (espejoTipoServicio(guardados) !== body.tipoServicio) {
+      data.servicios = serializeServicios(serviciosDesdeTipo(body.tipoServicio as string | null));
+    }
   }
 
   // Auto-set fechaCierre y etapaCambiadaEn cuando etapa cambia

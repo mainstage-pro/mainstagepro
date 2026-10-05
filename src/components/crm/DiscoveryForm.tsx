@@ -12,6 +12,7 @@ import { isLegacyString, parseLinks } from "@/utils/legacyText";
 import { parseFechasEvento } from "@/lib/fechas-evento";
 import { preguntasVisibles } from "@/lib/descubrimiento";
 import { parseCoberturas, coberturaMatch, SUBTIPOS_EVENTO } from "@/lib/constants";
+import { parseServicios, resumenServicios, CANAL_LABELS, type CanalOperativo } from "@/lib/servicios-trato";
 
 const PASOS_DISCOVERY: Array<{ id: number; label: string; icon: LucideIcon }> = [
   { id: 1, label: "Info Básica", icon: ClipboardList },
@@ -697,6 +698,7 @@ export default function DiscoveryForm({
   // Paso activo del wizard de descubrimiento (persisted in localStorage)
   const [pasoActivo, setPasoActivo] = useState(1);
   const [avisoPaso1, setAvisoPaso1] = useState(false);
+  const [editarServicio, setEditarServicio] = useState(false);
   const [saving, setSaving] = useState(false);
   const [creandoCotizacion, setCreandoCotizacion] = useState(false);
   const [eliminandoCotizacion, setEliminandoCotizacion] = useState<string | null>(null);
@@ -1315,6 +1317,10 @@ export default function DiscoveryForm({
   const tipoTieneNichos = catNichos.some(n => n.tipoEventoSlug === discForm.tipoEvento);
   const nichoOk = !tipoTieneNichos || !!discForm.nichoSlug || (discForm.subtipoEvento?.split(", ").some(s => s.startsWith("Otro")) ?? false);
   const servicioOk = !!discForm.tipoServicio;
+  // El trato declara servicios y canal en el alta; en modo cliente no se muestra
+  // (el cliente no decide qué le vendemos) y los tratos viejos sin declarar
+  // siguen viendo el selector.
+  const servicioYaDeclarado = !clientMode && parseServicios(trato?.servicios).length > 0;
   const paso1Incompleto = !clientMode && (!nichoOk || !servicioOk);
   const irAPaso = (target: number) => {
     if (paso1Incompleto && target > 1) { setAvisoPaso1(true); setPasoActivo(1); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
@@ -1535,6 +1541,26 @@ export default function DiscoveryForm({
             {/* Step 1 continuation: base fields */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
+                {/* El servicio ya se contestó al crear el trato. Aquí se lee y solo
+                    se abre el selector para corregirlo: una pregunta, una vez. */}
+                {servicioYaDeclarado && !editarServicio ? (
+                  <div className="flex items-center gap-2 flex-wrap rounded-xl border border-[#222] bg-[#111] px-4 py-3">
+                    <span className="text-[10px] text-gray-600 uppercase tracking-wider shrink-0">Vendemos:</span>
+                    <span className="text-xs text-[#B3985B] font-medium">{resumenServicios(trato?.servicios)}</span>
+                    {trato?.canalOperativo && (
+                      <>
+                        <span className="text-[10px] text-gray-600 uppercase tracking-wider shrink-0 ml-2">Se lleva en:</span>
+                        <span className="text-xs text-[#B3985B] font-medium">
+                          {CANAL_LABELS[trato.canalOperativo as CanalOperativo] ?? trato.canalOperativo}
+                        </span>
+                      </>
+                    )}
+                    <button type="button" onClick={() => setEditarServicio(true)}
+                      className="text-[11px] text-gray-600 hover:text-[#B3985B] underline transition-colors ml-auto">
+                      Cambiar
+                    </button>
+                  </div>
+                ) : (<>
                 <label className="text-xs text-gray-400 block mb-2">Tipo de servicio</label>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   {([
@@ -1553,6 +1579,7 @@ export default function DiscoveryForm({
                 {!clientMode && avisoPaso1 && !servicioOk && (
                   <p className="text-[11px] text-red-400 mt-2">Selecciona el tipo de servicio para continuar</p>
                 )}
+                </>)}
               </div>
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Nombre del evento / proyecto</label>

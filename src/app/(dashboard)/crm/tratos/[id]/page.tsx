@@ -798,6 +798,17 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   const panel: PanelId = esPanel(panelParam) ? (panelParam as PanelId) : panelDefault;
   const tab: TabId | null = esTab(searchParams.get("tab")) ? (searchParams.get("tab") as TabId) : null;
   const campo: string | null = searchParams.get("campo");
+  // Aterrizaje contenido: el alta manda aquí con ?foco=1 para capturar el evento
+  // sin la página completa del trato encima. Navegar a cualquier panel sale del
+  // modo, porque `navegar` arma los params desde cero.
+  // En prospección (o venta perdida) el panel de descubrimiento no renderiza
+  // nada, así que el modo foco dejaría la pantalla vacía: ahí no aplica.
+  const foco =
+    searchParams.get("foco") === "1" &&
+    panel === "descubrimiento" &&
+    !!trato &&
+    !ETAPAS_FRONTALES.includes(trato.etapa) &&
+    trato.etapa !== "VENTA_PERDIDA";
   const navegar = useCallback((nextPanel: PanelId, nextTab?: TabId | null, nextCampo?: string | null) => {
     const qs = new URLSearchParams();
     qs.set("panel", nextPanel);
@@ -1649,11 +1660,31 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto pb-12">
       <div className="mb-2"><BackButton /></div>
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6 mt-4">
+      <div className={`grid grid-cols-1 gap-6 mt-4 ${foco ? "" : "lg:grid-cols-[1fr_300px]"}`}>
       {/* ── LEFT COLUMN ── */}
       <div className="space-y-4 min-w-0">
 
+      {/* ── Barra de foco: lo mínimo para saber dónde estás y cómo salir ── */}
+      {foco && (
+        <div className="ms-card p-4 flex items-center gap-3 flex-wrap">
+          <div className="min-w-0">
+            <p className="text-white font-semibold text-sm truncate">{trato.cliente.nombre}</p>
+            <p className="text-[11px] text-gray-500 mt-0.5">
+              {resumenServicios(trato.servicios) ?? "sin servicios definidos"}
+              {trato.canalOperativo && ` · ${CANAL_LABELS[trato.canalOperativo as CanalOperativo] ?? trato.canalOperativo}`}
+            </p>
+          </div>
+          <button
+            onClick={() => navegar("descubrimiento")}
+            className="ml-auto text-xs text-gray-500 hover:text-[#B3985B] border border-[#2a2a2a] hover:border-[#B3985B]/40 rounded-lg px-3 py-1.5 transition-colors"
+          >
+            Ver trato completo →
+          </button>
+        </div>
+      )}
+
       {/* ── Compact Header ── */}
+      {!foco && (
       <div className="ms-card p-5">
         <div className="flex items-start gap-3 mb-3">
           <div className="flex-1 min-w-0">
@@ -1830,8 +1861,10 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           />
         </div>
       </div>
+      )}
 
       {/* ── Navegación de paneles (una sola URL por objeto, ?panel=) ── */}
+      {!foco && (
       <nav className="flex items-center gap-1 border-b border-[#1a1a1a] overflow-x-auto sticky top-0 z-10 bg-[#0a0a0a]/95 backdrop-blur">
         {([
           { id: "proceso" as PanelId, label: "Proceso" },
@@ -1850,6 +1883,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           </button>
         ))}
       </nav>
+      )}
 
       {/* ═══ PANEL: COTIZACIÓN ══════════════════════════════════════════ */}
       {panel === "cotizacion" && (<>
@@ -2655,7 +2689,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       </div> {/* end left column */}
 
       {/* ── RIGHT COLUMN ── */}
-      <div className="space-y-4 lg:sticky lg:top-6 self-start">
+      <div className={`space-y-4 lg:sticky lg:top-6 self-start ${foco ? "hidden" : ""}`}>
         {/* Client card */}
         <div className="ms-stat-card">
           <div className="flex items-center justify-between mb-3">
@@ -2963,7 +2997,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       </div> {/* end 2-column grid */}
 
       {/* ── Botón: Nuevo trato con este cliente ── */}
-      <div className="flex items-center justify-center pt-4 pb-2">
+      <div className={`flex items-center justify-center pt-4 pb-2 ${foco ? "hidden" : ""}`}>
         <a
           href={`/crm/tratos/nuevo?clienteId=${trato.cliente.id}`}
           className="flex items-center gap-2 text-xs text-gray-600 hover:text-gray-400 transition-colors border border-[#1e1e1e] hover:border-[#2a2a2a] rounded-lg px-3 py-2"
