@@ -265,7 +265,16 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
                     {s.duracionMin ? ` · ${s.duracionMin} min de slot` : ""}
                   </p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-3 shrink-0">
+                  {s.canciones.length > 0 && (
+                    <a
+                      href={`/api/gira-setlists/${s.id}/escenario`}
+                      className="ms-micro text-[#6b7280] hover:text-white transition-colors"
+                      title="Hoja de letra grande para pegar en el escenario"
+                    >
+                      Hoja de escenario
+                    </a>
+                  )}
                   <button
                     onClick={() => setAbierto(expandido ? null : s.id)}
                     className="ms-micro text-[#6b7280] hover:text-white transition-colors"
