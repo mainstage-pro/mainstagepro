@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { notaVisibleDeCotizacion } from "@/lib/notas-equipos";
 import { sincronizarProveedoresDeEquipos } from "@/lib/proveedor-equipos";
+import { etiquetaNivel } from "@/lib/servicios-direccion";
 
 // Migración lazy: hasta hoy un trato tenía a lo más un proyecto (índice único en
 // proyectos.tratoId). Ahora un trato puede generar varios proyectos (uno por
@@ -115,6 +116,21 @@ export async function crearProyectoDesdeCotizacion(
   const hoy = new Date();
   const fechaEvento = cot.fechaEvento ?? new Date(hoy.getTime() + 30 * 24 * 60 * 60 * 1000);
 
+  // El alcance palomeado en el descubrimiento son claves de `ServicioPM`; al brief
+  // del proyecto baja el nombre del servicio, no la clave.
+  const nombresServicio = new Map<string, string>();
+  {
+    let claves: string[] = [];
+    try { claves = cot.trato?.serviciosInteres ? JSON.parse(cot.trato.serviciosInteres) : []; } catch { /* ignore */ }
+    if (Array.isArray(claves) && claves.length > 0) {
+      const pm = await tx.servicioPM.findMany({
+        where: { clave: { in: claves.filter((c) => typeof c === "string") } },
+        select: { clave: true, nombre: true },
+      });
+      for (const s of pm) nombresServicio.set(s.clave, s.nombre);
+    }
+  }
+
   const lineasEquipo = cot.lineas.filter(
     (l) => ["EQUIPO_PROPIO", "EQUIPO_EXTERNO"].includes(l.tipo) && l.equipoId,
   );
@@ -166,9 +182,13 @@ export async function crearProyectoDesdeCotizacion(
         const tipoSrv = cot.tipoServicio || cot.trato?.tipoServicio;
         if (tipoSrv !== "RENTA") {
           try {
-            const cats = cot.trato?.serviciosInteres ? JSON.parse(cot.trato.serviciosInteres) : [];
-            if (cats.length > 0) partes.push(`Categorías: ${cats.join(", ")}`);
+            const claves: string[] = cot.trato?.serviciosInteres ? JSON.parse(cot.trato.serviciosInteres) : [];
+            const nombres = claves.map((c) => nombresServicio.get(c) ?? c);
+            if (nombres.length > 0) partes.push(`Servicios contratados: ${nombres.join(", ")}`);
           } catch { /* ignore */ }
+          if (cot.trato?.nivelInvolucramiento) {
+            partes.push(`Nivel de involucramiento: ${etiquetaNivel(cot.trato.nivelInvolucramiento)}`);
+          }
           if (cot.trato?.ideasReferencias) partes.push(`Referencias: ${cot.trato.ideasReferencias}`);
           if (cot.trato?.ventanaMontajeFin) partes.push(`Límite montaje: ${cot.trato.ventanaMontajeFin}`);
           if (cot.trato?.horaTerminoMontaje) partes.push(`Salida desmontaje: ${cot.trato.horaTerminoMontaje}`);

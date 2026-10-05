@@ -551,7 +551,68 @@ const SERVICIOS: ServicioSemilla[] = [
     costoSugerido: null,
     orden: 260,
   },
+  {
+    clave: "LOGISTICA_EVENTO",
+    nombre: "Logística integral del evento",
+    categoria: "LOGISTICA",
+    descripcion:
+      "Mover todo lo que tiene que estar en el sitio y que esté a la hora que toca: transporte, maniobras, cronograma de llegadas y salidas, y la secuencia de montaje que hace que un frente no bloquee al siguiente.",
+    entregables: [
+      "Cronograma de llegadas, maniobras y salidas por proveedor",
+      "Ruta de carga y descarga acordada con el venue",
+      "Checklist de material cargado y retornado",
+    ].join("\n"),
+    incluye: [
+      "Planeación de la secuencia de montaje y desmontaje",
+      "Coordinación de transportes, maniobras y accesos",
+      "Horarios de llegada negociados con cada proveedor",
+      "Seguimiento del cumplimiento el día del montaje",
+    ].join("\n"),
+    noIncluye: [
+      "El costo del transporte, fletes y maniobristas (se cotiza aparte)",
+      "Cuadrilla de carga y montaje",
+      "Almacenaje previo o posterior al evento",
+      "Permisos de vialidad y estacionamiento",
+    ].join("\n"),
+    unidadDefault: "GLOBAL",
+    tipoLinea: "COORDINACION",
+    precioSugerido: null,
+    costoSugerido: null,
+    orden: 270,
+  },
+  {
+    clave: "CONTROL_PRESUPUESTO",
+    nombre: "Control del presupuesto del evento",
+    categoria: "PRODUCTION_MANAGEMENT",
+    descripcion:
+      "Administrar el presupuesto global del evento, no solo nuestra parte: cuánto cuesta cada frente, cuánto queda, qué se puede recortar sin que se note y qué se cobra al final. El cliente sabe en qué va parado antes de que llegue la factura.",
+    entregables: [
+      "Presupuesto maestro por frente con lo comprometido y lo disponible",
+      "Comparativo de lo presupuestado contra lo gastado",
+      "Reporte de cierre con el costo real del evento",
+    ].join("\n"),
+    incluye: [
+      "Armado del presupuesto maestro con todos los frentes",
+      "Validación de cotizaciones y detección de duplicados o excedentes",
+      "Control de cambios y alertas antes de rebasar el presupuesto",
+      "Conciliación de cierre con el costo real del evento",
+    ].join("\n"),
+    noIncluye: [
+      "Pago a proveedores y manejo de recursos del cliente",
+      "Contabilidad, facturación y trámites fiscales",
+      "Auditoría de proveedores que el cliente contrató directo",
+    ].join("\n"),
+    unidadDefault: "GLOBAL",
+    tipoLinea: "COORDINACION",
+    precioSugerido: null,
+    costoSugerido: null,
+    orden: 280,
+  },
 ];
+
+// Un servicio nace con el nivel que dicta su orden (gira abajo de 200, evento
+// arriba); estos son las excepciones reales: se venden en los dos lados.
+const NIVEL_AMBOS = new Set(["COORD_PROVEEDORES"]);
 
 // El icono hace de miniatura en el catálogo (un servicio no tiene foto). Vive en un
 // mapa aparte y no en cada semilla para no repetir 19 veces un dato de presentación;
@@ -576,6 +637,8 @@ const ICONOS: Record<string, string> = {
   RENDER_PRODUCCION: "Box",
   DISENO_CONCEPTO: "Palette",
   PLANO_MONTAJE: "Ruler",
+  LOGISTICA_EVENTO: "Truck",
+  CONTROL_PRESUPUESTO: "DollarSign",
 };
 
 // Driver HTTP y no Prisma: el puerto 5432 de Neon no se alcanza desde local.
@@ -616,9 +679,17 @@ async function main() {
       [
         randomUUID(), s.clave, s.nombre, s.categoria, s.descripcion, s.entregables, s.incluye,
         s.noIncluye, s.unidadDefault, s.tipoLinea, s.precioSugerido, s.costoSugerido, s.orden,
-        ICONOS[s.clave] ?? "Briefcase", s.orden < 200 ? "GIRA" : "EVENTO",
+        ICONOS[s.clave] ?? "Briefcase",
+        NIVEL_AMBOS.has(s.clave) ? "AMBOS" : s.orden < 200 ? "GIRA" : "EVENTO",
       ],
     );
+
+    // El DO UPDATE no toca `nivelServicio` (Mauricio lo cambia desde la pantalla
+    // y una resiembra no debe pisárselo), pero las excepciones de arriba sí son
+    // decisión de código: se corrigen en las filas que ya existían.
+    if (NIVEL_AMBOS.has(s.clave)) {
+      await sql.query(`UPDATE servicios_pm SET "nivelServicio" = 'AMBOS' WHERE clave = $1`, [s.clave]);
+    }
 
     if (yaEstaban.has(s.clave)) {
       actualizados++;

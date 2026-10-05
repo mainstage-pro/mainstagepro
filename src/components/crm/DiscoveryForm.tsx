@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo, type ReactNode } from "react";
-import { ClipboardList, Settings, Truck, Handshake, Music, Wine, Building2, Calendar, Package, Palette, Sliders, DollarSign, Eye, Image as ImageIcon, Folder, FileText, PenLine, BarChart3, Paperclip, Lightbulb, Phone, List, Zap, Sparkles, PartyPopper, Clock, type LucideIcon } from "lucide-react";
+import { ClipboardList, Settings, Truck, Handshake, Music, Wine, Building2, Calendar, Package, Sliders, Image as ImageIcon, Folder, FileText, PenLine, BarChart3, Paperclip, Lightbulb, Phone, List, Zap, Sparkles, PartyPopper, Clock, type LucideIcon } from "lucide-react";
 import TimePicker from "@/components/ui/TimePicker";
 import VenuePicker from "@/components/ui/VenuePicker";
 import ArtistaPicker from "@/components/ui/ArtistaPicker";
@@ -13,6 +13,8 @@ import { parseFechasEvento } from "@/lib/fechas-evento";
 import { preguntasVisibles } from "@/lib/descubrimiento";
 import { parseCoberturas, coberturaMatch, SUBTIPOS_EVENTO } from "@/lib/constants";
 import { parseServicios, resumenServicios, CANAL_LABELS, type CanalOperativo } from "@/lib/servicios-trato";
+import { iconoServicio } from "@/lib/servicio-iconos";
+import { migrarServiciosInteres, nivelDesdeServiciosInteres, NIVELES_INVOLUCRAMIENTO } from "@/lib/servicios-direccion";
 
 const PASOS_DISCOVERY: Array<{ id: number; label: string; icon: LucideIcon }> = [
   { id: 1, label: "Info Básica", icon: ClipboardList },
@@ -754,6 +756,30 @@ export default function DiscoveryForm({
     return m;
   }, [catCategorias]);
 
+  // ── Catálogo de servicios de Dirección y operaciones ─────────────────────────
+  // El alcance que se palomea aquí es el que cobra la propuesta, así que sale del
+  // catálogo (/giras/servicios) y no de una lista en código: un servicio nuevo
+  // aparece solo. Proyección pública para que el formulario por token lo vea igual.
+  const [catServicios, setCatServicios] = useState<
+    { clave: string; nombre: string; descripcion: string | null; icono: string | null; nivelServicio: string | null }[]
+  >([]);
+  useEffect(() => {
+    let cancel = false;
+    fetch("/api/servicios-pm?publico=1")
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (!cancel && Array.isArray(d?.servicios)) setCatServicios(d.servicios); })
+      .catch(() => {});
+    return () => { cancel = true; };
+  }, []);
+
+  // Un trato de SHOW cobra los servicios de gira; uno de EVENTO los de un solo
+  // sitio. Los AMBOS siempre pasan. Sin canal declarado se muestra el lado evento,
+  // que es el caso de los tratos viejos.
+  const serviciosDisponibles = useMemo(() => {
+    const canal = trato?.canalOperativo === "SHOW" ? "GIRA" : "EVENTO";
+    return catServicios.filter(s => s.nivelServicio === canal || s.nivelServicio === "AMBOS");
+  }, [catServicios, trato?.canalOperativo]);
+
   // Cliente state
 
 
@@ -776,7 +802,9 @@ export default function DiscoveryForm({
     tipoServicio: "",
     ideasReferencias: "",
     notas: "",
+    // Claves de `ServicioPM` — el mismo vocabulario del catálogo y de la propuesta.
     serviciosInteres: [] as string[],
+    nivelInvolucramiento: "",
     equiposInteres: "",
     // Descubrimiento por nicho (catálogo comercial): nicho elegido, respuestas del
     // descubrimiento guiado (preguntaId→valor) y adicionales sugeridos encendidos.
@@ -931,6 +959,10 @@ export default function DiscoveryForm({
     if (trato.serviciosInteres) {
       try { const s = JSON.parse(trato.serviciosInteres); if (Array.isArray(s)) servicios = s; } catch { /* noop */ }
     }
+    // Los tratos viejos traen códigos `DT_*`: se traducen a claves del catálogo al
+    // abrir y el nivel se saca del mismo array si la columna aún viene vacía.
+    const nivelHeredado = trato.nivelInvolucramiento || nivelDesdeServiciosInteres(servicios);
+    servicios = migrarServiciosInteres(servicios);
     // Respaldo local: si el servidor no trae equipos pero el navegador guardó un
     // borrador de este trato, lo recuperamos para que no se pierda la selección.
     let equiposRestore = trato.equiposInteres || "";
@@ -964,6 +996,7 @@ export default function DiscoveryForm({
       tipoServicio: trato.tipoServicio || "",
       notas: trato.notas || "",
       serviciosInteres: servicios,
+      nivelInvolucramiento: nivelHeredado,
       equiposInteres: equiposRestore,
       nichoSlug: trato.nichoSlug || "",
       respuestasDescubrimiento: (() => {
@@ -1056,6 +1089,7 @@ export default function DiscoveryForm({
       contactoDecisorCargo: form.contactoDecisorCargo || null,
       preferenciaContacto: form.preferenciaContacto || null,
       serviciosInteres: JSON.stringify(form.serviciosInteres),
+      nivelInvolucramiento: form.nivelInvolucramiento || null,
       equiposInteres: form.equiposInteres || null,
       nichoSlug: form.nichoSlug || null,
       respuestasDescubrimiento: Object.keys(form.respuestasDescubrimiento).length ? JSON.stringify(form.respuestasDescubrimiento) : null,
@@ -1200,6 +1234,7 @@ export default function DiscoveryForm({
       contactoVenueNombre:  discForm.contactoVenueNombre || null,
       contactoVenueTelefono:discForm.contactoVenueTelefono || null,
       serviciosInteres: JSON.stringify(discForm.serviciosInteres),
+      nivelInvolucramiento: discForm.nivelInvolucramiento || null,
       equiposInteres: discForm.equiposInteres || null,
       nichoSlug: discForm.nichoSlug || null,
       respuestasDescubrimiento: Object.keys(discForm.respuestasDescubrimiento).length ? JSON.stringify(discForm.respuestasDescubrimiento) : null,
@@ -1987,72 +2022,55 @@ export default function DiscoveryForm({
                 <div>
                   <p className="text-xs text-[#B3985B] uppercase tracking-wider font-semibold mb-4">Alcance del servicio</p>
 
-                  {/* Áreas de servicio */}
+                  {/* Servicios del catálogo: lo palomeado aquí es lo que cobra la propuesta */}
                   <div className="mb-4">
-                    <label className="text-xs text-gray-400 block mb-2">¿Qué áreas abarca este proyecto? <span className="text-gray-600">(selecciona las que apliquen)</span></label>
-                    <div className="flex flex-wrap gap-2">
-                      {([
-                        { id: "DT_CONCEPTUAL",    icon: Palette,     label: "Desarrollo conceptual",    desc: "Concepto creativo, ambientación, propuesta visual" },
-                        { id: "DT_PROVEEDORES",   icon: Handshake,   label: "Gestión de proveedores",   desc: "Coordinación, contratación y supervisión de terceros" },
-                        { id: "DT_PT_PROPIA",     icon: Sliders,     label: "PT propia Mainstage",      desc: "Nuestro propio servicio de producción técnica incluido" },
-                        { id: "DT_LOGISTICA",     icon: Package,     label: "Logística integral",        desc: "Transporte, tiempos, cronograma y coordinación general" },
-                        { id: "DT_PRESUPUESTO",   icon: DollarSign,  label: "Control de presupuesto",   desc: "Gestión del presupuesto global del evento" },
-                        { id: "DT_SUPERVISIÓN",   icon: Eye,         label: "Supervisión en sitio",     desc: "Director técnico presente el día del evento" },
-                      ] as const).map(area => (
-                        <button key={area.id}
-                          onClick={() => toggleServicio(area.id)}
-                          title={area.desc}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                            discForm.serviciosInteres.includes(area.id)
-                              ? "border-[#B3985B] bg-[#B3985B]/10 text-[#B3985B]"
-                              : "border-[#2a2a2a] text-gray-300 hover:border-[#555] hover:text-white"
-                          }`}>
-                          <area.icon strokeWidth={1.75} className="w-3.5 h-3.5" />
-                          <span>{area.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                    {discForm.serviciosInteres.filter(s => s.startsWith("DT_")).length > 0 && (
-                      <div className="mt-2 space-y-1">
-                        {discForm.serviciosInteres.filter(s => s.startsWith("DT_")).map(id => {
-                          const area = [
-                            { id: "DT_CONCEPTUAL",   desc: "Desarrollo conceptual, ambientación y propuesta visual del evento" },
-                            { id: "DT_PROVEEDORES",  desc: "Coordinación, contratación y supervisión de proveedores externos" },
-                            { id: "DT_PT_PROPIA",    desc: "Servicio de producción técnica de Mainstage Pro incluido en el paquete" },
-                            { id: "DT_LOGISTICA",    desc: "Transporte, cronograma y coordinación general del evento" },
-                            { id: "DT_PRESUPUESTO",  desc: "Gestión y control del presupuesto global" },
-                            { id: "DT_SUPERVISIÓN",  desc: "Director técnico presente en sitio el día del evento" },
-                          ].find(a => a.id === id);
-                          return area ? (
-                            <p key={id} className="text-[11px] text-gray-600 leading-relaxed">› {area.desc}</p>
-                          ) : null;
+                    <label className="text-xs text-gray-400 block mb-2">¿Qué servicios abarca este proyecto? <span className="text-gray-600">(selecciona los que apliquen)</span></label>
+                    {serviciosDisponibles.length === 0 ? (
+                      <p className="text-[11px] text-gray-600">Cargando el catálogo de servicios…</p>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {serviciosDisponibles.map(s => {
+                          const Icono = iconoServicio(s.icono);
+                          const sel = discForm.serviciosInteres.includes(s.clave);
+                          return (
+                            <button key={s.clave} onClick={() => toggleServicio(s.clave)}
+                              className={`flex items-start gap-2.5 px-3 py-2.5 rounded-xl border text-left transition-colors ${
+                                sel ? "border-[#B3985B] bg-[#B3985B]/10" : "border-[#2a2a2a] hover:border-[#555]"
+                              }`}>
+                              <Icono strokeWidth={1.75} className={`w-4 h-4 mt-0.5 shrink-0 ${sel ? "text-[#B3985B]" : "text-gray-500"}`} />
+                              <div className="min-w-0">
+                                <p className={`text-xs font-medium ${sel ? "text-[#B3985B]" : "text-white"}`}>{s.nombre}</p>
+                                {sel && s.descripcion && (
+                                  <p className="text-[10px] text-gray-500 mt-0.5 leading-relaxed line-clamp-3">{s.descripcion}</p>
+                                )}
+                              </div>
+                            </button>
+                          );
                         })}
                       </div>
                     )}
+                    {discForm.serviciosInteres.length > 0 && !clientMode && (
+                      <p className="text-[11px] text-gray-600 mt-2">
+                        {discForm.serviciosInteres.length} servicio{discForm.serviciosInteres.length === 1 ? "" : "s"} · así entran a la propuesta.
+                      </p>
+                    )}
                   </div>
 
-                  {/* Nivel de involucramiento */}
+                  {/* Nivel de involucramiento — es un nivel, no un servicio: columna propia */}
                   <div className="mb-4">
                     <label className="text-xs text-gray-400 block mb-2">Nivel de involucramiento esperado</label>
                     <div className="grid grid-cols-1 gap-2">
-                      {[
-                        { id: "DT_ASESOR",      label: "Solo asesoría",          desc: "Guía y recomendaciones. El cliente ejecuta." },
-                        { id: "DT_PARCIAL",     label: "Coordinación parcial",   desc: "Gestionamos algunas áreas; el cliente coordina el resto." },
-                        { id: "DT_INTEGRAL",    label: "Dirección integral",     desc: "Mainstage toma el control total de producción y logística." },
-                      ].map(niv => (
+                      {NIVELES_INVOLUCRAMIENTO.map(niv => (
                         <button key={niv.id}
-                          onClick={() => setDiscForm(p => {
-                            const sinNiv = p.serviciosInteres.filter(s => !["DT_ASESOR","DT_PARCIAL","DT_INTEGRAL"].includes(s));
-                            return { ...p, serviciosInteres: [...sinNiv, niv.id] };
-                          })}
+                          onClick={() => setDiscForm(p => ({ ...p, nivelInvolucramiento: niv.id }))}
                           className={`flex items-start gap-3 px-4 py-3 rounded-xl border text-left transition-colors ${
-                            discForm.serviciosInteres.includes(niv.id)
+                            discForm.nivelInvolucramiento === niv.id
                               ? "border-[#B3985B] bg-[#B3985B]/10"
                               : "border-[#2a2a2a] hover:border-[#444]"
                           }`}>
-                          <div className={`mt-0.5 w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 ${discForm.serviciosInteres.includes(niv.id) ? "border-[#B3985B] bg-[#B3985B]" : "border-[#555]"}`} />
+                          <div className={`mt-0.5 w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 ${discForm.nivelInvolucramiento === niv.id ? "border-[#B3985B] bg-[#B3985B]" : "border-[#555]"}`} />
                           <div>
-                            <p className={`text-sm font-medium ${discForm.serviciosInteres.includes(niv.id) ? "text-[#B3985B]" : "text-white"}`}>{niv.label}</p>
+                            <p className={`text-sm font-medium ${discForm.nivelInvolucramiento === niv.id ? "text-[#B3985B]" : "text-white"}`}>{niv.label}</p>
                             <p className="text-[11px] text-gray-500 mt-0.5">{niv.desc}</p>
                           </div>
                         </button>

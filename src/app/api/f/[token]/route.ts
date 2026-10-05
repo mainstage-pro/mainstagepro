@@ -22,7 +22,7 @@ const DISCOVERY_KEYS = [
   "horaInicioEvento", "horaFinEvento", "duracionEvento", "duracionMontajeHrs",
   "ventanaMontajeInicio", "ventanaMontajeFin", "horaTerminoMontaje",
   "contactoVenueNombre", "contactoVenueTelefono", "contactoDecisorNombre", "contactoDecisorCargo",
-  "serviciosInteres", "equiposInteres", "ideasReferencias",
+  "serviciosInteres", "nivelInvolucramiento", "equiposInteres", "ideasReferencias",
   "preferenciaContacto",
   // Descubrimiento por nicho (catálogo comercial) — JSON ya serializado por el cliente.
   "nichoSlug", "respuestasDescubrimiento", "adicionalesSeleccionados",
@@ -105,6 +105,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
       presupuestoEstimado: true,
       notas: true,
       serviciosInteres: true,
+      nivelInvolucramiento: true,
       equiposInteres: true,
       ideasReferencias: true,
       preferenciaContacto: true,

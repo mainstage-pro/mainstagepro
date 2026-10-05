@@ -91,7 +91,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     // Descubrimiento
     "canalAtencion", "nombreEvento", "duracionEvento", "asistentesEstimados", "subtipoEvento",
     "diasServicio", "fechasEvento",
-    "serviciosInteres", "ideasReferencias", "etapaContratacion", "momentoContratacion", "continuarPor",
+    "serviciosInteres", "nivelInvolucramiento", "ideasReferencias", "etapaContratacion", "momentoContratacion", "continuarPor",
     "descubrimientoCompleto", "posibleDuplicado",
     // Artista del evento musical y giras (varias cotizaciones = shows del mismo trato)
     "artistaId", "esGira",

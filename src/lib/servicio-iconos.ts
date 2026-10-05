@@ -1,8 +1,8 @@
 import {
-  Box, Briefcase, CalendarClock, ClipboardCheck, Clock, Fence, FileText, Guitar,
-  Handshake, HardHat, Lightbulb, Megaphone, MonitorPlay, Network, Palette, Plane,
-  Route, Ruler, ShieldCheck, Sparkles, Speaker, Tent, Theater, Truck, Users, Zap,
-  type LucideIcon,
+  Box, Briefcase, CalendarClock, ClipboardCheck, Clock, DollarSign, Fence, FileText,
+  Guitar, Handshake, HardHat, Lightbulb, Megaphone, MonitorPlay, Network, Palette,
+  Plane, Route, Ruler, ShieldCheck, Sparkles, Speaker, Tent, Theater, Truck, Users,
+  Zap, type LucideIcon,
 } from "lucide-react";
 
 /**
@@ -15,7 +15,7 @@ export const ICONOS_SERVICIO: Record<string, LucideIcon> = {
   Users, HardHat, Theater, Megaphone, ShieldCheck,
   Speaker, Lightbulb, MonitorPlay, Guitar, Zap,
   Palette, Ruler, Box, Sparkles,
-  Truck, Plane, Tent, Fence, FileText,
+  Truck, Plane, Tent, Fence, FileText, DollarSign,
 };
 
 export function iconoServicio(nombre: string | null | undefined): LucideIcon {

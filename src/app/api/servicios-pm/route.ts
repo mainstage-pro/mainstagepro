@@ -6,14 +6,27 @@ import { textoOpcional, numero, booleano, soloDefinidos } from "../propuestas-se
 
 // GET: catálogo de servicios de production management
 export async function GET(req: NextRequest) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  // El descubrimiento del cliente (formulario público por token) palomea el
+  // alcance con el mismo catálogo que el vendedor, así que `?publico=1` entra
+  // sin sesión — pero solo con lo que se puede enseñar: nada de precios ni costos.
+  const publico = req.nextUrl.searchParams.get("publico") === "1";
 
-  const incluirInactivos = req.nextUrl.searchParams.get("todos") === "1";
+  if (!publico) {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
+  const incluirInactivos = !publico && req.nextUrl.searchParams.get("todos") === "1";
 
   const servicios = await prisma.servicioPM.findMany({
     where: incluirInactivos ? {} : { activo: true },
     orderBy: [{ orden: "asc" }, { nombre: "asc" }],
+    ...(publico && {
+      select: {
+        id: true, clave: true, nombre: true, descripcion: true, icono: true,
+        categoria: true, subcategoria: true, nivelServicio: true, unidadDefault: true,
+      },
+    }),
   });
 
   return NextResponse.json({ servicios });
