@@ -21,6 +21,7 @@ import {
   TIPO_SALIDA_LABEL,
   UNIDAD_RIDER_LABEL,
   esImagenArchivo,
+  leerSeccionesExtra,
 } from "@/lib/giras";
 import { logoBase64, nowStr, resolvePdfImage } from "@/components/pdf/PdfShared";
 import {
@@ -270,6 +271,10 @@ export async function generarRiderArtista(riderId: string, giraNombre: string | 
       { label: "Escenario", texto: rider.notasEscenario },
       { label: "Hospitalidad", texto: rider.notasHospitalidad },
       { label: "Crew requerido", texto: rider.notasCrewRequerido },
+      ...leerSeccionesExtra(rider.seccionesExtra).map((s) => ({
+        label: s.titulo || "Sección adicional",
+        texto: s.contenido,
+      })),
     ],
     escenario: {
       anchoM: rider.escenarioAnchoM,

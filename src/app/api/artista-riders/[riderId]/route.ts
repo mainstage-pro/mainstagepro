@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { CONTEXTOS_RIDER, ORIGENES_RIDER } from "@/lib/giras";
+import { CONTEXTOS_RIDER, ORIGENES_RIDER, leerSeccionesExtra } from "@/lib/giras";
 
 const TEXTO = [
   "nombre",
@@ -85,6 +85,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ri
       const n = num(body[f]);
       data[f] = n === null ? null : Math.trunc(n);
     }
+  }
+
+  if ("seccionesExtra" in body) {
+    data.seccionesExtra = leerSeccionesExtra(body.seccionesExtra);
   }
 
   if ("contexto" in body && (CONTEXTOS_RIDER as readonly string[]).includes(body.contexto)) {

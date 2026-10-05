@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { leerSeccionesExtra } from "@/lib/giras";
 import RiderFichaClient from "./RiderFichaClient";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +32,7 @@ export default async function RiderFichaPage({ params }: { params: Promise<{ id:
       notasEscenario: true,
       notasHospitalidad: true,
       notasCrewRequerido: true,
+      seccionesExtra: true,
       escenarioAnchoM: true,
       escenarioProfundoM: true,
       escenarioAlturaM: true,
@@ -44,5 +46,10 @@ export default async function RiderFichaPage({ params }: { params: Promise<{ id:
 
   if (!rider || !rider.activo) notFound();
 
-  return <RiderFichaClient artistaId={id} rider={rider} />;
+  return (
+    <RiderFichaClient
+      artistaId={id}
+      rider={{ ...rider, seccionesExtra: leerSeccionesExtra(rider.seccionesExtra) }}
+    />
+  );
 }

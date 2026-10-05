@@ -964,6 +964,28 @@ export const ORIGEN_RIDER_LABEL: Record<string, string> = {
   CARGADO: "Documento del artista",
 };
 
+// ── Rider: secciones libres ──────────────────────────────────────────────────
+/// Los nueve bloques fijos cubren el rider típico; lo que un artista pide fuera
+/// de ellos (pirotecnia, seguridad, protocolo de prensa) entra como sección
+/// libre con su propio título.
+export interface SeccionExtraRider {
+  id: string;
+  titulo: string;
+  contenido: string;
+}
+
+export function leerSeccionesExtra(valor: unknown): SeccionExtraRider[] {
+  if (!Array.isArray(valor)) return [];
+  return valor
+    .filter((s): s is Record<string, unknown> => !!s && typeof s === "object")
+    .map((s, i) => ({
+      id: typeof s.id === "string" && s.id ? s.id : `sec-${i}`,
+      titulo: typeof s.titulo === "string" ? s.titulo : "",
+      contenido: typeof s.contenido === "string" ? s.contenido : "",
+    }))
+    .filter((s) => s.titulo.trim() !== "" || s.contenido.trim() !== "");
+}
+
 // ── Rider: anexos (stage plots y planos) ─────────────────────────────────────
 export const TIPOS_ARCHIVO_RIDER = ["STAGE_PLOT", "PATCH", "PLANO", "OTRO"] as const;
 

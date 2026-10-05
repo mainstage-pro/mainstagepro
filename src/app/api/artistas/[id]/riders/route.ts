@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { CONTEXTOS_RIDER, ORIGENES_RIDER } from "@/lib/giras";
+import { CONTEXTOS_RIDER, ORIGENES_RIDER, leerSeccionesExtra } from "@/lib/giras";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -101,6 +101,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         notasEscenario: origen?.notasEscenario ?? null,
         notasHospitalidad: origen?.notasHospitalidad ?? null,
         notasCrewRequerido: origen?.notasCrewRequerido ?? null,
+        seccionesExtra: leerSeccionesExtra(origen?.seccionesExtra) as unknown as object,
         escenarioAnchoM: origen?.escenarioAnchoM ?? null,
         escenarioProfundoM: origen?.escenarioProfundoM ?? null,
         escenarioAlturaM: origen?.escenarioAlturaM ?? null,

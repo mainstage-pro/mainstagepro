@@ -12,6 +12,7 @@ import {
   DISCIPLINA_LABEL,
   ORIGEN_RIDER_LABEL,
   fmtTamano,
+  type SeccionExtraRider,
 } from "@/lib/giras";
 
 export interface RiderFicha {
@@ -35,6 +36,7 @@ export interface RiderFicha {
   notasEscenario: string | null;
   notasHospitalidad: string | null;
   notasCrewRequerido: string | null;
+  seccionesExtra: SeccionExtraRider[];
   escenarioAnchoM: number | null;
   escenarioProfundoM: number | null;
   escenarioAlturaM: number | null;
@@ -90,6 +92,8 @@ export default function RiderFichaClient({ artistaId, rider }: Props) {
 
   const [form, setForm] = useState<Valores>(aFormulario(rider));
   const [original, setOriginal] = useState<Valores>(aFormulario(rider));
+  const [extras, setExtras] = useState<SeccionExtraRider[]>(rider.seccionesExtra);
+  const [extrasOriginal, setExtrasOriginal] = useState<SeccionExtraRider[]>(rider.seccionesExtra);
   const [guardando, setGuardando] = useState(false);
   const [doc, setDoc] = useState({
     origen: rider.origen,
@@ -101,10 +105,24 @@ export default function RiderFichaClient({ artistaId, rider }: Props) {
   const inputPdf = useRef<HTMLInputElement>(null);
 
   const cargado = doc.origen === "CARGADO";
-  const sucio = JSON.stringify(form) !== JSON.stringify(original);
+  const sucio =
+    JSON.stringify(form) !== JSON.stringify(original) ||
+    JSON.stringify(extras) !== JSON.stringify(extrasOriginal);
 
   function set(campo: string, valor: string) {
     setForm((p) => ({ ...p, [campo]: valor }));
+  }
+
+  function agregarSeccion() {
+    setExtras((p) => [...p, { id: `sec-${Date.now()}`, titulo: "", contenido: "" }]);
+  }
+
+  function editarSeccion(id: string, campo: "titulo" | "contenido", valor: string) {
+    setExtras((p) => p.map((s) => (s.id === id ? { ...s, [campo]: valor } : s)));
+  }
+
+  function quitarSeccion(id: string) {
+    setExtras((p) => p.filter((s) => s.id !== id));
   }
 
   /// El rider cargado se guarda aparte del formulario: el PATCH debe salir en el
@@ -167,11 +185,14 @@ export default function RiderFichaClient({ artistaId, rider }: Props) {
       return;
     }
     setGuardando(true);
+    // La sección en blanco no se guarda: el servidor la descarta, así que el
+    // formulario tiene que quedar igual a lo que quedó en la base.
+    const seccionesExtra = extras.filter((s) => s.titulo.trim() !== "" || s.contenido.trim() !== "");
     try {
       const res = await fetch(`/api/artista-riders/${rider.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, nombre: form.nombre.trim(), ...extra }),
+        body: JSON.stringify({ ...form, nombre: form.nombre.trim(), seccionesExtra, ...extra }),
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -179,6 +200,8 @@ export default function RiderFichaClient({ artistaId, rider }: Props) {
         return;
       }
       setOriginal(form);
+      setExtras(seccionesExtra);
+      setExtrasOriginal(seccionesExtra);
       toast.success("Rider guardado");
       router.refresh();
     } finally {
@@ -361,20 +384,59 @@ export default function RiderFichaClient({ artistaId, rider }: Props) {
       )}
 
       {!cargado && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {NOTAS.map((n) => (
-            <section key={n.campo as string} className="ms-card p-4 space-y-2">
-              <p className="ms-section-label">{n.titulo}</p>
-              <p className="ms-micro">{n.ayuda}</p>
-              <textarea
-                className="ms-textarea w-full"
-                rows={4}
-                value={form[n.campo as string] ?? ""}
-                onChange={(e) => set(n.campo as string, e.target.value)}
-              />
-            </section>
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {NOTAS.map((n) => (
+              <section key={n.campo as string} className="ms-card p-4 space-y-2">
+                <p className="ms-section-label">{n.titulo}</p>
+                <p className="ms-micro">{n.ayuda}</p>
+                <textarea
+                  className="ms-textarea w-full"
+                  rows={4}
+                  value={form[n.campo as string] ?? ""}
+                  onChange={(e) => set(n.campo as string, e.target.value)}
+                />
+              </section>
+            ))}
+
+            {extras.map((s) => (
+              <section key={s.id} className="ms-card p-4 space-y-2">
+                <div className="flex items-start gap-2">
+                  <input
+                    className="ms-input flex-1"
+                    placeholder="Título de la sección (ej. Pirotecnia, Seguridad, Prensa)"
+                    value={s.titulo}
+                    onChange={(e) => editarSeccion(s.id, "titulo", e.target.value)}
+                  />
+                  <button
+                    onClick={() => quitarSeccion(s.id)}
+                    className="ms-btn-ghost shrink-0"
+                    title="Quitar sección"
+                  >
+                    Quitar
+                  </button>
+                </div>
+                <textarea
+                  className="ms-textarea w-full"
+                  rows={4}
+                  placeholder="Lo que pide el artista en esta sección."
+                  value={s.contenido}
+                  onChange={(e) => editarSeccion(s.id, "contenido", e.target.value)}
+                />
+              </section>
+            ))}
+          </div>
+
+          <button
+            onClick={agregarSeccion}
+            className="w-full ms-card border-dashed text-[13px] text-[#777] hover:text-[#B3985B] py-3 transition-colors"
+          >
+            + Agregar otra sección
+          </button>
+          <p className="ms-micro">
+            Las secciones que agregues se imprimen al final de las notas del rider, con el título que les pongas.
+          </p>
+        </>
       )}
 
       <div className="flex flex-wrap items-center gap-2">
@@ -386,7 +448,13 @@ export default function RiderFichaClient({ artistaId, rider }: Props) {
           {guardando ? "Guardando…" : "Guardar cambios"}
         </button>
         {sucio && (
-          <button onClick={() => setForm(original)} className="ms-btn-ghost">
+          <button
+            onClick={() => {
+              setForm(original);
+              setExtras(extrasOriginal);
+            }}
+            className="ms-btn-ghost"
+          >
             Descartar
           </button>
         )}
