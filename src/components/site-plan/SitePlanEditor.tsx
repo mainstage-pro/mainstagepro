@@ -2,7 +2,7 @@
 
 import { upload } from "@vercel/blob/client";
 import {
-  Check, Circle, ExternalLink, FileDown, Hexagon, ImageUp, Loader2, Maximize, MapPin, MousePointer2,
+  Check, Circle, ExternalLink, FileDown, Hexagon, ImageOff, ImageUp, Loader2, Maximize, MapPin, MousePointer2,
   Pencil, Route, Ruler, Square, Type, Undo2, ZoomIn, ZoomOut,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -436,6 +436,16 @@ export default function SitePlanEditor({ plan, pdfHref, publicoHref }: {
     }
   }
 
+  async function quitarFondo() {
+    if (!confirm("¿Quitar la imagen de fondo? Lo trazado se queda; solo desaparece la foto.")) return;
+    setFondo({ url: null, ancho: LIENZO_SIN_FONDO.ancho, alto: LIENZO_SIN_FONDO.alto });
+    // La escala se midió sobre esa imagen: sin ella, cada área sería un invento.
+    setEscala(null);
+    // El archivo en Blob se queda: una plantilla de venue y sus copias comparten
+    // la misma URL, y borrarlo dejaría a los otros planos sin fondo.
+    await guardarAjuste({ fondoUrl: null, fondoAncho: null, fondoAlto: null, escalaMPorPx: null });
+  }
+
   function confirmarEscala() {
     const metros = Number(metrosTexto.replace(",", "."));
     if (borrador?.modo !== "ESCALA" || !borrador.b) return;
@@ -551,6 +561,12 @@ export default function SitePlanEditor({ plan, pdfHref, publicoHref }: {
             }}
           />
         </label>
+
+        {fondo.url ? (
+          <button type="button" onClick={() => void quitarFondo()} className="ms-btn-icon" title="Quitar fondo">
+            <ImageOff size={15} />
+          </button>
+        ) : null}
 
         <span className={`ms-badge ${escala ? "ms-badge-green" : "ms-badge-gray"}`}>
           {escala ? `1 px = ${(escala * 100).toFixed(1)} cm` : "Sin escala"}
