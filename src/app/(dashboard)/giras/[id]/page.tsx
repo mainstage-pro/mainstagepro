@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { resumirAdvance } from "@/lib/giras";
+import { resumirAdvance, equipoDeFecha } from "@/lib/giras";
 import GiraResumenClient, { type GiraDetalle, type ShowResumen } from "./GiraResumenClient";
 
 export const dynamic = "force-dynamic";
@@ -42,6 +42,7 @@ export default async function GiraResumenPage({ params }: { params: Promise<{ id
           riderEnviadoEn: true,
           venue: { select: { id: true, nombre: true } },
           riderLineas: { select: { prioridad: true, estado: true, cubiertoPor: true } },
+          cotizaciones: { select: { estado: true, granTotal: true } },
           _count: { select: { crew: true } },
         },
       },
@@ -72,8 +73,12 @@ export default async function GiraResumenPage({ params }: { params: Promise<{ id
 
   const shows: ShowResumen[] = gira.shows.map((s) => {
     const resumen = resumirAdvance(s.riderLineas);
+    const equipo = equipoDeFecha(s.cotizaciones);
     return {
       id: s.id,
+      equipoTotal: equipo.total,
+      equipoCotizaciones: equipo.cotizaciones,
+      equipoCerrado: equipo.cerrada,
       fecha: s.fecha.toISOString(),
       ciudad: s.ciudad,
       venue: s.venue?.nombre ?? null,

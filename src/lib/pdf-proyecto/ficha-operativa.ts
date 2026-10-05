@@ -187,6 +187,7 @@ export async function generarFichaOperativa(id: string): Promise<PdfProyecto | n
     proveedoresEvento: (proyecto.proveedoresEvento ?? []).map((p: any) => ({
       nombreProveedor: p.nombreProveedor,
       servicioEquipo: p.servicioEquipo ?? null,
+      frente: p.frente ?? null,
       telefonoProveedor: p.telefonoProveedor ?? null,
       responsable: p.responsable ?? null,
       notas: p.notas ?? null,

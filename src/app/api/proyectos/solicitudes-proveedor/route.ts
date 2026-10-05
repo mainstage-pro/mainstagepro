@@ -55,6 +55,7 @@ export async function GET(req: NextRequest) {
     venue: f.proyecto.lugarEvento,
     coordinador: f.proyecto.encargado?.name ?? null,
     proveedor: f.nombreProveedor,
+    frente: f.frente,
     telefono: f.telefonoProveedor,
     tipoAcreedor: f.tipoAcreedor,
     enCatalogo: (f.proveedorId ?? f.tecnicoId ?? f.personalId) != null,

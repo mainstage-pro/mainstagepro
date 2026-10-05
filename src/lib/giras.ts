@@ -707,6 +707,32 @@ export function resumirAdvance(lineas: LineaAdvanceResumible[]): ResumenAdvance 
   };
 }
 
+/// Una cotización rechazada o vencida ya no es dinero de esta gira, pero el borrador
+/// sí: el total de la gira se arma mientras se negocia fecha por fecha y tiene que
+/// moverse desde la primera. Por eso se descartan dos estados y no se exige APROBADA.
+const COTIZACION_FUERA = ["RECHAZADA", "VENCIDA"];
+
+export interface EquipoDeFecha {
+  /// Suma de lo cotizado que sigue vivo. 0 también cuando no hay ninguna.
+  total: number;
+  cotizaciones: number;
+  cerrada: boolean;
+}
+
+/// Lo cotizado de equipo en una fecha. Fuente única del total por show y del global
+/// de la gira: el renglón de la fecha y el total de arriba salen de aquí, para que no
+/// puedan decir cosas distintas.
+export function equipoDeFecha(
+  cotizaciones: { estado: string; granTotal: number }[],
+): EquipoDeFecha {
+  const vivas = cotizaciones.filter((c) => !COTIZACION_FUERA.includes(c.estado));
+  return {
+    total: vivas.reduce((s, c) => s + c.granTotal, 0),
+    cotizaciones: vivas.length,
+    cerrada: vivas.some((c) => c.estado === "APROBADA"),
+  };
+}
+
 export const SEMAFORO_LABEL: Record<string, string> = {
   LISTO: "Listo",
   EN_PROCESO: "En proceso",

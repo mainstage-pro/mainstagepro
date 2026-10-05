@@ -20,6 +20,7 @@ import {
   estadoRegistroLabel,
   fechaInput,
   fmtFechaCorta,
+  fmtMoneda,
 } from "@/lib/giras";
 
 export interface ShowResumen {
@@ -35,6 +36,10 @@ export interface ShowResumen {
   semaforo: string;
   indispensablesAbiertos: number;
   renglones: number;
+  /// Equipo cotizado de esta fecha. El total de la gira es la suma de estos.
+  equipoTotal: number;
+  equipoCotizaciones: number;
+  equipoCerrado: boolean;
 }
 
 export interface GiraDetalle {
@@ -129,6 +134,16 @@ export default function GiraResumenClient({ gira, shows, artistas, clientes, rid
       : null;
 
   const contacto = personas.find((p) => p.id === form.contactoPrincipalId) ?? null;
+
+  // El equipo de una gira se cobra fecha por fecha; el total global es la suma, y las
+  // fechas sin cotizar son justo lo que falta por cerrar.
+  const equipo = useMemo(
+    () => ({
+      total: shows.reduce((s, p) => s + p.equipoTotal, 0),
+      sinCotizar: shows.filter((p) => p.equipoCotizaciones === 0).length,
+    }),
+    [shows],
+  );
 
   async function guardar() {
     if (!form.nombre.trim()) {
@@ -474,9 +489,22 @@ export default function GiraResumenClient({ gira, shows, artistas, clientes, rid
             <h2 className="ms-section-label">{tour ? "Shows de la gira" : "El show"}</h2>
             <p className="ms-meta mt-0.5">El porcentaje es de renglones indispensables resueltos</p>
           </div>
-          <Link href={`/giras/${gira.id}/shows`} className="ms-micro text-[#B3985B] hover:text-white transition-colors">
-            {tour ? "Editar shows →" : "Editar venue y promotor →"}
-          </Link>
+          <div className="flex items-center gap-3 shrink-0">
+            {equipo.total > 0 && (
+              <div className="text-right">
+                <p className="text-[13px] text-white font-medium tabular-nums">
+                  {fmtMoneda(equipo.total, gira.moneda)}
+                </p>
+                <p className="ms-micro text-gray-600">
+                  equipo {tour ? "de la gira" : "del show"}
+                  {equipo.sinCotizar > 0 ? ` · ${equipo.sinCotizar} sin cotizar` : ""}
+                </p>
+              </div>
+            )}
+            <Link href={`/giras/${gira.id}/shows`} className="ms-micro text-[#B3985B] hover:text-white transition-colors">
+              {tour ? "Editar shows →" : "Editar venue y promotor →"}
+            </Link>
+          </div>
         </div>
 
         {shows.length === 0 ? (
@@ -506,6 +534,17 @@ export default function GiraResumenClient({ gira, shows, artistas, clientes, rid
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
+                {p.equipoCotizaciones > 0 ? (
+                  <span
+                    className="text-[11px] text-gray-300 tabular-nums"
+                    title={`${p.equipoCotizaciones} cotización${p.equipoCotizaciones === 1 ? "" : "es"} de equipo${p.equipoCerrado ? " · venta cerrada" : ""}`}
+                  >
+                    {fmtMoneda(p.equipoTotal, gira.moneda)}
+                    {p.equipoCerrado ? <span className="text-green-500 ml-1">✓</span> : null}
+                  </span>
+                ) : (
+                  <span className="text-[11px] text-gray-700">sin cotizar</span>
+                )}
                 <span className={`text-[11px] px-2 py-0.5 rounded-full border ${ESTADO_SHOW_COLOR[p.estado] ?? ""}`}>
                   {ESTADO_SHOW_LABEL[p.estado] ?? p.estado}
                 </span>

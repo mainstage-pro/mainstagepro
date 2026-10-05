@@ -10,6 +10,7 @@ import {
   TransporteSlot, EquipoRiderExtra, ProveedorRenta,
 } from "./PdfShared";
 import { diasEvento, horarioDeDia } from "@/lib/fechas-evento";
+import { frenteLabel } from "@/lib/frentes-produccion";
 import { normalizarAmPm } from "@/lib/hora";
 import { CronologiaEvento } from "./CronologiaEvento";
 import { construirCronologia, BloqueTiempo } from "@/lib/cronologia-evento";
@@ -82,6 +83,7 @@ export interface PersonalItem {
 export interface ProveedorEvento {
   nombreProveedor: string;
   servicioEquipo: string | null;
+  frente: string | null;
   telefonoProveedor: string | null;
   modalidadEntrega?: string | null;
   modalidadRegreso?: string | null;
@@ -236,8 +238,12 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
 
   const transConDatos = data.transportes.filter(t => t.horaSalida || t.choferNombre);
   const todosProveedores = [
+    // El frente va pegado al servicio y no en columna propia: el coordinador lo ve al
+    // escanear la tabla, y los eventos sin frentes no se llenan de rayas vacías.
     ...data.proveedoresEvento.map(p => ({
-      nombre: p.nombreProveedor, servicio: p.servicioEquipo, telefono: p.telefonoProveedor,
+      nombre: p.nombreProveedor,
+      servicio: [frenteLabel(p.frente), p.servicioEquipo].filter(Boolean).join(" · ") || null,
+      telefono: p.telefonoProveedor,
       entrega: p.modalidadEntrega ?? null, regreso: p.modalidadRegreso ?? null,
     })),
     ...data.proveedoresRenta.map(p => ({

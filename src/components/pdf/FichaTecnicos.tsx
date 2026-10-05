@@ -11,6 +11,7 @@ import {
 } from "./PdfShared";
 import { PersonalItem, ProveedorEvento } from "./FichaCoordinador";
 import { cadenaDeMando, parseReglasMando } from "@/lib/cadena-mando";
+import { frenteLabel } from "@/lib/frentes-produccion";
 
 const s = StyleSheet.create({
   // Header
@@ -432,7 +433,7 @@ export function FichaTecnicos({ data }: { data: FichaTecnicosData }) {
               )}
               {data.proveedoresEvento.map((p, i) => (
                 <View key={i} style={i === data.proveedoresEvento.length - 1 && !data.encargadoNombre && !data.encargadoLugar ? s.contactoRowLast : s.contactoRow}>
-                  <Text style={[s.contactoMuted, { width: 140 }]}>{p.servicioEquipo ?? "Proveedor"}</Text>
+                  <Text style={[s.contactoMuted, { width: 140 }]}>{frenteLabel(p.frente) ?? p.servicioEquipo ?? "Proveedor"}</Text>
                   <Text style={[s.contactoTxt, { flex: 1 }]}>{p.nombreProveedor}</Text>
                   <Text style={[s.contactoMuted, { width: 110 }]}>{p.telefonoProveedor ?? "—"}</Text>
                 </View>

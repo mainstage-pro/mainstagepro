@@ -155,6 +155,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     proveedoresEvento: (proyecto.proveedoresEvento ?? []).map((p: any) => ({
       nombreProveedor: p.nombreProveedor,
       servicioEquipo: p.servicioEquipo ?? null,
+      frente: p.frente ?? null,
       telefonoProveedor: p.telefonoProveedor ?? null,
       modalidadEntrega: p.modalidadEntrega ?? null,
       modalidadRegreso: p.modalidadRegreso ?? null,

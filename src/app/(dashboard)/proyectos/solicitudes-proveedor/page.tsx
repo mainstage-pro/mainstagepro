@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { tipoAcreedorLabel } from "@/lib/proveedor-evento";
+import { frenteLabel } from "@/lib/frentes-produccion";
 
 type Solicitud = {
   id: string;
@@ -15,6 +16,7 @@ type Solicitud = {
   venue: string | null;
   coordinador: string | null;
   proveedor: string;
+  frente: string | null;
   tipoAcreedor: string;
   telefono: string | null;
   enCatalogo: boolean;
@@ -93,14 +95,14 @@ export default function SolicitudesProveedorPage() {
   function descargarCSV() {
     const cols = [
       "Tipo", "Proyecto", "Evento", "Cliente", "Fecha evento", "Venue", "Coordinador",
-      "Proveedor", "Teléfono", "Qué se pidió", "Unidades", "Costo",
+      "Proveedor", "Frente", "Teléfono", "Qué se pidió", "Unidades", "Costo",
       "Lo pidió", "Fecha solicitud", "CxP", "Estado CxP", "Pagado", "Vence",
     ];
     const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
     const lineas = filas.map((f) => [
       f.imprevisto ? "Imprevisto" : "Coordinado",
       f.numeroProyecto, f.evento, f.cliente, diaISO(new Date(f.fechaEvento)), f.venue ?? "", f.coordinador ?? "",
-      f.proveedor, f.telefono ?? "", f.detalle ?? "", f.unidades ?? "", f.costo ?? "",
+      f.proveedor, frenteLabel(f.frente) ?? "", f.telefono ?? "", f.detalle ?? "", f.unidades ?? "", f.costo ?? "",
       f.solicitadoPor ?? "", f.fechaSolicitud ? diaISO(new Date(f.fechaSolicitud)) : "",
       f.cuentaPagar ? "Sí" : "No", f.cuentaPagar?.estado ?? "", f.cuentaPagar?.montoPagado ?? "",
       f.cuentaPagar?.fechaCompromiso ? diaISO(new Date(f.cuentaPagar.fechaCompromiso)) : "",
@@ -225,6 +227,11 @@ export default function SolicitudesProveedorPage() {
                       )}
                       {f.imprevisto && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-900/30 text-amber-500">imprevisto</span>
+                      )}
+                      {frenteLabel(f.frente) && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#B3985B]/15 text-[#B3985B]">
+                          {frenteLabel(f.frente)}
+                        </span>
                       )}
                     </div>
                     {f.telefono && <p className="text-gray-600 text-[11px] mt-0.5">{f.telefono}</p>}

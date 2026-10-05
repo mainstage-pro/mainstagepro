@@ -19,6 +19,7 @@ import {
 import { CronologiaEvento } from "./CronologiaEvento";
 import { construirCronologia, BloqueTiempo } from "@/lib/cronologia-evento";
 import { cadenaDeMando, parseReglasMando } from "@/lib/cadena-mando";
+import { frenteLabel } from "@/lib/frentes-produccion";
 
 const s = StyleSheet.create({
   // Sección numerada con badge negro
@@ -173,7 +174,8 @@ export interface PersonalItem {
   coordinaEnSitio: boolean;
 }
 export interface ProveedorEvento {
-  nombreProveedor: string; servicioEquipo: string | null; telefonoProveedor: string | null;
+  nombreProveedor: string; servicioEquipo: string | null; frente: string | null;
+  telefonoProveedor: string | null;
   responsable: string | null; notas: string | null;
 }
 export interface ArchivoItem { tipo: string; nombre: string; url: string }
@@ -249,8 +251,11 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
   const transConDatos = data.transportes.filter(t => t.horaSalida || t.choferNombre || t.vehiculoNombre);
 
   const todosProveedores = [
+    // El frente va pegado al servicio y no en columna propia: se ve al escanear la
+    // tabla, y los eventos sin frentes no se llenan de rayas vacías.
     ...data.proveedoresEvento.map(p => ({
-      nombre: p.nombreProveedor, servicio: p.servicioEquipo,
+      nombre: p.nombreProveedor,
+      servicio: [frenteLabel(p.frente), p.servicioEquipo].filter(Boolean).join(" · ") || null,
       tel: p.telefonoProveedor, responsable: p.responsable, notas: p.notas,
     })),
     ...data.proveedoresRenta.map(p => ({

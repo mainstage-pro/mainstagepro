@@ -85,6 +85,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const proveedoresEvento: ProveedorEvento[] = (proyecto.proveedoresEvento ?? []).map((p: any) => ({
     nombreProveedor: p.nombreProveedor,
     servicioEquipo: p.servicioEquipo ?? null,
+    frente: p.frente ?? null,
     telefonoProveedor: p.telefonoProveedor ?? null,
   }));
 
