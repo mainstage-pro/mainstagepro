@@ -21,7 +21,7 @@ interface Props {
 }
 
 /**
- * Pega el rider de la casa y lo convierte en renglones de inventario. Ningún
+ * Pega el rider del venue y lo convierte en renglones de inventario. Ningún
  * recinto manda su lista igual, así que la lectura es una propuesta: se corrige
  * aquí y se guarda cuando cuadra. Nada se escribe hasta que se aprieta Guardar.
  */
@@ -99,7 +99,7 @@ export default function VenueRiderImportar({ venueId, onImportado }: Props) {
         toast.error(d.error ?? "No se pudo guardar el inventario");
         return;
       }
-      toast.success(`${d.creados} conceptos agregados al inventario de casa`);
+      toast.success(`${d.creados} conceptos agregados al inventario del venue`);
       onImportado(d.items ?? []);
       setRenglones(null);
       setTexto("");
@@ -168,7 +168,7 @@ export default function VenueRiderImportar({ venueId, onImportado }: Props) {
             <table className="w-full min-w-[1100px]">
               <thead className="ms-thead">
                 <tr>
-                  <th className="ms-th text-left w-[140px]">Disciplina</th>
+                  <th className="ms-th text-left w-[140px]">Departamento</th>
                   <th className="ms-th text-left w-[70px]">Cant.</th>
                   <th className="ms-th text-left w-[240px]">Concepto</th>
                   <th className="ms-th text-left w-[150px]">Marca</th>
@@ -260,7 +260,7 @@ export default function VenueRiderImportar({ venueId, onImportado }: Props) {
             <button className="ms-btn-ghost" onClick={() => setRenglones(null)}>
               Volver al texto
             </button>
-            <span className="ms-micro">Se agregan al inventario de casa; no se borra lo que ya estaba.</span>
+            <span className="ms-micro">Se agregan al inventario del venue; no se borra lo que ya estaba.</span>
           </div>
         </>
       )}

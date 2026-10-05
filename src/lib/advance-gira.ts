@@ -3,7 +3,7 @@
  *
  * Tres movimientos, siempre en el mismo orden:
  *   1. sembrarAdvance       — el rider maestro baja al show (una fila por concepto).
- *   2. precargarDesdeVenue  — lo que ya sabíamos del foro llena la columna "ofrece la casa".
+ *   2. precargarDesdeVenue  — lo que ya sabíamos del foro llena la columna "ofrece el venue".
  *   3. volcarAlVenue        — al cerrar el advance, lo que realmente había queda escrito
  *                             en la ficha del venue, para que la próxima vez se arme solo.
  *
@@ -69,7 +69,7 @@ function mismaCiudad(a: string | null | undefined, b: string | null | undefined)
   return x === y || x.includes(y) || y.includes(x);
 }
 
-/// Texto legible de lo que tiene la casa, tal como se pega en la columna del contra-rider.
+/// Texto legible de lo que tiene el venue, tal como se pega en la columna del contra-rider.
 function textoOfrecido(item: {
   cantidad: number;
   marca: string | null;
@@ -79,7 +79,7 @@ function textoOfrecido(item: {
   costoExtra: number | null;
 }): string {
   const equipo = [item.marca, item.modelo].filter(Boolean).join(" ").trim();
-  const partes = [`${item.cantidad}`, equipo || "de casa"];
+  const partes = [`${item.cantidad}`, equipo || "del venue"];
   let texto = partes.join(" × ");
   if (item.condicion && item.condicion !== "DESCONOCIDO") texto += ` (${item.condicion.toLowerCase()})`;
   if (!item.incluidoEnRenta) {
@@ -189,7 +189,7 @@ export async function sembrarAdvance(showId: string): Promise<ResultadoSiembra> 
 // ── 2. Precarga desde el inventario del venue ────────────────────────────────
 
 /**
- * Llena "qué ofrece la casa" con lo que ya tenemos documentado del foro.
+ * Llena "qué ofrece el venue" con lo que ya tenemos documentado del foro.
  * No pisa nada: una fila donde el usuario ya escribió algo se deja intacta.
  */
 export async function precargarDesdeVenue(showId: string): Promise<ResultadoPrecarga> {
@@ -227,7 +227,7 @@ export async function precargarDesdeVenue(showId: string): Promise<ResultadoPrec
     const clave = claveConcepto(l.concepto);
     const canon = canonDe(l.concepto)?.clave ?? null;
 
-    // El canon es el cotejo principal: el rider pide "line array" y la casa
+    // El canon es el cotejo principal: el rider pide "line array" y el venue
     // contesta "KARA I", textos que no se parecen en nada. El texto solo entra
     // como respaldo y únicamente si es idéntico — una coincidencia parcial entre
     // dos textos libres produce falsos positivos que el técnico no detecta.
@@ -240,7 +240,7 @@ export async function precargarDesdeVenue(showId: string): Promise<ResultadoPrec
       continue;
     }
 
-    // Un concepto del rider suele caer sobre varios renglones de casa: "micrófono
+    // Un concepto del rider suele caer sobre varios renglones del venue: "micrófono
     // alámbrico" cruza con los SM58, los SM57 y los Beta del foro. Se precargan
     // todos y la suma, porque la pregunta del advance es si alcanza, no cuál.
     await prisma.showRiderLinea.update({
@@ -259,7 +259,7 @@ export async function precargarDesdeVenue(showId: string): Promise<ResultadoPrec
 // ── 3. Volcado de lo aprendido a la ficha del venue ──────────────────────────
 
 /**
- * Lo que la casa realmente puso se escribe en su ficha técnica. Es el único
+ * Lo que el venue realmente puso se escribe en su ficha técnica. Es el único
  * mecanismo por el que el venue acumula conocimiento entre giras.
  */
 export async function volcarAlVenue(showId: string, usuario: string): Promise<ResultadoVolcado> {

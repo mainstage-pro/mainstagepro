@@ -208,9 +208,9 @@ export default async function GirasResumenPage() {
           )}
         </Panel>
 
-        <Panel titulo="Rider sin enviar a la casa" nota="Mientras el foro no tenga el rider, no hay contra-rider que cotejar">
+        <Panel titulo="Rider sin enviar al venue" nota="Mientras el foro no tenga el rider, no hay contra-rider que cotejar">
           {sinRiderEnviado.length === 0 ? (
-            <Vacio texto="El rider ya salió a todas las casas." />
+            <Vacio texto="El rider ya salió a todas los venues." />
           ) : (
             sinRiderEnviado.map((s) => (
               <Fila
@@ -225,7 +225,7 @@ export default async function GirasResumenPage() {
           )}
         </Panel>
 
-        <Panel titulo="Shows sin crew" nota="Nadie asignado todavía, ni de Mainstage ni de la casa">
+        <Panel titulo="Shows sin crew" nota="Nadie asignado todavía, ni de Mainstage ni del venue">
           {sinCrew.length === 0 ? (
             <Vacio texto="Todos los shows tienen crew." />
           ) : (

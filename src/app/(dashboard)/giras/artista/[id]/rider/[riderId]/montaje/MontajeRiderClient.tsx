@@ -146,7 +146,7 @@ export default function MontajeRiderClient({ riderId, bloquesIniciales }: Props)
           <h2 className="ms-h2">Montaje y soundcheck que exige el rider</h2>
           <p className="ms-subtitle mt-1">
             Duraciones y responsables, no horas de reloj: la hora la pone el day sheet de cada fecha. Esto es lo que se
-            negocia con la casa antes de firmar el horario.
+            negocia con el venue antes de firmar el horario.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -181,7 +181,7 @@ export default function MontajeRiderClient({ riderId, bloquesIniciales }: Props)
         <div className="ms-stat-card">
           <p className="ms-label">Sin duración</p>
           <p className="text-xl font-semibold mt-1 text-white">{sinDuracion}</p>
-          <p className="ms-micro mt-0.5">Previos de la casa que no consumen el llamado.</p>
+          <p className="ms-micro mt-0.5">Previos del venue que no consumen el llamado.</p>
         </div>
       </div>
 

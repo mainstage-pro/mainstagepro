@@ -9,8 +9,8 @@ import {
   CONTEXTOS_RIDER,
   CONTEXTO_RIDER_AYUDA,
   CONTEXTO_RIDER_LABEL,
-  DISCIPLINA_LABEL,
   ORIGEN_RIDER_LABEL,
+  SECCIONES_RIDER,
   fmtTamano,
   type SeccionExtraRider,
 } from "@/lib/giras";
@@ -52,18 +52,15 @@ interface Props {
   rider: RiderFicha;
 }
 
-/// Cada bloque de notas es el texto que negocia una disciplina con la casa.
-const NOTAS: { campo: keyof RiderFicha; titulo: string; ayuda: string }[] = [
-  { campo: "notasFoh", titulo: DISCIPLINA_LABEL.AUDIO + " — FOH", ayuda: "Consola, procesamiento, posición de la cabina, quién mezcla." },
-  { campo: "notasMonitoreo", titulo: "Monitoreo", ayuda: "In-ears, wedges, quién mezcla monitores, mixes por persona." },
-  { campo: "notasBackline", titulo: DISCIPLINA_LABEL.BACKLINE, ayuda: "Lo que el artista trae y lo que espera encontrar en el venue." },
-  { campo: "notasIluminacion", titulo: DISCIPLINA_LABEL.ILUMINACION, ayuda: "Consola, intención de diseño, lo que no se negocia." },
-  { campo: "notasVideo", titulo: DISCIPLINA_LABEL.VIDEO, ayuda: "Pantallas, contenido, resolución, quién opera." },
-  { campo: "notasEnergia", titulo: DISCIPLINA_LABEL.ENERGIA, ayuda: "Alimentación, tierras, planta de respaldo." },
-  { campo: "notasEscenario", titulo: DISCIPLINA_LABEL.ESCENARIO, ayuda: "Risers, acomodo, techo, accesos." },
-  { campo: "notasCrewRequerido", titulo: "Crew que se requiere", ayuda: "Cuánta gente local y con qué perfil." },
-  { campo: "notasHospitalidad", titulo: "Hospitalidad", ayuda: "Camerinos, alimentos, bebidas, toallas, lo que evita fricción." },
-];
+/// Los bloques de notas salen de la misma definición que imprime el PDF, para que
+/// capturar el rider siga el orden del documento que se manda al venue.
+const NOTAS: { campo: keyof RiderFicha; titulo: string; ayuda: string }[] = SECCIONES_RIDER.flatMap((s) =>
+  s.notas.map((n) => ({
+    campo: n.campo as keyof RiderFicha,
+    titulo: n.label ? `${s.titulo} — ${n.label}` : s.titulo,
+    ayuda: n.ayuda,
+  })),
+);
 
 type Valores = Record<string, string>;
 
@@ -256,7 +253,7 @@ export default function RiderFichaClient({ artistaId, rider }: Props) {
             <textarea
               className="ms-textarea w-full"
               rows={3}
-              placeholder="El párrafo de apertura del rider: lo que aplica a todas las disciplinas."
+              placeholder="El párrafo de apertura del rider: lo que aplica a todos los departamentos."
               value={form.requerimientosGenerales}
               onChange={(e) => set("requerimientosGenerales", e.target.value)}
             />

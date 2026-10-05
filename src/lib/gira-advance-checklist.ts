@@ -6,7 +6,7 @@
 
 export const FRENTES = [
   { key: "MANAGEMENT", label: "Management del artista", color: "#60a5fa" },
-  { key: "VENUE", label: "Venue (la casa)", color: "#34d399" },
+  { key: "VENUE", label: "Venue", color: "#34d399" },
   { key: "PROMOTOR", label: "Promotor / producción local", color: "#B3985B" },
   { key: "INTERNO", label: "Nosotros", color: "#9ca3af" },
 ] as const;
@@ -62,7 +62,7 @@ export const PLANTILLA_GIRA: ItemPlantilla[] = [
     llave: "mgmt-backline",
     frente: "MANAGEMENT",
     item: "Qué backline viaja con ellos y qué hay que conseguir en destino",
-    detalle: "Separa lo que traen, lo que rentamos y lo que esperan de la casa. Marcas y modelos aceptables, no solo categorías.",
+    detalle: "Separa lo que traen, lo que rentamos y lo que esperan del venue. Marcas y modelos aceptables, no solo categorías.",
   },
   {
     llave: "mgmt-luces-video",
@@ -75,7 +75,7 @@ export const PLANTILLA_GIRA: ItemPlantilla[] = [
     llave: "mgmt-escenario",
     frente: "MANAGEMENT",
     item: "Medidas de escenario, risers y posiciones de montaje",
-    detalle: "Dimensión mínima útil, altura de risers, y dónde va cada cosa. Sin esto no se puede validar contra el plano de la casa.",
+    detalle: "Dimensión mínima útil, altura de risers, y dónde va cada cosa. Sin esto no se puede validar contra el plano del venue.",
   },
   {
     llave: "mgmt-travel-party",
@@ -87,7 +87,7 @@ export const PLANTILLA_GIRA: ItemPlantilla[] = [
     llave: "mgmt-tiempos",
     frente: "MANAGEMENT",
     item: "Tiempos que necesitan: soundcheck, duración de show, teloneros y changeover",
-    detalle: "Es la restricción que choca con el curfew de la casa. Consíguelo antes de negociar horarios con el venue.",
+    detalle: "Es la restricción que choca con el curfew del venue. Consíguelo antes de negociar horarios con el venue.",
   },
   {
     llave: "mgmt-efectos",
@@ -148,7 +148,7 @@ export const PLANTILLA_SHOW: ItemPlantilla[] = [
   {
     llave: "venue-contacto",
     frente: "VENUE",
-    item: "Contacto técnico de la casa y a qué hora llega el día del show",
+    item: "Contacto técnico del venue y a qué hora llega el día del show",
     detalle: "Nombre, celular y correo. Si el contacto es solo administrativo, pide el del jefe técnico.",
   },
   {
@@ -196,14 +196,14 @@ export const PLANTILLA_SHOW: ItemPlantilla[] = [
   {
     llave: "venue-personal",
     frente: "VENUE",
-    item: "Personal de casa: stagehands incluidos, sindicato y operadores obligatorios",
+    item: "Personal del venue: stagehands incluidos, sindicato y operadores obligatorios",
     detalle: "Qué está incluido en la renta y qué se cobra aparte. Algunas casas obligan a usar su operador de audio o su electricista.",
   },
   {
     llave: "venue-ofrece",
     frente: "VENUE",
-    item: "Qué presta o renta la casa, y a qué precio",
-    detalle: "Esto se captura en el advance como lo ofrecido por la casa. Es la vía más barata de cerrar huecos.",
+    item: "Qué presta o renta el venue, y a qué precio",
+    detalle: "Esto se captura en el advance como lo ofrecido por el venue. Es la vía más barata de cerrar huecos.",
   },
   {
     llave: "venue-docs",
@@ -235,7 +235,7 @@ export const PLANTILLA_SHOW: ItemPlantilla[] = [
     llave: "promo-horarios-publicos",
     frente: "PROMOTOR",
     item: "Horarios públicos: doors, teloneros, hora de show y hora de fin",
-    detalle: "Ciérralos contra el curfew de la casa y el soundcheck del artista, en un solo correo con los tres.",
+    detalle: "Ciérralos contra el curfew del venue y el soundcheck del artista, en un solo correo con los tres.",
   },
   {
     llave: "promo-aforo",
@@ -259,7 +259,7 @@ export const PLANTILLA_SHOW: ItemPlantilla[] = [
     llave: "promo-permisos",
     frente: "PROMOTOR",
     item: "Permisos, protección civil y reglamento de ruido del municipio",
-    detalle: "Pregunta si el límite de ruido es municipal o de la casa: cambian el curfew y el diseño de PA.",
+    detalle: "Pregunta si el límite de ruido es municipal o del venue: cambian el curfew y el diseño de PA.",
   },
   {
     llave: "promo-credenciales",
@@ -285,7 +285,7 @@ export const PLANTILLA_SHOW: ItemPlantilla[] = [
     llave: "int-minuto-a-minuto",
     frente: "INTERNO",
     item: "Minuto a minuto del día del show capturado y repartido",
-    detalle: "Se arma en el show. Es lo que se manda al crew y a la casa el día anterior.",
+    detalle: "Se arma en el show. Es lo que se manda al crew y al venue el día anterior.",
   },
   {
     llave: "int-advance-cerrado",

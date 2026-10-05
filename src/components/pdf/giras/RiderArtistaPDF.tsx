@@ -1,15 +1,18 @@
 /**
  * RiderArtistaPDF.tsx — El rider técnico del artista.
  *
- * Es lo que se manda a la casa cuando se abre el advance: lo que el artista
- * pide, con qué prioridad y quién lo tiene que poner. Se arma del rider maestro
- * versionado, así que el PDF siempre dice qué versión está leyendo quien lo
- * recibe; si no, cada show negociaría contra un rider distinto.
+ * Es lo que se manda al venue cuando se abre el advance: lo que el artista pide
+ * y quién lo tiene que poner. Se arma del rider maestro versionado, así que el
+ * PDF siempre dice qué versión está leyendo quien lo recibe; si no, cada show
+ * negociaría contra un rider distinto.
+ *
+ * Se lee como un rider común: secciones numeradas, una por departamento, cada
+ * una con su párrafo y enseguida su lista de equipo.
  */
 import React from "react";
 import { Image, View } from "@react-pdf/renderer";
 import {
-  Alerta, BandaGira, Cuerpo, Datos, Document, HeroGira, Nota, PaginaGira, PieGira, Seccion, Tabla, Text,
+  BandaGira, Cuerpo, Datos, Document, HeroGira, Nota, PaginaGira, PieGira, Seccion, Tabla, Text,
   type ColumnaTabla, type Dato, type ItemBanda, type RenglonTabla,
 } from "./GiraDocBase";
 import { ListaCanales, type CanalInput, type CanalOutput } from "./ListaCanalesPDF";
@@ -50,16 +53,25 @@ export interface RiderBloqueDoc {
 
 export interface RiderLineaDoc {
   id: string;
-  disciplinaLabel: string;
   concepto: string;
   cantidad: number;
   unidadLabel: string;
   preferido: string | null;
   aceptables: string | null;
   noAceptable: string | null;
-  prioridadLabel: string;
+  /// Null cuando es indispensable: en un rider eso es el default y escribirlo en
+  /// cada renglón no dice nada.
+  prioridadLabel: string | null;
   provistoPorLabel: string;
   notas: string | null;
+}
+
+/// Un departamento del rider: su párrafo y su equipo, en ese orden.
+export interface RiderSeccionDoc {
+  clave: string;
+  titulo: string;
+  notas: { label: string | null; texto: string }[];
+  lineas: RiderLineaDoc[];
 }
 
 export interface RiderArtistaData {
@@ -76,7 +88,6 @@ export interface RiderArtistaData {
   /// dice para qué gira se mandó. El rider en sí no cambia.
   giraNombre: string | null;
   requerimientosGenerales: string | null;
-  notas: { label: string; texto: string | null }[];
   escenario: { anchoM: number | null; profundoM: number | null; alturaM: number | null; stagePlotUrl: string | null };
   canalesMinimos: number | null;
   mixesMonitor: number | null;
@@ -85,8 +96,9 @@ export interface RiderArtistaData {
   /// Duraciones y responsables del montaje, en el orden del rider. La hora de
   /// reloj la pone el day sheet de cada fecha.
   bloques: RiderBloqueDoc[];
-  /// Agrupadas por disciplina, ya en el orden en que se leen.
-  lineas: RiderLineaDoc[];
+  /// Ya en el orden en que se imprimen, con sus notas y su equipo.
+  secciones: RiderSeccionDoc[];
+  totalLineas: number;
   inputs: CanalInput[];
   outputs: CanalOutput[];
   contactos: RiderContactoDoc[];
@@ -98,9 +110,8 @@ export interface RiderArtistaData {
 
 const COLS_EQUIPO: ColumnaTabla[] = [
   { label: "Cant.", ancho: 38, alinear: "right" },
-  { label: "Concepto", flex: 4 },
-  { label: "Prioridad", ancho: 62 },
-  { label: "Lo pone", ancho: 62 },
+  { label: "Equipo", flex: 5 },
+  { label: "Lo pone", ancho: 64 },
 ];
 
 const COLS_BLOQUES: ColumnaTabla[] = [
@@ -118,12 +129,35 @@ const COLS_CONTACTOS: ColumnaTabla[] = [
 ];
 
 /// El plano se encaja en el marco por el lado que primero topa: si lo estiramos a
-/// la página, un escenario de 12 × 8 m se imprime como uno de 12 × 12 y la casa
+/// la página, un escenario de 12 × 8 m se imprime como uno de 12 × 12 y el venue
 /// monta con medidas equivocadas.
 function medidaAnexo(proporcion: number): { width: number; height: number } {
   const porAncho = { width: MARCO_ANEXO.ancho, height: MARCO_ANEXO.ancho / proporcion };
   if (porAncho.height <= MARCO_ANEXO.alto) return porAncho;
   return { width: MARCO_ANEXO.alto * proporcion, height: MARCO_ANEXO.alto };
+}
+
+function renglonesDeEquipo(lineas: RiderLineaDoc[]): RenglonTabla[] {
+  return lineas.map((l) => {
+    const detalle = [
+      l.preferido ? `Preferido: ${l.preferido}` : null,
+      l.aceptables ? `Aceptables: ${l.aceptables}` : null,
+      l.noAceptable ? `No aceptable: ${l.noAceptable}` : null,
+      l.prioridadLabel,
+      l.notas,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    return {
+      tipo: "fila" as const,
+      clave: l.id,
+      celdas: [
+        { texto: `${l.cantidad}`, sub: l.unidadLabel, fuerte: true },
+        { texto: l.concepto, sub: detalle || null, fuerte: true },
+        { texto: l.provistoPorLabel },
+      ],
+    };
+  });
 }
 
 export function RiderArtistaPDF({ data }: { data: RiderArtistaData }) {
@@ -133,7 +167,7 @@ export function RiderArtistaPDF({ data }: { data: RiderArtistaData }) {
       { label: "Mixes de monitor", valor: data.mixesMonitor ? String(data.mixesMonitor) : String(data.outputs.length || "") },
       { label: "Soundcheck", valor: data.tiempoSoundcheckMin ? `${data.tiempoSoundcheckMin} min` : "" },
       { label: "Cambio", valor: data.tiempoCambioMin ? `${data.tiempoCambioMin} min` : "" },
-      { label: "Renglones del rider", valor: String(data.lineas.length) },
+      { label: "Renglones del rider", valor: String(data.totalLineas) },
     ] satisfies ItemBanda[]
   ).filter((i) => i.valor && i.valor !== "0");
 
@@ -155,35 +189,6 @@ export function RiderArtistaPDF({ data }: { data: RiderArtistaData }) {
     },
   ];
 
-  // El equipo se lee por disciplina: así la casa reparte el rider entre su
-  // ingeniero de audio y su jefe de luces sin tener que leerlo completo.
-  const renglones: RenglonTabla[] = [];
-  let disciplinaActual = "";
-  for (const l of data.lineas) {
-    if (l.disciplinaLabel !== disciplinaActual) {
-      disciplinaActual = l.disciplinaLabel;
-      renglones.push({ tipo: "grupo", clave: `grupo-${l.id}`, texto: disciplinaActual });
-    }
-    const detalle = [
-      l.preferido ? `Preferido: ${l.preferido}` : null,
-      l.aceptables ? `Aceptables: ${l.aceptables}` : null,
-      l.noAceptable ? `No aceptable: ${l.noAceptable}` : null,
-      l.notas,
-    ]
-      .filter(Boolean)
-      .join(" · ");
-    renglones.push({
-      tipo: "fila",
-      clave: l.id,
-      celdas: [
-        { texto: `${l.cantidad}`, sub: l.unidadLabel, fuerte: true },
-        { texto: l.concepto, sub: detalle || null, fuerte: true },
-        { texto: l.prioridadLabel },
-        { texto: l.provistoPorLabel },
-      ],
-    });
-  }
-
   const renglonesBloque: RenglonTabla[] = data.bloques.map((b) => ({
     tipo: "fila",
     clave: b.id,
@@ -194,8 +199,6 @@ export function RiderArtistaPDF({ data }: { data: RiderArtistaData }) {
       { texto: b.contenido ?? "—" },
     ],
   }));
-
-  const indispensables = data.lineas.filter((l) => l.prioridadLabel === "Indispensable");
 
   const renglonesContacto: RenglonTabla[] = data.contactos.map((c) => ({
     tipo: "fila",
@@ -209,6 +212,13 @@ export function RiderArtistaPDF({ data }: { data: RiderArtistaData }) {
   }));
 
   const anexosImagen = data.anexos.filter((a) => a.imagenSrc);
+
+  // Las secciones van numeradas como en cualquier rider: el venue contesta "en
+  // el punto 6 no tenemos tal cosa" sin transcribir el título. La primera de
+  // departamento arranca después de las fijas que de verdad se imprimieron.
+  const hayContactos = renglonesContacto.length > 0;
+  const hayBloques = renglonesBloque.length > 0;
+  const primerDepartamento = 2 + (hayContactos ? 1 : 0) + (hayBloques ? 1 : 0);
 
   return (
     <Document
@@ -233,50 +243,39 @@ export function RiderArtistaPDF({ data }: { data: RiderArtistaData }) {
         />
 
         <Cuerpo>
-          <Seccion titulo="Formación y escenario">
+          <Seccion titulo="1. Formación y escenario">
             <Datos datos={datosEscenario} />
             <Nota label="Requerimientos generales" texto={data.requerimientosGenerales} />
           </Seccion>
 
-          {renglonesContacto.length > 0 ? (
+          {hayContactos ? (
             <Seccion
-              titulo="A quién llamar"
-              nota="El equipo del artista para este rider. Todo lo que no esté aquí se resuelve con el tour manager."
+              titulo="2. Contactos de producción"
+              nota="Todo lo que no esté aquí se resuelve con el tour manager."
             >
               <Tabla columnas={COLS_CONTACTOS} renglones={renglonesContacto} />
             </Seccion>
           ) : null}
 
-          {renglonesBloque.length > 0 ? (
+          {hayBloques ? (
             <Seccion
-              titulo="Montaje y soundcheck"
-              nota="Son duraciones mínimas, no horas de reloj: la casa las acomoda en su horario y confirma el llamado."
+              titulo={`${hayContactos ? 3 : 2}. Montaje y soundcheck`}
+              nota="Son duraciones mínimas, no horas de reloj: el venue las acomoda en su horario y confirma el llamado."
             >
               <Tabla columnas={COLS_BLOQUES} renglones={renglonesBloque} />
             </Seccion>
           ) : null}
 
-          <Seccion
-            titulo="Equipo que pide el rider"
-            nota="La prioridad es lo que se negocia: lo indispensable no se sustituye sin autorización del artista."
-          >
-            <Tabla columnas={COLS_EQUIPO} renglones={renglones} />
-          </Seccion>
-
-          {indispensables.length > 0 ? (
-            <Alerta
-              label={`Indispensables (${indispensables.length})`}
-              items={indispensables.map((l) => `${l.cantidad} × ${l.concepto} — ${l.disciplinaLabel} · lo pone ${l.provistoPorLabel.toLowerCase()}`)}
-            />
-          ) : null}
-
-          {data.notas.some((n) => n.texto) ? (
-            <Seccion titulo="Notas por disciplina">
-              {data.notas.map((n) => (
-                <Nota key={n.label} label={n.label} texto={n.texto} />
+          {data.secciones.map((s, i) => (
+            <Seccion key={s.clave} titulo={`${primerDepartamento + i}. ${s.titulo}`}>
+              {s.notas.map((n) => (
+                <Nota key={n.label ?? s.clave} label={n.label} texto={n.texto} />
               ))}
+              {s.lineas.length > 0 ? (
+                <Tabla columnas={COLS_EQUIPO} renglones={renglonesDeEquipo(s.lineas)} />
+              ) : null}
             </Seccion>
-          ) : null}
+          ))}
         </Cuerpo>
       </PaginaGira>
 

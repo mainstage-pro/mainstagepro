@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 /**
  * Los papeles del show o la gira en una sola página: lo que emitimos nosotros (day
  * sheet, rider, advance, listas de canales) y lo que nos llega de afuera (rider
- * de la casa, contrato, plano del foro).
+ * del venue, contrato, plano del foro).
  *
  * El rider se resuelve igual que en los generadores: el enganchado a la gira o,
  * si no hay, el activo del artista. Si no hay ninguno, la página lo dice en vez

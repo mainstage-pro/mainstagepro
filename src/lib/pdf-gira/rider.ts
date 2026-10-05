@@ -10,11 +10,11 @@ import path from "path";
 import { prisma } from "@/lib/prisma";
 import {
   CONTEXTO_RIDER_LABEL,
-  DISCIPLINAS,
   DISCIPLINA_LABEL,
   PRIORIDAD_LABEL,
   PROVISTO_POR_LABEL,
   ROL_PERSONA_LABEL,
+  SECCIONES_RIDER,
   SOPORTE_MIC_LABEL,
   TIPO_ARCHIVO_RIDER_LABEL,
   TIPO_BLOQUE_LABEL,
@@ -33,6 +33,7 @@ import {
   type RiderBloqueDoc,
   type RiderContactoDoc,
   type RiderLineaDoc,
+  type RiderSeccionDoc,
 } from "@/components/pdf/giras/RiderArtistaPDF";
 import {
   ListaCanalesPDF,
@@ -42,8 +43,6 @@ import {
 } from "@/components/pdf/giras/ListaCanalesPDF";
 import { leerPdfAnexo, resolverImagenAnexo, unirPdfs } from "./anexos";
 import { bufferDePdf, type PdfGira } from "./render";
-
-const ORDEN_DISCIPLINA: Record<string, number> = Object.fromEntries(DISCIPLINAS.map((d, i) => [d, i]));
 
 type RiderCompleto = NonNullable<Awaited<ReturnType<typeof leerRider>>>;
 
@@ -106,33 +105,74 @@ function partirCanales(rider: RiderCompleto): { inputs: CanalInput[]; outputs: C
   return { inputs, outputs };
 }
 
-/// Los renglones se agrupan por disciplina en el orden del vocabulario, no por
-/// orden de captura: así la casa reparte el rider entre su gente de audio y su
-/// gente de luces sin leerlo completo.
-function lineasPorDisciplina(rider: RiderCompleto): RiderLineaDoc[] {
-  return [...rider.lineas]
-    .sort((a, b) => {
-      const da = ORDEN_DISCIPLINA[a.disciplina] ?? 99;
-      const db = ORDEN_DISCIPLINA[b.disciplina] ?? 99;
-      if (da !== db) return da - db;
-      return a.orden - b.orden;
-    })
-    .map((l) => ({
-      id: l.id,
-      disciplinaLabel: DISCIPLINA_LABEL[l.disciplina] ?? l.disciplina,
-      concepto: l.concepto,
-      cantidad: l.cantidad,
-      unidadLabel: l.unidad ? (UNIDAD_RIDER_LABEL[l.unidad] ?? l.unidad) : "pza",
-      preferido: l.preferido,
-      aceptables: l.aceptables,
-      noAceptable: l.noAceptable,
-      prioridadLabel: PRIORIDAD_LABEL[l.prioridad] ?? l.prioridad,
-      provistoPorLabel: PROVISTO_POR_LABEL[l.provistoPor] ?? l.provistoPor,
-      notas: l.notas,
-    }));
+function aLineaDoc(l: RiderCompleto["lineas"][number]): RiderLineaDoc {
+  return {
+    id: l.id,
+    concepto: l.concepto,
+    cantidad: l.cantidad,
+    unidadLabel: l.unidad ? (UNIDAD_RIDER_LABEL[l.unidad] ?? l.unidad) : "pza",
+    preferido: l.preferido,
+    aceptables: l.aceptables,
+    noAceptable: l.noAceptable,
+    // En un rider todo lo listado es requerido; lo que sí admite negociación es
+    // lo que tiene que decirlo. Marcar también los indispensables llenaría la
+    // columna de una palabra repetida que nadie lee.
+    prioridadLabel: l.prioridad === "INDISPENSABLE" ? null : (PRIORIDAD_LABEL[l.prioridad] ?? l.prioridad),
+    provistoPorLabel: PROVISTO_POR_LABEL[l.provistoPor] ?? l.provistoPor,
+    notas: l.notas,
+  };
 }
 
-/// Los bloques sin duración son previos que la casa deja listos antes del
+/// El documento se arma sección por sección, en el orden del vocabulario: cada
+/// departamento con su párrafo y enseguida su lista de equipo. Es como se lee un
+/// rider y es lo que permite repartirlo entre el ingeniero de audio y el jefe de
+/// luces sin que ninguno lea el documento completo.
+function seccionesDelRider(rider: RiderCompleto): RiderSeccionDoc[] {
+  const porDepartamento = new Map<string, RiderLineaDoc[]>();
+  for (const l of [...rider.lineas].sort((a, b) => a.orden - b.orden)) {
+    const lista = porDepartamento.get(l.disciplina);
+    if (lista) lista.push(aLineaDoc(l));
+    else porDepartamento.set(l.disciplina, [aLineaDoc(l)]);
+  }
+
+  const secciones: RiderSeccionDoc[] = [];
+
+  for (const s of SECCIONES_RIDER) {
+    const notas = s.notas
+      .map((n) => ({ label: n.label, texto: (rider[n.campo as keyof RiderCompleto] as string | null) ?? null }))
+      .filter((n): n is { label: string | null; texto: string } => Boolean(n.texto?.trim()));
+    const lineas = porDepartamento.get(s.departamento) ?? [];
+    porDepartamento.delete(s.departamento);
+    if (notas.length === 0 && lineas.length === 0) continue;
+    secciones.push({ clave: s.departamento, titulo: s.titulo, notas, lineas });
+  }
+
+  // Un departamento que no está en el vocabulario (dato viejo, importación) no
+  // se calla: se imprime al final con su propio nombre. Perder renglones de un
+  // rider es peor que imprimir una sección fea.
+  for (const [departamento, lineas] of porDepartamento) {
+    secciones.push({
+      clave: departamento,
+      titulo: DISCIPLINA_LABEL[departamento] ?? departamento,
+      notas: [],
+      lineas,
+    });
+  }
+
+  for (const extra of leerSeccionesExtra(rider.seccionesExtra)) {
+    if (!extra.contenido?.trim()) continue;
+    secciones.push({
+      clave: `extra-${extra.id}`,
+      titulo: extra.titulo?.trim() || "Sección adicional",
+      notas: [{ label: null, texto: extra.contenido }],
+      lineas: [],
+    });
+  }
+
+  return secciones;
+}
+
+/// Los bloques sin duración son previos que el venue deja listos antes del
 /// arribo: no consumen el llamado del crew, así que se imprimen como "previo"
 /// en vez de un hueco que alguien tendría que interpretar.
 function bloquesDelRider(rider: RiderCompleto): RiderBloqueDoc[] {
@@ -278,21 +318,6 @@ export async function generarRiderArtista(riderId: string, giraNombre: string | 
     formacion: rider.formacion,
     giraNombre,
     requerimientosGenerales: rider.requerimientosGenerales,
-    notas: [
-      { label: "FOH", texto: rider.notasFoh },
-      { label: "Monitoreo", texto: rider.notasMonitoreo },
-      { label: "Backline", texto: rider.notasBackline },
-      { label: "Iluminación", texto: rider.notasIluminacion },
-      { label: "Video", texto: rider.notasVideo },
-      { label: "Energía", texto: rider.notasEnergia },
-      { label: "Escenario", texto: rider.notasEscenario },
-      { label: "Hospitalidad", texto: rider.notasHospitalidad },
-      { label: "Crew requerido", texto: rider.notasCrewRequerido },
-      ...leerSeccionesExtra(rider.seccionesExtra).map((s) => ({
-        label: s.titulo || "Sección adicional",
-        texto: s.contenido,
-      })),
-    ],
     escenario: {
       anchoM: rider.escenarioAnchoM,
       profundoM: rider.escenarioProfundoM,
@@ -304,7 +329,8 @@ export async function generarRiderArtista(riderId: string, giraNombre: string | 
     tiempoSoundcheckMin: rider.tiempoSoundcheckMin,
     tiempoCambioMin: rider.tiempoCambioMin,
     bloques: bloquesDelRider(rider),
-    lineas: lineasPorDisciplina(rider),
+    secciones: seccionesDelRider(rider),
+    totalLineas: rider.lineas.length,
     inputs,
     outputs,
     contactos: leerContactos(rider),

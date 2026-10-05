@@ -313,11 +313,13 @@ export function Tabla({ columnas, renglones }: { columnas: ColumnaTabla[]; rengl
 
 // ── Cajas de texto libre ──────────────────────────────────────────────────────
 
-export function Nota({ label, texto }: { label: string; texto: string | null | undefined }) {
+/// Sin label cuando el título de arriba ya dice de qué habla el párrafo:
+/// repetirlo lee como si fueran dos cosas distintas.
+export function Nota({ label, texto }: { label?: string | null; texto: string | null | undefined }) {
   if (!texto || !texto.trim()) return null;
   return (
     <View style={g.nota} wrap={false}>
-      <Text style={g.notaLabel}>{label}</Text>
+      {label ? <Text style={g.notaLabel}>{label}</Text> : null}
       <Text style={g.notaTxt}>{texto.trim()}</Text>
     </View>
   );

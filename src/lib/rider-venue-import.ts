@@ -137,7 +137,7 @@ function reflujo(lineas: string[]): string[] {
     // mayúscula después para no partir "5 metros de fondo" a media frase.
     .replace(/\s(?=\d{1,3}\s+[A-ZÁÉÍÓÚÜÑ])/g, "\n")
     // Los encabezados de sección también vienen pegados al concepto anterior y
-    // sin ellos el rider entero cae en una sola disciplina.
+    // sin ellos el rider entero cae en un solo departamento.
     .replace(RE_SECCION_PEGADA, "\n$1")
     .split("\n");
 }

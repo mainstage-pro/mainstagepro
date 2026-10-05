@@ -2,16 +2,23 @@
 // Es la fuente única: UI, API, PDFs y portales públicos leen de aquí para que
 // nadie reinvente una etiqueta ni un color.
 
-// ── Disciplinas técnicas ─────────────────────────────────────────────────────
+// ── Departamentos técnicos ───────────────────────────────────────────────────
+// En pantalla y en los documentos se llaman "departamentos", que es como se
+// nombran en producción (el depto. de audio, el de luces). La columna de la base
+// sigue siendo `disciplina`: es lo que ya está escrito en miles de renglones.
+//
+// El orden es el del rider impreso: primero lo que se monta, luego cada
+// departamento técnico en el orden en que entra al escenario y al final la gente
+// y lo que no es equipo.
 export const DISCIPLINAS = [
-  "AUDIO",
-  "ILUMINACION",
-  "VIDEO",
-  "BACKLINE",
   "ESCENARIO",
-  "ENERGIA",
-  "COMUNICACION",
   "RIGGING",
+  "ENERGIA",
+  "AUDIO",
+  "COMUNICACION",
+  "BACKLINE",
+  "VIDEO",
+  "ILUMINACION",
   "PERSONAL",
   "OTRO",
 ] as const;
@@ -27,11 +34,84 @@ export const DISCIPLINA_LABEL: Record<string, string> = {
   COMUNICACION: "Comunicación",
   RIGGING: "Rigging",
   /// El puesto que exige el rider (ingeniero de FOH, técnico de monitores, VJ).
-  /// Se cotejó siempre contra la casa igual que una caja, y hasta hoy vivía
+  /// Se cotejó siempre contra el venue igual que una caja, y hasta hoy vivía
   /// como texto suelto en las notas del rider.
   PERSONAL: "Personal técnico",
   OTRO: "Otro",
 };
+
+/// Las secciones del rider, en el orden en que se leen, con las notas de la
+/// ficha que le toca a cada una. Un rider se lee departamento por departamento:
+/// primero el párrafo que lo explica y enseguida su lista de equipo. Tenerlos en
+/// dos lugares del documento obliga a leerlo dos veces.
+export interface NotaRider {
+  /// Campo de `ArtistaRider` donde vive el párrafo.
+  campo: string;
+  /// Solo cuando el departamento negocia más de una conversación (audio: FOH y
+  /// monitoreo). Si es null, el título de la sección ya dice de qué habla.
+  label: string | null;
+  ayuda: string;
+}
+
+export interface SeccionRider {
+  departamento: Disciplina;
+  titulo: string;
+  notas: NotaRider[];
+}
+
+export const SECCIONES_RIDER: SeccionRider[] = [
+  {
+    departamento: "ESCENARIO",
+    titulo: "Escenario",
+    notas: [{ campo: "notasEscenario", label: null, ayuda: "Risers, acomodo, techo, accesos." }],
+  },
+  { departamento: "RIGGING", titulo: "Rigging", notas: [] },
+  {
+    departamento: "ENERGIA",
+    titulo: "Energía",
+    notas: [{ campo: "notasEnergia", label: null, ayuda: "Alimentación, tierras, planta de respaldo." }],
+  },
+  {
+    departamento: "AUDIO",
+    titulo: "Audio",
+    notas: [
+      { campo: "notasFoh", label: "FOH", ayuda: "Consola, procesamiento, posición de la cabina, quién mezcla." },
+      { campo: "notasMonitoreo", label: "Monitoreo", ayuda: "In-ears, wedges, quién mezcla monitores, mixes por persona." },
+    ],
+  },
+  { departamento: "COMUNICACION", titulo: "Comunicación", notas: [] },
+  {
+    departamento: "BACKLINE",
+    titulo: "Backline",
+    notas: [{ campo: "notasBackline", label: null, ayuda: "Lo que el artista trae y lo que espera encontrar en el venue." }],
+  },
+  {
+    departamento: "VIDEO",
+    titulo: "Video",
+    notas: [{ campo: "notasVideo", label: null, ayuda: "Pantallas, contenido, resolución, quién opera." }],
+  },
+  {
+    departamento: "ILUMINACION",
+    titulo: "Iluminación",
+    notas: [{ campo: "notasIluminacion", label: null, ayuda: "Consola, intención de diseño, lo que no se negocia." }],
+  },
+  {
+    departamento: "PERSONAL",
+    titulo: "Personal técnico",
+    notas: [{ campo: "notasCrewRequerido", label: null, ayuda: "Cuánta gente local y con qué perfil." }],
+  },
+  {
+    departamento: "OTRO",
+    titulo: "Hospitalidad",
+    notas: [
+      {
+        campo: "notasHospitalidad",
+        label: null,
+        ayuda: "Camerinos, alimentos, bebidas, toallas, lo que evita fricción.",
+      },
+    ],
+  },
+];
 
 // ── Personas del artista ─────────────────────────────────────────────────────
 export const ROLES_PERSONA = [
@@ -127,7 +207,7 @@ export function totalCanalesSalida(salidas: { estereo: boolean }[]): number {
   return salidas.reduce((n, s) => n + canalesDeSalida(s.estereo), 0);
 }
 
-/// Para el documento que lee el ingeniero de la casa: lo que él parcha son canales,
+/// Para el documento que lee el ingeniero del venue: lo que él parcha son canales,
 /// no mixes, así que el estéreo se abre en dos renglones marcados L y R.
 export function expandirSalida(canal: number, estereo: boolean): { canal: number; lado: "L" | "R" | null }[] {
   return estereo
@@ -139,7 +219,7 @@ export function expandirSalida(canal: number, estereo: boolean): { canal: number
 }
 
 // ── Rider maestro: prioridad y quién provee ──────────────────────────────────
-// La prioridad es lo que permite negociar con la casa sin regalar lo que no se negocia.
+// La prioridad es lo que permite negociar con el venue sin regalar lo que no se negocia.
 export const PRIORIDADES = ["INDISPENSABLE", "IMPORTANTE", "DESEABLE"] as const;
 export type Prioridad = (typeof PRIORIDADES)[number];
 
@@ -157,8 +237,11 @@ export const PRIORIDAD_COLOR: Record<string, string> = {
 
 export const PROVISTO_POR = ["CASA", "ARTISTA", "MAINSTAGE", "POR_DEFINIR"] as const;
 
+/// En una gira hay tres figuras y el rider se negocia contra las tres: el
+/// artista, el venue y el promotor. "La casa" era una sola palabra para las tres
+/// últimas, así que el código `CASA` se lee "el venue".
 export const PROVISTO_POR_LABEL: Record<string, string> = {
-  CASA: "La casa",
+  CASA: "El venue",
   ARTISTA: "El artista",
   MAINSTAGE: "Mainstage",
   POR_DEFINIR: "Por definir",
@@ -178,7 +261,7 @@ export const CUBIERTO_POR = [
 
 export const CUBIERTO_POR_LABEL: Record<string, string> = {
   POR_DEFINIR: "Por definir",
-  CASA: "Lo pone la casa",
+  CASA: "Lo pone el venue",
   MAINSTAGE: "Lo llevamos nosotros",
   PROVEEDOR: "Se renta a proveedor",
   ARTISTA: "Lo trae el artista",
@@ -580,7 +663,7 @@ export const ORIGENES_CREW = ["MAINSTAGE", "ARTISTA", "CASA", "PROVEEDOR", "EXTE
 export const ORIGEN_CREW_LABEL: Record<string, string> = {
   MAINSTAGE: "Mainstage",
   ARTISTA: "Del artista",
-  CASA: "De la casa",
+  CASA: "Del venue",
   PROVEEDOR: "Del proveedor",
   EXTERNO: "Externo",
 };
@@ -592,7 +675,7 @@ export interface CrewNombrable {
 }
 
 /// Quién es esta persona. El nombre libre manda cuando existe: es el que se
-/// capturó a propósito para esta gira (el técnico de la casa que no está en
+/// capturó a propósito para esta gira (el técnico del venue que no está en
 /// ningún catálogo); si no, se lee del técnico o del integrante del artista.
 export function nombreCrew(c: CrewNombrable): string {
   return c.nombreLibre?.trim() || c.tecnico?.nombre || c.persona?.nombre || "Sin nombre";
@@ -1276,7 +1359,7 @@ export const PLANTILLA_RIDER_BANDA: PlantillaLineaRider[] = [
 
 // ── Bloques de montaje que exige el rider ────────────────────────────────────
 // Duraciones y responsables, no horas de reloj: la hora la pone el day sheet de
-// cada fecha. Es lo que se negocia con la casa antes de firmar el horario.
+// cada fecha. Es lo que se negocia con el venue antes de firmar el horario.
 export interface PlantillaBloqueRider {
   titulo: string;
   tipo: string;
@@ -1316,7 +1399,7 @@ export const PLANTILLA_BLOQUES_RIDER: PlantillaBloqueRider[] = [
   },
 ];
 
-// ── Inventario de casa del venue ─────────────────────────────────────────────
+// ── Inventario del venue ─────────────────────────────────────────────
 // Condición del equipo que presta el foro: se captura al verificar la ficha en sitio.
 export const CONDICIONES_CASA = ["BUENO", "REGULAR", "MALO", "DESCONOCIDO"] as const;
 
@@ -1335,7 +1418,7 @@ export const CONDICION_CASA_COLOR: Record<string, string> = {
 };
 
 // ── Archivero de la gira ─────────────────────────────────────────────────────
-// Lo que llega de afuera y no se captura: el contra-rider en PDF de la casa, el
+// Lo que llega de afuera y no se captura: el contra-rider en PDF del venue, el
 // contrato del promotor, planos. Vive como archivo porque nadie va a transcribir
 // un plano a campos, pero sí tiene que estar a un clic del advance.
 export const TIPOS_ARCHIVO_GIRA = [
@@ -1349,7 +1432,7 @@ export const TIPOS_ARCHIVO_GIRA = [
 ] as const;
 
 export const TIPO_ARCHIVO_GIRA_LABEL: Record<string, string> = {
-  RIDER_CASA: "Rider de la casa",
+  RIDER_CASA: "Rider del venue",
   CONTRATO: "Contrato",
   PLANO: "Plano del foro",
   STAGE_PLOT: "Stage plot",

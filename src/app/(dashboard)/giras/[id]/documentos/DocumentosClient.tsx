@@ -94,7 +94,7 @@ const DOCS_GIRA = [
   {
     slug: "input-list",
     label: "Input y output list",
-    descripcion: "Solo las dos listas de canales. Es lo que pide el ingeniero de la casa para parchar.",
+    descripcion: "Solo las dos listas de canales. Es lo que pide el ingeniero del venue para parchar.",
     necesitaRider: true,
   },
   {
@@ -550,7 +550,7 @@ export default function DocumentosClient({
         <div>
           <h2 className="ms-h2">Archivero</h2>
           <p className="ms-meta mt-1">
-            Lo que llega de afuera: el rider de la casa, el contrato, el plano del foro, la input list que mandó el
+            Lo que llega de afuera: el rider del venue, el contrato, el plano del foro, la input list que mandó el
             ingeniero local. Un archivo puede ser general o de un show.
           </p>
         </div>
@@ -594,7 +594,7 @@ export default function DocumentosClient({
         {archivos.length === 0 ? (
           <div className="ms-empty-state">
             <p className="text-sm text-[#6b7280]">
-              El archivero está vacío. Sube el rider de la casa o el contrato en cuanto lleguen: aquí los encuentra
+              El archivero está vacío. Sube el rider del venue o el contrato en cuanto lleguen: aquí los encuentra
               cualquiera del equipo.
             </p>
           </div>

@@ -134,7 +134,7 @@ export async function generarDaySheet(showId: string): Promise<PdfGira | null> {
   }
   if (show.contactoCasaNombre || show.contactoCasaTelefono || show.contactoCasaEmail) {
     contactos.push({
-      rol: "Producción de la casa",
+      rol: "Producción del venue",
       nombre: show.contactoCasaNombre ?? "Sin nombre",
       telefono: show.contactoCasaTelefono,
       email: show.contactoCasaEmail,

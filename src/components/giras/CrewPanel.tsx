@@ -338,7 +338,7 @@ export default function CrewPanel({
               value={nuevo.nombreLibre}
               onChange={(e) => setNuevo({ ...nuevo, nombreLibre: e.target.value })}
               disabled={!!nuevo.persona}
-              placeholder="ej. Jorge (técnico de la casa)"
+              placeholder="ej. Jorge (técnico del venue)"
               className="ms-input-inline w-full disabled:opacity-40"
             />
           </div>

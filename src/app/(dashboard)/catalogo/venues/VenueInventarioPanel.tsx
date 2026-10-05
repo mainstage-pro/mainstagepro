@@ -33,7 +33,7 @@ type Campos = Partial<Record<keyof ItemInventario | "verificado", unknown>>;
 const DEMORA_GUARDADO = 700;
 
 /**
- * Lo que la casa presta, línea por línea. Es la memoria del foro: el advance de
+ * Lo que el venue presta, línea por línea. Es la memoria del foro: el advance de
  * gira la precarga y, al cerrar, escribe aquí lo que realmente había.
  */
 export default function VenueInventarioPanel({ venueId }: { venueId: string }) {
@@ -73,7 +73,7 @@ export default function VenueInventarioPanel({ venueId }: { venueId: string }) {
       body: JSON.stringify(campos),
     });
     if (!res.ok) {
-      toast.error("No se pudo guardar el concepto de casa");
+      toast.error("No se pudo guardar el concepto del venue");
       return;
     }
     const d = await res.json();
@@ -119,7 +119,7 @@ export default function VenueInventarioPanel({ venueId }: { venueId: string }) {
 
   async function quitar(item: ItemInventario) {
     const ok = await confirm({
-      message: `¿Quitar «${item.concepto}» de la ficha de casa de este venue?`,
+      message: `¿Quitar «${item.concepto}» de la ficha técnica de este venue?`,
       danger: true,
       confirmText: "Quitar",
     });
@@ -132,7 +132,7 @@ export default function VenueInventarioPanel({ venueId }: { venueId: string }) {
     setItems((prev) => (prev ? prev.filter((i) => i.id !== item.id) : prev));
   }
 
-  if (items === null) return <p className="text-gray-600 text-xs italic">Cargando inventario de casa...</p>;
+  if (items === null) return <p className="text-gray-600 text-xs italic">Cargando inventario del venue...</p>;
 
   const presentes = DISCIPLINAS.filter((d) => items.some((i) => i.disciplina === d));
 
@@ -140,7 +140,7 @@ export default function VenueInventarioPanel({ venueId }: { venueId: string }) {
     <div className="space-y-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
-          <p className="ms-label">Inventario de casa ({items.length} conceptos)</p>
+          <p className="ms-label">Inventario del venue ({items.length} conceptos)</p>
           <p className="ms-micro mt-0.5">Lo que el foro presta. El advance de gira lo lee y lo actualiza.</p>
         </div>
         <VenueRiderImportar venueId={venueId} onImportado={(nuevos) => setItems(nuevos as ItemInventario[])} />

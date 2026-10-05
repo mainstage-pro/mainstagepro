@@ -14,7 +14,7 @@
  *  · PDF    → se pega al final del documento con sus páginas intactas.
  *
  * `incluirEnPdf` existe porque hay planos de trabajo que sirven internamente y
- * no se mandan a la casa.
+ * no se mandan al venue.
  */
 
 import { useRef, useState } from "react";
@@ -239,7 +239,7 @@ export default function AnexosRiderClient({ riderId, stagePlotUrl, anexosInicial
       {anexos.length === 0 ? (
         <div className="ms-empty-state">
           <p className="text-sm text-[#6b7280]">
-            Sin anexos. Sube el stage plot y el patch: es lo primero que abre la casa cuando recibe el rider.
+            Sin anexos. Sube el stage plot y el patch: es lo primero que abre el venue cuando recibe el rider.
           </p>
         </div>
       ) : (

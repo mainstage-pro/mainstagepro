@@ -1,6 +1,6 @@
 // src/lib/pdf-gira/advance.ts
 //
-// El advance del show: lo que pide el rider contra lo que pone la casa. El
+// El advance del show: lo que pide el rider contra lo que pone el venue. El
 // PDF se manda al foro tal cual, así que aquí NO entra ni el costo ni el nombre
 // del proveedor aunque el modelo los traiga: eso se queda del lado nuestro.
 

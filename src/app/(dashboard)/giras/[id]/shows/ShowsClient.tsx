@@ -48,7 +48,7 @@ export interface ShowEditable {
 }
 
 /// Lo que es del lugar y no de la fecha: tres noches en el mismo foro comparten
-/// promotor y contacto de la casa, así que se capturan una vez por venue.
+/// promotor y contacto del venue, así que se capturan una vez por venue.
 interface VenueBorrador {
   venueId: string | null;
   venueNombre: string;
@@ -328,7 +328,7 @@ export default function ShowsClient({ giraId, shows }: { giraId: string; shows: 
   }
 
   /// Otra función en un venue que ya existe: el foro, el promotor y el contacto
-  /// de la casa se heredan del show anterior; lo único que se pregunta es el día.
+  /// del venue se heredan del show anterior; lo único que se pregunta es el día.
   function agregarFecha(g: Grupo) {
     if (!fechaNueva) {
       toast.error("El show necesita fecha.");
@@ -438,7 +438,7 @@ export default function ShowsClient({ giraId, shows }: { giraId: string; shows: 
           </div>
 
           <div className="space-y-2">
-            <p className="ms-micro text-[#B3985B]">Contacto de la casa</p>
+            <p className="ms-micro text-[#B3985B]">Contacto del venue</p>
             <input
               value={b.contactoCasaNombre}
               onChange={(e) => set({ contactoCasaNombre: e.target.value })}
@@ -522,7 +522,7 @@ export default function ShowsClient({ giraId, shows }: { giraId: string; shows: 
           <h2 className="ms-h2">Shows por venue</h2>
           <p className="ms-subtitle mt-0.5">
             La unidad es el show; el venue solo los agrupa: tres noches en el Lunario son un venue y tres shows. El
-            promotor y el contacto de la casa se capturan una vez por venue; la fecha, el estado y el advance son de
+            promotor y el contacto del venue se capturan una vez por venue; la fecha, el estado y el advance son de
             cada show.
           </p>
         </div>
@@ -747,7 +747,7 @@ export default function ShowsClient({ giraId, shows }: { giraId: string; shows: 
                       Cancelar
                     </button>
                     <p className="ms-micro text-[#6b7280] w-full">
-                      Hereda el venue, el promotor y el contacto de la casa. El advance de la fecha nueva se arma aparte.
+                      Hereda el venue, el promotor y el contacto del venue. El advance de la fecha nueva se arma aparte.
                     </p>
                   </div>
                 )}

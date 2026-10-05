@@ -571,13 +571,13 @@ export default function VenuesPage() {
                         {v.notasTecnicas && <p className="text-gray-300 text-sm leading-relaxed mt-3">{v.notasTecnicas}</p>}
                         {v.riderCasaUrl && (
                           <a href={v.riderCasaUrl} target="_blank" rel="noopener noreferrer" className="text-[#B3985B] text-sm hover:underline mt-2 inline-block">
-                            Abrir el rider de la casa →
+                            Abrir el rider del venue →
                           </a>
                         )}
                       </div>
                     )}
 
-                    {/* Inventario de casa, editable renglón por renglón */}
+                    {/* Inventario del venue, editable renglón por renglón */}
                     <VenueInventarioPanel venueId={v.id} />
 
                     {/* Historial de proyectos en este venue */}
@@ -830,11 +830,11 @@ export default function VenuesPage() {
                     className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
                 </div>
                 <div className="mt-3">
-                  <label className="text-xs text-gray-400 block mb-1">Rider de la casa (PDF)</label>
+                  <label className="text-xs text-gray-400 block mb-1">Rider del venue (PDF)</label>
                   {form.riderCasaUrl ? (
                     <div className="flex items-center gap-3">
                       <a href={form.riderCasaUrl} target="_blank" rel="noopener noreferrer" className="text-[#B3985B] text-sm hover:underline">
-                        Abrir el rider de la casa →
+                        Abrir el rider del venue →
                       </a>
                       <button onClick={() => setForm(p => ({ ...p, riderCasaUrl: "" }))} className="text-xs text-red-500 hover:underline">
                         Quitar

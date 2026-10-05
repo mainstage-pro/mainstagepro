@@ -139,7 +139,7 @@ export default function InputListClient({ riderId, canalesMinimos, canalesInicia
         <div>
           <h2 className="ms-h2">Input list</h2>
           <p className="ms-subtitle mt-1">
-            Canal por canal, con el micrófono preferido y sus alternativas: es lo que se negocia con la casa sin
+            Canal por canal, con el micrófono preferido y sus alternativas: es lo que se negocia con el venue sin
             discutir.
           </p>
         </div>

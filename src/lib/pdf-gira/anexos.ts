@@ -5,7 +5,7 @@
 //
 //   · Imagen → se dibuja en su propia página del rider. Hay que conocer su
 //     proporción antes de maquetar: un plano apaisado estirado a un marco vertical
-//     deja el escenario deformado y la casa monta con medidas equivocadas.
+//     deja el escenario deformado y el venue monta con medidas equivocadas.
 //   · PDF    → se pega al final del documento con sus páginas intactas. react-pdf
 //     no sabe embeber otro PDF, así que la unión la hace pdf-lib sobre el buffer
 //     ya renderizado.

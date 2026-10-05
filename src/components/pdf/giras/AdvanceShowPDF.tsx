@@ -1,7 +1,7 @@
 /**
  * AdvanceShowPDF.tsx — El advance del show.
  *
- * Tres columnas y una pregunta: qué pide el rider, qué pone la casa y qué falta.
+ * Tres columnas y una pregunta: qué pide el rider, qué pone el venue y qué falta.
  * Es el documento con el que se cierra el advance por escrito, así que no lleva
  * costos ni nombres de proveedor: eso se queda del lado nuestro y el documento
  * se puede mandar al foro tal cual.
@@ -67,7 +67,7 @@ export interface AdvanceShowData {
 const COLS: ColumnaTabla[] = [
   { label: "Pide el rider", flex: 4 },
   { label: "Cant.", ancho: 32, alinear: "right" },
-  { label: "Lo que pone la casa", flex: 3 },
+  { label: "Lo que pone el venue", flex: 3 },
   { label: "Cómo se cubre", flex: 3 },
   { label: "Estado", ancho: 68 },
 ];
@@ -176,7 +176,7 @@ export function AdvanceShowPDF({ data }: { data: AdvanceShowData }) {
           ) : null}
 
           <Seccion
-            titulo="Rider pedido contra lo que pone la casa"
+            titulo="Rider pedido contra lo que pone el venue"
             nota="Una fila por concepto del rider. Lo que queda sin cubrir es lo que hay que rentar o negociar."
           >
             <Tabla columnas={COLS} renglones={renglones} />

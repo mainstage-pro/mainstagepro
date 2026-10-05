@@ -1,7 +1,7 @@
 /**
  * ListaCanalesPDF.tsx — Input list y output list.
  *
- * Van juntas en un documento aparte porque el ingeniero de la casa pide
+ * Van juntas en un documento aparte porque el ingeniero del venue pide
  * exactamente esto y nada más: no quiere leer el rider completo para parchar la
  * consola. El mismo bloque se reusa dentro del rider para que no haya dos
  * versiones de la lista circulando.
@@ -84,7 +84,7 @@ export function ListaCanales({ inputs, outputs }: { inputs: CanalInput[]; output
   }));
 
   // Un renglón por canal de consola: el mix estéreo se abre en L y R porque lo
-  // que el ingeniero de la casa parcha son canales, no mixes.
+  // que el ingeniero del venue parcha son canales, no mixes.
   const filasOutput: RenglonTabla[] = numerarSalidas(outputs).flatMap((c) =>
     expandirSalida(c.canal, c.estereo).map(({ canal, lado }) => ({
       tipo: "fila" as const,

@@ -231,7 +231,7 @@ export default function RiderEquipoClient({ riderId, lineasIniciales, equipos }:
           <p className="ms-micro mt-0.5">Son los que deciden si el show va.</p>
         </div>
         <div className="ms-stat-card">
-          <p className="ms-label">Los pone la casa</p>
+          <p className="ms-label">Los pone el venue</p>
           <p className="text-xl font-semibold mt-1 text-white">{conteos.casa}</p>
         </div>
         <div className="ms-stat-card">
@@ -276,7 +276,7 @@ export default function RiderEquipoClient({ riderId, lineasIniciales, equipos }:
           <table className="w-full min-w-[1700px]">
             <thead className="ms-thead">
               <tr>
-                <th className="ms-th text-left w-[150px]">Disciplina</th>
+                <th className="ms-th text-left w-[150px]">Departamento</th>
                 <th className="ms-th text-left w-[260px]">Concepto</th>
                 <th className="ms-th text-left w-[70px]">Cant.</th>
                 <th className="ms-th text-left w-[110px]">Unidad</th>

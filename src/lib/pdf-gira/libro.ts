@@ -265,7 +265,7 @@ export async function generarLibroGira(giraId: string, secciones: SeccionLibro[]
       contactos.push({
         id: `${s.id}-casa`,
         alcance,
-        rol: "Producción de la casa",
+        rol: "Producción del venue",
         nombre: s.contactoCasaNombre ?? "Sin nombre",
         telefono: s.contactoCasaTelefono,
         email: s.contactoCasaEmail,

@@ -55,7 +55,7 @@ type Campos = Partial<Record<keyof ContactoFila, unknown>>;
 
 const DEMORA_GUARDADO = 700;
 
-/// El orden en que la casa busca a alguien cuando algo se mueve.
+/// El orden en que el venue busca a alguien cuando algo se mueve.
 const ROLES_SUGERIDOS = ["TOUR_MANAGER", "PRODUCTION_MANAGER", "FOH", "MONITORES"];
 
 const NUEVO_VACIO = { nombre: "", rol: "FOH", telefono: "", email: "", alCrew: true };
@@ -210,7 +210,7 @@ export default function ContactosRiderClient({ artistaId, riderId, contactosInic
   const disponibles = crew.filter((p) => !yaEnRider.has(p.id));
   const enPdf = contactos.filter((c) => c.enPdf).length;
 
-  // El rider que no dice a quién llamar obliga a la casa a adivinar.
+  // El rider que no dice a quién llamar obliga al venue a adivinar.
   const faltanClave = ROLES_SUGERIDOS.filter((r) => !contactos.some((c) => c.rol === r));
 
   return (
@@ -410,7 +410,7 @@ export default function ContactosRiderClient({ artistaId, riderId, contactosInic
       {faltanClave.length > 0 && contactos.length > 0 && (
         <p className="ms-micro text-amber-300">
           Falta quién atiende {faltanClave.map((r) => ROL_PERSONA_LABEL[r]).join(", ")}. Si el artista no trae a esa
-          persona está bien; si sí la trae y no está aquí, la casa va a adivinar.
+          persona está bien; si sí la trae y no está aquí, el venue va a adivinar.
         </p>
       )}
 

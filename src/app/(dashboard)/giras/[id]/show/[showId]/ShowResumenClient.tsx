@@ -381,7 +381,7 @@ export default function ShowResumenClient({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
             <div className="space-y-2">
-              <p className="ms-micro text-[#B3985B]">Contacto de la casa</p>
+              <p className="ms-micro text-[#B3985B]">Contacto del venue</p>
               <input
                 value={form.contactoCasaNombre}
                 onChange={(e) => set({ contactoCasaNombre: e.target.value })}
@@ -509,7 +509,7 @@ export default function ShowResumenClient({
             <div className="space-y-2.5">
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="text-[13px] text-white">Rider enviado a la casa</p>
+                  <p className="text-[13px] text-white">Rider enviado al venue</p>
                   <p className="ms-meta mt-0.5">
                     {show.riderEnviadoEn ? fmtFechaCorta(show.riderEnviadoEn) : "Todavía no sale"}
                   </p>
@@ -672,7 +672,7 @@ export default function ShowResumenClient({
             <div className="flex flex-wrap gap-2">
               {venue.riderCasaUrl && (
                 <a href={venue.riderCasaUrl} target="_blank" rel="noopener noreferrer" className="ms-btn-secondary">
-                  Rider de la casa
+                  Rider del venue
                 </a>
               )}
               {venue.linkMaps && (

@@ -49,7 +49,7 @@ export const DOCUMENTOS_GIRA = {
   advance: {
     ambito: "SHOW",
     label: "Advance del show",
-    descripcion: "Lo que pide el rider contra lo que pone la casa y lo que falta cerrar. Sin costos ni proveedores.",
+    descripcion: "Lo que pide el rider contra lo que pone el venue y lo que falta cerrar. Sin costos ni proveedores.",
   },
   rider: {
     ambito: "GIRA",
@@ -60,7 +60,7 @@ export const DOCUMENTOS_GIRA = {
   "input-list": {
     ambito: "GIRA",
     label: "Input y output list",
-    descripcion: "Solo las dos listas de canales, para el ingeniero de la casa.",
+    descripcion: "Solo las dos listas de canales, para el ingeniero del venue.",
     falta: "el rider técnico del artista",
   },
   setlist: {

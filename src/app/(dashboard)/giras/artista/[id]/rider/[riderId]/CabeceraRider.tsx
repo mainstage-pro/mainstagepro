@@ -66,7 +66,7 @@ export default function CabeceraRider(p: Props) {
             <span className="ms-badge ms-badge-gray">Versión histórica</span>
           )}
           {/* El paquete técnico se baja desde el rider, sin necesidad de una gira:
-              el booker lo pide para cotizar y la casa para parchar. */}
+              el booker lo pide para cotizar y el venue para parchar. */}
           <a
             className="ms-btn-secondary"
             href={`/api/artista-riders/${p.riderId}/documentos/rider?inline=1`}

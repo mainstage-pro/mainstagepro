@@ -170,7 +170,7 @@ export default function AdvanceTabla({
       } else {
         setAviso(
           `Ficha del venue actualizada: ${d.creadas} conceptos nuevos, ${d.actualizadas} actualizados` +
-            (d.omitidas ? `, ${d.omitidas} omitidos por no tener texto de la casa` : "") +
+            (d.omitidas ? `, ${d.omitidas} omitidos por no tener texto del venue` : "") +
             ".",
         );
       }
@@ -295,7 +295,7 @@ export default function AdvanceTabla({
             className="ms-btn-secondary disabled:opacity-50"
             title={venue ? undefined : "Este show no tiene venue asignado"}
           >
-            {trabajando === "precargar" ? "Precargando…" : "Precargar lo que ofrece la casa"}
+            {trabajando === "precargar" ? "Precargando…" : "Precargar lo que ofrece el venue"}
           </button>
           <button
             onClick={() => void accion("volcar")}
@@ -322,7 +322,7 @@ export default function AdvanceTabla({
         )}
         {venue && (
           <p className="ms-meta">
-            Ficha de casa de {venue.nombre}: {venue.itemsInventario} conceptos documentados ·{" "}
+            Ficha técnica de {venue.nombre}: {venue.itemsInventario} conceptos documentados ·{" "}
             <Link href="/directorio/venues" className="ms-link-gold">
               abrir ficha del venue
             </Link>
@@ -335,7 +335,7 @@ export default function AdvanceTabla({
       {nuevo && (
         <div className="ms-card-deep p-3 grid grid-cols-1 md:grid-cols-[160px_1fr_90px_160px_auto] gap-2 items-end">
           <div>
-            <label className="ms-label block mb-1">Disciplina</label>
+            <label className="ms-label block mb-1">Departamento</label>
             <select
               value={nuevo.disciplina}
               onChange={(e) => setNuevo({ ...nuevo, disciplina: e.target.value })}
@@ -439,8 +439,8 @@ export default function AdvanceTabla({
                 <th className="ms-th w-[260px]">Concepto</th>
                 <th className="ms-th w-[70px]">Pide</th>
                 <th className="ms-th w-[130px]">Prioridad</th>
-                <th className="ms-th w-[260px]">Ofrece la casa</th>
-                <th className="ms-th w-[70px]">Casa</th>
+                <th className="ms-th w-[260px]">Ofrece el venue</th>
+                <th className="ms-th w-[70px]">Venue</th>
                 <th className="ms-th w-[170px]">Cubierto por</th>
                 <th className="ms-th w-[70px]">Cubre</th>
                 <th className="ms-th w-[70px]">Falta</th>

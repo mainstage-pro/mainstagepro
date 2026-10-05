@@ -23,7 +23,7 @@ export const dynamic = "force-dynamic";
 /// Códigos cortos: la matriz necesita que la celda quepa en una columna angosta.
 const SIGLA: Record<string, string> = {
   POR_DEFINIR: "?",
-  CASA: "Casa",
+  CASA: "Venue",
   MAINSTAGE: "Nosotros",
   PROVEEDOR: "Proveedor",
   ARTISTA: "Artista",
@@ -198,7 +198,7 @@ export default async function AdvanceGiraPage({ params }: { params: Promise<{ id
 
       {/* Qué falta y con quién conseguirlo */}
       <div className="space-y-3">
-        <h2 className="ms-h2">Qué falta conseguir, por show y disciplina</h2>
+        <h2 className="ms-h2">Qué falta conseguir, por show y departamento</h2>
         {grupos.length === 0 ? (
           <div className="ms-empty-state">
             <p className="text-sm text-gray-400">No hay faltantes abiertos.</p>
@@ -259,7 +259,7 @@ export default async function AdvanceGiraPage({ params }: { params: Promise<{ id
                 <p className="ms-label mb-1.5">Proveedores con cobertura en {g.ciudad}</p>
                 {g.proveedores.length === 0 ? (
                   <p className="ms-meta">
-                    Ninguno declarado para este show y disciplina. Captura ciudades y disciplinas en el{" "}
+                    Ninguno declarado para este show y departamento. Captura ciudades y departamentos en el{" "}
                     <Link href="/directorio/proveedores" className="ms-link-gold">
                       directorio de proveedores
                     </Link>
