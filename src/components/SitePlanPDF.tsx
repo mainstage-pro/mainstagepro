@@ -6,8 +6,9 @@ import {
 } from "@react-pdf/renderer";
 import { C } from "@/components/pdf/PdfShared";
 import {
-  type Capa, type ObjetoPlano, anclaRotulo, areaPoligono, colorDe, medidaDe, puntaDeFlecha, radioDe,
-  RELLENO_DEFAULT, TAMANO_PIN_DEFAULT, TAMANO_TEXTO_DEFAULT,
+  type Capa, type ObjetoPlano, amperajeTotal, anclaRotulo, areaPoligono, colorDe, electricoTexto,
+  ESTADOS_ELEMENTO, ESTADOS_VARIANTE, medidaDe, objetosDeVariante, puntaDeFlecha, radioDe, SUPERFICIES,
+  tieneFicha, tipoElementoDe, ventanaTexto, RELLENO_DEFAULT, TAMANO_PIN_DEFAULT, TAMANO_TEXTO_DEFAULT,
 } from "@/lib/site-plan";
 import { iconoDe } from "@/lib/site-plan-iconos";
 import { primitivasDeIcono } from "@/lib/site-plan-icono-pdf";
@@ -18,6 +19,25 @@ const ALTO_HOJA = 612;
 const COL_LEYENDA = 170;
 const PLANO_ANCHO = ANCHO_HOJA - MARGEN * 2 - COL_LEYENDA - 14;
 const PLANO_ALTO = ALTO_HOJA - 150;
+
+export type CuadroDatosPDF = {
+  direccionSitio: string | null;
+  norteGrados: number | null;
+  dibujadoPor: string | null;
+  responsableSitio: string | null;
+  clienteOPromotor: string | null;
+  capacidadSitio: number | null;
+  capacidadEvacuacion: number | null;
+};
+
+export type VariantePDF = {
+  nombre: string;
+  revision: number;
+  estado: string;
+  capasIds: string | null;
+  soloElectrico: boolean;
+  soloEmergencia: boolean;
+};
 
 export type DatosSitePlanPDF = {
   nombre: string;
@@ -31,6 +51,8 @@ export type DatosSitePlanPDF = {
   objetos: ObjetoPlano[];
   notas: string | null;
   logoBase64: string | null;
+  cuadro: CuadroDatosPDF;
+  variante: VariantePDF | null;
 };
 
 const s = StyleSheet.create({
@@ -65,7 +87,39 @@ const s = StyleSheet.create({
   notasTitulo: { fontSize: 6.5, color: C.grisClaro, textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 },
   notasTexto: { fontSize: 7, color: C.grisMedio, lineHeight: 1.4 },
   sinEscala: { fontSize: 6.5, color: C.grisClaro, marginTop: 8 },
+
+  cuadro: { borderWidth: 0.7, borderColor: C.grisLinea, marginBottom: 2 },
+  cuadroFila: { flexDirection: "row", borderBottomWidth: 0.5, borderBottomColor: C.grisLinea },
+  cuadroLlave: {
+    width: 52, fontSize: 6, color: C.grisClaro, textTransform: "uppercase", letterSpacing: 0.5,
+    paddingVertical: 2.5, paddingHorizontal: 3.5, backgroundColor: "#f6f5f2",
+  },
+  cuadroValor: { flex: 1, fontSize: 7, color: C.negro, paddingVertical: 2.5, paddingHorizontal: 3.5 },
+  cuadroAforo: { fontSize: 6.5, color: C.grisMedio, paddingVertical: 3, paddingHorizontal: 3.5, lineHeight: 1.35 },
+
+  tablaTitulo: { fontSize: 11, fontFamily: "Helvetica-Bold", color: C.negro, marginBottom: 1 },
+  tablaIntro: { fontSize: 7, color: C.grisMedio, marginBottom: 8 },
+  thFila: {
+    flexDirection: "row", borderBottomWidth: 0.8, borderBottomColor: C.negro,
+    paddingBottom: 3, marginBottom: 1,
+  },
+  th: { fontSize: 6, color: C.grisClaro, textTransform: "uppercase", letterSpacing: 0.6 },
+  trFila: {
+    flexDirection: "row", alignItems: "flex-start",
+    borderBottomWidth: 0.4, borderBottomColor: C.grisLinea, paddingVertical: 3.2,
+  },
+  td: { fontSize: 7, color: C.negro },
+  tdSuave: { fontSize: 6.5, color: C.grisMedio },
+  tdTipo: { fontSize: 6, color: C.grisClaro, marginTop: 1 },
+  totales: { flexDirection: "row", justifyContent: "flex-end", gap: 14, marginTop: 7 },
+  totalTexto: { fontSize: 7, fontFamily: "Helvetica-Bold", color: C.negro },
 });
+
+/** Ancho de cada columna de la cédula. El elemento se queda con lo que sobra. */
+const COLS = { clave: 34, medidas: 58, resp: 82, prov: 82, ventana: 58, elec: 52, estado: 44 };
+
+const ETIQUETA_ESTADO = new Map(ESTADOS_ELEMENTO.map(e => [e.clave as string, e.etiqueta]));
+const ETIQUETA_SUPERFICIE = new Map(SUPERFICIES.map(x => [x.clave as string, x.etiqueta]));
 
 /** Los `<path>`, `<circle>`… del icono, ya traducidos a primitivas de react-pdf. */
 function IconoPDF({ clave, x, y, lado, color }: { clave: string; x: number; y: number; lado: number; color: string }) {
@@ -115,21 +169,37 @@ export default function SitePlanPDF({ d }: { d: DatosSitePlanPDF }) {
   // rótulos salen del mismo grosor óptico que en pantalla.
   const unidad = 1 / k;
 
-  const visibles = d.objetos.filter(o => !o.oculto && d.capas.find(c => c.id === o.capaId)?.visible !== false);
+  // Una variante es un documento aparte del mismo dibujo: se queda con sus capas
+  // y, si es temático, solo con los elementos que ese croquis tiene que mostrar.
+  const visibles = d.variante
+    ? objetosDeVariante(d.objetos, d.variante)
+    : d.objetos.filter(o => !o.oculto && d.capas.find(c => c.id === o.capaId)?.visible !== false);
   const leyenda = d.capas
     .map(capa => ({ capa, items: visibles.filter(o => o.capaId === capa.id && o.etiqueta.trim() && o.tipo !== "TEXTO") }))
     .filter(g => g.items.length > 0);
 
   const metrosBarra = d.escala ? [100, 50, 25, 10, 5].find(m => m / d.escala! <= d.fondoAncho * 0.3) ?? 5 : null;
 
+  const estadoVariante = d.variante
+    ? ESTADOS_VARIANTE.find(e => e.clave === d.variante!.estado)?.etiqueta ?? d.variante.estado
+    : null;
+  const selloRevision = d.variante ? `Rev. ${d.variante.revision} · ${estadoVariante}` : null;
+  const titulo = d.variante ? `${d.nombre} · ${d.variante.nombre}` : d.nombre;
+
+  const cedula = visibles.filter(o => o.tipo !== "TEXTO" && tieneFicha(o));
+  const amperaje = amperajeTotal(visibles);
+
   return (
-    <Document title={d.nombre}>
+    <Document title={titulo}>
       <Page size={[ANCHO_HOJA, ALTO_HOJA]} style={s.page}>
         <View style={s.hero}>
           <View>
-            <Text style={s.heroTag}>Site plan</Text>
+            <Text style={s.heroTag}>{d.variante ? d.variante.nombre : "Site plan"}</Text>
             <Text style={s.heroNombre}>{d.nombre}</Text>
-            <Text style={s.heroMeta}>{d.subtitulo}</Text>
+            <Text style={s.heroMeta}>
+              {d.subtitulo}
+              {selloRevision ? ` · ${selloRevision}` : ""}
+            </Text>
           </View>
           {d.logoBase64 ? <Image src={d.logoBase64} style={s.heroLogo} /> : null}
         </View>
@@ -268,10 +338,28 @@ export default function SitePlanPDF({ d }: { d: DatosSitePlanPDF }) {
                   </Text>
                 </G>
               ) : null}
+
+              {/* Norte. Sin él nadie puede orientar el plano contra el predio real. */}
+              {d.cuadro.norteGrados !== null ? (
+                <G transform={`translate(${d.fondoAncho - 36 * unidad}, ${36 * unidad})`}>
+                  <Circle cx={0} cy={0} r={20 * unidad} fill="#0b0b0b" fillOpacity={0.85} stroke="#ffffff" strokeWidth={unidad} />
+                  <G transform={`rotate(${d.cuadro.norteGrados})`}>
+                    <Polygon
+                      points={`0,${-14 * unidad} ${5.5 * unidad},${5 * unidad} 0,${1.5 * unidad} ${-5.5 * unidad},${5 * unidad}`}
+                      fill="#ffffff"
+                    />
+                  </G>
+                  <Text x={0} y={17 * unidad} textAnchor="middle" fill="#ffffff" style={{ fontSize: 8 * unidad, fontFamily: "Helvetica-Bold" }}>
+                    N
+                  </Text>
+                </G>
+              ) : null}
             </Svg>
           </View>
 
           <View style={s.leyenda}>
+            <CuadroDatos d={d} amperaje={amperaje} />
+
             {leyenda.map(({ capa, items }) => (
               <View key={capa.id} wrap={false}>
                 <View style={s.capaTitulo}>
@@ -314,17 +402,163 @@ export default function SitePlanPDF({ d }: { d: DatosSitePlanPDF }) {
           </View>
         </View>
 
-        <View style={s.pie} fixed>
-          <Text style={s.pieTexto}>
-            {d.nombre} · {d.subtitulo}
-          </Text>
-          <Text style={s.pieTexto}>
-            {d.escala ? `Escala 1 px = ${(d.escala * 100).toFixed(1)} cm · ` : ""}
-            Generado {d.fecha} · Mainstage Pro
-          </Text>
-        </View>
+        <Pie d={d} sello={selloRevision} />
       </Page>
+
+      {cedula.length > 0 ? (
+        <Page size={[ANCHO_HOJA, ALTO_HOJA]} style={s.page}>
+          <View style={s.hero}>
+            <View>
+              <Text style={s.heroTag}>Cédula de elementos</Text>
+              <Text style={s.heroNombre}>{d.nombre}</Text>
+              <Text style={s.heroMeta}>
+                {d.subtitulo}
+                {selloRevision ? ` · ${selloRevision}` : ""}
+              </Text>
+            </View>
+            {d.logoBase64 ? <Image src={d.logoBase64} style={s.heroLogo} /> : null}
+          </View>
+
+          <View style={{ paddingHorizontal: MARGEN, paddingTop: 12 }}>
+            <Text style={s.tablaTitulo}>Qué es cada cosa y quién responde por ella</Text>
+            <Text style={s.tablaIntro}>
+              La clave de cada renglón es la que va rotulada en el plano. Lo que no aparece aquí es porque no se declaró.
+            </Text>
+
+            <View style={s.thFila} fixed>
+              <Text style={[s.th, { width: COLS.clave }]}>Clave</Text>
+              <Text style={[s.th, { flex: 1 }]}>Elemento</Text>
+              <Text style={[s.th, { width: COLS.medidas }]}>Medidas</Text>
+              <Text style={[s.th, { width: COLS.resp }]}>Responsable</Text>
+              <Text style={[s.th, { width: COLS.prov }]}>Proveedor</Text>
+              <Text style={[s.th, { width: COLS.ventana }]}>Montaje</Text>
+              <Text style={[s.th, { width: COLS.elec }]}>Eléctrico</Text>
+              <Text style={[s.th, { width: COLS.estado }]}>Estado</Text>
+            </View>
+
+            {cedula.map(o => (
+              <FilaCedula key={o.id} o={o} escala={d.escala} capas={d.capas} />
+            ))}
+
+            <View style={s.totales}>
+              {d.escala ? (
+                <Text style={s.totalTexto}>{`Superficie trazada ${Math.round(superficieTotal(visibles, d.escala)).toLocaleString("es-MX")} m²`}</Text>
+              ) : null}
+              {amperaje > 0 ? <Text style={s.totalTexto}>{`Carga declarada ${amperaje} A`}</Text> : null}
+            </View>
+          </View>
+
+          <Pie d={d} sello={selloRevision} />
+        </Page>
+      ) : null}
     </Document>
+  );
+}
+
+function Pie({ d, sello }: { d: DatosSitePlanPDF; sello: string | null }) {
+  return (
+    <View style={s.pie} fixed>
+      <Text style={s.pieTexto}>
+        {d.nombre}
+        {d.variante ? ` · ${d.variante.nombre}` : ""} · {d.subtitulo}
+      </Text>
+      <Text style={s.pieTexto}>
+        {sello ? `${sello} · ` : ""}
+        {d.escala ? `Escala 1 px = ${(d.escala * 100).toFixed(1)} cm · ` : ""}
+        Generado {d.fecha} · Mainstage Pro
+      </Text>
+    </View>
+  );
+}
+
+/**
+ * El cuadro de datos del plano: sitio, quién lo dibujó, quién responde y el
+ * aforo que gobierna. Es lo primero que revisa Protección Civil y lo que
+ * distingue un plano entregable de un dibujo bonito.
+ */
+function CuadroDatos({ d, amperaje }: { d: DatosSitePlanPDF; amperaje: number }) {
+  const c = d.cuadro;
+  const filas: { llave: string; valor: string }[] = [];
+  if (c.direccionSitio) filas.push({ llave: "Sitio", valor: c.direccionSitio });
+  if (c.clienteOPromotor) filas.push({ llave: "Cliente", valor: c.clienteOPromotor });
+  if (c.responsableSitio) filas.push({ llave: "Responsable", valor: c.responsableSitio });
+  if (c.dibujadoPor) filas.push({ llave: "Dibujó", valor: c.dibujadoPor });
+  filas.push({ llave: "Escala", valor: d.escala ? `1 px = ${(d.escala * 100).toFixed(1)} cm` : "Sin calibrar" });
+  if (c.norteGrados !== null) filas.push({ llave: "Norte", valor: `${Math.round(c.norteGrados)}°` });
+  if (amperaje > 0) filas.push({ llave: "Carga", valor: `${amperaje} A declarados` });
+
+  // Entre permanencia y salidas gobierna el menor: de nada sirve que quepan si
+  // no pueden salir.
+  const aforos = [c.capacidadSitio, c.capacidadEvacuacion].filter((n): n is number => typeof n === "number" && n > 0);
+  const aforo = aforos.length ? Math.min(...aforos) : null;
+
+  return (
+    <View style={s.cuadro}>
+      {filas.map(f => (
+        <View key={f.llave} style={s.cuadroFila}>
+          <Text style={s.cuadroLlave}>{f.llave}</Text>
+          <Text style={s.cuadroValor}>{f.valor}</Text>
+        </View>
+      ))}
+      {aforo !== null ? (
+        <Text style={s.cuadroAforo}>
+          {`Aforo máximo ${aforo.toLocaleString("es-MX")} personas`}
+          {c.capacidadSitio && c.capacidadEvacuacion
+            ? ` · permanencia ${c.capacidadSitio.toLocaleString("es-MX")} y salidas ${c.capacidadEvacuacion.toLocaleString("es-MX")}: gobierna el menor`
+            : ""}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+function FilaCedula({ o, escala, capas }: { o: ObjetoPlano; escala: number | null; capas: Capa[] }) {
+  const f = o.ficha ?? {};
+  const tipo = tipoElementoDe(f.tipoElemento);
+  const color = colorDe(o, capas);
+  const medida = medidaDe(o, escala);
+  const medidas = [medida, f.anchoLibreM ? `${f.anchoLibreM} m libres` : null, f.capacidad ? `${f.capacidad} pers.` : null]
+    .filter(Boolean)
+    .join(" · ");
+  const estado = f.estado ? ETIQUETA_ESTADO.get(f.estado) ?? f.estado : "";
+  const piso = [
+    f.superficie ? ETIQUETA_SUPERFICIE.get(f.superficie) ?? f.superficie : null,
+    f.cargaTerrenoKnM2 ? `${f.cargaTerrenoKnM2} kN/m²` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  return (
+    <View style={s.trFila} wrap={false}>
+      <Text style={[s.td, { width: COLS.clave, fontFamily: "Helvetica-Bold", color }]}>{f.clave ?? ""}</Text>
+      <View style={{ flex: 1, paddingRight: 6 }}>
+        <Text style={s.td}>{o.etiqueta.trim() || tipo?.etiqueta || "Sin nombre"}</Text>
+        {tipo && tipo.etiqueta !== o.etiqueta.trim() ? <Text style={s.tdTipo}>{tipo.etiqueta}</Text> : null}
+        {f.descripcion ? <Text style={s.tdTipo}>{f.descripcion}</Text> : null}
+        {f.contiene ? <Text style={s.tdTipo}>{`Lleva: ${f.contiene}`}</Text> : null}
+      </View>
+      <View style={{ width: COLS.medidas }}>
+        <Text style={s.tdSuave}>{medidas}</Text>
+        {piso ? <Text style={s.tdTipo}>{piso}</Text> : null}
+      </View>
+      <View style={{ width: COLS.resp }}>
+        <Text style={s.tdSuave}>{f.responsableNombre ?? ""}</Text>
+        {f.responsableContacto ? <Text style={s.tdTipo}>{f.responsableContacto}</Text> : null}
+      </View>
+      <Text style={[s.tdSuave, { width: COLS.prov }]}>{f.proveedorNombre ?? ""}</Text>
+      <View style={{ width: COLS.ventana }}>
+        <Text style={s.tdSuave}>{ventanaTexto(f.montajeInicio, f.montajeFin) ?? ""}</Text>
+        {ventanaTexto(f.desmontajeInicio, f.desmontajeFin) ? (
+          <Text style={s.tdTipo}>{`Baja ${ventanaTexto(f.desmontajeInicio, f.desmontajeFin)}`}</Text>
+        ) : null}
+      </View>
+      <View style={{ width: COLS.elec }}>
+        <Text style={s.tdSuave}>{electricoTexto(f) ?? ""}</Text>
+        {f.tableroClave ? <Text style={s.tdTipo}>{`Tablero ${f.tableroClave}`}</Text> : null}
+        {f.extintores ? <Text style={s.tdTipo}>{`${f.extintores} extintores`}</Text> : null}
+      </View>
+      <Text style={[s.tdSuave, { width: COLS.estado }]}>{estado}</Text>
+    </View>
   );
 }
 

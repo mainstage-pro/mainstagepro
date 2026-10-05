@@ -1,20 +1,25 @@
 "use client";
 
+import { useState } from "react";
 import { ArrowDownToLine, ArrowUpToLine, Copy, Trash2 } from "lucide-react";
 import {
   type Capa,
+  type ContextoSitePlan,
   type ObjetoPlano,
   ETIQUETA_TIPO,
   PALETA_COLORES,
   colorDe,
   medidaDe,
+  tieneFicha,
 } from "@/lib/site-plan";
+import PanelFicha from "./PanelFicha";
 import SelectorIcono from "./SelectorIcono";
 
 export default function PanelPropiedades({
   objeto,
   capas,
   escala,
+  contexto,
   onCambiar,
   onBorrar,
   onDuplicar,
@@ -23,13 +28,13 @@ export default function PanelPropiedades({
   objeto: ObjetoPlano;
   capas: Capa[];
   escala: number | null;
+  contexto: ContextoSitePlan | null;
   onCambiar: (parcial: Partial<ObjetoPlano>) => void;
   onBorrar: () => void;
   onDuplicar: () => void;
   onOrden: (dir: "FRENTE" | "ATRAS") => void;
 }) {
-  const medida = medidaDe(objeto, escala);
-  const esArea = objeto.tipo === "ZONA" || objeto.tipo === "CIRCULO";
+  const [pestana, setPestana] = useState<"FORMA" | "FICHA">("FORMA");
 
   return (
     <div className="flex flex-col gap-3 min-h-0 overflow-y-auto ms-no-scrollbar">
@@ -51,6 +56,52 @@ export default function PanelPropiedades({
         </div>
       </div>
 
+      {/* La forma y la ficha se separan porque se llenan en momentos distintos:
+          el trazo en la junta, la ficha cuando ya hay proveedor y responsable. */}
+      <div className="flex gap-1">
+        {(["FORMA", "FICHA"] as const).map(p => (
+          <button
+            key={p}
+            type="button"
+            onClick={() => setPestana(p)}
+            className={`flex-1 h-7 rounded-md text-[11px] border ${
+              pestana === p
+                ? "border-[#B3985B] text-[#B3985B]"
+                : "border-[#1f1f1f] text-[#777] hover:text-[#bbb]"
+            }`}
+          >
+            {p === "FORMA" ? "Forma" : "Ficha"}
+            {p === "FICHA" && tieneFicha(objeto) ? " ·" : ""}
+          </button>
+        ))}
+      </div>
+
+      {pestana === "FICHA" ? (
+        <PanelFicha objeto={objeto} escala={escala} contexto={contexto} onCambiar={onCambiar} />
+      ) : (
+        <Forma objeto={objeto} capas={capas} escala={escala} onCambiar={onCambiar} />
+      )}
+    </div>
+  );
+}
+
+/** Lo visual del objeto: nombre, capa, color y los controles propios de su forma. */
+function Forma({
+  objeto,
+  capas,
+  escala,
+  onCambiar,
+}: {
+  objeto: ObjetoPlano;
+  capas: Capa[];
+  escala: number | null;
+  onCambiar: (parcial: Partial<ObjetoPlano>) => void;
+}) {
+  const medida = medidaDe(objeto, escala);
+  const esArea = objeto.tipo === "ZONA" || objeto.tipo === "CIRCULO";
+
+  return (
+    <>
       <div>
         <label className="ms-label">Nombre</label>
         <input
@@ -196,6 +247,6 @@ export default function PanelPropiedades({
       ) : esArea || objeto.tipo === "TRAZO" ? (
         <p className="ms-meta">Calibra la escala del plano para medir.</p>
       ) : null}
-    </div>
+    </>
   );
 }

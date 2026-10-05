@@ -30,6 +30,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     fondoAncho?: number | null;
     fondoAlto?: number | null;
     escalaMPorPx?: number | null;
+    direccionSitio?: string | null;
+    norteGrados?: number | null;
+    dibujadoPor?: string | null;
+    responsableSitio?: string | null;
+    clienteOPromotor?: string | null;
+    capacidadSitio?: number | null;
+    capacidadEvacuacion?: number | null;
   };
 
   // Campo por campo: el editor manda PATCH parciales cada pocos segundos y un
@@ -42,6 +49,18 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (body.fondoAncho !== undefined) data.fondoAncho = body.fondoAncho;
   if (body.fondoAlto !== undefined) data.fondoAlto = body.fondoAlto;
   if (body.escalaMPorPx !== undefined) data.escalaMPorPx = body.escalaMPorPx;
+
+  for (const campo of [
+    "direccionSitio",
+    "norteGrados",
+    "dibujadoPor",
+    "responsableSitio",
+    "clienteOPromotor",
+    "capacidadSitio",
+    "capacidadEvacuacion",
+  ] as const) {
+    if (body[campo] !== undefined) data[campo] = body[campo] === "" ? null : body[campo];
+  }
 
   if (Object.keys(data).length === 0) return NextResponse.json({ ok: true });
 

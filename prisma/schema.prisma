@@ -6707,11 +6707,105 @@ model SitePlan {
 
   notas String? @db.Text
 
+  // ── Cuadro de datos del plano ──────────────────────────────────────────────
+  // Lo que convierte un dibujo en un documento: de qué sitio es, quién lo hizo,
+  // quién responde por él y para cuánta gente está pensado. Sin esto, un plano
+  // impreso no se puede ni fechar ni atribuir.
+
+  /// Dirección del predio, tal como se imprime en el plano.
+  direccionSitio String?
+  /// Giro de la flecha de norte en grados, en sentido del reloj. 0 = norte arriba.
+  norteGrados    Float?
+  dibujadoPor    String?
+  /// Quién responde por el sitio ante la autoridad (organizador o productor).
+  responsableSitio String?
+  clienteOPromotor String?
+  /// Aforo de permanencia del sitio.
+  capacidadSitio      Int?
+  /// Aforo que admiten las salidas. Entre los dos, el que manda es el menor.
+  capacidadEvacuacion Int?
+
   activo    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  variantes SitePlanVariante[]
+
   @@index([showId])
   @@index([venueId])
   @@map("site_planes")
+}
+
+/// Un plano emitido para un público. Todos salen del mismo dibujo, prendiendo y
+/// apagando capas: el de emergencia que recibe Protección Civil, el eléctrico
+/// que firma el responsable de la instalación, el de vialidad que ve tránsito.
+/// Cada uno lleva su propia revisión y su propia lista de a quién se le dio,
+/// porque se aprueban en momentos distintos y por distintas personas.
+model SitePlanVariante {
+  id     String   @id @default(cuid())
+  planId String
+  plan   SitePlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  nombre String
+  /// GENERAL|EMERGENCIA|ELECTRICO|VIALIDAD|FLUJO|PROVEEDORES|MONTAJE
+  clave  String @default("GENERAL")
+
+  /// JSON con los ids de las capas que se imprimen. Null = todas.
+  capasIds       String? @db.Text
+  /// Si además recorta por tipo de elemento de la ficha (croquis temáticos).
+  soloElectrico  Boolean @default(false)
+  soloEmergencia Boolean @default(false)
+
+  /// Número de revisión vigente. Es lo que se cita al pie del plano impreso.
+  revision Int    @default(0)
+  /// BORRADOR|EMITIDO|APROBADO|AS_BUILT
+  estado   String @default("BORRADOR")
+
+  notas String? @db.Text
+  orden Int     @default(0)
+
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  revisiones SitePlanRevision[]
+  emisiones  SitePlanEmision[]
+
+  @@index([planId])
+  @@map("site_plan_variantes")
+}
+
+/// Qué cambió en cada revisión de una variante. Es el historial que se pide
+/// cuando dos personas traen impresiones distintas del mismo plano.
+model SitePlanRevision {
+  id         String           @id @default(cuid())
+  varianteId String
+  variante   SitePlanVariante @relation(fields: [varianteId], references: [id], onDelete: Cascade)
+
+  numero      Int
+  descripcion String   @db.Text
+  autor       String?
+  fecha       DateTime @default(now())
+
+  @@index([varianteId])
+  @@map("site_plan_revisiones")
+}
+
+/// A quién se le entregó qué revisión. Es la lista de a quién hay que avisarle
+/// cuando el plano cambia.
+model SitePlanEmision {
+  id         String           @id @default(cuid())
+  varianteId String
+  variante   SitePlanVariante @relation(fields: [varianteId], references: [id], onDelete: Cascade)
+
+  revision     Int
+  destinatario String
+  organizacion String?
+  /// CORREO|WHATSAPP|IMPRESO|PORTAL
+  medio        String?
+  fecha        DateTime @default(now())
+  notas        String?
+
+  @@index([varianteId])
+  @@map("site_plan_emisiones")
 }

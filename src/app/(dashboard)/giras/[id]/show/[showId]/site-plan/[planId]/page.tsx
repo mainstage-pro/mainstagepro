@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, FileStack } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import SitePlanEditor from "@/components/site-plan/SitePlanEditor";
@@ -36,12 +36,20 @@ export default async function SitePlanEditorPage({
 
   return (
     <div className="p-4 md:p-6 flex flex-col gap-2">
-      <Link
-        href={`/giras/${id}/show/${showId}/site-plan`}
-        className="ms-micro text-[#666] hover:text-[#B3985B] flex items-center gap-1 w-fit"
-      >
-        <ChevronLeft size={12} /> Planos del show
-      </Link>
+      <div className="flex items-center justify-between">
+        <Link
+          href={`/giras/${id}/show/${showId}/site-plan`}
+          className="ms-micro text-[#666] hover:text-[#B3985B] flex items-center gap-1 w-fit"
+        >
+          <ChevronLeft size={12} /> Planos del show
+        </Link>
+        <Link
+          href={`/giras/${id}/show/${showId}/site-plan/${plan.id}/documentos`}
+          className="ms-micro text-[#666] hover:text-[#B3985B] flex items-center gap-1"
+        >
+          <FileStack size={12} /> Documentos y revisiones
+        </Link>
+      </div>
 
       <SitePlanEditor
         plan={plan}

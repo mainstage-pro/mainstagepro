@@ -45,7 +45,284 @@ export type ObjetoPlano = {
   /** Oculta el objeto sin borrarlo, independiente de su capa. */
   oculto?: boolean;
   notas?: string;
+  /** Los datos duros del elemento: qué es, qué lleva, quién responde. */
+  ficha?: FichaElemento;
 };
+
+/**
+ * La ficha de un elemento del plano. Vive dentro del JSON del plano, junto al
+ * objeto que describe: un plano se abre completo o no se abre, así que partirla
+ * en tablas solo agregaría consultas sin dar nada a cambio.
+ *
+ * Todo es opcional a propósito. Un plano de las 11 de la noche antes del montaje
+ * se dibuja con etiquetas y ya; la ficha se llena después, y el que falte no
+ * puede impedir que el plano exista.
+ */
+export type FichaElemento = {
+  /** Vocabulario cerrado: de él cuelgan los croquis por tipo y la leyenda. */
+  tipoElemento?: string;
+  /** Clave de plano (E-01, A-03). Es lo que cruza el dibujo con la leyenda. */
+  clave?: string;
+  estado?: EstadoElemento;
+  /** Qué es y cómo va montado. */
+  descripcion?: string;
+  /** Qué lleva dentro: equipo, mobiliario, personal. */
+  contiene?: string;
+
+  // Medidas. El área sale del trazo; esto es lo que el trazo no puede saber.
+  anchoLibreM?: number;
+  alturaM?: number;
+  /** Personas que admite el elemento. Se contrasta con el área trazada. */
+  capacidad?: number;
+  superficie?: Superficie;
+  /** Capacidad de carga del terreno en kN/m². */
+  cargaTerrenoKnM2?: number;
+
+  // Quién responde. El nombre se guarda suelto para que la ficha sobreviva
+  // aunque la persona se borre del crew o el proveedor cambie de razón social.
+  responsableNombre?: string;
+  responsableContacto?: string;
+  /** Id de GiraCrew o ProyectoPersonal del que se copió el responsable. */
+  responsableRef?: string;
+  proveedorNombre?: string;
+  /** Id de Proveedor o ProveedorEvento del que se copió. */
+  proveedorRef?: string;
+
+  // Ventanas de montaje y desmontaje, "HH:MM" como los bloques del show. No son
+  // los horarios del evento: la carpa entra ocho horas antes de que abra puertas.
+  montajeInicio?: string;
+  montajeFin?: string;
+  desmontajeInicio?: string;
+  desmontajeFin?: string;
+
+  // Eléctrico. Es lo que exige el croquis de Protección Civil.
+  amperaje?: number;
+  voltaje?: number;
+  fases?: number;
+  /** De qué tablero o planta cuelga. Cruza con la clave de ese elemento. */
+  tableroClave?: string;
+  /** Extintores que lleva el elemento. */
+  extintores?: number;
+
+  /** Líneas del rider del show que aterrizan aquí. */
+  riderLineaIds?: string[];
+};
+
+/**
+ * Lo que el show ya sabe y la ficha no debería volver a preguntar. Lo arma
+ * `/api/site-planes/[id]/contexto` a partir del crew, el rider, los proveedores
+ * y los bloques de horario.
+ */
+export type ContextoSitePlan = {
+  responsables: OpcionContexto[];
+  proveedores: OpcionContexto[];
+  rider: { id: string; concepto: string; detalle: string | null; cantidad: number }[];
+  ventanas: { id: string; titulo: string; tipo: string; inicio: string | null; fin: string | null }[];
+  venue: {
+    nombre: string;
+    capacidadPersonas: number | null;
+    voltajeDisponible: string | null;
+    amperajeTotal: number | null;
+    fases: string | null;
+    puntoDescarga: string | null;
+    notasTecnicas: string | null;
+  } | null;
+  aforoEsperado: number | null;
+};
+
+export type OpcionContexto = { id: string; nombre: string; detalle: string | null; contacto: string | null };
+
+export const CONTEXTO_VACIO: ContextoSitePlan = {
+  responsables: [],
+  proveedores: [],
+  rider: [],
+  ventanas: [],
+  venue: null,
+  aforoEsperado: null,
+};
+
+export type EstadoElemento = "PROPUESTO" | "APROBADO" | "INSTALADO" | "RETIRADO";
+
+export const ESTADOS_ELEMENTO: { clave: EstadoElemento; etiqueta: string; color: string }[] = [
+  { clave: "PROPUESTO", etiqueta: "Propuesto", color: "#8a8a8a" },
+  { clave: "APROBADO", etiqueta: "Aprobado", color: "#3B82F6" },
+  { clave: "INSTALADO", etiqueta: "Instalado", color: "#34D399" },
+  { clave: "RETIRADO", etiqueta: "Retirado", color: "#E8734A" },
+];
+
+export type Superficie = "ASFALTO" | "CONCRETO" | "PASTO" | "TIERRA" | "DUELA" | "ARENA" | "GRAVA";
+
+export const SUPERFICIES: { clave: Superficie; etiqueta: string }[] = [
+  { clave: "ASFALTO", etiqueta: "Asfalto" },
+  { clave: "CONCRETO", etiqueta: "Concreto" },
+  { clave: "PASTO", etiqueta: "Pasto" },
+  { clave: "TIERRA", etiqueta: "Tierra" },
+  { clave: "DUELA", etiqueta: "Duela" },
+  { clave: "ARENA", etiqueta: "Arena" },
+  { clave: "GRAVA", etiqueta: "Grava" },
+];
+
+/**
+ * Vocabulario de elementos. Cerrado a propósito: si cada quien escribe el tipo a
+ * mano, el croquis eléctrico y el plano de emergencia dejan de poder armarse
+ * solos. `electrico` y `emergencia` marcan en qué documento entra el elemento.
+ */
+export type TipoElemento = {
+  clave: string;
+  etiqueta: string;
+  grupo: string;
+  /** Entra al croquis de instalación eléctrica de Protección Civil. */
+  electrico?: boolean;
+  /** Entra al plano de emergencia y evacuación. */
+  emergencia?: boolean;
+  /** Icono sugerido del catálogo de `site-plan-iconos.ts`. */
+  icono?: string;
+};
+
+export const TIPOS_ELEMENTO: TipoElemento[] = [
+  // Producción
+  { clave: "ESCENARIO", etiqueta: "Escenario", grupo: "Producción", icono: "ESCENARIO" },
+  { clave: "FOH", etiqueta: "FOH / cabina de control", grupo: "Producción", icono: "FOH" },
+  { clave: "DELAY", etiqueta: "Torre de delay", grupo: "Producción", icono: "AUDIO" },
+  { clave: "PANTALLA", etiqueta: "Pantalla", grupo: "Producción", icono: "PANTALLA" },
+  { clave: "TORRE_ILUMINACION", etiqueta: "Torre de iluminación", grupo: "Producción", icono: "ILUMINACION" },
+  { clave: "BODEGA", etiqueta: "Bodega / almacén", grupo: "Producción", icono: "BODEGA" },
+  { clave: "CAMERINO", etiqueta: "Camerino", grupo: "Producción", icono: "CAMERINOS" },
+  { clave: "OFICINA_PRODUCCION", etiqueta: "Oficina de producción", grupo: "Producción", icono: "PRODUCCION" },
+  { clave: "PRENSA", etiqueta: "Área de prensa", grupo: "Producción", icono: "PRENSA" },
+
+  // Eléctrico
+  { clave: "PLANTA_LUZ", etiqueta: "Planta de luz / generador", grupo: "Eléctrico", electrico: true, icono: "PLANTA_LUZ" },
+  { clave: "TABLERO", etiqueta: "Tablero / centro de carga", grupo: "Eléctrico", electrico: true, icono: "TABLERO" },
+  { clave: "INTERRUPTOR", etiqueta: "Interruptor / switch", grupo: "Eléctrico", electrico: true, icono: "ENERGIA" },
+  { clave: "ACOMETIDA", etiqueta: "Acometida / toma del venue", grupo: "Eléctrico", electrico: true, icono: "ENERGIA" },
+  { clave: "TENDIDO", etiqueta: "Tendido de cable", grupo: "Eléctrico", electrico: true, icono: "CABLEADO" },
+
+  // Seguridad y emergencia
+  { clave: "EXTINTOR", etiqueta: "Extintor", grupo: "Seguridad", emergencia: true, electrico: true, icono: "EXTINTOR" },
+  { clave: "RUTA_EVACUACION", etiqueta: "Ruta de evacuación", grupo: "Seguridad", emergencia: true, icono: "SALIDA_EMERGENCIA" },
+  { clave: "SALIDA_EMERGENCIA", etiqueta: "Salida de emergencia", grupo: "Seguridad", emergencia: true, icono: "SALIDA_EMERGENCIA" },
+  { clave: "PUNTO_REUNION", etiqueta: "Punto de reunión", grupo: "Seguridad", emergencia: true, icono: "PUNTO_ENCUENTRO" },
+  { clave: "PRIMEROS_AUXILIOS", etiqueta: "Primeros auxilios", grupo: "Seguridad", emergencia: true, icono: "PRIMEROS_AUXILIOS" },
+  { clave: "AMBULANCIA", etiqueta: "Ambulancia", grupo: "Seguridad", emergencia: true, icono: "AMBULANCIA" },
+  { clave: "ACCESO_BOMBEROS", etiqueta: "Acceso de bomberos", grupo: "Seguridad", emergencia: true, icono: "BOMBEROS" },
+  { clave: "PUESTO_SEGURIDAD", etiqueta: "Puesto de seguridad", grupo: "Seguridad", emergencia: true, icono: "SEGURIDAD" },
+  { clave: "CERCO", etiqueta: "Cerco / valla perimetral", grupo: "Seguridad", icono: "VALLA" },
+
+  // Público
+  { clave: "ACCESO_PUBLICO", etiqueta: "Acceso de público", grupo: "Público", emergencia: true, icono: "ACCESO_PUBLICO" },
+  { clave: "CONTROL_ACCESO", etiqueta: "Control de acceso / filtro", grupo: "Público", icono: "CONTROL_ACCESO" },
+  { clave: "TAQUILLA", etiqueta: "Taquilla", grupo: "Público", icono: "TAQUILLA" },
+  { clave: "AREA_PUBLICO", etiqueta: "Área de público", grupo: "Público", icono: "GRADA" },
+  { clave: "VIP", etiqueta: "Zona VIP", grupo: "Público", icono: "VIP" },
+  { clave: "SANITARIOS", etiqueta: "Sanitarios", grupo: "Público", icono: "BANOS" },
+  { clave: "ALIMENTOS", etiqueta: "Alimentos y bebidas", grupo: "Público", icono: "COMIDA" },
+  { clave: "STAND", etiqueta: "Stand / activación", grupo: "Público", icono: "STAND" },
+  { clave: "CARPA", etiqueta: "Carpa", grupo: "Público", icono: "CARPA" },
+  { clave: "GRADA", etiqueta: "Grada", grupo: "Público", icono: "GRADA" },
+
+  // Circulación
+  { clave: "ACCESO_VEHICULAR", etiqueta: "Acceso vehicular", grupo: "Circulación", icono: "ACCESO_VEHICULAR" },
+  { clave: "CARGA_DESCARGA", etiqueta: "Carga y descarga", grupo: "Circulación", icono: "CARGA_DESCARGA" },
+  { clave: "ESTACIONAMIENTO", etiqueta: "Estacionamiento", grupo: "Circulación", icono: "ESTACIONAMIENTO" },
+  { clave: "RUTA_PEATONAL", etiqueta: "Ruta peatonal", grupo: "Circulación", icono: "RUTA_PEATONAL" },
+  { clave: "RUTA_VEHICULAR", etiqueta: "Ruta vehicular", grupo: "Circulación", icono: "TRANSPORTE" },
+  { clave: "BACKSTAGE", etiqueta: "Backstage / circulación interna", grupo: "Circulación", icono: "PRODUCCION" },
+];
+
+// ─── Variantes emitidas ──────────────────────────────────────────────────────
+
+/**
+ * Los planos que se emiten del mismo dibujo. Un plano que lo dice todo a la vez
+ * no lo lee nadie: al de tránsito le sobra el rider y a Protección Civil le
+ * sobra el backline. `soloElectrico` y `soloEmergencia` recortan además por el
+ * tipo de elemento de la ficha, para los dos croquis que la autoridad pide.
+ */
+export type ClaveVariante =
+  | "GENERAL"
+  | "EMERGENCIA"
+  | "ELECTRICO"
+  | "VIALIDAD"
+  | "FLUJO"
+  | "PROVEEDORES"
+  | "MONTAJE";
+
+export const VARIANTES_CATALOGO: {
+  clave: ClaveVariante;
+  nombre: string;
+  descripcion: string;
+  soloElectrico?: boolean;
+  soloEmergencia?: boolean;
+}[] = [
+  { clave: "GENERAL", nombre: "Site plan general", descripcion: "Todo el predio, para producción" },
+  {
+    clave: "EMERGENCIA",
+    nombre: "Plano de emergencia y evacuación",
+    descripcion: "Rutas, salidas, punto de reunión y acceso de bomberos",
+    soloEmergencia: true,
+  },
+  {
+    clave: "ELECTRICO",
+    nombre: "Croquis de instalación eléctrica",
+    descripcion: "Plantas, tableros, interruptores y extintores. Es el que pide Protección Civil",
+    soloElectrico: true,
+  },
+  { clave: "VIALIDAD", nombre: "Plano de vialidad y accesos", descripcion: "Rutas de vehículos, carga y estacionamiento" },
+  { clave: "FLUJO", nombre: "Plano de flujo de público", descripcion: "Accesos, filtros y circulación del público" },
+  { clave: "PROVEEDORES", nombre: "Plano de proveedores", descripcion: "Dónde se instala cada tercero" },
+  { clave: "MONTAJE", nombre: "Plano de montaje", descripcion: "Secuencia y ventanas de montaje" },
+];
+
+export type EstadoVariante = "BORRADOR" | "EMITIDO" | "APROBADO" | "AS_BUILT";
+
+export const ESTADOS_VARIANTE: { clave: EstadoVariante; etiqueta: string; color: string }[] = [
+  { clave: "BORRADOR", etiqueta: "Borrador", color: "#8a8a8a" },
+  { clave: "EMITIDO", etiqueta: "Emitido", color: "#3B82F6" },
+  { clave: "APROBADO", etiqueta: "Aprobado", color: "#34D399" },
+  { clave: "AS_BUILT", etiqueta: "Como quedó", color: "#B3985B" },
+];
+
+export const MEDIOS_EMISION = ["CORREO", "WHATSAPP", "IMPRESO", "PORTAL"] as const;
+
+/** La lista de capas que imprime una variante, o null si imprime todas. */
+export function capasDeVariante(capasIds: string | null | undefined): string[] | null {
+  if (!capasIds) return null;
+  try {
+    const d = JSON.parse(capasIds) as unknown;
+    return Array.isArray(d) ? d.filter((x): x is string => typeof x === "string") : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Lo que entra a una variante: las capas elegidas y, si es croquis temático, solo
+ * los elementos cuyo tipo pertenece a ese croquis. Un objeto oculto a mano sigue
+ * oculto: esconderlo fue una decisión sobre el dibujo, no sobre el documento.
+ */
+export function objetosDeVariante(
+  objetos: ObjetoPlano[],
+  v: { capasIds?: string | null; soloElectrico?: boolean; soloEmergencia?: boolean },
+): ObjetoPlano[] {
+  const capas = capasDeVariante(v.capasIds);
+  return objetos.filter(o => {
+    if (o.oculto) return false;
+    if (capas && !capas.includes(o.capaId)) return false;
+    if (!v.soloElectrico && !v.soloEmergencia) return true;
+    const t = tipoElementoDe(o.ficha?.tipoElemento);
+    // El texto suelto rotula el croquis, así que se queda siempre.
+    if (o.tipo === "TEXTO") return true;
+    return !!((v.soloElectrico && t?.electrico) || (v.soloEmergencia && t?.emergencia));
+  });
+}
+
+const TIPOS_POR_CLAVE = new Map(TIPOS_ELEMENTO.map(t => [t.clave, t]));
+
+export function tipoElementoDe(clave: string | null | undefined): TipoElemento | null {
+  return clave ? TIPOS_POR_CLAVE.get(clave) ?? null : null;
+}
+
+export const GRUPOS_TIPO_ELEMENTO = [...new Set(TIPOS_ELEMENTO.map(t => t.grupo))];
 
 /**
  * Agrupa objetos para prenderlos y apagarlos juntos. Es la unidad de lectura del
@@ -326,3 +603,143 @@ export const ETIQUETA_TIPO: Record<TipoObjeto, string> = {
   PIN: "Punto",
   TEXTO: "Texto",
 };
+
+// ─── Aforo, densidad y evacuación ────────────────────────────────────────────
+
+/**
+ * Personas que caben por metro cuadrado. Son los valores con los que se planea
+ * un evento al aire libre: 2 p/m² para el cuerpo del público, 3 a 4 solo frente
+ * al escenario y bajo vigilancia, y arriba de 4 la multitud deja de poder
+ * moverse por sí sola. El que una zona dibujada aguante el aforo que se le
+ * asignó es la verificación más barata que da el plano.
+ */
+export const DENSIDAD_PLANEACION = 2;
+export const DENSIDAD_FRENTE_ESCENARIO = 4;
+
+export type NivelDensidad = "HOLGADO" | "PLANEACION" | "DENSO" | "CRITICO";
+
+export type LecturaDensidad = {
+  personasPorM2: number;
+  nivel: NivelDensidad;
+  etiqueta: string;
+  /** Personas que caben a densidad de planeación. */
+  aforoSugerido: number;
+};
+
+/**
+ * Contrasta el aforo declarado contra el área realmente trazada. Devuelve null
+ * si falta la escala o el aforo: inventar una densidad sobre un plano sin
+ * calibrar daría un número con aire de dato que no lo es.
+ */
+export function densidadDe(
+  areaPx2: number,
+  escala: number | null | undefined,
+  personas: number | null | undefined,
+): LecturaDensidad | null {
+  if (!escala || !personas || personas <= 0) return null;
+  const m2 = areaPx2 * escala * escala;
+  if (m2 <= 0) return null;
+  const d = personas / m2;
+  const nivel: NivelDensidad =
+    d <= 1 ? "HOLGADO" : d <= DENSIDAD_PLANEACION ? "PLANEACION" : d <= DENSIDAD_FRENTE_ESCENARIO ? "DENSO" : "CRITICO";
+  const etiqueta = {
+    HOLGADO: "Holgado",
+    PLANEACION: "Dentro de planeación",
+    DENSO: "Denso: solo frente a escenario",
+    CRITICO: "Excede el límite seguro",
+  }[nivel];
+  return {
+    personasPorM2: d,
+    nivel,
+    etiqueta,
+    aforoSugerido: Math.floor(m2 * DENSIDAD_PLANEACION),
+  };
+}
+
+/**
+ * Personas que pasan por metro de ancho libre cada minuto. Son las tasas de
+ * referencia del Green Guide; la de escalón es menor porque bajar un peldaño
+ * marca el paso de toda la fila.
+ */
+export const FLUJO_PLANO_POR_M_MIN = 82;
+export const FLUJO_ESCALON_POR_M_MIN = 66;
+/** Minutos en los que un recinto debe quedar desalojado. */
+export const MINUTOS_EVACUACION_META = 8;
+
+/**
+ * Minutos que tarda en desalojar un aforo por un ancho libre total dado. El
+ * ancho libre se suma de todas las salidas: es ese número, y no el aforo del
+ * venue, el que acaba fijando cuánta gente se puede meter.
+ */
+export function minutosEvacuacion(personas: number, anchoLibreTotalM: number, conEscalones = false): number | null {
+  if (!(personas > 0) || !(anchoLibreTotalM > 0)) return null;
+  return personas / (anchoLibreTotalM * (conEscalones ? FLUJO_ESCALON_POR_M_MIN : FLUJO_PLANO_POR_M_MIN));
+}
+
+/** Ancho libre total que exige un aforo para desalojar en la meta de minutos. */
+export function anchoLibreRequerido(personas: number, conEscalones = false): number | null {
+  if (!(personas > 0)) return null;
+  const flujo = conEscalones ? FLUJO_ESCALON_POR_M_MIN : FLUJO_PLANO_POR_M_MIN;
+  return personas / (flujo * MINUTOS_EVACUACION_META);
+}
+
+// ─── Lectura de fichas ───────────────────────────────────────────────────────
+
+export function tieneFicha(o: ObjetoPlano): boolean {
+  const f = o.ficha;
+  if (!f) return false;
+  return Object.values(f).some(v => (Array.isArray(v) ? v.length > 0 : v !== undefined && v !== null && v !== ""));
+}
+
+/** La ventana de montaje en una línea, si hay algo que mostrar. */
+export function ventanaTexto(inicio?: string, fin?: string): string | null {
+  if (inicio && fin) return `${inicio}–${fin}`;
+  return inicio ?? fin ?? null;
+}
+
+/** La carga eléctrica en una línea: "60 A · 220 V · 3F". */
+export function electricoTexto(f: FichaElemento | undefined): string | null {
+  if (!f) return null;
+  const partes: string[] = [];
+  if (f.amperaje) partes.push(`${f.amperaje} A`);
+  if (f.voltaje) partes.push(`${f.voltaje} V`);
+  if (f.fases) partes.push(`${f.fases}F`);
+  return partes.length ? partes.join(" · ") : null;
+}
+
+/** Suma del amperaje declarado en las fichas: lo que se le pide a la planta. */
+export function amperajeTotal(objetos: ObjetoPlano[]): number {
+  return objetos.reduce((s, o) => s + (o.ficha?.amperaje ?? 0), 0);
+}
+
+/** Objetos que entran a un croquis temático, por el tipo de elemento de su ficha. */
+export function objetosDeCroquis(objetos: ObjetoPlano[], llave: "electrico" | "emergencia"): ObjetoPlano[] {
+  return objetos.filter(o => tipoElementoDe(o.ficha?.tipoElemento)?.[llave]);
+}
+
+/**
+ * Asigna claves de plano (A-01, B-02…) a los objetos que no la traen, agrupando
+ * por capa. La clave es lo que permite que el dibujo quede limpio y la
+ * información viva en una tabla aparte.
+ */
+export function asignarClaves(objetos: ObjetoPlano[], capas: Capa[]): ObjetoPlano[] {
+  const letras = new Map(capas.map((c, i) => [c.id, String.fromCharCode(65 + (i % 26))]));
+  // Las claves puestas a mano se respetan y se numera alrededor de ellas: ya
+  // están escritas en los planos que se imprimieron y se repartieron.
+  const usadas = new Set(objetos.map(o => o.ficha?.clave).filter(Boolean) as string[]);
+  const siguiente = new Map<string, number>();
+
+  return objetos.map(o => {
+    if (o.ficha?.clave) return o;
+    const letra = letras.get(o.capaId) ?? "X";
+    let n = siguiente.get(letra) ?? 1;
+    let clave = `${letra}-${String(n).padStart(2, "0")}`;
+    while (usadas.has(clave)) {
+      n += 1;
+      clave = `${letra}-${String(n).padStart(2, "0")}`;
+    }
+    usadas.add(clave);
+    siguiente.set(letra, n + 1);
+    return { ...o, ficha: { ...o.ficha, clave } };
+  });
+}

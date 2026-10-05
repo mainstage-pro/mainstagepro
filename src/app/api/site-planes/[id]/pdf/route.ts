@@ -26,18 +26,25 @@ export async function GET(req: NextRequest, { params }: Params) {
   const plan = await prisma.sitePlan.findFirst({
     where: { id, activo: true },
     include: {
-      venue: { select: { nombre: true, ciudad: true } },
+      venue: { select: { nombre: true, ciudad: true, direccion: true } },
       show: {
         select: {
           fecha: true,
           ciudad: true,
           gira: { select: { nombre: true } },
-          venue: { select: { nombre: true } },
+          venue: { select: { nombre: true, direccion: true } },
         },
       },
     },
   });
   if (!plan) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+
+  // El plano se emite por variante: el croquis eléctrico y el de evacuación son
+  // documentos distintos del mismo dibujo, cada uno con su revisión en el pie.
+  const varianteId = req.nextUrl.searchParams.get("variante");
+  const variante = varianteId
+    ? await prisma.sitePlanVariante.findFirst({ where: { id: varianteId, planId: id, activo: true } })
+    : null;
 
   const publicDir = path.join(process.cwd(), "public");
   const fondoBase64 = await resolvePdfImage(plan.fondoUrl, publicDir);
@@ -61,15 +68,35 @@ export async function GET(req: NextRequest, { params }: Params) {
     escala: plan.escalaMPorPx,
     capas,
     objetos,
-    notas: plan.notas,
+    notas: variante?.notas ?? plan.notas,
     logoBase64: logoBase64(publicDir),
+    cuadro: {
+      direccionSitio: plan.direccionSitio ?? plan.show?.venue?.direccion ?? plan.venue?.direccion ?? null,
+      norteGrados: plan.norteGrados,
+      dibujadoPor: plan.dibujadoPor,
+      responsableSitio: plan.responsableSitio,
+      clienteOPromotor: plan.clienteOPromotor,
+      capacidadSitio: plan.capacidadSitio,
+      capacidadEvacuacion: plan.capacidadEvacuacion,
+    },
+    variante: variante
+      ? {
+          nombre: variante.nombre,
+          revision: variante.revision,
+          estado: variante.estado,
+          capasIds: variante.capasIds,
+          soloElectrico: variante.soloElectrico,
+          soloEmergencia: variante.soloEmergencia,
+        }
+      : null,
   };
 
   const buffer = await renderToBuffer(
     React.createElement(SitePlanPDF, { d }) as Parameters<typeof renderToBuffer>[0],
   );
 
-  const archivo = `Site-plan-${plan.nombre.replace(/[^a-zA-Z0-9]+/g, "-")}.pdf`;
+  const base = variante ? `${plan.nombre} ${variante.nombre} Rev ${variante.revision}` : plan.nombre;
+  const archivo = `Site-plan-${base.replace(/[^a-zA-Z0-9]+/g, "-")}.pdf`;
   const enLinea = req.nextUrl.searchParams.get("preview") === "1";
   return new NextResponse(new Uint8Array(buffer), {
     status: 200,

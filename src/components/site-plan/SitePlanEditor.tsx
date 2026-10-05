@@ -7,9 +7,9 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  type Capa, type ContenidoPlano, type ObjetoPlano, type Punto,
+  type Capa, type ContenidoPlano, type ContextoSitePlan, type ObjetoPlano, type Punto,
   GROSOR_DEFAULT, LIENZO_SIN_FONDO, PALETA_COLORES, RELLENO_DEFAULT, TAMANO_PIN_DEFAULT,
-  TAMANO_TEXTO_DEFAULT, calcularEscala, esVisible, golpea, mover, nuevoIdCapa,
+  TAMANO_TEXTO_DEFAULT, asignarClaves, calcularEscala, esVisible, golpea, mover, nuevoIdCapa,
   nuevoIdObjeto, parsearContenido, radioDe,
 } from "@/lib/site-plan";
 import { BarraDeEscala, CapaDeObjetos } from "./dibujo";
@@ -92,6 +92,22 @@ export default function SitePlanEditor({ plan, pdfHref, publicoHref }: {
   const [pidiendoMetros, setPidiendoMetros] = useState(false);
   const [metrosTexto, setMetrosTexto] = useState("");
   const [guardando, setGuardando] = useState(false);
+
+  // Lo que el show ya sabe, para que la ficha de un elemento no lo vuelva a
+  // preguntar. Si falla, la ficha se llena a mano y el editor no se entera.
+  const [contexto, setContexto] = useState<ContextoSitePlan | null>(null);
+  useEffect(() => {
+    let vivo = true;
+    fetch(`/api/site-planes/${plan.id}/contexto`)
+      .then(r => (r.ok ? (r.json() as Promise<ContextoSitePlan>) : null))
+      .then(d => {
+        if (vivo) setContexto(d);
+      })
+      .catch(() => {});
+    return () => {
+      vivo = false;
+    };
+  }, [plan.id]);
 
   const [vista, setVista] = useState({ x: 0, y: 0, k: 1 });
   const [tam, setTam] = useState({ w: 0, h: 0 });
@@ -198,6 +214,11 @@ export default function SitePlanEditor({ plan, pdfHref, publicoHref }: {
   function nuevoObjeto(tipo: ObjetoPlano["tipo"], puntos: Punto[], extra: Partial<ObjetoPlano> = {}): ObjetoPlano {
     return { id: nuevoIdObjeto(), capaId: capaActiva, tipo, etiqueta: "", puntos, ...extra };
   }
+
+  const numerarClaves = useCallback(() => {
+    marcar();
+    setObjetos(prev => asignarClaves(prev, estadoRef.current.capas));
+  }, [marcar]);
 
   const borrarSeleccion = useCallback(() => {
     if (!seleccion) return;
@@ -726,12 +747,13 @@ export default function SitePlanEditor({ plan, pdfHref, publicoHref }: {
         </div>
 
         {/* Panel derecho */}
-        <div className="w-60 shrink-0 ms-card p-3 min-h-0 flex flex-col">
+        <div className="w-72 shrink-0 ms-card p-3 min-h-0 flex flex-col">
           {sel ? (
             <PanelPropiedades
               objeto={sel}
               capas={capas}
               escala={escala}
+              contexto={contexto}
               onCambiar={parcial => cambiarObjeto(sel.id, parcial)}
               onBorrar={borrarSeleccion}
               onDuplicar={duplicar}
@@ -747,6 +769,17 @@ export default function SitePlanEditor({ plan, pdfHref, publicoHref }: {
                 <p className="ms-meta">Sube la vista aérea o el plano del venue para trazar encima.</p>
               ) : !escala ? (
                 <p className="ms-meta">Calibra la escala con la regla para que las áreas den metros.</p>
+              ) : null}
+              {objetos.length ? (
+                <>
+                  <div className="ms-divider my-1" />
+                  <button type="button" onClick={numerarClaves} className="ms-btn-secondary text-[11px]">
+                    Numerar claves de plano
+                  </button>
+                  <p className="ms-micro text-[#555]">
+                    Reparte A-01, B-02… por capa a lo que no tenga clave. Las puestas a mano se respetan.
+                  </p>
+                </>
               ) : null}
               <div className="ms-divider my-1" />
               <p className="ms-micro text-[#555] leading-relaxed">
