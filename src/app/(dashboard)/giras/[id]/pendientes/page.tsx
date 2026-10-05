@@ -51,8 +51,8 @@ export default async function PendientesGiraPage({ params }: { params: Promise<{
         <h1 className="ms-h1">Pendientes y checklist del advance</h1>
         <p className="ms-subtitle">
           {tour
-            ? "Lo que falta arrancarle a management, al venue y al promotor. Un renglón de la gira se pide una vez; uno de la fecha se pide a cada venue."
-            : "Lo que falta arrancarle a management, al venue y al promotor antes de la fecha."}
+            ? "Los puntos del rider del artista, fecha por fecha, y lo que falta arrancarle a management, al venue y al promotor. Un renglón de la gira se pide una vez; uno de la fecha se coteja con cada venue."
+            : "Los puntos del rider del artista y lo que falta arrancarle a management, al venue y al promotor antes de la fecha."}
         </p>
       </div>
 

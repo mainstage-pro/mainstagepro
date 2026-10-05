@@ -101,7 +101,12 @@ export default async function AdvanceGiraPage({ params }: { params: Promise<{ id
       {matriz.filas.length === 0 ? (
         <div className="ms-empty-state">
           <p className="text-sm text-gray-400">
-            Todavía no hay advance en ningún show. Entra a un show y ármalo desde el rider maestro.
+            Esta matriz es para el equipo que se persigue renglón por renglón, y el rider no trae ninguno desglosado
+            así. Los puntos del rider se cotejan fecha por fecha en{" "}
+            <a href={`/giras/${id}/pendientes`} className="text-[#B3985B] hover:underline">
+              Pendientes y checklist
+            </a>
+            . Si de algún bloque sí hace falta el desglose, entra a un show y ármalo desde el rider maestro.
           </p>
         </div>
       ) : (

@@ -21,18 +21,24 @@ interface Seccion {
   texto: string;
   destino: string;
   departamento: string;
-  /// "" = los renglones son equipo que se pide; INPUT/OUTPUT = son canales.
-  lista: string;
+  clase: string;
   renglones: Renglon[];
 }
 
-/// Qué son los renglones de la sección. Un input list no es equipo que se pida
-/// al venue: es el patch de la consola y vive en la pestaña de canales.
+/// Qué son los renglones de la sección.
+///
+/// Por omisión la sección entra como UN punto: su texto completo, con los
+/// renglones escritos dentro, y eso es lo que se coteja con el venue en cada
+/// fecha. El desglose renglón por renglón se pide a propósito, cuando de ese
+/// bloque sí hay que perseguir equipo por equipo.
 const CLASES = [
-  { valor: "", label: "Equipo que se pide" },
+  { valor: "PUNTO", label: "Un punto del rider" },
+  { valor: "EQUIPO", label: "Equipo, uno por renglón" },
   { valor: "INPUT", label: "Canales de entrada" },
   { valor: "OUTPUT", label: "Canales de salida" },
 ];
+
+const esCanal = (s: Seccion) => s.clase === "INPUT" || s.clase === "OUTPUT";
 
 /// A dónde puede ir el texto de una sección del documento. Los campos de notas
 /// salen del mismo vocabulario que imprime el PDF, así que la lista no se
@@ -99,7 +105,7 @@ export default function RiderDocTranscribir({ riderId }: { riderId: string }) {
         texto: s.parrafos.join("\n\n"),
         destino: "SECCION",
         departamento: s.departamento ?? "OTRO",
-        lista: s.lista ?? "",
+        clase: s.lista ?? "PUNTO",
         renglones: s.renglones.map((r, j) => ({ ...r, clave: `s-${i}-r-${j}` })),
       }));
       setSecciones(leidas);
@@ -154,7 +160,7 @@ export default function RiderDocTranscribir({ riderId }: { riderId: string }) {
             texto: s.texto,
             destino: s.destino,
             departamento: s.departamento,
-            lista: s.lista || null,
+            clase: s.clase,
             renglones: s.renglones.map((r) => ({
               cantidad: r.cantidad,
               numero: r.numero,
@@ -169,7 +175,7 @@ export default function RiderDocTranscribir({ riderId }: { riderId: string }) {
         toast.error(d.error ?? "No se pudo guardar la transcripción");
         return;
       }
-      toast.success(`${d.lineas} renglones de equipo, ${d.canales} canales y ${d.notas} bloques de notas`);
+      toast.success(`${d.puntos} puntos del rider, ${d.canales} canales y ${d.lineas} renglones de equipo`);
       setSecciones(null);
       setAviso(null);
       setReemplazar(false);
@@ -180,9 +186,14 @@ export default function RiderDocTranscribir({ riderId }: { riderId: string }) {
     }
   }
 
-  const equipo = secciones?.filter((s) => !s.lista) ?? [];
+  const equipo = secciones?.filter((s) => s.clase === "EQUIPO") ?? [];
   const totalEquipo = equipo.reduce((n, s) => n + s.renglones.length, 0);
-  const totalCanales = (secciones ?? []).filter((s) => s.lista).reduce((n, s) => n + s.renglones.length, 0);
+  const totalCanales = (secciones ?? [])
+    .filter((s) => s.clase === "INPUT" || s.clase === "OUTPUT")
+    .reduce((n, s) => n + s.renglones.length, 0);
+  const totalPuntos = (secciones ?? []).filter(
+    (s) => s.clase === "PUNTO" && s.destino !== "NINGUNO" && (s.texto.trim() !== "" || s.renglones.length > 0),
+  ).length;
   const sinCantidad = equipo.reduce((n, s) => n + s.renglones.filter((r) => r.cantidad === null).length, 0);
 
   if (!abierto) {
@@ -190,9 +201,9 @@ export default function RiderDocTranscribir({ riderId }: { riderId: string }) {
       <section className="ms-card p-4 space-y-2">
         <p className="ms-section-label">Transcribir el rider desde Word</p>
         <p className="ms-micro">
-          Sube el .docx del artista y se lee tal como viene: las secciones en su orden, con sus títulos, y el equipo con
-          la cantidad que diga el documento. El input y el output list se van a la pestaña de canales. Lo revisas antes
-          de que se guarde nada.
+          Sube el .docx del artista y se lee tal como viene: cada sección del documento entra como un punto del rider,
+          con su título y su texto completo, y es ese punto el que se coteja con el venue y con el promotor en cada
+          fecha. El input y el output list se van a la pestaña de canales. Lo revisas antes de que se guarde nada.
         </p>
         <button className="ms-btn-secondary" onClick={() => setAbierto(true)}>
           Subir el rider en Word
@@ -207,7 +218,8 @@ export default function RiderDocTranscribir({ riderId }: { riderId: string }) {
         <div>
           <p className="ms-section-label">Transcribir el rider desde Word</p>
           <p className="ms-micro mt-0.5">
-            Solo entra lo que el documento dice. Si no trae marca, modelo o cantidad, el campo se queda vacío.
+            Solo entra lo que el documento dice. Cada sección es un punto que se coteja completo; si de algún bloque
+            necesitas perseguir equipo por equipo, cámbialo a &quot;Equipo, uno por renglón&quot;.
           </p>
         </div>
         <button
@@ -280,8 +292,8 @@ export default function RiderDocTranscribir({ riderId }: { riderId: string }) {
                     <label className="ms-label block mb-1">Los renglones son</label>
                     <select
                       className="ms-input-inline w-full"
-                      value={s.lista}
-                      onChange={(e) => setSeccion(s.clave, { lista: e.target.value })}
+                      value={s.clase}
+                      onChange={(e) => setSeccion(s.clave, { clase: e.target.value })}
                     >
                       {CLASES.map((c) => (
                         <option key={c.valor} value={c.valor}>
@@ -295,8 +307,8 @@ export default function RiderDocTranscribir({ riderId }: { riderId: string }) {
                     <select
                       className="ms-input-inline w-full disabled:opacity-40"
                       value={s.departamento}
-                      disabled={!!s.lista}
-                      title={s.lista ? "Los canales no se reparten por departamento" : undefined}
+                      disabled={s.clase !== "EQUIPO"}
+                      title={s.clase !== "EQUIPO" ? "Solo el equipo desglosado se reparte por departamento" : undefined}
                       onChange={(e) => setSeccion(s.clave, { departamento: e.target.value })}
                     >
                       {DISCIPLINAS.map((d) => (
@@ -329,8 +341,8 @@ export default function RiderDocTranscribir({ riderId }: { riderId: string }) {
                     <table className="w-full min-w-[760px]">
                       <thead className="ms-thead">
                         <tr>
-                          <th className="ms-th text-left w-[70px]">{s.lista ? "Canal" : "Cant."}</th>
-                          <th className="ms-th text-left w-[280px]">{s.lista ? "Nombre" : "Concepto"}</th>
+                          <th className="ms-th text-left w-[70px]">{esCanal(s) ? "Canal" : "Cant."}</th>
+                          <th className="ms-th text-left w-[280px]">{esCanal(s) ? "Nombre" : "Concepto"}</th>
                           <th className="ms-th text-left w-[180px]">Notas</th>
                           <th className="ms-th text-left">Como venía</th>
                           <th className="ms-th w-[36px]" />
@@ -345,10 +357,10 @@ export default function RiderDocTranscribir({ riderId }: { riderId: string }) {
                                 min={1}
                                 className="ms-input-inline w-full"
                                 placeholder="—"
-                                value={(s.lista ? r.numero : r.cantidad) ?? ""}
+                                value={(esCanal(s) ? r.numero : r.cantidad) ?? ""}
                                 onChange={(e) => {
                                   const v = e.target.value === "" ? null : Number(e.target.value);
-                                  setRenglon(s.clave, r.clave, s.lista ? { numero: v } : { cantidad: v });
+                                  setRenglon(s.clave, r.clave, esCanal(s) ? { numero: v } : { cantidad: v });
                                 }}
                               />
                             </td>
@@ -397,10 +409,10 @@ export default function RiderDocTranscribir({ riderId }: { riderId: string }) {
                 onChange={(e) => setReemplazar(e.target.checked)}
               />
               <span className="ms-micro">
-                <span className="text-[#E6E6E6]">Reemplazar lo que ya tiene el rider.</span> Borra el equipo, los canales
-                y las secciones que había antes y deja solo lo de este documento. Úsalo cuando el rider ya estaba
-                transcrito a mano. Si alguna de esas líneas ya se cotejó en el advance de un show, el advance se queda
-                sin su referencia.
+                <span className="text-[#E6E6E6]">Reemplazar lo que ya tiene el rider.</span> Borra los puntos, los
+                canales y el equipo que había antes y deja solo lo de este documento. Úsalo cuando el rider ya estaba
+                transcrito a mano. Si alguna de esas líneas de equipo ya se cotejó en el advance de un show, el advance
+                se queda sin su referencia.
               </span>
             </label>
 
@@ -412,7 +424,9 @@ export default function RiderDocTranscribir({ riderId }: { riderId: string }) {
               >
                 {trabajando
                   ? "Guardando…"
-                  : `${reemplazar ? "Reemplazar con" : "Transcribir"} ${totalEquipo} de equipo y ${totalCanales} canales`}
+                  : `${reemplazar ? "Reemplazar con" : "Transcribir"} ${totalPuntos} puntos, ${totalCanales} canales${
+                      totalEquipo > 0 ? ` y ${totalEquipo} renglones de equipo` : ""
+                    }`}
               </button>
               <button className="ms-btn-ghost" onClick={() => setSecciones(null)} disabled={trabajando}>
                 Subir otro documento

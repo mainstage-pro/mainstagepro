@@ -5,6 +5,12 @@
 // aprobado. La lectura es determinista (ver src/lib/rider-docx-import.ts): lo
 // que el documento no dice, no se inventa aquí.
 //
+// La unidad es el PUNTO, no el equipo: una sección del documento entra como un
+// punto del rider con su texto completo, y es eso lo que se coteja con el venue
+// y con el promotor en cada fecha. Partir el rider en ochenta renglones de marca
+// y modelo obliga a revisar equipo por equipo en cinco fechas, y el punto es lo
+// que de verdad se negocia. Quien quiera el desglose lo pide sección por sección.
+//
 // Los renglones de equipo se AGREGAN por omisión: no se borra lo que ya estaba,
 // porque esas líneas pueden estar ya cotejadas en el advance de un show. Con
 // `reemplazar` se borran primero, que es lo que hace falta cuando el rider ya
@@ -49,9 +55,10 @@ interface SeccionEntrante {
   /// "SECCION" (sección propia del documento) | "NINGUNO" | un campo de notas.
   destino?: string | null;
   departamento?: string | null;
-  /// Cuando la sección es un input/output list, sus renglones son canales de
-  /// consola y no equipo que se le pida al venue.
-  lista?: string | null;
+  /// Qué son los renglones de la sección:
+  /// "PUNTO" (van dentro del texto del punto) | "EQUIPO" (una línea cada uno) |
+  /// "INPUT" | "OUTPUT" (canales de consola).
+  clase?: string | null;
   renglones?: RenglonEntrante[];
 }
 
@@ -59,6 +66,24 @@ function texto(v: unknown): string | null {
   if (typeof v !== "string") return null;
   const s = v.trim();
   return s ? s : null;
+}
+
+/// Los renglones de la tabla, escritos dentro del texto del punto. Es el mismo
+/// dato que trae el documento, solo que legible de corrido: `4 × Wedge — notas`.
+function conRenglones(cuerpo: string | null, renglones: RenglonEntrante[]): string | null {
+  const lineas = renglones
+    .map((r) => {
+      const concepto = texto(r.concepto);
+      if (!concepto) return null;
+      const cantidad = Number(r.cantidad);
+      const cuantos = Number.isFinite(cantidad) && cantidad > 0 ? `${Math.trunc(cantidad)} × ` : "";
+      const notas = texto(r.notas);
+      return `• ${cuantos}${concepto}${notas ? ` — ${notas}` : ""}`;
+    })
+    .filter((l): l is string => l !== null);
+
+  if (lineas.length === 0) return cuerpo;
+  return cuerpo ? `${cuerpo}\n\n${lineas.join("\n")}` : lineas.join("\n");
 }
 
 /// El documento se baja de Vercel Blob y de ningún otro lugar: la URL viene del
@@ -119,8 +144,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ rid
 
   for (const s of entrantes) {
     const destino = typeof s.destino === "string" ? s.destino : "SECCION";
-    const cuerpo = texto(s.texto);
+    const clase = typeof s.clase === "string" ? s.clase : "PUNTO";
     const titulo = texto(s.titulo);
+    // Un punto se coteja completo, así que sus renglones viven dentro de su
+    // texto y no se vuelven ochenta líneas de equipo que hay que revisar una
+    // por una en cada fecha.
+    const cuerpo = clase === "PUNTO" ? conRenglones(texto(s.texto), s.renglones ?? []) : texto(s.texto);
 
     if (cuerpo) {
       if (CAMPOS_NOTA.includes(destino as CampoNota)) {
@@ -137,9 +166,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ rid
       }
     }
 
+    if (clase === "PUNTO") continue;
+
     // Un input/output list son canales de consola: van a la pestaña de canales
     // y no ensucian la lista de equipo que se cotejará contra el venue.
-    if (s.lista === "INPUT" || s.lista === "OUTPUT") {
+    if (clase === "INPUT" || clase === "OUTPUT") {
       let posicion = 0;
       for (const r of s.renglones ?? []) {
         const nombre = texto(r.concepto);
@@ -147,7 +178,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ rid
         posicion++;
         const numero = Number(r.numero);
         canales.push({
-          tipo: s.lista,
+          tipo: clase,
           // Si el documento no numeró el canal, se numera por su posición.
           numero: Number.isFinite(numero) && numero > 0 ? Math.trunc(numero) : posicion,
           nombre,
@@ -198,9 +229,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ rid
   });
 
   return NextResponse.json({
+    puntos: extras.length + Object.keys(notas).length,
     lineas: lineas.length,
     canales: canales.length,
-    secciones: extras.length,
     notas: Object.keys(notas).length,
   });
 }

@@ -128,7 +128,10 @@ function Renglon({
 
       {abierto && (
         <div className="px-4 pb-3 pl-12 space-y-2">
-          {item.detalle && <p className="text-[11.5px] text-[#7d8590] leading-relaxed">{item.detalle}</p>}
+          {/* El texto de un punto del rider trae sus renglones en líneas: se respetan. */}
+          {item.detalle && (
+            <p className="text-[11.5px] text-[#7d8590] leading-relaxed whitespace-pre-line">{item.detalle}</p>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <input
               value={responsable}

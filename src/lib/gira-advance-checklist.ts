@@ -3,8 +3,13 @@
 // Tres frentes externos (management del artista, venue, promotor) y uno interno.
 // Un renglón de alcance GIRA se pide una vez para toda la gira; uno de alcance
 // SHOW se pide por fecha, porque cada casa y cada promotor responden distinto.
+//
+// El frente RIDER no tiene plantilla: sus renglones son los puntos del rider del
+// artista, que salen del documento del artista y se siembran por fecha (ver
+// src/lib/rider-puntos.ts).
 
 export const FRENTES = [
+  { key: "RIDER", label: "Puntos del rider", color: "#c084fc" },
   { key: "MANAGEMENT", label: "Management del artista", color: "#60a5fa" },
   { key: "VENUE", label: "Venue", color: "#34d399" },
   { key: "PROMOTOR", label: "Promotor / producción local", color: "#B3985B" },
