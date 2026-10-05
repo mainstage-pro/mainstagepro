@@ -54,6 +54,7 @@ export default async function ShowLayout({
     { href: `/giras/${id}/show/${showId}`, label: "Resumen", exacto: true },
     { href: `/giras/${id}/show/${showId}/advance`, label: "Advance" },
     { href: `/giras/${id}/show/${showId}/dia`, label: "Día del show" },
+    { href: `/giras/${id}/show/${showId}/site-plan`, label: "Site plan" },
   ];
 
   return (
