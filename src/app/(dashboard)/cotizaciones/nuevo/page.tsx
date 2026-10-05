@@ -796,6 +796,38 @@ function CotizadorForm() {
       .finally(() => setLoadingDisp(false));
   }, [evento.fechaEvento, editId]);
 
+  // Lo que esta cotización ya aparta del inventario: líneas sueltas más los
+  // componentes de cada paquete. Un renglón con déficit resuelto solo consume
+  // su parte propia; el resto se renta.
+  const usoEnCotizacion = useMemo(() => {
+    const uso: Record<string, number> = {};
+    for (const l of lineasEquipo) {
+      const propias = l.deficit ? l.deficit.cantidadPropia : l.cantidad;
+      uso[l.equipoId] = (uso[l.equipoId] ?? 0) + propias;
+    }
+    for (const p of lineasPaquete) {
+      for (const c of p.componentes) {
+        if (!c.equipoId) continue;
+        uso[c.equipoId] = (uso[c.equipoId] ?? 0) + Math.round(c.cantidad * p.cantidad);
+      }
+    }
+    return uso;
+  }, [lineasEquipo, lineasPaquete]);
+
+  // El servidor no ve el borrador que estás armando, así que lo descontamos aquí.
+  const dispEfectiva = useMemo(() => {
+    const out: typeof dispMap = {};
+    for (const [id, d] of Object.entries(dispMap)) {
+      const uso = usoEnCotizacion[id] ?? 0;
+      out[id] = {
+        ...d,
+        comprometido: d.comprometido + uso,
+        disponible: Math.max(0, d.disponible - uso),
+      };
+    }
+    return out;
+  }, [dispMap, usoEnCotizacion]);
+
   // Cargar proveedores cuando hay déficit detectado
   useEffect(() => {
     if (!deficitInfo) { setDeficitProveedores([]); return; }
@@ -921,7 +953,7 @@ function CotizadorForm() {
     if (evento.fechaEvento && dispMap[eq.id] !== undefined) {
       const disp = dispMap[eq.id];
       // Sumar lo que ya está en la cotización actual para ese equipo
-      const yaEnCot = lineasEquipo.filter(l => l.equipoId === eq.id).reduce((s, l) => s + l.cantidad, 0);
+      const yaEnCot = usoEnCotizacion[eq.id] ?? 0;
       const totalPedido = yaEnCot + cant;
       if (totalPedido > disp.total) {
         const confirmar = await confirm({
@@ -945,7 +977,7 @@ function CotizadorForm() {
       notas: "",
     }]);
     // Déficit check para equipos PROPIOS
-    const disponible = dispMap[eq.id]?.disponible ?? eq.cantidadTotal;
+    const disponible = dispEfectiva[eq.id]?.disponible ?? eq.cantidadTotal;
     if (cant > disponible) {
       const deficit = cant - disponible;
       const lineaId = uid(); // track which line has the deficit
@@ -2563,7 +2595,7 @@ function CotizadorForm() {
                   placeholder={loadingDisp ? "Cargando disponibilidad..." : "— Seleccionar equipo —"}
                   renderMeta={eq => {
                     const precio = preciosCliente[eq.id] ?? eq.precioRenta;
-                    const d = dispMap[eq.id];
+                    const d = dispEfectiva[eq.id];
                     let dispText: string;
                     let dispColor: string;
                     if (evento.fechaEvento && d !== undefined) {
@@ -2773,7 +2805,7 @@ function CotizadorForm() {
                         {(() => {
                           const d = dispMap[l.equipoId];
                           if (!evento.fechaEvento || !d) return null;
-                          const totalEnCot = lineasEquipo.filter(x => x.equipoId === l.equipoId).reduce((s, x) => s + x.cantidad, 0);
+                          const totalEnCot = usoEnCotizacion[l.equipoId] ?? 0;
                           if (totalEnCot > d.total) {
                             return (
                               <div className="mx-3 mt-1 bg-red-900/20 border border-red-800/40 rounded-lg px-3 py-1.5 flex items-start gap-2">
