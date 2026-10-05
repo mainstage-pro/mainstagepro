@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { getCuentasConSaldo } from "@/lib/saldos-cuentas";
 
 export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  const cuentas = await prisma.cuentaBancaria.findMany({
-    orderBy: [{ orden: "asc" }, { nombre: "asc" }],
-  });
+  const cuentas = await getCuentasConSaldo();
 
   return NextResponse.json({ cuentas });
 }

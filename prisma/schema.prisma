@@ -40,6 +40,8 @@ model User {
   comentariosTarea       TareaComentario[]      @relation("ComentariosTarea")
   archivosTarea          TareaArchivo[]         @relation("ArchivosTarea")
   actividades            ActividadUsuario[]     @relation("actividades")
+  reembolsosSolicitados  SolicitudReembolso[]   @relation("ReembolsosSolicitados")
+  reembolsosRevisados    SolicitudReembolso[]   @relation("ReembolsosRevisados")
   versiones              VersionHistorial[]     @relation("versiones")
   clientesVendedor       Cliente[]              @relation("ClientesVendedor")
   notificaciones         Notificacion[]
@@ -805,6 +807,7 @@ model Proyecto {
   cuentasCobrar      CuentaCobrar[]
   cuentasPagar       CuentaPagar[]
   movimientos        MovimientoFinanciero[]
+  reembolsos         SolicitudReembolso[]
   evaluacionInterna  EvaluacionInterna?
   evaluacionCliente  EvaluacionCliente?
   reportePostEvento  ReportePostEvento?
@@ -1761,6 +1764,7 @@ model CategoriaFinanciera {
   movimientos       MovimientoFinanciero[]
   cuentasPagar      CuentaPagar[]
   gastosRecurrentes GastoRecurrente[]
+  reembolsos        SolicitudReembolso[]
 
   @@map("categorias_financieras")
 }
@@ -1798,6 +1802,41 @@ model MovimientoFinanciero {
   proyectoPersonal ProyectoPersonal?
 
   @@map("movimientos_financieros")
+}
+
+// ─── REEMBOLSOS AL EQUIPO ──────────────────────────────────────────────────
+
+// Gasto que un miembro del equipo pagó de su bolsa y pide de vuelta.
+// Al aprobarse nace una CuentaPagar a su nombre: el gasto se registra UNA sola
+// vez, cuando esa CxP se paga (ahí sale el MovimientoFinanciero con su
+// categoría y su proyecto). Aprobar no mueve dinero por sí solo.
+model SolicitudReembolso {
+  id             String               @id @default(cuid())
+  folio          String               @unique
+  solicitanteId  String
+  solicitante    User                 @relation("ReembolsosSolicitados", fields: [solicitanteId], references: [id])
+  fechaGasto     DateTime
+  concepto       String
+  monto          Float
+  categoriaId    String?
+  categoria      CategoriaFinanciera? @relation(fields: [categoriaId], references: [id])
+  proyectoId     String?
+  proyecto       Proyecto?            @relation(fields: [proyectoId], references: [id])
+  comprobanteUrl String?
+  notas          String?
+  estado         String               @default("PENDIENTE") // PENDIENTE | APROBADO | RECHAZADO
+  revisadoPorId  String?
+  revisadoPor    User?                @relation("ReembolsosRevisados", fields: [revisadoPorId], references: [id])
+  revisadoEn     DateTime?
+  motivoRechazo  String?
+  cuentaPagarId  String?              @unique
+  cuentaPagar    CuentaPagar?         @relation(fields: [cuentaPagarId], references: [id])
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  @@index([solicitanteId])
+  @@index([estado])
+  @@map("solicitudes_reembolso")
 }
 
 // ─── RECURRENCIAS FINANCIERAS ──────────────────────────────────────────────
@@ -1942,6 +1981,7 @@ model CuentaPagar {
   pagoNomina               PagoNomina?              @relation("PagoNominaCxP")
   proveedorEvento          ProveedorEvento?
   aplicacionesCompensacion CompensacionAplicacion[]
+  reembolso                SolicitudReembolso?
   // tipo extra para identificar origen en cobros-pagos
   esDeuda                  Boolean                  @default(false) // true si viene de PasivoDeuda
   esReparto                Boolean                  @default(false) // true si viene de RepartoUtilidad

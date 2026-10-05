@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { getTipoMovimientoMap, naturalezaDe } from "@/lib/tipos-movimiento";
+import { registrarAltaMovimiento } from "@/lib/auditoria-movimiento";
 
 export async function GET(req: NextRequest) {
   const session = await getSession();
@@ -30,7 +31,20 @@ export async function GET(req: NextRequest) {
     ...(cuentaId ? {} : { take: 500 }),
   });
 
-  return NextResponse.json({ movimientos });
+  // `creadoPor` guarda el id del usuario sin relación en el schema (hay filas
+  // viejas con el campo vacío), así que el nombre se resuelve aparte.
+  const autorIds = [...new Set(movimientos.map((m) => m.creadoPor).filter((v): v is string => !!v))];
+  const autores = autorIds.length
+    ? await prisma.user.findMany({ where: { id: { in: autorIds } }, select: { id: true, name: true } })
+    : [];
+  const nombrePorId = new Map(autores.map((u) => [u.id, u.name]));
+
+  return NextResponse.json({
+    movimientos: movimientos.map((m) => ({
+      ...m,
+      registradoPor: m.creadoPor ? nombrePorId.get(m.creadoPor) ?? null : null,
+    })),
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -125,6 +139,8 @@ export async function POST(request: NextRequest) {
 
       return mov;
     });
+
+    await registrarAltaMovimiento(session.id, movimiento.id, movimiento.concepto, movimiento.monto);
 
     return NextResponse.json({ movimiento });
   } catch (error) {

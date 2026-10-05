@@ -23,7 +23,7 @@ import { fmtMonedaCorta, TZ } from "@/lib/resumen/base";
 
 interface Categoria { id: string; nombre: string; tipo: string; }
 interface TipoMov { clave: string; nombre: string; naturaleza: string; afectaResultado: boolean; color: string; }
-interface Cuenta { id: string; nombre: string; banco: string | null; }
+interface Cuenta { id: string; nombre: string; banco: string | null; saldo: number; }
 interface Proyecto { id: string; nombre: string; numeroProyecto: string; estado: string; }
 interface Movimiento {
   id: string;
@@ -41,6 +41,17 @@ interface Movimiento {
   categoria: { id: string; nombre: string } | null;
   cuentaOrigen: { id: string; nombre: string; banco: string | null } | null;
   cuentaDestino: { id: string; nombre: string; banco: string | null } | null;
+  registradoPor: string | null;
+  createdAt: string;
+}
+interface Cambio { campo: string; etiqueta: string; de: string | number | null; a: string | number | null }
+interface EntradaHistorial {
+  id: string;
+  accion: string;
+  descripcion: string;
+  usuario: string;
+  createdAt: string;
+  cambios: Cambio[];
 }
 
 function fmtDate(s: string) {
@@ -48,10 +59,24 @@ function fmtDate(s: string) {
   return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
 }
 
+function fmtFechaHora(s: string) {
+  return new Date(s).toLocaleString("es-MX", {
+    day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: TZ,
+  });
+}
+
+/** Cómo se lee un valor del historial según el campo que cambió. */
+function valorCambio(campo: string, v: string | number | null) {
+  if (v === null) return "—";
+  if (campo === "monto") return formatCurrency(Number(v));
+  if (campo === "fecha") return fmtDate(String(v));
+  return String(v);
+}
+
 const inputCls = "w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]";
 
 /** Pestaña de cuenta: filtra al hacer clic y se reacomoda al arrastrarla. */
-function PestanaCuenta({ cuenta, activa, onSelect }: { cuenta: Cuenta; activa: boolean; onSelect: () => void }) {
+function PestanaCuenta({ cuenta, activa, onSelect, saldo }: { cuenta: Cuenta; activa: boolean; onSelect: () => void; saldo: number }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: cuenta.id });
   // Movimiento solo horizontal: anula el eje vertical del transform.
   const style: CSSProperties = {
@@ -70,9 +95,12 @@ function PestanaCuenta({ cuenta, activa, onSelect }: { cuenta: Cuenta; activa: b
       tabIndex={0}
       onClick={onSelect}
       title="Arrástrala para cambiar el orden"
-      className={`${activa ? "ms-tab-active" : "ms-tab"} select-none cursor-grab active:cursor-grabbing`}
+      className={`${activa ? "ms-tab-active" : "ms-tab"} select-none cursor-grab active:cursor-grabbing flex flex-col items-start leading-tight`}
     >
-      {cuenta.nombre}
+      <span>{cuenta.nombre}</span>
+      <span className={`text-[10px] font-semibold ${saldo >= 0 ? "text-green-400/80" : "text-red-400/80"}`}>
+        {fmtMonedaCorta(saldo)}
+      </span>
     </div>
   );
 }
@@ -88,6 +116,7 @@ export default function MovimientosPage() {
   const [cuentaFiltro, setCuentaFiltro] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [detalle, setDetalle] = useState<Movimiento | null>(null);
+  const [historial, setHistorial] = useState<EntradaHistorial[] | null>(null);
   const [editando, setEditando] = useState<Movimiento | null>(null);
   const [editForm, setEditForm] = useState({ tipo: "", concepto: "", monto: "", fecha: "", notas: "", referencia: "", metodoPago: "", categoriaId: "", cuentaOrigenId: "", cuentaDestinoId: "", proyectoId: "" });
   const [guardando, setGuardando] = useState(false);
@@ -120,6 +149,17 @@ export default function MovimientosPage() {
   }, [loadMovimientos]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (!detalle) { setHistorial(null); return; }
+    let vigente = true;
+    setHistorial(null);
+    fetch(`/api/movimientos/${detalle.id}/historial`, { cache: "no-store" })
+      .then(r => r.json())
+      .then(d => { if (vigente) setHistorial(d.historial ?? []); })
+      .catch(() => { if (vigente) setHistorial([]); });
+    return () => { vigente = false; };
+  }, [detalle]);
 
   // Mouse: arrastra tras 6px. Touch: mantener presionado 220ms, así un
   // deslizamiento rápido sigue haciendo scroll en vez de reordenar.
@@ -267,6 +307,12 @@ export default function MovimientosPage() {
     - delMes.filter(esSalida).reduce((s, m) => s + m.monto, 0);
   const sinCategoria = movimientosFiltrados.filter(m => !m.categoria).length;
 
+  // El saldo lo calcula el servidor sobre TODOS los movimientos de la cuenta,
+  // no sobre los que trae la tabla (la vista global viene recortada a 500).
+  const cuentaActiva = cuentas.find(c => c.id === cuentaFiltro);
+  const saldoTotal = cuentas.reduce((s, c) => s + c.saldo, 0);
+  const saldoMostrado = cuentaActiva ? cuentaActiva.saldo : saldoTotal;
+
   const movimientosOrdenados = [...movimientosFiltrados].sort((a, b) => {
     let diff = 0;
     if (orden === "categoria") {
@@ -325,14 +371,18 @@ export default function MovimientosPage() {
             <div className="ms-tabs flex-wrap w-fit max-w-full mb-4">
               <button
                 onClick={() => filtrarPorCuenta(null)}
-                className={cuentaFiltro === null ? "ms-tab-active" : "ms-tab"}
+                className={`${cuentaFiltro === null ? "ms-tab-active" : "ms-tab"} flex flex-col items-start leading-tight`}
               >
-                Todas
+                <span>Todas</span>
+                <span className={`text-[10px] font-semibold ${saldoTotal >= 0 ? "text-green-400/80" : "text-red-400/80"}`}>
+                  {fmtMonedaCorta(saldoTotal)}
+                </span>
               </button>
               {cuentas.map(c => (
                 <PestanaCuenta
                   key={c.id}
                   cuenta={c}
+                  saldo={c.saldo}
                   activa={cuentaFiltro === c.id}
                   onSelect={() => filtrarPorCuenta(c.id === cuentaFiltro ? null : c.id)}
                 />
@@ -343,7 +393,13 @@ export default function MovimientosPage() {
       )}
 
       {/* Resumen */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-4">
+        <Kpi
+          label={cuentaActiva ? `Saldo · ${cuentaActiva.nombre}` : "Saldo en cuentas"}
+          valor={formatCurrency(saldoMostrado)}
+          nota={cuentaActiva ? "disponible hoy" : `sumando ${cuentas.length} cuenta${cuentas.length !== 1 ? "s" : ""}`}
+          tono={saldoMostrado >= 0 ? "oro" : "rojo"}
+        />
         <Kpi
           label={cuentaFiltro ? "Entradas" : "Ingresos"}
           valor={fmtMonedaCorta(ingresos)}
@@ -357,7 +413,7 @@ export default function MovimientosPage() {
           tono="rojo"
         />
         <Kpi
-          label={cuentaFiltro ? "Saldo neto" : "Balance"}
+          label="Balance"
           valor={fmtMonedaCorta(ingresos - gastos)}
           nota={`${movimientosFiltrados.length} movimientos en total`}
           tono={ingresos - gastos >= 0 ? "oro" : "rojo"}
@@ -535,6 +591,40 @@ export default function MovimientosPage() {
                   <p className="text-[#6b7280] text-xs mb-1">Notas</p>
                   <p className="text-white text-sm whitespace-pre-wrap">{detalle.notas}</p>
                 </div>
+              )}
+            </div>
+
+            {/* Quién lo capturó y qué se le ha tocado desde entonces */}
+            <div className="mt-5 pt-4 border-t border-[#1e1e1e]">
+              <p className="text-[#6b7280] text-xs">
+                Registrado por <span className="text-white">{detalle.registradoPor ?? "—"}</span>
+                <span className="text-[#555]"> · {fmtFechaHora(detalle.createdAt)}</span>
+              </p>
+
+              <p className="text-[#6b7280] text-xs mt-3 mb-2">Historial de cambios</p>
+              {historial === null ? (
+                <p className="text-[#555] text-xs">Cargando…</p>
+              ) : historial.length === 0 ? (
+                <p className="text-[#555] text-xs">Sin cambios desde que se registró.</p>
+              ) : (
+                <ul className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                  {historial.map(h => (
+                    <li key={h.id} className="text-xs">
+                      <p className="text-[#9ca3af]">
+                        <span className="text-white">{h.usuario}</span>
+                        <span className="text-[#555]"> · {fmtFechaHora(h.createdAt)}</span>
+                      </p>
+                      <p className="text-[#6b7280]">{h.descripcion}</p>
+                      {h.cambios.map(c => (
+                        <p key={c.campo} className="text-[#555] pl-2">
+                          {c.etiqueta}: <span className="line-through">{valorCambio(c.campo, c.de)}</span>
+                          {" → "}
+                          <span className="text-[#9ca3af]">{valorCambio(c.campo, c.a)}</span>
+                        </p>
+                      ))}
+                    </li>
+                  ))}
+                </ul>
               )}
             </div>
 

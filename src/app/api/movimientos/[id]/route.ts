@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { getTipoMovimientoMap, naturalezaDe } from "@/lib/tipos-movimiento";
+import { diffMovimiento, registrarCambioMovimiento, registrarBajaMovimiento } from "@/lib/auditoria-movimiento";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -89,6 +90,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return movUpdated;
   });
 
+  await registrarCambioMovimiento(session.id, id, updated.concepto, diffMovimiento(mov, data));
+
   return NextResponse.json({ movimiento: updated });
 }
 
@@ -100,7 +103,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   const mov = await prisma.movimientoFinanciero.findUnique({
     where: { id },
-    select: { abono: { select: { id: true } }, cuentaPagar: { select: { id: true } } },
+    select: { concepto: true, monto: true, abono: { select: { id: true } }, cuentaPagar: { select: { id: true } } },
   });
   if (!mov) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
@@ -110,5 +113,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   }
 
   await prisma.movimientoFinanciero.delete({ where: { id } });
+  await registrarBajaMovimiento(session.id, id, mov.concepto, mov.monto);
   return NextResponse.json({ ok: true });
 }

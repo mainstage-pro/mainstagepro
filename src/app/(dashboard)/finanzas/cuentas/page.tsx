@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { SkeletonTable } from "@/components/Skeleton";
+import { formatCurrency } from "@/lib/cotizador";
 
 interface CuentaBancaria {
   id: string;
@@ -14,9 +15,10 @@ interface CuentaBancaria {
   titular: string | null;
   rfc: string | null;
   activa: boolean;
+  saldo: number;
 }
 
-const EMPTY: Omit<CuentaBancaria, "id" | "activa"> = {
+const EMPTY: Omit<CuentaBancaria, "id" | "activa" | "saldo"> = {
   nombre: "", banco: "", numeroCuenta: "", clabe: "", titular: "", rfc: "",
 };
 
@@ -116,6 +118,7 @@ export default function CuentasPage() {
     setSaldoMonto("");
     setGuardandoSaldo(false);
     toast.success("Saldo inicial registrado");
+    await load();
   }
 
   async function deleteCuenta(id: string) {
@@ -211,7 +214,7 @@ export default function CuentasPage() {
           <table className="w-full min-w-[600px]">
             <thead className="ms-thead">
               <tr>
-                {["Nombre / Banco", "Número de cuenta", "CLABE", "Titular", "Estado", ""].map(h => (
+                {["Nombre / Banco", "Saldo", "Número de cuenta", "CLABE", "Titular", "Estado", ""].map(h => (
                   <th key={h} className="ms-th">{h}</th>
                 ))}
               </tr>
@@ -222,6 +225,9 @@ export default function CuentasPage() {
                   <td className="ms-td">
                     <p className="text-white text-sm font-medium">{c.nombre}</p>
                     {c.banco && <p className="text-gray-500 text-xs">{c.banco}</p>}
+                  </td>
+                  <td className={`ms-td font-semibold whitespace-nowrap ${c.saldo >= 0 ? "text-green-400" : "text-red-400"}`}>
+                    {formatCurrency(c.saldo)}
                   </td>
                   <td className="ms-td text-[#9ca3af] font-mono">{c.numeroCuenta ?? "—"}</td>
                   <td className="ms-td text-[#9ca3af] font-mono">{c.clabe ?? "—"}</td>
