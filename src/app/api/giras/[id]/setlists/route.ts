@@ -75,6 +75,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         ? {
             canciones: {
               create: origen.canciones.map((c) => ({
+                tipo: c.tipo,
                 orden: c.orden,
                 titulo: c.titulo,
                 duracionSeg: c.duracionSeg,

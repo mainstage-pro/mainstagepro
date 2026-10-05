@@ -4,15 +4,28 @@
  * Setlist de la gira y sus variantes por show. El repertorio se teclea una vez
  * en el base; el show que necesita otro orden o menos tiempo lo copia y lo
  * ajusta, para que las notas de audio, luces y video no se vuelvan a escribir.
+ *
+ * Los renglones que no son canción (intro, presentación, pausa, cierre) van en
+ * la misma lista: son los que parten el show en bloques, y el bloque se deriva
+ * de dónde caen en vez de capturarse aparte.
  */
 
-import { useRef, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
-import { fmtFechaCorta, fmtMinSeg, segundosDesdeTexto } from "@/lib/giras";
+import {
+  esCancion,
+  fmtFechaCorta,
+  fmtMinSeg,
+  segmentarSetlist,
+  segundosDesdeTexto,
+  TIPOS_FILA_SETLIST,
+  TIPO_FILA_SETLIST_LABEL,
+} from "@/lib/giras";
 
 export interface CancionFila {
   id: string;
+  tipo: string;
   orden: number;
   titulo: string;
   duracionSeg: number | null;
@@ -93,11 +106,11 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
     timers.set(cancionId, setTimeout(() => void guardar(), DEMORA_GUARDADO));
   }
 
-  async function agregarCancion(setlistId: string) {
+  async function agregarCancion(setlistId: string, tipo = "CANCION") {
     const res = await fetch(`/api/gira-setlists/${setlistId}/canciones`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ titulo: "" }),
+      body: JSON.stringify({ titulo: "", tipo }),
     });
     const d = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -227,6 +240,9 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
           const expandido = abierto === s.id;
           const segundos = s.canciones.reduce((t, c) => t + (c.duracionSeg ?? 0), 0);
           const heredado = alcance === "SHOW" && s.showId !== showId;
+          const segmentos = segmentarSetlist(s.canciones);
+          const totalCanciones = s.canciones.filter((c) => esCancion(c.tipo)).length;
+          const totalBloques = segmentos.filter((x) => x.clase === "bloque").length;
 
           return (
             <section key={s.id} className={`ms-card ${expandido ? "border-[#B3985B]/30" : ""}`}>
@@ -243,7 +259,8 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
                     {heredado && <span className="ms-badge ms-badge-sky ml-2">Heredado de la gira</span>}
                   </p>
                   <p className="ms-meta mt-0.5">
-                    {s.canciones.length} canciones
+                    {totalCanciones} canciones
+                    {totalBloques > 1 ? ` · ${totalBloques} bloques` : ""}
                     {segundos > 0 ? ` · ${Math.round(segundos / 60)} min cantados` : ""}
                     {s.duracionMin ? ` · ${s.duracionMin} min de slot` : ""}
                   </p>
@@ -309,9 +326,10 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
                     <p className="ms-meta">Sin canciones todavía.</p>
                   ) : (
                     <div className="ms-table-wrapper overflow-x-auto">
-                      <table className="min-w-[1280px] w-full">
+                      <table className="min-w-[1380px] w-full">
                         <thead className="ms-thead">
                           <tr>
+                            <th className="ms-th w-[120px]">Tipo</th>
                             <th className="ms-th w-[40px]">#</th>
                             <th className="ms-th w-[240px]">Canción</th>
                             <th className="ms-th w-[90px]">Dura</th>
@@ -326,98 +344,194 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
                           </tr>
                         </thead>
                         <tbody>
-                          {s.canciones.map((c, i) => (
-                            <tr key={c.id} className="ms-tr align-top">
-                              <td className="ms-td ms-micro tabular-nums">{i + 1}</td>
-                              <td className="ms-td">
-                                <input
-                                  value={c.titulo}
-                                  onChange={(e) => editarCancion(s.id, c.id, { titulo: e.target.value })}
-                                  placeholder="Título"
-                                  className="ms-input-inline w-full"
-                                />
-                              </td>
-                              <td className="ms-td">
-                                <input
-                                  defaultValue={fmtMinSeg(c.duracionSeg)}
-                                  onBlur={(e) =>
-                                    editarCancion(s.id, c.id, { duracionSeg: segundosDesdeTexto(e.target.value) }, true)
-                                  }
-                                  placeholder="3:45"
-                                  className="ms-input-inline w-full"
-                                />
-                              </td>
-                              <td className="ms-td">
-                                <input
-                                  value={c.tonalidad ?? ""}
-                                  onChange={(e) => editarCancion(s.id, c.id, { tonalidad: e.target.value })}
-                                  placeholder="Am"
-                                  className="ms-input-inline w-full"
-                                />
-                              </td>
-                              <td className="ms-td">
-                                <input
-                                  type="number"
-                                  min={0}
-                                  value={c.bpm ?? ""}
-                                  onChange={(e) =>
-                                    editarCancion(s.id, c.id, { bpm: e.target.value === "" ? null : Number(e.target.value) })
-                                  }
-                                  className="ms-input-inline w-full"
-                                />
-                              </td>
-                              <td className="ms-td text-center">
-                                <input
-                                  type="checkbox"
-                                  checked={c.conTrack}
-                                  onChange={(e) => editarCancion(s.id, c.id, { conTrack: e.target.checked }, true)}
-                                  className="accent-[#B3985B] w-4 h-4"
-                                  title="Lleva track"
-                                />
-                              </td>
-                              <td className="ms-td">
-                                <input
-                                  value={c.notasAudio ?? ""}
-                                  onChange={(e) => editarCancion(s.id, c.id, { notasAudio: e.target.value })}
-                                  placeholder="…"
-                                  className="ms-input-inline w-full"
-                                />
-                              </td>
-                              <td className="ms-td">
-                                <input
-                                  value={c.notasLuces ?? ""}
-                                  onChange={(e) => editarCancion(s.id, c.id, { notasLuces: e.target.value })}
-                                  placeholder="…"
-                                  className="ms-input-inline w-full"
-                                />
-                              </td>
-                              <td className="ms-td">
-                                <input
-                                  value={c.notasVideo ?? ""}
-                                  onChange={(e) => editarCancion(s.id, c.id, { notasVideo: e.target.value })}
-                                  placeholder="…"
-                                  className="ms-input-inline w-full"
-                                />
-                              </td>
-                              <td className="ms-td">
-                                <input
-                                  value={c.cambioInstrumento ?? ""}
-                                  onChange={(e) => editarCancion(s.id, c.id, { cambioInstrumento: e.target.value })}
-                                  placeholder="ej. acústica"
-                                  className="ms-input-inline w-full"
-                                />
-                              </td>
-                              <td className="ms-td text-right">
-                                <button
-                                  onClick={() => void quitarCancion(s.id, c)}
-                                  className="text-[#555] hover:text-red-400 transition-colors"
-                                  title="Quitar canción"
-                                >
-                                  ✕
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
+                          {segmentos.map((seg) => {
+                            if (seg.clase === "momento") {
+                              const c = seg.fila;
+                              return (
+                                <tr key={c.id} className="ms-tr align-top bg-[#121212]">
+                                  <td className="ms-td">
+                                    <select
+                                      value={c.tipo}
+                                      onChange={(e) => editarCancion(s.id, c.id, { tipo: e.target.value }, true)}
+                                      className="ms-input-inline w-full"
+                                    >
+                                      {TIPOS_FILA_SETLIST.map((t) => (
+                                        <option key={t} value={t}>
+                                          {TIPO_FILA_SETLIST_LABEL[t]}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </td>
+                                  <td className="ms-td ms-micro text-[#555]">—</td>
+                                  <td className="ms-td">
+                                    <input
+                                      value={c.titulo}
+                                      onChange={(e) => editarCancion(s.id, c.id, { titulo: e.target.value })}
+                                      placeholder="ej. Intro (video)"
+                                      className="ms-input-inline w-full"
+                                    />
+                                  </td>
+                                  <td className="ms-td">
+                                    <input
+                                      defaultValue={fmtMinSeg(c.duracionSeg)}
+                                      onBlur={(e) =>
+                                        editarCancion(s.id, c.id, { duracionSeg: segundosDesdeTexto(e.target.value) }, true)
+                                      }
+                                      placeholder="1:30"
+                                      className="ms-input-inline w-full"
+                                    />
+                                  </td>
+                                  <td className="ms-td" colSpan={7}>
+                                    <input
+                                      value={c.notas ?? ""}
+                                      onChange={(e) => editarCancion(s.id, c.id, { notas: e.target.value })}
+                                      placeholder="Qué pasa en este momento: video pregrabado, cambio de vestuario, presentación de la banda…"
+                                      className="ms-input-inline w-full"
+                                    />
+                                  </td>
+                                  <td className="ms-td text-right">
+                                    <button
+                                      onClick={() => void quitarCancion(s.id, c)}
+                                      className="text-[#555] hover:text-red-400 transition-colors"
+                                      title="Quitar momento"
+                                    >
+                                      ✕
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            }
+
+                            const segundosBloque = seg.canciones.reduce((t, x) => t + (x.fila.duracionSeg ?? 0), 0);
+
+                            return (
+                              <Fragment key={seg.clave}>
+                                <tr className="bg-[#0d0d0d]">
+                                  <td className="ms-td" colSpan={12}>
+                                    <span className="inline-flex items-center gap-2">
+                                      <span
+                                        className="inline-flex items-center justify-center w-5 h-5 rounded-sm text-[11px] font-bold text-black"
+                                        style={{ backgroundColor: seg.color }}
+                                      >
+                                        {seg.numero}
+                                      </span>
+                                      <span className="ms-micro text-[#9ca3af]">
+                                        Bloque {seg.numero} · {seg.canciones.length} canciones
+                                        {segundosBloque > 0 ? ` · ${Math.round(segundosBloque / 60)} min` : ""}
+                                      </span>
+                                    </span>
+                                  </td>
+                                </tr>
+                                {seg.canciones.map(({ fila: c, posicion }) => (
+                                  <tr key={c.id} className="ms-tr align-top">
+                                    <td className="ms-td">
+                                      <select
+                                        value={c.tipo}
+                                        onChange={(e) => editarCancion(s.id, c.id, { tipo: e.target.value }, true)}
+                                        className="ms-input-inline w-full"
+                                      >
+                                        {TIPOS_FILA_SETLIST.map((t) => (
+                                          <option key={t} value={t}>
+                                            {TIPO_FILA_SETLIST_LABEL[t]}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </td>
+                                    <td className="ms-td ms-micro tabular-nums">{posicion}</td>
+                                    <td className="ms-td">
+                                      <input
+                                        value={c.titulo}
+                                        onChange={(e) => editarCancion(s.id, c.id, { titulo: e.target.value })}
+                                        placeholder="Título"
+                                        className="ms-input-inline w-full"
+                                      />
+                                    </td>
+                                    <td className="ms-td">
+                                      <input
+                                        defaultValue={fmtMinSeg(c.duracionSeg)}
+                                        onBlur={(e) =>
+                                          editarCancion(s.id, c.id, { duracionSeg: segundosDesdeTexto(e.target.value) }, true)
+                                        }
+                                        placeholder="3:45"
+                                        className="ms-input-inline w-full"
+                                      />
+                                    </td>
+                                    <td className="ms-td">
+                                      <input
+                                        value={c.tonalidad ?? ""}
+                                        onChange={(e) => editarCancion(s.id, c.id, { tonalidad: e.target.value })}
+                                        placeholder="Am"
+                                        className="ms-input-inline w-full"
+                                      />
+                                    </td>
+                                    <td className="ms-td">
+                                      <input
+                                        type="number"
+                                        min={0}
+                                        value={c.bpm ?? ""}
+                                        onChange={(e) =>
+                                          editarCancion(s.id, c.id, {
+                                            bpm: e.target.value === "" ? null : Number(e.target.value),
+                                          })
+                                        }
+                                        className="ms-input-inline w-full"
+                                      />
+                                    </td>
+                                    <td className="ms-td text-center">
+                                      <input
+                                        type="checkbox"
+                                        checked={c.conTrack}
+                                        onChange={(e) => editarCancion(s.id, c.id, { conTrack: e.target.checked }, true)}
+                                        className="accent-[#B3985B] w-4 h-4"
+                                        title="Lleva track"
+                                      />
+                                    </td>
+                                    <td className="ms-td">
+                                      <input
+                                        value={c.notasAudio ?? ""}
+                                        onChange={(e) => editarCancion(s.id, c.id, { notasAudio: e.target.value })}
+                                        placeholder="…"
+                                        className="ms-input-inline w-full"
+                                      />
+                                    </td>
+                                    <td className="ms-td">
+                                      <input
+                                        value={c.notasLuces ?? ""}
+                                        onChange={(e) => editarCancion(s.id, c.id, { notasLuces: e.target.value })}
+                                        placeholder="…"
+                                        className="ms-input-inline w-full"
+                                      />
+                                    </td>
+                                    <td className="ms-td">
+                                      <input
+                                        value={c.notasVideo ?? ""}
+                                        onChange={(e) => editarCancion(s.id, c.id, { notasVideo: e.target.value })}
+                                        placeholder="…"
+                                        className="ms-input-inline w-full"
+                                      />
+                                    </td>
+                                    <td className="ms-td">
+                                      <input
+                                        value={c.cambioInstrumento ?? ""}
+                                        onChange={(e) => editarCancion(s.id, c.id, { cambioInstrumento: e.target.value })}
+                                        placeholder="ej. acústica"
+                                        className="ms-input-inline w-full"
+                                      />
+                                    </td>
+                                    <td className="ms-td text-right">
+                                      <button
+                                        onClick={() => void quitarCancion(s.id, c)}
+                                        className="text-[#555] hover:text-red-400 transition-colors"
+                                        title="Quitar canción"
+                                      >
+                                        ✕
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </Fragment>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -426,6 +540,9 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
                   <div className="flex flex-wrap items-center gap-2">
                     <button onClick={() => void agregarCancion(s.id)} className="ms-btn-ghost">
                       + Agregar canción
+                    </button>
+                    <button onClick={() => void agregarCancion(s.id, "PAUSA")} className="ms-btn-ghost">
+                      + Agregar pausa
                     </button>
                     {alcance === "SHOW" && s.esBase && s.showId === null && (
                       <button onClick={() => void crear(s.id)} className="ms-btn-ghost">

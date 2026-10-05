@@ -6471,12 +6471,15 @@ model GiraSetlist {
   @@map("gira_setlists")
 }
 
-/// Canción del setlist con las notas de operación de audio, luces y video.
+/// Un renglón del setlist con sus notas de operación de audio, luces y video.
+/// Puede ser una canción o un momento que no se canta (intro, presentación,
+/// pausa, cierre); los bloques numerados se derivan de dónde caen los momentos.
 model GiraSetlistCancion {
   id        String      @id @default(cuid())
   setlistId String
   setlist   GiraSetlist @relation(fields: [setlistId], references: [id], onDelete: Cascade)
 
+  tipo              String  @default("CANCION") // CANCION|INTRO|PRESENTACION|PAUSA|CIERRE
   orden             Int     @default(0)
   titulo            String
   duracionSeg       Int?

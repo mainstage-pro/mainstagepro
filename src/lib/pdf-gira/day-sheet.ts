@@ -18,6 +18,7 @@ import {
   TIPO_SHOW_LABEL,
   TIPO_VIAJE_LABEL,
   duracionBloque,
+  esCancion,
   fmtDuracion,
   fmtFechaHora,
   fmtFechaLarga,
@@ -75,7 +76,7 @@ export async function generarDaySheet(showId: string): Promise<PdfGira | null> {
     prisma.giraSetlist.findFirst({
       where: { giraId: show.giraId, OR: [{ showId }, { esBase: true }] },
       orderBy: [{ showId: "desc" }, { esBase: "desc" }],
-      select: { nombre: true, _count: { select: { canciones: true } } },
+      select: { nombre: true, canciones: { select: { tipo: true } } },
     }),
   ]);
 
@@ -226,7 +227,7 @@ export async function generarDaySheet(showId: string): Promise<PdfGira | null> {
         checkOut: fmtFechaHora(h.checkOut),
       })),
     setlistNombre: setlist?.nombre ?? null,
-    setlistCanciones: setlist?._count.canciones ?? 0,
+    setlistCanciones: setlist?.canciones.filter((c) => esCancion(c.tipo)).length ?? 0,
     notas: show.notas,
     logoSrc: logoBase64(publicDir),
     logoArtistaSrc: await resolvePdfImage(show.gira.artista.logoUrl, publicDir),

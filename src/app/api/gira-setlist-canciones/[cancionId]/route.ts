@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { TIPOS_FILA_SETLIST } from "@/lib/giras";
 
 const TEXTO = ["tonalidad", "notasAudio", "notasLuces", "notasVideo", "cambioInstrumento", "notas"] as const;
 const ENTEROS = ["duracionSeg", "bpm", "orden"] as const;
 
-/// Edición canción por canción, como el advance: la fila conserva su id.
+/// Edición renglón por renglón, como el advance: la fila conserva su id.
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ cancionId: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -14,9 +15,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ca
   const body = await req.json();
   const data: Record<string, unknown> = {};
 
+  if ("tipo" in body) {
+    if (!TIPOS_FILA_SETLIST.includes(body.tipo)) {
+      return NextResponse.json({ error: "Ese tipo de renglón no existe" }, { status: 400 });
+    }
+    data.tipo = body.tipo;
+  }
+
   if ("titulo" in body) {
     const titulo = typeof body.titulo === "string" ? body.titulo.trim() : "";
-    if (!titulo) return NextResponse.json({ error: "La canción necesita título" }, { status: 400 });
+    if (!titulo) return NextResponse.json({ error: "El renglón necesita título" }, { status: 400 });
     data.titulo = titulo;
   }
 

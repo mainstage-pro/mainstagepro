@@ -26,8 +26,9 @@ export default async function SetlistGiraPage({ params }: { params: Promise<{ id
       <div>
         <h1 className="ms-h1">Setlist</h1>
         <p className="ms-subtitle">
-          El repertorio se teclea una vez en el base, con sus notas de audio, luces y video. El show que necesite otro
-          orden o menos tiempo lo copia desde su propio día.
+          El repertorio se teclea una vez en el base, con sus notas de audio, luces y video, y los momentos que no se
+          cantan —intro, presentación, pausas— van en la misma lista: son los que parten el show en bloques. El show que
+          necesite otro orden o menos tiempo lo copia desde su propio día.
         </p>
       </div>
 

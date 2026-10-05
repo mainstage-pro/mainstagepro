@@ -15,7 +15,7 @@ import {
   type ColumnaTabla, type Dato, type ItemBanda, type RenglonTabla,
 } from "./GiraDocBase";
 import { fmtHora } from "../PdfShared";
-import { SECCIONES_LIBRO, SECCION_LIBRO_LABEL, type SeccionLibro } from "@/lib/giras";
+import { SECCIONES_LIBRO, SECCION_LIBRO_LABEL, TIPO_FILA_SETLIST_LABEL, type SeccionLibro } from "@/lib/giras";
 
 export interface LibroShow {
   id: string;
@@ -94,7 +94,11 @@ export interface LibroRooming {
 
 export interface LibroCancion {
   id: string;
-  posicion: number;
+  tipo: string;
+  /// Null en los momentos que no se cantan: la numeración es del repertorio, no
+  /// del renglón, para que el "12" del papel sea el "12" que pide el artista.
+  posicion: number | null;
+  bloque: number | null;
   titulo: string;
   duracion: string;
   tonalidad: string | null;
@@ -268,6 +272,51 @@ function agrupar<T>(
     }
     out.push(celdas(f));
   }
+  return out;
+}
+
+/// El setlist impreso se lee de corrido: el encabezado del bloque y el momento
+/// que lo abre (intro, pausa, cierre) van como renglón de grupo, y solo las
+/// canciones ocupan una fila con tono y BPM.
+function renglonesDeSetlist(sl: LibroSetlist): RenglonTabla[] {
+  const out: RenglonTabla[] = [];
+  let bloque: number | null = null;
+
+  for (const c of sl.canciones) {
+    if (c.posicion === null) {
+      bloque = null;
+      out.push({
+        tipo: "grupo",
+        clave: c.id,
+        texto: [TIPO_FILA_SETLIST_LABEL[c.tipo] ?? c.tipo, c.titulo, c.duracion !== "—" ? c.duracion : null, c.cues]
+          .filter(Boolean)
+          .join(" · "),
+      });
+      continue;
+    }
+
+    if (c.bloque !== bloque) {
+      bloque = c.bloque;
+      out.push({ tipo: "grupo", clave: `${sl.id}-bloque-${c.bloque}`, texto: `Bloque ${c.bloque}` });
+    }
+
+    out.push({
+      tipo: "fila",
+      clave: c.id,
+      celdas: [
+        { texto: String(c.posicion) },
+        {
+          texto: c.titulo,
+          sub: [c.conTrack ? "Con track" : null, c.cues].filter(Boolean).join(" · ") || null,
+          fuerte: true,
+        },
+        { texto: c.duracion },
+        { texto: c.tonalidad ?? "—" },
+        { texto: c.bpm ? String(c.bpm) : "—" },
+      ],
+    });
+  }
+
   return out;
 }
 
@@ -556,24 +605,7 @@ export function LibroGiraPDF({ data }: { data: LibroGiraData }) {
                         { label: "Duración", valor: sl.duracion, ancho: 1 },
                       ]}
                     />
-                    <Tabla
-                      columnas={COLS_CANCIONES}
-                      renglones={sl.canciones.map((c) => ({
-                        tipo: "fila",
-                        clave: c.id,
-                        celdas: [
-                          { texto: String(c.posicion) },
-                          {
-                            texto: c.titulo,
-                            sub: [c.conTrack ? "Con track" : null, c.cues].filter(Boolean).join(" · ") || null,
-                            fuerte: true,
-                          },
-                          { texto: c.duracion },
-                          { texto: c.tonalidad ?? "—" },
-                          { texto: c.bpm ? String(c.bpm) : "—" },
-                        ],
-                      }))}
-                    />
+                    <Tabla columnas={COLS_CANCIONES} renglones={renglonesDeSetlist(sl)} />
                     {sl.notas ? <Nota label="Notas del setlist" texto={sl.notas} /> : null}
                   </View>
                 ))

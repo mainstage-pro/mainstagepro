@@ -429,6 +429,74 @@ export function fmtMinSeg(segundos: number | null | undefined): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+/// El setlist no es solo canciones: entre ellas hay intro en video, presentación
+/// y pausas con cambio de vestuario, y el que opera luces o video las necesita
+/// numeradas junto al resto.
+export const TIPOS_FILA_SETLIST = ["CANCION", "INTRO", "PRESENTACION", "PAUSA", "CIERRE"] as const;
+
+export const TIPO_FILA_SETLIST_LABEL: Record<string, string> = {
+  CANCION: "Canción",
+  INTRO: "Intro",
+  PRESENTACION: "Presentación",
+  PAUSA: "Pausa",
+  CIERRE: "Cierre",
+};
+
+export function esCancion(tipo: string | null | undefined): boolean {
+  return (tipo ?? "CANCION") === "CANCION";
+}
+
+/// El color del bloque es de la paleta del artista, no del dato: se repite al
+/// pasar del séptimo bloque porque nadie imprime un setlist de ocho tandas.
+const COLORES_BLOQUE = ["#E23B2E", "#6CDD1F", "#3B9BF0", "#EE6BDF", "#F0781F", "#F4C62C", "#7B2CF5"] as const;
+
+export function colorDeBloque(numero: number): string {
+  return COLORES_BLOQUE[(numero - 1) % COLORES_BLOQUE.length];
+}
+
+export interface FilaDeSetlist {
+  id: string;
+  tipo: string;
+}
+
+export type SegmentoSetlist<T> =
+  | { clase: "bloque"; clave: string; numero: number; color: string; canciones: { fila: T; posicion: number }[] }
+  | { clase: "momento"; clave: string; fila: T };
+
+/// Los bloques no se capturan: son las tandas de canciones que quedan entre dos
+/// momentos. Derivarlos evita que el número del bloque y el color se
+/// desincronicen de las canciones que lo forman.
+export function segmentarSetlist<T extends FilaDeSetlist>(filas: T[]): SegmentoSetlist<T>[] {
+  const segmentos: SegmentoSetlist<T>[] = [];
+  let posicion = 0;
+  let numero = 0;
+
+  for (const fila of filas) {
+    if (!esCancion(fila.tipo)) {
+      segmentos.push({ clase: "momento", clave: fila.id, fila });
+      continue;
+    }
+
+    posicion += 1;
+    const ultimo = segmentos[segmentos.length - 1];
+    if (ultimo?.clase === "bloque") {
+      ultimo.canciones.push({ fila, posicion });
+      continue;
+    }
+
+    numero += 1;
+    segmentos.push({
+      clase: "bloque",
+      clave: `bloque-${numero}`,
+      numero,
+      color: colorDeBloque(numero),
+      canciones: [{ fila, posicion }],
+    });
+  }
+
+  return segmentos;
+}
+
 // ── Crew ─────────────────────────────────────────────────────────────────────
 export const ORIGENES_CREW = ["MAINSTAGE", "ARTISTA", "CASA", "PROVEEDOR", "EXTERNO"] as const;
 

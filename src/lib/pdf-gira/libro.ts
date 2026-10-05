@@ -35,6 +35,7 @@ import {
   fmtRango,
   nombreCrew,
   resumirAdvance,
+  segmentarSetlist,
   type SeccionLibro,
 } from "@/lib/giras";
 import { ESTADOS_CHECKLIST, FRENTES } from "@/lib/gira-advance-checklist";
@@ -328,15 +329,26 @@ export async function generarLibroGira(giraId: string, secciones: SeccionLibro[]
   // ── Repertorio ──────────────────────────────────────────────────────────────
   const setlists: LibroSetlist[] = setlistFilas.map((sl) => {
     const segundos = sl.canciones.reduce((t, c) => t + (c.duracionSeg ?? 0), 0);
+
+    // La posición y el bloque se derivan aquí una vez para que el PDF solo
+    // imprima; el que no es canción va sin número y corta el bloque.
+    const ubicacion = new Map<string, { posicion: number | null; bloque: number | null }>();
+    for (const seg of segmentarSetlist(sl.canciones)) {
+      if (seg.clase === "momento") ubicacion.set(seg.fila.id, { posicion: null, bloque: null });
+      else for (const c of seg.canciones) ubicacion.set(c.fila.id, { posicion: c.posicion, bloque: seg.numero });
+    }
+
     return {
       id: sl.id,
       nombre: sl.nombre,
       alcance: sl.esBase ? "Base" : alcanceDe(sl.show),
       duracion: segundos > 0 ? fmtMinSeg(segundos) : fmtDuracion(sl.duracionMin ?? null),
       notas: sl.notas,
-      canciones: sl.canciones.map((c, i) => ({
+      canciones: sl.canciones.map((c) => ({
         id: c.id,
-        posicion: i + 1,
+        tipo: c.tipo,
+        posicion: ubicacion.get(c.id)?.posicion ?? null,
+        bloque: ubicacion.get(c.id)?.bloque ?? null,
         titulo: c.titulo,
         duracion: c.duracionSeg ? fmtMinSeg(c.duracionSeg) : "—",
         tonalidad: c.tonalidad,
