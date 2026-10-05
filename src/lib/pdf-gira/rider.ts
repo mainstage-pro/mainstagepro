@@ -17,6 +17,7 @@ import {
   ROL_PERSONA_LABEL,
   SOPORTE_MIC_LABEL,
   TIPO_ARCHIVO_RIDER_LABEL,
+  TIPO_BLOQUE_LABEL,
   TIPO_FORMACION_LABEL,
   TIPO_SALIDA_LABEL,
   UNIDAD_RIDER_LABEL,
@@ -29,6 +30,7 @@ import {
   RiderArtistaPDF,
   type RiderAnexoDoc,
   type RiderArtistaData,
+  type RiderBloqueDoc,
   type RiderContactoDoc,
   type RiderLineaDoc,
 } from "@/components/pdf/giras/RiderArtistaPDF";
@@ -57,6 +59,7 @@ async function leerRider(riderId: string) {
         include: { persona: { select: { nombre: true } } },
       },
       lineas: { orderBy: [{ orden: "asc" }, { createdAt: "asc" }] },
+      bloques: { orderBy: [{ orden: "asc" }, { createdAt: "asc" }] },
       contactos: { where: { enPdf: true }, orderBy: [{ orden: "asc" }, { createdAt: "asc" }] },
       archivos: { where: { incluirEnPdf: true }, orderBy: [{ orden: "asc" }, { createdAt: "asc" }] },
     },
@@ -127,6 +130,20 @@ function lineasPorDisciplina(rider: RiderCompleto): RiderLineaDoc[] {
       provistoPorLabel: PROVISTO_POR_LABEL[l.provistoPor] ?? l.provistoPor,
       notas: l.notas,
     }));
+}
+
+/// Los bloques sin duración son previos que la casa deja listos antes del
+/// arribo: no consumen el llamado del crew, así que se imprimen como "previo"
+/// en vez de un hueco que alguien tendría que interpretar.
+function bloquesDelRider(rider: RiderCompleto): RiderBloqueDoc[] {
+  return rider.bloques.map((b) => ({
+    id: b.id,
+    titulo: b.titulo,
+    tipoLabel: TIPO_BLOQUE_LABEL[b.tipo] ?? b.tipo,
+    duracionLabel: b.duracionMin ? `${b.duracionMin} min` : "Previo",
+    responsable: b.responsable,
+    contenido: b.contenido,
+  }));
 }
 
 /// Contactos y anexos del rider, ya resueltos para el documento. Los anexos en
@@ -286,6 +303,7 @@ export async function generarRiderArtista(riderId: string, giraNombre: string | 
     mixesMonitor: rider.mixesMonitor,
     tiempoSoundcheckMin: rider.tiempoSoundcheckMin,
     tiempoCambioMin: rider.tiempoCambioMin,
+    bloques: bloquesDelRider(rider),
     lineas: lineasPorDisciplina(rider),
     inputs,
     outputs,

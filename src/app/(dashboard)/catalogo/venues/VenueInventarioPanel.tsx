@@ -10,6 +10,7 @@ import {
   DISCIPLINA_LABEL,
   fmtFechaCorta,
 } from "@/lib/giras";
+import VenueRiderImportar from "./VenueRiderImportar";
 
 interface ItemInventario {
   id: string;
@@ -138,8 +139,11 @@ export default function VenueInventarioPanel({ venueId }: { venueId: string }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="ms-label">Inventario de casa ({items.length} conceptos)</p>
-        <p className="ms-micro">Lo que el foro presta. El advance de gira lo lee y lo actualiza.</p>
+        <div>
+          <p className="ms-label">Inventario de casa ({items.length} conceptos)</p>
+          <p className="ms-micro mt-0.5">Lo que el foro presta. El advance de gira lo lee y lo actualiza.</p>
+        </div>
+        <VenueRiderImportar venueId={venueId} onImportado={(nuevos) => setItems(nuevos as ItemInventario[])} />
       </div>
 
       {items.length > 0 && (

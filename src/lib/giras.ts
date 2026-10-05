@@ -12,6 +12,7 @@ export const DISCIPLINAS = [
   "ENERGIA",
   "COMUNICACION",
   "RIGGING",
+  "PERSONAL",
   "OTRO",
 ] as const;
 export type Disciplina = (typeof DISCIPLINAS)[number];
@@ -25,6 +26,10 @@ export const DISCIPLINA_LABEL: Record<string, string> = {
   ENERGIA: "Energía",
   COMUNICACION: "Comunicación",
   RIGGING: "Rigging",
+  /// El puesto que exige el rider (ingeniero de FOH, técnico de monitores, VJ).
+  /// Se cotejó siempre contra la casa igual que una caja, y hasta hoy vivía
+  /// como texto suelto en las notas del rider.
+  PERSONAL: "Personal técnico",
   OTRO: "Otro",
 };
 
@@ -1154,7 +1159,7 @@ export function esImagenArchivo(url: string, mime?: string | null): boolean {
 }
 
 // ── Rider de equipo: unidades ────────────────────────────────────────────────
-export const UNIDADES_RIDER = ["PZA", "JGO", "PAR", "CANAL", "MIX", "METRO", "SERVICIO"] as const;
+export const UNIDADES_RIDER = ["PZA", "JGO", "PAR", "CANAL", "MIX", "METRO", "SERVICIO", "PERSONA"] as const;
 
 export const UNIDAD_RIDER_LABEL: Record<string, string> = {
   PZA: "pza",
@@ -1164,6 +1169,7 @@ export const UNIDAD_RIDER_LABEL: Record<string, string> = {
   MIX: "mix",
   METRO: "m",
   SERVICIO: "servicio",
+  PERSONA: "persona",
 };
 
 // ── Plantillas de arranque del rider ─────────────────────────────────────────
@@ -1260,6 +1266,54 @@ export const PLANTILLA_RIDER_BANDA: PlantillaLineaRider[] = [
   { disciplina: "ENERGIA", concepto: "Planta de respaldo", cantidad: 1, unidad: "PZA", prioridad: "DESEABLE", provistoPor: "CASA" },
   { disciplina: "COMUNICACION", concepto: "Intercom entre FOH, monitores y escenario", cantidad: 4, unidad: "PZA", prioridad: "IMPORTANTE", provistoPor: "CASA" },
   { disciplina: "VIDEO", concepto: "Pantalla LED de fondo con procesador", cantidad: 1, unidad: "SERVICIO", prioridad: "DESEABLE", provistoPor: "CASA" },
+  { disciplina: "PERSONAL", concepto: "Ingeniero de audio de FOH que conoce el sistema", cantidad: 1, unidad: "PERSONA", prioridad: "INDISPENSABLE", provistoPor: "CASA" },
+  { disciplina: "PERSONAL", concepto: "Técnico de monitores y RF dedicado", cantidad: 1, unidad: "PERSONA", prioridad: "INDISPENSABLE", provistoPor: "CASA" },
+  { disciplina: "PERSONAL", concepto: "Técnico de audio de escenario", cantidad: 1, unidad: "PERSONA", prioridad: "IMPORTANTE", provistoPor: "CASA" },
+  { disciplina: "PERSONAL", concepto: "Ingeniero de iluminación que programa y opera", cantidad: 1, unidad: "PERSONA", prioridad: "INDISPENSABLE", provistoPor: "CASA" },
+  { disciplina: "PERSONAL", concepto: "Técnico de iluminación", cantidad: 1, unidad: "PERSONA", prioridad: "IMPORTANTE", provistoPor: "CASA" },
+  { disciplina: "PERSONAL", concepto: "Técnico de video", cantidad: 1, unidad: "PERSONA", prioridad: "IMPORTANTE", provistoPor: "CASA" },
+];
+
+// ── Bloques de montaje que exige el rider ────────────────────────────────────
+// Duraciones y responsables, no horas de reloj: la hora la pone el day sheet de
+// cada fecha. Es lo que se negocia con la casa antes de firmar el horario.
+export interface PlantillaBloqueRider {
+  titulo: string;
+  tipo: string;
+  duracionMin: number | null;
+  responsable: string;
+  contenido: string;
+}
+
+export const PLANTILLA_BLOQUES_RIDER: PlantillaBloqueRider[] = [
+  {
+    titulo: "Montaje de sistema",
+    tipo: "MONTAJE",
+    duracionMin: null,
+    responsable: "Producción local",
+    contenido: "Concluido antes del arribo del crew: PA volado y alineado, consolas en red, RF escaneado, luces patcheadas",
+  },
+  {
+    titulo: "Montaje del artista",
+    tipo: "MONTAJE",
+    duracionMin: 120,
+    responsable: "Artista + local",
+    contenido: "Backline, patch de entradas, IEM y bodypacks",
+  },
+  {
+    titulo: "Line check y RF",
+    tipo: "SOUNDCHECK",
+    duracionMin: 60,
+    responsable: "Artista + local",
+    contenido: "Verificación canal por canal, coordinación de frecuencias, prueba de playback y redundancia",
+  },
+  {
+    titulo: "Soundcheck y run-through",
+    tipo: "SOUNDCHECK",
+    duracionMin: 60,
+    responsable: "Artista",
+    contenido: "Mezcla de FOH, mixes de IEM, cues de video e iluminación con los artistas en escena",
+  },
 ];
 
 // ── Inventario de casa del venue ─────────────────────────────────────────────

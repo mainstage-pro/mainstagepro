@@ -43,6 +43,7 @@ export default async function RiderLayout({
     ...(cargado
       ? []
       : [
+          { href: `${base}/montaje`, label: "Montaje y soundcheck" },
           { href: `${base}/inputs`, label: "Input list" },
           { href: `${base}/outputs`, label: "Output list" },
           { href: `${base}/equipo`, label: "Equipo que pide" },

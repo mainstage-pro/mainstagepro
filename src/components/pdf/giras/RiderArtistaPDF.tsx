@@ -39,6 +39,15 @@ export interface RiderAnexoDoc {
   proporcion: number;
 }
 
+export interface RiderBloqueDoc {
+  id: string;
+  titulo: string;
+  tipoLabel: string;
+  duracionLabel: string;
+  responsable: string | null;
+  contenido: string | null;
+}
+
 export interface RiderLineaDoc {
   id: string;
   disciplinaLabel: string;
@@ -73,6 +82,9 @@ export interface RiderArtistaData {
   mixesMonitor: number | null;
   tiempoSoundcheckMin: number | null;
   tiempoCambioMin: number | null;
+  /// Duraciones y responsables del montaje, en el orden del rider. La hora de
+  /// reloj la pone el day sheet de cada fecha.
+  bloques: RiderBloqueDoc[];
   /// Agrupadas por disciplina, ya en el orden en que se leen.
   lineas: RiderLineaDoc[];
   inputs: CanalInput[];
@@ -89,6 +101,13 @@ const COLS_EQUIPO: ColumnaTabla[] = [
   { label: "Concepto", flex: 4 },
   { label: "Prioridad", ancho: 62 },
   { label: "Lo pone", ancho: 62 },
+];
+
+const COLS_BLOQUES: ColumnaTabla[] = [
+  { label: "Bloque", flex: 3 },
+  { label: "Duración", ancho: 62, alinear: "right" },
+  { label: "Lo ejecuta", ancho: 86 },
+  { label: "Qué queda listo", flex: 4 },
 ];
 
 const COLS_CONTACTOS: ColumnaTabla[] = [
@@ -165,6 +184,17 @@ export function RiderArtistaPDF({ data }: { data: RiderArtistaData }) {
     });
   }
 
+  const renglonesBloque: RenglonTabla[] = data.bloques.map((b) => ({
+    tipo: "fila",
+    clave: b.id,
+    celdas: [
+      { texto: b.titulo, sub: b.tipoLabel, fuerte: true },
+      { texto: b.duracionLabel },
+      { texto: b.responsable ?? "—" },
+      { texto: b.contenido ?? "—" },
+    ],
+  }));
+
   const indispensables = data.lineas.filter((l) => l.prioridadLabel === "Indispensable");
 
   const renglonesContacto: RenglonTabla[] = data.contactos.map((c) => ({
@@ -214,6 +244,15 @@ export function RiderArtistaPDF({ data }: { data: RiderArtistaData }) {
               nota="El equipo del artista para este rider. Todo lo que no esté aquí se resuelve con el tour manager."
             >
               <Tabla columnas={COLS_CONTACTOS} renglones={renglonesContacto} />
+            </Seccion>
+          ) : null}
+
+          {renglonesBloque.length > 0 ? (
+            <Seccion
+              titulo="Montaje y soundcheck"
+              nota="Son duraciones mínimas, no horas de reloj: la casa las acomoda en su horario y confirma el llamado."
+            >
+              <Tabla columnas={COLS_BLOQUES} renglones={renglonesBloque} />
             </Seccion>
           ) : null}
 

@@ -6015,6 +6015,7 @@ model ArtistaRider {
 
   canales   ArtistaRiderCanal[]
   lineas    ArtistaRiderLinea[]
+  bloques   ArtistaRiderBloque[]
   contactos ArtistaRiderContacto[]
   archivos  ArtistaRiderArchivo[]
   giras     Gira[]
@@ -6119,7 +6120,7 @@ model ArtistaRiderLinea {
   riderId String
   rider   ArtistaRider @relation(fields: [riderId], references: [id], onDelete: Cascade)
 
-  disciplina String // AUDIO|ILUMINACION|VIDEO|BACKLINE|ESCENARIO|ENERGIA|COMUNICACION|RIGGING|OTRO
+  disciplina String // AUDIO|ILUMINACION|VIDEO|BACKLINE|ESCENARIO|ENERGIA|COMUNICACION|RIGGING|PERSONAL|OTRO
   concepto   String
   cantidad   Int     @default(1)
   unidad     String?
@@ -6143,6 +6144,30 @@ model ArtistaRiderLinea {
 
   @@index([riderId])
   @@map("artista_rider_lineas")
+}
+
+/// Los bloques de tiempo que el rider exige antes de puertas: cuánto dura el
+/// montaje, el line check y el soundcheck, y quién responde por cada uno.
+/// Son duraciones y responsables, no horas de reloj: la hora la pone el day
+/// sheet de cada fecha (GiraShowBloque), que se siembra de los horarios del show.
+model ArtistaRiderBloque {
+  id      String       @id @default(cuid())
+  riderId String
+  rider   ArtistaRider @relation(fields: [riderId], references: [id], onDelete: Cascade)
+
+  titulo      String
+  tipo        String  @default("MONTAJE") // LOGISTICA|MONTAJE|SOUNDCHECK|PROGRAMA|DESMONTAJE
+  duracionMin Int?
+  /// Quién ejecuta el bloque: "Producción local", "Artista + local", "Artista".
+  responsable String?
+  contenido   String?
+
+  orden     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([riderId])
+  @@map("artista_rider_bloques")
 }
 
 /// El registro de artista: agrupa los shows de un artista bajo un mismo rider y un
@@ -6707,7 +6732,7 @@ model VenueInventario {
   venueId String
   venue   Venue  @relation(fields: [venueId], references: [id], onDelete: Cascade)
 
-  disciplina String // AUDIO|ILUMINACION|VIDEO|BACKLINE|ESCENARIO|ENERGIA|COMUNICACION|RIGGING
+  disciplina String // AUDIO|ILUMINACION|VIDEO|BACKLINE|ESCENARIO|ENERGIA|COMUNICACION|RIGGING|PERSONAL
   concepto   String
   cantidad   Int     @default(1)
   marca      String?

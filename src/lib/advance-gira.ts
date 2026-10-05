@@ -14,6 +14,7 @@
 import { prisma } from "@/lib/prisma";
 import { normalizar } from "@/lib/buscar";
 import { DISCIPLINA_LABEL, ESTADOS_RESUELTOS } from "@/lib/giras";
+import { canonDe } from "@/lib/advance-canon";
 
 // ── Resultados ───────────────────────────────────────────────────────────────
 
@@ -207,7 +208,11 @@ export async function precargarDesdeVenue(showId: string): Promise<ResultadoPrec
     prisma.venueInventario.findMany({ where: { venueId: show.venueId } }),
   ]);
 
-  const indexado = inventario.map((i) => ({ item: i, clave: claveConcepto(i.concepto) }));
+  const indexado = inventario.map((i) => ({
+    item: i,
+    clave: claveConcepto(i.concepto),
+    canon: canonDe(i.concepto, i.marca, i.modelo)?.clave ?? null,
+  }));
 
   let precargadas = 0;
   let respetadas = 0;
@@ -220,23 +225,29 @@ export async function precargarDesdeVenue(showId: string): Promise<ResultadoPrec
     }
 
     const clave = claveConcepto(l.concepto);
-    const candidatos = indexado.filter((c) => c.clave === clave || c.clave.includes(clave) || clave.includes(c.clave));
-    // Mismo concepto en la misma disciplina gana; si no, cualquier coincidencia textual.
-    const match =
-      candidatos.find((c) => c.item.disciplina === l.disciplina && c.clave === clave) ??
-      candidatos.find((c) => c.item.disciplina === l.disciplina) ??
-      candidatos[0];
+    const canon = canonDe(l.concepto)?.clave ?? null;
 
-    if (!match) {
+    // El canon es el cotejo principal: el rider pide "line array" y la casa
+    // contesta "KARA I", textos que no se parecen en nada. El texto solo entra
+    // como respaldo y únicamente si es idéntico — una coincidencia parcial entre
+    // dos textos libres produce falsos positivos que el técnico no detecta.
+    const porCanon = canon ? indexado.filter((c) => c.canon === canon) : [];
+    const porTexto = indexado.filter((c) => c.clave === clave);
+    const match = porCanon.length ? porCanon : porTexto;
+
+    if (match.length === 0) {
       sinCoincidencia++;
       continue;
     }
 
+    // Un concepto del rider suele caer sobre varios renglones de casa: "micrófono
+    // alámbrico" cruza con los SM58, los SM57 y los Beta del foro. Se precargan
+    // todos y la suma, porque la pregunta del advance es si alcanza, no cuál.
     await prisma.showRiderLinea.update({
       where: { id: l.id },
       data: {
-        ofrecidoCasa: textoOfrecido(match.item),
-        cantidadCasa: match.item.cantidad,
+        ofrecidoCasa: match.map((c) => textoOfrecido(c.item)).join(" · "),
+        cantidadCasa: match.reduce((s, c) => s + c.item.cantidad, 0),
       },
     });
     precargadas++;
