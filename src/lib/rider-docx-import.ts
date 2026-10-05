@@ -14,6 +14,9 @@ import { departamentoPorTitulo } from "@/lib/rider-venue-import";
 export interface RenglonRiderDoc {
   /// Null cuando el documento no dice cuántos. No se asume uno aquí.
   cantidad: number | null;
+  /// El número de la columna de numeración (el canal 01, 02…). Null si la
+  /// tabla no la trae.
+  numero: number | null;
   concepto: string;
   notas: string | null;
   /// El renglón tal como venía (la fila completa de la tabla, la viñeta entera).
@@ -30,6 +33,9 @@ export interface SeccionRiderDoc {
   /// Departamento que sugiere el título, null cuando el título no da pista.
   /// Es una sugerencia para el preview, no una clasificación.
   departamento: string | null;
+  /// La lista de canales que sugiere el título: un input list no es equipo que
+  /// se pida, es el patch de la consola. Null cuando no es una lista de canales.
+  lista: "INPUT" | "OUTPUT" | null;
 }
 
 export interface ResultadoRiderDoc {
@@ -78,6 +84,20 @@ function pareceEncabezado(html: string, texto: string): boolean {
   return !/^\d/.test(texto) || /^\d{1,2}[.)]\s/.test(texto);
 }
 
+/// Un "input list" no se pide como equipo: es el patch de la consola, y va a la
+/// pestaña de canales. Se decide por el título y nada más.
+function listaPorTitulo(titulo: string): "INPUT" | "OUTPUT" | null {
+  const n = titulo
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase();
+  if (/\b(INPUT|ENTRADA)S?\b/.test(n) && /\b(LIST|LISTA|PATCH|CANALES?)\b/.test(n)) return "INPUT";
+  if (/\b(OUTPUT|SALIDA)S?\b/.test(n) && /\b(LIST|LISTA|PATCH|CANALES?)\b/.test(n)) return "OUTPUT";
+  if (/\bINPUT\s*LIST\b/.test(n)) return "INPUT";
+  if (/\bOUTPUT\s*LIST\b/.test(n)) return "OUTPUT";
+  return null;
+}
+
 /// `4 Monitores de piso`, `04 - Snare 14"`, `2 x DI activa`. Si el renglón no
 /// dice cuántos, la cantidad se queda en null: inventarla es inventar el rider.
 const RE_CANTIDAD = /^[-–—•*·\s]*(\d{1,4})\s*(?:x|pzas?\.?|pz\.?|pcs?\.?|uds?\.?)?\s*[).:\-–—]?\s+(\D.*)$/i;
@@ -92,12 +112,12 @@ function comoRenglon(texto: string, esVineta: boolean): RenglonRiderDoc | null {
   if (!texto) return null;
   const m = RE_CANTIDAD.exec(texto);
   if (m && texto.length <= 160 && palabras(texto) <= 22) {
-    return { cantidad: Number(m[1]), concepto: m[2].trim(), notas: null, crudo: texto };
+    return { cantidad: Number(m[1]), numero: null, concepto: m[2].trim(), notas: null, crudo: texto };
   }
   // Una viñeta sin cantidad sigue siendo equipo que el artista enumera; la
   // cantidad la pone quien revisa. La prosa con punto final no lo es.
   if (esVineta && !m && texto.length <= 120 && palabras(texto) <= 14 && !texto.endsWith(".")) {
-    return { cantidad: null, concepto: texto, notas: null, crudo: texto };
+    return { cantidad: null, numero: null, concepto: texto, notas: null, crudo: texto };
   }
   return null;
 }
@@ -136,6 +156,7 @@ function esNumeracion(valores: string[]): boolean {
 /// la primera columna de texto salvo que el encabezado diga otra cosa.
 function columnasDeTabla(filas: FilaTabla[]): {
   iCantidad: number | null;
+  iNumeracion: number | null;
   iConcepto: number;
   encabezados: string[] | null;
   desde: number;
@@ -173,6 +194,7 @@ function columnasDeTabla(filas: FilaTabla[]): {
 
   return {
     iCantidad,
+    iNumeracion,
     iConcepto: porEncabezado >= 0 ? porEncabezado : primeraDeTexto,
     encabezados,
     desde: conEncabezado ? 1 : 0,
@@ -182,16 +204,17 @@ function columnasDeTabla(filas: FilaTabla[]): {
 function renglonesDeTabla(html: string): RenglonRiderDoc[] {
   const filas = filasDeTabla(html);
   if (filas.length === 0) return [];
-  const { iCantidad, iConcepto, encabezados, desde } = columnasDeTabla(filas);
+  const { iCantidad, iNumeracion, iConcepto, encabezados, desde } = columnasDeTabla(filas);
 
   const renglones: RenglonRiderDoc[] = [];
   for (const { celdas: fila } of filas.slice(desde)) {
     const concepto = (fila[iConcepto] ?? "").trim();
     if (!concepto) continue;
     const bruta = iCantidad === null ? "" : (fila[iCantidad] ?? "").trim();
+    const numerada = iNumeracion === null ? "" : (fila[iNumeracion] ?? "").trim();
     const notas = fila
       .map((celda, i) => {
-        if (i === iConcepto || i === iCantidad || !celda.trim()) return null;
+        if (i === iConcepto || i === iCantidad || i === iNumeracion || !celda.trim()) return null;
         const etiqueta = encabezados?.[i]?.trim();
         return etiqueta ? `${etiqueta}: ${celda.trim()}` : celda.trim();
       })
@@ -200,6 +223,7 @@ function renglonesDeTabla(html: string): RenglonRiderDoc[] {
 
     renglones.push({
       cantidad: esNumero(bruta) ? Number(bruta) : null,
+      numero: esNumero(numerada) ? Number(numerada) : null,
       concepto,
       notas: notas || null,
       crudo: fila.filter((c) => c.trim()).join(" | "),
@@ -212,10 +236,20 @@ function renglonesDeTabla(html: string): RenglonRiderDoc[] {
 /// documento. Un encabezado abre sección; lo que sigue le pertenece.
 export function leerRiderDocx(html: string): ResultadoRiderDoc {
   const secciones: SeccionRiderDoc[] = [];
-  let actual: SeccionRiderDoc = { titulo: null, parrafos: [], renglones: [], departamento: null };
+  let actual: SeccionRiderDoc = { titulo: null, parrafos: [], renglones: [], departamento: null, lista: null };
 
   function cerrar() {
     if (actual.titulo !== null || actual.parrafos.length > 0 || actual.renglones.length > 0) secciones.push(actual);
+  }
+
+  function abrir(texto: string): SeccionRiderDoc {
+    return {
+      titulo: texto,
+      parrafos: [],
+      renglones: [],
+      departamento: departamentoPorTitulo(texto),
+      lista: listaPorTitulo(texto),
+    };
   }
 
   for (const bloque of html.matchAll(RE_BLOQUE)) {
@@ -230,7 +264,7 @@ export function leerRiderDocx(html: string): ResultadoRiderDoc {
       const texto = aTexto(titulo);
       if (!texto) continue;
       cerrar();
-      actual = { titulo: texto, parrafos: [], renglones: [], departamento: departamentoPorTitulo(texto) };
+      actual = abrir(texto);
       continue;
     }
 
@@ -241,7 +275,7 @@ export function leerRiderDocx(html: string): ResultadoRiderDoc {
 
     if (pareceEncabezado(crudo, texto)) {
       cerrar();
-      actual = { titulo: texto, parrafos: [], renglones: [], departamento: departamentoPorTitulo(texto) };
+      actual = abrir(texto);
       continue;
     }
 

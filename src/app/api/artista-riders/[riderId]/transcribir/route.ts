@@ -5,8 +5,10 @@
 // aprobado. La lectura es determinista (ver src/lib/rider-docx-import.ts): lo
 // que el documento no dice, no se inventa aquí.
 //
-// Los renglones de equipo se AGREGAN: no se borra lo que ya estaba, porque esas
-// líneas pueden estar ya cotejadas en el advance de un show.
+// Los renglones de equipo se AGREGAN por omisión: no se borra lo que ya estaba,
+// porque esas líneas pueden estar ya cotejadas en el advance de un show. Con
+// `reemplazar` se borran primero, que es lo que hace falta cuando el rider ya
+// venía transcrito a mano y el documento es la versión buena.
 
 import { NextRequest, NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
@@ -36,6 +38,7 @@ type CampoNota = (typeof CAMPOS_NOTA)[number];
 
 interface RenglonEntrante {
   cantidad?: number | string | null;
+  numero?: number | string | null;
   concepto?: string | null;
   notas?: string | null;
 }
@@ -46,6 +49,9 @@ interface SeccionEntrante {
   /// "SECCION" (sección propia del documento) | "NINGUNO" | un campo de notas.
   destino?: string | null;
   departamento?: string | null;
+  /// Cuando la sección es un input/output list, sus renglones son canales de
+  /// consola y no equipo que se le pida al venue.
+  lista?: string | null;
   renglones?: RenglonEntrante[];
 }
 
@@ -104,9 +110,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ rid
   // ── Guardado ──────────────────────────────────────────────────────────────
   const entrantes = body.secciones as SeccionEntrante[];
 
+  const reemplazar = body.reemplazar === true;
+
   const notas: Partial<Record<CampoNota, string>> = {};
-  const extras = leerSeccionesExtra(rider.seccionesExtra);
+  const extras = reemplazar ? [] : leerSeccionesExtra(rider.seccionesExtra);
   const lineas: { disciplina: string; concepto: string; cantidad: number; notas: string | null }[] = [];
+  const canales: { tipo: string; numero: number; nombre: string; notas: string | null }[] = [];
 
   for (const s of entrantes) {
     const destino = typeof s.destino === "string" ? s.destino : "SECCION";
@@ -128,6 +137,26 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ rid
       }
     }
 
+    // Un input/output list son canales de consola: van a la pestaña de canales
+    // y no ensucian la lista de equipo que se cotejará contra el venue.
+    if (s.lista === "INPUT" || s.lista === "OUTPUT") {
+      let posicion = 0;
+      for (const r of s.renglones ?? []) {
+        const nombre = texto(r.concepto);
+        if (!nombre) continue;
+        posicion++;
+        const numero = Number(r.numero);
+        canales.push({
+          tipo: s.lista,
+          // Si el documento no numeró el canal, se numera por su posición.
+          numero: Number.isFinite(numero) && numero > 0 ? Math.trunc(numero) : posicion,
+          nombre,
+          notas: texto(r.notas),
+        });
+      }
+      continue;
+    }
+
     const disciplina =
       typeof s.departamento === "string" && DISCIPLINAS.includes(s.departamento as (typeof DISCIPLINAS)[number])
         ? s.departamento
@@ -147,9 +176,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ rid
     }
   }
 
-  const desde = await prisma.artistaRiderLinea.count({ where: { riderId } });
+  const desde = reemplazar ? 0 : await prisma.artistaRiderLinea.count({ where: { riderId } });
 
   await prisma.$transaction(async (tx) => {
+    if (reemplazar) {
+      await tx.artistaRiderLinea.deleteMany({ where: { riderId } });
+      await tx.artistaRiderCanal.deleteMany({ where: { riderId } });
+    }
     await tx.artistaRider.update({
       where: { id: riderId },
       data: { ...notas, seccionesExtra: extras as unknown as Prisma.InputJsonValue },
@@ -159,7 +192,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ rid
         data: lineas.map((l, i) => ({ ...l, riderId, orden: desde + i })),
       });
     }
+    if (canales.length > 0) {
+      await tx.artistaRiderCanal.createMany({ data: canales.map((c) => ({ ...c, riderId })) });
+    }
   });
 
-  return NextResponse.json({ lineas: lineas.length, secciones: extras.length, notas: Object.keys(notas).length });
+  return NextResponse.json({
+    lineas: lineas.length,
+    canales: canales.length,
+    secciones: extras.length,
+    notas: Object.keys(notas).length,
+  });
 }
