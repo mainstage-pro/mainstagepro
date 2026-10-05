@@ -8,6 +8,11 @@ import { Telescope, Search, ClipboardList, CheckCircle2, AlertTriangle, Smartpho
 import { Combobox } from "@/components/Combobox";
 import { ORIGEN_LEAD_OPTIONS, MOMENTO_OPTIONS } from "@/lib/constants";
 import { coincide } from "@/lib/buscar";
+import {
+  SERVICIOS, SERVICIO_LABELS, SERVICIO_DESCRIPCIONES,
+  CANALES, CANAL_LABELS, CANAL_DESCRIPCIONES,
+  serializeServicios, type Servicio, type CanalOperativo,
+} from "@/lib/servicios-trato";
 
 type CotejoEstado = "LIGADO" | "DUPLICADO_POSIBLE" | "NUEVO" | null;
 interface CotejoCliente { id: string; nombre: string; telefono: string | null; empresa: string | null; }
@@ -81,6 +86,11 @@ export default function NuevoContactoPage() {
 
 
   const [clienteId, setClienteId] = useState("");
+  // Qué vendemos y dónde se opera. Se decide aquí porque de esto depende todo el
+  // camino siguiente: el descubrimiento pregunta otras cosas y el trato aterriza
+  // en Proyectos o en Shows. Preguntarlo después obliga a recapturar.
+  const [servicios, setServicios] = useState<Servicio[]>([]);
+  const [canal, setCanal] = useState<CanalOperativo | null>(null);
   const [etapa, setEtapa] = useState<string>("DESCUBRIMIENTO");
   const [momento, setMomento] = useState<string>("COTIZANDO");
   const [cotejoEstado, setCotejoEstado] = useState<CotejoEstado>(null);
@@ -203,6 +213,8 @@ export default function NuevoContactoPage() {
   function validar() {
     if (modoCliente === "existente" && !clienteId) { setError("Selecciona un cliente existente"); return false; }
     if (modoCliente === "nuevo" && !clienteNuevo.nombre.trim()) { setError("El nombre del cliente es requerido"); return false; }
+    if (!servicios.length) { setError("Elige al menos un servicio que vamos a vender"); return false; }
+    if (!canal) { setError("Elige si el trato se lleva como evento o como show/gira"); return false; }
     if (!origenLead) { setError("Selecciona de dónde viene el contacto"); return false; }
     if (etapa === "VENTA_CERRADA" && !nombreEvento.trim()) { setError("Ingresa el nombre del evento a apartar"); return false; }
     if (apartando && !fechaEvento) { setError("Selecciona la fecha del evento para apartarla en el calendario"); return false; }
@@ -230,6 +242,8 @@ export default function NuevoContactoPage() {
 
     const payload: Record<string, unknown> = {
       etapa,
+      servicios: serializeServicios(servicios),
+      canalOperativo: canal,
       momentoContratacion: momento || undefined,
       origenLead,
       tipoLead,
@@ -420,6 +434,61 @@ export default function NuevoContactoPage() {
               )}
             </div>
           )}
+        </div>
+
+        {/* ── Sección: Qué vendemos y dónde se opera ── */}
+        <div className="ms-card p-5">
+          <h2 className="text-xs font-semibold text-[#B3985B] mb-1 uppercase tracking-wider">Qué vendemos</h2>
+          <p className="text-[11px] text-gray-600 mb-4">
+            La escalera es acumulativa pero se contrata por separado. Puedes marcar más de uno.
+          </p>
+          <div className="space-y-2">
+            {SERVICIOS.map(s => {
+              const isActive = servicios.includes(s);
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setServicios(prev =>
+                    prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s],
+                  )}
+                  className={`w-full text-left p-3 rounded-xl border transition-all ${
+                    isActive ? "border-[#B3985B] bg-[#B3985B]/10" : "border-[#2a2a2a] hover:border-[#3a3a3a]"
+                  }`}
+                >
+                  <p className={`text-sm font-semibold ${isActive ? "text-[#B3985B]" : "text-white"}`}>
+                    {SERVICIO_LABELS[s]}
+                  </p>
+                  <p className="text-gray-500 text-[11px] mt-0.5 leading-snug">{SERVICIO_DESCRIPCIONES[s]}</p>
+                </button>
+              );
+            })}
+          </div>
+
+          <h2 className="text-xs font-semibold text-[#B3985B] mb-1 mt-5 uppercase tracking-wider">Se lleva en</h2>
+          <p className="text-[11px] text-gray-600 mb-3">
+            De esto depende el resto del proceso: no se pregunta ni se opera igual un evento que una gira.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {CANALES.map(c => {
+              const isActive = canal === c;
+              return (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setCanal(c)}
+                  className={`text-left p-3 rounded-xl border transition-all ${
+                    isActive ? "border-[#B3985B] bg-[#B3985B]/10" : "border-[#2a2a2a] hover:border-[#3a3a3a]"
+                  }`}
+                >
+                  <p className={`text-sm font-semibold ${isActive ? "text-[#B3985B]" : "text-white"}`}>
+                    {CANAL_LABELS[c]}
+                  </p>
+                  <p className="text-gray-500 text-[11px] mt-0.5 leading-snug">{CANAL_DESCRIPCIONES[c]}</p>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* ── Sección: Momento de contratación ── */}

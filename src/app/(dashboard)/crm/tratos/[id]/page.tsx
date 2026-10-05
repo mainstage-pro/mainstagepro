@@ -32,7 +32,7 @@ import { MOMENTO_OPTIONS, ORIGEN_LEAD_OPTIONS } from '@/lib/constants';
 import {
   SERVICIOS as ESCALERA_SERVICIOS, SERVICIO_LABELS, SERVICIO_DESCRIPCIONES,
   CANALES as CANALES_OPERATIVOS, CANAL_LABELS, CANAL_DESCRIPCIONES,
-  parseServicios, serializeServicios, listoParaCotizar,
+  parseServicios, serializeServicios, listoParaCotizar, resumenServicios,
   type Servicio, type CanalOperativo,
 } from '@/lib/servicios-trato';
 
@@ -669,6 +669,8 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   const [form, setForm] = useState<Partial<Trato>>({});
   // Modal razón de pérdida
   const [modalPerdida, setModalPerdida] = useState(false);
+  // Servicio y canal se contestan al crear el trato; aquí solo se corrigen.
+  const [editarServicios, setEditarServicios] = useState(false);
   const [modalEditarCliente, setModalEditarCliente] = useState(false);
   const [clienteEditForm, setClienteEditForm] = useState({ nombre: '', empresa: '', telefono: '', correo: '' });
   const [savingPerfil, setSavingPerfil] = useState(false);
@@ -1702,8 +1704,31 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             </a>
           )}
         </div>
-        {/* Qué vendemos y dónde se opera. Se contesta antes de cotizar, pero queda editable. */}
+        {/* Qué vendemos y dónde se opera. Se contesta al crear el trato: aquí se lee
+            de un golpe y solo se abre para corregir, para que la captura siga viviendo
+            en el descubrimiento y no se duplique en el header. */}
         <div className="pt-3 border-t border-[#1a1a1a] space-y-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] text-gray-600 uppercase tracking-wider shrink-0">Vendemos:</span>
+            <span className="text-xs text-[#B3985B] font-medium">
+              {resumenServicios(trato.servicios) ?? "sin definir"}
+            </span>
+            <span className="text-[10px] text-gray-600 uppercase tracking-wider shrink-0 ml-2">Se lleva en:</span>
+            <span className="text-xs text-[#B3985B] font-medium">
+              {trato.canalOperativo ? CANAL_LABELS[trato.canalOperativo as CanalOperativo] : "sin definir"}
+            </span>
+            <button
+              onClick={() => setEditarServicios(v => !v)}
+              className="text-[11px] text-gray-600 hover:text-[#B3985B] underline transition-colors ml-1"
+            >
+              {editarServicios ? "Listo" : "Cambiar"}
+            </button>
+            {!listoParaCotizar(trato.servicios, trato.canalOperativo) && !editarServicios && (
+              <span className="text-[11px] text-amber-600">Defínelos para poder cotizar.</span>
+            )}
+          </div>
+          {editarServicios && (
+          <div className="space-y-2 pt-1">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[10px] text-gray-600 uppercase tracking-wider shrink-0 w-[72px]">Servicios:</span>
             {ESCALERA_SERVICIOS.map(s => {
@@ -1742,12 +1767,9 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 {CANAL_LABELS[c]}
               </button>
             ))}
-            {!listoParaCotizar(trato.servicios, trato.canalOperativo) && (
-              <span className="text-[11px] text-gray-600 ml-1">
-                Define servicios y canal para poder cotizar.
-              </span>
-            )}
           </div>
+          </div>
+          )}
         </div>
         <div className="flex items-center gap-3 pt-3 mt-3 border-t border-[#1a1a1a] flex-wrap">
           <span className="text-[10px] text-gray-600 uppercase tracking-wider shrink-0">Etapa:</span>

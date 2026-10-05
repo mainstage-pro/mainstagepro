@@ -607,6 +607,17 @@ export const CATEGORIA_SERVICIO_LABEL: Record<string, string> = {
   EQUIPO: "Equipo",
 };
 
+/// Dónde se vende el servicio. Una gira cobra por show y por plaza; un evento por
+/// día y global. Es el filtro con el que se lee el catálogo, no una restricción:
+/// un servicio de gira se puede meter a una propuesta de evento si aplica.
+export const NIVELES_SERVICIO = ["GIRA", "EVENTO", "AMBOS"] as const;
+
+export const NIVEL_SERVICIO_LABEL: Record<string, string> = {
+  GIRA: "Shows y giras",
+  EVENTO: "Eventos",
+  AMBOS: "Ambos",
+};
+
 /// A qué subtotal de la propuesta suma cada tipo de línea.
 export const GRUPO_SUBTOTAL: Record<string, "honorarios" | "equipo" | "logistica" | "reembolsables"> = {
   HONORARIO: "honorarios",

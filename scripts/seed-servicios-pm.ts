@@ -553,6 +553,31 @@ const SERVICIOS: ServicioSemilla[] = [
   },
 ];
 
+// El icono hace de miniatura en el catálogo (un servicio no tiene foto). Vive en un
+// mapa aparte y no en cada semilla para no repetir 19 veces un dato de presentación;
+// si Mauricio lo cambia desde la pantalla, una resiembra no se lo pisa.
+const ICONOS: Record<string, string> = {
+  PM_GIRA: "Route",
+  AUDIO_BANDA: "Speaker",
+  ADVANCE_PLAZA: "ClipboardCheck",
+  ILUMINACION_SHOW: "Lightbulb",
+  VISUALES_SHOW: "MonitorPlay",
+  COORD_PROVEEDORES: "Handshake",
+  LOGISTICA_TOUR: "Truck",
+  DOCUMENTACION_TOUR: "FileText",
+  PREPRODUCCION: "CalendarClock",
+  DIA_VIAJE: "Plane",
+  ADVANCE_HORA: "Clock",
+  BACKLINE_COMPLEMENTARIO: "Guitar",
+  PM_EVENTO: "Briefcase",
+  OPERACIONES_SITIO: "HardHat",
+  STAGE_MANAGER: "Theater",
+  COORD_FRENTES: "Network",
+  RENDER_PRODUCCION: "Box",
+  DISENO_CONCEPTO: "Palette",
+  PLANO_MONTAJE: "Ruler",
+};
+
 // Driver HTTP y no Prisma: el puerto 5432 de Neon no se alcanza desde local.
 const raw = process.env.DATABASE_URL!;
 const url = raw.replace(/[?&](pgbouncer|connection_limit)=[^&]*/g, "").replace(/\?&/, "?").replace(/\?$/, "");
@@ -575,8 +600,8 @@ async function main() {
       `INSERT INTO servicios_pm
          (id, clave, nombre, categoria, descripcion, entregables, incluye, "noIncluye",
           "unidadDefault", "tipoLinea", "precioSugerido", "costoSugerido", activo, orden,
-          "createdAt", "updatedAt")
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,true,$13,now(),now())
+          icono, "nivelServicio", "createdAt", "updatedAt")
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,true,$13,$14,$15,now(),now())
        ON CONFLICT (clave) DO UPDATE SET
          nombre          = EXCLUDED.nombre,
          categoria       = EXCLUDED.categoria,
@@ -591,6 +616,7 @@ async function main() {
       [
         randomUUID(), s.clave, s.nombre, s.categoria, s.descripcion, s.entregables, s.incluye,
         s.noIncluye, s.unidadDefault, s.tipoLinea, s.precioSugerido, s.costoSugerido, s.orden,
+        ICONOS[s.clave] ?? "Briefcase", s.orden < 200 ? "GIRA" : "EVENTO",
       ],
     );
 

@@ -6513,12 +6513,20 @@ model ServicioPM {
   id    String @id @default(cuid())
   clave String @unique // AUDIO_BANDA, ADVANCE_PLAZA, PM_GIRA...
 
-  nombre      String
-  categoria   String? // PRODUCTION_MANAGEMENT|AUDIO|ILUMINACION|VIDEO|LOGISTICA|DOCUMENTACION|EQUIPO
-  descripcion String?
-  entregables String?
-  incluye     String?
-  noIncluye   String?
+  nombre       String
+  categoria    String? // PRODUCTION_MANAGEMENT|AUDIO|ILUMINACION|VIDEO|LOGISTICA|DOCUMENTACION|EQUIPO
+  subcategoria String?
+  descripcion  String?
+  entregables  String?
+  incluye      String?
+  noIncluye    String?
+
+  /// Nombre de icono de lucide, como en TipoEducacion. Hace de miniatura: un
+  /// servicio no tiene foto, así que el catálogo se lee por icono.
+  icono String @default("Briefcase")
+
+  /// Dónde se vende. Una gira cobra por show y plaza; un evento por día y global.
+  nivelServicio String @default("AMBOS") // GIRA|EVENTO|AMBOS
 
   unidadDefault  String @default("SHOW") // SHOW|DIA|PERSONA_DIA|PLAZA|GIRA|PIEZA|MES|HORA|GLOBAL
   tipoLinea      String @default("HONORARIO")

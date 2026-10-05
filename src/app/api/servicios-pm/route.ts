@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
       nombre,
       ...soloDefinidos({
         categoria: textoOpcional(body.categoria),
+        subcategoria: textoOpcional(body.subcategoria),
         descripcion: textoOpcional(body.descripcion),
         entregables: textoOpcional(body.entregables),
         incluye: textoOpcional(body.incluye),
@@ -50,6 +51,8 @@ export async function POST(req: NextRequest) {
       }),
       unidadDefault: typeof body.unidadDefault === "string" ? body.unidadDefault : "SHOW",
       tipoLinea: typeof body.tipoLinea === "string" ? body.tipoLinea : "HONORARIO",
+      icono: typeof body.icono === "string" && body.icono.trim() ? body.icono.trim() : "Briefcase",
+      nivelServicio: typeof body.nivelServicio === "string" ? body.nivelServicio : "AMBOS",
       orden: numero(body.orden) ?? 0,
     },
   });
