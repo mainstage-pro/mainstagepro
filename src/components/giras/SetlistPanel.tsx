@@ -10,13 +10,31 @@
  * de dónde caen en vez de capturarse aparte.
  */
 
-import { Fragment, useRef, useState } from "react";
+import { Fragment, useRef, useState, type ReactNode } from "react";
+import {
+  closestCenter,
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
 import {
   esCancion,
   fmtFechaCorta,
   fmtMinSeg,
+  nombresDeBloqueNormalizados,
   segmentarSetlist,
   segundosDesdeTexto,
   TIPOS_FILA_SETLIST,
@@ -28,6 +46,7 @@ export interface CancionFila {
   tipo: string;
   orden: number;
   titulo: string;
+  bloqueNombre: string | null;
   duracionSeg: number | null;
   tonalidad: string | null;
   bpm: number | null;
@@ -59,6 +78,39 @@ interface Props {
 
 const DEMORA_GUARDADO = 700;
 
+/// Un renglón que se arrastra. La manija es su propia celda y no el renglón
+/// entero: la fila está llena de inputs, y hacerla arrastrable completa
+/// impediría seleccionar el texto de un título para corregirlo.
+function RenglonArrastrable({ id, className, children }: { id: string; className: string; children: ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+
+  return (
+    <tr
+      ref={setNodeRef}
+      className={className}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : undefined,
+        position: isDragging ? "relative" : undefined,
+        zIndex: isDragging ? 10 : undefined,
+      }}
+    >
+      <td className="ms-td">
+        <button
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing text-[#444] hover:text-white transition-colors touch-none"
+          title="Arrastrar para mover de lugar o de bloque"
+        >
+          ⠿
+        </button>
+      </td>
+      {children}
+    </tr>
+  );
+}
+
 export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciales }: Props) {
   const toast = useToast();
   const confirmar = useConfirm();
@@ -74,6 +126,13 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
   // tecla abriría un guardado nuevo en vez de reemplazar el pendiente.
   const timersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const timers = timersRef.current;
+
+  const sensores = useSensors(
+    // Sin el umbral, un clic en la manija contaría como arrastre de cero píxeles
+    // y se comería el foco de la celda.
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   // ── Canciones ──────────────────────────────────────────────────────────────
   function editarCancion(setlistId: string, cancionId: string, campos: Partial<CancionFila>, inmediato = false) {
@@ -118,6 +177,48 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
       return;
     }
     setSetlists((prev) => prev.map((s) => (s.id === setlistId ? { ...s, canciones: [...s.canciones, d.cancion] } : s)));
+  }
+
+  /// Un bloque nuevo es la pausa que lo abre más su primera canción: sin la
+  /// pausa el renglón se pegaría a la tanda anterior, y sin la canción el
+  /// bloque no existiría todavía.
+  async function agregarBloque(setlistId: string) {
+    const hayFilas = (setlists.find((s) => s.id === setlistId)?.canciones.length ?? 0) > 0;
+    if (hayFilas) await agregarCancion(setlistId, "PAUSA");
+    await agregarCancion(setlistId);
+  }
+
+  async function reordenar(setlistId: string, e: DragEndEvent) {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+
+    const previo = setlists;
+    const s = previo.find((x) => x.id === setlistId);
+    if (!s) return;
+
+    const desde = s.canciones.findIndex((c) => c.id === active.id);
+    const hasta = s.canciones.findIndex((c) => c.id === over.id);
+    if (desde < 0 || hasta < 0) return;
+
+    // El nombre del bloque se reacomoda igual que en el servidor para que la
+    // pantalla no muestre un bloque bautizado que al recargar aparece sin
+    // nombre.
+    const movidas = arrayMove(s.canciones, desde, hasta).map((c, i) => ({ ...c, orden: i * 10 }));
+    const nombres = new Map(nombresDeBloqueNormalizados(movidas).map((c) => [c.id, c.bloqueNombre]));
+    const finales = movidas.map((c) => (nombres.has(c.id) ? { ...c, bloqueNombre: nombres.get(c.id)! } : c));
+
+    setSetlists((prev) => prev.map((x) => (x.id === setlistId ? { ...x, canciones: finales } : x)));
+
+    const res = await fetch(`/api/gira-setlists/${setlistId}/canciones/orden`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: finales.map((c) => c.id) }),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "No se pudo guardar el nuevo orden");
+      setSetlists(previo);
+    }
   }
 
   async function quitarCancion(setlistId: string, cancion: CancionFila) {
@@ -214,7 +315,8 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
           <p className="ms-subtitle mt-0.5">
             {alcance === "SHOW"
               ? "El repertorio de este show. Copia el base y ajústalo si el tiempo o el orden cambian."
-              : "El base es el repertorio de la gira; cada show puede tener su variante."}
+              : "El base es el repertorio de la gira; cada show puede tener su variante."}{" "}
+            Arrastra un renglón de la manija para moverlo de lugar o de bloque.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -334,10 +436,17 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
                   {s.canciones.length === 0 ? (
                     <p className="ms-meta">Sin canciones todavía.</p>
                   ) : (
-                    <div className="ms-table-wrapper overflow-x-auto">
-                      <table className="min-w-[1380px] w-full">
+                    <DndContext
+                      sensors={sensores}
+                      collisionDetection={closestCenter}
+                      onDragEnd={(e) => void reordenar(s.id, e)}
+                    >
+                      <SortableContext items={s.canciones.map((c) => c.id)} strategy={verticalListSortingStrategy}>
+                        <div className="ms-table-wrapper overflow-x-auto">
+                      <table className="min-w-[1410px] w-full">
                         <thead className="ms-thead">
                           <tr>
+                            <th className="ms-th w-[30px]" />
                             <th className="ms-th w-[120px]">Tipo</th>
                             <th className="ms-th w-[40px]">#</th>
                             <th className="ms-th w-[240px]">Canción</th>
@@ -357,7 +466,7 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
                             if (seg.clase === "momento") {
                               const c = seg.fila;
                               return (
-                                <tr key={c.id} className="ms-tr align-top bg-[#121212]">
+                                <RenglonArrastrable key={c.id} id={c.id} className="ms-tr align-top bg-[#121212]">
                                   <td className="ms-td">
                                     <select
                                       value={c.tipo}
@@ -407,7 +516,7 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
                                       ✕
                                     </button>
                                   </td>
-                                </tr>
+                                </RenglonArrastrable>
                               );
                             }
 
@@ -416,7 +525,7 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
                             return (
                               <Fragment key={seg.clave}>
                                 <tr className="bg-[#0d0d0d]">
-                                  <td className="ms-td" colSpan={12}>
+                                  <td className="ms-td" colSpan={13}>
                                     <span className="inline-flex items-center gap-2">
                                       <span
                                         className="inline-flex items-center justify-center w-5 h-5 rounded-sm text-[11px] font-bold text-black"
@@ -424,15 +533,22 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
                                       >
                                         {seg.numero}
                                       </span>
+                                      <input
+                                        value={seg.nombre ?? ""}
+                                        onChange={(e) => editarCancion(s.id, seg.anclaId, { bloqueNombre: e.target.value })}
+                                        placeholder={`Bloque ${seg.numero}`}
+                                        title="Cómo le dice el crew a esta tanda"
+                                        className="ms-input-inline w-[200px] text-white"
+                                      />
                                       <span className="ms-micro text-[#9ca3af]">
-                                        Bloque {seg.numero} · {seg.canciones.length} canciones
+                                        {seg.canciones.length} canciones
                                         {segundosBloque > 0 ? ` · ${Math.round(segundosBloque / 60)} min` : ""}
                                       </span>
                                     </span>
                                   </td>
                                 </tr>
                                 {seg.canciones.map(({ fila: c, posicion }) => (
-                                  <tr key={c.id} className="ms-tr align-top">
+                                  <RenglonArrastrable key={c.id} id={c.id} className="ms-tr align-top">
                                     <td className="ms-td">
                                       <select
                                         value={c.tipo}
@@ -536,14 +652,16 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
                                         ✕
                                       </button>
                                     </td>
-                                  </tr>
+                                  </RenglonArrastrable>
                                 ))}
                               </Fragment>
                             );
                           })}
                         </tbody>
                       </table>
-                    </div>
+                        </div>
+                      </SortableContext>
+                    </DndContext>
                   )}
 
                   <div className="flex flex-wrap items-center gap-2">
@@ -552,6 +670,9 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
                     </button>
                     <button onClick={() => void agregarCancion(s.id, "PAUSA")} className="ms-btn-ghost">
                       + Agregar pausa
+                    </button>
+                    <button onClick={() => void agregarBloque(s.id)} className="ms-btn-ghost">
+                      + Agregar bloque
                     </button>
                     {alcance === "SHOW" && s.esBase && s.showId === null && (
                       <button onClick={() => void crear(s.id)} className="ms-btn-ghost">

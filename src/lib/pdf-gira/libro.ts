@@ -332,10 +332,19 @@ export async function generarLibroGira(giraId: string, secciones: SeccionLibro[]
 
     // La posición y el bloque se derivan aquí una vez para que el PDF solo
     // imprima; el que no es canción va sin número y corta el bloque.
-    const ubicacion = new Map<string, { posicion: number | null; bloque: number | null }>();
+    const ubicacion = new Map<string, { posicion: number | null; bloque: number | null; bloqueNombre: string | null }>();
     for (const seg of segmentarSetlist(sl.canciones)) {
-      if (seg.clase === "momento") ubicacion.set(seg.fila.id, { posicion: null, bloque: null });
-      else for (const c of seg.canciones) ubicacion.set(c.fila.id, { posicion: c.posicion, bloque: seg.numero });
+      if (seg.clase === "momento") {
+        ubicacion.set(seg.fila.id, { posicion: null, bloque: null, bloqueNombre: null });
+        continue;
+      }
+      for (const [i, c] of seg.canciones.entries()) {
+        ubicacion.set(c.fila.id, {
+          posicion: c.posicion,
+          bloque: seg.numero,
+          bloqueNombre: i === 0 ? seg.nombre : null,
+        });
+      }
     }
 
     return {
@@ -349,6 +358,7 @@ export async function generarLibroGira(giraId: string, secciones: SeccionLibro[]
         tipo: c.tipo,
         posicion: ubicacion.get(c.id)?.posicion ?? null,
         bloque: ubicacion.get(c.id)?.bloque ?? null,
+        bloqueNombre: ubicacion.get(c.id)?.bloqueNombre ?? null,
         titulo: c.titulo,
         duracion: c.duracionSeg ? fmtMinSeg(c.duracionSeg) : "—",
         tonalidad: c.tonalidad,

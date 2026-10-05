@@ -57,6 +57,7 @@ export async function generarSetlistEscenario(setlistId: string): Promise<PdfGir
         titulo: c.titulo.trim().toLowerCase() === etiqueta.toLowerCase() ? etiqueta : `${etiqueta} · ${c.titulo}`,
         detalle: c.notas,
         bloque: null,
+        bloqueNombre: null,
         color: null,
         abreBloque: false,
       });
@@ -71,6 +72,7 @@ export async function generarSetlistEscenario(setlistId: string): Promise<PdfGir
         titulo: c.fila.titulo,
         detalle: null,
         bloque: seg.numero,
+        bloqueNombre: i === 0 ? seg.nombre : null,
         color: seg.color,
         abreBloque: i === 0,
       });

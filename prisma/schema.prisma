@@ -6482,6 +6482,9 @@ model GiraSetlistCancion {
   tipo              String  @default("CANCION") // CANCION|INTRO|PRESENTACION|PAUSA|CIERRE
   orden             Int     @default(0)
   titulo            String
+  /// Nombre de la tanda que esta fila abre ("Acústico", "Cierre"). Solo cuenta en
+  /// el momento que la precede; el número y el color se siguen derivando.
+  bloqueNombre      String?
   duracionSeg       Int?
   tonalidad         String?
   bpm               Int?

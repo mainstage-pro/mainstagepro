@@ -457,15 +457,36 @@ export function colorDeBloque(numero: number): string {
 export interface FilaDeSetlist {
   id: string;
   tipo: string;
+  bloqueNombre?: string | null;
 }
 
 export type SegmentoSetlist<T> =
-  | { clase: "bloque"; clave: string; numero: number; color: string; canciones: { fila: T; posicion: number }[] }
+  | {
+      clase: "bloque";
+      clave: string;
+      numero: number;
+      color: string;
+      /// Como le dice el crew a la tanda ("Acústico", "Cierre"). Null mientras
+      /// nadie la bautice: entonces el bloque se llama por su número y ya.
+      nombre: string | null;
+      /// En qué fila está escrito ese nombre, para saber a quién editarle.
+      anclaId: string;
+      canciones: { fila: T; posicion: number }[];
+    }
   | { clase: "momento"; clave: string; fila: T };
 
 /// Los bloques no se capturan: son las tandas de canciones que quedan entre dos
 /// momentos. Derivarlos evita que el número del bloque y el color se
 /// desincronicen de las canciones que lo forman.
+///
+/// El nombre sí hay que guardarlo, porque no hay de dónde deducirlo, y se ancla
+/// al momento que abre la tanda — no a su primera canción. Si viviera en la
+/// canción, arrastrar esa canción a otro bloque se llevaría el nombre con ella
+/// y rebautizaría la tanda de destino. El momento no se mueve solo, así que la
+/// tanda conserva su nombre pase lo que pase con las canciones.
+///
+/// El primer bloque es la excepción: cuando el show abre cantando no hay
+/// momento antes, y ahí el nombre no tiene más remedio que vivir en la canción.
 export function segmentarSetlist<T extends FilaDeSetlist>(filas: T[]): SegmentoSetlist<T>[] {
   const segmentos: SegmentoSetlist<T>[] = [];
   let posicion = 0;
@@ -480,21 +501,45 @@ export function segmentarSetlist<T extends FilaDeSetlist>(filas: T[]): SegmentoS
     posicion += 1;
     const ultimo = segmentos[segmentos.length - 1];
     if (ultimo?.clase === "bloque") {
+      // Cuando el ancla es una canción, el nombre puede estar en cualquiera de
+      // la tanda: reordenar dentro del bloque cambia cuál va primero, y el
+      // nombre se recoge igual antes de reacomodarlo.
+      if (ultimo.anclaId === ultimo.canciones[0].fila.id) ultimo.nombre ??= fila.bloqueNombre?.trim() || null;
       ultimo.canciones.push({ fila, posicion });
       continue;
     }
 
     numero += 1;
+    const ancla = ultimo?.clase === "momento" ? ultimo.fila : fila;
     segmentos.push({
       clase: "bloque",
       clave: `bloque-${numero}`,
       numero,
       color: colorDeBloque(numero),
+      nombre: ancla.bloqueNombre?.trim() || null,
+      anclaId: ancla.id,
       canciones: [{ fila, posicion }],
     });
   }
 
   return segmentos;
+}
+
+/// Tras reordenar, un nombre puede haber quedado escrito en una fila que ya no
+/// ancla ningún bloque: la canción que abría el show y ahora va a media tanda,
+/// o el momento que quedó al final. Esto dice qué filas hay que limpiar para
+/// que lo guardado diga lo mismo que lo que se ve.
+export function nombresDeBloqueNormalizados<T extends FilaDeSetlist>(
+  filas: T[],
+): { id: string; bloqueNombre: string | null }[] {
+  const debeSer = new Map<string, string | null>(filas.map((f) => [f.id, null]));
+  for (const seg of segmentarSetlist(filas)) {
+    if (seg.clase === "bloque") debeSer.set(seg.anclaId, seg.nombre);
+  }
+
+  return filas
+    .filter((f) => (f.bloqueNombre?.trim() || null) !== debeSer.get(f.id))
+    .map((f) => ({ id: f.id, bloqueNombre: debeSer.get(f.id) ?? null }));
 }
 
 // ── Crew ─────────────────────────────────────────────────────────────────────

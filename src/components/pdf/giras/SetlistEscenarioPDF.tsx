@@ -27,6 +27,8 @@ export interface RenglonEscenario {
   detalle: string | null;
   /// Null en los momentos: la barra va gris y sin número.
   bloque: number | null;
+  /// Como le dice el crew a la tanda. Solo viene en el renglón que la abre.
+  bloqueNombre: string | null;
   color: string | null;
   /// Solo el primer renglón del bloque pinta el número dentro de la barra.
   abreBloque: boolean;
@@ -71,6 +73,7 @@ const s = StyleSheet.create({
   titulo: { fontFamily: "Helvetica-Bold", color: "#000000" },
   momento: { fontFamily: "Helvetica-Bold", color: GRIS_MOMENTO, textTransform: "uppercase", letterSpacing: 0.8 },
   detalle: { color: GRIS_MOMENTO, marginTop: 2 },
+  bloqueNombre: { fontFamily: "Helvetica-Bold", textTransform: "uppercase", letterSpacing: 0.8 },
 });
 
 /// Dos columnas desde que el repertorio no cabe grande en una. El corte busca
@@ -158,10 +161,17 @@ export function SetlistEscenarioPDF({ data }: { data: SetlistEscenarioData }) {
                         ) : null}
                       </>
                     ) : (
-                      <View style={{ flexDirection: "row", alignItems: "baseline" }}>
-                        <Text style={[s.titulo, { fontSize: fuente, width: anchoNumero }]}>{r.posicion}.</Text>
-                        <Text style={[s.titulo, { fontSize: fuente, flex: 1 }]}>{r.titulo}</Text>
-                      </View>
+                      <>
+                        {r.bloqueNombre ? (
+                          <Text style={[s.bloqueNombre, { fontSize: fuenteDetalle, color: r.color ?? "#000000" }]}>
+                            {r.bloqueNombre}
+                          </Text>
+                        ) : null}
+                        <View style={{ flexDirection: "row", alignItems: "baseline" }}>
+                          <Text style={[s.titulo, { fontSize: fuente, width: anchoNumero }]}>{r.posicion}.</Text>
+                          <Text style={[s.titulo, { fontSize: fuente, flex: 1 }]}>{r.titulo}</Text>
+                        </View>
+                      </>
                     )}
                   </View>
                 </View>

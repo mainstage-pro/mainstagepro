@@ -99,6 +99,8 @@ export interface LibroCancion {
   /// del renglón, para que el "12" del papel sea el "12" que pide el artista.
   posicion: number | null;
   bloque: number | null;
+  /// Como le dice el crew a la tanda. Solo viene en la canción que la abre.
+  bloqueNombre: string | null;
   titulo: string;
   duracion: string;
   tonalidad: string | null;
@@ -297,7 +299,11 @@ function renglonesDeSetlist(sl: LibroSetlist): RenglonTabla[] {
 
     if (c.bloque !== bloque) {
       bloque = c.bloque;
-      out.push({ tipo: "grupo", clave: `${sl.id}-bloque-${c.bloque}`, texto: `Bloque ${c.bloque}` });
+      out.push({
+        tipo: "grupo",
+        clave: `${sl.id}-bloque-${c.bloque}`,
+        texto: c.bloqueNombre ? `Bloque ${c.bloque} · ${c.bloqueNombre}` : `Bloque ${c.bloque}`,
+      });
     }
 
     out.push({

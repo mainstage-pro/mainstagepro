@@ -3,7 +3,15 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { TIPOS_FILA_SETLIST } from "@/lib/giras";
 
-const TEXTO = ["tonalidad", "notasAudio", "notasLuces", "notasVideo", "cambioInstrumento", "notas"] as const;
+const TEXTO = [
+  "tonalidad",
+  "notasAudio",
+  "notasLuces",
+  "notasVideo",
+  "cambioInstrumento",
+  "notas",
+  "bloqueNombre",
+] as const;
 const ENTEROS = ["duracionSeg", "bpm", "orden"] as const;
 
 /// Edición renglón por renglón, como el advance: la fila conserva su id.

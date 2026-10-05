@@ -78,6 +78,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                 tipo: c.tipo,
                 orden: c.orden,
                 titulo: c.titulo,
+                bloqueNombre: c.bloqueNombre,
                 duracionSeg: c.duracionSeg,
                 tonalidad: c.tonalidad,
                 bpm: c.bpm,
