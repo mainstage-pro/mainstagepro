@@ -56,9 +56,10 @@ const ALTO_ENCABEZADO = 24;
 const MARGEN_ENCABEZADO = 6;
 const ANCHO_BARRA = 17;
 const SANGRIA_CUERPO = 7;
-/// Más grande que esto el renglón se come la hoja sin ganar legibilidad: a 72pt
-/// un título de dos palabras ya se lee desde el fondo del foro.
-const FUENTE_MAXIMA = 72;
+/// Más grande que esto deja de ganarse legibilidad y solo se gasta papel: a 40pt
+/// el título ya se lee desde el fondo del foro, y el repertorio completo cabe en
+/// dos o tres hojas en vez de media resma.
+const FUENTE_MAXIMA = 40;
 const GRIS_MOMENTO = "#9a9a9a";
 
 const s = StyleSheet.create({
@@ -78,11 +79,25 @@ const s = StyleSheet.create({
   renglon: { flexDirection: "row", alignItems: "stretch" },
   barra: { width: ANCHO_BARRA, alignItems: "center", justifyContent: "center" },
   barraNum: { fontFamily: "Helvetica-Bold", color: "#000000" },
-  cuerpo: { flex: 1, justifyContent: "center", paddingLeft: SANGRIA_CUERPO },
+  // El paddingRight compensa la barra de color para que el texto quede centrado
+  // en la hoja, no en el hueco que deja la barra.
+  cuerpo: {
+    flex: 1,
+    justifyContent: "center",
+    paddingLeft: SANGRIA_CUERPO,
+    paddingRight: ANCHO_BARRA + SANGRIA_CUERPO,
+  },
+  tituloRenglon: { flexDirection: "row", alignItems: "baseline", justifyContent: "center" },
   titulo: { fontFamily: "Helvetica-Bold", color: "#000000" },
-  momento: { fontFamily: "Helvetica-Bold", color: GRIS_MOMENTO, textTransform: "uppercase", letterSpacing: 0.8 },
-  detalle: { color: GRIS_MOMENTO, marginTop: 2 },
-  bloqueNombre: { fontFamily: "Helvetica-Bold", textTransform: "uppercase", letterSpacing: 0.8 },
+  momento: {
+    fontFamily: "Helvetica-Bold",
+    color: GRIS_MOMENTO,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    textAlign: "center",
+  },
+  detalle: { color: GRIS_MOMENTO, marginTop: 2, textAlign: "center" },
+  bloqueNombre: { fontFamily: "Helvetica-Bold", textTransform: "uppercase", letterSpacing: 0.8, textAlign: "center" },
 });
 
 /// Reparte el repertorio en hojas parejas. Parejas y no "llenar la primera y lo
@@ -118,7 +133,7 @@ function repartir(renglones: RenglonEscenario[], porHoja: number): RenglonEscena
 
 export function SetlistEscenarioPDF({ data }: { data: SetlistEscenarioData }) {
   const alto = ALTO_PAGINA - PADDING * 2 - ALTO_ENCABEZADO - MARGEN_ENCABEZADO;
-  const ancho = ANCHO_PAGINA - PADDING * 2 - ANCHO_BARRA - SANGRIA_CUERPO;
+  const ancho = ANCHO_PAGINA - PADDING * 2 - (ANCHO_BARRA + SANGRIA_CUERPO) * 2;
 
   // La letra la manda el ancho: si solo se mirara el alto, "Tiempo perfecto" se
   // partiría en dos renglones y la hoja dejaría de leerse de un vistazo.
@@ -136,7 +151,6 @@ export function SetlistEscenarioPDF({ data }: { data: SetlistEscenarioData }) {
   const fuente = Math.min(porAncho, (alto / porHoja) * 0.68);
   const fuenteMomento = Math.max(fuente * 0.5, 7);
   const fuenteDetalle = Math.max(fuente * 0.28, 6);
-  const anchoNumero = fuente * 1.75;
 
   return (
     <Document
@@ -181,9 +195,12 @@ export function SetlistEscenarioPDF({ data }: { data: SetlistEscenarioData }) {
                           {r.bloqueNombre}
                         </Text>
                       ) : null}
-                      <View style={{ flexDirection: "row", alignItems: "baseline" }}>
-                        <Text style={[s.titulo, { fontSize: fuente, width: anchoNumero }]}>{r.posicion}.</Text>
-                        <Text style={[s.titulo, { fontSize: fuente, flex: 1 }]}>{r.titulo}</Text>
+                      <View style={s.tituloRenglon}>
+                        {/* El número va pegado al título y no en su propia
+                            columna: centrado, una columna fija dejaría el
+                            conjunto descuadrado hacia la derecha. */}
+                        <Text style={[s.titulo, { fontSize: fuente, marginRight: fuente * 0.45 }]}>{r.posicion}.</Text>
+                        <Text style={[s.titulo, { fontSize: fuente }]}>{r.titulo}</Text>
                       </View>
                     </>
                   )}
