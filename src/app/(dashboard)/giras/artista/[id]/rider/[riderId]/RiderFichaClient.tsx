@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { upload } from "@vercel/blob/client";
 import { useToast } from "@/components/Toast";
+import RiderDocTranscribir from "./RiderDocTranscribir";
 import {
   CONTEXTOS_RIDER,
   CONTEXTO_RIDER_AYUDA,
@@ -382,6 +383,8 @@ export default function RiderFichaClient({ artistaId, rider }: Props) {
 
       {!cargado && (
         <>
+          <RiderDocTranscribir riderId={rider.id} />
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {NOTAS.map((n) => (
               <section key={n.campo as string} className="ms-card p-4 space-y-2">

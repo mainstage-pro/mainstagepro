@@ -163,6 +163,20 @@ function disciplinaDeEncabezado(linea: string): string | null {
   return null;
 }
 
+/// La misma pista, pero sin exigir mayúsculas ni castigar los números: en un
+/// Word el estilo de título ya dijo que es un encabezado, no hay que deducirlo
+/// de la forma del texto. Null cuando el título no dice de qué departamento es.
+export function departamentoPorTitulo(titulo: string): string | null {
+  const n = normalizar(titulo.replace(/^\d{1,2}[.)]\s*/, ""));
+  for (const [pista, disciplina] of PISTAS_DISCIPLINA) {
+    // En la lista de un recinto "CONTACTOS" son tomas de corriente; en el
+    // título de un rider son las personas a las que se les llama.
+    if (pista === "CONTACTO") continue;
+    if (n.includes(pista)) return disciplina;
+  }
+  return null;
+}
+
 /// Separa la cantidad del concepto. `-04 - L-Acoustics SB18m`, `12 KARA I`,
 /// `01 - Snare 14"` y `6 a 8 Subwoofers` dan todos la misma lectura; cuando el
 /// renglón no dice cuántos, es uno.
