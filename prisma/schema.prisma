@@ -623,6 +623,11 @@ model Cotizacion {
   giraShowId String?
   giraShow   GiraShow? @relation(fields: [giraShowId], references: [id])
 
+  // Gira a la que pertenece la cotización. Con giraShowId nulo es la cotización
+  // del tour: el equipo se carga una vez y de ahí se copia a cada fecha.
+  giraId String?
+  gira   Gira?   @relation(fields: [giraId], references: [id])
+
   lineas           CotizacionLinea[]
   proyecto         Proyecto?
   cuentasCobrar    CuentaCobrar[]
@@ -630,6 +635,7 @@ model Cotizacion {
   proyectoPersonal ProyectoPersonal[]
 
   @@index([giraShowId])
+  @@index([giraId])
   @@map("cotizaciones")
 }
 
@@ -6219,7 +6225,9 @@ model Gira {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  shows      GiraShow[]
+  shows        GiraShow[]
+  cotizaciones Cotizacion[]
+
   crew       GiraCrew[]
   hospedajes GiraHospedaje[]
   roomings   GiraRooming[]

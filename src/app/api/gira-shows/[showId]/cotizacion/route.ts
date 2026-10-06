@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logActividad } from "@/lib/actividad";
+import {
+  SELECT_GIRA_COTIZAR,
+  SELECT_SHOW_COTIZAR,
+  crearCotizacionDeGira,
+  plazaDeShow,
+} from "@/lib/cotizacion-gira";
 
 // POST: abre la cotización de equipo de esta fecha de gira.
 //
@@ -17,22 +23,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ sh
 
   const show = await prisma.giraShow.findUnique({
     where: { id: showId },
-    select: {
-      id: true,
-      fecha: true,
-      ciudad: true,
-      venueId: true,
-      venue: { select: { nombre: true } },
-      gira: {
-        select: {
-          id: true,
-          nombre: true,
-          clienteId: true,
-          tratoId: true,
-          artista: { select: { nombre: true } },
-        },
-      },
-    },
+    select: { ...SELECT_SHOW_COTIZAR, gira: { select: SELECT_GIRA_COTIZAR } },
   });
   if (!show) return NextResponse.json({ error: "El show no existe" }, { status: 404 });
 
@@ -45,39 +36,14 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ sh
     );
   }
 
-  const ultima = await prisma.cotizacion.findFirst({
-    orderBy: { numeroCotizacion: "desc" },
-    select: { numeroCotizacion: true },
-  });
-  const consecutivo = ultima ? parseInt(ultima.numeroCotizacion.replace("COT-", "")) || 0 : 0;
-
-  const dia = show.fecha.toISOString().slice(0, 10);
-  const plaza = show.venue?.nombre ?? show.ciudad ?? dia;
-
-  const cot = await prisma.cotizacion.create({
-    data: {
-      numeroCotizacion: `COT-${String(consecutivo + 1).padStart(4, "0")}`,
-      estado: "BORRADOR",
-      clienteId: show.gira.clienteId,
-      tratoId: show.gira.tratoId,
-      creadaPorId: session.id,
-      giraShowId: show.id,
-      nombreCotizacion: `${show.gira.artista.nombre} — ${plaza}`,
-      nombreEvento: `${show.gira.nombre} — ${plaza}`,
-      fechaEvento: show.fecha,
-      venueId: show.venueId,
-      lugarEvento: show.venue?.nombre ?? null,
-      tipoEvento: "MUSICAL",
-    },
-    select: { id: true, numeroCotizacion: true },
-  });
+  const cot = await crearCotizacionDeGira(show.gira, show, session.id);
 
   await logActividad(
     session.id,
     "CREAR",
     "Cotizacion",
     cot.id,
-    `Cotización ${cot.numeroCotizacion} de equipo para ${plaza} (${show.gira.nombre})`,
+    `Cotización ${cot.numeroCotizacion} de equipo para ${plazaDeShow(show)} (${show.gira.nombre})`,
   );
 
   return NextResponse.json({ id: cot.id, numeroCotizacion: cot.numeroCotizacion }, { status: 201 });
