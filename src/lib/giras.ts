@@ -1167,17 +1167,25 @@ export function parseFechaHoraGira(valor: unknown): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
+/// El valor crudo de un <input type="datetime-local"> no trae zona y `new Date`
+/// lo leería como hora local, corriendo el día al volver a UTC. Se fija en UTC
+/// para que la hora de pared capturada sea la que se muestra.
+function aFechaHora(d: Date | string): Date {
+  if (typeof d !== "string") return d;
+  return new Date(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(d.trim()) ? `${d.trim()}Z` : d);
+}
+
 /// El valor tal como lo espera un <input type="datetime-local">.
 export function fechaHoraInput(d: Date | string | null | undefined): string {
   if (!d) return "";
-  const fecha = typeof d === "string" ? new Date(d) : d;
+  const fecha = aFechaHora(d);
   if (isNaN(fecha.getTime())) return "";
   return fecha.toISOString().slice(0, 16);
 }
 
 export function fmtFechaHora(d: Date | string | null | undefined): string {
   if (!d) return "—";
-  const fecha = typeof d === "string" ? new Date(d) : d;
+  const fecha = aFechaHora(d);
   if (isNaN(fecha.getTime())) return "—";
   return fecha
     .toLocaleString("es-MX", {
