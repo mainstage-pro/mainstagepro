@@ -39,7 +39,7 @@ export default async function DocumentosGiraPage({ params }: { params: Promise<{
           estado: true,
           docsToken: true,
           venue: { select: { nombre: true } },
-          _count: { select: { bloques: true, riderLineas: true } },
+          _count: { select: { momentos: true, riderLineas: true } },
         },
       },
     },
@@ -72,7 +72,9 @@ export default async function DocumentosGiraPage({ params }: { params: Promise<{
     venueNombre: s.venue?.nombre ?? null,
     estado: s.estado,
     docsToken: s.docsToken,
-    bloques: s._count.bloques,
+    // El renglón del show enseña qué tan armado está su día: ahora son momentos
+    // de `ShowMomento`, el esqueleto y lo que esta fecha agregó.
+    momentos: s._count.momentos,
     renglonesAdvance: s._count.riderLineas,
   }));
 

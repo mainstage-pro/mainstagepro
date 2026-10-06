@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
+import Migas from "@/components/giras/Migas";
 import SubNav, { type EnlaceSub } from "@/app/(dashboard)/giras/[id]/SubNav";
 import { TIPO_FORMACION_LABEL } from "@/lib/giras";
 
@@ -39,9 +39,13 @@ export default function CabeceraArtista(p: Props) {
 
   return (
     <div className="px-4 md:px-6 pt-4 md:pt-6 border-b border-[#1a1a1a]">
-      <Link href="/giras/artistas" className="ms-micro text-[#555] hover:text-[#B3985B] transition-colors">
-        ← Artistas
-      </Link>
+      <Migas
+        items={[
+          { label: "Shows y giras", href: "/giras/lista" },
+          { label: "Artistas", href: "/giras/artistas" },
+          { label: p.nombre },
+        ]}
+      />
 
       <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2 mt-1.5 mb-3">
         <div className="flex items-center gap-3 min-w-0">
@@ -75,7 +79,7 @@ export default function CabeceraArtista(p: Props) {
         </div>
       </div>
 
-      <SubNav enlaces={p.enlaces} />
+      <SubNav enlaces={p.enlaces} scope="artista" />
     </div>
   );
 }

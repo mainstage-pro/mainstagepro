@@ -3,40 +3,28 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { faltantesPorProveedor, matrizAdvance, type CeldaMatriz } from "@/lib/advance-gira";
+import { faltantesDeLaGira, matrizAdvance, type CeldaMatriz } from "@/lib/advance-gira";
 import {
+  CUBIERTO_POR_CORTO,
   CUBIERTO_POR_LABEL,
   DISCIPLINA_LABEL,
-  ESTADOS_RESUELTOS,
+  ESTADO_ADVANCE_CORTO,
   ESTADO_ADVANCE_LABEL,
   PRIORIDAD_COLOR,
   PRIORIDAD_LABEL,
   SEMAFORO_COLOR,
   SEMAFORO_LABEL,
   fmtFechaCorta,
-  fmtMoneda,
   resumirAdvance,
 } from "@/lib/giras";
 
 export const dynamic = "force-dynamic";
 
-/// Códigos cortos: la matriz necesita que la celda quepa en una columna angosta.
-const SIGLA: Record<string, string> = {
-  POR_DEFINIR: "?",
-  CASA: "Venue",
-  MAINSTAGE: "Nosotros",
-  PROVEEDOR: "Proveedor",
-  ARTISTA: "Artista",
-  SUSTITUIDO: "Sustituto",
-  NO_CUBIERTO: "Sin cubrir",
-  NO_APLICA: "N/A",
-};
-
 function colorCelda(c: CeldaMatriz): string {
   if (c.cubiertoPor === "NO_APLICA") return "bg-white/[0.02] text-[#555] border-[#1a1a1a]";
-  if (ESTADOS_RESUELTOS.includes(c.estado)) return "bg-emerald-500/10 text-emerald-300 border-emerald-500/30";
-  if (c.faltante > 0 && c.prioridad === "INDISPENSABLE") return "bg-red-500/10 text-red-300 border-red-500/30";
-  if (c.faltante > 0) return "bg-amber-500/10 text-amber-300 border-amber-500/30";
+  if (!c.abierta) return "bg-emerald-500/10 text-emerald-300 border-emerald-500/30";
+  if (c.prioridad === "INDISPENSABLE") return "bg-red-500/10 text-red-300 border-red-500/30";
+  if (c.cubiertoPor === "POR_DEFINIR") return "bg-amber-500/10 text-amber-300 border-amber-500/30";
   return "bg-sky-500/10 text-sky-300 border-sky-500/30";
 }
 
@@ -65,11 +53,11 @@ export default async function AdvanceGiraPage({ params }: { params: Promise<{ id
 
   if (!gira) notFound();
 
-  const [matriz, grupos] = await Promise.all([matrizAdvance(id), faltantesPorProveedor(id)]);
+  const [matriz, grupos] = await Promise.all([matrizAdvance(id), faltantesDeLaGira(id)]);
 
   const resumenPorShow = new Map(gira.shows.map((s) => [s.id, resumirAdvance(s.riderLineas)]));
-  const costoTotal = grupos.reduce((s, g) => s + g.costoEstimado, 0);
-  const piezasTotal = grupos.reduce((s, g) => s + g.piezasFaltantes, 0);
+  const abiertosTotal = grupos.reduce((s, g) => s + g.filas.length, 0);
+  const promotorTotal = grupos.reduce((s, g) => s + g.alPromotor, 0);
 
   return (
     <div className="ms-page space-y-6 pb-16">
@@ -86,14 +74,14 @@ export default async function AdvanceGiraPage({ params }: { params: Promise<{ id
           <p className="text-white text-xl font-semibold">{matriz.columnas.length}</p>
         </div>
         <div className="ms-stat-card">
-          <p className="ms-label mb-1">Piezas por conseguir</p>
-          <p className={`text-xl font-semibold ${piezasTotal > 0 ? "text-amber-300" : "text-emerald-300"}`}>
-            {piezasTotal}
+          <p className="ms-label mb-1">Renglones por cerrar</p>
+          <p className={`text-xl font-semibold ${abiertosTotal > 0 ? "text-amber-300" : "text-emerald-300"}`}>
+            {abiertosTotal}
           </p>
         </div>
         <div className="ms-stat-card">
-          <p className="ms-label mb-1">Costo estimado del faltante</p>
-          <p className="text-white text-xl font-semibold">{fmtMoneda(costoTotal)}</p>
+          <p className="ms-label mb-1">Para pedirle al promotor</p>
+          <p className="text-white text-xl font-semibold">{promotorTotal}</p>
         </div>
       </div>
 
@@ -154,9 +142,9 @@ export default async function AdvanceGiraPage({ params }: { params: Promise<{ id
                     <tr className="ms-tr">
                       <td className="ms-td text-white">
                         {f.concepto}
-                        {f.showsConFaltante > 1 && (
+                        {f.showsAbiertos > 1 && (
                           <span className="ms-micro text-amber-300 block">
-                            falta en {f.showsConFaltante} shows — conviene conseguirlo una sola vez
+                            sigue abierto en {f.showsAbiertos} fechas — conviene resolverlo de una sola vez
                           </span>
                         )}
                       </td>
@@ -179,14 +167,14 @@ export default async function AdvanceGiraPage({ params }: { params: Promise<{ id
                               className={`block rounded-lg border px-2 py-1.5 ${colorCelda(celda)}`}
                               title={`${CUBIERTO_POR_LABEL[celda.cubiertoPor]} · ${ESTADO_ADVANCE_LABEL[celda.estado]}`}
                             >
-                              <span className="block text-[11px] font-semibold">{SIGLA[celda.cubiertoPor]}</span>
-                              <span className="block text-[10px] opacity-80">
-                                {celda.faltante > 0
-                                  ? `falta ${celda.faltante} de ${celda.cantidadPedida}`
-                                  : `${celda.cantidadCubierta}/${celda.cantidadPedida}`}
+                              <span className="block text-[11px] font-semibold">
+                                {CUBIERTO_POR_CORTO[celda.cubiertoPor] ?? celda.cubiertoPor}
                               </span>
-                              {celda.proveedorNombre && (
-                                <span className="block text-[10px] opacity-70 truncate">{celda.proveedorNombre}</span>
+                              <span className="block text-[10px] opacity-80">
+                                {ESTADO_ADVANCE_CORTO[celda.estado] ?? celda.estado} · pide {celda.cantidadPedida}
+                              </span>
+                              {celda.pedirAlPromotor && (
+                                <span className="block text-[10px] opacity-70">se le pide al promotor</span>
                               )}
                             </Link>
                           </td>
@@ -201,38 +189,37 @@ export default async function AdvanceGiraPage({ params }: { params: Promise<{ id
         </div>
       )}
 
-      {/* Qué falta y con quién conseguirlo */}
+      {/* Qué sigue abierto, por fecha y departamento */}
       <div className="space-y-3">
-        <h2 className="ms-h2">Qué falta conseguir, por show y departamento</h2>
+        <h2 className="ms-h2">Qué falta cerrar, por ciudad y departamento</h2>
         {grupos.length === 0 ? (
           <div className="ms-empty-state">
-            <p className="text-sm text-gray-400">No hay faltantes abiertos.</p>
+            <p className="text-sm text-gray-400">No queda nada abierto en el advance de la gira.</p>
           </div>
         ) : (
           grupos.map((g) => (
             <div key={`${g.ciudad}-${g.disciplina}`} className="ms-card p-4 space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <p className="text-white font-semibold">
-                    {g.ciudad} · {g.disciplinaLabel}
-                  </p>
-                  <p className="ms-meta">
-                    {g.filas.length} conceptos · {g.piezasFaltantes} piezas · {g.indispensables} indispensables ·{" "}
-                    {fmtMoneda(g.costoEstimado)} estimado
-                  </p>
-                </div>
+              <div>
+                <p className="text-white font-semibold">
+                  {g.ciudad} · {g.disciplinaLabel}
+                </p>
+                <p className="ms-meta">
+                  {g.filas.length} renglones abiertos · {g.indispensables} indispensables · {g.alPromotor} para pedirle
+                  al promotor
+                </p>
               </div>
 
               <div className="overflow-x-auto">
-                <table className="min-w-[720px] w-full">
+                <table className="min-w-[760px] w-full">
                   <thead className="ms-thead">
                     <tr>
                       <th className="ms-th">Concepto</th>
-                      <th className="ms-th">Show</th>
-                      <th className="ms-th">Falta</th>
+                      <th className="ms-th">Fecha</th>
+                      <th className="ms-th">Pide</th>
                       <th className="ms-th">Prioridad</th>
-                      <th className="ms-th">Estado</th>
-                      <th className="ms-th">Proveedor asignado</th>
+                      <th className="ms-th">Quién lo cubre</th>
+                      <th className="ms-th">Cómo va</th>
+                      <th className="ms-th">Al promotor</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -244,48 +231,35 @@ export default async function AdvanceGiraPage({ params }: { params: Promise<{ id
                             {fmtFechaCorta(f.fecha)} {f.venueNombre ?? ""}
                           </Link>
                         </td>
-                        <td className="ms-td text-red-300 font-semibold">
-                          {f.faltante} <span className="text-[#555] font-normal">de {f.cantidadPedida}</span>
-                        </td>
+                        <td className="ms-td text-gray-400">{f.cantidadPedida}</td>
                         <td className="ms-td">
                           <span className={`ms-badge ${PRIORIDAD_COLOR[f.prioridad]}`}>
                             {PRIORIDAD_LABEL[f.prioridad]}
                           </span>
                         </td>
-                        <td className="ms-td text-gray-400">{ESTADO_ADVANCE_LABEL[f.estado]}</td>
-                        <td className="ms-td text-gray-400">{f.proveedorNombre ?? "—"}</td>
+                        <td
+                          className={`ms-td ${f.cubiertoPor === "POR_DEFINIR" ? "text-amber-300" : "text-gray-400"}`}
+                        >
+                          {CUBIERTO_POR_LABEL[f.cubiertoPor] ?? f.cubiertoPor}
+                        </td>
+                        <td className="ms-td text-gray-400">{ESTADO_ADVANCE_LABEL[f.estado] ?? f.estado}</td>
+                        <td className="ms-td">
+                          {f.pedirAlPromotor ? <span className="text-sky-300">Sí</span> : <span className="text-[#555]">—</span>}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-
-              <div>
-                <p className="ms-label mb-1.5">Proveedores con cobertura en {g.ciudad}</p>
-                {g.proveedores.length === 0 ? (
-                  <p className="ms-meta">
-                    Ninguno declarado para este show y departamento. Captura ciudades y departamentos en el{" "}
-                    <Link href="/directorio/proveedores" className="ms-link-gold">
-                      directorio de proveedores
-                    </Link>
-                    .
-                  </p>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {g.proveedores.map((p) => (
-                      <span key={p.id} className="ms-card-inset px-3 py-1.5 text-xs text-gray-300">
-                        {p.nombre}
-                        {p.empresa && p.empresa !== p.nombre ? ` — ${p.empresa}` : ""}
-                        {p.telefono ? ` · ${p.telefono}` : ""}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
             </div>
           ))
         )}
       </div>
+
+      <p className="ms-micro">
+        El advance no lleva costo ni proveedor: el equipo de tercero se captura una sola vez en el rider del proyecto y
+        de ahí se derivan el proveedor y su cuenta por pagar.
+      </p>
     </div>
   );
 }

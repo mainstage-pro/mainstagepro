@@ -22,7 +22,7 @@ export default async function GiraShowsPage({ params }: { params: Promise<{ id: 
         include: {
           venue: { select: { id: true, nombre: true, ciudad: true, estado: true, capacidadPersonas: true } },
           riderLineas: { select: { prioridad: true, estado: true, cubiertoPor: true } },
-          _count: { select: { crew: true, bloques: true } },
+          _count: { select: { crew: true, momentos: true } },
         },
       },
     },
@@ -52,7 +52,7 @@ export default async function GiraShowsPage({ params }: { params: Promise<{ id: 
       notas: s.notas,
       riderEnviado: !!s.riderEnviadoEn,
       crew: s._count.crew,
-      bloques: s._count.bloques,
+      momentos: s._count.momentos,
       renglones: resumen.total,
       avance: resumen.avance,
       semaforo: resumen.semaforo,

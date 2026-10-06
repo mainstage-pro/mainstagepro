@@ -17,18 +17,6 @@ async function reordenarShows(giraId: string) {
   }
 }
 
-const HORAS = [
-  "horaLoadIn",
-  "horaMontaje",
-  "horaLineCheck",
-  "horaSoundcheck",
-  "horaDoors",
-  "horaShow",
-  "horaFin",
-  "horaLoadOut",
-  "curfew",
-] as const;
-
 const TEXTOS = [
   "ciudad",
   "promotorNombre",
@@ -61,7 +49,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ sho
       },
       venue: true,
       riderLineas: { select: { prioridad: true, estado: true, cubiertoPor: true } },
-      _count: { select: { crew: true, bloques: true, archivos: true, viajes: true, roomings: true } },
+      _count: { select: { crew: true, momentos: true, archivos: true, viajes: true, roomings: true } },
     },
   });
 
@@ -115,13 +103,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ sh
   }
 
   for (const campo of TEXTOS) {
-    if (campo in body) {
-      const v = body[campo];
-      data[campo] = typeof v === "string" && v.trim() ? v.trim() : null;
-    }
-  }
-
-  for (const campo of HORAS) {
     if (campo in body) {
       const v = body[campo];
       data[campo] = typeof v === "string" && v.trim() ? v.trim() : null;

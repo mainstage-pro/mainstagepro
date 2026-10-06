@@ -1,9 +1,12 @@
 // src/lib/pdf-gira/day-sheet.ts
 //
 // El day sheet de un show. Lee el show, su corrida, el crew que lo trabaja y
-// los contactos, y arma el PDF. Si nadie capturó bloques todavía, la corrida se
-// deriva de los horarios gruesos del show con SIEMBRA_BLOQUES: un day sheet
-// vacío no sirve de nada y el tour manager lo pide igual.
+// los contactos, y arma el PDF.
+//
+// La corrida es una sola lista: los momentos del show (`ShowMomento`). Ya no hay
+// nada que derivar —antes el esqueleto vivía en nueve columnas de hora y el
+// minuto a minuto en otra tabla—, así que la banda de arriba y la tabla de abajo
+// leen los mismos renglones: la banda busca sus horas por llave.
 
 import React from "react";
 import type { Document } from "@react-pdf/renderer";
@@ -13,7 +16,6 @@ import {
   ESTADO_SHOW_LABEL,
   ORIGEN_CREW_LABEL,
   ROL_PERSONA_LABEL,
-  SIEMBRA_BLOQUES,
   TIPO_BLOQUE_LABEL,
   TIPO_SHOW_LABEL,
   TIPO_VIAJE_LABEL,
@@ -25,12 +27,13 @@ import {
   nombreCrew,
   ordenarBloques,
 } from "@/lib/giras";
+import { SELECT_MOMENTO, horasAncla } from "@/lib/show-momentos";
 import { logoBase64, nowStr, resolvePdfImage } from "@/components/pdf/PdfShared";
 import {
   DaySheetPDF,
-  type DaySheetBloque,
   type DaySheetContacto,
   type DaySheetData,
+  type DaySheetMomento,
 } from "@/components/pdf/giras/DaySheetPDF";
 import { bufferDePdf, type PdfGira } from "./render";
 
@@ -39,7 +42,7 @@ export async function generarDaySheet(showId: string): Promise<PdfGira | null> {
     where: { id: showId },
     include: {
       venue: true,
-      bloques: { orderBy: { orden: "asc" } },
+      momentos: { select: SELECT_MOMENTO, orderBy: { orden: "asc" } },
       gira: {
         select: {
           id: true,
@@ -80,40 +83,20 @@ export async function generarDaySheet(showId: string): Promise<PdfGira | null> {
     }),
   ]);
 
-  const camposHora = show as unknown as Record<string, string | null>;
+  const momentosOrdenados = ordenarBloques(show.momentos);
 
-  const bloques: DaySheetBloque[] = show.bloques.length
-    ? ordenarBloques(show.bloques).map((b) => ({
-        id: b.id,
-        hora: b.hora,
-        horaFin: b.horaFin,
-        titulo: b.titulo,
-        tipoLabel: TIPO_BLOQUE_LABEL[b.tipo] ?? b.tipo,
-        duracion: fmtDuracion(duracionBloque(b.hora, b.horaFin)),
-        responsable: b.responsable,
-        lugar: b.lugar,
-        notas: b.notas,
-      }))
-    : ordenarBloques(
-        SIEMBRA_BLOQUES.filter((s) => !!camposHora[s.campo]).map((s, i) => ({
-          id: `derivado-${s.campo}`,
-          hora: camposHora[s.campo],
-          horaFin: s.campoFin ? (camposHora[s.campoFin] ?? null) : null,
-          titulo: s.titulo,
-          tipo: s.tipo,
-          orden: i * 10,
-        })),
-      ).map((b) => ({
-        id: b.id,
-        hora: b.hora,
-        horaFin: b.horaFin,
-        titulo: b.titulo,
-        tipoLabel: TIPO_BLOQUE_LABEL[b.tipo] ?? b.tipo,
-        duracion: fmtDuracion(duracionBloque(b.hora, b.horaFin)),
-        responsable: null,
-        lugar: null,
-        notas: null,
-      }));
+  const momentos: DaySheetMomento[] = momentosOrdenados.map((m) => ({
+    id: m.id,
+    hora: m.hora,
+    horaFin: m.horaFin,
+    titulo: m.titulo,
+    tipoLabel: TIPO_BLOQUE_LABEL[m.tipo] ?? m.tipo,
+    duracion: fmtDuracion(duracionBloque(m.hora, m.horaFin)),
+    esAncla: m.esAncla,
+    responsable: m.responsable,
+    lugar: m.lugar,
+    notas: m.notas,
+  }));
 
   const contactos: DaySheetContacto[] = [];
   if (show.gira.contactoPrincipal) {
@@ -181,19 +164,11 @@ export async function generarDaySheet(showId: string): Promise<PdfGira | null> {
           restriccionHorario: show.venue.restriccionHorario,
         }
       : null,
-    horas: {
-      loadIn: show.horaLoadIn,
-      montaje: show.horaMontaje,
-      lineCheck: show.horaLineCheck,
-      soundcheck: show.horaSoundcheck,
-      doors: show.horaDoors,
-      show: show.horaShow,
-      fin: show.horaFin,
-      loadOut: show.horaLoadOut,
-      curfew: show.curfew,
-    },
-    bloques,
-    bloquesDerivados: show.bloques.length === 0 && bloques.length > 0,
+    horas: horasAncla(show.momentos),
+    momentos,
+    // Un día con momentos pero sin una sola hora todavía no es un day sheet
+    // terminado, y el documento lo tiene que decir.
+    sinHoras: momentos.length > 0 && momentos.every((m) => !m.hora),
     crew: crew.map((c) => ({
       id: c.id,
       nombre: nombreCrew(c),

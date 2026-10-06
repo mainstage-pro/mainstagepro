@@ -3,7 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { INCLUDE_CREW, INCLUDE_SETLIST, candidatosCrew } from "@/lib/logistica-gira";
-import { SIEMBRA_BLOQUES, fmtFechaLarga, ordenarBloques } from "@/lib/giras";
+import { fmtFechaLarga, ordenarBloques } from "@/lib/giras";
+import { SELECT_MOMENTO } from "@/lib/show-momentos";
 import CrewPanel from "@/components/giras/CrewPanel";
 import SetlistPanel from "@/components/giras/SetlistPanel";
 import DiaShowTabla from "./DiaShowTabla";
@@ -23,18 +24,9 @@ export default async function DiaShowPage({ params }: { params: Promise<{ id: st
       giraId: true,
       fecha: true,
       ciudad: true,
-      horaLoadIn: true,
-      horaMontaje: true,
-      horaLineCheck: true,
-      horaSoundcheck: true,
-      horaDoors: true,
-      horaShow: true,
-      horaFin: true,
-      horaLoadOut: true,
-      curfew: true,
       venue: { select: { id: true, nombre: true, ciudad: true } },
       gira: { select: { id: true, nombre: true, artista: { select: { nombre: true } } } },
-      bloques: { orderBy: { orden: "asc" } },
+      momentos: { select: SELECT_MOMENTO, orderBy: { orden: "asc" } },
     },
   });
 
@@ -56,10 +48,6 @@ export default async function DiaShowPage({ params }: { params: Promise<{ id: st
     candidatosCrew(id),
   ]);
 
-  const horariosShow = SIEMBRA_BLOQUES.filter(
-    (s) => !!(show as unknown as Record<string, string | null>)[s.campo],
-  ).length;
-
   const ciudad = show.ciudad ?? show.venue?.ciudad ?? null;
 
   return (
@@ -80,14 +68,11 @@ export default async function DiaShowPage({ params }: { params: Promise<{ id: st
         <div>
           <h2 className="ms-h2">Corrida del día</h2>
           <p className="ms-meta">
-            El day sheet que se reparte: a qué hora pasa cada cosa, quién contesta por ella y dónde.
+            El day sheet que se reparte: a qué hora pasa cada cosa, quién contesta por ella y dónde. Los momentos
+            marcados «ancla» son los mismos que salen como horarios en la ficha del show.
           </p>
         </div>
-        <DiaShowTabla
-          showId={show.id}
-          bloquesIniciales={ordenarBloques(show.bloques)}
-          horariosShow={horariosShow}
-        />
+        <DiaShowTabla showId={show.id} momentosIniciales={ordenarBloques(show.momentos)} />
       </section>
 
       <section className="space-y-3">

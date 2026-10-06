@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
+/// Sin proveedor ni costo: el advance solo coteja el rider contra la casa y el
+/// promotor. El equipo de tercero se captura en el rider del proyecto.
 const INCLUDE = {
-  proveedor: { select: { id: true, nombre: true, empresa: true } },
-  equipo: { select: { id: true, descripcion: true, marca: true, modelo: true } },
   riderLinea: { select: { id: true, concepto: true, cantidad: true, prioridad: true, preferido: true, aceptables: true } },
 } as const;
 

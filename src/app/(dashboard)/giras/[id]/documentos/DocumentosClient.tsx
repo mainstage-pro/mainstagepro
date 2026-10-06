@@ -46,7 +46,7 @@ export interface ShowDoc {
   venueNombre: string | null;
   estado: string;
   docsToken: string | null;
-  bloques: number;
+  momentos: number;
   renglonesAdvance: number;
 }
 
@@ -495,10 +495,10 @@ export default function DocumentosClient({
                       </span>
                     </td>
                     <td className="ms-td text-[13px]">
-                      {p.bloques > 0 ? (
-                        <span className="text-[#9ca3af]">{p.bloques} bloques</span>
+                      {p.momentos > 0 ? (
+                        <span className="text-[#9ca3af]">{p.momentos} momentos</span>
                       ) : (
-                        <span className="text-[#6b7280]">Se deriva de los horarios</span>
+                        <span className="text-[#6b7280]">El día está vacío</span>
                       )}
                     </td>
                     <td className="ms-td text-[13px]">

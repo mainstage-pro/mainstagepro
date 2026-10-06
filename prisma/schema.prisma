@@ -823,6 +823,7 @@ model Proyecto {
   cargas             ProyectoCarga[]
   cargaVerificadores ProyectoCargaVerificador[]
   escenarios         ProyectoEscenario[]
+  sitePlanes         SitePlan[]
   giraShow           GiraShow?
 
   @@map("proyectos")
@@ -6240,23 +6241,13 @@ model GiraShow {
   proyecto   Proyecto? @relation(fields: [proyectoId], references: [id])
 
   estado   String  @default("POR_CONFIRMAR") // POR_CONFIRMAR|CONFIRMADO|EJECUTADO|CANCELADO
-  tipoShow String? // HEADLINE|SOPORTE|FESTIVAL|SHOWCASE|PRIVADO
+  tipoShow String? // CONCIERTO|SOPORTE|FESTIVAL|SHOWCASE|PRIVADO
 
   promotorNombre   String?
   promotorContacto String?
   promotorTelefono String?
   promotorEmail    String?
   aforoEsperado    Int?
-
-  horaLoadIn     String?
-  horaMontaje    String?
-  horaLineCheck  String?
-  horaSoundcheck String?
-  horaDoors      String?
-  horaShow       String?
-  horaFin        String?
-  horaLoadOut    String?
-  curfew         String?
 
   contactoCasaNombre   String?
   contactoCasaTelefono String?
@@ -6272,7 +6263,10 @@ model GiraShow {
 
   cotizaciones    Cotizacion[]
   riderLineas     ShowRiderLinea[]
-  bloques         GiraShowBloque[]
+  momentos        ShowMomento[]
+  invitados       ShowInvitado[]
+  canales         ShowCanal[]
+  stagePlots      ShowStagePlot[]
   crew            GiraCrew[]
   roomings        GiraRooming[]
   viajes          GiraViaje[]
@@ -6285,6 +6279,132 @@ model GiraShow {
 
   @@index([giraId, fecha])
   @@map("gira_shows")
+}
+
+/// El día del show, en una sola tabla. Antes vivía partido en dos: nueve columnas
+/// fijas de hora en `GiraShow` (el esqueleto) y `GiraShowBloque` (el minuto a
+/// minuto). Eran lo mismo contado dos veces, y ninguna de las dos admitía el
+/// momento que esta gira sí trae — el meet and greet, la prueba de vestuario.
+/// Ahora es un renglón por momento: la plantilla siembra los de siempre, se le
+/// agrega lo que falte, y cada uno tiene inicio y fin porque un soundcheck es un
+/// rango y no un instante. "Horarios ancla" y "Día del show" son dos vistas de
+/// estos mismos renglones.
+model ShowMomento {
+  id     String   @id @default(cuid())
+  showId String
+  show   GiraShow @relation(fields: [showId], references: [id], onDelete: Cascade)
+
+  /// Llave de plantilla (LOAD_IN, SOUNDCHECK, SHOW…). Null = momento que alguien
+  /// agregó a mano. Permite resembrar sin duplicar y que los PDFs ubiquen el show.
+  llave String?
+
+  titulo  String
+  hora    String?
+  horaFin String?
+  tipo    String  @default("PROGRAMA") // LOGISTICA|MONTAJE|SOUNDCHECK|PROGRAMA|DESMONTAJE|VIAJE|COMIDA
+
+  /// Los ocho de plantilla son el esqueleto que se ve en la ficha del show; el
+  /// resto solo aparece en el día del show y en el day sheet.
+  esAncla Boolean @default(false)
+
+  responsable String?
+  lugar       String?
+
+  notas String?
+  orden Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([showId])
+  @@map("show_momentos")
+}
+
+/// Quién se sube al escenario además del artista: el telonero, el featuring que
+/// cae en una canción, el invitado sorpresa. Importa porque cada uno consume
+/// canales de consola que nadie contempló al armar el rider maestro.
+model ShowInvitado {
+  id     String   @id @default(cuid())
+  showId String
+  show   GiraShow @relation(fields: [showId], references: [id], onDelete: Cascade)
+
+  nombre String
+  rol    String? // INVITADO|TELONERO|FEATURING|MUSICO|DJ|PRESENTADOR|OTRO
+  /// En qué parte del show entra: "3ª canción", "encore", "apertura".
+  momento String?
+
+  notas String?
+  orden Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  canales ShowCanal[]
+
+  @@index([showId])
+  @@map("show_invitados")
+}
+
+/// Canal de consola que existe solo en esta fecha: lo que pide un invitado o lo
+/// que se agregó en plaza. El rider maestro no se toca — la lista real del show
+/// es la del rider más estos, numerados a continuación.
+model ShowCanal {
+  id     String   @id @default(cuid())
+  showId String
+  show   GiraShow @relation(fields: [showId], references: [id], onDelete: Cascade)
+
+  invitadoId String?
+  invitado   ShowInvitado? @relation(fields: [invitadoId], references: [id], onDelete: Cascade)
+
+  tipo   String // INPUT|OUTPUT
+  numero Int
+  nombre String
+
+  // INPUT
+  instrumento String?
+  microfono   String?
+  soporte     String? // TRIPIE_CORTO|TRIPIE_LARGO|CLIP|DI|SUBSNAKE|NINGUNO
+  phantom     Boolean @default(false)
+
+  // OUTPUT
+  tipoSalida String? // IEM|WEDGE|SIDEFILL|DRUM_FILL|SUB_DRUM|PA|SHOUT
+  estereo    Boolean @default(false)
+
+  notas String?
+  orden Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([showId])
+  @@index([invitadoId])
+  @@map("show_canales")
+}
+
+/// El plano de escenario de esta fecha, en metros y visto desde el público. Es
+/// el mismo editor y el mismo formato que el layout de un proyecto de eventos
+/// (src/lib/layout-escenario.ts), pero colgado del show: cada venue monta
+/// distinto, así que el plano vive en la plaza y no en la gira.
+model ShowStagePlot {
+  id     String   @id @default(cuid())
+  showId String
+  show   GiraShow @relation(fields: [showId], references: [id], onDelete: Cascade)
+
+  nombre  String @default("Stage plot")
+  anchoM  Float?
+  largoM  Float?
+  alturaM Float?
+
+  /// JSON `{ piezas: Pieza[] }` — mismo contrato que ProyectoEscenario.layout.
+  layout String? @db.Text
+  notas  String? @db.Text
+
+  orden     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([showId])
+  @@map("show_stage_plots")
 }
 
 /// El checklist del advance: qué hay que arrancarle a management, al venue y al
@@ -6336,8 +6456,14 @@ model ShowRiderLinea {
   ofrecidoCasa String? // lo que responde el contra-rider de la casa
   cantidadCasa Int     @default(0)
 
-  cubiertoPor      String @default("POR_DEFINIR") // CASA|MAINSTAGE|PROVEEDOR|ARTISTA|NO_CUBIERTO|SUSTITUIDO|NO_APLICA
+  /// Quién lo pone: POR_DEFINIR|CASA|PROMOTOR|MAINSTAGE|ARTISTA|NO_APLICA
+  cubiertoPor      String @default("POR_DEFINIR")
   cantidadCubierta Int    @default(0)
+
+  /// Entra en la lista que se le manda al promotor. Es la selección manual de lo
+  /// que de verdad vamos a pelear: un rider trae decenas de renglones de boilerplate
+  /// y pedirlos todos quema el capital con el promotor.
+  pedirAlPromotor Boolean @default(false)
 
   equipoId String?
   equipo   Equipo? @relation(fields: [equipoId], references: [id])
@@ -6348,7 +6474,8 @@ model ShowRiderLinea {
   costoEstimado   Float?
   costoConfirmado Float?
 
-  estado             String  @default("PENDIENTE") // PENDIENTE|SOLICITADO|COTIZANDO|CONFIRMADO|RECHAZADO|SUSTITUCION_APROBADA
+  /// PENDIENTE|CONFIRMADO|RECHAZADO|SUSTITUCION_APROBADA
+  estado             String  @default("PENDIENTE")
   aprobadoPorArtista Boolean @default(false)
 
   notas     String?
@@ -6358,28 +6485,6 @@ model ShowRiderLinea {
 
   @@index([showId])
   @@map("show_rider_lineas")
-}
-
-/// Minuto a minuto del día del show.
-model GiraShowBloque {
-  id     String   @id @default(cuid())
-  showId String
-  show   GiraShow @relation(fields: [showId], references: [id], onDelete: Cascade)
-
-  hora        String?
-  horaFin     String?
-  titulo      String
-  tipo        String  @default("PROGRAMA") // LOGISTICA|MONTAJE|SOUNDCHECK|PROGRAMA|DESMONTAJE|VIAJE|COMIDA
-  responsable String?
-  lugar       String?
-  notas       String?
-
-  orden     Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([showId])
-  @@map("gira_show_bloques")
 }
 
 /// Quién va: crew de Mainstage, integrantes del artista, técnicos de casa o de proveedor.
@@ -6769,6 +6874,11 @@ model SitePlan {
 
   showId String?
   show   GiraShow? @relation(fields: [showId], references: [id], onDelete: Cascade)
+
+  /// Un plano de sitio también se dibuja para un evento que no es de gira: los
+  /// proyectos de dirección y operaciones lo necesitan igual que una plaza.
+  proyectoId String?
+  proyecto   Proyecto? @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
 
   venueId String?
   venue   Venue?  @relation(fields: [venueId], references: [id])

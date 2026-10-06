@@ -2,7 +2,6 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { proveedoresParaShow } from "@/lib/advance-gira";
 import { fmtFechaLarga } from "@/lib/giras";
 import AdvanceTabla from "./AdvanceTabla";
 
@@ -39,8 +38,6 @@ export default async function AdvanceShowPage({
       riderLineas: {
         orderBy: [{ disciplina: "asc" }, { orden: "asc" }],
         include: {
-          proveedor: { select: { id: true, nombre: true, empresa: true } },
-          equipo: { select: { id: true, descripcion: true, marca: true, modelo: true } },
           riderLinea: {
             select: { id: true, concepto: true, cantidad: true, prioridad: true, preferido: true, aceptables: true },
           },
@@ -52,7 +49,6 @@ export default async function AdvanceShowPage({
   if (!show) notFound();
 
   const ciudad = show.ciudad ?? show.venue?.ciudad ?? null;
-  const proveedores = await proveedoresParaShow(ciudad);
 
   return (
     <div className="ms-page space-y-5 pb-16">
@@ -71,7 +67,6 @@ export default async function AdvanceShowPage({
       <AdvanceTabla
         showId={show.id}
         giraId={show.giraId}
-        ciudad={ciudad}
         venue={
           show.venue
             ? { id: show.venue.id, nombre: show.venue.nombre, itemsInventario: show.venue._count.inventario }
@@ -79,7 +74,6 @@ export default async function AdvanceShowPage({
         }
         tieneRider={!!show.gira.riderId}
         lineasIniciales={show.riderLineas}
-        proveedores={proveedores}
       />
     </div>
   );

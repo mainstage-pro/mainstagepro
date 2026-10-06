@@ -1,11 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Combobox } from "@/components/Combobox";
+import EstadoGuardado from "@/components/EstadoGuardado";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
+import { useAutoguardado } from "@/hooks/useAutoguardado";
 import {
   ESTADOS_GIRA,
   ESTADO_SHOW_COLOR,
@@ -89,6 +91,20 @@ interface Props {
   servicios: { clave: string; nombre: string; categoria: string | null }[];
 }
 
+interface Form {
+  nombre: string;
+  tipo: string;
+  estado: string;
+  fechaInicio: string;
+  fechaFin: string;
+  artistaId: string;
+  clienteId: string;
+  riderId: string;
+  contactoPrincipalId: string;
+  rolMainstage: string[];
+  notas: string;
+}
+
 function parseRoles(json: string | null): string[] {
   if (!json) return [];
   try {
@@ -99,12 +115,21 @@ function parseRoles(json: string | null): string[] {
   }
 }
 
+function Dato({ label, valor }: { label: string; valor: React.ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <p className="ms-micro">{label}</p>
+      <p className="text-[13px] text-white mt-0.5 break-words">{valor || <span className="text-[#555]">—</span>}</p>
+    </div>
+  );
+}
+
 export default function GiraResumenClient({ gira, shows, artistas, clientes, riders, personas, servicios }: Props) {
   const router = useRouter();
   const toast = useToast();
   const confirmar = useConfirm();
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<Form>({
     nombre: gira.nombre,
     tipo: gira.tipo,
     estado: gira.estado,
@@ -117,9 +142,51 @@ export default function GiraResumenClient({ gira, shows, artistas, clientes, rid
     rolMainstage: parseRoles(gira.rolMainstage),
     notas: gira.notas ?? "",
   });
-  const [guardando, setGuardando] = useState(false);
+  const [edicion, setEdicion] = useState(false);
 
   const tour = esGira(form.tipo);
+
+  const cuerpo = useCallback(
+    (f: Form) => ({
+      nombre: f.nombre.trim(),
+      tipo: f.tipo,
+      estado: f.estado,
+      fechaInicio: f.fechaInicio || null,
+      fechaFin: f.fechaFin || null,
+      artistaId: f.artistaId,
+      clienteId: f.clienteId || null,
+      riderId: f.riderId || null,
+      contactoPrincipalId: f.contactoPrincipalId || null,
+      rolMainstage: f.rolMainstage,
+      notas: f.notas,
+    }),
+    [],
+  );
+
+  const auto = useAutoguardado<Form>({
+    url: `/api/giras/${gira.id}`,
+    valor: form,
+    cuerpo,
+    activo: edicion,
+    validar: (f) => (f.nombre.trim() ? null : tour ? "La gira necesita nombre." : "El show necesita nombre."),
+    // Refrescar en cada guardado haría re-render del servidor con cada tecla: la
+    // lista y el encabezado se ponen al día cuando se cierra la edición.
+    onGuardado: () => {
+      if (!edicion) router.refresh();
+    },
+    onError: (m) => toast.error(m),
+  });
+
+  const sello = auto.pendiente && auto.estado === "guardado" ? "pendiente" : auto.estado;
+
+  function set(patch: Partial<Form>) {
+    setForm((p) => ({ ...p, ...patch }));
+  }
+
+  function cerrarEdicion() {
+    setEdicion(false);
+    auto.guardarYa();
+  }
 
   // Las fechas de la gira son editables, pero si no cuadran con los shows hay
   // que decirlo: es el error que descuadra viajes y hoteles.
@@ -134,6 +201,10 @@ export default function GiraResumenClient({ gira, shows, artistas, clientes, rid
       : null;
 
   const contacto = personas.find((p) => p.id === form.contactoPrincipalId) ?? null;
+  const artista = artistas.find((a) => a.id === form.artistaId) ?? null;
+  const cliente = clientes.find((c) => c.id === form.clienteId) ?? null;
+  const riderElegido = riders.find((r) => r.id === form.riderId) ?? null;
+  const serviciosElegidos = servicios.filter((s) => form.rolMainstage.includes(s.clave));
 
   // El equipo de una gira se cobra fecha por fecha; el total global es la suma, y las
   // fechas sin cotizar son justo lo que falta por cerrar.
@@ -144,44 +215,6 @@ export default function GiraResumenClient({ gira, shows, artistas, clientes, rid
     }),
     [shows],
   );
-
-  async function guardar() {
-    if (!form.nombre.trim()) {
-      toast.error("Necesita nombre.");
-      return;
-    }
-    setGuardando(true);
-    try {
-      const res = await fetch(`/api/giras/${gira.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nombre: form.nombre.trim(),
-          tipo: form.tipo,
-          estado: form.estado,
-          fechaInicio: form.fechaInicio || null,
-          fechaFin: form.fechaFin || null,
-          artistaId: form.artistaId,
-          clienteId: form.clienteId || null,
-          riderId: form.riderId || null,
-          contactoPrincipalId: form.contactoPrincipalId || null,
-          rolMainstage: form.rolMainstage,
-          notas: form.notas,
-        }),
-      });
-      const d = await res.json();
-      if (!res.ok) {
-        toast.error(d.error ?? "No se pudo guardar.");
-        return;
-      }
-      toast.success(tour ? "Gira actualizada" : "Show actualizado");
-      router.refresh();
-    } catch {
-      toast.error("No se pudo guardar.");
-    } finally {
-      setGuardando(false);
-    }
-  }
 
   async function archivar() {
     const ok = await confirmar({
@@ -212,222 +245,309 @@ export default function GiraResumenClient({ gira, shows, artistas, clientes, rid
     <div className="ms-page space-y-4">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <section className="ms-card p-4 lg:col-span-2">
-          <div className="flex items-center justify-between gap-2 mb-3.5">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3.5">
             <h2 className="ms-section-label">{tour ? "Ficha de la gira" : "Ficha del show"}</h2>
-            <button onClick={guardar} disabled={guardando} className="ms-btn-primary disabled:opacity-50">
-              {guardando ? "Guardando…" : "Guardar"}
-            </button>
-          </div>
-
-          <div className="space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-[2fr_1fr_1fr] gap-3">
-              <div>
-                <label className="ms-label block mb-1.5">Nombre</label>
-                <input
-                  value={form.nombre}
-                  onChange={(e) => setForm((p) => ({ ...p, nombre: e.target.value }))}
-                  className="ms-input w-full"
-                />
-              </div>
-              <div>
-                <label className="ms-label block mb-1.5">Es</label>
-                <select
-                  value={form.tipo}
-                  onChange={(e) => setForm((p) => ({ ...p, tipo: e.target.value }))}
-                  className="ms-input w-full"
-                >
-                  {TIPOS_REGISTRO.map((t) => (
-                    <option key={t} value={t}>
-                      {TIPO_REGISTRO_LABEL[t]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="ms-label block mb-1.5">Estado</label>
-                <select
-                  value={form.estado}
-                  onChange={(e) => setForm((p) => ({ ...p, estado: e.target.value }))}
-                  className="ms-input w-full"
-                >
-                  {ESTADOS_GIRA.map((e) => (
-                    <option key={e} value={e}>
-                      {estadoRegistroLabel(e, form.tipo)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 ${tour ? "" : "hidden"}`}>
-              <div>
-                <label className="ms-label block mb-1.5">Primera fecha</label>
-                <input
-                  type="date"
-                  value={form.fechaInicio}
-                  onChange={(e) => setForm((p) => ({ ...p, fechaInicio: e.target.value }))}
-                  className="ms-input w-full"
-                />
-              </div>
-              <div>
-                <label className="ms-label block mb-1.5">Última fecha</label>
-                <input
-                  type="date"
-                  value={form.fechaFin}
-                  onChange={(e) => setForm((p) => ({ ...p, fechaFin: e.target.value }))}
-                  className="ms-input w-full"
-                />
-              </div>
-            </div>
-
-            {!tour && shows[0] && (
-              <div className="flex flex-wrap items-center justify-between gap-2 ms-card-inset px-3 py-2">
-                <p className="ms-meta">
-                  Fecha: <span className="text-white">{fmtFechaCorta(shows[0].fecha)}</span>
-                </p>
-                <Link
-                  href={`/giras/${gira.id}/show/${shows[0].id}`}
-                  className="ms-micro text-[#B3985B] hover:text-white transition-colors"
-                >
-                  La manda el show →
-                </Link>
-              </div>
-            )}
-
-            {tour && descuadre && derivadas && (
-              <div className="flex flex-wrap items-center gap-2 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2">
-                <p className="text-amber-300 text-xs flex-1 min-w-0">{descuadre}</p>
-                <button
-                  onClick={() => setForm((p) => ({ ...p, fechaInicio: derivadas.inicio, fechaFin: derivadas.fin }))}
-                  className="ms-micro text-amber-300 hover:text-white transition-colors shrink-0"
-                >
-                  Usar las fechas de los shows
+            <div className="flex items-center gap-3 shrink-0">
+              {(edicion || auto.estado !== "limpio") && (
+                <EstadoGuardado estado={sello} onReintentar={auto.guardarYa} />
+              )}
+              {edicion ? (
+                <button onClick={cerrarEdicion} className="ms-btn-secondary">
+                  Listo
                 </button>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="ms-label block mb-1.5">Artista</label>
-                <Combobox
-                  value={form.artistaId}
-                  onChange={(v) => setForm((p) => ({ ...p, artistaId: v }))}
-                  options={artistas.map((a) => ({ value: a.id, label: a.nombre }))}
-                  placeholder="Elige el artista…"
-                />
-              </div>
-              <div>
-                <label className="ms-label block mb-1.5">Cliente que contrata</label>
-                <Combobox
-                  value={form.clienteId}
-                  onChange={(v) => setForm((p) => ({ ...p, clienteId: v }))}
-                  options={clientes.map((c) => ({
-                    value: c.id,
-                    label: c.empresa ? `${c.nombre} — ${c.empresa}` : c.nombre,
-                  }))}
-                  placeholder="Sin cliente"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="ms-label block mb-1.5">Rider maestro</label>
-                <select
-                  value={form.riderId}
-                  onChange={(e) => setForm((p) => ({ ...p, riderId: e.target.value }))}
-                  className="ms-input w-full"
-                >
-                  <option value="">Sin rider ligado</option>
-                  {riders.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      v{r.version} · {r.nombre}
-                      {r.esActivo ? " (vigente)" : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="ms-label block mb-1.5">Contacto principal del artista</label>
-                <select
-                  value={form.contactoPrincipalId}
-                  onChange={(e) => setForm((p) => ({ ...p, contactoPrincipalId: e.target.value }))}
-                  className="ms-input w-full"
-                >
-                  <option value="">Sin contacto</option>
-                  {personas.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.nombre} — {ROL_PERSONA_LABEL[p.rol] ?? p.rol}
-                    </option>
-                  ))}
-                </select>
-                {contacto && (
-                  <p className="ms-meta mt-1.5">
-                    {[contacto.telefono, contacto.email].filter(Boolean).join(" · ") || "Sin teléfono ni correo capturado"}
-                  </p>
-                )}
-                {personas.length === 0 && (
-                  <p className="ms-meta mt-1.5">
-                    El artista no tiene personas registradas.{" "}
-                    <Link href={`/giras/artista/${gira.artistaId}`} className="ms-link-gold">
-                      Capturarlas
-                    </Link>
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <label className="ms-label block mb-1.5">
-                {tour ? "Lo que asume Mainstage en esta gira" : "Lo que asume Mainstage en este show"}
-              </label>
-              {servicios.length === 0 ? (
-                <p className="ms-meta">
-                  Todavía no hay catálogo de servicios de production management.{" "}
-                  <Link href="/giras/servicios" className="ms-link-gold">
-                    Armarlo
-                  </Link>
-                </p>
               ) : (
-                <div className="flex flex-wrap gap-1.5">
-                  {servicios.map((s) => {
-                    const activo = form.rolMainstage.includes(s.clave);
-                    return (
-                      <button
-                        key={s.clave}
-                        type="button"
-                        onClick={() => toggleRol(s.clave)}
-                        className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
-                          activo
-                            ? "bg-[#B3985B]/15 text-[#B3985B] border-[#B3985B]/40"
-                            : "bg-white/5 text-[#9ca3af] border-white/10 hover:text-white"
-                        }`}
-                      >
-                        {s.nombre}
-                      </button>
-                    );
-                  })}
-                </div>
+                <button onClick={() => setEdicion(true)} className="ms-btn-primary">
+                  Editar
+                </button>
               )}
             </div>
-
-            <div>
-              <label className="ms-label block mb-1.5">Notas</label>
-              <textarea
-                value={form.notas}
-                onChange={(e) => setForm((p) => ({ ...p, notas: e.target.value }))}
-                rows={3}
-                placeholder="Acuerdos, pendientes con el manager, lo que no cabe en otro campo…"
-                className="ms-textarea w-full"
-              />
-            </div>
-
-            <div className="flex justify-end pt-1">
-              <button onClick={archivar} className="ms-btn-ghost text-red-400/80 hover:text-red-300">
-                {tour ? "Archivar gira" : "Archivar show"}
-              </button>
-            </div>
           </div>
+
+          {auto.error && (
+            <p className="text-red-400 text-xs bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2 mb-3">
+              {auto.error}
+            </p>
+          )}
+
+          {edicion ? (
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-[2fr_1fr_1fr] gap-3">
+                <div>
+                  <label className="ms-label block mb-1.5">Nombre</label>
+                  <input value={form.nombre} onChange={(e) => set({ nombre: e.target.value })} className="ms-input w-full" />
+                </div>
+                <div>
+                  <label className="ms-label block mb-1.5">Es</label>
+                  <select value={form.tipo} onChange={(e) => set({ tipo: e.target.value })} className="ms-input w-full">
+                    {TIPOS_REGISTRO.map((t) => (
+                      <option key={t} value={t}>
+                        {TIPO_REGISTRO_LABEL[t]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="ms-label block mb-1.5">Estado</label>
+                  <select value={form.estado} onChange={(e) => set({ estado: e.target.value })} className="ms-input w-full">
+                    {ESTADOS_GIRA.map((e) => (
+                      <option key={e} value={e}>
+                        {estadoRegistroLabel(e, form.tipo)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 ${tour ? "" : "hidden"}`}>
+                <div>
+                  <label className="ms-label block mb-1.5">Primera fecha</label>
+                  <input
+                    type="date"
+                    value={form.fechaInicio}
+                    onChange={(e) => set({ fechaInicio: e.target.value })}
+                    className="ms-input w-full"
+                  />
+                </div>
+                <div>
+                  <label className="ms-label block mb-1.5">Última fecha</label>
+                  <input
+                    type="date"
+                    value={form.fechaFin}
+                    onChange={(e) => set({ fechaFin: e.target.value })}
+                    className="ms-input w-full"
+                  />
+                </div>
+              </div>
+
+              {tour && descuadre && derivadas && (
+                <div className="flex flex-wrap items-center gap-2 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2">
+                  <p className="text-amber-300 text-xs flex-1 min-w-0">{descuadre}</p>
+                  <button
+                    onClick={() => set({ fechaInicio: derivadas.inicio, fechaFin: derivadas.fin })}
+                    className="ms-micro text-amber-300 hover:text-white transition-colors shrink-0"
+                  >
+                    Usar las fechas de los shows
+                  </button>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="ms-label block mb-1.5">Artista</label>
+                  <Combobox
+                    value={form.artistaId}
+                    onChange={(v) => set({ artistaId: v })}
+                    options={artistas.map((a) => ({ value: a.id, label: a.nombre }))}
+                    placeholder="Elige el artista…"
+                  />
+                </div>
+                <div>
+                  <label className="ms-label block mb-1.5">Cliente que contrata</label>
+                  <Combobox
+                    value={form.clienteId}
+                    onChange={(v) => set({ clienteId: v })}
+                    options={clientes.map((c) => ({
+                      value: c.id,
+                      label: c.empresa ? `${c.nombre} — ${c.empresa}` : c.nombre,
+                    }))}
+                    placeholder="Sin cliente"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="ms-label block mb-1.5">Rider maestro</label>
+                  <select value={form.riderId} onChange={(e) => set({ riderId: e.target.value })} className="ms-input w-full">
+                    <option value="">Sin rider ligado</option>
+                    {riders.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        v{r.version} · {r.nombre}
+                        {r.esActivo ? " (vigente)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="ms-label block mb-1.5">Contacto principal del artista</label>
+                  <select
+                    value={form.contactoPrincipalId}
+                    onChange={(e) => set({ contactoPrincipalId: e.target.value })}
+                    className="ms-input w-full"
+                  >
+                    <option value="">Sin contacto</option>
+                    {personas.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.nombre} — {ROL_PERSONA_LABEL[p.rol] ?? p.rol}
+                      </option>
+                    ))}
+                  </select>
+                  {contacto && (
+                    <p className="ms-meta mt-1.5">
+                      {[contacto.telefono, contacto.email].filter(Boolean).join(" · ") ||
+                        "Sin teléfono ni correo capturado"}
+                    </p>
+                  )}
+                  {personas.length === 0 && (
+                    <p className="ms-meta mt-1.5">
+                      El artista no tiene personas registradas.{" "}
+                      <Link href={`/giras/artista/${gira.artistaId}`} className="ms-link-gold">
+                        Capturarlas
+                      </Link>
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="ms-label block mb-1.5">
+                  {tour ? "Lo que asume Mainstage en esta gira" : "Lo que asume Mainstage en este show"}
+                </label>
+                {servicios.length === 0 ? (
+                  <p className="ms-meta">
+                    Todavía no hay catálogo de servicios de production management.{" "}
+                    <Link href="/giras/servicios" className="ms-link-gold">
+                      Armarlo
+                    </Link>
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5">
+                    {servicios.map((s) => {
+                      const activo = form.rolMainstage.includes(s.clave);
+                      return (
+                        <button
+                          key={s.clave}
+                          type="button"
+                          onClick={() => toggleRol(s.clave)}
+                          className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
+                            activo
+                              ? "bg-[#B3985B]/15 text-[#B3985B] border-[#B3985B]/40"
+                              : "bg-white/5 text-[#9ca3af] border-white/10 hover:text-white"
+                          }`}
+                        >
+                          {s.nombre}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="ms-label block mb-1.5">Notas</label>
+                <textarea
+                  value={form.notas}
+                  onChange={(e) => set({ notas: e.target.value })}
+                  rows={3}
+                  placeholder="Acuerdos, pendientes con el manager, lo que no cabe en otro campo…"
+                  className="ms-textarea w-full"
+                />
+              </div>
+
+              <div className="flex justify-end pt-1">
+                <button onClick={archivar} className="ms-btn-ghost text-red-400/80 hover:text-red-300">
+                  {tour ? "Archivar gira" : "Archivar show"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3.5">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="col-span-2 min-w-0">
+                  <p className="ms-micro">Nombre</p>
+                  <p className="text-sm text-white mt-0.5 break-words">{form.nombre}</p>
+                </div>
+                <Dato label="Es" valor={TIPO_REGISTRO_LABEL[form.tipo] ?? form.tipo} />
+                <Dato label="Estado" valor={estadoRegistroLabel(form.estado, form.tipo)} />
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {tour ? (
+                  <>
+                    <Dato label="Primera fecha" valor={form.fechaInicio ? fmtFechaCorta(form.fechaInicio) : null} />
+                    <Dato label="Última fecha" valor={form.fechaFin ? fmtFechaCorta(form.fechaFin) : null} />
+                  </>
+                ) : (
+                  <Dato label="Fecha" valor={shows[0] ? fmtFechaCorta(shows[0].fecha) : null} />
+                )}
+                <Dato label="Artista" valor={artista?.nombre ?? gira.artistaNombre} />
+                <Dato label="Cliente que contrata" valor={cliente ? cliente.empresa || cliente.nombre : null} />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Dato
+                  label="Rider maestro"
+                  valor={
+                    riderElegido
+                      ? `v${riderElegido.version} · ${riderElegido.nombre}${riderElegido.esActivo ? " (vigente)" : ""}`
+                      : null
+                  }
+                />
+                <Dato
+                  label="Contacto principal del artista"
+                  valor={
+                    contacto ? (
+                      <>
+                        {contacto.nombre}
+                        <span className="text-[#6b7280]">
+                          {" · "}
+                          {ROL_PERSONA_LABEL[contacto.rol] ?? contacto.rol}
+                        </span>
+                        {[contacto.telefono, contacto.email].filter(Boolean).length > 0 && (
+                          <span className="block ms-meta mt-0.5">
+                            {[contacto.telefono, contacto.email].filter(Boolean).join(" · ")}
+                          </span>
+                        )}
+                      </>
+                    ) : null
+                  }
+                />
+              </div>
+
+              {!tour && shows[0] && (
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <Link href={`/giras/${gira.id}/show/${shows[0].id}`} className="ms-micro ms-link-gold">
+                    La fecha la manda el show →
+                  </Link>
+                </div>
+              )}
+
+              {tour && descuadre && (
+                <p className="text-amber-300 text-xs bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2">
+                  {descuadre}
+                </p>
+              )}
+
+              <div>
+                <p className="ms-micro mb-1.5">
+                  {tour ? "Lo que asume Mainstage en esta gira" : "Lo que asume Mainstage en este show"}
+                </p>
+                {serviciosElegidos.length === 0 ? (
+                  <p className="ms-meta">Sin servicios marcados.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5">
+                    {serviciosElegidos.map((s) => (
+                      <span
+                        key={s.clave}
+                        className="text-[11px] px-2.5 py-1 rounded-full border bg-[#B3985B]/15 text-[#B3985B] border-[#B3985B]/40"
+                      >
+                        {s.nombre}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <p className="ms-micro">Notas</p>
+                {form.notas.trim() ? (
+                  <p className="text-[13px] text-white mt-0.5 whitespace-pre-wrap">{form.notas}</p>
+                ) : (
+                  <p className="ms-meta mt-0.5">Sin notas.</p>
+                )}
+              </div>
+            </div>
+          )}
         </section>
 
         <section className="ms-card p-4 h-fit">
@@ -466,8 +586,11 @@ export default function GiraResumenClient({ gira, shows, artistas, clientes, rid
                 </p>
               )}
 
-              <Link href={`/giras/artista/${gira.artistaId}`} className="ms-btn-secondary block w-full text-center">
-                Editar el rider del artista
+              <Link
+                href={`/giras/artista/${gira.artistaId}/rider/${gira.rider.id}`}
+                className="ms-btn-secondary block w-full text-center"
+              >
+                Abrir el rider
               </Link>
             </div>
           ) : (

@@ -15,7 +15,13 @@ export default async function ShowResumenPage({ params }: { params: Promise<{ id
   const show = await prisma.giraShow.findUnique({
     where: { id: showId },
     include: {
-      venue: true,
+      venue: { include: { _count: { select: { inventario: true } } } },
+      gira: {
+        select: {
+          artistaId: true,
+          rider: { select: { id: true, nombre: true, version: true } },
+        },
+      },
       riderLineas: { select: { prioridad: true, estado: true, cubiertoPor: true } },
       proyecto: { select: { id: true, numeroProyecto: true } },
       cotizaciones: {
@@ -29,13 +35,27 @@ export default async function ShowResumenPage({ params }: { params: Promise<{ id
         },
         orderBy: { createdAt: "asc" },
       },
-      _count: { select: { crew: true, bloques: true, archivos: true } },
+      _count: { select: { crew: true, momentos: true, archivos: true } },
     },
   });
 
   if (!show || show.giraId !== id) notFound();
 
   const resumen = resumirAdvance(show.riderLineas);
+
+  // Si la gira no tiene rider amarrado se ofrece el vigente del artista, marcado
+  // como tal: es contra ese documento que se lee la ficha técnica del foro.
+  const riderArtista = show.gira.rider
+    ? null
+    : await prisma.artistaRider.findFirst({
+        where: { artistaId: show.gira.artistaId, activo: true, esActivo: true },
+        select: { id: true, nombre: true, version: true },
+      });
+  const rider = show.gira.rider
+    ? { ...show.gira.rider, deLaGira: true }
+    : riderArtista
+      ? { ...riderArtista, deLaGira: false }
+      : null;
 
   const venue: VenueFicha | null = show.venue
     ? {
@@ -65,12 +85,15 @@ export default async function ShowResumenPage({ params }: { params: Promise<{ id
         contactoTecnicoEmail: show.venue.contactoTecnicoEmail,
         riderCasaUrl: show.venue.riderCasaUrl,
         notasTecnicas: show.venue.notasTecnicas,
+        conceptos: show.venue._count.inventario,
       }
     : null;
 
   const detalle: ShowDetalle = {
     id: show.id,
     giraId: show.giraId,
+    artistaId: show.gira.artistaId,
+    rider,
     fecha: show.fecha.toISOString(),
     ciudad: show.ciudad,
     venueId: show.venueId,
@@ -78,15 +101,6 @@ export default async function ShowResumenPage({ params }: { params: Promise<{ id
     estado: show.estado,
     tipoShow: show.tipoShow,
     aforoEsperado: show.aforoEsperado,
-    horaLoadIn: show.horaLoadIn,
-    horaMontaje: show.horaMontaje,
-    horaLineCheck: show.horaLineCheck,
-    horaSoundcheck: show.horaSoundcheck,
-    horaDoors: show.horaDoors,
-    horaShow: show.horaShow,
-    horaFin: show.horaFin,
-    horaLoadOut: show.horaLoadOut,
-    curfew: show.curfew,
     promotorNombre: show.promotorNombre,
     promotorContacto: show.promotorContacto,
     promotorTelefono: show.promotorTelefono,
@@ -98,7 +112,7 @@ export default async function ShowResumenPage({ params }: { params: Promise<{ id
     riderEnviadoEn: show.riderEnviadoEn?.toISOString() ?? null,
     advanceCerradoEn: show.advanceCerradoEn?.toISOString() ?? null,
     crew: show._count.crew,
-    bloques: show._count.bloques,
+    momentos: show._count.momentos,
     archivos: show._count.archivos,
     proyecto: show.proyecto,
     cotizaciones: show.cotizaciones.map((c) => ({

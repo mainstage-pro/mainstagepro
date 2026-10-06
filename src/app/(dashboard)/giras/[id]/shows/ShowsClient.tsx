@@ -40,7 +40,7 @@ export interface ShowEditable {
   notas: string | null;
   riderEnviado: boolean;
   crew: number;
-  bloques: number;
+  momentos: number;
   renglones: number;
   avance: number;
   semaforo: string;
@@ -94,7 +94,7 @@ const VENUE_NUEVO: VenueBorrador = {
 
 const SHOW_NUEVO: ShowBorrador = {
   fecha: "",
-  tipoShow: "HEADLINE",
+  tipoShow: "CONCIERTO",
   estado: "POR_CONFIRMAR",
   aforoEsperado: "",
   notas: "",
@@ -356,11 +356,11 @@ export default function ShowsClient({ giraId, shows }: { giraId: string; shows: 
   }
 
   async function quitar(s: ShowEditable, g: Grupo) {
-    const arrastra = s.renglones > 0 || s.crew > 0 || s.bloques > 0;
+    const arrastra = s.renglones > 0 || s.crew > 0 || s.momentos > 0;
     const ok = await confirmar({
       title: "Quitar el show",
       message: arrastra
-        ? `Se borran también sus ${s.renglones} renglones de advance, ${s.crew} de crew y ${s.bloques} bloques del día. No se puede deshacer.`
+        ? `Se borran también sus ${s.renglones} renglones de advance, ${s.crew} de crew y ${s.momentos} momentos del día. No se puede deshacer.`
         : g.shows.length === 1
           ? "Es el único show de este venue, así que el venue sale del registro. No se puede deshacer."
           : "El show se borra del registro. No se puede deshacer.",

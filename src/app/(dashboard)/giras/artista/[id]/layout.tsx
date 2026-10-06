@@ -45,9 +45,9 @@ export default async function ArtistaLayout({
   const personas = await prisma.artistaPersona.count({ where: { artistaId: id, activo: true } });
 
   const enlaces: EnlaceSub[] = [
-    { href: `/giras/artista/${id}`, label: "Datos generales", exacto: true },
-    { href: `/giras/artista/${id}/personas`, label: "Personas" },
-    { href: `/giras/artista/${id}/riders`, label: "Riders" },
+    { href: `/giras/artista/${id}`, label: "Datos generales", llave: "datos", exacto: true },
+    { href: `/giras/artista/${id}/personas`, label: "Personas", llave: "personas" },
+    { href: `/giras/artista/${id}/riders`, label: "Riders", llave: "riders" },
   ];
 
   return (

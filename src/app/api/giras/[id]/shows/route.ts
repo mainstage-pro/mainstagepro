@@ -34,7 +34,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     include: {
       venue: { select: { id: true, nombre: true, ciudad: true, estado: true, capacidadPersonas: true } },
       riderLineas: { select: { prioridad: true, estado: true, cubiertoPor: true } },
-      _count: { select: { crew: true, bloques: true } },
+      _count: { select: { crew: true, momentos: true } },
     },
   });
 

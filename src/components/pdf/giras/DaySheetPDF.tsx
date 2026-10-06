@@ -13,13 +13,16 @@ import {
 } from "./GiraDocBase";
 import { fmtHora } from "../PdfShared";
 
-export interface DaySheetBloque {
+/// Un momento del día. La corrida completa y la banda de horas de arriba salen
+/// de esta misma lista: el esqueleto del día (`esAncla`) ya no vive aparte.
+export interface DaySheetMomento {
   id: string;
   hora: string | null;
   horaFin: string | null;
   titulo: string;
   tipoLabel: string;
   duracion: string;
+  esAncla: boolean;
   responsable: string | null;
   lugar: string | null;
   notas: string | null;
@@ -81,6 +84,8 @@ export interface DaySheetData {
     horarioCarga: string | null;
     restriccionHorario: string | null;
   } | null;
+  /// Las horas del esqueleto, buscadas por llave entre los momentos. Es lo que
+  /// va en la banda de arriba; los renglones completos van en `momentos`.
   horas: {
     loadIn: string | null;
     montaje: string | null;
@@ -92,11 +97,10 @@ export interface DaySheetData {
     loadOut: string | null;
     curfew: string | null;
   };
-  bloques: DaySheetBloque[];
-  /// true cuando la corrida se armó con los horarios gruesos del show porque
-  /// nadie ha capturado bloques: el documento lo dice para que no se lea como
-  /// un day sheet terminado.
-  bloquesDerivados: boolean;
+  momentos: DaySheetMomento[];
+  /// true cuando el día tiene momentos pero ninguno tiene hora: el documento lo
+  /// dice para que no se lea como un day sheet terminado.
+  sinHoras: boolean;
   crew: DaySheetPersona[];
   contactos: DaySheetContacto[];
   viajes: DaySheetViaje[];
@@ -111,7 +115,7 @@ export interface DaySheetData {
 
 const COLS_CORRIDA: ColumnaTabla[] = [
   { label: "Hora", ancho: 48 },
-  { label: "Bloque", flex: 3 },
+  { label: "Momento", flex: 3 },
   { label: "Responsable", flex: 2 },
   { label: "Dónde", flex: 2 },
 ];
@@ -177,18 +181,18 @@ export function DaySheetPDF({ data }: { data: DaySheetData }) {
     { label: "Restricción de horario", valor: data.venue?.restriccionHorario ?? "—", ancho: 4 },
   ];
 
-  const corrida: RenglonTabla[] = data.bloques.map((b) => {
+  const corrida: RenglonTabla[] = data.momentos.map((m) => {
     const celdas: CeldaTabla[] = [
       {
-        texto: fmtHora(b.hora) || "—",
-        sub: b.horaFin ? fmtHora(b.horaFin) : b.duracion !== "—" ? b.duracion : null,
+        texto: fmtHora(m.hora) || "—",
+        sub: m.horaFin ? fmtHora(m.horaFin) : m.duracion !== "—" ? m.duracion : null,
         fuerte: true,
       },
-      { texto: b.titulo, sub: [b.tipoLabel, b.notas].filter(Boolean).join(" · ") || null, fuerte: true },
-      { texto: b.responsable ?? "—" },
-      { texto: b.lugar ?? "—" },
+      { texto: m.titulo, sub: [m.tipoLabel, m.notas].filter(Boolean).join(" · ") || null, fuerte: true },
+      { texto: m.responsable ?? "—" },
+      { texto: m.lugar ?? "—" },
     ];
-    return { tipo: "fila", clave: b.id, celdas };
+    return { tipo: "fila", clave: m.id, celdas };
   });
 
   const crew: RenglonTabla[] = data.crew.map((p) => ({
@@ -263,8 +267,8 @@ export function DaySheetPDF({ data }: { data: DaySheetData }) {
           <Seccion
             titulo="Corrida del día"
             nota={
-              data.bloquesDerivados
-                ? "Armada con los horarios gruesos del show: todavía no hay bloques capturados en el día del show."
+              data.sinHoras
+                ? "Los momentos del día están puestos pero ninguno tiene hora todavía: esto no es un day sheet cerrado."
                 : null
             }
           >

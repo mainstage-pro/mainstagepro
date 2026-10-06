@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import HoraInput from "@/components/ui/HoraInput";
+import MomentosAncla from "@/components/giras/MomentosAncla";
 import VenuePicker from "@/components/ui/VenuePicker";
+import EstadoGuardado from "@/components/EstadoGuardado";
+import { useRouter } from "next/navigation";
 import { useToast } from "@/components/Toast";
+import { useAutoguardado } from "@/hooks/useAutoguardado";
 import {
   ESTADOS_SHOW,
   ESTADO_SHOW_LABEL,
@@ -46,11 +48,14 @@ export interface VenueFicha {
   contactoTecnicoEmail: string | null;
   riderCasaUrl: string | null;
   notasTecnicas: string | null;
+  /// Renglones de VenueInventario: lo que ya está documentado de este foro.
+  conceptos: number;
 }
 
 export interface ShowDetalle {
   id: string;
   giraId: string;
+  artistaId: string;
   fecha: string;
   ciudad: string | null;
   venueId: string | null;
@@ -58,15 +63,6 @@ export interface ShowDetalle {
   estado: string;
   tipoShow: string | null;
   aforoEsperado: number | null;
-  horaLoadIn: string | null;
-  horaMontaje: string | null;
-  horaLineCheck: string | null;
-  horaSoundcheck: string | null;
-  horaDoors: string | null;
-  horaShow: string | null;
-  horaFin: string | null;
-  horaLoadOut: string | null;
-  curfew: string | null;
   promotorNombre: string | null;
   promotorContacto: string | null;
   promotorTelefono: string | null;
@@ -78,8 +74,11 @@ export interface ShowDetalle {
   riderEnviadoEn: string | null;
   advanceCerradoEn: string | null;
   crew: number;
-  bloques: number;
+  momentos: number;
   archivos: number;
+  /// El rider contra el que se cotejó la ficha del foro: el de la gira si lo tiene,
+  /// y si no el vigente del artista.
+  rider: { id: string; version: number; nombre: string; deLaGira: boolean } | null;
   // Lo que se cobra y lo que se opera en esta fecha. El proyecto del show no se
   // captura: nace de aprobar o adelantar una de sus cotizaciones.
   proyecto: { id: string; numeroProyecto: string } | null;
@@ -93,19 +92,6 @@ export interface ShowDetalle {
   }[];
 }
 
-/// El orden es la jornada real: así se lee como un day sheet, no como un formulario.
-const HORARIOS: { campo: keyof Form; label: string }[] = [
-  { campo: "horaLoadIn", label: "Load in" },
-  { campo: "horaMontaje", label: "Montaje" },
-  { campo: "horaLineCheck", label: "Line check" },
-  { campo: "horaSoundcheck", label: "Soundcheck" },
-  { campo: "horaDoors", label: "Apertura de puertas" },
-  { campo: "horaShow", label: "Show" },
-  { campo: "horaFin", label: "Fin del show" },
-  { campo: "horaLoadOut", label: "Load out" },
-  { campo: "curfew", label: "Curfew" },
-];
-
 interface Form {
   fecha: string;
   ciudad: string;
@@ -114,15 +100,6 @@ interface Form {
   estado: string;
   tipoShow: string;
   aforoEsperado: string;
-  horaLoadIn: string;
-  horaMontaje: string;
-  horaLineCheck: string;
-  horaSoundcheck: string;
-  horaDoors: string;
-  horaShow: string;
-  horaFin: string;
-  horaLoadOut: string;
-  curfew: string;
   promotorNombre: string;
   promotorContacto: string;
   promotorTelefono: string;
@@ -142,15 +119,6 @@ function aForm(s: ShowDetalle): Form {
     estado: s.estado,
     tipoShow: s.tipoShow ?? "",
     aforoEsperado: s.aforoEsperado?.toString() ?? "",
-    horaLoadIn: s.horaLoadIn ?? "",
-    horaMontaje: s.horaMontaje ?? "",
-    horaLineCheck: s.horaLineCheck ?? "",
-    horaSoundcheck: s.horaSoundcheck ?? "",
-    horaDoors: s.horaDoors ?? "",
-    horaShow: s.horaShow ?? "",
-    horaFin: s.horaFin ?? "",
-    horaLoadOut: s.horaLoadOut ?? "",
-    curfew: s.curfew ?? "",
     promotorNombre: s.promotorNombre ?? "",
     promotorContacto: s.promotorContacto ?? "",
     promotorTelefono: s.promotorTelefono ?? "",
@@ -163,6 +131,17 @@ function aForm(s: ShowDetalle): Form {
 }
 
 function Dato({ label, valor }: { label: string; valor: React.ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <p className="ms-micro">{label}</p>
+      <p className="text-[13px] text-white mt-0.5 break-words">{valor || <span className="text-[#555]">—</span>}</p>
+    </div>
+  );
+}
+
+/// Solo pinta lo que el foro tiene capturado: un hueco en la ficha técnica es el
+/// dato que hay que ir a conseguir, no un renglón vacío más.
+function DatoForo({ label, valor }: { label: string; valor: React.ReactNode }) {
   if (valor === null || valor === undefined || valor === "") return null;
   return (
     <div className="min-w-0">
@@ -183,74 +162,66 @@ export default function ShowResumenClient({
 }) {
   const router = useRouter();
   const toast = useToast();
+
   const [form, setForm] = useState<Form>(aForm(show));
-  const [guardando, setGuardando] = useState(false);
+  const [edicion, setEdicion] = useState(false);
   const [sellando, setSellando] = useState(false);
   const [cotizando, setCotizando] = useState(false);
 
   const base = `/giras/${show.giraId}/show/${show.id}`;
 
+  const cuerpo = useCallback(
+    (f: Form) => ({
+      fecha: f.fecha,
+      ciudad: f.ciudad,
+      venueId: f.venueId,
+      estado: f.estado,
+      tipoShow: f.tipoShow || null,
+      aforoEsperado: f.aforoEsperado === "" ? null : Number(f.aforoEsperado),
+      promotorNombre: f.promotorNombre,
+      promotorContacto: f.promotorContacto,
+      promotorTelefono: f.promotorTelefono,
+      promotorEmail: f.promotorEmail,
+      contactoCasaNombre: f.contactoCasaNombre,
+      contactoCasaTelefono: f.contactoCasaTelefono,
+      contactoCasaEmail: f.contactoCasaEmail,
+      notas: f.notas,
+    }),
+    [],
+  );
+
+  const auto = useAutoguardado<Form>({
+    url: `/api/gira-shows/${show.id}`,
+    valor: form,
+    cuerpo,
+    activo: edicion,
+    validar: (f) => (f.fecha ? null : "El show necesita fecha."),
+    // Cambiar fecha, ciudad o venue mueve el encabezado y el orden de la gira; eso
+    // se recarga al cerrar la edición, no con cada tecla.
+    onGuardado: () => {
+      if (!edicion) router.refresh();
+    },
+    onError: (m) => toast.error(m),
+  });
+
+  const sello = auto.pendiente && auto.estado === "guardado" ? "pendiente" : auto.estado;
+
   function set(patch: Partial<Form>) {
     setForm((p) => ({ ...p, ...patch }));
   }
 
-  async function guardar() {
-    if (!form.fecha) {
-      toast.error("El show necesita fecha.");
-      return;
-    }
-    setGuardando(true);
-    try {
-      const res = await fetch(`/api/gira-shows/${show.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fecha: form.fecha,
-          ciudad: form.ciudad,
-          venueId: form.venueId,
-          estado: form.estado,
-          tipoShow: form.tipoShow || null,
-          aforoEsperado: form.aforoEsperado === "" ? null : Number(form.aforoEsperado),
-          horaLoadIn: form.horaLoadIn,
-          horaMontaje: form.horaMontaje,
-          horaLineCheck: form.horaLineCheck,
-          horaSoundcheck: form.horaSoundcheck,
-          horaDoors: form.horaDoors,
-          horaShow: form.horaShow,
-          horaFin: form.horaFin,
-          horaLoadOut: form.horaLoadOut,
-          curfew: form.curfew,
-          promotorNombre: form.promotorNombre,
-          promotorContacto: form.promotorContacto,
-          promotorTelefono: form.promotorTelefono,
-          promotorEmail: form.promotorEmail,
-          contactoCasaNombre: form.contactoCasaNombre,
-          contactoCasaTelefono: form.contactoCasaTelefono,
-          contactoCasaEmail: form.contactoCasaEmail,
-          notas: form.notas,
-        }),
-      });
-      const d = await res.json();
-      if (!res.ok) {
-        toast.error(d.error ?? "No se pudo guardar el show.");
-        return;
-      }
-      toast.success("Show actualizado");
-      router.refresh();
-    } catch {
-      toast.error("No se pudo guardar el show.");
-    } finally {
-      setGuardando(false);
-    }
+  function cerrarEdicion() {
+    setEdicion(false);
+    auto.guardarYa();
   }
 
-  async function sellar(cuerpo: Record<string, boolean>, hecho: string) {
+  async function sellar(cuerpoSello: Record<string, boolean>, hecho: string) {
     setSellando(true);
     try {
       const res = await fetch(`/api/gira-shows/${show.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(cuerpo),
+        body: JSON.stringify(cuerpoSello),
       });
       if (!res.ok) {
         toast.error("No se pudo registrar.");
@@ -285,186 +256,344 @@ export default function ShowResumenClient({
   const aforoDescuadra =
     form.aforoEsperado !== "" && venue?.capacidadPersonas && Number(form.aforoEsperado) > venue.capacidadPersonas;
 
+  const corriente =
+    [venue?.voltajeDisponible, venue?.amperajeTotal ? `${venue.amperajeTotal} A` : null, venue?.fases]
+      .filter(Boolean)
+      .join(" · ") || null;
+
+  const fichaVacia = venue && !venue.capacidadPersonas && !venue.medidasEscenario && !venue.amperajeTotal;
+
   return (
     <div className="ms-page space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="ms-h2">El show</h2>
-        <button onClick={guardar} disabled={guardando} className="ms-btn-primary disabled:opacity-50">
-          {guardando ? "Guardando…" : "Guardar cambios"}
-        </button>
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <section className="ms-card p-4 lg:col-span-2 space-y-3">
-          <h3 className="ms-section-label">Identidad del show</h3>
+        <div className="lg:col-span-2 space-y-4">
+          {/* Arriba de todo: lo que el foro da es contra lo que se lee el rider, y es
+              la primera pregunta de cualquier advance. */}
+          <section className="ms-card p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <h3 className="ms-section-label">Ficha técnica del foro</h3>
+              <div className="flex items-center gap-3 flex-wrap">
+                {show.rider && (
+                  <Link href={`/giras/artista/${show.artistaId}/rider/${show.rider.id}`} className="ms-micro ms-link-gold">
+                    Rider maestro v{show.rider.version}
+                    {show.rider.deLaGira ? "" : " (del artista)"} →
+                  </Link>
+                )}
+                <Link
+                  href={venue ? `/catalogo/venues?venue=${venue.id}` : "/catalogo/venues"}
+                  className="ms-micro ms-link-gold"
+                >
+                  {venue ? "Ficha del venue" : "Catálogo de venues"} →
+                </Link>
+              </div>
+            </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-            <div>
-              <label className="ms-label block mb-1.5">Fecha</label>
-              <input type="date" value={form.fecha} onChange={(e) => set({ fecha: e.target.value })} className="ms-input" />
-            </div>
-            <div>
-              <label className="ms-label block mb-1.5">Ciudad</label>
-              <input value={form.ciudad} onChange={(e) => set({ ciudad: e.target.value })} className="ms-input" />
-            </div>
-            <div>
-              <label className="ms-label block mb-1.5">Tipo de show</label>
-              <select value={form.tipoShow} onChange={(e) => set({ tipoShow: e.target.value })} className="ms-input">
-                <option value="">Sin definir</option>
-                {TIPOS_SHOW.map((t) => (
-                  <option key={t} value={t}>
-                    {TIPO_SHOW_LABEL[t]}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="ms-label block mb-1.5">Estado</label>
-              <select value={form.estado} onChange={(e) => set({ estado: e.target.value })} className="ms-input">
-                {ESTADOS_SHOW.map((e) => (
-                  <option key={e} value={e}>
-                    {ESTADO_SHOW_LABEL[e]}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
+            {!venue ? (
+              <p className="ms-meta">
+                El show no tiene venue del catálogo. Sin foro no hay ficha técnica contra la que cotejar el rider.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                  <p className="text-sm text-white">{venue.nombre}</p>
+                  <p className="ms-meta">
+                    {[
+                      [venue.ciudad, venue.estado].filter(Boolean).join(", ") || null,
+                      venue.capacidadPersonas ? `${venue.capacidadPersonas.toLocaleString("es-MX")} de capacidad` : null,
+                      `${venue.conceptos} ${venue.conceptos === 1 ? "concepto documentado" : "conceptos documentados"}`,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-[2fr_1fr] gap-3">
-            <VenuePicker
-              label="Venue"
-              value={form.venueNombre}
-              venueId={form.venueId}
-              onChange={(nombre, venueId, v) =>
-                set({ venueNombre: nombre, venueId, ...(v?.ciudad && !form.ciudad ? { ciudad: v.ciudad } : {}) })
-              }
-            />
-            <div>
-              <label className="ms-label block mb-1.5">Aforo esperado</label>
-              <input
-                type="number"
-                min={0}
-                value={form.aforoEsperado}
-                onChange={(e) => set({ aforoEsperado: e.target.value })}
-                className="ms-input"
-              />
-              {aforoDescuadra && (
-                <p className="text-amber-300 text-[11px] mt-1">
-                  La capacidad del venue en catálogo es {venue?.capacidadPersonas?.toLocaleString("es-MX")}.
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <h3 className="ms-section-label pt-1">Horarios ancla</h3>
-            <p className="ms-meta mt-0.5 mb-2">
-              Son el esqueleto del día. El minuto a minuto se desglosa en{" "}
-              <Link href={`${base}/dia`} className="ms-link-gold">
-                Día del show
-              </Link>
-              .
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {HORARIOS.map((h) => (
-                <div key={h.campo}>
-                  <label className="ms-label block mb-1.5">{h.label}</label>
-                  <HoraInput
-                    value={form[h.campo] as string}
-                    onChange={(v) => set({ [h.campo]: v } as Partial<Form>)}
-                    className="ms-input"
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                  <DatoForo label="Dirección" valor={venue.direccion} />
+                  <DatoForo label="Escenario" valor={venue.medidasEscenario} />
+                  <DatoForo label="Altura de reja" valor={venue.alturaRejaM ? `${venue.alturaRejaM} m` : null} />
+                  <DatoForo label="Corriente" valor={corriente} />
+                  <DatoForo label="Tablero" valor={venue.ubicacionTablero} />
+                  <DatoForo label="Acceso a escenario" valor={venue.accesoEscenario} />
+                  <DatoForo label="Acceso vehicular" valor={venue.accesoVehicular} />
+                  <DatoForo label="Punto de descarga" valor={venue.puntoDescarga} />
+                  <DatoForo label="Horario de carga" valor={venue.horarioCarga} />
+                  <DatoForo label="Camerinos" valor={venue.camerinos} />
+                  <DatoForo label="Decibeles" valor={venue.restriccionDecibeles} />
+                  <DatoForo label="Horario permitido" valor={venue.restriccionHorario} />
+                  <DatoForo label="Restricción de instalación" valor={venue.restriccionInstalacion} />
+                  <DatoForo
+                    label="Contacto técnico"
+                    valor={
+                      [venue.contactoTecnicoNombre, venue.contactoTecnicoTelefono, venue.contactoTecnicoEmail]
+                        .filter(Boolean)
+                        .join(" · ") || null
+                    }
                   />
                 </div>
-              ))}
-            </div>
-          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-            <div className="space-y-2">
-              <p className="ms-micro text-[#B3985B]">Contacto del venue</p>
-              <input
-                value={form.contactoCasaNombre}
-                onChange={(e) => set({ contactoCasaNombre: e.target.value })}
-                placeholder="Nombre"
-                className="ms-input"
-              />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <input
-                  value={form.contactoCasaTelefono}
-                  onChange={(e) => set({ contactoCasaTelefono: e.target.value })}
-                  placeholder="Teléfono"
-                  className="ms-input"
-                />
-                <input
-                  value={form.contactoCasaEmail}
-                  onChange={(e) => set({ contactoCasaEmail: e.target.value })}
-                  placeholder="Correo"
-                  className="ms-input"
-                />
-              </div>
-              {venue?.contactoTecnicoNombre && form.contactoCasaNombre !== venue.contactoTecnicoNombre && (
-                <div className="flex flex-wrap items-center gap-2 bg-amber-500/10 border border-amber-500/30 rounded-lg px-2.5 py-1.5">
-                  <p className="text-amber-300 text-[11px] flex-1 min-w-0">
-                    En el catálogo del venue el contacto técnico es {venue.contactoTecnicoNombre}.
+                {venue.notasTecnicas && (
+                  <div>
+                    <p className="ms-micro">Notas técnicas</p>
+                    <p className="text-[13px] text-white mt-0.5 whitespace-pre-wrap">{venue.notasTecnicas}</p>
+                  </div>
+                )}
+
+                {(venue.riderCasaUrl || venue.linkMaps) && (
+                  <div className="flex flex-wrap gap-2">
+                    {venue.riderCasaUrl && (
+                      <a href={venue.riderCasaUrl} target="_blank" rel="noopener noreferrer" className="ms-btn-secondary">
+                        Rider de la casa
+                      </a>
+                    )}
+                    {venue.linkMaps && (
+                      <a href={venue.linkMaps} target="_blank" rel="noopener noreferrer" className="ms-btn-secondary">
+                        Ubicación en mapas
+                      </a>
+                    )}
+                  </div>
+                )}
+
+                {fichaVacia && (
+                  <p className="ms-meta">
+                    El venue está en el catálogo pero su ficha técnica está vacía: es lo que hay que llenar en el advance
+                    para que la segunda visita cueste la mitad.
                   </p>
-                  <button
-                    onClick={() =>
-                      set({
-                        contactoCasaNombre: venue.contactoTecnicoNombre ?? "",
-                        contactoCasaTelefono: venue.contactoTecnicoTelefono ?? form.contactoCasaTelefono,
-                        contactoCasaEmail: venue.contactoTecnicoEmail ?? form.contactoCasaEmail,
-                      })
-                    }
-                    className="ms-micro text-amber-300 hover:text-white transition-colors shrink-0"
-                  >
-                    Usar ese
-                  </button>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
+          </section>
 
-            <div className="space-y-2">
-              <p className="ms-micro text-[#B3985B]">Promotor</p>
-              <input
-                value={form.promotorNombre}
-                onChange={(e) => set({ promotorNombre: e.target.value })}
-                placeholder="Empresa o promotor"
-                className="ms-input"
-              />
-              <input
-                value={form.promotorContacto}
-                onChange={(e) => set({ promotorContacto: e.target.value })}
-                placeholder="Persona de contacto"
-                className="ms-input"
-              />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <input
-                  value={form.promotorTelefono}
-                  onChange={(e) => set({ promotorTelefono: e.target.value })}
-                  placeholder="Teléfono"
-                  className="ms-input"
-                />
-                <input
-                  value={form.promotorEmail}
-                  onChange={(e) => set({ promotorEmail: e.target.value })}
-                  placeholder="Correo"
-                  className="ms-input"
-                />
+          <section className="ms-card p-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="ms-section-label">El show</h3>
+              <div className="flex items-center gap-3 shrink-0">
+                {(edicion || auto.estado !== "limpio") && (
+                  <EstadoGuardado estado={sello} onReintentar={auto.guardarYa} />
+                )}
+                {edicion ? (
+                  <button onClick={cerrarEdicion} className="ms-btn-secondary">
+                    Listo
+                  </button>
+                ) : (
+                  <button onClick={() => setEdicion(true)} className="ms-btn-primary">
+                    Editar
+                  </button>
+                )}
               </div>
             </div>
-          </div>
 
-          <div>
-            <label className="ms-label block mb-1.5">Notas del show</label>
-            <textarea value={form.notas} onChange={(e) => set({ notas: e.target.value })} rows={3} className="ms-textarea" />
-          </div>
+            {auto.error && (
+              <p className="text-red-400 text-xs bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
+                {auto.error}
+              </p>
+            )}
 
-          <div className="flex justify-end pt-1">
-            <button onClick={guardar} disabled={guardando} className="ms-btn-primary disabled:opacity-50">
-              {guardando ? "Guardando…" : "Guardar cambios"}
-            </button>
-          </div>
-        </section>
+            {edicion ? (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                  <div>
+                    <label className="ms-label block mb-1.5">Fecha</label>
+                    <input type="date" value={form.fecha} onChange={(e) => set({ fecha: e.target.value })} className="ms-input" />
+                  </div>
+                  <div>
+                    <label className="ms-label block mb-1.5">Ciudad</label>
+                    <input value={form.ciudad} onChange={(e) => set({ ciudad: e.target.value })} className="ms-input" />
+                  </div>
+                  <div>
+                    <label className="ms-label block mb-1.5">Tipo de show</label>
+                    <select value={form.tipoShow} onChange={(e) => set({ tipoShow: e.target.value })} className="ms-input">
+                      <option value="">Sin definir</option>
+                      {TIPOS_SHOW.map((t) => (
+                        <option key={t} value={t}>
+                          {TIPO_SHOW_LABEL[t]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="ms-label block mb-1.5">Estado</label>
+                    <select value={form.estado} onChange={(e) => set({ estado: e.target.value })} className="ms-input">
+                      {ESTADOS_SHOW.map((e) => (
+                        <option key={e} value={e}>
+                          {ESTADO_SHOW_LABEL[e]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-[2fr_1fr] gap-3">
+                  <VenuePicker
+                    label="Venue"
+                    value={form.venueNombre}
+                    venueId={form.venueId}
+                    onChange={(nombre, venueId, v) =>
+                      set({ venueNombre: nombre, venueId, ...(v?.ciudad && !form.ciudad ? { ciudad: v.ciudad } : {}) })
+                    }
+                  />
+                  <div>
+                    <label className="ms-label block mb-1.5">Aforo esperado</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={form.aforoEsperado}
+                      onChange={(e) => set({ aforoEsperado: e.target.value })}
+                      className="ms-input"
+                    />
+                    {aforoDescuadra && (
+                      <p className="text-amber-300 text-[11px] mt-1">
+                        La capacidad del venue en catálogo es {venue?.capacidadPersonas?.toLocaleString("es-MX")}.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div className="space-y-2">
+                    <p className="ms-micro text-[#B3985B]">Contacto del venue</p>
+                    <input
+                      value={form.contactoCasaNombre}
+                      onChange={(e) => set({ contactoCasaNombre: e.target.value })}
+                      placeholder="Nombre"
+                      className="ms-input"
+                    />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <input
+                        value={form.contactoCasaTelefono}
+                        onChange={(e) => set({ contactoCasaTelefono: e.target.value })}
+                        placeholder="Teléfono"
+                        className="ms-input"
+                      />
+                      <input
+                        value={form.contactoCasaEmail}
+                        onChange={(e) => set({ contactoCasaEmail: e.target.value })}
+                        placeholder="Correo"
+                        className="ms-input"
+                      />
+                    </div>
+                    {venue?.contactoTecnicoNombre && form.contactoCasaNombre !== venue.contactoTecnicoNombre && (
+                      <div className="flex flex-wrap items-center gap-2 bg-amber-500/10 border border-amber-500/30 rounded-lg px-2.5 py-1.5">
+                        <p className="text-amber-300 text-[11px] flex-1 min-w-0">
+                          En el catálogo del venue el contacto técnico es {venue.contactoTecnicoNombre}.
+                        </p>
+                        <button
+                          onClick={() =>
+                            set({
+                              contactoCasaNombre: venue.contactoTecnicoNombre ?? "",
+                              contactoCasaTelefono: venue.contactoTecnicoTelefono ?? form.contactoCasaTelefono,
+                              contactoCasaEmail: venue.contactoTecnicoEmail ?? form.contactoCasaEmail,
+                            })
+                          }
+                          className="ms-micro text-amber-300 hover:text-white transition-colors shrink-0"
+                        >
+                          Usar ese
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="ms-micro text-[#B3985B]">Promotor</p>
+                    <input
+                      value={form.promotorNombre}
+                      onChange={(e) => set({ promotorNombre: e.target.value })}
+                      placeholder="Empresa o promotor"
+                      className="ms-input"
+                    />
+                    <input
+                      value={form.promotorContacto}
+                      onChange={(e) => set({ promotorContacto: e.target.value })}
+                      placeholder="Persona de contacto"
+                      className="ms-input"
+                    />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <input
+                        value={form.promotorTelefono}
+                        onChange={(e) => set({ promotorTelefono: e.target.value })}
+                        placeholder="Teléfono"
+                        className="ms-input"
+                      />
+                      <input
+                        value={form.promotorEmail}
+                        onChange={(e) => set({ promotorEmail: e.target.value })}
+                        placeholder="Correo"
+                        className="ms-input"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="ms-label block mb-1.5">Notas del show</label>
+                  <textarea value={form.notas} onChange={(e) => set({ notas: e.target.value })} rows={3} className="ms-textarea" />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <Dato label="Fecha" valor={form.fecha ? fmtFechaCorta(form.fecha) : null} />
+                  <Dato label="Ciudad" valor={form.ciudad} />
+                  <Dato
+                    label="Tipo de show"
+                    valor={form.tipoShow ? TIPO_SHOW_LABEL[form.tipoShow] ?? form.tipoShow : null}
+                  />
+                  <Dato label="Estado" valor={ESTADO_SHOW_LABEL[form.estado] ?? form.estado} />
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="col-span-2 min-w-0">
+                    <p className="ms-micro">Venue</p>
+                    <p className="text-[13px] text-white mt-0.5 break-words">
+                      {form.venueNombre || <span className="text-[#555]">Sin venue del catálogo</span>}
+                    </p>
+                  </div>
+                  <Dato
+                    label="Aforo esperado"
+                    valor={form.aforoEsperado ? Number(form.aforoEsperado).toLocaleString("es-MX") : null}
+                  />
+                  {aforoDescuadra && (
+                    <div className="min-w-0">
+                      <p className="ms-micro">Capacidad del venue</p>
+                      <p className="text-amber-300 text-[13px] mt-0.5">
+                        {venue?.capacidadPersonas?.toLocaleString("es-MX")}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Dato
+                    label="Contacto del venue"
+                    valor={
+                      [form.contactoCasaNombre, form.contactoCasaTelefono, form.contactoCasaEmail]
+                        .filter(Boolean)
+                        .join(" · ") || null
+                    }
+                  />
+                  <Dato
+                    label="Promotor"
+                    valor={
+                      [form.promotorNombre, form.promotorContacto, form.promotorTelefono, form.promotorEmail]
+                        .filter(Boolean)
+                        .join(" · ") || null
+                    }
+                  />
+                </div>
+
+                <div>
+                  <p className="ms-micro">Notas del show</p>
+                  {form.notas.trim() ? (
+                    <p className="text-[13px] text-white mt-0.5 whitespace-pre-wrap">{form.notas}</p>
+                  ) : (
+                    <p className="ms-meta mt-0.5">Sin notas.</p>
+                  )}
+                </div>
+              </>
+            )}
+          </section>
+
+          <MomentosAncla showId={show.id} editable={edicion} />
+        </div>
 
         <div className="space-y-4">
           <section className="ms-card p-4">
@@ -552,7 +681,7 @@ export default function ShowResumenClient({
             <div className="grid grid-cols-3 gap-2 mt-3">
               {[
                 { label: "Crew", valor: show.crew, href: `/giras/${show.giraId}/crew` },
-                { label: "Bloques", valor: show.bloques, href: `${base}/dia` },
+                { label: "Momentos", valor: show.momentos, href: `${base}/dia` },
                 { label: "Archivos", valor: show.archivos, href: `/giras/${show.giraId}/documentos` },
               ].map((d) => (
                 <Link key={d.label} href={d.href} className="ms-card-inset px-2.5 py-2 hover:border-[#B3985B]/40 transition-colors">
@@ -611,86 +740,6 @@ export default function ShowResumenClient({
           </section>
         </div>
       </div>
-
-      <section className="ms-card p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-          <h3 className="ms-section-label">Ficha técnica del foro</h3>
-          <Link href="/catalogo/venues" className="ms-micro text-[#B3985B] hover:text-white transition-colors">
-            Editar en el catálogo de venues →
-          </Link>
-        </div>
-
-        {!venue ? (
-          <p className="ms-meta">
-            El show no tiene venue del catálogo. Sin foro no hay ficha técnica contra la que cotejar el rider.
-          </p>
-        ) : (
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-              <Dato label="Venue" valor={venue.nombre} />
-              <Dato
-                label="Ubicación"
-                valor={[venue.ciudad, venue.estado].filter(Boolean).join(", ") || null}
-              />
-              <Dato label="Capacidad" valor={venue.capacidadPersonas?.toLocaleString("es-MX")} />
-              <Dato label="Escenario" valor={venue.medidasEscenario} />
-              <Dato label="Altura de reja" valor={venue.alturaRejaM ? `${venue.alturaRejaM} m` : null} />
-              <Dato
-                label="Corriente"
-                valor={
-                  [venue.voltajeDisponible, venue.amperajeTotal ? `${venue.amperajeTotal} A` : null, venue.fases]
-                    .filter(Boolean)
-                    .join(" · ") || null
-                }
-              />
-              <Dato label="Tablero" valor={venue.ubicacionTablero} />
-              <Dato label="Acceso a escenario" valor={venue.accesoEscenario} />
-              <Dato label="Acceso vehicular" valor={venue.accesoVehicular} />
-              <Dato label="Punto de descarga" valor={venue.puntoDescarga} />
-              <Dato label="Horario de carga" valor={venue.horarioCarga} />
-              <Dato label="Camerinos" valor={venue.camerinos} />
-              <Dato label="Decibeles" valor={venue.restriccionDecibeles} />
-              <Dato label="Horario permitido" valor={venue.restriccionHorario} />
-              <Dato label="Restricción de instalación" valor={venue.restriccionInstalacion} />
-              <Dato
-                label="Contacto técnico"
-                valor={
-                  [venue.contactoTecnicoNombre, venue.contactoTecnicoTelefono, venue.contactoTecnicoEmail]
-                    .filter(Boolean)
-                    .join(" · ") || null
-                }
-              />
-            </div>
-
-            {venue.notasTecnicas && (
-              <div>
-                <p className="ms-micro">Notas técnicas</p>
-                <p className="text-[13px] text-white mt-0.5 whitespace-pre-wrap">{venue.notasTecnicas}</p>
-              </div>
-            )}
-
-            <div className="flex flex-wrap gap-2">
-              {venue.riderCasaUrl && (
-                <a href={venue.riderCasaUrl} target="_blank" rel="noopener noreferrer" className="ms-btn-secondary">
-                  Rider del venue
-                </a>
-              )}
-              {venue.linkMaps && (
-                <a href={venue.linkMaps} target="_blank" rel="noopener noreferrer" className="ms-btn-secondary">
-                  Ubicación en mapas
-                </a>
-              )}
-            </div>
-
-            {!venue.capacidadPersonas && !venue.medidasEscenario && !venue.amperajeTotal && (
-              <p className="ms-meta">
-                El venue está en el catálogo pero su ficha técnica está vacía: es lo que hay que llenar en el advance para
-                que la segunda visita cueste la mitad.
-              </p>
-            )}
-          </div>
-        )}
-      </section>
     </div>
   );
 }

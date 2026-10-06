@@ -13,7 +13,6 @@ import {
   DISCIPLINAS,
   DISCIPLINA_LABEL,
   ESTADO_ADVANCE_LABEL,
-  ESTADOS_RESUELTOS,
   ESTADO_SHOW_LABEL,
   PRIORIDAD_LABEL,
   SEMAFORO_LABEL,
@@ -21,6 +20,7 @@ import {
   fmtFechaLarga,
   resumirAdvance,
 } from "@/lib/giras";
+import { sigueAbierta } from "@/lib/advance-gira";
 import { logoBase64, nowStr, resolvePdfImage } from "@/components/pdf/PdfShared";
 import {
   AdvanceShowPDF,
@@ -53,11 +53,6 @@ export async function generarAdvanceShow(showId: string): Promise<PdfGira | null
     show.riderLineas.map((l) => ({ prioridad: l.prioridad, estado: l.estado, cubiertoPor: l.cubiertoPor })),
   );
 
-  /// Mismo criterio que el semáforo: confirmado o "no aplica" cuentan como
-  /// cerrados; "no cubierto" nunca, aunque sea una decisión tomada.
-  const resuelta = (l: { estado: string; cubiertoPor: string }) =>
-    l.cubiertoPor === "NO_APLICA" ? true : l.cubiertoPor === "NO_CUBIERTO" ? false : ESTADOS_RESUELTOS.includes(l.estado);
-
   const lineas: AdvanceLineaDoc[] = [...show.riderLineas]
     .sort((a, b) => {
       const da = ORDEN_DISCIPLINA[a.disciplina] ?? 99;
@@ -76,7 +71,9 @@ export async function generarAdvanceShow(showId: string): Promise<PdfGira | null
       cubiertoPorLabel: CUBIERTO_POR_LABEL[l.cubiertoPor] ?? l.cubiertoPor,
       cantidadCubierta: l.cantidadCubierta,
       estadoLabel: ESTADO_ADVANCE_LABEL[l.estado] ?? l.estado,
-      resuelta: resuelta(l),
+      // Mismo criterio que el semáforo y que el advance consolidado, para que los
+      // tres nunca se contradigan: confirmado o "no aplica" cuentan como cerrados.
+      resuelta: !sigueAbierta(l),
       notas: l.notas,
     }));
 

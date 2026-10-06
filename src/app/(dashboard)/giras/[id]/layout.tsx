@@ -28,6 +28,7 @@ export default async function GiraLayout({
       estado: true,
       fechaInicio: true,
       fechaFin: true,
+      artistaId: true,
       artista: { select: { nombre: true } },
       shows: {
         orderBy: { fecha: "asc" },
@@ -52,15 +53,15 @@ export default async function GiraLayout({
   const tour = esGira(gira.tipo);
 
   const enlaces: EnlaceSub[] = [
-    { href: `/giras/${id}`, label: "Resumen", exacto: true },
-    { href: `/giras/${id}/propuestas`, label: "Propuestas" },
-    { href: `/giras/${id}/shows`, label: tour ? "Shows" : "Show" },
-    { href: `/giras/${id}/advance`, label: "Advance" },
-    { href: `/giras/${id}/pendientes`, label: "Pendientes" },
-    { href: `/giras/${id}/crew`, label: "Crew" },
-    { href: `/giras/${id}/logistica`, label: "Viajes y hotel" },
-    { href: `/giras/${id}/setlist`, label: "Setlist" },
-    { href: `/giras/${id}/documentos`, label: "Documentos" },
+    { href: `/giras/${id}`, label: "Resumen", llave: "resumen", exacto: true },
+    { href: `/giras/${id}/propuestas`, label: "Propuestas", llave: "propuestas" },
+    { href: `/giras/${id}/shows`, label: tour ? "Shows" : "Show", llave: "shows" },
+    { href: `/giras/${id}/advance`, label: "Advance", llave: "advance" },
+    { href: `/giras/${id}/pendientes`, label: "Pendientes", llave: "pendientes" },
+    { href: `/giras/${id}/crew`, label: "Crew", llave: "crew" },
+    { href: `/giras/${id}/logistica`, label: "Viajes y hotel", llave: "logistica" },
+    { href: `/giras/${id}/setlist`, label: "Setlist", llave: "setlist" },
+    { href: `/giras/${id}/documentos`, label: "Documentos", llave: "documentos" },
   ];
 
   return (
@@ -69,6 +70,7 @@ export default async function GiraLayout({
         giraId={id}
         nombre={gira.nombre}
         tipo={gira.tipo}
+        artistaId={gira.artistaId}
         artista={gira.artista.nombre}
         rango={rango}
         estado={gira.estado}

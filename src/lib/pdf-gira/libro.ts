@@ -39,6 +39,7 @@ import {
   type SeccionLibro,
 } from "@/lib/giras";
 import { ESTADOS_CHECKLIST, FRENTES } from "@/lib/gira-advance-checklist";
+import { horasAncla } from "@/lib/show-momentos";
 import { logoBase64, nowStr, resolvePdfImage } from "@/components/pdf/PdfShared";
 import {
   LibroGiraPDF,
@@ -126,6 +127,9 @@ export async function generarLibroGira(giraId: string, secciones: SeccionLibro[]
             orderBy: [{ orden: "asc" }, { createdAt: "asc" }],
             select: { concepto: true, prioridad: true, estado: true, cubiertoPor: true },
           },
+          // El itinerario del libro imprime cuatro horas por fecha, y cada una se
+          // busca por su llave entre los momentos del día.
+          momentos: { select: { llave: true, hora: true, horaFin: true } },
         },
       },
     },
@@ -208,24 +212,27 @@ export async function generarLibroGira(giraId: string, secciones: SeccionLibro[]
   const nombrePorClave = new Map(servicios.map((s) => [s.clave, s.nombre]));
 
   // ── Shows ───────────────────────────────────────────────────────────────────
-  const shows: LibroShow[] = gira.shows.map((s) => ({
-    id: s.id,
-    fechaCorta: fmtFechaCorta(s.fecha),
-    diaSemana: diaSemana(s.fecha),
-    ciudad: s.ciudad ?? s.venue?.ciudad ?? null,
-    venueNombre: s.venue?.nombre ?? null,
-    venueDireccion: s.venue?.direccion ?? null,
-    estadoLabel: ESTADO_SHOW_LABEL[s.estado] ?? s.estado,
-    tipoShowLabel: s.tipoShow ? (TIPO_SHOW_LABEL[s.tipoShow] ?? s.tipoShow) : null,
-    aforoEsperado: s.aforoEsperado,
-    horaLoadIn: s.horaLoadIn,
-    horaSoundcheck: s.horaSoundcheck,
-    horaDoors: s.horaDoors,
-    horaShow: s.horaShow,
-    curfew: s.curfew,
-    promotorNombre: [s.promotorNombre, s.promotorContacto].filter(Boolean).join(" · ") || null,
-    promotorTelefono: s.promotorTelefono,
-  }));
+  const shows: LibroShow[] = gira.shows.map((s) => {
+    const horas = horasAncla(s.momentos);
+    return {
+      id: s.id,
+      fechaCorta: fmtFechaCorta(s.fecha),
+      diaSemana: diaSemana(s.fecha),
+      ciudad: s.ciudad ?? s.venue?.ciudad ?? null,
+      venueNombre: s.venue?.nombre ?? null,
+      venueDireccion: s.venue?.direccion ?? null,
+      estadoLabel: ESTADO_SHOW_LABEL[s.estado] ?? s.estado,
+      tipoShowLabel: s.tipoShow ? (TIPO_SHOW_LABEL[s.tipoShow] ?? s.tipoShow) : null,
+      aforoEsperado: s.aforoEsperado,
+      horaLoadIn: horas.loadIn,
+      horaSoundcheck: horas.soundcheck ?? horas.lineCheck,
+      horaDoors: horas.doors,
+      horaShow: horas.show,
+      curfew: horas.curfew,
+      promotorNombre: [s.promotorNombre, s.promotorContacto].filter(Boolean).join(" · ") || null,
+      promotorTelefono: s.promotorTelefono,
+    };
+  });
 
   // ── Crew y contactos ────────────────────────────────────────────────────────
   const crew: LibroPersona[] = crewFilas.map((c) => ({

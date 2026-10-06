@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Migas from "@/components/giras/Migas";
 import SubNav, { type EnlaceSub } from "@/app/(dashboard)/giras/[id]/SubNav";
 import {
   CONTEXTO_RIDER_COLOR,
@@ -31,12 +31,14 @@ export default function CabeceraRider(p: Props) {
   const cargado = p.origen === "CARGADO";
   return (
     <div className="px-4 md:px-6 pt-4 md:pt-6 border-b border-[#1a1a1a]">
-      <Link
-        href={`/giras/artista/${p.artistaId}/riders`}
-        className="ms-micro text-[#555] hover:text-[#B3985B] transition-colors"
-      >
-        ← Riders de {p.artistaNombre}
-      </Link>
+      <Migas
+        items={[
+          { label: "Artistas", href: "/giras/artistas" },
+          { label: p.artistaNombre, href: `/giras/artista/${p.artistaId}` },
+          { label: "Riders", href: `/giras/artista/${p.artistaId}/riders` },
+          { label: `v${p.version}` },
+        ]}
+      />
 
       <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2 mt-1.5 mb-3">
         <div className="min-w-0">
@@ -88,7 +90,7 @@ export default function CabeceraRider(p: Props) {
         </div>
       </div>
 
-      <SubNav enlaces={p.enlaces} />
+      <SubNav enlaces={p.enlaces} scope="rider" />
     </div>
   );
 }

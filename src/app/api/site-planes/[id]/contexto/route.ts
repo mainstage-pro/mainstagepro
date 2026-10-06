@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { type ContextoSitePlan, CONTEXTO_VACIO } from "@/lib/site-plan";
+import { ordenarBloques } from "@/lib/giras";
+import { horaFinDe, horasAncla } from "@/lib/show-momentos";
 
 export const dynamic = "force-dynamic";
 
@@ -53,10 +55,15 @@ export async function GET(_req: NextRequest, { params }: Params) {
       giraId: true,
       proyectoId: true,
       aforoEsperado: true,
-      horaLoadIn: true,
-      horaLoadOut: true,
       contactoCasaNombre: true,
       contactoCasaTelefono: true,
+      // Las ventanas de montaje salen del día del show: un renglón por momento,
+      // con su inicio y su fin. Antes había que leerlas en dos lugares (las
+      // columnas de hora del show y los bloques) y se contaban doble.
+      momentos: {
+        select: { id: true, llave: true, titulo: true, tipo: true, hora: true, horaFin: true, orden: true },
+        orderBy: { orden: "asc" },
+      },
       venue: {
         select: {
           nombre: true,
@@ -74,7 +81,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
   // El crew del show y el de la gira completa: a quien monta una carpa puede que
   // no se le haya asignado ese show en particular.
-  const [crew, rider, bloques, proveedores] = await Promise.all([
+  const [crew, rider, proveedores] = await Promise.all([
     prisma.giraCrew.findMany({
       where: { activo: true, OR: [{ showId: plan.showId }, { giraId: show.giraId, showId: null }] },
       select: {
@@ -98,11 +105,6 @@ export async function GET(_req: NextRequest, { params }: Params) {
         equipo: { select: { marca: true, modelo: true } },
       },
       orderBy: [{ disciplina: "asc" }, { orden: "asc" }],
-    }),
-    prisma.giraShowBloque.findMany({
-      where: { showId: plan.showId },
-      select: { id: true, titulo: true, tipo: true, hora: true, horaFin: true },
-      orderBy: { orden: "asc" },
     }),
     show.proyectoId
       ? prisma.proveedorEvento.findMany({
@@ -164,20 +166,25 @@ export async function GET(_req: NextRequest, { params }: Params) {
     });
   }
 
-  const ventanas: ContextoSitePlan["ventanas"] = bloques.map(b => ({
-    id: b.id,
-    titulo: b.titulo,
-    tipo: b.tipo,
-    inicio: b.hora,
-    fin: b.horaFin,
+  const ventanas: ContextoSitePlan["ventanas"] = ordenarBloques(show.momentos).map(m => ({
+    id: m.id,
+    titulo: m.titulo,
+    tipo: m.tipo,
+    inicio: m.hora,
+    fin: m.horaFin,
   }));
-  if (show.horaLoadIn || show.horaLoadOut) {
+  // La jornada completa no es un momento: es de donde empieza a entrar el equipo
+  // a donde acaba de salir. Es la ventana que más se elige en la ficha de un
+  // elemento del plano, así que se ofrece armada.
+  const horas = horasAncla(show.momentos);
+  const finJornada = horaFinDe(show.momentos, "LOAD_OUT") ?? horas.loadOut ?? horas.curfew;
+  if (horas.loadIn || finJornada) {
     ventanas.unshift({
-      id: "show",
-      titulo: "Load in / load out del show",
+      id: "jornada",
+      titulo: "Load in → load out",
       tipo: "LOGISTICA",
-      inicio: show.horaLoadIn,
-      fin: show.horaLoadOut,
+      inicio: horas.loadIn,
+      fin: finJornada,
     });
   }
 

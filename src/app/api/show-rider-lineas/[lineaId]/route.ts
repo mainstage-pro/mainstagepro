@@ -8,9 +8,9 @@ import {
   PRIORIDADES,
 } from "@/lib/giras";
 
+/// El advance no captura proveedor ni costo: eso se deriva del rider del
+/// proyecto (`src/lib/proveedor-equipos.ts`). Por eso ni se lee ni se escribe aquí.
 const INCLUDE = {
-  proveedor: { select: { id: true, nombre: true, empresa: true } },
-  equipo: { select: { id: true, descripcion: true, marca: true, modelo: true } },
   riderLinea: { select: { id: true, concepto: true, cantidad: true, prioridad: true, preferido: true, aceptables: true } },
 } as const;
 
@@ -22,9 +22,8 @@ const ENUMS: Record<string, readonly string[]> = {
 };
 
 const TEXTO = ["concepto", "ofrecidoCasa", "notas"];
-const ENTEROS = ["cantidadPedida", "cantidadCasa", "cantidadCubierta", "orden"];
-const DECIMALES = ["costoEstimado", "costoConfirmado"];
-const RELACIONES = ["proveedorId", "equipoId"];
+const ENTEROS = ["cantidadPedida", "cantidadCasa", "orden"];
+const BOOLEANOS = ["pedirAlPromotor"];
 
 /**
  * Edición renglón por renglón. Nunca hay un PUT que recree el advance: las filas
@@ -65,23 +64,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ li
     data[f] = Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : 0;
   }
 
-  for (const f of DECIMALES) {
+  for (const f of BOOLEANOS) {
     if (!(f in body)) continue;
-    const v = body[f];
-    if (v === null || v === "" || v === undefined) data[f] = null;
-    else {
-      const n = Number(v);
-      data[f] = Number.isFinite(n) ? n : null;
-    }
+    data[f] = !!body[f];
   }
 
-  for (const f of RELACIONES) {
-    if (!(f in body)) continue;
-    const v = body[f];
-    data[f] = typeof v === "string" && v ? v : null;
-  }
-
-  if ("aprobadoPorArtista" in body) data.aprobadoPorArtista = !!body.aprobadoPorArtista;
+  // No se le pide al promotor algo que ya se decidió que no aplica en esta fecha.
+  if (data.cubiertoPor === "NO_APLICA") data.pedirAlPromotor = false;
 
   if (!Object.keys(data).length) return NextResponse.json({ error: "Nada que actualizar" }, { status: 400 });
 

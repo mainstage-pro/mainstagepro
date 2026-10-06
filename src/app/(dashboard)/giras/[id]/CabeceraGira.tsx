@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
+import Migas from "@/components/giras/Migas";
 import SubNav, { type EnlaceSub } from "./SubNav";
 import {
   ESTADO_GIRA_COLOR,
@@ -17,6 +17,7 @@ interface Props {
   giraId: string;
   nombre: string;
   tipo: string;
+  artistaId: string;
   artista: string;
   rango: string;
   estado: string;
@@ -37,9 +38,13 @@ export default function CabeceraGira(p: Props) {
 
   return (
     <div className="px-4 md:px-6 pt-4 md:pt-6 border-b border-[#1a1a1a]">
-      <Link href="/giras/lista" className="ms-micro text-[#555] hover:text-[#B3985B] transition-colors">
-        ← Shows y giras
-      </Link>
+      <Migas
+        items={[
+          { label: "Shows y giras", href: "/giras/lista" },
+          { label: p.artista, href: `/giras/artista/${p.artistaId}` },
+          { label: p.nombre },
+        ]}
+      />
 
       <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2 mt-1.5 mb-3">
         <div className="min-w-0">
@@ -62,7 +67,7 @@ export default function CabeceraGira(p: Props) {
         </div>
       </div>
 
-      <SubNav enlaces={p.enlaces} />
+      <SubNav enlaces={p.enlaces} scope="gira" />
     </div>
   );
 }

@@ -169,8 +169,17 @@ export default function VenuesPage() {
 
   useEffect(() => {
     fetch("/api/venues?conUso=1").then(r => r.json()).then(d => {
-      setVenues(d.venues ?? []);
+      const lista: Venue[] = d.venues ?? [];
+      setVenues(lista);
       setLoading(false);
+      // ?venue=<id> llega desde la cabecera de un show: filtra y abre esa ficha
+      // para no dejar al usuario buscándola en el catálogo entero.
+      const pedido = new URLSearchParams(window.location.search).get("venue");
+      const v = pedido ? lista.find(x => x.id === pedido) : null;
+      if (v) {
+        setSearch(v.nombre);
+        setExpandedId(v.id);
+      }
     });
   }, []);
 

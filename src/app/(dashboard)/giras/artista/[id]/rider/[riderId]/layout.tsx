@@ -39,17 +39,17 @@ export default async function RiderLayout({
   // contactos y anexos sí se le pegan al documento.
   const cargado = rider.origen === "CARGADO";
   const enlaces: EnlaceSub[] = [
-    { href: base, label: "Ficha y notas", exacto: true },
+    { href: base, label: "Ficha y notas", llave: "ficha", exacto: true },
     ...(cargado
       ? []
       : [
-          { href: `${base}/montaje`, label: "Montaje y soundcheck" },
-          { href: `${base}/inputs`, label: "Input list" },
-          { href: `${base}/outputs`, label: "Output list" },
-          { href: `${base}/equipo`, label: "Equipo que pide" },
+          { href: `${base}/montaje`, label: "Montaje y soundcheck", llave: "montaje" },
+          { href: `${base}/inputs`, label: "Input list", llave: "inputs" },
+          { href: `${base}/outputs`, label: "Output list", llave: "outputs" },
+          { href: `${base}/equipo`, label: "Equipo que pide", llave: "equipo" },
         ]),
-    { href: `${base}/contactos`, label: "A quién llamar" },
-    { href: `${base}/anexos`, label: "Stage plots y anexos" },
+    { href: `${base}/contactos`, label: "A quién llamar", llave: "contactos" },
+    { href: `${base}/anexos`, label: "Stage plots y anexos", llave: "anexos" },
   ];
 
   return (

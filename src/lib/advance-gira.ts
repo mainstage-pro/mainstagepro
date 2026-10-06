@@ -7,8 +7,13 @@
  *   3. volcarAlVenue        — al cerrar el advance, lo que realmente había queda escrito
  *                             en la ficha del venue, para que la próxima vez se arme solo.
  *
- * Y `faltantesPorProveedor`, que mira la gira completa para conseguir de una sola
- * vez lo que falta en varios shows.
+ * Y `faltantesDeLaGira`, que mira la gira completa para ver de una sola vez lo
+ * que sigue abierto en varios shows.
+ *
+ * Aquí no hay costo ni proveedor a propósito: el equipo de tercero se captura
+ * una sola vez en el rider del proyecto y de ahí se derivan el proveedor y su
+ * cuenta por pagar (`src/lib/proveedor-equipos.ts`). El advance solo contesta
+ * dos preguntas por renglón: quién lo cubre y cómo va esa gestión.
  */
 
 import { prisma } from "@/lib/prisma";
@@ -48,25 +53,6 @@ export function claveConcepto(texto: string): string {
     .replace(/[^a-z0-9\s]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
-}
-
-/// Los campos de cobertura del proveedor son TEXT con un array JSON dentro.
-export function parseLista(json: string | null | undefined): string[] {
-  if (!json) return [];
-  try {
-    const v: unknown = JSON.parse(json);
-    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
-  } catch {
-    return [];
-  }
-}
-
-function mismaCiudad(a: string | null | undefined, b: string | null | undefined): boolean {
-  if (!a || !b) return false;
-  const x = normalizar(a).trim();
-  const y = normalizar(b).trim();
-  if (!x || !y) return false;
-  return x === y || x.includes(y) || y.includes(x);
 }
 
 /// Texto legible de lo que tiene el venue, tal como se pega en la columna del contra-rider.
@@ -326,19 +312,7 @@ export async function volcarAlVenue(showId: string, usuario: string): Promise<Re
   return { creadas, actualizadas, omitidas };
 }
 
-// ── 4. Faltantes de toda la gira, agrupados para conseguirlos de una vez ─────
-
-export interface ProveedorCandidato {
-  id: string;
-  nombre: string;
-  empresa: string | null;
-  telefono: string | null;
-  correo: string | null;
-  ciudades: string[];
-  disciplinas: string[];
-  /// true si cubre la ciudad del grupo (los demás son comodín sin cobertura declarada).
-  enLaCiudad: boolean;
-}
+// ── 4. Lo que sigue abierto en toda la gira, agrupado por ciudad ─────────────
 
 export interface FaltanteFila {
   lineaId: string;
@@ -349,14 +323,10 @@ export interface FaltanteFila {
   disciplina: string;
   concepto: string;
   cantidadPedida: number;
-  cantidadCubierta: number;
-  faltante: number;
   prioridad: string;
   estado: string;
   cubiertoPor: string;
-  proveedorId: string | null;
-  proveedorNombre: string | null;
-  costoEstimado: number | null;
+  pedirAlPromotor: boolean;
 }
 
 export interface GrupoFaltantes {
@@ -364,20 +334,24 @@ export interface GrupoFaltantes {
   disciplina: string;
   disciplinaLabel: string;
   filas: FaltanteFila[];
-  piezasFaltantes: number;
   indispensables: number;
-  costoEstimado: number;
-  proveedores: ProveedorCandidato[];
+  /// Cuántos de los abiertos hay que arrancarle al promotor.
+  alPromotor: number;
 }
 
-/// Lo que falta de verdad: no resuelto y con hueco entre lo pedido y lo cubierto.
-function esFaltante(l: { estado: string; cubiertoPor: string; cantidadPedida: number; cantidadCubierta: number }) {
+/**
+ * Un renglón sigue abierto mientras no esté confirmado (o sustituido) y no se
+ * haya decidido que no aplica. La unidad es el renglón del rider, no la pieza:
+ * el advance se cierra contestando quién lo pone y cómo va esa gestión, no
+ * llevando una contabilidad de piezas que nadie mantiene al teléfono.
+ * Mismo criterio que `estaResuelta` del semáforo, para que nunca se contradigan.
+ */
+export function sigueAbierta(l: { estado: string; cubiertoPor: string }): boolean {
   if (l.cubiertoPor === "NO_APLICA") return false;
-  if (ESTADOS_RESUELTOS.includes(l.estado)) return false;
-  return l.cantidadPedida - l.cantidadCubierta > 0;
+  return !ESTADOS_RESUELTOS.includes(l.estado);
 }
 
-export async function faltantesPorProveedor(giraId: string): Promise<GrupoFaltantes[]> {
+export async function faltantesDeLaGira(giraId: string): Promise<GrupoFaltantes[]> {
   const shows = await prisma.giraShow.findMany({
     where: { giraId, estado: { not: "CANCELADO" } },
     orderBy: [{ fecha: "asc" }, { orden: "asc" }],
@@ -393,12 +367,10 @@ export async function faltantesPorProveedor(giraId: string): Promise<GrupoFaltan
           disciplina: true,
           concepto: true,
           cantidadPedida: true,
-          cantidadCubierta: true,
           prioridad: true,
           estado: true,
           cubiertoPor: true,
-          costoEstimado: true,
-          proveedor: { select: { id: true, nombre: true } },
+          pedirAlPromotor: true,
         },
       },
     },
@@ -409,7 +381,7 @@ export async function faltantesPorProveedor(giraId: string): Promise<GrupoFaltan
   for (const s of shows) {
     const ciudad = s.ciudad?.trim() || s.venue?.ciudad?.trim() || "Sin ciudad";
     for (const l of s.riderLineas) {
-      if (!esFaltante(l)) continue;
+      if (!sigueAbierta(l)) continue;
       const clave = `${normalizar(ciudad)}|${l.disciplina}`;
       let g = grupos.get(clave);
       if (!g) {
@@ -418,14 +390,11 @@ export async function faltantesPorProveedor(giraId: string): Promise<GrupoFaltan
           disciplina: l.disciplina,
           disciplinaLabel: DISCIPLINA_LABEL[l.disciplina] ?? l.disciplina,
           filas: [],
-          piezasFaltantes: 0,
           indispensables: 0,
-          costoEstimado: 0,
-          proveedores: [],
+          alPromotor: 0,
         };
         grupos.set(clave, g);
       }
-      const faltante = l.cantidadPedida - l.cantidadCubierta;
       g.filas.push({
         lineaId: l.id,
         showId: s.id,
@@ -435,103 +404,19 @@ export async function faltantesPorProveedor(giraId: string): Promise<GrupoFaltan
         disciplina: l.disciplina,
         concepto: l.concepto,
         cantidadPedida: l.cantidadPedida,
-        cantidadCubierta: l.cantidadCubierta,
-        faltante,
         prioridad: l.prioridad,
         estado: l.estado,
         cubiertoPor: l.cubiertoPor,
-        proveedorId: l.proveedor?.id ?? null,
-        proveedorNombre: l.proveedor?.nombre ?? null,
-        costoEstimado: l.costoEstimado,
+        pedirAlPromotor: l.pedirAlPromotor,
       });
-      g.piezasFaltantes += faltante;
       if (l.prioridad === "INDISPENSABLE") g.indispensables++;
-      g.costoEstimado += l.costoEstimado ?? 0;
+      if (l.pedirAlPromotor) g.alPromotor++;
     }
-  }
-
-  if (!grupos.size) return [];
-
-  const proveedores = await prisma.proveedor.findMany({
-    where: { activo: true },
-    orderBy: [{ prioridad: "desc" }, { nombre: "asc" }],
-    select: {
-      id: true,
-      nombre: true,
-      empresa: true,
-      telefono: true,
-      correo: true,
-      ciudades: true,
-      disciplinas: true,
-    },
-  });
-
-  const conCobertura = proveedores.map((p) => ({
-    ...p,
-    listaCiudades: parseLista(p.ciudades),
-    listaDisciplinas: parseLista(p.disciplinas),
-  }));
-
-  for (const g of grupos.values()) {
-    g.proveedores = conCobertura
-      .filter((p) => {
-        const ciudadOk = p.listaCiudades.some((c) => mismaCiudad(c, g.ciudad));
-        if (!ciudadOk) return false;
-        return p.listaDisciplinas.length === 0 || p.listaDisciplinas.includes(g.disciplina);
-      })
-      .map((p) => ({
-        id: p.id,
-        nombre: p.nombre,
-        empresa: p.empresa,
-        telefono: p.telefono,
-        correo: p.correo,
-        ciudades: p.listaCiudades,
-        disciplinas: p.listaDisciplinas,
-        enLaCiudad: true,
-      }));
   }
 
   return [...grupos.values()].sort(
     (a, b) => a.ciudad.localeCompare(b.ciudad, "es") || b.indispensables - a.indispensables,
   );
-}
-
-// ── Proveedores ordenados para el selector de un show ───────────────────────
-
-/**
- * Catálogo de proveedores para el selector del advance: los de la ciudad del
- * venue arriba, el resto después pero disponible (en gira se renta donde se puede).
- */
-export async function proveedoresParaShow(ciudad: string | null | undefined): Promise<ProveedorCandidato[]> {
-  const proveedores = await prisma.proveedor.findMany({
-    where: { activo: true },
-    orderBy: [{ nombre: "asc" }],
-    select: {
-      id: true,
-      nombre: true,
-      empresa: true,
-      telefono: true,
-      correo: true,
-      ciudades: true,
-      disciplinas: true,
-    },
-  });
-
-  return proveedores
-    .map((p) => {
-      const listaCiudades = parseLista(p.ciudades);
-      return {
-        id: p.id,
-        nombre: p.nombre,
-        empresa: p.empresa,
-        telefono: p.telefono,
-        correo: p.correo,
-        ciudades: listaCiudades,
-        disciplinas: parseLista(p.disciplinas),
-        enLaCiudad: listaCiudades.some((c) => mismaCiudad(c, ciudad)),
-      };
-    })
-    .sort((a, b) => Number(b.enLaCiudad) - Number(a.enLaCiudad) || a.nombre.localeCompare(b.nombre, "es"));
 }
 
 // ── Matriz de la gira: un concepto por fila, un show por columna ─────────────
@@ -540,12 +425,12 @@ export interface CeldaMatriz {
   showId: string;
   lineaId: string | null;
   cantidadPedida: number;
-  cantidadCubierta: number;
-  faltante: number;
+  /// Las dos decisiones del renglón, que es todo lo que la celda tiene que decir.
   cubiertoPor: string;
   estado: string;
   prioridad: string;
-  proveedorNombre: string | null;
+  pedirAlPromotor: boolean;
+  abierta: boolean;
 }
 
 export interface FilaMatriz {
@@ -555,7 +440,7 @@ export interface FilaMatriz {
   prioridad: string;
   /// Indexado por showId; ausente = ese show no tiene el concepto en su advance.
   celdas: Record<string, CeldaMatriz>;
-  showsConFaltante: number;
+  showsAbiertos: number;
 }
 
 export interface ColumnaMatriz {
@@ -591,11 +476,10 @@ export async function matrizAdvance(giraId: string): Promise<MatrizAdvance> {
           disciplina: true,
           concepto: true,
           cantidadPedida: true,
-          cantidadCubierta: true,
           cubiertoPor: true,
           estado: true,
           prioridad: true,
-          proveedor: { select: { nombre: true } },
+          pedirAlPromotor: true,
         },
       },
     },
@@ -622,32 +506,31 @@ export async function matrizAdvance(giraId: string): Promise<MatrizAdvance> {
           concepto: l.concepto,
           prioridad: l.prioridad,
           celdas: {},
-          showsConFaltante: 0,
+          showsAbiertos: 0,
         };
         filas.set(clave, f);
       }
       if ((PESO_PRIORIDAD[l.prioridad] ?? 0) > (PESO_PRIORIDAD[f.prioridad] ?? 0)) f.prioridad = l.prioridad;
 
-      const faltante = esFaltante(l) ? l.cantidadPedida - l.cantidadCubierta : 0;
+      const abierta = sigueAbierta(l);
       f.celdas[s.id] = {
         showId: s.id,
         lineaId: l.id,
         cantidadPedida: l.cantidadPedida,
-        cantidadCubierta: l.cantidadCubierta,
-        faltante,
         cubiertoPor: l.cubiertoPor,
         estado: l.estado,
         prioridad: l.prioridad,
-        proveedorNombre: l.proveedor?.nombre ?? null,
+        pedirAlPromotor: l.pedirAlPromotor,
+        abierta,
       };
-      if (faltante > 0) f.showsConFaltante++;
+      if (abierta) f.showsAbiertos++;
     }
   }
 
   const ordenadas = [...filas.values()].sort(
     (a, b) =>
       a.disciplina.localeCompare(b.disciplina, "es") ||
-      b.showsConFaltante - a.showsConFaltante ||
+      b.showsAbiertos - a.showsAbiertos ||
       a.concepto.localeCompare(b.concepto, "es"),
   );
 

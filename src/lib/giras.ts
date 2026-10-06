@@ -248,53 +248,59 @@ export const PROVISTO_POR_LABEL: Record<string, string> = {
 };
 
 // ── Advance por show ─────────────────────────────────────────────────────────
-export const CUBIERTO_POR = [
-  "POR_DEFINIR",
-  "CASA",
-  "MAINSTAGE",
-  "PROVEEDOR",
-  "ARTISTA",
-  "SUSTITUIDO",
-  "NO_CUBIERTO",
-  "NO_APLICA",
-] as const;
+// Un renglón del advance se cierra contestando dos preguntas y nada más: quién
+// lo pone y cómo va. Antes había ocho opciones de "cubierto por" y seis de
+// estado, y las dos listas se pisaban (SUSTITUIDO vivía en las dos). El trabajo
+// real en el teléfono con el promotor no tiene esos matices.
+export const CUBIERTO_POR = ["POR_DEFINIR", "CASA", "PROMOTOR", "MAINSTAGE", "ARTISTA", "NO_APLICA"] as const;
 
 export const CUBIERTO_POR_LABEL: Record<string, string> = {
   POR_DEFINIR: "Por definir",
-  CASA: "Lo pone el venue",
-  MAINSTAGE: "Lo llevamos nosotros",
-  PROVEEDOR: "Se renta a proveedor",
+  CASA: "Ya lo tiene el venue",
+  PROMOTOR: "Lo consigue el promotor",
+  MAINSTAGE: "Lo conseguimos nosotros",
   ARTISTA: "Lo trae el artista",
-  SUSTITUIDO: "Sustitución aprobada",
-  NO_CUBIERTO: "Sin cubrir",
   NO_APLICA: "No aplica aquí",
 };
 
-export const ESTADOS_ADVANCE = [
-  "PENDIENTE",
-  "SOLICITADO",
-  "COTIZANDO",
-  "CONFIRMADO",
-  "RECHAZADO",
-  "SUSTITUCION_APROBADA",
-] as const;
+export const CUBIERTO_POR_COLOR: Record<string, string> = {
+  POR_DEFINIR: "text-[#9ca3af] bg-white/5 border-white/10",
+  CASA: "text-emerald-300 bg-emerald-500/10 border-emerald-500/30",
+  PROMOTOR: "text-sky-300 bg-sky-500/10 border-sky-500/30",
+  MAINSTAGE: "text-[#B3985B] bg-[#B3985B]/10 border-[#B3985B]/30",
+  ARTISTA: "text-violet-300 bg-violet-500/10 border-violet-500/30",
+  NO_APLICA: "text-[#6b7280] bg-white/5 border-white/10",
+};
+
+/// La etiqueta larga es la que va en los documentos; en una pastilla no cabe.
+export const CUBIERTO_POR_CORTO: Record<string, string> = {
+  POR_DEFINIR: "Por definir",
+  CASA: "Venue",
+  PROMOTOR: "Promotor",
+  MAINSTAGE: "Nosotros",
+  ARTISTA: "Artista",
+  NO_APLICA: "No aplica",
+};
+
+export const ESTADOS_ADVANCE = ["PENDIENTE", "CONFIRMADO", "RECHAZADO", "SUSTITUCION_APROBADA"] as const;
 
 export const ESTADO_ADVANCE_LABEL: Record<string, string> = {
   PENDIENTE: "Pendiente",
-  SOLICITADO: "Solicitado",
-  COTIZANDO: "Cotizando",
-  CONFIRMADO: "Confirmado",
-  RECHAZADO: "Rechazado",
-  SUSTITUCION_APROBADA: "Sustitución aprobada",
+  CONFIRMADO: "Listo",
+  RECHAZADO: "No se consiguió",
+  SUSTITUCION_APROBADA: "Se cambió por otro",
+};
+
+export const ESTADO_ADVANCE_CORTO: Record<string, string> = {
+  ...ESTADO_ADVANCE_LABEL,
+  SUSTITUCION_APROBADA: "Se cambió",
 };
 
 export const ESTADO_ADVANCE_COLOR: Record<string, string> = {
   PENDIENTE: "text-[#9ca3af] bg-white/5 border-white/10",
-  SOLICITADO: "text-sky-300 bg-sky-500/10 border-sky-500/30",
-  COTIZANDO: "text-amber-300 bg-amber-500/10 border-amber-500/30",
   CONFIRMADO: "text-emerald-300 bg-emerald-500/10 border-emerald-500/30",
   RECHAZADO: "text-red-300 bg-red-500/10 border-red-500/30",
-  SUSTITUCION_APROBADA: "text-emerald-300 bg-emerald-500/10 border-emerald-500/30",
+  SUSTITUCION_APROBADA: "text-amber-300 bg-amber-500/10 border-amber-500/30",
 };
 
 /// Un renglón del advance está resuelto cuando ya sabemos de dónde sale y está confirmado.
@@ -369,10 +375,12 @@ export const ESTADO_SHOW_COLOR: Record<string, string> = {
   CANCELADO: "text-red-300 bg-red-500/10 border-red-500/30",
 };
 
-export const TIPOS_SHOW = ["HEADLINE", "SOPORTE", "FESTIVAL", "SHOWCASE", "PRIVADO"] as const;
+/// Lo que producimos casi siempre es un concierto del artista. "Headline" se lee
+/// como el cabeza de cartel de un festival, que es otra cosa y es la excepción.
+export const TIPOS_SHOW = ["CONCIERTO", "SOPORTE", "FESTIVAL", "SHOWCASE", "PRIVADO"] as const;
 
 export const TIPO_SHOW_LABEL: Record<string, string> = {
-  HEADLINE: "Headline",
+  CONCIERTO: "Concierto",
   SOPORTE: "Soporte / opening",
   FESTIVAL: "Festival",
   SHOWCASE: "Showcase",
@@ -477,18 +485,92 @@ export function fmtDuracion(minutos: number | null): string {
   return m ? `${h} h ${m} min` : `${h} h`;
 }
 
-/// Los horarios gruesos del show se convierten en bloques del day sheet. El
-/// show toma su hora de fin del propio campo horaFin, para no dejar un bloque
-/// "Fin del show" sin cuerpo.
-export const SIEMBRA_BLOQUES: { campo: string; campoFin?: string; titulo: string; tipo: string }[] = [
-  { campo: "horaLoadIn", titulo: "Load in", tipo: "LOGISTICA" },
-  { campo: "horaMontaje", titulo: "Montaje", tipo: "MONTAJE" },
-  { campo: "horaLineCheck", titulo: "Line check", tipo: "SOUNDCHECK" },
-  { campo: "horaSoundcheck", titulo: "Soundcheck", tipo: "SOUNDCHECK" },
-  { campo: "horaDoors", titulo: "Apertura de puertas", tipo: "PROGRAMA" },
-  { campo: "horaShow", campoFin: "horaFin", titulo: "Show", tipo: "PROGRAMA" },
-  { campo: "horaLoadOut", titulo: "Load out", tipo: "DESMONTAJE" },
-  { campo: "curfew", titulo: "Curfew", tipo: "DESMONTAJE" },
+// ── Horarios ancla ───────────────────────────────────────────────────────────
+/// El esqueleto del día. Se siembra en `ShowMomento` la primera vez que se abre
+/// un show y a partir de ahí es editable: se le cambia la hora, se le pone fin,
+/// se agrega el meet and greet que no estaba. La llave sobrevive al renombre,
+/// así que los PDFs siguen sabiendo cuál renglón es el show.
+export interface MomentoPlantilla {
+  llave: string;
+  titulo: string;
+  tipo: string;
+  /// Si el momento es un rango por naturaleza (dura un rato) o un instante.
+  rango: boolean;
+}
+
+export const MOMENTOS_PLANTILLA: MomentoPlantilla[] = [
+  { llave: "LOAD_IN", titulo: "Load in", tipo: "LOGISTICA", rango: true },
+  { llave: "MONTAJE", titulo: "Montaje", tipo: "MONTAJE", rango: true },
+  { llave: "LINE_CHECK", titulo: "Line check", tipo: "SOUNDCHECK", rango: true },
+  { llave: "SOUNDCHECK", titulo: "Soundcheck", tipo: "SOUNDCHECK", rango: true },
+  { llave: "DOORS", titulo: "Apertura de puertas", tipo: "PROGRAMA", rango: false },
+  { llave: "SHOW", titulo: "Show", tipo: "PROGRAMA", rango: true },
+  { llave: "LOAD_OUT", titulo: "Load out", tipo: "DESMONTAJE", rango: true },
+  { llave: "CURFEW", titulo: "Curfew", tipo: "DESMONTAJE", rango: false },
+];
+
+/// Momentos que aparecen seguido pero no en todas las fechas, para agregarlos de
+/// un clic en vez de escribirlos.
+export const MOMENTOS_SUGERIDOS: MomentoPlantilla[] = [
+  { llave: "MEET_AND_GREET", titulo: "Meet and greet", tipo: "PROGRAMA", rango: true },
+  { llave: "PRENSA", titulo: "Prensa / entrevistas", tipo: "PROGRAMA", rango: true },
+  { llave: "LLEGADA_ARTISTA", titulo: "Llegada del artista", tipo: "LOGISTICA", rango: false },
+  { llave: "CATERING", titulo: "Catering / comida de crew", tipo: "COMIDA", rango: true },
+  { llave: "ENSAYO", titulo: "Ensayo", tipo: "SOUNDCHECK", rango: true },
+  { llave: "CAMBIO", titulo: "Cambio de escenario", tipo: "MONTAJE", rango: true },
+  { llave: "APERTURA", titulo: "Acto de apertura", tipo: "PROGRAMA", rango: true },
+];
+
+// ── Invitados del show ───────────────────────────────────────────────────────
+export const ROLES_INVITADO = ["INVITADO", "TELONERO", "FEATURING", "MUSICO", "DJ", "PRESENTADOR", "OTRO"] as const;
+
+export const ROL_INVITADO_LABEL: Record<string, string> = {
+  INVITADO: "Artista invitado",
+  TELONERO: "Telonero",
+  FEATURING: "Featuring",
+  MUSICO: "Músico invitado",
+  DJ: "DJ",
+  PRESENTADOR: "Presentador / MC",
+  OTRO: "Otro",
+};
+
+/// Lo que un invitado puede necesitar en escena. Cada opción se traduce sola a
+/// canales: el micrófono y el instrumento ocupan entradas, el IEM y el monitor
+/// de piso ocupan salidas. Es la lista corta a propósito — si hace falta algo
+/// más raro, se agrega el canal a mano.
+export interface RequerimientoInvitado {
+  clave: string;
+  label: string;
+  tipo: "INPUT" | "OUTPUT";
+  /// Cómo nace el canal que genera.
+  canal: { nombre: string; microfono?: string; soporte?: string; tipoSalida?: string; estereo?: boolean };
+}
+
+export const REQUERIMIENTOS_INVITADO: RequerimientoInvitado[] = [
+  {
+    clave: "MIC_VOZ",
+    label: "Micrófono de voz",
+    tipo: "INPUT",
+    canal: { nombre: "Voz", microfono: "SM58", soporte: "TRIPIE_LARGO" },
+  },
+  {
+    clave: "INSTRUMENTO",
+    label: "Instrumento",
+    tipo: "INPUT",
+    canal: { nombre: "Instrumento", soporte: "DI" },
+  },
+  {
+    clave: "IEM",
+    label: "Monitoreo IEM",
+    tipo: "OUTPUT",
+    canal: { nombre: "IEM", tipoSalida: "IEM", estereo: true },
+  },
+  {
+    clave: "WEDGE",
+    label: "Monitor de piso",
+    tipo: "OUTPUT",
+    canal: { nombre: "Wedge", tipoSalida: "WEDGE", estereo: false },
+  },
 ];
 
 // ── Setlist ──────────────────────────────────────────────────────────────────
@@ -908,11 +990,11 @@ export interface ResumenAdvance {
   semaforo: "LISTO" | "EN_PROCESO" | "RIESGO" | "SIN_ARMAR";
 }
 
-/// Un renglón cuenta como resuelto si está confirmado, o si se decidió que no aplica
-/// en este show. "No cubierto" nunca cuenta como resuelto, aunque sea una decisión.
+/// Un renglón cuenta como resuelto si está confirmado, o si se decidió que no
+/// aplica en este show. "No se consiguió" es una decisión tomada, pero el equipo
+/// sigue faltando: nunca cuenta como resuelto.
 function estaResuelta(l: LineaAdvanceResumible): boolean {
   if (l.cubiertoPor === "NO_APLICA") return true;
-  if (l.cubiertoPor === "NO_CUBIERTO") return false;
   return ESTADOS_RESUELTOS.includes(l.estado);
 }
 
@@ -1456,15 +1538,7 @@ export const TIPO_ARCHIVO_GIRA_COLOR: Record<string, string> = {
 // querystring `?secciones=`, así que la UI, el generador y el PDF hablan del
 // mismo vocabulario. Viven aquí y no en el componente del PDF porque la pantalla
 // que las elige corre en el cliente y no debe arrastrar el renderer.
-export const SECCIONES_LIBRO = [
-  "resumen",
-  "shows",
-  "crew",
-  "logistica",
-  "setlist",
-  "advance",
-  "pendientes",
-] as const;
+export const SECCIONES_LIBRO = ["resumen", "shows", "crew", "logistica", "setlist", "advance", "pendientes"] as const;
 export type SeccionLibro = (typeof SECCIONES_LIBRO)[number];
 
 export const SECCION_LIBRO_LABEL: Record<SeccionLibro, string> = {
@@ -1474,7 +1548,7 @@ export const SECCION_LIBRO_LABEL: Record<SeccionLibro, string> = {
   logistica: "Logística y rooming",
   setlist: "Repertorio",
   advance: "Estado del advance",
-  pendientes: "Pendientes por cerrar",
+  pendientes: "Pendientes por frente",
 };
 
 export const SECCION_LIBRO_AYUDA: Record<SeccionLibro, string> = {
