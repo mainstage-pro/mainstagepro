@@ -756,11 +756,12 @@ export interface CrewNombrable {
   persona?: { nombre: string } | null;
 }
 
-/// Quién es esta persona. El nombre libre manda cuando existe: es el que se
-/// capturó a propósito para esta gira (el técnico del venue que no está en
-/// ningún catálogo); si no, se lee del técnico o del integrante del artista.
+/// Quién es esta persona. La ficha ligada manda: si el renglón apunta al directorio
+/// del artista o a un técnico de casa, ese nombre es el bueno y corregirlo allá lo
+/// corrige aquí. El nombre libre es solo para el suelto —el técnico del venue que
+/// no está en ningún catálogo.
 export function nombreCrew(c: CrewNombrable): string {
-  return c.nombreLibre?.trim() || c.tecnico?.nombre || c.persona?.nombre || "Sin nombre";
+  return c.persona?.nombre || c.tecnico?.nombre || c.nombreLibre?.trim() || "Sin nombre";
 }
 
 /**

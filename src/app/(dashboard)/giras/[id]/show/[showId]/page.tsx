@@ -43,6 +43,15 @@ export default async function ShowResumenPage({ params }: { params: Promise<{ id
 
   const resumen = resumirAdvance(show.riderLineas);
 
+  // El directorio del artista es la única fuente de personas: el promotor de la
+  // fecha se elige de aquí para que la siguiente fecha con el mismo promotor no
+  // lo vuelva a capturar, y para que corregir su celular lo corrija en todas.
+  const personas = await prisma.artistaPersona.findMany({
+    where: { artistaId: show.gira.artistaId, activo: true },
+    orderBy: [{ orden: "asc" }, { nombre: "asc" }],
+    select: { id: true, nombre: true, rol: true, telefono: true, email: true },
+  });
+
   // Si la gira no tiene rider amarrado se ofrece el vigente del artista, marcado
   // como tal: es contra ese documento que se lee la ficha técnica del foro.
   const riderArtista = show.gira.rider
@@ -101,6 +110,7 @@ export default async function ShowResumenPage({ params }: { params: Promise<{ id
     estado: show.estado,
     tipoShow: show.tipoShow,
     aforoEsperado: show.aforoEsperado,
+    promotorPersonaId: show.promotorPersonaId,
     promotorNombre: show.promotorNombre,
     promotorContacto: show.promotorContacto,
     promotorTelefono: show.promotorTelefono,
@@ -125,5 +135,5 @@ export default async function ShowResumenPage({ params }: { params: Promise<{ id
     })),
   };
 
-  return <ShowResumenClient show={detalle} venue={venue} advance={resumen} />;
+  return <ShowResumenClient show={detalle} venue={venue} advance={resumen} personas={personas} />;
 }

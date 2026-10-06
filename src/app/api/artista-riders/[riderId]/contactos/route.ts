@@ -1,18 +1,22 @@
 // Los contactos del rider: a quién le habla la casa cuando lo lee.
 //
 // El crew del artista vive en ArtistaPersona, pero no todo el crew entra en todos
-// los riders. Aquí se elige quién sale en ESTE rider y se copian nombre, teléfono
-// y correo: una versión histórica tiene que seguir diciendo lo que decía cuando
-// se mandó, aunque el ingeniero ya se haya ido de la banda.
+// los riders. Aquí se elige quién sale en ESTE rider. Un contacto ligado a una
+// persona lee sus datos de ella y editarlo desde aquí la edita a ella: el celular
+// del FOH se corrige una vez y queda corregido en todos los riders, el crew y los
+// shows. La constancia de lo que decía el rider cuando se mandó es el PDF ya
+// generado, no esta tabla.
 //
 // Un contacto puede venir de una persona del artista (`personaId`) o capturarse
 // suelto: el ingeniero que contrataron solo para esta gira todavía no está dado
-// de alta y nadie va a abandonar la captura para ir a registrarlo.
+// de alta y nadie va a abandonar la captura para ir a registrarlo. El suelto se
+// puede dar de alta después con `accion: "alta-directorio"`.
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { ROLES_PERSONA } from "@/lib/giras";
+import { SELECT_PERSONA, altaEnDirectorio, partirEdicion, propagarAPersona } from "@/lib/contactos-artista";
 
 function texto(v: unknown): string | null {
   if (typeof v !== "string") return null;
@@ -36,6 +40,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ rid
   const contactos = await prisma.artistaRiderContacto.findMany({
     where: { riderId },
     orderBy: [{ orden: "asc" }, { createdAt: "asc" }],
+    include: { persona: { select: SELECT_PERSONA } },
   });
 
   return NextResponse.json({ contactos });
@@ -88,6 +93,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ rid
       enPdf: body.enPdf !== false,
       orden: (ultimo?.orden ?? -1) + 1,
     },
+    include: { persona: { select: SELECT_PERSONA } },
   });
 
   return NextResponse.json({ contacto });
@@ -102,26 +108,79 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ri
   const id = typeof body.id === "string" ? body.id : "";
   if (!id) return NextResponse.json({ error: "Falta el id del contacto" }, { status: 400 });
 
-  const actual = await prisma.artistaRiderContacto.findFirst({ where: { id, riderId }, select: { id: true } });
+  const rider = await riderDelArtista(riderId);
+  if (!rider) return NextResponse.json({ error: "Rider no encontrado" }, { status: 404 });
+
+  const actual = await prisma.artistaRiderContacto.findFirst({
+    where: { id, riderId },
+    select: { id: true, personaId: true, nombre: true, rol: true, telefono: true, email: true },
+  });
   if (!actual) return NextResponse.json({ error: "Contacto no encontrado" }, { status: 404 });
 
-  const data: Record<string, unknown> = {};
-  if ("nombre" in body) {
-    const n = texto(body.nombre);
-    if (!n) return NextResponse.json({ error: "El contacto necesita nombre" }, { status: 400 });
-    data.nombre = n;
+  let personaId = actual.personaId;
+
+  // Dar de alta en el directorio al contacto que se capturó suelto: deja de vivir
+  // solo en este rider y queda disponible para el crew y los shows.
+  if (body.accion === "alta-directorio") {
+    if (personaId) return NextResponse.json({ error: "Ese contacto ya está en el directorio" }, { status: 400 });
+    const persona = await altaEnDirectorio(prisma, rider.artistaId, actual);
+    personaId = persona.id;
+  }
+
+  // Ligar un suelto a alguien que ya estaba en el directorio, o soltarlo.
+  if (body.accion !== "alta-directorio" && "personaId" in body) {
+    const nuevo = texto(body.personaId);
+    if (nuevo) {
+      const persona = await prisma.artistaPersona.findFirst({
+        where: { id: nuevo, artistaId: rider.artistaId },
+        select: { id: true },
+      });
+      if (!persona) return NextResponse.json({ error: "Esa persona no es del artista" }, { status: 400 });
+      const yaEsta = await prisma.artistaRiderContacto.findFirst({
+        where: { riderId, personaId: nuevo, id: { not: id } },
+        select: { id: true },
+      });
+      if (yaEsta) return NextResponse.json({ error: "Esa persona ya está en el rider" }, { status: 400 });
+    }
+    personaId = nuevo;
+  }
+
+  const ligado = Boolean(personaId);
+  const { persona: aPersona, local } = partirEdicion(body, { ligado });
+
+  if (ligado && personaId) await propagarAPersona(prisma, personaId, aPersona);
+
+  const data: Record<string, unknown> = { ...local };
+  if (personaId !== actual.personaId) {
+    data.personaId = personaId;
+    // Al ligarlo, la copia del renglón pasa a decir lo que dice la persona.
+    if (personaId) {
+      const persona = await prisma.artistaPersona.findUnique({
+        where: { id: personaId },
+        select: SELECT_PERSONA,
+      });
+      if (persona) {
+        data.nombre = persona.nombre;
+        data.telefono = persona.telefono;
+        data.email = persona.email;
+      }
+    }
   }
   if ("rol" in body) data.rol = rolValido(body.rol);
-  for (const campo of ["telefono", "email", "notas"] as const) {
-    if (campo in body) data[campo] = texto(body[campo]);
-  }
+  if ("notas" in body) data.notas = texto(body.notas);
   if ("enPdf" in body) data.enPdf = body.enPdf === true;
   if ("orden" in body) {
     const n = Number(body.orden);
     if (Number.isFinite(n)) data.orden = Math.trunc(n);
   }
+  // El nombre es obligatorio en la tabla: al soltarlo se queda con el que traía.
+  if (!ligado && data.nombre === null) delete data.nombre;
 
-  const contacto = await prisma.artistaRiderContacto.update({ where: { id }, data });
+  const contacto = await prisma.artistaRiderContacto.update({
+    where: { id },
+    data,
+    include: { persona: { select: SELECT_PERSONA } },
+  });
   return NextResponse.json({ contacto });
 }
 

@@ -15,6 +15,8 @@ import { coincide } from "@/lib/buscar";
 import {
   ORIGENES_CREW,
   ORIGEN_CREW_LABEL,
+  ROLES_PERSONA,
+  ROL_PERSONA_LABEL,
   clavePersona,
   fmtFechaCorta,
   nombreCrew,
@@ -68,15 +70,34 @@ type Campos = Partial<Record<keyof CrewFila, unknown>>;
 
 const DEMORA_GUARDADO = 700;
 
+/// Valor centinela del selector de persona: no es nadie del catálogo, abre el
+/// alta en el directorio del artista sin salir del formulario.
+const NUEVA_PERSONA = "__nueva__";
+
 interface Nuevo {
   persona: string;
   nombreLibre: string;
   funcion: string;
   origen: string;
   rolTecnicoId: string;
+  /// Datos del alta en caliente; solo se mandan si `persona` es el centinela.
+  nuevaNombre: string;
+  nuevaRol: string;
+  nuevaTelefono: string;
+  nuevaEmail: string;
 }
 
-const NUEVO: Nuevo = { persona: "", nombreLibre: "", funcion: "", origen: "MAINSTAGE", rolTecnicoId: "" };
+const NUEVO: Nuevo = {
+  persona: "",
+  nombreLibre: "",
+  funcion: "",
+  origen: "MAINSTAGE",
+  rolTecnicoId: "",
+  nuevaNombre: "",
+  nuevaRol: "OTRO",
+  nuevaTelefono: "",
+  nuevaEmail: "",
+};
 
 export default function CrewPanel({
   giraId,
@@ -96,9 +117,21 @@ export default function CrewPanel({
   const [nuevo, setNuevo] = useState<Nuevo | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [guardadas, setGuardadas] = useState<Set<string>>(new Set());
+  const [dandoAlta, setDandoAlta] = useState<string | null>(null);
+  /// Personas dadas de alta en esta pantalla. Los candidatos llegan del servidor
+  /// y no se recargan, así que sin esta lista el selector del renglón recién
+  /// ligado no encontraría su etiqueta y se vería vacío.
+  const [reciennacidas, setReciennacidas] = useState<CandidatoPersonaUI[]>([]);
 
   const pendientes = useRef(new Map<string, Campos>());
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+
+  /// El grupo del directorio lo arma el servidor con el nombre del artista; se
+  /// reusa el de los candidatos para que las altas caigan en la misma sección.
+  const grupoArtista = useMemo(
+    () => personas.find((p) => p.valor.startsWith("persona:"))?.grupo ?? "Del artista",
+    [personas],
+  );
 
   // ── Guardado por renglón ───────────────────────────────────────────────────
   async function descargar(id: string) {
@@ -147,7 +180,7 @@ export default function CrewPanel({
   /// se limpia: la fila tiene una sola identidad.
   function elegirPersona(fila: CrewFila, valor: string) {
     const { tecnicoId, personaId } = partirClavePersona(valor);
-    const candidato = personas.find((p) => p.valor === valor);
+    const candidato = [...personas, ...reciennacidas].find((p) => p.valor === valor);
     editar(
       fila.id,
       {
@@ -171,15 +204,33 @@ export default function CrewPanel({
     );
   }
 
+  function recordarPersona(miembro: CrewFila) {
+    const p = miembro.persona;
+    if (!p) return;
+    const valor = `persona:${p.id}`;
+    setReciennacidas((prev) =>
+      prev.some((c) => c.valor === valor) || personas.some((c) => c.valor === valor)
+        ? prev
+        : [...prev, { valor, etiqueta: p.nombre, grupo: grupoArtista }],
+    );
+  }
+
   async function agregar() {
     if (!nuevo) return;
-    if (!nuevo.persona && !nuevo.nombreLibre.trim()) {
+    const alta = nuevo.persona === NUEVA_PERSONA;
+    if (alta && !nuevo.nuevaNombre.trim()) {
+      toast.error("La persona nueva necesita nombre.");
+      return;
+    }
+    if (!alta && !nuevo.persona && !nuevo.nombreLibre.trim()) {
       toast.error("Elige a alguien del catálogo o escribe el nombre.");
       return;
     }
     setGuardando(true);
     try {
-      const { tecnicoId, personaId } = partirClavePersona(nuevo.persona);
+      const { tecnicoId, personaId } = alta
+        ? { tecnicoId: null, personaId: null }
+        : partirClavePersona(nuevo.persona);
       const res = await fetch(`/api/giras/${giraId}/crew`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -189,6 +240,16 @@ export default function CrewPanel({
           tecnicoId,
           personaId,
           nombreLibre: nuevo.persona ? null : nuevo.nombreLibre,
+          // El alta en caliente la resuelve el endpoint: crea la ficha en el
+          // directorio del artista y devuelve el renglón ya ligado a ella.
+          nuevaPersona: alta
+            ? {
+                nombre: nuevo.nuevaNombre.trim(),
+                rol: nuevo.nuevaRol,
+                telefono: nuevo.nuevaTelefono.trim() || undefined,
+                email: nuevo.nuevaEmail.trim() || undefined,
+              }
+            : undefined,
           funcion: nuevo.funcion,
           rolTecnicoId: nuevo.rolTecnicoId || null,
         }),
@@ -198,10 +259,39 @@ export default function CrewPanel({
         toast.error(d.error ?? "No se pudo sumar a la persona");
         return;
       }
+      recordarPersona(d.miembro);
       setCrew((prev) => [...prev, d.miembro]);
       setNuevo({ ...NUEVO, origen: nuevo.origen });
+      if (alta) toast.success(`${nombreCrew(d.miembro)} ya está en el directorio del artista`);
     } finally {
       setGuardando(false);
+    }
+  }
+
+  /// Un renglón suelto solo existe en esta gira. Darlo de alta lo convierte en
+  /// ficha del directorio del artista, que es la que leen el rider y los demás
+  /// shows, y deja el renglón ligado a ella.
+  async function altaEnDirectorio(fila: CrewFila) {
+    // El nombre pudo haberse teclado hace medio segundo y seguir en la cola del
+    // guardado diferido; sin bajarlo primero el endpoint no vería nombre.
+    await descargar(fila.id);
+    setDandoAlta(fila.id);
+    try {
+      const res = await fetch(`/api/gira-crew/${fila.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accion: "alta-directorio" }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(d.error ?? "No se pudo dar de alta en el directorio");
+        return;
+      }
+      recordarPersona(d.miembro);
+      setCrew((prev) => prev.map((c) => (c.id === fila.id ? d.miembro : c)));
+      toast.success(`${nombreCrew(d.miembro)} ya está en el directorio del artista`);
+    } finally {
+      setDandoAlta(null);
     }
   }
 
@@ -226,9 +316,16 @@ export default function CrewPanel({
   const opcionesPersona: ComboboxOption[] = useMemo(
     () => [
       { value: "", label: "— Nombre escrito a mano —" },
-      ...personas.map((p) => ({ value: p.valor, label: p.etiqueta, group: p.grupo })),
+      ...[...personas, ...reciennacidas].map((p) => ({ value: p.valor, label: p.etiqueta, group: p.grupo })),
     ],
-    [personas],
+    [personas, reciennacidas],
+  );
+
+  /// El centinela del alta solo va en el formulario: en un renglón ya existente
+  /// elegirlo lo dejaría sin identidad.
+  const opcionesPersonaAlta: ComboboxOption[] = useMemo(
+    () => [{ value: NUEVA_PERSONA, label: "＋ Registrar nueva persona…" }, ...opcionesPersona],
+    [opcionesPersona],
   );
 
   const opcionesRol: ComboboxOption[] = useMemo(
@@ -327,7 +424,7 @@ export default function CrewPanel({
             <Combobox
               value={nuevo.persona}
               onChange={(v) => setNuevo({ ...nuevo, persona: v })}
-              options={opcionesPersona}
+              options={opcionesPersonaAlta}
               placeholder="Técnico o integrante…"
               className="w-full"
             />
@@ -371,6 +468,73 @@ export default function CrewPanel({
           <button onClick={() => void agregar()} disabled={guardando} className="ms-btn-primary disabled:opacity-50">
             {guardando ? "Sumando…" : "Sumar"}
           </button>
+
+          {/* Alta en caliente: la persona entra al directorio del artista y el
+              renglón nace ligado, para no capturarla otra vez en el rider. */}
+          {nuevo.persona === NUEVA_PERSONA && (
+            <div className="col-span-full ms-card-inset p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <p className="ms-section-label">Nueva persona en el directorio del artista</p>
+                <button
+                  onClick={() => setNuevo({ ...NUEVO, origen: nuevo.origen, funcion: nuevo.funcion })}
+                  className="text-xs text-gray-500 hover:text-white transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                <div>
+                  <label className="ms-label block mb-1">Nombre</label>
+                  <input
+                    value={nuevo.nuevaNombre}
+                    onChange={(e) => setNuevo({ ...nuevo, nuevaNombre: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") void agregar();
+                    }}
+                    autoFocus
+                    placeholder="Nombre completo"
+                    className="ms-input-inline w-full"
+                  />
+                </div>
+                <div>
+                  <label className="ms-label block mb-1">Rol en el elenco</label>
+                  <select
+                    value={nuevo.nuevaRol}
+                    onChange={(e) => setNuevo({ ...nuevo, nuevaRol: e.target.value })}
+                    className="ms-input-inline w-full"
+                  >
+                    {ROLES_PERSONA.map((r) => (
+                      <option key={r} value={r}>
+                        {ROL_PERSONA_LABEL[r] ?? r}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="ms-label block mb-1">Teléfono (opcional)</label>
+                  <input
+                    value={nuevo.nuevaTelefono}
+                    onChange={(e) => setNuevo({ ...nuevo, nuevaTelefono: e.target.value })}
+                    placeholder="ej. 442 123 4567"
+                    className="ms-input-inline w-full"
+                  />
+                </div>
+                <div>
+                  <label className="ms-label block mb-1">Correo (opcional)</label>
+                  <input
+                    value={nuevo.nuevaEmail}
+                    onChange={(e) => setNuevo({ ...nuevo, nuevaEmail: e.target.value })}
+                    placeholder="ej. tour@artista.com"
+                    className="ms-input-inline w-full"
+                  />
+                </div>
+              </div>
+              <p className="ms-micro">
+                Queda en el directorio del artista: se puede elegir en los riders y en los demás shows, y lo que se
+                corrija aquí se corrige en todos.
+              </p>
+            </div>
+          )}
         </div>
       )}
 
@@ -412,24 +576,46 @@ export default function CrewPanel({
                     </td>
                   </tr>
                 )}
-                {g.filas.map((c) => (
+                {g.filas.map((c) => {
+                  const ligado = Boolean(c.tecnicoId || c.personaId);
+                  return (
                   <tr key={c.id} className="ms-tr align-top">
-                    <td className="ms-td">
-                      {c.tecnicoId || c.personaId ? (
-                        <Combobox
-                          value={clavePersona(c)}
-                          onChange={(v) => (v ? elegirPersona(c, v) : editar(c.id, { tecnicoId: null, personaId: null }, true))}
-                          options={opcionesPersona}
-                          placeholder="Elegir persona…"
-                          className="w-full"
-                        />
+                    <td
+                      className={`ms-td border-l-2 ${ligado ? "border-l-green-700/60" : "border-l-amber-700/60"}`}
+                    >
+                      {ligado ? (
+                        <>
+                          <Combobox
+                            value={clavePersona(c)}
+                            onChange={(v) => (v ? elegirPersona(c, v) : editar(c.id, { tecnicoId: null, personaId: null }, true))}
+                            options={opcionesPersona}
+                            placeholder="Elegir persona…"
+                            className="w-full"
+                          />
+                          <p className="ms-micro mt-1">
+                            {c.personaId
+                              ? "Ficha del directorio del artista · lo que edites aquí se corrige en los riders y en los demás shows"
+                              : "Del catálogo de técnicos de la casa · el teléfono y el correo de esta fila son solo de esta gira"}
+                          </p>
+                        </>
                       ) : (
-                        <input
-                          value={c.nombreLibre ?? ""}
-                          onChange={(e) => editar(c.id, { nombreLibre: e.target.value })}
-                          placeholder="Nombre…"
-                          className="ms-input-inline w-full"
-                        />
+                        <>
+                          <input
+                            value={c.nombreLibre ?? ""}
+                            onChange={(e) => editar(c.id, { nombreLibre: e.target.value })}
+                            placeholder="Nombre…"
+                            className="ms-input-inline w-full"
+                          />
+                          <button
+                            onClick={() => void altaEnDirectorio(c)}
+                            disabled={dandoAlta === c.id || !c.nombreLibre?.trim()}
+                            className="mt-1 text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-2 py-0.5 rounded transition-colors disabled:opacity-40"
+                            title="Entra al directorio del artista: queda disponible para los riders y los demás shows, y a partir de ahí se corrige en un solo lugar."
+                          >
+                            {dandoAlta === c.id ? "Dando de alta…" : "Dar de alta"}
+                          </button>
+                          <p className="ms-micro mt-1">Nombre suelto · vive solo en esta gira</p>
+                        </>
                       )}
                       {guardadas.has(c.id) && <span className="ms-micro text-emerald-400">guardado</span>}
                     </td>
@@ -522,8 +708,9 @@ export default function CrewPanel({
                         ✕
                       </button>
                     </td>
-                  </tr>
-                ))}
+                    </tr>
+                  );
+                })}
               </tbody>
             ))}
           </table>
@@ -531,8 +718,9 @@ export default function CrewPanel({
       )}
 
       <p className="ms-micro">
-        Cada celda se guarda sola al dejar de escribir. El teléfono y el correo de la fila mandan sobre los del catálogo:
-        en gira la gente usa otro número.
+        Cada celda se guarda sola al dejar de escribir. En un renglón ligado al directorio del artista, el nombre, el
+        teléfono y el correo son de su ficha: se corrigen aquí y quedan corregidos en los riders y en los demás shows.
+        El nombre suelto vive solo en esta gira hasta que lo des de alta.
       </p>
     </div>
   );

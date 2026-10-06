@@ -1,10 +1,25 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { coincide } from "@/lib/buscar";
 import { ROLES_EN_ESCENA, ROLES_PERSONA, ROL_PERSONA_LABEL } from "@/lib/giras";
+
+/** Una mención de uso: a dónde se va y con qué etiqueta se lee. */
+export interface UsoItem {
+  href: string;
+  texto: string;
+  detalle?: string;
+}
+
+export interface UsoPersona {
+  riders: UsoItem[];
+  crew: UsoItem[];
+  promotor: UsoItem[];
+  contactoPrincipal: UsoItem[];
+}
 
 export interface PersonaFila {
   id: string;
@@ -19,6 +34,7 @@ export interface PersonaFila {
   notasHospitalidad: string | null;
   notas: string | null;
   orden: number;
+  uso: UsoPersona;
 }
 
 interface Props {
@@ -32,6 +48,73 @@ type Campos = Partial<Record<keyof PersonaFila, unknown>>;
 const DEMORA_GUARDADO = 700;
 
 const NUEVA_VACIA = { nombre: "", rol: "MUSICO", instrumento: "" };
+
+const USO_VACIO: UsoPersona = { riders: [], crew: [], promotor: [], contactoPrincipal: [] };
+
+/** Cuántas menciones se enseñan por grupo antes de esconder el resto tras un "+N". */
+const TOPE_MENCIONES = 3;
+
+function contarUso(uso: UsoPersona): number {
+  return uso.riders.length + uso.crew.length + uso.promotor.length + uso.contactoPrincipal.length;
+}
+
+function textosUso(uso: UsoPersona): string[] {
+  return [...uso.riders, ...uso.crew, ...uso.promotor, ...uso.contactoPrincipal].map((i) => i.texto);
+}
+
+function GrupoUso({ titulo, items, todo }: { titulo: string; items: UsoItem[]; todo: boolean }) {
+  if (items.length === 0) return null;
+  const mostrados = todo ? items : items.slice(0, TOPE_MENCIONES);
+  const ocultos = items.length - mostrados.length;
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <span className="ms-meta uppercase tracking-wide">
+        {titulo} ({items.length})
+      </span>
+      {mostrados.map((it) => (
+        <Link
+          key={it.href}
+          href={it.href}
+          title={it.detalle}
+          className="ms-badge ms-badge-gray hover:border-[#B3985B]/40 hover:text-[#B3985B]"
+        >
+          {it.texto}
+        </Link>
+      ))}
+      {ocultos > 0 && <span className="ms-meta">+{ocultos}</span>}
+    </div>
+  );
+}
+
+/** Dónde se usa la persona. El renglón solo sirve si cada mención es navegable. */
+function UsoPersonaFila({ uso }: { uso: UsoPersona }) {
+  const [todo, setTodo] = useState(false);
+  const total = contarUso(uso);
+
+  if (total === 0) {
+    return <p className="ms-micro text-[#6b7280]">No se usa en ningún rider ni gira todavía.</p>;
+  }
+
+  const ocultos = [uso.riders, uso.crew, uso.promotor, uso.contactoPrincipal].reduce(
+    (n, g) => n + Math.max(0, g.length - TOPE_MENCIONES),
+    0,
+  );
+
+  return (
+    <div className="flex flex-col gap-1.5 lg:flex-row lg:flex-wrap lg:items-center lg:gap-x-6">
+      <GrupoUso titulo="Riders" items={uso.riders} todo={todo} />
+      <GrupoUso titulo="Crew" items={uso.crew} todo={todo} />
+      <GrupoUso titulo="Promotor" items={uso.promotor} todo={todo} />
+      <GrupoUso titulo="Contacto principal" items={uso.contactoPrincipal} todo={todo} />
+      {ocultos > 0 && (
+        <button onClick={() => setTodo((v) => !v)} className="ms-micro ms-link-gold self-start">
+          {todo ? "Ver menos" : `Ver ${ocultos} más`}
+        </button>
+      )}
+    </div>
+  );
+}
 
 export default function PersonasArtistaClient({ artistaId, integrantesNum, personasIniciales }: Props) {
   const toast = useToast();
@@ -110,7 +193,8 @@ export default function PersonasArtistaClient({ artistaId, integrantesNum, perso
         toast.error(d.error ?? "No se pudo agregar");
         return;
       }
-      setPersonas((prev) => [...prev, d.persona]);
+      // Recién creada no puede estar usada en ningún lado: el renglón arranca vacío.
+      setPersonas((prev) => [...prev, { ...d.persona, uso: USO_VACIO }]);
       setNueva({ nombre: "", rol: nueva.rol, instrumento: "" });
     } finally {
       setAgregando(false);
@@ -134,13 +218,24 @@ export default function PersonasArtistaClient({ artistaId, integrantesNum, perso
 
   const enEscena = useMemo(() => personas.filter((p) => p.esIntegrante).length, [personas]);
   const clave = useMemo(() => personas.filter((p) => p.esContactoClave).length, [personas]);
+  const sinUso = useMemo(() => personas.filter((p) => contarUso(p.uso) === 0).length, [personas]);
 
   const rolesPresentes = ROLES_PERSONA.filter((r) => personas.some((p) => p.rol === r));
 
   const visibles = personas.filter(
     (p) =>
       (!rolFiltro || p.rol === rolFiltro) &&
-      coincide(busqueda, p.nombre, p.instrumento, p.email, p.telefono, ROL_PERSONA_LABEL[p.rol]),
+      // Se busca también por gira y rider: "¿quién va en la gira de primavera?"
+      // se contesta desde el mismo buscador.
+      coincide(
+        busqueda,
+        p.nombre,
+        p.instrumento,
+        p.email,
+        p.telefono,
+        ROL_PERSONA_LABEL[p.rol],
+        ...textosUso(p.uso),
+      ),
   );
 
   const descuadre = integrantesNum !== null && integrantesNum !== enEscena;
@@ -162,7 +257,7 @@ export default function PersonasArtistaClient({ artistaId, integrantesNum, perso
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="ms-stat-card">
           <p className="ms-label">En escena</p>
           <p className="text-xl font-semibold mt-1 text-white">{enEscena}</p>
@@ -179,6 +274,11 @@ export default function PersonasArtistaClient({ artistaId, integrantesNum, perso
         <div className="ms-stat-card">
           <p className="ms-label">Total registradas</p>
           <p className="text-xl font-semibold mt-1 text-white">{personas.length}</p>
+        </div>
+        <div className="ms-stat-card">
+          <p className="ms-label">Sin uso</p>
+          <p className={`text-xl font-semibold mt-1 ${sinUso > 0 ? "text-amber-300" : "text-white"}`}>{sinUso}</p>
+          <p className="ms-micro mt-0.5">No aparecen en ningún rider ni gira.</p>
         </div>
       </div>
 
@@ -277,9 +377,11 @@ export default function PersonasArtistaClient({ artistaId, integrantesNum, perso
                 <th className="ms-th w-[40px]" />
               </tr>
             </thead>
-            <tbody>
-              {visibles.map((p) => (
-                <tr key={p.id} className="ms-tr align-top">
+            {/* Un tbody por persona: la fila editable y la de uso son el mismo
+                renglón, así que el borde y el hover van en el grupo. */}
+            {visibles.map((p) => (
+              <tbody key={p.id} className="border-b border-[#1a1a1a] hover:bg-[#111] transition-colors">
+                <tr className="align-top">
                   <td className="ms-td">
                     <input
                       className="ms-input-inline w-full"
@@ -378,15 +480,21 @@ export default function PersonasArtistaClient({ artistaId, integrantesNum, perso
                     </button>
                   </td>
                 </tr>
-              ))}
-            </tbody>
+                <tr>
+                  <td colSpan={11} className="px-4 pb-3 pt-0">
+                    <UsoPersonaFila uso={p.uso} />
+                  </td>
+                </tr>
+              </tbody>
+            ))}
           </table>
         </div>
       )}
 
       <p className="ms-micro">
         Cada celda se guarda sola al dejar de escribir. Las personas marcadas «en escena» son el elenco; las «clave»
-        son a quienes se les llama cuando algo se mueve en un show.
+        son a quienes se les llama cuando algo se mueve en un show. Bajo cada nombre está dónde se usa: da clic en la
+        gira o el rider para ir ahí.
       </p>
     </div>
   );

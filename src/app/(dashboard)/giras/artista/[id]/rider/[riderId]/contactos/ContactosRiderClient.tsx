@@ -6,12 +6,14 @@
  * Dos vías para poblarlo, porque son dos momentos distintos:
  *
  *  · El crew que ya está en la ficha del artista se agrega renglón por renglón
- *    con su botón. Copiamos nombre, teléfono y correo en vez de solo apuntar a
- *    la persona: el rider v3 tiene que seguir diciendo lo que decía cuando se
- *    mandó, aunque el ingeniero ya no esté en la banda.
+ *    con su botón. El renglón queda ligado a la persona, así que corregir su
+ *    celular aquí lo corrige en todos los riders, en el crew de las giras y en
+ *    los shows. La constancia de lo que decía el rider cuando se mandó es el
+ *    PDF ya generado, no esta tabla.
  *  · El ingeniero contratado solo para esta gira se captura suelto. Si se marca
  *    «guardar también en el artista» se da de alta en el crew, pero no es
- *    obligatorio: nadie abandona la captura para ir a registrarlo.
+ *    obligatorio: nadie abandona la captura para ir a registrarlo, y después se
+ *    puede dar de alta desde su propio renglón.
  *
  * El interruptor «en PDF» decide si el contacto sale en el documento. Sirve para
  * tener el teléfono del manager a mano sin publicárselo al promotor.
@@ -188,6 +190,34 @@ export default function ContactosRiderClient({ artistaId, riderId, contactosInic
     }
   }
 
+  // Promover un contacto suelto al directorio del artista, sin salir de aquí: a
+  // partir de ese momento su teléfono se corrige una vez para todos lados.
+  async function darDeAlta(c: ContactoFila) {
+    setTrabajando(c.id);
+    try {
+      // Si se acaba de teclear el nombre, el guardado diferido todavía no llegó
+      // a la BD y la persona nacería con el nombre viejo.
+      await descargar(c.id);
+      const res = await fetch(`/api/artista-riders/${riderId}/contactos`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: c.id, accion: "alta-directorio" }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(d.error ?? "No se pudo dar de alta");
+        return;
+      }
+      setContactos((prev) => prev.map((x) => (x.id === c.id ? d.contacto : x)));
+      if (d.contacto?.persona) {
+        setCrew((prev) => [...prev, { ...d.contacto.persona, instrumento: null }]);
+      }
+      toast.success(`${d.contacto.nombre} entró al crew del artista`);
+    } finally {
+      setTrabajando(null);
+    }
+  }
+
   async function quitar(c: ContactoFila) {
     const ok = await confirm({
       message: `¿Quitar a «${c.nombre}» de este rider? Sigue en el crew del artista.`,
@@ -220,7 +250,7 @@ export default function ContactosRiderClient({ artistaId, riderId, contactosInic
           <h2 className="ms-h2">A quién llamar</h2>
           <p className="ms-subtitle mt-1">
             El directorio que viaja dentro del rider: tour manager, FOH, monitores, luces, video y quien más resuelva.
-            Se copia el dato, así que una versión histórica sigue diciendo lo que decía.
+            Lo que está ligado al crew del artista se edita aquí o allá y queda corregido en los dos lados.
           </p>
         </div>
         <button className="ms-btn-primary" onClick={() => setNuevo((n) => (n ? null : { ...NUEVO_VACIO }))}>
@@ -334,7 +364,10 @@ export default function ContactosRiderClient({ artistaId, riderId, contactosInic
             </thead>
             <tbody>
               {contactos.map((c) => (
-                <tr key={c.id} className="ms-tr align-top">
+                <tr
+                  key={c.id}
+                  className={`ms-tr align-top border-l-2 ${c.personaId ? "border-l-[#B3985B]" : "border-l-transparent"}`}
+                >
                   <td className="ms-td">
                     <select
                       className="ms-input-inline w-full"
@@ -355,7 +388,21 @@ export default function ContactosRiderClient({ artistaId, riderId, contactosInic
                       onChange={(e) => editar(c.id, { nombre: e.target.value })}
                     />
                     {guardados.has(c.id) && <span className="ms-micro text-emerald-400">guardado</span>}
-                    {!c.personaId && <span className="ms-micro">suelto, no está en el crew</span>}
+                    {c.personaId ? (
+                      <span className="ms-micro">ficha del artista · lo que corrijas aquí se corrige en todos lados</span>
+                    ) : (
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="ms-micro">suelto, vive solo en este rider</span>
+                        <button
+                          onClick={() => void darDeAlta(c)}
+                          disabled={trabajando === c.id}
+                          title="Entra al crew del artista y queda disponible en los demás riders, en las giras y en los shows"
+                          className="text-xs border border-[#333] px-2 py-0.5 rounded hover:border-[#B3985B] disabled:opacity-50"
+                        >
+                          Dar de alta
+                        </button>
+                      </div>
+                    )}
                   </td>
                   <td className="ms-td">
                     <input

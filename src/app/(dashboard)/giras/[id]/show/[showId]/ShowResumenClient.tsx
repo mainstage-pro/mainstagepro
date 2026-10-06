@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import MomentosAncla from "@/components/giras/MomentosAncla";
+import { Combobox, type ComboboxOption } from "@/components/Combobox";
 import VenuePicker from "@/components/ui/VenuePicker";
 import EstadoGuardado from "@/components/EstadoGuardado";
 import { useRouter } from "next/navigation";
@@ -11,6 +12,7 @@ import { useAutoguardado } from "@/hooks/useAutoguardado";
 import {
   ESTADOS_SHOW,
   ESTADO_SHOW_LABEL,
+  ROL_PERSONA_LABEL,
   SEMAFORO_COLOR,
   SEMAFORO_LABEL,
   TIPOS_SHOW,
@@ -63,6 +65,7 @@ export interface ShowDetalle {
   estado: string;
   tipoShow: string | null;
   aforoEsperado: number | null;
+  promotorPersonaId: string | null;
   promotorNombre: string | null;
   promotorContacto: string | null;
   promotorTelefono: string | null;
@@ -100,6 +103,7 @@ interface Form {
   estado: string;
   tipoShow: string;
   aforoEsperado: string;
+  promotorPersonaId: string;
   promotorNombre: string;
   promotorContacto: string;
   promotorTelefono: string;
@@ -119,6 +123,7 @@ function aForm(s: ShowDetalle): Form {
     estado: s.estado,
     tipoShow: s.tipoShow ?? "",
     aforoEsperado: s.aforoEsperado?.toString() ?? "",
+    promotorPersonaId: s.promotorPersonaId ?? "",
     promotorNombre: s.promotorNombre ?? "",
     promotorContacto: s.promotorContacto ?? "",
     promotorTelefono: s.promotorTelefono ?? "",
@@ -140,6 +145,17 @@ function Dato({ label, valor }: { label: string; valor: React.ReactNode }) {
 }
 
 /// Solo pinta lo que el foro tiene capturado: un hueco en la ficha técnica es el
+/// El directorio del artista, para elegir de ahí al promotor de la fecha.
+export interface PersonaDirectorio {
+  id: string;
+  nombre: string;
+  rol: string;
+  telefono: string | null;
+  email: string | null;
+}
+
+const NUEVO_PROMOTOR = "__nuevo__";
+
 /// dato que hay que ir a conseguir, no un renglón vacío más.
 function DatoForo({ label, valor }: { label: string; valor: React.ReactNode }) {
   if (valor === null || valor === undefined || valor === "") return null;
@@ -155,10 +171,12 @@ export default function ShowResumenClient({
   show,
   venue,
   advance,
+  personas,
 }: {
   show: ShowDetalle;
   venue: VenueFicha | null;
   advance: ResumenAdvance;
+  personas: PersonaDirectorio[];
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -170,6 +188,81 @@ export default function ShowResumenClient({
 
   const base = `/giras/${show.giraId}/show/${show.id}`;
 
+  // Alta de promotor en caliente: nadie va a abandonar la captura de la fecha para
+  // ir al directorio del artista a registrarlo.
+  const [promotorNuevo, setPromotorNuevo] = useState<{ nombre: string; telefono: string; email: string } | null>(null);
+  const [ocupadoPromotor, setOcupadoPromotor] = useState(false);
+  const [casaGuardadaEnVenue, setCasaGuardadaEnVenue] = useState(false);
+
+  const personaPromotor = personas.find((p) => p.id === form.promotorPersonaId) ?? null;
+
+  const opcionesPromotor: ComboboxOption[] = useMemo(
+    () => [
+      { value: NUEVO_PROMOTOR, label: "＋ Registrar nuevo promotor…" },
+      ...personas.map((p) => ({
+        value: p.id,
+        label: `${p.nombre} — ${ROL_PERSONA_LABEL[p.rol] ?? p.rol}`,
+        group: "Directorio del artista",
+      })),
+    ],
+    [personas],
+  );
+
+  async function elegirPromotor(valor: string) {
+    if (valor === NUEVO_PROMOTOR) {
+      // Arranca con lo que ya se haya teclateado suelto, para no recapturarlo.
+      setPromotorNuevo({ nombre: form.promotorContacto, telefono: form.promotorTelefono, email: form.promotorEmail });
+      return;
+    }
+    setPromotorNuevo(null);
+    const persona = personas.find((p) => p.id === valor);
+    set({
+      promotorPersonaId: valor,
+      ...(persona
+        ? { promotorContacto: persona.nombre, promotorTelefono: persona.telefono ?? "", promotorEmail: persona.email ?? "" }
+        : {}),
+    });
+  }
+
+  async function guardarPromotorNuevo() {
+    if (!promotorNuevo?.nombre.trim()) return toast.error("El promotor necesita nombre.");
+    setOcupadoPromotor(true);
+    try {
+      const res = await fetch(`/api/gira-shows/${show.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nuevaPersonaPromotor: promotorNuevo }),
+      });
+      const d = await res.json();
+      if (!res.ok) return toast.error(d.error ?? "No se pudo registrar al promotor");
+      set({
+        promotorPersonaId: d.show?.promotorPersonaId ?? "",
+        promotorContacto: promotorNuevo.nombre.trim(),
+        promotorTelefono: promotorNuevo.telefono,
+        promotorEmail: promotorNuevo.email,
+      });
+      setPromotorNuevo(null);
+      toast.success("Quedó en el directorio del artista");
+      router.refresh();
+    } finally {
+      setOcupadoPromotor(false);
+    }
+  }
+
+  /// Lo que se corrige de la casa aquí sirve para la próxima fecha en ese foro.
+  async function guardarCasaEnVenue() {
+    const res = await fetch(`/api/gira-shows/${show.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accion: "guardar-casa-en-venue" }),
+    });
+    const d = await res.json();
+    if (!res.ok) return toast.error(d.error ?? "No se pudo guardar en el venue");
+    setCasaGuardadaEnVenue(true);
+    toast.success("Guardado en el catálogo del venue");
+    router.refresh();
+  }
+
   const cuerpo = useCallback(
     (f: Form) => ({
       fecha: f.fecha,
@@ -178,6 +271,7 @@ export default function ShowResumenClient({
       estado: f.estado,
       tipoShow: f.tipoShow || null,
       aforoEsperado: f.aforoEsperado === "" ? null : Number(f.aforoEsperado),
+      promotorPersonaId: f.promotorPersonaId || null,
       promotorNombre: f.promotorNombre,
       promotorContacto: f.promotorContacto,
       promotorTelefono: f.promotorTelefono,
@@ -490,22 +584,101 @@ export default function ShowResumenClient({
                         </button>
                       </div>
                     )}
+                    {venue && form.contactoCasaNombre && !casaGuardadaEnVenue && (
+                      <button
+                        onClick={guardarCasaEnVenue}
+                        className="text-xs border border-[#333] px-2 py-0.5 rounded text-[#888] hover:text-white transition-colors"
+                        title="Deja este contacto en la ficha del venue para que la próxima fecha en ese foro ya lo traiga"
+                      >
+                        Guardar en el catálogo del venue
+                      </button>
+                    )}
                   </div>
 
-                  <div className="space-y-2">
-                    <p className="ms-micro text-[#B3985B]">Promotor</p>
+                  <div
+                    className={`space-y-2 border-l-2 pl-3 ${
+                      personaPromotor ? "border-[#B3985B]" : "border-[#333]"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="ms-micro text-[#B3985B]">Promotor</p>
+                      {personaPromotor ? (
+                        <button
+                          onClick={() => set({ promotorPersonaId: "" })}
+                          className="text-xs border border-[#333] px-2 py-0.5 rounded text-[#888] hover:text-white transition-colors"
+                        >
+                          Desligar
+                        </button>
+                      ) : (
+                        <span className="ms-micro">Sin ligar</span>
+                      )}
+                    </div>
+
                     <input
                       value={form.promotorNombre}
                       onChange={(e) => set({ promotorNombre: e.target.value })}
                       placeholder="Empresa o promotor"
                       className="ms-input"
                     />
-                    <input
-                      value={form.promotorContacto}
-                      onChange={(e) => set({ promotorContacto: e.target.value })}
-                      placeholder="Persona de contacto"
-                      className="ms-input"
+
+                    <Combobox
+                      value={form.promotorPersonaId}
+                      onChange={elegirPromotor}
+                      options={opcionesPromotor}
+                      placeholder="Persona de contacto del directorio…"
                     />
+
+                    {promotorNuevo && (
+                      <div className="space-y-2 bg-[#141414] border border-[#333] rounded-lg p-2.5">
+                        <p className="ms-micro">Entra al directorio del artista como promotor.</p>
+                        <input
+                          value={promotorNuevo.nombre}
+                          onChange={(e) => setPromotorNuevo({ ...promotorNuevo, nombre: e.target.value })}
+                          placeholder="Nombre"
+                          className="ms-input"
+                          autoFocus
+                        />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <input
+                            value={promotorNuevo.telefono}
+                            onChange={(e) => setPromotorNuevo({ ...promotorNuevo, telefono: e.target.value })}
+                            placeholder="Teléfono"
+                            className="ms-input"
+                          />
+                          <input
+                            value={promotorNuevo.email}
+                            onChange={(e) => setPromotorNuevo({ ...promotorNuevo, email: e.target.value })}
+                            placeholder="Correo"
+                            className="ms-input"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={guardarPromotorNuevo}
+                            disabled={ocupadoPromotor}
+                            className="text-xs border border-[#333] px-2 py-0.5 rounded text-white hover:border-[#B3985B] transition-colors disabled:opacity-50"
+                          >
+                            {ocupadoPromotor ? "Registrando…" : "Registrar"}
+                          </button>
+                          <button
+                            onClick={() => setPromotorNuevo(null)}
+                            className="ms-micro hover:text-white transition-colors"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {!personaPromotor && !promotorNuevo && (
+                      <input
+                        value={form.promotorContacto}
+                        onChange={(e) => set({ promotorContacto: e.target.value })}
+                        placeholder="Persona de contacto (sin ligar)"
+                        className="ms-input"
+                      />
+                    )}
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <input
                         value={form.promotorTelefono}
@@ -520,6 +693,17 @@ export default function ShowResumenClient({
                         className="ms-input"
                       />
                     </div>
+
+                    {personaPromotor && (
+                      <p className="ms-micro">
+                        Ligado a{" "}
+                        <Link href={`/giras/artista/${show.artistaId}/personas`} className="ms-link-gold">
+                          {personaPromotor.nombre}
+                        </Link>{" "}
+                        en el directorio del artista: lo que corrijas aquí queda corregido en el rider, el crew y las demás
+                        fechas.
+                      </p>
+                    )}
                   </div>
                 </div>
 
