@@ -193,7 +193,9 @@ export interface FilaCanal {
   /// Identidad estable del renglón entre recargas, aunque se le cree un ajuste a
   /// medio teclear: el `id` cambia de ser el del rider al del ajuste, la clave no.
   clave: string;
-  origen: "RIDER" | "AJUSTADO" | "SHOW";
+  /// HUERFANO = ajuste que quedó colgando de un renglón de un rider que esta
+  /// fecha ya no usa. No se parcha: se muestra para que no se pierda en silencio.
+  origen: "RIDER" | "AJUSTADO" | "SHOW" | "HUERFANO";
   /// El `ShowCanal` que se edita o se borra. Null = renglón del rider que esta
   /// fecha no ha tocado; editarlo le crea el ajuste.
   canalShowId: string | null;
@@ -226,6 +228,10 @@ export interface ListasDelShow {
   /// Renglones del rider que esta fecha sacó de la lista. Se muestran aparte
   /// para poder regresarlos con un clic: quitar en una plaza no es borrar.
   quitados: FilaCanal[];
+  /// Ajustes que apuntan a renglones de un rider que esta fecha ya no usa —pasa
+  /// al enganchar otro rider o otra versión a media gira—. No entran al patch,
+  /// pero se exponen: el trabajo de capturarlos no puede desaparecer callado.
+  huerfanos: FilaCanal[];
   /// Hay rider maestro del que colgarse. Sin él la numeración arranca en 1 y hay
   /// que avisarlo: la lista se vería completa cuando no lo está.
   conRider: boolean;
@@ -530,9 +536,11 @@ export function unificarCanales(
 ): ListasDelShow {
   const indice = new Map(invitados.map((i) => [i.id, i]));
   const ajustes = new Map(delShow.filter((c) => c.riderCanalId).map((c) => [c.riderCanalId as string, c]));
+  const esDelRider = new Set(maestros.map((m) => m.id));
 
   const visibles: FilaCanal[] = [];
   const quitados: FilaCanal[] = [];
+  const huerfanos: FilaCanal[] = [];
 
   for (const m of maestros) {
     const ajuste = ajustes.get(m.id);
@@ -546,8 +554,15 @@ export function unificarCanales(
   }
 
   for (const c of delShow) {
-    if (c.riderCanalId) continue;
-    visibles.push(filaDeShow(c, indice));
+    if (!c.riderCanalId) {
+      visibles.push(filaDeShow(c, indice));
+      continue;
+    }
+    // Si el renglón del rider existe, el recorrido de arriba ya lo colocó. Si no,
+    // es de un rider que esta fecha ya no usa: no se parcha, pero se muestra.
+    if (!esDelRider.has(c.riderCanalId)) {
+      huerfanos.push({ ...filaDeShow(c, indice), origen: "HUERFANO", riderCanalId: c.riderCanalId });
+    }
   }
 
   const inputs = numerarCorrido(
@@ -566,6 +581,7 @@ export function unificarCanales(
     inputs,
     outputs,
     quitados,
+    huerfanos,
     conRider: maestros.length > 0,
     resumen: {
       entradasRider: inputs.filter(delRider).length,

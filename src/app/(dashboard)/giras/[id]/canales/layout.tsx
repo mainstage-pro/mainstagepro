@@ -23,7 +23,7 @@ export default async function CanalesGiraLayout({
   if (!rider) {
     return (
       <div className="ms-page space-y-4">
-        <h1 className="ms-h1">Canales</h1>
+        <h1 className="ms-h1">Lista base de canales</h1>
         <div className="ms-empty-state">
           <p className="text-sm text-[#6b7280]">
             Esta gira no tiene rider contra el cual capturar canales: el artista no tiene ninguno vigente.{" "}
@@ -46,16 +46,17 @@ export default async function CanalesGiraLayout({
     <div className="ms-page space-y-4">
       <div className="ms-card p-4 space-y-2">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-          <h1 className="ms-h1">Canales</h1>
+          <h1 className="ms-h1">Lista base de canales</h1>
           <span className="ms-meta">
             editando «{rider.nombre}» v{rider.version} · {CONTEXTO_RIDER_LABEL[rider.contexto] ?? rider.contexto} ·{" "}
             {rider.artistaNombre}
           </span>
         </div>
         <p className="ms-subtitle">
-          La input y la output list son del rider del artista, no de la gira: lo que cambies aquí es lo mismo que se ve
-          en la ficha del artista y vale para todas sus fechas. Lo que solo pasa en una plaza —un invitado, un canal
-          extra— se captura en «Invitados y canales» del show.
+          Esta es la base de la que parten TODAS las fechas: la input y la output list del rider del artista. Lo que
+          cambies aquí es lo mismo que se ve en su ficha y mueve la lista de toda la gira. Lo que solo pasa en una
+          plaza —un invitado, un micrófono que el venue no tiene, un canal que ahí no se usa— se hace a la medida en
+          «Invitados y canales» de la fecha, sin tocar esta lista.
         </p>
         <p className="ms-micro">
           {rider.enganchado

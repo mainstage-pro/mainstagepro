@@ -223,6 +223,17 @@ export default function CanalesShow({ showId, listas, invitados, onListas, onInv
     await guardar(fila, { oculto: false });
   }
 
+  /// Tira un ajuste que quedó colgando de un rider que la fecha ya no usa.
+  async function descartar(fila: FilaCanal) {
+    const ok = await confirmar({
+      message: `¿Descartar el ajuste de «${fila.nombre}»? Era de un rider que esta gira ya no usa y no está en el patch.`,
+      danger: true,
+      confirmText: "Descartar",
+    });
+    if (!ok) return;
+    await borrarCanal(fila);
+  }
+
   /// Tira los cambios de esta plaza sobre un renglón del rider.
   async function volverAlRider(fila: FilaCanal) {
     const ok = await confirmar({
@@ -275,6 +286,36 @@ export default function CanalesShow({ showId, listas, invitados, onListas, onInv
           </p>
         </div>
       </div>
+
+      {listas.huerfanos.length > 0 && (
+        <section className="ms-card p-3 space-y-2 border-amber-800/40 bg-amber-900/10">
+          <p className="ms-label text-amber-300">
+            {listas.huerfanos.length} ajuste{listas.huerfanos.length === 1 ? "" : "s"} de un rider anterior
+          </p>
+          <p className="ms-meta">
+            Esta fecha tenía estos canales ajustados, pero cuelgan de renglones de un rider que la gira ya no usa, así
+            que NO están en el patch de arriba. Vuelve a capturar lo que siga valiendo sobre el renglón nuevo y
+            descártalos.
+          </p>
+          <ul className="space-y-1">
+            {listas.huerfanos.map((f) => (
+              <li key={f.clave} className="flex items-center justify-between gap-3 py-1 border-b border-white/5">
+                <span className="text-sm text-gray-300">
+                  {f.tipo === "INPUT" ? "Entrada" : "Salida"} · {f.nombre}
+                  {[f.instrumento, f.microfono, f.soporte ? (SOPORTE_MIC_LABEL[f.soporte] ?? f.soporte) : null, f.notas]
+                    .filter(Boolean)
+                    .map((t) => (
+                      <span key={t as string} className="ms-meta"> · {t}</span>
+                    ))}
+                </span>
+                <button onClick={() => void descartar(f)} className="ms-btn-ghost text-xs shrink-0">
+                  Descartar
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <div className="flex flex-wrap gap-2 items-center">
         <button onClick={() => setNuevo((n) => (n ? null : { ...NUEVO }))} className="ms-btn-ghost">
