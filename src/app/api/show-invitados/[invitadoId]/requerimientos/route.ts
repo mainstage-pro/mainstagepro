@@ -52,8 +52,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ inv
     if (yaEstan.length === 0) {
       const [rider, delShow, max] = await Promise.all([
         riderMaestroDelShow(invitado.showId),
+        // Los ajustes a renglones del rider no son cola: no corren el siguiente número.
         prisma.showCanal.findMany({
-          where: { showId: invitado.showId },
+          where: { showId: invitado.showId, riderCanalId: null },
           select: { tipo: true, numero: true, estereo: true },
         }),
         prisma.showCanal.aggregate({ where: { showId: invitado.showId }, _max: { orden: true } }),

@@ -6112,6 +6112,9 @@ model ArtistaRiderCanal {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  /// Las fechas que traen este renglón cambiado o quitado solo en su plaza.
+  ajustes ShowCanal[]
+
   @@index([riderId, tipo, numero])
   @@map("artista_rider_canales")
 }
@@ -6353,9 +6356,10 @@ model ShowInvitado {
   @@map("show_invitados")
 }
 
-/// Canal de consola que existe solo en esta fecha: lo que pide un invitado o lo
-/// que se agregó en plaza. El rider maestro no se toca — la lista real del show
-/// es la del rider más estos, numerados a continuación.
+/// Lo que esta fecha le hace a la lista de canales: un canal que solo existe aquí
+/// (lo que pide un invitado o lo que se agregó en plaza) o el AJUSTE de un
+/// renglón del rider maestro en esta plaza. El rider maestro nunca se toca: la
+/// lista real del show es la del rider con estos ajustes encima, más la cola.
 model ShowCanal {
   id     String   @id @default(cuid())
   showId String
@@ -6363,6 +6367,16 @@ model ShowCanal {
 
   invitadoId String?
   invitado   ShowInvitado? @relation(fields: [invitadoId], references: [id], onDelete: Cascade)
+
+  /// Con qué renglón del rider maestro se está metiendo esta fecha. Null = canal
+  /// propio de la fecha, que va en la cola. Borrar el ajuste devuelve el renglón
+  /// a como lo dice el rider.
+  riderCanalId String?
+  riderCanal   ArtistaRiderCanal? @relation(fields: [riderCanalId], references: [id], onDelete: Cascade)
+
+  /// Solo en ajustes: en esta plaza ese renglón del rider no se usa y sale de la
+  /// lista. Lo que viene después se recorre.
+  oculto Boolean @default(false)
 
   tipo   String // INPUT|OUTPUT
   numero Int
@@ -6389,6 +6403,8 @@ model ShowCanal {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  /// Una fecha ajusta un renglón del rider una sola vez.
+  @@unique([showId, riderCanalId])
   @@index([showId])
   @@index([invitadoId])
   @@map("show_canales")

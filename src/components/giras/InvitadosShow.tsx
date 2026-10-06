@@ -381,8 +381,8 @@ export default function InvitadosShow({ showId, invitadosIniciales, listasInicia
         <div>
           <h2 className="ms-h2">Lista real de esta fecha</h2>
           <p className="ms-meta">
-            El input y output list del rider maestro más lo que esta fecha agregó, en una sola secuencia. Lo del rider
-            se lee aquí pero se edita en el rider: es el mismo para toda la gira.
+            El input y output list del rider de la gira, hecho a la medida de esta plaza: todo renglón se edita, se
+            puede agregar lo que aquí hace falta y sacar lo que aquí no se usa. El rider de la gira no se mueve.
           </p>
         </div>
         <CanalesShow

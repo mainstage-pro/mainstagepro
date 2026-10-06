@@ -2,22 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logActividad } from "@/lib/actividad";
-import {
-  SELECT_CANAL,
-  esSoporte,
-  esTipoCanal,
-  esTipoSalida,
-  listasDelShow,
-  renumerarCola,
-} from "@/lib/show-canales";
-
-const TEXTO = ["instrumento", "microfono", "notas"] as const;
+import { SELECT_CANAL, camposDeCanal, esTipoCanal, listasDelShow, renumerarCola } from "@/lib/show-canales";
 
 /**
- * Edición canal por canal. El `tipo` y el `numero` no se tocan desde aquí: el
- * tipo decide en qué lista vive (y qué columnas tienen sentido) y el número lo
- * pone el servidor a continuación del rider maestro. Para cambiar de lista se
- * quita el canal y se agrega del otro lado.
+ * Edición canal por canal, lo mismo si el canal nació en esta fecha que si es el
+ * ajuste de un renglón del rider. El `tipo` y el `numero` no se tocan desde
+ * aquí: el tipo decide en qué lista vive (y qué columnas tienen sentido) y el
+ * número lo deriva la lista unificada. Para cambiar de lista se quita el canal y
+ * se agrega del otro lado.
  *
  * Volver estéreo una salida sí se puede, y por eso se recorre la cola: el mix
  * estéreo se lleva dos canales de consola y lo que viene después se mueve.
@@ -37,54 +29,30 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ca
     return NextResponse.json({ error: "El canal tiene un tipo inválido" }, { status: 409 });
   }
 
-  const esInput = existente.tipo === "INPUT";
   const body = await req.json();
-  const data: Record<string, unknown> = {};
-
-  if ("nombre" in body) {
-    const nombre = typeof body.nombre === "string" ? body.nombre.trim() : "";
-    if (!nombre) return NextResponse.json({ error: "El canal necesita un nombre" }, { status: 400 });
-    data.nombre = nombre;
+  const campos = camposDeCanal(body, existente.tipo);
+  if ("error" in campos) return NextResponse.json({ error: campos.error }, { status: 400 });
+  if (!Object.keys(campos.data).length) {
+    return NextResponse.json({ error: "Nada por actualizar" }, { status: 400 });
   }
 
-  for (const campo of TEXTO) {
-    if (!(campo in body)) continue;
-    // Micrófono e instrumento solo existen en una entrada: en una salida no se
-    // escriben ni por error.
-    if (campo !== "notas" && !esInput) continue;
-    const v = body[campo];
-    data[campo] = typeof v === "string" && v.trim() ? v.trim() : null;
-  }
+  const cambiaEstereo = "estereo" in campos.data && campos.data.estereo !== existente.estereo;
 
-  if ("soporte" in body && esInput) {
-    const v = body.soporte;
-    if (v === null || v === "") data.soporte = null;
-    else if (esSoporte(v)) data.soporte = v;
-    else return NextResponse.json({ error: "Ese soporte no existe" }, { status: 400 });
-  }
-
-  if ("phantom" in body && esInput) data.phantom = body.phantom === true;
-
-  if ("tipoSalida" in body && !esInput) {
-    const v = body.tipoSalida;
-    if (v === null || v === "") data.tipoSalida = null;
-    else if (esTipoSalida(v)) data.tipoSalida = v;
-    else return NextResponse.json({ error: "Ese tipo de salida no existe" }, { status: 400 });
-  }
-
-  const cambiaEstereo = "estereo" in body && !esInput && (body.estereo === true) !== existente.estereo;
-  if ("estereo" in body && !esInput) data.estereo = body.estereo === true;
-
-  if (!Object.keys(data).length) return NextResponse.json({ error: "Nada por actualizar" }, { status: 400 });
-
-  const canal = await prisma.showCanal.update({ where: { id: canalId }, data, select: SELECT_CANAL });
+  const canal = await prisma.showCanal.update({ where: { id: canalId }, data: campos.data, select: SELECT_CANAL });
   if (cambiaEstereo) await renumerarCola(existente.showId, existente.tipo);
 
   return NextResponse.json({ canal, listas: await listasDelShow(existente.showId) });
 }
 
-/// `ShowCanal` no tiene bandera `activo`: un canal que no se parcha, no existe.
-/// Al quitarlo se recorre la cola para que la lista no quede con huecos.
+/**
+ * Borra el `ShowCanal`. Significa dos cosas distintas según de dónde salió:
+ * en un canal propio de la plaza es quitarlo de la lista, y en un ajuste es
+ * devolver el renglón del rider a como el rider lo dice.
+ *
+ * `ShowCanal` no tiene bandera `activo`: un canal que no se parcha, no existe
+ * (sacar un renglón del rider solo en esta fecha es `oculto`, no un borrado). Al
+ * quitarlo se recorre la cola para que la lista no quede con huecos.
+ */
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ canalId: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -92,7 +60,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const { canalId } = await params;
   const existente = await prisma.showCanal.findUnique({
     where: { id: canalId },
-    select: { id: true, showId: true, tipo: true, numero: true, nombre: true },
+    select: { id: true, showId: true, tipo: true, numero: true, nombre: true, riderCanalId: true },
   });
   if (!existente) return NextResponse.json({ error: "El canal no existe" }, { status: 404 });
 
@@ -104,8 +72,10 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     "ELIMINAR",
     "ShowCanal",
     canalId,
-    `Quitó ${existente.tipo === "INPUT" ? "la entrada" : "la salida"} ${existente.numero} «${existente.nombre}» de esta fecha`,
-    { showId: existente.showId },
+    existente.riderCanalId
+      ? `Dejó «${existente.nombre}» como lo dice el rider de la gira`
+      : `Quitó ${existente.tipo === "INPUT" ? "la entrada" : "la salida"} ${existente.numero} «${existente.nombre}» de esta fecha`,
+    { showId: existente.showId, riderCanalId: existente.riderCanalId },
   );
 
   return NextResponse.json({ ok: true, listas: await listasDelShow(existente.showId) });

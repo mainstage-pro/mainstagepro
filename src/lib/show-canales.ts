@@ -1,15 +1,18 @@
 /**
  * Los canales de consola de una fecha concreta.
  *
- * El rider maestro del artista (`ArtistaRiderCanal`) es el mismo para toda la
- * gira y aquí NO SE TOCA NUNCA: es solo lectura. Lo que esta fecha agrega vive
- * en `ShowCanal` y se numera a continuación — si el rider llega al input 32, el
- * micrófono del telonero es el 33. Las entradas y las salidas llevan secuencias
- * separadas porque son dos lados distintos de la consola.
+ * El rider maestro del artista (`ArtistaRiderCanal`) es la base de toda la gira
+ * y NUNCA se escribe desde aquí. Lo que esta fecha hace con él vive en
+ * `ShowCanal` de dos maneras: canales propios de la plaza, que van en la cola
+ * (si el rider llega al input 32, el micrófono del telonero es el 33), y
+ * AJUSTES, que son renglones del rider cambiados o quitados solo en esta fecha.
+ * Borrar un ajuste devuelve el renglón a como lo dice el rider.
  *
- * Toda la numeración se resuelve en el servidor: el cliente no la calcula ni la
- * manda, solo pinta lo que este módulo devuelve. Así no hay dos opiniones sobre
- * cuál es el canal 33.
+ * La numeración que se ve es DERIVADA: la lista de la noche se cuenta corrida
+ * 1..N sobre lo que de verdad se parcha, así que quitar un renglón del rider en
+ * una plaza recorre lo que sigue. Las entradas y las salidas llevan secuencias
+ * separadas porque son dos lados distintos de la consola. El cliente no calcula
+ * ningún número: solo pinta lo que este módulo devuelve.
  */
 
 import { prisma } from "@/lib/prisma";
@@ -46,12 +49,63 @@ export const REQUERIMIENTO_POR_CLAVE: Record<string, RequerimientoInvitado> = Ob
   REQUERIMIENTOS_INVITADO.map((r) => [r.clave, r]),
 );
 
+/**
+ * Los campos capturables de un canal de la fecha, validados.
+ *
+ * Lo usan el canal propio de la plaza y el ajuste de un renglón del rider: son
+ * la misma captura y tienen que aceptar y rechazar exactamente lo mismo. El
+ * micrófono y el instrumento solo existen en una entrada; el tipo de salida y el
+ * estéreo, solo en una salida.
+ */
+export function camposDeCanal(
+  body: Record<string, unknown>,
+  tipo: TipoCanal,
+): { data: Record<string, unknown> } | { error: string } {
+  const esInput = tipo === "INPUT";
+  const data: Record<string, unknown> = {};
+
+  if ("nombre" in body) {
+    const nombre = typeof body.nombre === "string" ? body.nombre.trim() : "";
+    if (!nombre) return { error: "El canal necesita un nombre" };
+    data.nombre = nombre;
+  }
+
+  for (const campo of ["instrumento", "microfono", "notas"] as const) {
+    if (!(campo in body)) continue;
+    if (campo !== "notas" && !esInput) continue;
+    const v = body[campo];
+    data[campo] = typeof v === "string" && v.trim() ? v.trim() : null;
+  }
+
+  if ("soporte" in body && esInput) {
+    const v = body.soporte;
+    if (v === null || v === "") data.soporte = null;
+    else if (esSoporte(v)) data.soporte = v;
+    else return { error: "Ese soporte no existe" };
+  }
+
+  if ("phantom" in body && esInput) data.phantom = body.phantom === true;
+
+  if ("tipoSalida" in body && !esInput) {
+    const v = body.tipoSalida;
+    if (v === null || v === "") data.tipoSalida = null;
+    else if (esTipoSalida(v)) data.tipoSalida = v;
+    else return { error: "Ese tipo de salida no existe" };
+  }
+
+  if ("estereo" in body && !esInput) data.estereo = body.estereo === true;
+
+  return { data };
+}
+
 // ── Selects ──────────────────────────────────────────────────────────────────
 /// Forma de `select` del canal de esta fecha. La página y los endpoints tienen
 /// que devolver la misma fila o la lista se queda a medias al refrescar.
 export const SELECT_CANAL = {
   id: true,
   invitadoId: true,
+  riderCanalId: true,
+  oculto: true,
   tipo: true,
   numero: true,
   nombre: true,
@@ -75,7 +129,8 @@ export const SELECT_INVITADO = {
   orden: true,
 } as const;
 
-/// Del rider maestro solo se lee: nada de esto se puede editar desde el show.
+/// Del rider maestro solo se lee: lo que una fecha quiera cambiar nace como
+/// ajuste (`ShowCanal.riderCanalId`), nunca escribiendo aquí.
 const SELECT_CANAL_MAESTRO = {
   id: true,
   tipo: true,
@@ -97,6 +152,9 @@ const SELECT_CANAL_MAESTRO = {
 export interface CanalShow {
   id: string;
   invitadoId: string | null;
+  /// Si está, este renglón ajusta al del rider maestro con ese id.
+  riderCanalId: string | null;
+  oculto: boolean;
   tipo: string;
   numero: number;
   nombre: string;
@@ -128,10 +186,19 @@ export interface InvitadoConCanales extends InvitadoShow {
   canales: { id: string; tipo: string; numero: number; nombre: string; estereo: boolean; etiqueta: string }[];
 }
 
-/// Un renglón de la lista real de la fecha: viene del rider o se agregó aquí.
+/// Un renglón de la lista real de la fecha: viene del rider tal cual, viene del
+/// rider pero esta fecha lo cambió, o nació en esta fecha.
 export interface FilaCanal {
   id: string;
-  origen: "RIDER" | "SHOW";
+  /// Identidad estable del renglón entre recargas, aunque se le cree un ajuste a
+  /// medio teclear: el `id` cambia de ser el del rider al del ajuste, la clave no.
+  clave: string;
+  origen: "RIDER" | "AJUSTADO" | "SHOW";
+  /// El `ShowCanal` que se edita o se borra. Null = renglón del rider que esta
+  /// fecha no ha tocado; editarlo le crea el ajuste.
+  canalShowId: string | null;
+  /// El renglón del rider maestro del que cuelga, si cuelga de alguno.
+  riderCanalId: string | null;
   tipo: TipoCanal;
   numero: number;
   /// Lo que se imprime en la columna de canal. Una salida estéreo dice "33/34"
@@ -156,6 +223,9 @@ export interface FilaCanal {
 export interface ListasDelShow {
   inputs: FilaCanal[];
   outputs: FilaCanal[];
+  /// Renglones del rider que esta fecha sacó de la lista. Se muestran aparte
+  /// para poder regresarlos con un clic: quitar en una plaza no es borrar.
+  quitados: FilaCanal[];
   /// Hay rider maestro del que colgarse. Sin él la numeración arranca en 1 y hay
   /// que avisarlo: la lista se vería completa cuando no lo está.
   conRider: boolean;
@@ -165,6 +235,9 @@ export interface ListasDelShow {
     /// Canales de consola, no mixes: el estéreo cuenta doble.
     salidasRider: number;
     salidasShow: number;
+    /// Renglones del rider cambiados o quitados solo en esta plaza.
+    ajustados: number;
+    quitados: number;
   };
 }
 
@@ -355,7 +428,10 @@ function filaDeMaestro(c: CanalMaestro): FilaCanal {
   const tipo: TipoCanal = c.tipo === "OUTPUT" ? "OUTPUT" : "INPUT";
   return {
     id: c.id,
+    clave: c.id,
     origen: "RIDER",
+    canalShowId: null,
+    riderCanalId: c.id,
     tipo,
     numero: c.numero,
     etiqueta: etiquetaDeCanal(tipo, c.numero, c.estereo),
@@ -380,7 +456,10 @@ function filaDeShow(c: CanalShow, invitados: Map<string, InvitadoShow>): FilaCan
   const inv = c.invitadoId ? invitados.get(c.invitadoId) : undefined;
   return {
     id: c.id,
+    clave: c.id,
     origen: "SHOW",
+    canalShowId: c.id,
+    riderCanalId: null,
     tipo,
     numero: c.numero,
     etiqueta: etiquetaDeCanal(tipo, c.numero, c.estereo),
@@ -400,10 +479,49 @@ function filaDeShow(c: CanalShow, invitados: Map<string, InvitadoShow>): FilaCan
   };
 }
 
+/// El renglón del rider como queda en ESTA fecha. Lo que la plaza no cambió se
+/// sigue leyendo del rider (las alternativas de micrófono, el inserto, de quién
+/// es el mix), porque el ajuste solo guarda lo que se captura en el show.
+function filaAjustada(m: CanalMaestro, a: CanalShow, invitados: Map<string, InvitadoShow>): FilaCanal {
+  const base = filaDeMaestro(m);
+  const inv = a.invitadoId ? invitados.get(a.invitadoId) : undefined;
+  return {
+    ...base,
+    id: a.id,
+    origen: "AJUSTADO",
+    canalShowId: a.id,
+    nombre: a.nombre,
+    instrumento: a.instrumento,
+    microfono: a.microfono,
+    soporte: a.soporte,
+    phantom: a.phantom,
+    tipoSalida: a.tipoSalida,
+    estereo: a.estereo,
+    notas: a.notas,
+    paraQuien: inv?.nombre ?? base.paraQuien,
+    invitadoId: a.invitadoId,
+    rolInvitado: inv?.rol ?? null,
+  };
+}
+
+/// Numera corrido lo que de verdad se parcha esa noche. Una salida estéreo se
+/// lleva dos canales de consola, así que el siguiente libre salta de dos.
+function numerarCorrido(filas: FilaCanal[], tipo: TipoCanal): FilaCanal[] {
+  let numero = 1;
+  return filas.map((f) => {
+    const fila = { ...f, numero, etiqueta: etiquetaDeCanal(tipo, numero, f.estereo) };
+    numero += tipo === "OUTPUT" ? canalesDeSalida(f.estereo) : 1;
+    return fila;
+  });
+}
+
 /**
- * La lista real de la fecha: el rider maestro más lo de este show, en una sola
- * secuencia numerada. El rider va primero por construcción (sus números son los
- * bajos), pero si algún número coincide gana el rider: lo del show es la cola.
+ * La lista real de la fecha: el rider maestro con los ajustes de esta plaza
+ * encima, más los canales que solo existen aquí, en una sola secuencia.
+ *
+ * El rider va primero en el orden que él trae y la cola de la fecha después. La
+ * numeración se calcula aquí sobre lo visible: si esta plaza quitó un renglón
+ * del rider, lo que sigue se recorre y el patch se lee corrido.
  */
 export function unificarCanales(
   maestros: CanalMaestro[],
@@ -411,25 +529,51 @@ export function unificarCanales(
   invitados: InvitadoShow[],
 ): ListasDelShow {
   const indice = new Map(invitados.map((i) => [i.id, i]));
-  const filas = [...maestros.map(filaDeMaestro), ...delShow.map((c) => filaDeShow(c, indice))];
+  const ajustes = new Map(delShow.filter((c) => c.riderCanalId).map((c) => [c.riderCanalId as string, c]));
 
-  const ordenar = (a: FilaCanal, b: FilaCanal) =>
-    a.numero - b.numero || (a.origen === b.origen ? 0 : a.origen === "RIDER" ? -1 : 1);
+  const visibles: FilaCanal[] = [];
+  const quitados: FilaCanal[] = [];
 
-  const inputs = filas.filter((f) => f.tipo === "INPUT").sort(ordenar);
-  const outputs = filas.filter((f) => f.tipo === "OUTPUT").sort(ordenar);
+  for (const m of maestros) {
+    const ajuste = ajustes.get(m.id);
+    if (!ajuste) {
+      visibles.push(filaDeMaestro(m));
+      continue;
+    }
+    const fila = filaAjustada(m, ajuste, indice);
+    if (ajuste.oculto) quitados.push(fila);
+    else visibles.push(fila);
+  }
+
+  for (const c of delShow) {
+    if (c.riderCanalId) continue;
+    visibles.push(filaDeShow(c, indice));
+  }
+
+  const inputs = numerarCorrido(
+    visibles.filter((f) => f.tipo === "INPUT"),
+    "INPUT",
+  );
+  const outputs = numerarCorrido(
+    visibles.filter((f) => f.tipo === "OUTPUT"),
+    "OUTPUT",
+  );
 
   const salidas = (fs: FilaCanal[]) => fs.reduce((n, f) => n + canalesDeSalida(f.estereo), 0);
+  const delRider = (f: FilaCanal) => f.origen !== "SHOW";
 
   return {
     inputs,
     outputs,
+    quitados,
     conRider: maestros.length > 0,
     resumen: {
-      entradasRider: inputs.filter((f) => f.origen === "RIDER").length,
+      entradasRider: inputs.filter(delRider).length,
       entradasShow: inputs.filter((f) => f.origen === "SHOW").length,
-      salidasRider: salidas(outputs.filter((f) => f.origen === "RIDER")),
+      salidasRider: salidas(outputs.filter(delRider)),
       salidasShow: salidas(outputs.filter((f) => f.origen === "SHOW")),
+      ajustados: [...inputs, ...outputs].filter((f) => f.origen === "AJUSTADO").length,
+      quitados: quitados.length,
     },
   };
 }
@@ -459,7 +603,9 @@ export async function renumerarCola(showId: string, tipo: TipoCanal): Promise<vo
   const tope = topeDeCanales(tipo, rider?.canales ?? []);
 
   const cola = await prisma.showCanal.findMany({
-    where: { showId, tipo },
+    // Los ajustes no son cola: viven en el lugar del renglón del rider que
+    // sustituyen y su número lo decide la lista unificada.
+    where: { showId, tipo, riderCanalId: null },
     select: { id: true, numero: true, estereo: true },
     orderBy: [{ orden: "asc" }, { createdAt: "asc" }],
   });

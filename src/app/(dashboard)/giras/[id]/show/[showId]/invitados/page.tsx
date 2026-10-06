@@ -67,28 +67,30 @@ export default async function InvitadosShowPage({
           {ciudad ? `, ${ciudad}` : ""}
         </p>
         <p className="ms-meta max-w-3xl">
-          El rider maestro es el mismo para toda la gira. Lo que cambia de plaza en plaza es quién más se sube: el
-          telonero, el featuring que cae en la tercera canción, el presentador. Cada uno consume canales de consola que
-          el rider no contempla, y si no se anotan aquí se descubren el día del show.
+          El rider es el mismo para toda la gira, pero la noche no: se sube el telonero, cae un featuring en la tercera
+          canción, el venue solo tiene otro micrófono, aquí el canal de coros no se usa. Esta es la lista de ESTA
+          fecha: se edita renglón por renglón sin mover el rider de la gira, y lo que no se anote aquí se descubre el
+          día del show.
         </p>
       </div>
 
       {rider ? (
         <div className="flex flex-wrap items-start justify-between gap-3">
           <p className="ms-micro min-w-0">
-            Se numera a continuación de{" "}
+            La base es{" "}
             <Link href={`/giras/artista/${show.gira.artistaId}/rider/${rider.riderId}`} className="ms-link-gold">
               {rider.nombre} (v{rider.version})
             </Link>
-            {rider.deLaGira ? ", el rider enganchado a la gira." : ", el rider vigente del artista."}
+            {rider.deLaGira ? ", el rider enganchado a la gira." : ", el rider vigente del artista."} Lo que cambies
+            aquí vale solo en esta fecha.
           </p>
 
-          {/* El papel que pide el ingeniero del venue para parchar. Emitido
-              desde la fecha lleva el rider maestro más la cola de invitados. */}
+          {/* El papel que pide el ingeniero del venue para parchar. Sale de la
+              lista unificada, así que lleva los ajustes de esta plaza. */}
           <BotonDocumentoGira
             url={`/api/gira-shows/${show.id}/documentos/input-list`}
             label="Input y output list PDF"
-            nota="La lista de esta fecha: el rider maestro más los canales que agregues aquí."
+            nota="La lista tal como queda en esta fecha, con lo agregado y lo ajustado aquí."
             className="shrink-0 max-w-xs"
           />
         </div>
