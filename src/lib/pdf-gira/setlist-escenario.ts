@@ -11,7 +11,7 @@
 import React from "react";
 import type { Document } from "@react-pdf/renderer";
 import { prisma } from "@/lib/prisma";
-import { fmtFechaCorta, segmentarSetlist, TIPO_FILA_SETLIST_LABEL } from "@/lib/giras";
+import { fmtFechaCorta, segmentarSetlist, tituloDeFila, TIPO_FILA_SETLIST_LABEL } from "@/lib/giras";
 import {
   SetlistEscenarioPDF,
   type RenglonEscenario,
@@ -69,7 +69,7 @@ export async function generarSetlistEscenario(setlistId: string): Promise<PdfGir
       renglones.push({
         id: c.fila.id,
         posicion: c.posicion,
-        titulo: c.fila.titulo,
+        titulo: tituloDeFila(c.fila.titulo, c.fila.artistaInvitado),
         detalle: null,
         bloque: seg.numero,
         bloqueNombre: i === 0 ? seg.nombre : null,

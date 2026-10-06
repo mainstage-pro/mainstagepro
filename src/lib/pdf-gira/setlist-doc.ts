@@ -16,7 +16,14 @@ import React from "react";
 import type { Document } from "@react-pdf/renderer";
 import path from "path";
 import { prisma } from "@/lib/prisma";
-import { fmtFechaCorta, fmtFechaLarga, fmtMinSeg, segmentarSetlist, TIPO_FILA_SETLIST_LABEL } from "@/lib/giras";
+import {
+  fmtFechaCorta,
+  fmtFechaLarga,
+  fmtMinSeg,
+  segmentarSetlist,
+  tituloDeFila,
+  TIPO_FILA_SETLIST_LABEL,
+} from "@/lib/giras";
 import { logoBase64, nowStr, resolvePdfImage } from "@/components/pdf/PdfShared";
 import { SetlistDocPDF, type SetlistDocData, type SetlistDocFila } from "@/components/pdf/giras/SetlistDocPDF";
 import { bufferDePdf, type PdfGira } from "./render";
@@ -130,7 +137,7 @@ export async function generarSetlistDoc(giraId: string, showId?: string | null):
         bloqueColor: i === 0 ? seg.color : null,
         abreBloque: i === 0,
         etiqueta: null,
-        titulo: c.fila.titulo,
+        titulo: tituloDeFila(c.fila.titulo, c.fila.artistaInvitado),
         ...detalle(c.fila),
       });
     }

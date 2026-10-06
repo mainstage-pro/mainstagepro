@@ -57,6 +57,63 @@ export const INCLUDE_SETLIST = {
   show: { select: { id: true, fecha: true, ciudad: true } },
 } as const;
 
+/**
+ * El setlist de una fecha. Si todavía no tiene, nace copiado del base de la
+ * gira la primera vez que alguien abre su pestaña —igual que el esqueleto de
+ * horarios del día—, para que el orden de esta noche se ajuste sin reescribirle
+ * el repertorio a las demás fechas.
+ *
+ * Quitarlo y volver a entrar lo trae otra vez del base: así se vuelve a
+ * sincronizar una fecha que se quedó atrás.
+ */
+export async function asegurarSetlistDeFecha(giraId: string, showId: string) {
+  const propio = await prisma.giraSetlist.findFirst({
+    where: { giraId, showId },
+    orderBy: { createdAt: "asc" },
+    include: INCLUDE_SETLIST,
+  });
+  if (propio) return propio;
+
+  const base = await prisma.giraSetlist.findFirst({
+    where: { giraId, esBase: true },
+    include: { canciones: { orderBy: { orden: "asc" } } },
+  });
+
+  return prisma.giraSetlist.create({
+    data: {
+      giraId,
+      showId,
+      nombre: "Setlist de esta fecha",
+      duracionMin: base?.duracionMin ?? null,
+      notas: base?.notas ?? null,
+      ...(base?.canciones.length
+        ? {
+            canciones: {
+              create: base.canciones.map((c) => ({
+                tipo: c.tipo,
+                orden: c.orden,
+                titulo: c.titulo,
+                artistaInvitado: c.artistaInvitado,
+                bloqueNombre: c.bloqueNombre,
+                bloqueColor: c.bloqueColor,
+                duracionSeg: c.duracionSeg,
+                tonalidad: c.tonalidad,
+                bpm: c.bpm,
+                conTrack: c.conTrack,
+                notasAudio: c.notasAudio,
+                notasLuces: c.notasLuces,
+                notasVideo: c.notasVideo,
+                cambioInstrumento: c.cambioInstrumento,
+                notas: c.notas,
+              })),
+            },
+          }
+        : {}),
+    },
+    include: INCLUDE_SETLIST,
+  });
+}
+
 // ── Candidatos de los selectores ─────────────────────────────────────────────
 
 export interface CandidatoPersona {

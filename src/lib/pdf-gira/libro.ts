@@ -36,6 +36,7 @@ import {
   nombreCrew,
   resumirAdvance,
   segmentarSetlist,
+  tituloDeFila,
   type SeccionLibro,
 } from "@/lib/giras";
 import { ESTADOS_CHECKLIST, FRENTES } from "@/lib/gira-advance-checklist";
@@ -366,7 +367,7 @@ export async function generarLibroGira(giraId: string, secciones: SeccionLibro[]
         posicion: ubicacion.get(c.id)?.posicion ?? null,
         bloque: ubicacion.get(c.id)?.bloque ?? null,
         bloqueNombre: ubicacion.get(c.id)?.bloqueNombre ?? null,
-        titulo: c.titulo,
+        titulo: tituloDeFila(c.titulo, c.artistaInvitado),
         duracion: c.duracionSeg ? fmtMinSeg(c.duracionSeg) : "—",
         tonalidad: c.tonalidad,
         bpm: c.bpm,

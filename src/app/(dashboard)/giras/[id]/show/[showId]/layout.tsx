@@ -94,6 +94,7 @@ export default async function ShowLayout({
     { href: `/giras/${id}/show/${showId}`, label: "Resumen", llave: "resumen", exacto: true },
     { href: `/giras/${id}/show/${showId}/advance`, label: "Advance", llave: "advance" },
     { href: `/giras/${id}/show/${showId}/dia`, label: "Día del show", llave: "dia" },
+    { href: `/giras/${id}/show/${showId}/setlist`, label: "Setlist", llave: "setlist" },
     { href: `/giras/${id}/show/${showId}/invitados`, label: "Invitados y canales", llave: "invitados" },
     { href: `/giras/${id}/show/${showId}/stage-plot`, label: "Stage plot", llave: "stage-plot" },
     { href: `/giras/${id}/show/${showId}/site-plan`, label: "Site plan", llave: "site-plan" },

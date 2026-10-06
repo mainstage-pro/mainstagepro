@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { TIPOS_FILA_SETLIST } from "@/lib/giras";
 
 const TEXTO = [
+  "artistaInvitado",
   "tonalidad",
   "notasAudio",
   "notasLuces",

@@ -6681,6 +6681,10 @@ model GiraSetlistCancion {
   tipo              String  @default("CANCION") // CANCION|INTRO|PRESENTACION|PAUSA|CIERRE
   orden             Int     @default(0)
   titulo            String
+  /// De quién es la canción cuando no es del artista: el invitado que se sube a
+  /// cantarla o el cover que se toca esa noche. Es texto porque el invitado de la
+  /// fecha vive en ShowInvitado y el cover no está en ninguna lista.
+  artistaInvitado   String?
   /// Nombre y color de la tanda que esta fila abre ("Acústico", "Cierre"). Solo
   /// cuentan en el momento que la precede; el número se sigue derivando, y el
   /// color solo se guarda cuando alguien lo elige distinto al de la paleta.

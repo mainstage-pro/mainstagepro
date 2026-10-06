@@ -2,10 +2,10 @@
 
 /**
  * El día del show, momento por momento. Es la misma tabla que alimenta los
- * horarios ancla de la ficha: los ocho de plantilla son el esqueleto —salen
- * marcados— y lo demás es lo que esta fecha sí trae (meet and greet, prensa,
- * prueba de vestuario). Todo vive en el mismo renglón, con inicio, fin,
- * responsable, lugar y notas, porque es lo que se imprime en el day sheet.
+ * horarios de la ficha —ahí sale el día completo—: los ocho de plantilla son el
+ * esqueleto y salen marcados, y lo demás es lo que esta fecha sí trae (meet and
+ * greet, prensa, prueba de vestuario). Todo vive en el mismo renglón, con inicio,
+ * fin, responsable, lugar y notas, porque es lo que se imprime en el day sheet.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";

@@ -30,6 +30,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ set
       tipo,
       titulo,
       orden: (max._max.orden ?? 0) + 10,
+      artistaInvitado:
+        typeof body.artistaInvitado === "string" && body.artistaInvitado.trim() ? body.artistaInvitado.trim() : null,
       tonalidad: typeof body.tonalidad === "string" && body.tonalidad.trim() ? body.tonalidad.trim() : null,
       conTrack: !!body.conTrack,
     },

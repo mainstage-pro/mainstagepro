@@ -1,12 +1,15 @@
 "use client";
 
 /**
- * Horarios ancla: el esqueleto del día dentro de la ficha del show.
+ * Los horarios del día dentro de la ficha del show.
  *
- * Son los ocho momentos de siempre —load in, montaje, line check, soundcheck,
- * puertas, show, load out, curfew— y nada más. El minuto a minuto completo (el
- * meet and greet, la prensa, el cambio de escenario) vive en la pestaña "Día del
- * show": aquí solo se contesta "¿a qué hora es el show?" sin salir de la ficha.
+ * Sale el día completo en orden: los ocho momentos de siempre —load in, montaje,
+ * line check, soundcheck, puertas, show, load out, curfew— y también lo que se
+ * agregó a esta fecha (el meet and greet, la prensa, el cambio de escenario),
+ * porque un horario que no aparece en la ficha es un horario que nadie ve.
+ *
+ * El renglón se agrega y se detalla —responsable, lugar, notas— en la pestaña
+ * "Día del show"; aquí se lee el día y se corrige la hora.
  *
  * No es un panel heredado de solo lectura: cuando la ficha está en edición, la
  * hora se escribe aquí mismo y se guarda sola.
@@ -125,23 +128,25 @@ export default function MomentosAncla({ showId, editable }: Props) {
     return `${base}/dia`;
   }, [pathname, showId]);
 
-  const anclas = useMemo(() => ordenarBloques((momentos ?? []).filter((m) => m.esAncla)), [momentos]);
+  // El día completo y en orden, no solo el esqueleto: el que lee la ficha quiere
+  // ver también el meet and greet que se agregó para esta fecha.
+  const dia = useMemo(() => ordenarBloques(momentos ?? []), [momentos]);
 
   const faltantes = useMemo(() => {
-    const estan = new Set(anclas.map((m) => m.llave).filter((l): l is string => !!l));
+    const estan = new Set(dia.map((m) => m.llave).filter((l): l is string => !!l));
     return MOMENTOS_PLANTILLA.filter((p) => !estan.has(p.llave));
-  }, [anclas]);
+  }, [dia]);
 
-  const conHora = anclas.filter((m) => !!m.hora).length;
+  const conHora = dia.filter((m) => !!m.hora).length;
 
   return (
     <section className="ms-card p-4">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="min-w-0">
-          <h3 className="ms-section-label">Horarios ancla</h3>
+          <h3 className="ms-section-label">Horarios del día</h3>
           <p className="ms-meta mt-0.5">
-            El esqueleto del día. Lo que no esté aquí —meet and greet, prensa, cambio de escenario— se agrega en el día
-            del show.
+            Los horarios de siempre y lo que se agregó a esta fecha, en orden. Un momento nuevo —meet and greet, prensa,
+            cambio de escenario— se agrega en el día del show.
           </p>
         </div>
         <Link href={hrefDia} className="ms-btn-ghost shrink-0 inline-flex items-center gap-1.5 whitespace-nowrap">
@@ -152,7 +157,7 @@ export default function MomentosAncla({ showId, editable }: Props) {
 
       {momentos === null ? (
         <p className="ms-meta">Cargando los horarios…</p>
-      ) : anclas.length === 0 ? (
+      ) : dia.length === 0 ? (
         <div className="ms-empty-state">
           <p className="text-sm text-gray-400">El día del show no tiene esqueleto.</p>
           {editable && (
@@ -167,7 +172,7 @@ export default function MomentosAncla({ showId, editable }: Props) {
         </div>
       ) : (
         <div className="divide-y divide-[#1a1a1a]">
-          {anclas.map((m) => {
+          {dia.map((m) => {
             const rango = esRango(m.llave);
             const dura = fmtDuracion(duracionBloque(m.hora, m.horaFin));
             return (
@@ -176,7 +181,10 @@ export default function MomentosAncla({ showId, editable }: Props) {
                 className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] gap-2 sm:gap-3 py-2 items-center"
               >
                 <div className="min-w-0">
-                  <p className={`text-[13px] truncate ${TIPO_BLOQUE_COLOR[m.tipo] ?? "text-white"}`}>{m.titulo}</p>
+                  <p className={`text-[13px] truncate ${TIPO_BLOQUE_COLOR[m.tipo] ?? "text-white"}`}>
+                    {m.titulo}
+                    {!m.esAncla && <span className="ms-micro text-[#555] ml-1.5">de esta fecha</span>}
+                  </p>
                   {rango && dura !== "—" && <p className="ms-micro">dura {dura}</p>}
                 </div>
 
@@ -212,10 +220,10 @@ export default function MomentosAncla({ showId, editable }: Props) {
         </div>
       )}
 
-      {momentos !== null && anclas.length > 0 && (
+      {momentos !== null && dia.length > 0 && (
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <p className="ms-micro">
-            {conHora} de {anclas.length} con hora.
+            {conHora} de {dia.length} con hora.
             {editable ? " Cada hora se guarda sola." : ""}
           </p>
           {editable && faltantes.length > 0 && (

@@ -101,15 +101,16 @@ const DOCS_GIRA = [
     slug: "setlist",
     label: "Setlist",
     descripcion:
-      "El repertorio por bloques con duración, tono, BPM, track y los cues de audio, luces y video. Aquí sale el base de la gira; el de una fecha se emite desde el renglón del show.",
+      "El repertorio por bloques con duración, tono, BPM, track y los cues de audio, luces y video. Aquí sale el base de la gira; el de una fecha se baja desde su pestaña Setlist.",
     necesitaRider: false,
   },
 ] as const;
 
+/// Lo que se reparte de una fecha. El setlist no está a propósito: se baja desde
+/// la pestaña Setlist de ese show, que es donde se arma.
 const DOCS_PLAZA = [
   { slug: "day-sheet", label: "Day sheet" },
   { slug: "advance", label: "Advance" },
-  { slug: "setlist", label: "Setlist" },
 ] as const;
 
 function etiquetaShow(p: { fecha: string; ciudad: string | null }): string {

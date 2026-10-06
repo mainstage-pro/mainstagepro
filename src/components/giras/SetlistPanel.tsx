@@ -1,9 +1,10 @@
 "use client";
 
 /**
- * Setlist de la gira y sus variantes por show. El repertorio se teclea una vez
- * en el base; el show que necesita otro orden o menos tiempo lo copia y lo
- * ajusta, para que las notas de audio, luces y video no se vuelvan a escribir.
+ * Setlist de la gira y el de cada fecha. El repertorio se teclea una vez en el
+ * base y la fecha abre con una copia propia (la siembra el servidor al abrir su
+ * pestaña): ahí se mueve el orden, se recorta por curfew o se mete la canción
+ * del invitado sin tocarle el repertorio a las demás noches.
  *
  * Los renglones que no son canción (intro, presentación, pausa, cierre) van en
  * la misma lista: son los que parten el show en bloques, y el bloque se deriva
@@ -47,6 +48,7 @@ export interface CancionFila {
   tipo: string;
   orden: number;
   titulo: string;
+  artistaInvitado: string | null;
   bloqueNombre: string | null;
   bloqueColor: string | null;
   duracionSeg: number | null;
@@ -76,6 +78,9 @@ interface Props {
   alcance: "GIRA" | "SHOW";
   showId?: string;
   setlistsIniciales: SetlistFila[];
+  /// Quién más se sube al escenario esa noche, para ofrecerlos al marcar de quién
+  /// es la canción. Son los invitados de la fecha; un cover se escribe a mano.
+  invitados?: { nombre: string; rol: string | null }[];
 }
 
 const DEMORA_GUARDADO = 700;
@@ -113,9 +118,11 @@ function RenglonArrastrable({ id, className, children }: { id: string; className
   );
 }
 
-export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciales }: Props) {
+export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciales, invitados }: Props) {
   const toast = useToast();
   const confirmar = useConfirm();
+
+  const listaInvitados = `setlist-invitados-${showId ?? giraId}`;
 
   const [setlists, setSetlists] = useState<SetlistFila[]>(setlistsIniciales);
   const [abierto, setAbierto] = useState<string | null>(
@@ -123,6 +130,9 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
     setlistsIniciales.find((s) => s.showId === showId)?.id ?? setlistsIniciales[0]?.id ?? null,
   );
   const [trabajando, setTrabajando] = useState(false);
+  // La fila que acaba de nacer como canción de otro artista: su celda de artista
+  // toma el foco, que es el dato que falta por escribir.
+  const [focoInvitado, setFocoInvitado] = useState<string | null>(null);
   // Qué bloque tiene la paleta abierta, por el id de su ancla. La paleta se
   // despliega en el mismo renglón y no flotando: la tabla va dentro de un
   // contenedor con scroll horizontal, que recortaría cualquier popover.
@@ -171,7 +181,7 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
     timers.set(cancionId, setTimeout(() => void guardar(), DEMORA_GUARDADO));
   }
 
-  async function agregarCancion(setlistId: string, tipo = "CANCION") {
+  async function agregarCancion(setlistId: string, tipo = "CANCION"): Promise<CancionFila | null> {
     const res = await fetch(`/api/gira-setlists/${setlistId}/canciones`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -180,9 +190,17 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
     const d = await res.json().catch(() => ({}));
     if (!res.ok) {
       toast.error(d.error ?? "No se pudo agregar la canción");
-      return;
+      return null;
     }
     setSetlists((prev) => prev.map((s) => (s.id === setlistId ? { ...s, canciones: [...s.canciones, d.cancion] } : s)));
+    return d.cancion as CancionFila;
+  }
+
+  /// La canción que no es del artista: la del invitado que se sube o el cover de
+  /// esa noche. Nace igual que cualquier otra y lo único distinto es de quién es.
+  async function agregarCancionDeOtro(setlistId: string) {
+    const c = await agregarCancion(setlistId);
+    if (c) setFocoInvitado(c.id);
   }
 
   /// Un bloque nuevo es la pausa que lo abre más su primera canción: sin la
@@ -271,17 +289,13 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
     timers.set(id, setTimeout(() => void guardar(), DEMORA_GUARDADO));
   }
 
-  async function crear(copiarDeId?: string) {
+  async function crear() {
     setTrabajando(true);
     try {
       const res = await fetch(`/api/giras/${giraId}/setlists`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          showId: alcance === "SHOW" ? showId : null,
-          copiarDeId: copiarDeId ?? null,
-          esBase: alcance === "GIRA" && !setlists.some((s) => s.esBase),
-        }),
+        body: JSON.stringify({ esBase: !setlists.some((s) => s.esBase) }),
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -290,7 +304,7 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
       }
       setSetlists((prev) => [...prev, d.setlist]);
       setAbierto(d.setlist.id);
-      toast.success(copiarDeId ? "Setlist copiado" : "Setlist creado");
+      toast.success("Setlist creado");
     } finally {
       setTrabajando(false);
     }
@@ -313,44 +327,51 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
     toast.success("Setlist eliminado");
   }
 
-  const base = setlists.find((s) => s.esBase);
-  const visibles = alcance === "SHOW" ? setlists.filter((s) => s.showId === showId || s.esBase) : setlists;
+  // En la fecha solo se ve el suyo: el base se lee y se edita en la gira, y
+  // mostrarlo aquí editable le reescribiría el repertorio a las demás noches.
+  const visibles = alcance === "SHOW" ? setlists.filter((s) => s.showId === showId) : setlists;
 
   return (
     <div className="space-y-3">
+      {invitados?.length ? (
+        <datalist id={listaInvitados}>
+          {invitados.map((i) => (
+            <option key={i.nombre} value={i.nombre} />
+          ))}
+        </datalist>
+      ) : null}
+
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="ms-h2">Setlist</h2>
           <p className="ms-subtitle mt-0.5">
             {alcance === "SHOW"
-              ? "El repertorio de este show. Copia el base y ajústalo si el tiempo o el orden cambian."
-              : "El base es el repertorio de la gira; cada show puede tener su variante."}{" "}
+              ? "El repertorio de esta fecha. Salió del base de la gira y lo que cambies aquí se queda en esta noche."
+              : "El base es el repertorio de la gira; cada fecha abre con su copia."}{" "}
             Arrastra un renglón de la manija para moverlo de lugar o de bloque.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {alcance === "SHOW" && base && (
-            <button onClick={() => void crear(base.id)} disabled={trabajando} className="ms-btn-primary disabled:opacity-50">
-              {trabajando ? "Copiando…" : "Copiar el setlist base a este show"}
+        {alcance === "GIRA" && (
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => void crear()} disabled={trabajando} className="ms-btn-secondary disabled:opacity-50">
+              Setlist en blanco
             </button>
-          )}
-          <button onClick={() => void crear()} disabled={trabajando} className="ms-btn-secondary disabled:opacity-50">
-            Setlist en blanco
-          </button>
-        </div>
+          </div>
+        )}
       </div>
 
       {visibles.length === 0 ? (
         <div className="ms-empty-state">
           <p className="text-sm text-gray-400">
-            Todavía no hay setlist. Crea el base de la gira y los shows lo heredan con un clic.
+            {alcance === "SHOW"
+              ? "Esta fecha se quedó sin setlist. Recarga la pestaña y se vuelve a copiar del base de la gira."
+              : "Todavía no hay setlist. Crea el base de la gira y cada fecha abre con su copia."}
           </p>
         </div>
       ) : (
         visibles.map((s) => {
           const expandido = abierto === s.id;
           const segundos = s.canciones.reduce((t, c) => t + (c.duracionSeg ?? 0), 0);
-          const heredado = alcance === "SHOW" && s.showId !== showId;
           const segmentos = segmentarSetlist(s.canciones);
           const totalCanciones = s.canciones.filter((c) => esCancion(c.tipo)).length;
           const totalBloques = segmentos.filter((x) => x.clase === "bloque").length;
@@ -367,7 +388,6 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
                         {fmtFechaCorta(s.show.fecha)} · {s.show.ciudad ?? "Sin ciudad"}
                       </span>
                     )}
-                    {heredado && <span className="ms-badge ms-badge-sky ml-2">Heredado de la gira</span>}
                   </p>
                   <p className="ms-meta mt-0.5">
                     {totalCanciones} canciones
@@ -452,13 +472,14 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
                     >
                       <SortableContext items={s.canciones.map((c) => c.id)} strategy={verticalListSortingStrategy}>
                         <div className="ms-table-wrapper overflow-x-auto">
-                      <table className="min-w-[1410px] w-full">
+                      <table className="min-w-[1570px] w-full">
                         <thead className="ms-thead">
                           <tr>
                             <th className="ms-th w-[30px]" />
                             <th className="ms-th w-[120px]">Tipo</th>
                             <th className="ms-th w-[40px]">#</th>
                             <th className="ms-th w-[240px]">Canción</th>
+                            <th className="ms-th w-[160px]">De otro artista</th>
                             <th className="ms-th w-[90px]">Dura</th>
                             <th className="ms-th w-[80px]">Tono</th>
                             <th className="ms-th w-[70px]">BPM</th>
@@ -508,7 +529,7 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
                                       className="ms-input-inline w-full"
                                     />
                                   </td>
-                                  <td className="ms-td" colSpan={7}>
+                                  <td className="ms-td" colSpan={8}>
                                     <input
                                       value={c.notas ?? ""}
                                       onChange={(e) => editarCancion(s.id, c.id, { notas: e.target.value })}
@@ -534,7 +555,7 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
                             return (
                               <Fragment key={seg.clave}>
                                 <tr className="bg-[#0d0d0d]">
-                                  <td className="ms-td" colSpan={13}>
+                                  <td className="ms-td" colSpan={14}>
                                     <span className="inline-flex items-center gap-2">
                                       <button
                                         onClick={() => setPaleta(paleta === seg.anclaId ? null : seg.anclaId)}
@@ -608,6 +629,19 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
                                         value={c.titulo}
                                         onChange={(e) => editarCancion(s.id, c.id, { titulo: e.target.value })}
                                         placeholder="Título"
+                                        className="ms-input-inline w-full"
+                                      />
+                                    </td>
+                                    <td className="ms-td">
+                                      {/* Vacío = la canción es del artista de la
+                                          gira. Se escribe solo cuando no lo es. */}
+                                      <input
+                                        list={invitados?.length ? listaInvitados : undefined}
+                                        value={c.artistaInvitado ?? ""}
+                                        onChange={(e) => editarCancion(s.id, c.id, { artistaInvitado: e.target.value })}
+                                        autoFocus={c.id === focoInvitado}
+                                        placeholder="—"
+                                        title="De quién es la canción si no es del artista: el invitado que la canta o el cover"
                                         className="ms-input-inline w-full"
                                       />
                                     </td>
@@ -708,17 +742,15 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
                     <button onClick={() => void agregarCancion(s.id)} className="ms-btn-ghost">
                       + Agregar canción
                     </button>
+                    <button onClick={() => void agregarCancionDeOtro(s.id)} className="ms-btn-ghost">
+                      + Canción de otro artista
+                    </button>
                     <button onClick={() => void agregarCancion(s.id, "PAUSA")} className="ms-btn-ghost">
                       + Agregar pausa
                     </button>
                     <button onClick={() => void agregarBloque(s.id)} className="ms-btn-ghost">
                       + Agregar bloque
                     </button>
-                    {alcance === "SHOW" && s.esBase && s.showId === null && (
-                      <button onClick={() => void crear(s.id)} className="ms-btn-ghost">
-                        Copiar este base al show
-                      </button>
-                    )}
                     <button
                       onClick={() => void quitarSetlist(s)}
                       className="ms-btn-ghost text-red-400/80 hover:text-red-300 ml-auto"

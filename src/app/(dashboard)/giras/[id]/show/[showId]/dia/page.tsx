@@ -2,12 +2,11 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { INCLUDE_CREW, INCLUDE_SETLIST, candidatosCrew } from "@/lib/logistica-gira";
+import { INCLUDE_CREW, candidatosCrew } from "@/lib/logistica-gira";
 import { fmtFechaLarga, ordenarBloques } from "@/lib/giras";
 import { SELECT_MOMENTO } from "@/lib/show-momentos";
 import BotonDocumentoGira from "@/components/giras/BotonDocumentoGira";
 import CrewPanel from "@/components/giras/CrewPanel";
-import SetlistPanel from "@/components/giras/SetlistPanel";
 import DiaShowTabla from "./DiaShowTabla";
 
 export const dynamic = "force-dynamic";
@@ -35,16 +34,11 @@ export default async function DiaShowPage({ params }: { params: Promise<{ id: st
 
   // El crew del show son los que viajan toda la gira más los refuerzos de ese
   // día: el day sheet se reparte a los dos grupos por igual.
-  const [crew, setlists, candidatos] = await Promise.all([
+  const [crew, candidatos] = await Promise.all([
     prisma.giraCrew.findMany({
       where: { giraId: id, activo: true, OR: [{ showId: null }, { showId }] },
       orderBy: [{ orden: "asc" }, { createdAt: "asc" }],
       include: INCLUDE_CREW,
-    }),
-    prisma.giraSetlist.findMany({
-      where: { giraId: id, OR: [{ showId }, { esBase: true }] },
-      orderBy: [{ esBase: "desc" }, { createdAt: "asc" }],
-      include: INCLUDE_SETLIST,
     }),
     candidatosCrew(id),
   ]);
@@ -106,26 +100,6 @@ export default async function DiaShowPage({ params }: { params: Promise<{ id: st
         />
       </section>
 
-      <section className="space-y-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h2 className="ms-h2">Setlist de la noche</h2>
-            <p className="ms-meta">
-              Si este show toca el repertorio de la gira, se lee el base. Copíalo solo cuando el orden o el tiempo
-              cambien.
-            </p>
-          </div>
-          {/* El setlist de la fecha: si este show no capturó el suyo, el PDF
-              imprime el base y lo dice. */}
-          <BotonDocumentoGira
-            url={`/api/gira-shows/${show.id}/documentos/setlist`}
-            label="Setlist PDF"
-            falta={setlists.every((s) => s.canciones.length === 0) ? "capturar el repertorio" : null}
-            className="shrink-0 max-w-xs"
-          />
-        </div>
-        <SetlistPanel giraId={id} alcance="SHOW" showId={show.id} setlistsIniciales={setlists} />
-      </section>
     </div>
   );
 }

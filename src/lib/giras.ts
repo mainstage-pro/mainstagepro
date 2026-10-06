@@ -665,6 +665,13 @@ export function esCancion(tipo: string | null | undefined): boolean {
   return (tipo ?? "CANCION") === "CANCION";
 }
 
+/// El título como se imprime: la canción que no es del artista arrastra de quién
+/// es, porque el que opera y el que la canta necesitan verlo en el mismo renglón.
+export function tituloDeFila(titulo: string, artistaInvitado?: string | null): string {
+  const otro = artistaInvitado?.trim();
+  return otro ? `${titulo} (con ${otro})` : titulo;
+}
+
 /// El color del bloque es de la paleta del artista, no del dato: se repite al
 /// pasar del séptimo bloque porque nadie imprime un setlist de ocho tandas.
 /// Son colores saturados y con texto negro encima porque el papel que importa
