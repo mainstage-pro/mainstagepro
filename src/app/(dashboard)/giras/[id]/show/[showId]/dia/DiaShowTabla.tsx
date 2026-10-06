@@ -8,7 +8,24 @@
  * responsable, lugar y notas, porque es lo que se imprime en el day sheet.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  closestCenter,
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
 import HoraInput from "@/components/ui/HoraInput";
@@ -20,6 +37,7 @@ import {
   TIPO_BLOQUE_LABEL,
   duracionBloque,
   fmtDuracion,
+  horaAlMover,
   minutosDeJornada,
   ordenarBloques,
 } from "@/lib/giras";
@@ -56,6 +74,39 @@ interface Nuevo {
 
 const NUEVO: Nuevo = { titulo: "", tipo: "LOGISTICA", hora: "" };
 
+/// Un renglón que se arrastra. La manija es su propia celda y no el renglón
+/// entero: la fila está llena de inputs, y hacerla arrastrable completa
+/// impediría seleccionar el texto de un título para corregirlo.
+function RenglonArrastrable({ id, className, children }: { id: string; className: string; children: ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+
+  return (
+    <tr
+      ref={setNodeRef}
+      className={className}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : undefined,
+        position: isDragging ? "relative" : undefined,
+        zIndex: isDragging ? 10 : undefined,
+      }}
+    >
+      <td className="ms-td">
+        <button
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing text-[#444] hover:text-white transition-colors touch-none"
+          title="Arrastrar para re-agendarlo: arranca donde termina el de arriba"
+        >
+          ⠿
+        </button>
+      </td>
+      {children}
+    </tr>
+  );
+}
+
 export default function DiaShowTabla({ showId, momentosIniciales }: Props) {
   const toast = useToast();
   const confirmar = useConfirm();
@@ -67,6 +118,13 @@ export default function DiaShowTabla({ showId, momentosIniciales }: Props) {
 
   const pendientes = useRef(new Map<string, Campos>());
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+
+  const sensores = useSensors(
+    // Sin el umbral, un clic en la manija contaría como arrastre de cero píxeles
+    // y se comería el foco de la celda.
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   const cargar = useCallback(async () => {
     const res = await fetch(`/api/gira-shows/${showId}/momentos`);
@@ -173,14 +231,39 @@ export default function DiaShowTabla({ showId, momentosIniciales }: Props) {
     setMomentos((prev) => prev.filter((x) => x.id !== m.id));
   }
 
-  /// Reordenar solo decide entre los momentos sin hora: en cuanto hay reloj, el
-  /// reloj manda y mover el renglón no cambiaría nada.
-  function mover(index: number, delta: number) {
-    const a = ordenados[index];
-    const b = ordenados[index + delta];
-    if (!a || !b) return;
-    editar(a.id, { orden: b.orden }, true);
-    editar(b.id, { orden: a.orden }, true);
+  /// Arrastrar un renglón lo re-agenda: arranca donde termina el de arriba y se
+  /// lleva su duración. Soltarlo abajo de los que no tienen hora lo devuelve a
+  /// pendiente de agendar.
+  async function reordenar(e: DragEndEvent) {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+
+    const movidoId = String(active.id);
+    const desde = ordenados.findIndex((m) => m.id === movidoId);
+    const hasta = ordenados.findIndex((m) => m.id === over.id);
+    if (desde < 0 || hasta < 0) return;
+
+    // Lo que se venía escribiendo se guarda antes: la respuesta del
+    // reordenamiento reemplaza la tabla y se llevaría esas letras.
+    await descargarTodo();
+
+    const previo = momentos;
+    const movidos = arrayMove(ordenados, desde, hasta).map((m, i) => ({ ...m, orden: (i + 1) * 10 }));
+    const reagendado = horaAlMover(movidos, movidoId);
+    setMomentos(movidos.map((m) => (m.id === movidoId ? { ...m, ...reagendado } : m)));
+
+    const res = await fetch(`/api/gira-shows/${showId}/momentos/orden`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: movidos.map((m) => m.id), movidoId }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      toast.error(d.error ?? "No se pudo guardar el nuevo orden");
+      setMomentos(previo);
+      return;
+    }
+    setMomentos(d.momentos as MomentoFila[]);
   }
 
   // ── Derivados ──────────────────────────────────────────────────────────────
@@ -188,6 +271,7 @@ export default function DiaShowTabla({ showId, momentosIniciales }: Props) {
 
   const conHora = ordenados.filter((m) => minutosDeJornada(m.hora) !== null);
   const sinHora = ordenados.length - conHora.length;
+  const arrastrables = useMemo(() => ordenados.map((m) => m.id), [ordenados]);
   const sinResponsable = ordenados.filter((m) => !m.responsable?.trim()).length;
   const anclas = ordenados.filter((m) => m.esAncla).length;
 
@@ -315,130 +399,117 @@ export default function DiaShowTabla({ showId, momentosIniciales }: Props) {
           </p>
         </div>
       ) : (
-        <div className="ms-table-wrapper overflow-x-auto">
-          <table className="min-w-[1240px] w-full">
-            <thead className="ms-thead">
-              <tr>
-                <th className="ms-th w-[60px]">Orden</th>
-                <th className="ms-th w-[120px]">Inicio</th>
-                <th className="ms-th w-[120px]">Fin</th>
-                <th className="ms-th w-[90px]">Dura</th>
-                <th className="ms-th w-[260px]">Qué pasa</th>
-                <th className="ms-th w-[150px]">Fase</th>
-                <th className="ms-th w-[180px]">Responsable</th>
-                <th className="ms-th w-[180px]">Lugar</th>
-                <th className="ms-th w-[220px]">Notas</th>
-                <th className="ms-th w-[40px]" />
-              </tr>
-            </thead>
-            <tbody>
-              {ordenados.map((m, i) => {
-                const conReloj = minutosDeJornada(m.hora) !== null;
-                return (
-                  <tr key={m.id} className={`ms-tr align-top ${m.esAncla ? "bg-[#B3985B]/[0.04]" : ""}`}>
-                    <td className="ms-td">
-                      <div className="flex flex-col items-center gap-0.5">
-                        <button
-                          onClick={() => mover(i, -1)}
-                          disabled={conReloj || i === 0}
-                          className="text-[#555] hover:text-white disabled:opacity-25 disabled:hover:text-[#555] transition-colors leading-none"
-                          title={conReloj ? "Este momento ya tiene hora: el reloj lo ordena" : "Subir"}
-                        >
-                          ▲
-                        </button>
-                        <button
-                          onClick={() => mover(i, 1)}
-                          disabled={conReloj || i === ordenados.length - 1}
-                          className="text-[#555] hover:text-white disabled:opacity-25 disabled:hover:text-[#555] transition-colors leading-none"
-                          title={conReloj ? "Este momento ya tiene hora: el reloj lo ordena" : "Bajar"}
-                        >
-                          ▼
-                        </button>
-                      </div>
-                    </td>
-                    <td className="ms-td">
-                      <HoraInput
-                        value={m.hora}
-                        onChange={(v) => editar(m.id, { hora: v || null }, true)}
-                        className="ms-input-inline w-full"
-                      />
-                      {guardados.has(m.id) && <span className="ms-micro text-emerald-400">guardado</span>}
-                    </td>
-                    <td className="ms-td">
-                      <HoraInput
-                        value={m.horaFin}
-                        onChange={(v) => editar(m.id, { horaFin: v || null }, true)}
-                        className="ms-input-inline w-full"
-                      />
-                    </td>
-                    <td className="ms-td">
-                      <span className="ms-meta">{fmtDuracion(duracionBloque(m.hora, m.horaFin))}</span>
-                    </td>
-                    <td className="ms-td">
-                      <input
-                        value={m.titulo}
-                        onChange={(e) => editar(m.id, { titulo: e.target.value })}
-                        className="ms-input-inline w-full"
-                      />
-                      {m.esAncla && <span className="ms-badge ms-badge-gold mt-1 inline-block">ancla</span>}
-                    </td>
-                    <td className="ms-td">
-                      <select
-                        value={m.tipo}
-                        onChange={(e) => editar(m.id, { tipo: e.target.value }, true)}
-                        className={`ms-input-inline w-full ${TIPO_BLOQUE_COLOR[m.tipo] ?? ""}`}
-                      >
-                        {TIPOS_BLOQUE.map((t) => (
-                          <option key={t} value={t} className="bg-[#111] text-white">
-                            {TIPO_BLOQUE_LABEL[t]}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="ms-td">
-                      <input
-                        value={m.responsable ?? ""}
-                        onChange={(e) => editar(m.id, { responsable: e.target.value })}
-                        placeholder="¿quién contesta?"
-                        className="ms-input-inline w-full"
-                      />
-                    </td>
-                    <td className="ms-td">
-                      <input
-                        value={m.lugar ?? ""}
-                        onChange={(e) => editar(m.id, { lugar: e.target.value })}
-                        placeholder="ej. Andén de carga"
-                        className="ms-input-inline w-full"
-                      />
-                    </td>
-                    <td className="ms-td">
-                      <input
-                        value={m.notas ?? ""}
-                        onChange={(e) => editar(m.id, { notas: e.target.value })}
-                        className="ms-input-inline w-full"
-                      />
-                    </td>
-                    <td className="ms-td text-right">
-                      <button
-                        onClick={() => void quitar(m)}
-                        className="text-red-400/70 hover:text-red-300 transition-colors px-1"
-                        title="Quitar el momento"
-                      >
-                        ✕
-                      </button>
-                    </td>
+        <DndContext sensors={sensores} collisionDetection={closestCenter} onDragEnd={(e) => void reordenar(e)}>
+          <SortableContext items={arrastrables} strategy={verticalListSortingStrategy}>
+            <div className="ms-table-wrapper overflow-x-auto">
+              <table className="min-w-[1240px] w-full">
+                <thead className="ms-thead">
+                  <tr>
+                    <th className="ms-th w-[60px]" />
+                    <th className="ms-th w-[120px]">Inicio</th>
+                    <th className="ms-th w-[120px]">Fin</th>
+                    <th className="ms-th w-[90px]">Dura</th>
+                    <th className="ms-th w-[260px]">Qué pasa</th>
+                    <th className="ms-th w-[150px]">Fase</th>
+                    <th className="ms-th w-[180px]">Responsable</th>
+                    <th className="ms-th w-[180px]">Lugar</th>
+                    <th className="ms-th w-[220px]">Notas</th>
+                    <th className="ms-th w-[40px]" />
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody>
+                  {ordenados.map((m) => (
+                    <RenglonArrastrable
+                      key={m.id}
+                      id={m.id}
+                      className={`ms-tr align-top ${m.esAncla ? "bg-[#B3985B]/[0.04]" : ""}`}
+                    >
+                      <td className="ms-td">
+                        <HoraInput
+                          value={m.hora}
+                          onChange={(v) => editar(m.id, { hora: v || null }, true)}
+                          className="ms-input-inline w-full"
+                        />
+                        {guardados.has(m.id) && <span className="ms-micro text-emerald-400">guardado</span>}
+                      </td>
+                      <td className="ms-td">
+                        <HoraInput
+                          value={m.horaFin}
+                          onChange={(v) => editar(m.id, { horaFin: v || null }, true)}
+                          className="ms-input-inline w-full"
+                        />
+                      </td>
+                      <td className="ms-td">
+                        <span className="ms-meta">{fmtDuracion(duracionBloque(m.hora, m.horaFin))}</span>
+                      </td>
+                      <td className="ms-td">
+                        <input
+                          value={m.titulo}
+                          onChange={(e) => editar(m.id, { titulo: e.target.value })}
+                          className="ms-input-inline w-full"
+                        />
+                        {m.esAncla && <span className="ms-badge ms-badge-gold mt-1 inline-block">ancla</span>}
+                      </td>
+                      <td className="ms-td">
+                        <select
+                          value={m.tipo}
+                          onChange={(e) => editar(m.id, { tipo: e.target.value }, true)}
+                          className={`ms-input-inline w-full ${TIPO_BLOQUE_COLOR[m.tipo] ?? ""}`}
+                        >
+                          {TIPOS_BLOQUE.map((t) => (
+                            <option key={t} value={t} className="bg-[#111] text-white">
+                              {TIPO_BLOQUE_LABEL[t]}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="ms-td">
+                        <input
+                          value={m.responsable ?? ""}
+                          onChange={(e) => editar(m.id, { responsable: e.target.value })}
+                          placeholder="¿quién contesta?"
+                          className="ms-input-inline w-full"
+                        />
+                      </td>
+                      <td className="ms-td">
+                        <input
+                          value={m.lugar ?? ""}
+                          onChange={(e) => editar(m.id, { lugar: e.target.value })}
+                          placeholder="ej. Andén de carga"
+                          className="ms-input-inline w-full"
+                        />
+                      </td>
+                      <td className="ms-td">
+                        <input
+                          value={m.notas ?? ""}
+                          onChange={(e) => editar(m.id, { notas: e.target.value })}
+                          className="ms-input-inline w-full"
+                        />
+                      </td>
+                      <td className="ms-td text-right">
+                        <button
+                          onClick={() => void quitar(m)}
+                          className="text-red-400/70 hover:text-red-300 transition-colors px-1"
+                          title="Quitar el momento"
+                        >
+                          ✕
+                        </button>
+                      </td>
+                    </RenglonArrastrable>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </SortableContext>
+        </DndContext>
       )}
 
       <p className="ms-micro">
         Los renglones marcados <span className="text-[#B3985B]">ancla</span> son el esqueleto que también se ve en la
         ficha del show. Cada celda se guarda sola al dejar de escribir. El día se ordena por el reloj y lo que cae
-        después de medianoche (load out, curfew) se lee al final de la jornada, no al principio.
+        después de medianoche (load out, curfew) se lee al final de la jornada, no al principio. Arrastrar un renglón
+        de la manija lo re-agenda: arranca donde termina el de arriba y se lleva su duración, sin mover a los demás.
+        Soltarlo abajo de los que todavía no tienen hora lo devuelve a pendiente de agendar.
       </p>
     </div>
   );

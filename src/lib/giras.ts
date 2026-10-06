@@ -444,6 +444,13 @@ export function minutosDeJornada(hora: string | null | undefined): number | null
   return minutos < corte ? minutos + 1440 : minutos;
 }
 
+/// La vuelta de `minutosDeJornada`: los minutos corridos otra vez en reloj de
+/// pared, así que la 1 a.m. del desmontaje se vuelve a escribir "01:00".
+export function horaDesdeMinutos(minutos: number): string {
+  const m = ((minutos % 1440) + 1440) % 1440;
+  return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+}
+
 export interface BloqueOrdenable {
   hora: string | null;
   tipo: string;
@@ -451,8 +458,9 @@ export interface BloqueOrdenable {
 }
 
 /// El day sheet se lee cronológicamente. Los bloques sin hora todavía no tienen
-/// lugar en el reloj, así que se van al final ordenados por fase: siguen siendo
-/// pendientes de agendar, no huecos del día.
+/// lugar en el reloj, así que se van al final: siguen siendo pendientes de
+/// agendar, no huecos del día. Entre ellos manda `orden`, que es lo que mueve
+/// arrastrar el renglón; la fase solo desempata cuando nadie los ha acomodado.
 export function ordenarBloques<T extends BloqueOrdenable>(bloques: T[]): T[] {
   return [...bloques].sort((a, b) => {
     const ma = minutosDeJornada(a.hora);
@@ -460,10 +468,8 @@ export function ordenarBloques<T extends BloqueOrdenable>(bloques: T[]): T[] {
     if (ma !== null && mb !== null && ma !== mb) return ma - mb;
     if (ma !== null && mb === null) return -1;
     if (ma === null && mb !== null) return 1;
-    const fa = ORDEN_BLOQUE[a.tipo] ?? 99;
-    const fb = ORDEN_BLOQUE[b.tipo] ?? 99;
-    if (fa !== fb) return fa - fb;
-    return a.orden - b.orden;
+    if (a.orden !== b.orden) return a.orden - b.orden;
+    return (ORDEN_BLOQUE[a.tipo] ?? 99) - (ORDEN_BLOQUE[b.tipo] ?? 99);
   });
 }
 
@@ -475,6 +481,49 @@ export function duracionBloque(hora: string | null | undefined, horaFin: string 
   // Un bloque que cruza el corte (show 23:00 → fin 00:30) sigue durando lo suyo.
   const fin = b < a ? b + 1440 : b;
   return fin - a;
+}
+
+export interface BloqueReubicable {
+  id: string;
+  hora: string | null;
+  horaFin: string | null;
+}
+
+/// La hora que le toca a un bloque por el lugar al que lo arrastraron, dentro de
+/// `lista` ya puesta en el orden que el usuario dejó en pantalla.
+///
+/// Arranca donde termina el de arriba —es como se lee un day sheet, una cosa
+/// detrás de la otra— y conserva su duración, así que mover el soundcheck lo
+/// mueve entero y no lo estira. A los vecinos no los toca: si el bloque no cabe
+/// en el hueco se ve el traslape y se corrige a mano, que es mejor que recorrer
+/// el día completo sin que nadie lo haya pedido.
+///
+/// Si cae debajo de los que todavía no tienen hora se queda sin hora: ahí abajo
+/// no hay reloj que lo ubique y vuelve a ser un pendiente de agendar.
+export function horaAlMover<T extends BloqueReubicable>(
+  lista: T[],
+  movidoId: string,
+): { hora: string | null; horaFin: string | null } {
+  const i = lista.findIndex((b) => b.id === movidoId);
+  const movido = lista[i];
+  if (!movido) return { hora: null, horaFin: null };
+
+  const anterior = lista[i - 1];
+  const siguiente = lista[i + 1];
+  const finAnterior = anterior ? (minutosDeJornada(anterior.horaFin) ?? minutosDeJornada(anterior.hora)) : null;
+
+  // Un vecino de arriba sin reloj significa que el bloque aterrizó en la zona de
+  // los pendientes; no hay de dónde deducirle una hora.
+  if (anterior && finAnterior === null) return { hora: null, horaFin: null };
+
+  const inicio = finAnterior ?? (siguiente ? minutosDeJornada(siguiente.hora) : null);
+  if (inicio === null) return { hora: null, horaFin: null };
+
+  const dura = duracionBloque(movido.hora, movido.horaFin);
+  return {
+    hora: horaDesdeMinutos(inicio),
+    horaFin: dura === null ? null : horaDesdeMinutos(inicio + dura),
+  };
 }
 
 export function fmtDuracion(minutos: number | null): string {
