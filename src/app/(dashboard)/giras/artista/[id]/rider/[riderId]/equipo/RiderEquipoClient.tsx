@@ -30,6 +30,7 @@ export interface LineaRider {
   noAceptable: string | null;
   prioridad: string;
   provistoPor: string;
+  enAdvance: boolean;
   notas: string | null;
   orden: number;
 }
@@ -66,6 +67,7 @@ function filaVacia(disciplina: string, orden: number): Fila {
     noAceptable: null,
     prioridad: "INDISPENSABLE",
     provistoPor: "CASA",
+    enAdvance: true,
     notas: null,
     orden,
   };
@@ -155,6 +157,7 @@ export default function RiderEquipoClient({ riderId, lineasIniciales, equipos }:
             noAceptable: f.noAceptable,
             prioridad: f.prioridad,
             provistoPor: f.provistoPor,
+            enAdvance: f.enAdvance,
             notas: f.notas,
             orden: i,
           })),
@@ -190,7 +193,7 @@ export default function RiderEquipoClient({ riderId, lineasIniciales, equipos }:
       total: filas.filter((f) => f.concepto.trim()).length,
       indispensables: filas.filter((f) => f.prioridad === "INDISPENSABLE").length,
       casa: filas.filter((f) => f.provistoPor === "CASA").length,
-      artista: filas.filter((f) => f.provistoPor === "ARTISTA").length,
+      fueraDelAdvance: filas.filter((f) => !f.enAdvance).length,
     }),
     [filas],
   );
@@ -201,8 +204,8 @@ export default function RiderEquipoClient({ riderId, lineasIniciales, equipos }:
         <div>
           <h2 className="ms-h2">Equipo que pide el artista</h2>
           <p className="ms-subtitle mt-1">
-            Un renglón por concepto, con prioridad y quién lo pone. Esto es lo que cada show tiene que resolver en su
-            advance.
+            Un renglón por concepto, con prioridad y quién lo pone. Lo que tenga «En advance» prendido baja como renglón
+            de trabajo al advance de cada fecha; apágalo para lo que no se negocia con el jefe técnico del foro.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -235,8 +238,9 @@ export default function RiderEquipoClient({ riderId, lineasIniciales, equipos }:
           <p className="text-xl font-semibold mt-1 text-white">{conteos.casa}</p>
         </div>
         <div className="ms-stat-card">
-          <p className="ms-label">Los trae el artista</p>
-          <p className="text-xl font-semibold mt-1 text-white">{conteos.artista}</p>
+          <p className="ms-label">Fuera del advance</p>
+          <p className="text-xl font-semibold mt-1 text-white">{conteos.fueraDelAdvance}</p>
+          <p className="ms-micro mt-0.5">El rider los pide, pero no se cotejan con la casa.</p>
         </div>
       </div>
 
@@ -273,7 +277,7 @@ export default function RiderEquipoClient({ riderId, lineasIniciales, equipos }:
         </div>
       ) : (
         <div className="ms-table-wrapper overflow-x-auto">
-          <table className="w-full min-w-[1700px]">
+          <table className="w-full min-w-[1810px]">
             <thead className="ms-thead">
               <tr>
                 <th className="ms-th text-left w-[150px]">Departamento</th>
@@ -282,6 +286,7 @@ export default function RiderEquipoClient({ riderId, lineasIniciales, equipos }:
                 <th className="ms-th text-left w-[110px]">Unidad</th>
                 <th className="ms-th text-left w-[150px]">Prioridad</th>
                 <th className="ms-th text-left w-[150px]">Lo pone</th>
+                <th className="ms-th text-left w-[110px]">En advance</th>
                 <th className="ms-th text-left w-[190px]">Preferido</th>
                 <th className="ms-th text-left w-[190px]">Aceptables</th>
                 <th className="ms-th text-left w-[170px]">No aceptable</th>
@@ -365,6 +370,19 @@ export default function RiderEquipoClient({ riderId, lineasIniciales, equipos }:
                           </option>
                         ))}
                       </select>
+                    </td>
+                    <td className="ms-td">
+                      <label className="flex items-start gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="mt-1 accent-[#B3985B]"
+                          checked={f.enAdvance}
+                          onChange={(e) => set(f.clave, { enAdvance: e.target.checked })}
+                        />
+                        <span className="ms-micro">
+                          {f.enAdvance ? "se coteja con la casa" : "no se coteja"}
+                        </span>
+                      </label>
                     </td>
                     <td className="ms-td">
                       <input

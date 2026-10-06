@@ -6140,6 +6140,12 @@ model ArtistaRiderLinea {
   prioridad   String @default("INDISPENSABLE") // INDISPENSABLE|IMPORTANTE|DESEABLE
   provistoPor String @default("CASA") // CASA|ARTISTA|MAINSTAGE|POR_DEFINIR
 
+  /// Si este concepto se coteja con la casa en el advance de cada fecha. El rider
+  /// es la transcripción literal del documento y ahí caben el entarimado con faldón,
+  /// las toallas y el agua; nada de eso se negocia renglón por renglón con el jefe
+  /// técnico del foro. Apagarlo borra el renglón de trabajo en todas las fechas.
+  enAdvance Boolean @default(true)
+
   notas     String?
   orden     Int      @default(0)
   createdAt DateTime @default(now())

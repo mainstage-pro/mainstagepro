@@ -26,6 +26,7 @@ export default async function RiderEquipoPage({ params }: { params: Promise<{ id
           noAceptable: true,
           prioridad: true,
           provistoPor: true,
+          enAdvance: true,
           notas: true,
           orden: true,
         },

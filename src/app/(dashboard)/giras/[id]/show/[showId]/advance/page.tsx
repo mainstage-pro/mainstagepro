@@ -3,6 +3,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { fmtFechaLarga } from "@/lib/giras";
+import { riderDeLaGira } from "@/lib/advance-gira";
 import BotonDocumentoGira from "@/components/giras/BotonDocumentoGira";
 import AdvanceTabla from "./AdvanceTabla";
 
@@ -51,6 +52,17 @@ export default async function AdvanceShowPage({
 
   const ciudad = show.ciudad ?? show.venue?.ciudad ?? null;
 
+  // Lo que el rider pide pero se decidió que no se coteja con la casa. No tiene
+  // renglón de trabajo en ninguna fecha, así que se lee del rider directo.
+  const rider = await riderDeLaGira({ riderId: show.gira.riderId, artistaId: show.gira.artista.id });
+  const fuera = rider
+    ? await prisma.artistaRiderLinea.findMany({
+        where: { riderId: rider.id, enAdvance: false },
+        orderBy: [{ disciplina: "asc" }, { orden: "asc" }],
+        select: { id: true, disciplina: true, concepto: true, cantidad: true },
+      })
+    : [];
+
   return (
     <div className="ms-page space-y-5 pb-16">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -86,6 +98,7 @@ export default async function AdvanceShowPage({
         }
         tieneRider={!!show.gira.riderId}
         lineasIniciales={show.riderLineas}
+        fueraIniciales={fuera}
       />
     </div>
   );

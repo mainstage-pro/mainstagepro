@@ -8,6 +8,14 @@
  * Todo lo demás es contexto de apoyo. Aquí no hay proveedor ni costo a propósito:
  * el equipo de tercero se captura una sola vez en el rider del proyecto y de ahí
  * se derivan el proveedor y su cuenta por pagar (`src/lib/proveedor-equipos.ts`).
+ *
+ * La lista pesa lo que le falta: un renglón ya cerrado se colapsa a una línea y
+ * solo lo abierto muestra sus controles, porque un rider de 60 conceptos con todos
+ * los controles desplegados no se puede leer al teléfono. Y «Sacar del advance»
+ * apaga el concepto en el rider maestro, no en esta fecha: el rider es la
+ * transcripción literal del documento y trae renglones que no se cotejan con el
+ * jefe técnico del foro, así que esa decisión se toma una vez y vale para todas
+ * las fechas.
  */
 
 import { useMemo, useRef, useState } from "react";
@@ -58,12 +66,22 @@ export interface LineaAdvance {
   } | null;
 }
 
+/// Un concepto del rider que se decidió que no se coteja. No tiene renglón de
+/// trabajo en ninguna fecha; se lee del rider maestro para poder regresarlo.
+export interface ConceptoFuera {
+  id: string;
+  disciplina: string;
+  concepto: string;
+  cantidad: number;
+}
+
 interface Props {
   showId: string;
   giraId: string;
   venue: { id: string; nombre: string; itemsInventario: number } | null;
   tieneRider: boolean;
   lineasIniciales: LineaAdvance[];
+  fueraIniciales: ConceptoFuera[];
 }
 
 type Campos = Partial<Record<keyof LineaAdvance, unknown>>;
@@ -75,11 +93,21 @@ const DEMORA_GUARDADO = 700;
 /// descartar un renglón cueste un clic y no se quede eternamente por definir.
 const QUIEN_CUBRE = CUBIERTO_POR.filter((c) => c !== "POR_DEFINIR" && c !== "NO_APLICA");
 
-export default function AdvanceTabla({ showId, giraId, venue, tieneRider, lineasIniciales }: Props) {
+export default function AdvanceTabla({
+  showId,
+  giraId,
+  venue,
+  tieneRider,
+  lineasIniciales,
+  fueraIniciales,
+}: Props) {
   const toast = useToast();
   const confirm = useConfirm();
 
   const [lineas, setLineas] = useState<LineaAdvance[]>(lineasIniciales);
+  const [fuera, setFuera] = useState<ConceptoFuera[]>(fueraIniciales);
+  const [verFuera, setVerFuera] = useState(false);
+  const [abiertas, setAbiertas] = useState<Set<string>>(new Set());
   const [filtroDisciplina, setFiltroDisciplina] = useState("");
   // Arranca escondiendo lo descartado: el trabajo del día es lo que sí pedimos.
   const [ocultarNoAplica, setOcultarNoAplica] = useState(true);
@@ -169,6 +197,8 @@ export default function AdvanceTabla({ showId, giraId, venue, tieneRider, lineas
         setAviso(
           `Rider «${d.riderNombre}»: se agregaron ${d.agregadas} conceptos, ${d.existentes} ya estaban` +
             (d.vinculadas ? `, ${d.vinculadas} capturados a mano quedaron ligados al rider` : "") +
+            (d.alineadas ? `, ${d.alineadas} se cerraron solos porque el rider ya dice quién los pone` : "") +
+            (d.omitidas ? `, ${d.omitidas} no bajaron porque están fuera del advance` : "") +
             ".",
         );
         await recargar();
@@ -226,6 +256,71 @@ export default function AdvanceTabla({ showId, giraId, venue, tieneRider, lineas
     setLineas((prev) => prev.filter((x) => x.id !== l.id));
   }
 
+  function alternarDetalle(id: string) {
+    setAbiertas((prev) => {
+      const s = new Set(prev);
+      if (s.has(id)) s.delete(id);
+      else s.add(id);
+      return s;
+    });
+  }
+
+  // ── Curaduría: qué conceptos del rider se cotejan y cuáles no ─────────────
+
+  /// Apaga el concepto en el rider maestro. Alcanza a todas las fechas porque la
+  /// pregunta «¿esto se coteja con la casa?» no cambia de una plaza a otra.
+  async function sacarDelAdvance(l: LineaAdvance) {
+    if (!l.riderLinea) {
+      await quitar(l);
+      return;
+    }
+    const ok = await confirm({
+      message:
+        `¿Sacar «${l.concepto}» del advance?\n\n` +
+        "Se quita de TODAS las fechas de la gira y no volverá a bajar del rider. " +
+        "El rider maestro conserva el concepto: solo deja de cotejarse con la casa.",
+      danger: true,
+      confirmText: "Sacar del advance",
+    });
+    if (!ok) return;
+
+    const res = await fetch(`/api/artista-rider-lineas/${l.riderLinea.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enAdvance: false }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      toast.error(d.error ?? "No se pudo sacar el concepto del advance");
+      return;
+    }
+    setLineas((prev) => prev.filter((x) => x.riderLinea?.id !== l.riderLinea!.id));
+    setFuera((prev) => [
+      ...prev,
+      { id: l.riderLinea!.id, disciplina: l.disciplina, concepto: l.riderLinea!.concepto, cantidad: l.riderLinea!.cantidad },
+    ]);
+    toast.success(
+      `«${l.concepto}» salió del advance en ${d.fechas} ${d.fechas === 1 ? "fecha" : "fechas"}` +
+        (d.conCaptura ? ` (${d.conCaptura} con captura)` : ""),
+    );
+  }
+
+  async function regresarAlAdvance(c: ConceptoFuera) {
+    const res = await fetch(`/api/artista-rider-lineas/${c.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enAdvance: true }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      toast.error(d.error ?? "No se pudo regresar el concepto");
+      return;
+    }
+    setFuera((prev) => prev.filter((x) => x.id !== c.id));
+    await recargar();
+    toast.success(`«${c.concepto}» regresó al advance en ${d.fechas} ${d.fechas === 1 ? "fecha" : "fechas"}`);
+  }
+
   // ── Selección múltiple (solo para quitar de un jalón) ─────────────────────
   function alternarSeleccion(id: string) {
     setSeleccion((prev) => {
@@ -272,6 +367,51 @@ export default function AdvanceTabla({ showId, giraId, venue, tieneRider, lineas
     }
     setLineas((prev) => prev.filter((l) => !seleccion.has(l.id)));
     setSeleccion(new Set());
+  }
+
+  /// La primera pasada de curaduría sobre un rider recién transcrito: el ruido se
+  /// va en una sola operación en vez de dos clics por concepto por fecha.
+  async function sacarSeleccionadosDelAdvance() {
+    const elegidas = lineas.filter((l) => seleccion.has(l.id) && l.riderLinea);
+    if (!elegidas.length) {
+      toast.error("Los conceptos capturados a mano no vienen del rider: quítalos con «Quitar del advance»");
+      return;
+    }
+    const ok = await confirm({
+      message:
+        `¿Sacar ${elegidas.length} ${elegidas.length === 1 ? "concepto" : "conceptos"} del advance?\n\n` +
+        "Se quitan de TODAS las fechas de la gira y no volverán a bajar del rider. " +
+        "El rider maestro los conserva: solo dejan de cotejarse con la casa.",
+      danger: true,
+      confirmText: "Sacar del advance",
+    });
+    if (!ok) return;
+
+    const fallidas: string[] = [];
+    for (const l of elegidas) {
+      const res = await fetch(`/api/artista-rider-lineas/${l.riderLinea!.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enAdvance: false }),
+      });
+      if (!res.ok) fallidas.push(l.concepto);
+    }
+    setSeleccion(new Set());
+    salirDeSeleccion();
+    await recargar();
+    setFuera((prev) => [
+      ...prev,
+      ...elegidas
+        .filter((l) => !fallidas.includes(l.concepto))
+        .map((l) => ({
+          id: l.riderLinea!.id,
+          disciplina: l.disciplina,
+          concepto: l.riderLinea!.concepto,
+          cantidad: l.riderLinea!.cantidad,
+        })),
+    ]);
+    if (fallidas.length) toast.error(`No se pudieron sacar: ${fallidas.join(", ")}`);
+    else toast.success(`${elegidas.length} conceptos salieron del advance en toda la gira`);
   }
 
   // ── Derivados ─────────────────────────────────────────────────────────────
@@ -529,13 +669,46 @@ export default function AdvanceTabla({ showId, giraId, venue, tieneRider, lineas
                   guardada={guardadas.has(l.id)}
                   onEditar={editar}
                   onQuitar={quitar}
+                  onSacar={sacarDelAdvance}
                   seleccionable={modoSeleccion}
                   seleccionada={seleccion.has(l.id)}
                   onSeleccionar={alternarSeleccion}
+                  detalleAbierto={abiertas.has(l.id)}
+                  onAlternarDetalle={alternarDetalle}
                 />
               ))}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Lo que se decidió que no se coteja. Vive en el rider, no en la fecha. */}
+      {fuera.length > 0 && (
+        <div className="ms-card overflow-hidden">
+          <button
+            onClick={() => setVerFuera((v) => !v)}
+            className="w-full bg-[#0d0d0d] border-b border-[#1e1e1e] px-4 py-2 flex items-center gap-2 text-left hover:bg-[#111] transition-colors"
+          >
+            <span className="ms-section-label">Fuera del advance ({fuera.length})</span>
+            <span className="ms-meta ml-2 flex-1 min-w-0 truncate">
+              el rider los pide, pero no se cotejan con la casa en ninguna fecha
+            </span>
+            <span className="text-[#555] shrink-0">{verFuera ? "▴" : "▾"}</span>
+          </button>
+          {verFuera &&
+            fuera.map((c) => (
+              <div
+                key={c.id}
+                className="px-4 py-2 border-b border-[#141414] last:border-0 flex items-center gap-2"
+              >
+                <span className="ms-label shrink-0 w-24 truncate">{DISCIPLINA_LABEL[c.disciplina] ?? c.disciplina}</span>
+                <span className="text-sm text-[#6b7280] truncate flex-1 min-w-0">{c.concepto}</span>
+                <span className="ms-meta shrink-0">{c.cantidad}</span>
+                <button onClick={() => void regresarAlAdvance(c)} className="ms-micro ms-link-gold underline shrink-0">
+                  regresar al advance
+                </button>
+              </div>
+            ))}
         </div>
       )}
 
@@ -547,15 +720,27 @@ export default function AdvanceTabla({ showId, giraId, venue, tieneRider, lineas
           <button onClick={() => setSeleccion(new Set())} className="ms-btn-ghost">
             Limpiar
           </button>
-          <button onClick={() => void quitarSeleccionados()} className="ms-btn-danger ml-auto">
-            Quitar del advance
+          <button
+            onClick={() => void sacarSeleccionadosDelAdvance()}
+            className="ms-btn-secondary ml-auto"
+            title="Deja de cotejarlos con la casa en todas las fechas de la gira. El rider maestro los conserva."
+          >
+            Sacar del advance (toda la gira)
+          </button>
+          <button
+            onClick={() => void quitarSeleccionados()}
+            className="ms-btn-danger"
+            title="Borra el renglón solo en esta fecha. El rider los vuelve a bajar en la próxima siembra."
+          >
+            Quitar de esta fecha
           </button>
         </div>
       )}
 
       <p className="ms-micro">
-        Todo se guarda solo. Por renglón solo hay dos decisiones: quién lo cubre y cómo va. El advance de este show es
-        independiente del rider maestro: editar aquí nunca cambia el rider del artista.{" "}
+        Todo se guarda solo. Por renglón solo hay dos decisiones: quién lo cubre y cómo va; lo que ya está cerrado se
+        colapsa a una línea. «Sacar del advance» apaga el concepto en el rider maestro y vale para todas las fechas;
+        editar el renglón aquí nunca cambia el rider.{" "}
         <Link href={`/giras/${giraId}/advance`} className="ms-link-gold">
           Ver el cotejo de todos los shows →
         </Link>
@@ -603,21 +788,29 @@ function Fila({
   guardada,
   onEditar,
   onQuitar,
+  onSacar,
   seleccionable,
   seleccionada,
   onSeleccionar,
+  detalleAbierto,
+  onAlternarDetalle,
 }: {
   linea: LineaAdvance;
   guardada: boolean;
   onEditar: (id: string, campos: Campos, inmediato?: boolean) => void;
   onQuitar: (l: LineaAdvance) => Promise<void>;
+  onSacar: (l: LineaAdvance) => Promise<void>;
   seleccionable: boolean;
   seleccionada: boolean;
   onSeleccionar: (id: string) => void;
+  detalleAbierto: boolean;
+  onAlternarDetalle: (id: string) => void;
 }) {
   const noAplica = l.cubiertoPor === "NO_APLICA";
   const cerrada = ESTADOS_RESUELTOS.includes(l.estado);
   const sinDecidir = l.cubiertoPor === "POR_DEFINIR";
+  const tieneCaptura = !!(l.ofrecidoCasa?.trim() || l.notas?.trim() || l.cantidadCasa > 0);
+  const mostrarCaptura = detalleAbierto || tieneCaptura;
 
   // Se avisa sobre la fila cuando difiere del rider maestro, pero la fila manda:
   // el usuario decide si adopta el dato de la fuente o se queda con el suyo.
@@ -665,12 +858,51 @@ function Fila({
         >
           sí aplica
         </button>
+        {/* Si no aplica en ninguna plaza, el lugar de la decisión es el rider. */}
+        {l.riderLinea && (
+          <button
+            onClick={() => void onSacar(l)}
+            className="ms-micro text-[#555] hover:text-amber-300 underline shrink-0"
+            title="Dejar de cotejarlo en todas las fechas de la gira"
+          >
+            en ninguna fecha
+          </button>
+        )}
         <button
           onClick={() => void onQuitar(l)}
           className="text-[#444] hover:text-red-400 transition-colors shrink-0"
           title="Quitar renglón del advance"
         >
           ✕
+        </button>
+      </div>
+    );
+  }
+
+  // Un renglón ya cerrado no es trabajo pendiente: se colapsa a una línea para
+  // que la lista pese lo que falta y no lo que ya se resolvió. Abre con un clic.
+  if (cerrada && !detalleAbierto) {
+    return (
+      <div className="px-4 py-2 border-b border-[#141414] last:border-0 border-l-2 border-l-emerald-700/60 flex items-center gap-2">
+        {casilla}
+        <button
+          onClick={() => onAlternarDetalle(l.id)}
+          className="text-sm text-[#9ca3af] hover:text-white truncate flex-1 min-w-0 text-left transition-colors"
+          title="Abrir el renglón"
+        >
+          {l.concepto}
+        </button>
+        <span className="ms-meta shrink-0">{l.cantidadPedida}</span>
+        <span className={`ms-badge shrink-0 ${CUBIERTO_POR_COLOR[l.cubiertoPor]}`}>
+          {CUBIERTO_POR_CORTO[l.cubiertoPor]}
+        </span>
+        <span className={`ms-badge shrink-0 ${ESTADO_ADVANCE_COLOR[l.estado]}`}>{ESTADO_ADVANCE_CORTO[l.estado]}</span>
+        <button
+          onClick={() => onAlternarDetalle(l.id)}
+          className="text-[#555] hover:text-white transition-colors shrink-0"
+          title="Abrir el renglón"
+        >
+          ▾
         </button>
       </div>
     );
@@ -717,9 +949,16 @@ function Fila({
         </select>
         {guardada && <span className="ms-micro text-emerald-400">guardado</span>}
         <button
+          onClick={() => onAlternarDetalle(l.id)}
+          className="text-[#555] hover:text-white transition-colors ml-auto"
+          title={detalleAbierto ? "Cerrar el detalle" : "Respuesta del venue, nota de la llamada y curaduría"}
+        >
+          {detalleAbierto ? "▴" : "▾"}
+        </button>
+        <button
           onClick={() => void onQuitar(l)}
-          className="text-[#444] hover:text-red-400 transition-colors ml-auto"
-          title="Quitar renglón del advance"
+          className="text-[#444] hover:text-red-400 transition-colors"
+          title="Quitar renglón del advance de esta fecha"
         >
           ✕
         </button>
@@ -781,7 +1020,10 @@ function Fila({
         </label>
       </div>
 
-      {/* Lo que contesta la casa y la nota de la llamada */}
+      {/* Lo que contesta la casa y la nota de la llamada. Se esconde mientras esté
+          vacío: en un rider de 60 conceptos son 120 campos en blanco que no dicen
+          nada. En cuanto tiene algo capturado se queda a la vista sin pedir clic. */}
+      {mostrarCaptura && (
       <div className="flex flex-wrap items-center gap-2">
         <span className="ms-label">Tiene el venue</span>
         <input
@@ -806,6 +1048,7 @@ function Fila({
           className="ms-input-inline flex-1 min-w-[160px]"
         />
       </div>
+      )}
 
       {l.riderLinea?.preferido && <p className="ms-micro">Prefiere: {l.riderLinea.preferido}</p>}
 
@@ -829,6 +1072,22 @@ function Fila({
             usar el del rider
           </button>
         </p>
+      )}
+
+      {/* La curaduría vive detrás del detalle a propósito: saca el concepto de
+          todas las fechas, así que no debe quedar a un clic de distancia. */}
+      {detalleAbierto && l.riderLinea && (
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <button
+            onClick={() => void onSacar(l)}
+            className="ms-micro text-[#6b7280] hover:text-amber-300 underline"
+          >
+            Sacar del advance
+          </button>
+          <span className="ms-micro text-[#444]">
+            deja de cotejarse en todas las fechas; el rider maestro conserva el concepto
+          </span>
+        </div>
       )}
     </div>
   );

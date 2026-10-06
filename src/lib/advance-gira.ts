@@ -30,6 +30,10 @@ export interface ResultadoSiembra {
   existentes: number;
   /// Filas que ya estaban capturadas a mano y quedaron amarradas a su línea del rider.
   vinculadas: number;
+  /// Conceptos del rider que están fuera del advance y por eso no bajaron.
+  omitidas: number;
+  /// Filas vírgenes que se alinearon a lo que el rider ya decía de quién lo pone.
+  alineadas: number;
 }
 
 export interface ResultadoPrecarga {
@@ -77,12 +81,73 @@ function textoOfrecido(item: {
 // ── 1. Siembra desde el rider maestro ────────────────────────────────────────
 
 /**
+ * Con qué decisión nace el renglón, según lo que el rider ya sabe de quién lo pone.
+ *
+ * El advance existe para resolver lo que falta negociar, no para volver a preguntar
+ * lo que ya está contestado. Si el rider dice que el artista trae su Fender o que la
+ * ponemos nosotros, el renglón nace cerrado y sale de la lista viva. `CASA` es lo
+ * contrario: es la *petición* del artista al foro, justo lo que hay que confirmar,
+ * así que nace por definir. Sin esto los 56 renglones se ven igual de urgentes y
+ * ninguno dice por dónde empezar.
+ */
+export function decisionInicial(provistoPor: string): { cubiertoPor: string; estado: string } {
+  if (provistoPor === "ARTISTA") return { cubiertoPor: "ARTISTA", estado: "CONFIRMADO" };
+  if (provistoPor === "MAINSTAGE") return { cubiertoPor: "MAINSTAGE", estado: "CONFIRMADO" };
+  return { cubiertoPor: "POR_DEFINIR", estado: "PENDIENTE" };
+}
+
+/// Una fila virgen es la que nadie ha trabajado todavía: se puede realinear al
+/// rider sin pisarle nada a nadie.
+function esVirgen(l: {
+  cubiertoPor: string;
+  estado: string;
+  ofrecidoCasa: string | null;
+  cantidadCasa: number;
+  notas: string | null;
+  pedirAlPromotor: boolean;
+}): boolean {
+  return (
+    l.cubiertoPor === "POR_DEFINIR" &&
+    l.estado === "PENDIENTE" &&
+    !l.ofrecidoCasa?.trim() &&
+    l.cantidadCasa === 0 &&
+    !l.notas?.trim() &&
+    !l.pedirAlPromotor
+  );
+}
+
+/**
  * Baja el rider maestro vigente al show. Es idempotente en dos niveles:
  * no duplica una fila que ya nació de la misma `riderLineaId`, y tampoco duplica
  * un concepto que el usuario capturó a mano (lo adopta y le pone su `riderLineaId`).
  * Nada de lo ya capturado se sobreescribe: Mauricio edita el rider después de
  * haber trabajado el advance y no puede perder el avance del show.
+ *
+ * Solo bajan los conceptos marcados `enAdvance`: el rider es la transcripción
+ * literal del documento y trae cosas que no se cotejan con el jefe técnico del foro.
  */
+/**
+ * El rider con el que trabaja una fecha: el que la gira fijó o, si no fijó ninguno,
+ * el activo más reciente del artista. Lo usan la siembra y la pantalla del advance,
+ * que tienen que estar viendo el mismo rider o la curaduría no cuadra.
+ */
+export async function riderDeLaGira(gira: {
+  riderId: string | null;
+  artistaId: string;
+}): Promise<{ id: string; nombre: string } | null> {
+  if (gira.riderId) {
+    return prisma.artistaRider.findUnique({
+      where: { id: gira.riderId },
+      select: { id: true, nombre: true },
+    });
+  }
+  return prisma.artistaRider.findFirst({
+    where: { artistaId: gira.artistaId, esActivo: true, activo: true },
+    orderBy: { version: "desc" },
+    select: { id: true, nombre: true },
+  });
+}
+
 export async function sembrarAdvance(showId: string): Promise<ResultadoSiembra> {
   const show = await prisma.giraShow.findUnique({
     where: { id: showId },
@@ -90,31 +155,47 @@ export async function sembrarAdvance(showId: string): Promise<ResultadoSiembra> 
   });
   if (!show) throw new Error("Show no encontrado");
 
-  const rider = show.gira.riderId
-    ? await prisma.artistaRider.findUnique({
-        where: { id: show.gira.riderId },
-        select: { id: true, nombre: true },
-      })
-    : await prisma.artistaRider.findFirst({
-        where: { artistaId: show.gira.artistaId, esActivo: true, activo: true },
-        orderBy: { version: "desc" },
-        select: { id: true, nombre: true },
-      });
+  const rider = await riderDeLaGira(show.gira);
 
-  if (!rider) return { riderId: null, riderNombre: null, agregadas: 0, existentes: 0, vinculadas: 0 };
+  if (!rider)
+    return {
+      riderId: null,
+      riderNombre: null,
+      agregadas: 0,
+      existentes: 0,
+      vinculadas: 0,
+      omitidas: 0,
+      alineadas: 0,
+    };
 
-  const [lineasRider, existentes] = await Promise.all([
+  const [todasDelRider, existentes] = await Promise.all([
     prisma.artistaRiderLinea.findMany({
       where: { riderId: rider.id },
       orderBy: [{ disciplina: "asc" }, { orden: "asc" }],
     }),
     prisma.showRiderLinea.findMany({
       where: { showId },
-      select: { id: true, riderLineaId: true, disciplina: true, concepto: true },
+      select: {
+        id: true,
+        riderLineaId: true,
+        disciplina: true,
+        concepto: true,
+        cubiertoPor: true,
+        estado: true,
+        ofrecidoCasa: true,
+        cantidadCasa: true,
+        notas: true,
+        pedirAlPromotor: true,
+      },
     }),
   ]);
 
-  const porRiderLinea = new Set(existentes.map((e) => e.riderLineaId).filter((x): x is string => !!x));
+  const lineasRider = todasDelRider.filter((l) => l.enAdvance);
+  const omitidas = todasDelRider.length - lineasRider.length;
+
+  const porRiderLinea = new Map(
+    existentes.filter((e) => e.riderLineaId).map((e) => [e.riderLineaId as string, e]),
+  );
   // Índice por concepto para adoptar lo que se capturó a mano antes de sembrar.
   const porConcepto = new Map<string, string>();
   for (const e of existentes) {
@@ -130,10 +211,23 @@ export async function sembrarAdvance(showId: string): Promise<ResultadoSiembra> 
 
   let agregadas = 0;
   let vinculadas = 0;
+  let alineadas = 0;
   let orden = maxOrden;
 
   for (const l of lineasRider) {
-    if (porRiderLinea.has(l.id)) continue;
+    const decision = decisionInicial(l.provistoPor);
+
+    // Ya sembrado antes. Si nadie lo ha trabajado todavía, se alinea a lo que el
+    // rider dice de quién lo pone; así los riders capturados antes de que la
+    // siembra obedeciera `provistoPor` se corrigen solos en la siguiente pasada.
+    const ya = porRiderLinea.get(l.id);
+    if (ya) {
+      if (decision.cubiertoPor !== "POR_DEFINIR" && esVirgen(ya)) {
+        await prisma.showRiderLinea.update({ where: { id: ya.id }, data: decision });
+        alineadas++;
+      }
+      continue;
+    }
 
     const claveLibre = `${l.disciplina}|${claveConcepto(l.concepto)}`;
     const huerfana = porConcepto.get(claveLibre);
@@ -158,6 +252,7 @@ export async function sembrarAdvance(showId: string): Promise<ResultadoSiembra> 
         prioridad: l.prioridad,
         equipoId: l.equipoId,
         orden,
+        ...decision,
       },
     });
     agregadas++;
@@ -169,6 +264,8 @@ export async function sembrarAdvance(showId: string): Promise<ResultadoSiembra> 
     agregadas,
     existentes: existentes.length,
     vinculadas,
+    omitidas,
+    alineadas,
   };
 }
 

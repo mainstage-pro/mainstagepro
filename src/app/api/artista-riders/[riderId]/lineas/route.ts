@@ -15,6 +15,7 @@ interface LineaEntrante {
   noAceptable?: string | null;
   prioridad?: string | null;
   provistoPor?: string | null;
+  enAdvance?: boolean | null;
   notas?: string | null;
   orden?: number | string | null;
 }
@@ -30,6 +31,7 @@ interface LineaDatos {
   noAceptable: string | null;
   prioridad: string;
   provistoPor: string;
+  enAdvance: boolean;
   notas: string | null;
   orden: number;
 }
@@ -105,6 +107,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ ride
           noAceptable: texto(l.noAceptable),
           prioridad: deLista(l.prioridad, PRIORIDADES, "INDISPENSABLE"),
           provistoPor: deLista(l.provistoPor, PROVISTO_POR, "CASA"),
+          enAdvance: l.enAdvance !== false,
           notas: texto(l.notas),
           orden: Number.isFinite(orden) ? Math.trunc(orden) : i,
         },
@@ -132,6 +135,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ ride
     orderBy: [{ orden: "asc" }],
     include: { equipo: { select: { id: true, descripcion: true, marca: true, modelo: true } } },
   });
+
+  // Apagar "en advance" aquí tiene que pesar lo mismo que apagarlo desde la fecha:
+  // el renglón de trabajo desaparece de todas las fechas. Si solo se ocultara, el
+  // semáforo y los PDF seguirían contándolo como pendiente.
+  const apagadas = lineas.filter((l) => !l.enAdvance).map((l) => l.id);
+  if (apagadas.length) {
+    await prisma.showRiderLinea.deleteMany({ where: { riderLineaId: { in: apagadas } } });
+  }
 
   return NextResponse.json({ lineas });
 }
