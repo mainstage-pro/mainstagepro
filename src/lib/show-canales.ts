@@ -272,7 +272,7 @@ export interface RiderMaestro {
 /**
  * El rider maestro contra el que se numera esta fecha.
  *
- * Misma regla que `riderDeGira` en `src/lib/pdf-gira/rider.ts`: el que la gira
+ * Misma regla que `riderDeGira` en `src/lib/rider-de-gira.ts`: el que la gira
  * trae enganchado y, si no trae ninguno, el vigente del artista prefiriendo el
  * general. Se repite aquí en vez de importarse para no arrastrar
  * `@react-pdf/renderer` a un endpoint que solo lee canales.

@@ -2,7 +2,17 @@ import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resumirAdvance, equipoDeFecha } from "@/lib/giras";
-import GiraResumenClient, { type GiraDetalle, type ShowResumen } from "./GiraResumenClient";
+// Misma regla de resolución del rider que usan los generadores de PDF: el
+// enganchado a la gira y, si no hay, el vigente del artista. Se importa en vez
+// de repetirse para que el resumen nunca anuncie un rider distinto al que
+// imprime el documento.
+import { riderDeGira } from "@/lib/rider-de-gira";
+import GiraResumenClient, {
+  type GiraDetalle,
+  type RiderDeLaGira,
+  type ShowResumen,
+  type VenueRider,
+} from "./GiraResumenClient";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +50,19 @@ export default async function GiraResumenPage({ params }: { params: Promise<{ id
           estado: true,
           tipoShow: true,
           riderEnviadoEn: true,
-          venue: { select: { id: true, nombre: true } },
+          venue: {
+            select: {
+              id: true,
+              nombre: true,
+              ciudad: true,
+              // Lo que el catálogo guarda de la casa: el rider de casa es un
+              // archivo subido a la ficha, no un PDF que generemos nosotros.
+              riderCasaUrl: true,
+              medidasEscenario: true,
+              notasTecnicas: true,
+              contactoTecnicoNombre: true,
+            },
+          },
           riderLineas: { select: { prioridad: true, estado: true, cubiertoPor: true } },
           cotizaciones: { select: { estado: true, granTotal: true } },
           _count: { select: { crew: true } },
@@ -51,7 +73,7 @@ export default async function GiraResumenPage({ params }: { params: Promise<{ id
 
   if (!gira) notFound();
 
-  const [artistas, clientes, riders, personas, servicios] = await Promise.all([
+  const [artistas, clientes, riders, personas, servicios, resuelto, ridersCasa] = await Promise.all([
     prisma.artista.findMany({ where: { activo: true }, select: { id: true, nombre: true }, orderBy: { nombre: "asc" } }),
     prisma.cliente.findMany({ select: { id: true, nombre: true, empresa: true }, orderBy: { nombre: "asc" }, take: 400 }),
     prisma.artistaRider.findMany({
@@ -69,7 +91,60 @@ export default async function GiraResumenPage({ params }: { params: Promise<{ id
       select: { clave: true, nombre: true, categoria: true },
       orderBy: [{ orden: "asc" }, { nombre: "asc" }],
     }),
+    riderDeGira(id),
+    // El rider de la casa muchas veces llega por correo y se sube al archivero
+    // en vez de a la ficha del venue: las dos fuentes valen igual.
+    prisma.giraArchivo.findMany({
+      where: { giraId: id, tipo: "RIDER_CASA" },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, nombre: true, url: true, show: { select: { venueId: true } } },
+    }),
   ]);
+
+  // El rider que se va a imprimir. Si no se puede describir (versión y nombre)
+  // no se ofrece: un botón sin saber qué baja es peor que no tenerlo.
+  const filaRider =
+    riders.find((r) => r.id === resuelto?.riderId) ??
+    (resuelto && gira.rider?.id === resuelto.riderId ? gira.rider : null);
+
+  const riderDoc: RiderDeLaGira | null =
+    resuelto && filaRider
+      ? {
+          id: filaRider.id,
+          nombre: filaRider.nombre,
+          version: filaRider.version,
+          esActivo: filaRider.esActivo,
+          /// No está enganchado al registro: se cayó al vigente del artista.
+          heredado: resuelto.riderId !== gira.riderId,
+        }
+      : null;
+
+  // Un venue por lugar, no por fecha: tres noches en el mismo foro comparten
+  // rider de casa.
+  const porVenue = new Map<string, VenueRider>();
+  for (const s of gira.shows) {
+    if (!s.venue) continue;
+    const previo = porVenue.get(s.venue.id);
+    if (previo) {
+      previo.shows += 1;
+      continue;
+    }
+    porVenue.set(s.venue.id, {
+      id: s.venue.id,
+      nombre: s.venue.nombre,
+      ciudad: s.venue.ciudad,
+      shows: 1,
+      riderCasaUrl: s.venue.riderCasaUrl,
+      // Hay ficha técnica capturada aunque nadie haya subido el documento.
+      conFichaTecnica: !!(s.venue.medidasEscenario || s.venue.notasTecnicas || s.venue.contactoTecnicoNombre),
+      archivos: [],
+    });
+  }
+  for (const a of ridersCasa) {
+    const v = a.show?.venueId ? porVenue.get(a.show.venueId) : null;
+    if (v) v.archivos.push({ id: a.id, nombre: a.nombre, url: a.url });
+  }
+  const venues = [...porVenue.values()];
 
   const shows: ShowResumen[] = gira.shows.map((s) => {
     const resumen = resumirAdvance(s.riderLineas);
@@ -127,6 +202,8 @@ export default async function GiraResumenPage({ params }: { params: Promise<{ id
   return (
     <GiraResumenClient
       gira={detalle}
+      riderDoc={riderDoc}
+      venues={venues}
       shows={shows}
       artistas={artistas}
       clientes={clientes}

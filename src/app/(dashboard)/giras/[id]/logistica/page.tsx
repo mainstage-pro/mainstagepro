@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { INCLUDE_HOSPEDAJE, INCLUDE_VIAJE } from "@/lib/logistica-gira";
 import { nombreCrew } from "@/lib/giras";
+import BotonDocumentoGira from "@/components/giras/BotonDocumentoGira";
 import LogisticaClient, { type OcupanteCandidato } from "./LogisticaClient";
 
 export const dynamic = "force-dynamic";
@@ -72,12 +73,28 @@ export default async function LogisticaGiraPage({ params }: { params: Promise<{ 
 
   return (
     <div className="ms-page space-y-5 pb-16">
-      <div>
-        <h1 className="ms-h1">Viajes y hotel</h1>
-        <p className="ms-subtitle">
-          Dónde duerme cada quién y cómo se mueve el equipo. El rooming se asigna de a uno y el traslado grupal cuenta por
-          el grupo, no por persona.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="ms-h1">Viajes y hotel</h1>
+          <p className="ms-subtitle">
+            Dónde duerme cada quién y cómo se mueve el equipo. El rooming se asigna de a uno y el traslado grupal cuenta por
+            el grupo, no por persona.
+          </p>
+        </div>
+
+        {/* La hoja de logística y rooming suelta es el libro de gira recortado a
+            su sección: es justo para lo que se hizo modular. */}
+        <BotonDocumentoGira
+          url={`/api/giras/${id}/documentos/libro-gira`}
+          query="secciones=logistica"
+          label="Logística y rooming PDF"
+          falta={
+            viajes.length === 0 && hospedajes.length === 0
+              ? "capturar un vuelo, un traslado o un hotel"
+              : null
+          }
+          className="shrink-0 max-w-xs"
+        />
       </div>
 
       <LogisticaClient

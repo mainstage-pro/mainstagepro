@@ -22,8 +22,10 @@ import {
   TIPO_SALIDA_LABEL,
   UNIDAD_RIDER_LABEL,
   esImagenArchivo,
+  fmtFechaLarga,
   leerSeccionesExtra,
 } from "@/lib/giras";
+import { listasDelShow } from "@/lib/show-canales";
 import { logoBase64, nowStr, resolvePdfImage } from "@/components/pdf/PdfShared";
 import {
   PortadaAnexosPDF,
@@ -263,27 +265,6 @@ async function anexarPdfs(
   return unirPdfs([base, portada, ...leidos.map((l) => l.bytes)]);
 }
 
-/// Resuelve el rider a imprimir desde una gira: el enganchado o, en su defecto,
-/// el vigente del artista. Con riders por contexto puede haber varios vigentes a
-/// la vez, así que se prefiere el general y, si no hay, el más reciente: la gira
-/// que quiera el de festival lo engancha explícitamente.
-export async function riderDeGira(giraId: string): Promise<{ riderId: string; giraNombre: string } | null> {
-  const gira = await prisma.gira.findUnique({
-    where: { id: giraId },
-    select: { nombre: true, riderId: true, artistaId: true },
-  });
-  if (!gira) return null;
-  if (gira.riderId) return { riderId: gira.riderId, giraNombre: gira.nombre };
-
-  const vigentes = await prisma.artistaRider.findMany({
-    where: { artistaId: gira.artistaId, activo: true, esActivo: true },
-    orderBy: { version: "desc" },
-    select: { id: true, contexto: true },
-  });
-  const elegido = vigentes.find((r) => r.contexto === "GENERAL") ?? vigentes[0];
-  return elegido ? { riderId: elegido.id, giraNombre: gira.nombre } : null;
-}
-
 export async function generarRiderArtista(riderId: string, giraNombre: string | null): Promise<PdfGira | null> {
   const rider = await leerRider(riderId);
   if (!rider) return null;
@@ -348,18 +329,71 @@ export async function generarRiderArtista(riderId: string, giraNombre: string | 
   return { buf, filename: nombreArchivo };
 }
 
-export async function generarListaCanales(riderId: string, giraNombre: string | null): Promise<PdfGira | null> {
+/// Qué fecha es, para que el papel no se confunda con el de otra plaza. Mismo
+/// armado que el encabezado del setlist de la fecha.
+async function contextoDeFecha(showId: string): Promise<string | null> {
+  const show = await prisma.giraShow.findUnique({
+    where: { id: showId },
+    select: { fecha: true, ciudad: true, venue: { select: { nombre: true, ciudad: true } } },
+  });
+  if (!show) return null;
+  return (
+    [fmtFechaLarga(show.fecha), show.ciudad ?? show.venue?.ciudad, show.venue?.nombre]
+      .filter(Boolean)
+      .join(" · ") || null
+  );
+}
+
+/// Las dos listas tal como quedan en una fecha: el rider maestro más lo que los
+/// invitados de ese show agregaron a la cola. Es la misma unificación que ve la
+/// pestaña Invitados, así que el papel que recibe el ingeniero del venue dice
+/// exactamente lo que la app muestra.
+async function canalesDeLaFecha(showId: string): Promise<{ inputs: CanalInput[]; outputs: CanalOutput[] }> {
+  const { inputs, outputs } = await listasDelShow(showId);
+  return {
+    inputs: inputs.map((f) => ({
+      id: f.id,
+      numero: f.numero,
+      nombre: f.nombre,
+      instrumento: f.instrumento,
+      microfono: f.microfono,
+      alternativas: f.alternativas,
+      soporteLabel: f.soporte ? (SOPORTE_MIC_LABEL[f.soporte] ?? f.soporte) : null,
+      phantom: f.phantom,
+      inserto: f.inserto,
+      notas: f.notas,
+    })),
+    outputs: outputs.map((f) => ({
+      id: f.id,
+      numero: f.numero,
+      nombre: f.nombre,
+      tipoSalidaLabel: f.tipoSalida ? (TIPO_SALIDA_LABEL[f.tipoSalida] ?? f.tipoSalida) : null,
+      estereo: f.estereo,
+      paraQuien: f.paraQuien,
+      notas: f.notas,
+    })),
+  };
+}
+
+export async function generarListaCanales(
+  riderId: string,
+  giraNombre: string | null,
+  /// Si se emite desde una fecha, la lista incluye los canales de los invitados
+  /// de ese show. Sin él sale la del rider maestro, que es la de toda la gira.
+  showId?: string | null,
+): Promise<PdfGira | null> {
   const rider = await leerRider(riderId);
   if (!rider) return null;
 
   const publicDir = path.join(process.cwd(), "public");
-  const { inputs, outputs } = partirCanales(rider);
+  const { inputs, outputs } = showId ? await canalesDeLaFecha(showId) : partirCanales(rider);
+  const fecha = showId ? await contextoDeFecha(showId) : null;
 
   const data: ListaCanalesData = {
     artistaNombre: rider.artista.nombre,
     riderNombre: rider.nombre,
     version: rider.version,
-    giraNombre,
+    giraNombre: [giraNombre, fecha].filter(Boolean).join(" · ") || null,
     inputs,
     outputs,
     logoSrc: logoBase64(publicDir),
@@ -371,5 +405,6 @@ export async function generarListaCanales(riderId: string, giraNombre: string | 
     React.createElement(ListaCanalesPDF, { data }) as React.ReactElement<React.ComponentProps<typeof Document>>,
   );
 
-  return { buf, filename: `InputList-${slugArchivo(rider.artista.nombre)}-v${rider.version}.pdf` };
+  const sufijo = fecha ? `-${slugArchivo(fecha)}` : `-v${rider.version}`;
+  return { buf, filename: `InputList-${slugArchivo(rider.artista.nombre)}${sufijo}.pdf` };
 }

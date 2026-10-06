@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import BotonDocumentoGira from "@/components/giras/BotonDocumentoGira";
 import VenuePicker from "@/components/ui/VenuePicker";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
@@ -526,15 +527,25 @@ export default function ShowsClient({ giraId, shows }: { giraId: string; shows: 
             cada show.
           </p>
         </div>
-        <button
-          onClick={() => {
-            cerrarTodo();
-            setVenueNuevo({ ...VENUE_NUEVO, ...SHOW_NUEVO });
-          }}
-          className="ms-btn-primary"
-        >
-          Agregar venue
-        </button>
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {/* El calendario de fechas es una sección del libro de gira: el
+              routing se baja desde aquí sin pasar por Documentos. */}
+          <BotonDocumentoGira
+            url={`/api/giras/${giraId}/documentos/libro-gira`}
+            query="secciones=shows"
+            label="Calendario de shows PDF"
+            falta={shows.length === 0 ? "agregar la primera fecha" : null}
+          />
+          <button
+            onClick={() => {
+              cerrarTodo();
+              setVenueNuevo({ ...VENUE_NUEVO, ...SHOW_NUEVO });
+            }}
+            className="ms-btn-primary"
+          >
+            Agregar venue
+          </button>
+        </div>
       </div>
 
       {venueNuevo && (

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { INCLUDE_CREW, INCLUDE_SETLIST, candidatosCrew } from "@/lib/logistica-gira";
 import { fmtFechaLarga, ordenarBloques } from "@/lib/giras";
 import { SELECT_MOMENTO } from "@/lib/show-momentos";
+import BotonDocumentoGira from "@/components/giras/BotonDocumentoGira";
 import CrewPanel from "@/components/giras/CrewPanel";
 import SetlistPanel from "@/components/giras/SetlistPanel";
 import DiaShowTabla from "./DiaShowTabla";
@@ -52,16 +53,27 @@ export default async function DiaShowPage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="ms-page space-y-6 pb-16">
-      <div className="flex flex-col gap-1">
-        <Link href={`/giras/${id}/show/${showId}`} className="ms-link-gold text-xs">
-          ← Resumen del show
-        </Link>
-        <h1 className="ms-h1">Día del show</h1>
-        <p className="ms-subtitle">
-          {show.gira.artista.nombre} · {fmtFechaLarga(show.fecha)}
-          {show.venue?.nombre ? ` · ${show.venue.nombre}` : ""}
-          {ciudad ? `, ${ciudad}` : ""}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-col gap-1 min-w-0">
+          <Link href={`/giras/${id}/show/${showId}`} className="ms-link-gold text-xs">
+            ← Resumen del show
+          </Link>
+          <h1 className="ms-h1">Día del show</h1>
+          <p className="ms-subtitle">
+            {show.gira.artista.nombre} · {fmtFechaLarga(show.fecha)}
+            {show.venue?.nombre ? ` · ${show.venue.nombre}` : ""}
+            {ciudad ? `, ${ciudad}` : ""}
+          </p>
+        </div>
+
+        {/* Lo que se arma en esta pestaña —corrida, crew y a quién se le marca—
+            es exactamente el day sheet, así que se baja desde aquí. */}
+        <BotonDocumentoGira
+          url={`/api/gira-shows/${show.id}/documentos/day-sheet`}
+          label="Day sheet PDF"
+          falta={show.momentos.length === 0 ? "capturar la corrida del día" : null}
+          className="shrink-0 max-w-xs"
+        />
       </div>
 
       <section className="space-y-3">
@@ -95,11 +107,22 @@ export default async function DiaShowPage({ params }: { params: Promise<{ id: st
       </section>
 
       <section className="space-y-3">
-        <div>
-          <h2 className="ms-h2">Setlist de la noche</h2>
-          <p className="ms-meta">
-            Si este show toca el repertorio de la gira, se lee el base. Copíalo solo cuando el orden o el tiempo cambien.
-          </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="ms-h2">Setlist de la noche</h2>
+            <p className="ms-meta">
+              Si este show toca el repertorio de la gira, se lee el base. Copíalo solo cuando el orden o el tiempo
+              cambien.
+            </p>
+          </div>
+          {/* El setlist de la fecha: si este show no capturó el suyo, el PDF
+              imprime el base y lo dice. */}
+          <BotonDocumentoGira
+            url={`/api/gira-shows/${show.id}/documentos/setlist`}
+            label="Setlist PDF"
+            falta={setlists.every((s) => s.canciones.length === 0) ? "capturar el repertorio" : null}
+            className="shrink-0 max-w-xs"
+          />
         </div>
         <SetlistPanel giraId={id} alcance="SHOW" showId={show.id} setlistsIniciales={setlists} />
       </section>

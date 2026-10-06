@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { esGira } from "@/lib/giras";
 import { sembrarChecklistGira } from "@/lib/gira-checklist";
+import BotonDocumentoGira from "@/components/giras/BotonDocumentoGira";
 import PendientesGiraPanel from "@/components/giras/PendientesGiraPanel";
 
 export const dynamic = "force-dynamic";
@@ -47,13 +48,25 @@ export default async function PendientesGiraPage({ params }: { params: Promise<{
 
   return (
     <div className="ms-page space-y-5 pb-16">
-      <div>
-        <h1 className="ms-h1">Pendientes y checklist del advance</h1>
-        <p className="ms-subtitle">
-          {tour
-            ? "Los puntos del rider del artista, fecha por fecha, y lo que falta arrancarle a management, al venue y al promotor. Un renglón de la gira se pide una vez; uno de la fecha se coteja con cada venue."
-            : "Los puntos del rider del artista y lo que falta arrancarle a management, al venue y al promotor antes de la fecha."}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="ms-h1">Pendientes y checklist del advance</h1>
+          <p className="ms-subtitle">
+            {tour
+              ? "Los puntos del rider del artista, fecha por fecha, y lo que falta arrancarle a management, al venue y al promotor. Un renglón de la gira se pide una vez; uno de la fecha se coteja con cada venue."
+              : "Los puntos del rider del artista y lo que falta arrancarle a management, al venue y al promotor antes de la fecha."}
+          </p>
+        </div>
+
+        {/* El checklist agrupado por frente es una sección del libro de gira:
+            se recorta en vez de inventar otro documento. */}
+        <BotonDocumentoGira
+          url={`/api/giras/${id}/documentos/libro-gira`}
+          query="secciones=pendientes"
+          label="Pendientes PDF"
+          falta={items.length === 0 ? "sembrar el checklist del advance" : null}
+          className="shrink-0 max-w-xs"
+        />
       </div>
 
       <PendientesGiraPanel

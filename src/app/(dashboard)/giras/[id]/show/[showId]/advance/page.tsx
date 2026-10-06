@@ -3,6 +3,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { fmtFechaLarga } from "@/lib/giras";
+import BotonDocumentoGira from "@/components/giras/BotonDocumentoGira";
 import AdvanceTabla from "./AdvanceTabla";
 
 export const dynamic = "force-dynamic";
@@ -52,16 +53,27 @@ export default async function AdvanceShowPage({
 
   return (
     <div className="ms-page space-y-5 pb-16">
-      <div className="flex flex-col gap-1">
-        <Link href={`/giras/${show.giraId}/advance`} className="ms-link-gold text-xs">
-          ← Advance consolidado
-        </Link>
-        <h1 className="ms-h1">Advance técnico</h1>
-        <p className="ms-subtitle">
-          {show.gira.artista.nombre} · {show.gira.nombre} · {fmtFechaLarga(show.fecha)}
-          {show.venue?.nombre ? ` · ${show.venue.nombre}` : ""}
-          {ciudad ? `, ${ciudad}` : ""}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-col gap-1 min-w-0">
+          <Link href={`/giras/${show.giraId}/advance`} className="ms-link-gold text-xs">
+            ← Advance consolidado
+          </Link>
+          <h1 className="ms-h1">Advance técnico</h1>
+          <p className="ms-subtitle">
+            {show.gira.artista.nombre} · {show.gira.nombre} · {fmtFechaLarga(show.fecha)}
+            {show.venue?.nombre ? ` · ${show.venue.nombre}` : ""}
+            {ciudad ? `, ${ciudad}` : ""}
+          </p>
+        </div>
+
+        {/* El papel de esta misma pestaña: lo que pide el rider contra lo que
+            pone la casa. Sin renglones cotejados no hay nada que imprimir. */}
+        <BotonDocumentoGira
+          url={`/api/gira-shows/${show.id}/documentos/advance`}
+          label="Advance PDF"
+          falta={show.riderLineas.length === 0 ? "armar el advance desde el rider maestro" : null}
+          className="shrink-0 max-w-xs"
+        />
       </div>
 
       <AdvanceTabla

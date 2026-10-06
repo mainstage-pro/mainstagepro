@@ -17,6 +17,7 @@ import {
   fmtFechaCorta,
   resumirAdvance,
 } from "@/lib/giras";
+import BotonDocumentoGira from "@/components/giras/BotonDocumentoGira";
 
 export const dynamic = "force-dynamic";
 
@@ -58,14 +59,27 @@ export default async function AdvanceGiraPage({ params }: { params: Promise<{ id
   const resumenPorShow = new Map(gira.shows.map((s) => [s.id, resumirAdvance(s.riderLineas)]));
   const abiertosTotal = grupos.reduce((s, g) => s + g.filas.length, 0);
   const promotorTotal = grupos.reduce((s, g) => s + g.alPromotor, 0);
+  const renglonesAdvance = gira.shows.reduce((s, x) => s + x.riderLineas.length, 0);
 
   return (
     <div className="ms-page space-y-6 pb-16">
-      <div>
-        <h1 className="ms-h1">Advance consolidado</h1>
-        <p className="ms-subtitle">
-          {gira.artista.nombre} · {gira.nombre} · un renglón por concepto del rider, una columna por show
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="ms-h1">Advance consolidado</h1>
+          <p className="ms-subtitle">
+            {gira.artista.nombre} · {gira.nombre} · un renglón por concepto del rider, una columna por show
+          </p>
+        </div>
+
+        {/* El libro de gira es recortable, así que el estado del advance de toda
+            la gira no necesita otro PDF: es su sección. */}
+        <BotonDocumentoGira
+          url={`/api/giras/${id}/documentos/libro-gira`}
+          query="secciones=advance"
+          label="Estado del advance PDF"
+          falta={renglonesAdvance === 0 ? "cotejar el rider en alguna fecha" : null}
+          className="shrink-0 max-w-xs"
+        />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

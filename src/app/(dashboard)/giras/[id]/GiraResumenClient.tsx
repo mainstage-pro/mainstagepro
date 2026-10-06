@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import BotonDocumentoGira from "@/components/giras/BotonDocumentoGira";
 import { Combobox } from "@/components/Combobox";
 import EstadoGuardado from "@/components/EstadoGuardado";
 import { useToast } from "@/components/Toast";
@@ -73,6 +74,33 @@ export interface GiraDetalle {
   } | null;
 }
 
+/// El rider contra el que se trabaja la gira, ya resuelto por `riderDeGira`: el
+/// enganchado al registro o, si no hay, el vigente del artista.
+export interface RiderDeLaGira {
+  id: string;
+  nombre: string;
+  version: number;
+  esActivo: boolean;
+  /// No está enganchado a la gira: se heredó del artista y puede cambiar sin que
+  /// nadie toque este registro.
+  heredado: boolean;
+}
+
+/// Un venue de la gira y el rider de su casa. No lo generamos nosotros: es un
+/// archivo que alguien subió a la ficha del catálogo o al archivero.
+export interface VenueRider {
+  id: string;
+  nombre: string;
+  ciudad: string | null;
+  /// Cuántas fechas de la gira caen en este lugar.
+  shows: number;
+  riderCasaUrl: string | null;
+  /// Riders de casa que llegaron por fuera y viven en el archivero de la gira.
+  archivos: { id: string; nombre: string; url: string }[];
+  /// La ficha técnica del catálogo trae datos aunque no haya documento.
+  conFichaTecnica: boolean;
+}
+
 interface Persona {
   id: string;
   nombre: string;
@@ -83,6 +111,9 @@ interface Persona {
 
 interface Props {
   gira: GiraDetalle;
+  /// El rider que de verdad se imprime (puede ser heredado del artista).
+  riderDoc: RiderDeLaGira | null;
+  venues: VenueRider[];
   shows: ShowResumen[];
   artistas: { id: string; nombre: string }[];
   clientes: { id: string; nombre: string; empresa: string | null }[];
@@ -124,7 +155,17 @@ function Dato({ label, valor }: { label: string; valor: React.ReactNode }) {
   );
 }
 
-export default function GiraResumenClient({ gira, shows, artistas, clientes, riders, personas, servicios }: Props) {
+export default function GiraResumenClient({
+  gira,
+  riderDoc,
+  venues,
+  shows,
+  artistas,
+  clientes,
+  riders,
+  personas,
+  servicios,
+}: Props) {
   const router = useRouter();
   const toast = useToast();
   const confirmar = useConfirm();
@@ -204,6 +245,9 @@ export default function GiraResumenClient({ gira, shows, artistas, clientes, rid
   const artista = artistas.find((a) => a.id === form.artistaId) ?? null;
   const cliente = clientes.find((c) => c.id === form.clienteId) ?? null;
   const riderElegido = riders.find((r) => r.id === form.riderId) ?? null;
+  // El PDF lo arma el servidor con el rider que ya está guardado: si acabas de
+  // elegir otro en la ficha, el botón bajaría el anterior.
+  const riderCambiado = (form.riderId || null) !== (gira.riderId ?? null);
   const serviciosElegidos = servicios.filter((s) => form.rolMainstage.includes(s.clave));
 
   // El equipo de una gira se cobra fecha por fecha; el total global es la suma, y las
@@ -552,42 +596,68 @@ export default function GiraResumenClient({ gira, shows, artistas, clientes, rid
 
         <section className="ms-card p-4 h-fit">
           <h2 className="ms-section-label mb-3.5">Rider maestro vigente</h2>
-          {gira.rider ? (
+          {riderDoc ? (
             <div className="space-y-2.5">
               <div>
-                <p className="text-sm text-white">{gira.rider.nombre}</p>
+                <p className="text-sm text-white">{riderDoc.nombre}</p>
                 <p className="ms-meta mt-0.5">
-                  Versión {gira.rider.version}
-                  {gira.rider.esActivo ? " · vigente" : " · versión histórica"}
-                  {gira.rider.formacion ? ` · ${gira.rider.formacion}` : ""}
+                  Versión {riderDoc.version}
+                  {riderDoc.esActivo ? " · vigente" : " · versión histórica"}
+                  {gira.rider?.formacion ? ` · ${gira.rider.formacion}` : ""}
                 </p>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { label: "Renglones", valor: gira.rider.lineas },
-                  { label: "Canales", valor: gira.rider.canales },
-                  { label: "Mixes", valor: gira.rider.mixesMonitor ?? "—" },
-                ].map((d) => (
-                  <div key={d.label} className="ms-card-inset px-2.5 py-2">
-                    <p className="ms-micro">{d.label}</p>
-                    <p className="text-sm text-white tabular-nums mt-0.5">{d.valor}</p>
-                  </div>
-                ))}
-              </div>
+              {/* Los conteos salen del rider enganchado; de un rider heredado no
+                  se leyeron y es mejor no inventar ceros. */}
+              {gira.rider && (
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { label: "Renglones", valor: gira.rider.lineas },
+                    { label: "Canales", valor: gira.rider.canales },
+                    { label: "Mixes", valor: gira.rider.mixesMonitor ?? "—" },
+                  ].map((d) => (
+                    <div key={d.label} className="ms-card-inset px-2.5 py-2">
+                      <p className="ms-micro">{d.label}</p>
+                      <p className="text-sm text-white tabular-nums mt-0.5">{d.valor}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
 
-              {gira.rider.tiempoSoundcheckMin && (
+              {gira.rider?.tiempoSoundcheckMin && (
                 <p className="ms-meta">Soundcheck de {gira.rider.tiempoSoundcheckMin} min.</p>
               )}
 
-              {!gira.rider.esActivo && (
+              {riderDoc.heredado && (
+                <p className="text-amber-300 text-xs bg-amber-500/10 border border-amber-500/30 rounded-lg px-2.5 py-1.5">
+                  {tour ? "Esta gira" : "Este show"} no trae rider enganchado: éste es el vigente de{" "}
+                  {gira.artistaNombre} y los documentos salen de él. Si el artista publica otra versión, cambia solo —
+                  engánchalo arriba para amarrarlo.
+                </p>
+              )}
+
+              {!riderDoc.heredado && !riderDoc.esActivo && (
                 <p className="text-amber-300 text-xs bg-amber-500/10 border border-amber-500/30 rounded-lg px-2.5 py-1.5">
                   {tour ? "Esta gira" : "Este show"} quedó amarrado a una versión que ya no es la vigente del artista.
                 </p>
               )}
 
+              {riderCambiado && (
+                <p className="text-amber-300 text-xs bg-amber-500/10 border border-amber-500/30 rounded-lg px-2.5 py-1.5">
+                  Acabas de cambiar el rider maestro. Recarga la página para que el PDF salga del nuevo.
+                </p>
+              )}
+
+              {/* El rider del artista en PDF, con sus anexos: es el papel que se
+                  le manda al venue y no debería obligar a pasar por Documentos. */}
+              <BotonDocumentoGira
+                url={`/api/giras/${gira.id}/documentos/rider`}
+                label="Rider PDF"
+                className="w-full"
+              />
+
               <Link
-                href={`/giras/artista/${gira.artistaId}/rider/${gira.rider.id}`}
+                href={`/giras/artista/${gira.artistaId}/rider/${riderDoc.id}`}
                 className="ms-btn-secondary block w-full text-center"
               >
                 Abrir el rider
@@ -596,7 +666,8 @@ export default function GiraResumenClient({ gira, shows, artistas, clientes, rid
           ) : (
             <div className="space-y-2.5">
               <p className="ms-meta">
-                No hay rider maestro ligado. Sin rider no hay de dónde derivar el advance del show.
+                No hay rider maestro ligado ni uno vigente del artista. Sin rider no hay de dónde derivar el advance del
+                show ni se puede emitir el rider en PDF.
               </p>
               <Link href={`/giras/artista/${gira.artistaId}`} className="ms-btn-secondary block w-full text-center">
                 Armar el rider de {gira.artistaNombre}
@@ -605,6 +676,62 @@ export default function GiraResumenClient({ gira, shows, artistas, clientes, rid
           )}
         </section>
       </div>
+
+      {/* ── Riders de la casa ──────────────────────────────────────────────────
+          Lo que pone el foro no lo generamos nosotros: es el archivo que alguien
+          subió a la ficha del venue o al archivero de la gira. Si de un venue no
+          hay nada, se dice y se liga a dónde capturarlo — no hay enlace muerto. */}
+      {venues.length > 0 && (
+        <section className="ms-card">
+          <div className="px-4 pt-3.5 pb-2.5">
+            <h2 className="ms-section-label">Riders de los venues</h2>
+            <p className="ms-meta mt-0.5">
+              La ficha técnica de la casa, como la manda el foro. Es contra este documento que se coteja el rider del
+              artista en el advance.
+            </p>
+          </div>
+
+          {venues.map((v) => (
+            <div
+              key={v.id}
+              className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 px-4 py-3 border-t border-[#1a1a1a]"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] text-white truncate">
+                  {v.nombre}
+                  {v.ciudad ? <span className="text-[#6b7280]"> · {v.ciudad}</span> : null}
+                </p>
+                <p className="ms-meta truncate mt-0.5">
+                  {v.shows === 1 ? "1 fecha" : `${v.shows} fechas`}
+                  {v.riderCasaUrl
+                    ? " · rider de casa en el catálogo"
+                    : v.archivos.length > 0
+                      ? " · rider de casa en el archivero"
+                      : v.conFichaTecnica
+                        ? " · ficha técnica capturada, sin documento"
+                        : " · sin ficha técnica ni rider de casa"}
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                {v.riderCasaUrl && (
+                  <a className="ms-btn-secondary" href={v.riderCasaUrl} target="_blank" rel="noreferrer">
+                    Rider de casa
+                  </a>
+                )}
+                {v.archivos.map((a) => (
+                  <a key={a.id} className="ms-btn-ghost" href={a.url} target="_blank" rel="noreferrer" title={a.nombre}>
+                    {v.riderCasaUrl ? "Del archivero" : "Rider de casa"}
+                  </a>
+                ))}
+                <Link href={`/catalogo/venues?venue=${v.id}`} className="ms-btn-ghost">
+                  {v.riderCasaUrl || v.archivos.length > 0 ? "Ficha del venue" : "Capturar la ficha"}
+                </Link>
+              </div>
+            </div>
+          ))}
+        </section>
+      )}
 
       <section className="ms-card">
         <div className="flex items-center justify-between gap-2 px-4 pt-3.5 pb-2.5">

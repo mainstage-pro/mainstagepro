@@ -9,6 +9,7 @@ import {
   riderMaestroDelShow,
   unificarCanales,
 } from "@/lib/show-canales";
+import BotonDocumentoGira from "@/components/giras/BotonDocumentoGira";
 import InvitadosShow from "@/components/giras/InvitadosShow";
 
 export const dynamic = "force-dynamic";
@@ -73,13 +74,24 @@ export default async function InvitadosShowPage({
       </div>
 
       {rider ? (
-        <p className="ms-micro">
-          Se numera a continuación de{" "}
-          <Link href={`/giras/artista/${show.gira.artistaId}/rider/${rider.riderId}`} className="ms-link-gold">
-            {rider.nombre} (v{rider.version})
-          </Link>
-          {rider.deLaGira ? ", el rider enganchado a la gira." : ", el rider vigente del artista."}
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <p className="ms-micro min-w-0">
+            Se numera a continuación de{" "}
+            <Link href={`/giras/artista/${show.gira.artistaId}/rider/${rider.riderId}`} className="ms-link-gold">
+              {rider.nombre} (v{rider.version})
+            </Link>
+            {rider.deLaGira ? ", el rider enganchado a la gira." : ", el rider vigente del artista."}
+          </p>
+
+          {/* El papel que pide el ingeniero del venue para parchar. Emitido
+              desde la fecha lleva el rider maestro más la cola de invitados. */}
+          <BotonDocumentoGira
+            url={`/api/gira-shows/${show.id}/documentos/input-list`}
+            label="Input y output list PDF"
+            nota="La lista de esta fecha: el rider maestro más los canales que agregues aquí."
+            className="shrink-0 max-w-xs"
+          />
+        </div>
       ) : (
         <div className="ms-card-deep p-3">
           <p className="ms-label mb-1 text-amber-300">Sin rider maestro</p>

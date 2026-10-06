@@ -8,13 +8,13 @@
 import type { PdfGira } from "./render";
 import { generarDaySheet } from "./day-sheet";
 import { generarAdvanceShow } from "./advance";
-import { generarListaCanales, generarRiderArtista, riderDeGira } from "./rider";
+import { generarListaCanales, generarRiderArtista } from "./rider";
 import { generarLibroGira, parseSecciones } from "./libro";
 import { generarSetlistDoc } from "./setlist-doc";
+import { riderDeGira } from "@/lib/rider-de-gira";
 
 export type { PdfGira } from "./render";
 export { respuestaPdf } from "./render";
-export { riderDeGira } from "./rider";
 export { parseSecciones } from "./libro";
 
 /// SHOW: el documento habla de un show concreto (necesita un GiraShow).
@@ -91,6 +91,12 @@ export async function generarDocDeShow(
   // El setlist es de gira, pero cada fecha puede tener su variante: desde un
   // show se emite la de ese show y, si no la capturaron, el base avisando.
   if (slug === "setlist") return generarSetlistDoc(giraId, showId);
+  // La lista de canales también: desde una fecha lleva lo que los invitados de
+  // ese show colgaron de la cola del rider maestro.
+  if (slug === "input-list") {
+    const resuelto = await riderDeGira(giraId);
+    return resuelto ? generarListaCanales(resuelto.riderId, resuelto.giraNombre, showId) : null;
+  }
   return generarDocDeGira(slug, giraId, secciones);
 }
 
