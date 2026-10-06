@@ -9,20 +9,27 @@ import DocumentosDelPlano from "@/components/site-plan/DocumentosDelPlano";
 
 export const dynamic = "force-dynamic";
 
-export default async function DocumentosSitePlanPage({
+export default async function DocumentosSitePlanProyectoPage({
   params,
 }: {
-  params: Promise<{ id: string; showId: string; planId: string }>;
+  params: Promise<{ id: string; planId: string }>;
 }) {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const { id, showId, planId } = await params;
+  const { id, planId } = await params;
 
   const plan = await prisma.sitePlan.findFirst({
-    where: { id: planId, showId, activo: true },
+    where: { id: planId, proyectoId: id, activo: true },
     include: {
-      show: { select: { fecha: true, ciudad: true, venue: { select: { nombre: true, direccion: true } } } },
+      proyecto: {
+        select: {
+          direccionVenue: true,
+          lugarEvento: true,
+          cliente: { select: { nombre: true } },
+          venue: { select: { direccion: true } },
+        },
+      },
       variantes: {
         where: { activo: true },
         include: {
@@ -41,7 +48,7 @@ export default async function DocumentosSitePlanPage({
   return (
     <div className="p-4 md:p-6 flex flex-col gap-4">
       <Link
-        href={`/giras/${id}/show/${showId}/site-plan/${plan.id}`}
+        href={`/proyectos/${id}/site-plan/${plan.id}`}
         className="ms-micro text-[#666] hover:text-[#B3985B] flex items-center gap-1 w-fit"
       >
         <ChevronLeft size={12} /> Volver al plano
@@ -59,11 +66,14 @@ export default async function DocumentosSitePlanPage({
         token={token}
         capas={capas.map(c => ({ id: c.id, nombre: c.nombre, cuantos: objetos.filter(o => o.capaId === c.id).length }))}
         cuadro={{
-          direccionSitio: plan.direccionSitio ?? plan.show?.venue?.direccion ?? "",
+          // Lo que el proyecto ya sabe se ofrece como valor inicial editable, no como
+          // dato heredado de solo lectura: el plano se firma con lo que diga el plano.
+          direccionSitio:
+            plan.direccionSitio ?? plan.proyecto?.direccionVenue ?? plan.proyecto?.venue?.direccion ?? "",
           norteGrados: plan.norteGrados,
           dibujadoPor: plan.dibujadoPor ?? session.name ?? "",
           responsableSitio: plan.responsableSitio ?? "",
-          clienteOPromotor: plan.clienteOPromotor ?? "",
+          clienteOPromotor: plan.clienteOPromotor ?? plan.proyecto?.cliente.nombre ?? "",
           capacidadSitio: plan.capacidadSitio,
           capacidadEvacuacion: plan.capacidadEvacuacion,
         }}

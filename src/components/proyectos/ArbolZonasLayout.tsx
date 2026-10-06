@@ -16,6 +16,7 @@ export default function ArbolZonasLayout({
   onColocar,
   onGenerar,
   onZonaLibre,
+  textoVacio,
 }: {
   zonas: ZonaAgrupada[];
   colocadas: Set<string>;
@@ -24,6 +25,8 @@ export default function ArbolZonasLayout({
   onColocar: (clave: string) => void;
   onGenerar: () => void;
   onZonaLibre: (etiqueta: string) => void;
+  /** Qué decir cuando no hay zonas: un plano sin rider detrás no está «vacío», no tiene de dónde. */
+  textoVacio?: string;
 }) {
   const [abiertas, setAbiertas] = useState<Set<string>>(() => new Set());
   const [libre, setLibre] = useState("");
@@ -52,8 +55,8 @@ export default function ArbolZonasLayout({
 
       {zonas.length === 0 ? (
         <p className="text-[11px] text-gray-600 mt-2 leading-tight">
-          El rider de este escenario está vacío. En cuanto el equipo tenga zona y configuración de
-          montaje, aquí aparecen las áreas para dibujarlas.
+          {textoVacio ??
+            "El rider de este escenario está vacío. En cuanto el equipo tenga zona y configuración de montaje, aquí aparecen las áreas para dibujarlas."}
         </p>
       ) : (
         <p className="text-[10px] text-gray-600 mt-1 leading-tight">

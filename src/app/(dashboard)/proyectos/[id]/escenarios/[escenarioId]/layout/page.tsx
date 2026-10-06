@@ -47,8 +47,12 @@ export default function LayoutEscenarioPage({
 
       {escenario && (
         <LayoutEscenario
-          proyectoId={id}
-          escenarioId={escenario.id}
+          api={{
+            guardar: `/api/proyectos/${id}/escenarios/${escenario.id}`,
+            link: `/api/proyectos/${id}/escenarios/${escenario.id}/layout-link`,
+            pdf: `/api/proyectos/${id}/escenarios/${escenario.id}/layout-pdf`,
+            posiciones: proyectoEquipoId => `/api/proyectos/${id}/equipos/${proyectoEquipoId}/posiciones`,
+          }}
           nombre={escenario.nombre}
           anchoM={escenario.anchoM}
           largoM={escenario.largoM}

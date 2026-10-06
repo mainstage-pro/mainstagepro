@@ -10,18 +10,21 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const showId = req.nextUrl.searchParams.get("showId");
+  const proyectoId = req.nextUrl.searchParams.get("proyectoId");
   const venueId = req.nextUrl.searchParams.get("venueId");
 
   const planes = await prisma.sitePlan.findMany({
     where: {
       activo: true,
       ...(showId ? { showId } : {}),
+      ...(proyectoId ? { proyectoId } : {}),
       ...(venueId ? { venueId } : {}),
     },
     select: {
       id: true,
       nombre: true,
       showId: true,
+      proyectoId: true,
       venueId: true,
       fondoUrl: true,
       escalaMPorPx: true,
@@ -40,12 +43,19 @@ export async function POST(req: NextRequest) {
   const body = (await req.json()) as {
     nombre?: string;
     showId?: string | null;
+    proyectoId?: string | null;
     venueId?: string | null;
     copiarDe?: string | null;
   };
 
   const nombre = body.nombre?.trim();
   if (!nombre) return NextResponse.json({ error: "Falta el nombre" }, { status: 400 });
+
+  // El plano cuelga de una fecha de gira o de un proyecto de eventos, nunca de los
+  // dos: si colgara de ambos, el cuadro de datos no sabría de qué evento es.
+  if (body.showId && body.proyectoId) {
+    return NextResponse.json({ error: "Un plano es de un show o de un proyecto, no de los dos" }, { status: 400 });
+  }
 
   // Un plano del venue sirve de plantilla: la fecha nueva arranca con el predio ya
   // trazado y calibrado, y a partir de ahí los dos caminos son independientes.
@@ -56,10 +66,14 @@ export async function POST(req: NextRequest) {
       })
     : null;
 
+  // El `venueId` solo se llena cuando el plano ES del venue (una plantilla suelta).
+  // Un plano con dueño no lo lleva: si lo llevara, aparecería como plantilla del
+  // lugar y se ofrecería para copiar el trazo de un evento concreto.
   const plan = await prisma.sitePlan.create({
     data: {
       nombre,
       showId: body.showId ?? null,
+      proyectoId: body.proyectoId ?? null,
       venueId: body.venueId ?? null,
       contenido: origen?.contenido ?? JSON.stringify({ capas: capasIniciales(), objetos: [] }),
       fondoUrl: origen?.fondoUrl ?? null,

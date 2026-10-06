@@ -85,17 +85,35 @@ function rotulo(label: string, anchoVb: number, maximo: number) {
   return { texto, fs };
 }
 
+/**
+ * De dónde sale el dibujo y a dónde vuelve. El mismo editor sirve al escenario de
+ * un proyecto de eventos y al stage plot de una fecha de gira: lo único que cambia
+ * son los endpoints, así que la procedencia entra como dato y no se bifurca aquí.
+ */
+export type ApiLayout = {
+  /** PATCH `{ layout }`: donde se autoguarda el dibujo. */
+  guardar: string;
+  /** GET `{ url }` del link público. Ausente = esta procedencia no publica plano. */
+  link?: string;
+  /** GET del PDF de layout de producción. Ausente = no hay documento que armar. */
+  pdf?: string;
+  /**
+   * POST/PATCH de las posiciones de montaje de un equipo del rider. Ausente = este
+   * plano no tiene rider detrás (el stage plot de una plaza): se dibuja con el
+   * backline y las zonas libres, sin banco ni carga eléctrica.
+   */
+  posiciones?: (proyectoEquipoId: string) => string;
+};
+
 export default function LayoutEscenario({
-  proyectoId,
-  escenarioId,
+  api,
   nombre,
   anchoM,
   largoM,
   layoutInicial,
   rider: riderInicial,
 }: {
-  proyectoId: string;
-  escenarioId: string;
+  api: ApiLayout;
   nombre: string;
   anchoM: number | null;
   largoM: number | null;
@@ -106,6 +124,9 @@ export default function LayoutEscenario({
   const { downloading, downloadPdf } = usePdfDownload();
   const ancho = anchoM && anchoM > 0 ? anchoM : ANCHO_DEFAULT;
   const largo = largoM && largoM > 0 ? largoM : LARGO_DEFAULT;
+
+  /** Si no hay endpoint de posiciones, este plano no cuelga de un rider. */
+  const conRider = !!api.posiciones;
 
   const guardado = useMemo(() => parsearLayout(layoutInicial), [layoutInicial]);
   const [rider, setRider] = useState<EquipoDelRider[]>(riderInicial);
@@ -231,7 +252,7 @@ export default function LayoutEscenario({
     setEstado("sucio");
     const t = setTimeout(async () => {
       setEstado("guardando");
-      const r = await fetch(`/api/proyectos/${proyectoId}/escenarios/${escenarioId}`, {
+      const r = await fetch(api.guardar, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ layout: JSON.stringify({ piezas, areas }) }),
@@ -469,8 +490,9 @@ export default function LayoutEscenario({
    * para no romper las piezas que la referencian.
    */
   async function guardarPosicion(item: ItemDeZona, cambio: CambioPosicion) {
+    if (!api.posiciones) return;
     setGuardandoRider(true);
-    const url = `/api/proyectos/${proyectoId}/equipos/${item.proyectoEquipoId}/posiciones`;
+    const url = api.posiciones(item.proyectoEquipoId);
     try {
       if (item.posicionId) {
         const r = await fetch(url, {
@@ -682,24 +704,25 @@ export default function LayoutEscenario({
 
   // El PDF y el link públicos son la VERSIÓN FINAL: los arma el servidor desde el
   // rider, no una captura de este lienzo (que es borrador y cambia a cada rato).
-  const baseApi = `/api/proyectos/${proyectoId}/escenarios/${escenarioId}`;
-
   // El link se trae al montar: si se pidiera al hacer clic, el navegador trataría
   // la pestaña nueva como popup y la bloquearía.
+  const urlLink = api.link;
   useEffect(() => {
+    if (!urlLink) return;
     let vivo = true;
-    fetch(`${baseApi}/layout-link`)
+    fetch(urlLink)
       .then(r => (r.ok ? r.json() : null))
       .then(d => { if (vivo && d?.url) setLinkPublico(d.url as string); })
       .catch(() => {});
     return () => { vivo = false; };
-  }, [baseApi]);
+  }, [urlLink]);
 
   function descargarLayout() {
+    if (!api.pdf) return;
     if (estado === "sucio") {
       toast.info("Guarda los cambios antes de descargar: el documento se arma desde lo guardado.");
     }
-    downloadPdf(`${baseApi}/layout-pdf`, undefined, `Layout de producción · ${nombre}`);
+    downloadPdf(api.pdf, undefined, `Layout de producción · ${nombre}`);
   }
 
   async function copiarLink() {
@@ -790,21 +813,27 @@ export default function LayoutEscenario({
             <button onClick={() => setVista(v => ({ ...v, zoom: clamp(v.zoom / 1.25, 0.4, 6) }))} className={BOTON}><ZoomOut size={12} /></button>
             <button onClick={() => setVista(v => ({ ...v, zoom: clamp(v.zoom * 1.25, 0.4, 6) }))} className={BOTON}><ZoomIn size={12} /></button>
             <button onClick={() => setVista({ zoom: 1, x: 0, y: 0 })} className={BOTON}><Maximize size={12} /> Ajustar</button>
-            <span className="w-px h-4 bg-[#2a2a2a]" />
-            <button onClick={copiarLink} disabled={!linkPublico} className={`${BOTON} disabled:opacity-40`}>
-              <Link2 size={12} /> Copiar link
-            </button>
-            <a
-              href={linkPublico ?? "#"}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`${BOTON} ${linkPublico ? "" : "pointer-events-none opacity-40"}`}
-            >
-              <ExternalLink size={12} /> Ver final
-            </a>
-            <button onClick={descargarLayout} disabled={!!downloading} className={`${BOTON} disabled:opacity-50`}>
-              <FileDown size={12} /> {downloading ? "Generando…" : "Layout de producción"}
-            </button>
+            {(api.link || api.pdf) && <span className="w-px h-4 bg-[#2a2a2a]" />}
+            {api.link && (
+              <>
+                <button onClick={copiarLink} disabled={!linkPublico} className={`${BOTON} disabled:opacity-40`}>
+                  <Link2 size={12} /> Copiar link
+                </button>
+                <a
+                  href={linkPublico ?? "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`${BOTON} ${linkPublico ? "" : "pointer-events-none opacity-40"}`}
+                >
+                  <ExternalLink size={12} /> Ver final
+                </a>
+              </>
+            )}
+            {api.pdf && (
+              <button onClick={descargarLayout} disabled={!!downloading} className={`${BOTON} disabled:opacity-50`}>
+                <FileDown size={12} /> {downloading ? "Generando…" : "Layout de producción"}
+              </button>
+            )}
           </div>
         </div>
 
@@ -948,8 +977,10 @@ export default function LayoutEscenario({
         </div>
 
         <p className="text-[10px] text-gray-600">
-          Las zonas y configuraciones salen del rider: dibújalas desde el panel y acomódalas aquí.
-          Mover una zona arrastra sus configuraciones. Las piezas del banco se sueltan sobre el plano;
+          {conRider
+            ? "Las zonas y configuraciones salen del rider: dibújalas desde el panel y acomódalas aquí."
+            : "Las zonas se agregan a mano desde el panel y se acomodan aquí."}
+          {" "}Mover una zona arrastra sus configuraciones. Las piezas del banco se sueltan sobre el plano;
           todo se acomoda a 25 cm, el pellizco de dos dedos hace zoom y arrastrar el fondo panea.
           El equipo con foto se dibuja solo con su imagen: al seleccionarlo, el punto blanco de
           la esquina lo hace grande o chico y el dorado de arriba lo gira. Con algo seleccionado:
@@ -966,22 +997,38 @@ export default function LayoutEscenario({
             <div className="flex justify-between"><span className="text-gray-500">Peso en plano</span><span className="text-white font-semibold">{totales.total.toFixed(1)} kg</span></div>
             <div className="flex justify-between"><span className="text-gray-500">Colgado</span><span className="text-[#B3985B] font-semibold">{totales.colgado.toFixed(1)} kg</span></div>
             <div className="flex justify-between"><span className="text-gray-500">En piso</span><span className="text-gray-300">{totales.piso.toFixed(1)} kg</span></div>
-            <div className="h-px bg-[#1f1f1f] my-1.5" />
-            <div className="flex justify-between"><span className="text-gray-500">Carga 110V</span><span className="text-white font-semibold">{cargaTotal.amperaje110.toFixed(1)} A</span></div>
-            <div className="flex justify-between"><span className="text-gray-500">Carga 220V</span><span className="text-white font-semibold">{cargaTotal.amperaje220.toFixed(1)} A</span></div>
-            <div className="flex justify-between"><span className="text-gray-500">Potencia</span><span className="text-gray-300">{Math.round(cargaTotal.watts).toLocaleString("es-MX")} W</span></div>
+            {/* La carga eléctrica se deriva del rider; sin rider detrás no hay nada que sumar. */}
+            {conRider && (
+              <>
+                <div className="h-px bg-[#1f1f1f] my-1.5" />
+                <div className="flex justify-between"><span className="text-gray-500">Carga 110V</span><span className="text-white font-semibold">{cargaTotal.amperaje110.toFixed(1)} A</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Carga 220V</span><span className="text-white font-semibold">{cargaTotal.amperaje220.toFixed(1)} A</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Potencia</span><span className="text-gray-300">{Math.round(cargaTotal.watts).toLocaleString("es-MX")} W</span></div>
+              </>
+            )}
           </div>
           <p className="text-[10px] text-gray-600 mt-2 leading-tight">
-            El peso es el de las piezas puestas en el plano; la carga es la de todo el rider del
-            escenario. Los amperes de 110 y 220 no se suman entre sí.
-            {cargaTotal.sinDato > 0 && (
-              <span className="text-amber-600"> {cargaTotal.sinDato} unidades sin amperaje en catálogo.</span>
+            {conRider ? (
+              <>
+                El peso es el de las piezas puestas en el plano; la carga es la de todo el rider del
+                escenario. Los amperes de 110 y 220 no se suman entre sí.
+                {cargaTotal.sinDato > 0 && (
+                  <span className="text-amber-600"> {cargaTotal.sinDato} unidades sin amperaje en catálogo.</span>
+                )}
+              </>
+            ) : (
+              "El peso es el que capturaste en cada pieza del plano."
             )}
           </p>
         </div>
 
         <ArbolZonasLayout
           zonas={zonas}
+          textoVacio={
+            conRider
+              ? undefined
+              : "Este plano no cuelga de un rider: las zonas se agregan a mano y sirven para rotular el escenario (batería, vientos, cabina…)."
+          }
           colocadas={clavesColocadas}
           seleccion={claveSel}
           onSeleccionar={clave => {
@@ -1112,6 +1159,7 @@ export default function LayoutEscenario({
           </div>
         )}
 
+        {conRider && (
         <div className="ms-card p-3">
           <p className="ms-section-label">Banco de equipos</p>
           {banco.length === 0 ? (
@@ -1161,6 +1209,7 @@ export default function LayoutEscenario({
             </div>
           )}
         </div>
+        )}
 
         <div className="ms-card p-3">
           <p className="ms-section-label">Backline</p>

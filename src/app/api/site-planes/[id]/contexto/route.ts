@@ -8,16 +8,28 @@ import { horaFinDe, horasAncla } from "@/lib/show-momentos";
 export const dynamic = "force-dynamic";
 
 /**
- * Lo que Mainstage ya sabe del show y que la ficha de un elemento del plano no
+ * Lo que Mainstage ya sabe del evento y que la ficha de un elemento del plano no
  * debería volver a preguntar: quién está en el crew, qué pide el rider, qué
  * proveedores vienen y en qué ventanas se monta.
  *
- * Un plano puede ser una plantilla de venue sin show, y un show puede no tener
- * proyecto. En los dos casos el endpoint responde con listas vacías en vez de
- * fallar: la ficha se llena a mano y el plano sigue sirviendo.
+ * El plano cuelga de una fecha de gira o de un proyecto de eventos, y las dos
+ * procedencias llenan los mismos cuatro renglones desde sus propias tablas. Un
+ * plano puede además ser una plantilla de venue sin dueño, y un show puede no
+ * tener proyecto: en esos casos el endpoint responde con listas vacías en vez de
+ * fallar, la ficha se llena a mano y el plano sigue sirviendo.
  */
 
 type Params = { params: Promise<{ id: string }> };
+
+const SELECT_VENUE = {
+  nombre: true,
+  capacidadPersonas: true,
+  voltajeDisponible: true,
+  amperajeTotal: true,
+  fases: true,
+  puntoDescarga: true,
+  notasTecnicas: true,
+} as const;
 
 export async function GET(_req: NextRequest, { params }: Params) {
   const session = await getSession();
@@ -26,24 +38,17 @@ export async function GET(_req: NextRequest, { params }: Params) {
   const { id } = await params;
   const plan = await prisma.sitePlan.findUnique({
     where: { id },
-    select: { showId: true, venueId: true },
+    select: { showId: true, proyectoId: true, venueId: true },
   });
   if (!plan) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
   const venueDirecto = plan.venueId
-    ? await prisma.venue.findUnique({
-        where: { id: plan.venueId },
-        select: {
-          nombre: true,
-          capacidadPersonas: true,
-          voltajeDisponible: true,
-          amperajeTotal: true,
-          fases: true,
-          puntoDescarga: true,
-          notasTecnicas: true,
-        },
-      })
+    ? await prisma.venue.findUnique({ where: { id: plan.venueId }, select: SELECT_VENUE })
     : null;
+
+  if (plan.proyectoId) {
+    return NextResponse.json(await contextoDeProyecto(plan.proyectoId, venueDirecto));
+  }
 
   if (!plan.showId) {
     return NextResponse.json({ ...CONTEXTO_VACIO, venue: venueDirecto } satisfies ContextoSitePlan);
@@ -64,17 +69,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
         select: { id: true, llave: true, titulo: true, tipo: true, hora: true, horaFin: true, orden: true },
         orderBy: { orden: "asc" },
       },
-      venue: {
-        select: {
-          nombre: true,
-          capacidadPersonas: true,
-          voltajeDisponible: true,
-          amperajeTotal: true,
-          fases: true,
-          puntoDescarga: true,
-          notasTecnicas: true,
-        },
-      },
+      venue: { select: SELECT_VENUE },
     },
   });
   if (!show) return NextResponse.json({ ...CONTEXTO_VACIO, venue: venueDirecto } satisfies ContextoSitePlan);
@@ -203,4 +198,122 @@ export async function GET(_req: NextRequest, { params }: Params) {
     venue: show.venue ?? venueDirecto,
     aforoEsperado: show.aforoEsperado,
   } satisfies ContextoSitePlan);
+}
+
+/**
+ * El mismo contexto, visto desde un proyecto de eventos. Las cuatro listas salen
+ * de las tablas del proyecto en vez de las del show: el crew de `ProyectoPersonal`,
+ * el equipo de `ProyectoEquipo`, los proveedores de `ProveedorEvento` y las
+ * ventanas de los bloques de logística. El contrato de salida es idéntico, así que
+ * la ficha de un elemento del plano no distingue de dónde viene.
+ */
+async function contextoDeProyecto(
+  proyectoId: string,
+  venueDirecto: ContextoSitePlan["venue"],
+): Promise<ContextoSitePlan> {
+  const proyecto = await prisma.proyecto.findUnique({
+    where: { id: proyectoId },
+    select: {
+      encargadoCliente: true,
+      encargadoClienteContacto: true,
+      venue: { select: SELECT_VENUE },
+    },
+  });
+  if (!proyecto) return { ...CONTEXTO_VACIO, venue: venueDirecto };
+
+  const [personal, equipos, proveedores, bloques] = await Promise.all([
+    prisma.proyectoPersonal.findMany({
+      where: { proyectoId },
+      select: {
+        id: true,
+        responsabilidad: true,
+        rolEnEvento: true,
+        coordinaEnSitio: true,
+        tecnico: { select: { nombre: true, celular: true } },
+        rolTecnico: { select: { nombre: true } },
+      },
+      orderBy: [{ coordinaEnSitio: "desc" }, { id: "asc" }],
+    }),
+    prisma.proyectoEquipo.findMany({
+      where: { proyectoId },
+      select: {
+        id: true,
+        cantidad: true,
+        tipo: true,
+        equipo: {
+          select: {
+            marca: true,
+            modelo: true,
+            descripcion: true,
+            categoria: { select: { nombre: true, disciplina: true } },
+          },
+        },
+      },
+      orderBy: { id: "asc" },
+    }),
+    prisma.proveedorEvento.findMany({
+      where: { proyectoId },
+      select: {
+        id: true,
+        nombreProveedor: true,
+        servicioEquipo: true,
+        responsable: true,
+        telefonoProveedor: true,
+      },
+      orderBy: { nombreProveedor: "asc" },
+    }),
+    prisma.proyectoBloqueTiempo.findMany({
+      where: { proyectoId },
+      select: { id: true, titulo: true, tipo: true, horaInicio: true, horaFin: true, orden: true, fecha: true },
+      orderBy: [{ fecha: "asc" }, { orden: "asc" }],
+    }),
+  ]);
+
+  const responsables: ContextoSitePlan["responsables"] = personal.map(p => ({
+    id: p.id,
+    nombre: p.tecnico?.nombre ?? "Puesto sin asignar",
+    detalle:
+      [p.rolTecnico?.nombre ?? p.rolEnEvento, p.coordinaEnSitio ? "coordina en sitio" : null]
+        .filter(Boolean)
+        .join(" · ") || p.responsabilidad,
+    contacto: p.tecnico?.celular ?? null,
+  }));
+  if (proyecto.encargadoCliente) {
+    responsables.push({
+      id: "cliente",
+      nombre: proyecto.encargadoCliente,
+      detalle: "Encargado del cliente",
+      contacto: proyecto.encargadoClienteContacto,
+    });
+  }
+
+  return {
+    responsables,
+    proveedores: proveedores.map(p => ({
+      id: p.id,
+      nombre: p.nombreProveedor,
+      detalle: p.servicioEquipo ?? p.responsable,
+      contacto: p.telefonoProveedor,
+    })),
+    rider: equipos.map(e => ({
+      id: e.id,
+      concepto: [e.equipo.marca, e.equipo.modelo].filter(Boolean).join(" ") || e.equipo.descripcion || "Equipo",
+      detalle:
+        [e.equipo.categoria?.disciplina, e.equipo.categoria?.nombre, e.tipo === "EXTERNO" ? "de tercero" : null]
+          .filter(Boolean)
+          .join(" · ") || null,
+      cantidad: e.cantidad,
+    })),
+    ventanas: bloques.map(b => ({
+      id: b.id,
+      titulo: b.titulo,
+      tipo: b.tipo,
+      inicio: b.horaInicio,
+      fin: b.horaFin,
+    })),
+    venue: proyecto.venue ?? venueDirecto,
+    // El proyecto no lleva aforo propio: el del sitio se captura en el cuadro de
+    // datos del plano, que es donde además conviven aforo y evacuación.
+    aforoEsperado: null,
+  };
 }

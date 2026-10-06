@@ -6377,12 +6377,30 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
         {/* ──── ESCENARIOS tab ──── */}
         {activeTab === 'escenarios' && (
-          <div id="section-escenarios" className="scroll-mt-14">
+          <div id="section-escenarios" className="scroll-mt-14 flex flex-col gap-3">
             <PanelEscenarios
               proyectoId={id}
               escenarioMedidas={proyecto.escenarioMedidas}
               onCambio={() => cargarEscenarios()}
             />
+            {/* El escenario se dibuja en metros; el predio completo (accesos, carpas,
+                plantas, rutas de evacuación) se traza sobre la foto aérea en el site
+                plan. Son dos planos distintos, y el del predio vive en su propia URL. */}
+            <Link
+              href={`/proyectos/${id}/site-plan`}
+              className="ms-card-hover p-3 flex items-center justify-between gap-3"
+            >
+              <div className="flex items-center gap-2.5">
+                <FileImage size={15} className="text-[#B3985B] shrink-0" />
+                <div>
+                  <p className="ms-label">Site plan del predio</p>
+                  <p className="ms-micro text-[#666] mt-0.5">
+                    El plano de todo el sitio sobre la foto aérea: accesos, carpas, plantas y rutas.
+                  </p>
+                </div>
+              </div>
+              <span className="ms-micro text-[#B3985B] shrink-0">Abrir</span>
+            </Link>
           </div>
         )}
 

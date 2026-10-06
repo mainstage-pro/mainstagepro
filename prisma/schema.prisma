@@ -6360,6 +6360,11 @@ model ShowCanal {
   numero Int
   nombre String
 
+  /// De qué opción de `REQUERIMIENTOS_INVITADO` nació el canal. Null = se agregó
+  /// a mano. Es la identidad del canal frente a su interruptor: deducirla del
+  /// soporte confundía un DI puesto a mano con el instrumento de un invitado.
+  requerimiento String?
+
   // INPUT
   instrumento String?
   microfono   String?

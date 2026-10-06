@@ -3,7 +3,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { parsearContenido } from "@/lib/site-plan";
 import { fmtFechaCorta } from "@/lib/giras";
-import ListaSitePlanes, { type FilaPlan, type Plantilla } from "./ListaSitePlanes";
+import ListaSitePlanes, { type FilaPlan, type Plantilla } from "@/components/site-plan/ListaSitePlanes";
 
 export const dynamic = "force-dynamic";
 
@@ -29,10 +29,10 @@ export default async function SitePlanShowPage({
     select: { id: true, nombre: true, fondoUrl: true, escalaMPorPx: true, contenido: true, updatedAt: true },
   });
 
-  // Plantillas del venue: planos sin show, reusables en cualquier fecha del lugar.
+  // Plantillas del venue: planos sin dueño, reusables en cualquier fecha del lugar.
   const plantillas = show.venueId
     ? await prisma.sitePlan.findMany({
-        where: { venueId: show.venueId, showId: null, activo: true },
+        where: { venueId: show.venueId, showId: null, proyectoId: null, activo: true },
         orderBy: { updatedAt: "desc" },
         select: { id: true, nombre: true },
       })

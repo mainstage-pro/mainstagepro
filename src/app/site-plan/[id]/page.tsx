@@ -26,20 +26,36 @@ async function cargar(id: string) {
           venue: { select: { nombre: true } },
         },
       },
+      // El link público es el mismo venga el plano de una fecha de gira o de un
+      // proyecto de eventos: lo que cambia es de dónde sale el renglón del evento.
+      proyecto: {
+        select: {
+          nombre: true,
+          fechaEvento: true,
+          lugarEvento: true,
+          venue: { select: { nombre: true, ciudad: true } },
+        },
+      },
     },
   });
 }
 
 function subtituloDe(plan: Awaited<ReturnType<typeof cargar>>): string {
   if (!plan) return "";
-  return [
-    plan.show?.gira.nombre,
-    plan.show?.venue?.nombre ?? plan.venue?.nombre,
-    plan.show?.ciudad ?? plan.venue?.ciudad,
-    plan.show ? fmtFechaLarga(plan.show.fecha) : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  const partes = plan.proyecto
+    ? [
+        plan.proyecto.nombre,
+        plan.proyecto.venue?.nombre ?? plan.proyecto.lugarEvento ?? plan.venue?.nombre,
+        plan.proyecto.venue?.ciudad ?? plan.venue?.ciudad,
+        plan.proyecto.fechaEvento ? fmtFechaLarga(plan.proyecto.fechaEvento) : null,
+      ]
+    : [
+        plan.show?.gira.nombre,
+        plan.show?.venue?.nombre ?? plan.venue?.nombre,
+        plan.show?.ciudad ?? plan.venue?.ciudad,
+        plan.show ? fmtFechaLarga(plan.show.fecha) : null,
+      ];
+  return partes.filter(Boolean).join(" · ");
 }
 
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {

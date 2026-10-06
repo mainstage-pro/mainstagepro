@@ -16,16 +16,22 @@ export type FilaPlan = {
 export type Plantilla = { id: string; nombre: string; venue: string };
 
 /**
- * Los planos del show. Las plantillas son los planos del venue sin fecha: se
- * copian para no volver a trazar el predio cada vez que se toca el mismo lugar.
+ * Los planos de un predio. Cuelgan de una fecha de gira o de un proyecto de
+ * eventos —un festival en un predio necesita exactamente el mismo plano—, así que
+ * la procedencia entra como dato y la pantalla es una sola.
+ *
+ * Las plantillas son los planos del venue sin dueño: se copian para no volver a
+ * trazar el predio cada vez que se toca el mismo lugar.
  */
 export default function ListaSitePlanes({
   showId,
+  proyectoId,
   base,
   planes,
   plantillas,
 }: {
-  showId: string;
+  showId?: string;
+  proyectoId?: string;
   base: string;
   planes: FilaPlan[];
   plantillas: Plantilla[];
@@ -33,6 +39,8 @@ export default function ListaSitePlanes({
   const router = useRouter();
   const [creando, setCreando] = useState(false);
   const [nombre, setNombre] = useState("");
+
+  const duenio = showId ? "este show" : "este proyecto";
 
   async function crear(copiarDe?: string) {
     if (creando) return;
@@ -43,6 +51,7 @@ export default function ListaSitePlanes({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           showId,
+          proyectoId,
           nombre: nombre.trim() || (copiarDe ? "Copia del plano del venue" : "Site plan"),
           copiarDe,
         }),
@@ -111,7 +120,7 @@ export default function ListaSitePlanes({
       {planes.length === 0 ? (
         <div className="ms-empty-state">
           <Map size={22} className="text-[#333] mb-2" />
-          <p className="text-[13px] text-[#888]">Todavía no hay plano para este show.</p>
+          <p className="text-[13px] text-[#888]">Todavía no hay plano para {duenio}.</p>
           <p className="ms-micro text-[#555] mt-1">
             Crea uno, sube la vista aérea de Google Maps o el plano del venue y traza encima.
           </p>

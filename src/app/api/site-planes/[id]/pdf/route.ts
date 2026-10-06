@@ -35,6 +35,17 @@ export async function GET(req: NextRequest, { params }: Params) {
           venue: { select: { nombre: true, direccion: true } },
         },
       },
+      // El mismo plano puede ser de un proyecto de eventos: el encabezado se arma
+      // con lo que tenga el dueño que sea, sin dos PDF distintos.
+      proyecto: {
+        select: {
+          nombre: true,
+          fechaEvento: true,
+          lugarEvento: true,
+          direccionVenue: true,
+          venue: { select: { nombre: true, direccion: true, ciudad: true } },
+        },
+      },
     },
   });
   if (!plan) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
@@ -51,12 +62,21 @@ export async function GET(req: NextRequest, { params }: Params) {
 
   const { capas, objetos } = parsearContenido(plan.contenido);
 
-  const partes = [
-    plan.show?.gira.nombre,
-    plan.show?.venue?.nombre ?? plan.venue?.nombre,
-    plan.show?.ciudad ?? plan.venue?.ciudad,
-    plan.show ? fmtFechaLarga(plan.show.fecha) : null,
-  ].filter(Boolean) as string[];
+  const partes = (
+    plan.proyecto
+      ? [
+          plan.proyecto.nombre,
+          plan.proyecto.venue?.nombre ?? plan.proyecto.lugarEvento ?? plan.venue?.nombre,
+          plan.proyecto.venue?.ciudad ?? plan.venue?.ciudad,
+          plan.proyecto.fechaEvento ? fmtFechaLarga(plan.proyecto.fechaEvento) : null,
+        ]
+      : [
+          plan.show?.gira.nombre,
+          plan.show?.venue?.nombre ?? plan.venue?.nombre,
+          plan.show?.ciudad ?? plan.venue?.ciudad,
+          plan.show ? fmtFechaLarga(plan.show.fecha) : null,
+        ]
+  ).filter(Boolean) as string[];
 
   const d: DatosSitePlanPDF = {
     nombre: plan.nombre,
@@ -71,7 +91,13 @@ export async function GET(req: NextRequest, { params }: Params) {
     notas: variante?.notas ?? plan.notas,
     logoBase64: logoBase64(publicDir),
     cuadro: {
-      direccionSitio: plan.direccionSitio ?? plan.show?.venue?.direccion ?? plan.venue?.direccion ?? null,
+      direccionSitio:
+        plan.direccionSitio ??
+        plan.show?.venue?.direccion ??
+        plan.proyecto?.direccionVenue ??
+        plan.proyecto?.venue?.direccion ??
+        plan.venue?.direccion ??
+        null,
       norteGrados: plan.norteGrados,
       dibujadoPor: plan.dibujadoPor,
       responsableSitio: plan.responsableSitio,
