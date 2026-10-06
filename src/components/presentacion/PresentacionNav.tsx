@@ -10,6 +10,7 @@ const GOLD = "#B3985B";
 const LINKS = [
   { label: "Servicios", href: "/presentacion#servicios" },
   { label: "Eventos", href: "/presentacion#eventos" },
+  { label: "Giras", href: "/presentacion/giras" },
   { label: "Paquetes", href: "/presentacion/paquetes?vista=general" },
   { label: "Inventario", href: "/presentacion/inventario" },
   { label: "Galería", href: "/presentacion/galeria" },
