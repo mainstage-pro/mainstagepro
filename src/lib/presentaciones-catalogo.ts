@@ -20,6 +20,7 @@ import {
   Sparkles,
   Tag,
   Presentation,
+  Route,
   type LucideIcon,
 } from "lucide-react";
 import { PRESENTACION_CATEGORIAS } from "@/lib/presentacion-categorias";
@@ -31,6 +32,18 @@ export type PresentacionItem = {
   href: string;
   icon: LucideIcon;
   audience: string;
+};
+
+// La única presentación cuyo interlocutor no es quien renta: le habla al manager
+// que decide con quién sale su artista de tour. Se lista en el índice público y
+// en el módulo interno, igual que las demás generales.
+export const PRESENTACION_GIRAS: PresentacionItem = {
+  key: "giras",
+  label: "Giras",
+  desc: "Production management para artistas en gira: advance plaza por plaza, documentos de producción y una sola dirección que responde por cada fecha.",
+  href: "/presentacion/giras",
+  icon: Route,
+  audience: "Artistas · Managers",
 };
 
 // Presentaciones generales: servicios y catálogo de inventario.
@@ -59,6 +72,7 @@ export const PRESENTACIONES_GENERAL: PresentacionItem[] = [
     icon: Package,
     audience: "Clientes · Equipo",
   },
+  PRESENTACION_GIRAS,
 ];
 
 // Presentación central compartible: es el índice público /presentacion, ahora
@@ -77,6 +91,7 @@ export const PRESENTACION_CENTRAL: PresentacionItem = {
 // poder ajustar la vista interna sin alterar lo que ven los clientes.
 export const PRESENTACIONES_MODULO_GENERAL: PresentacionItem[] = [
   PRESENTACION_CENTRAL,
+  PRESENTACION_GIRAS,
   {
     key: "venta",
     label: "Equipo en venta",

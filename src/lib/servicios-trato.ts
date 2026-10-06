@@ -72,6 +72,15 @@ export function serializeServicios(servicios: Servicio[]): string | null {
   return limpios.length ? JSON.stringify(limpios) : null;
 }
 
+/**
+ * El valor histórico con que un escalón se guarda en `Trato.tipoServicio`. La
+ * vitrina pública también lo necesita —su botón de "me interesa" abre un lead—
+ * y hardcodearlo allá dejaba el espejo con dos dueños.
+ */
+export function espejoDeServicio(servicio: Servicio): string {
+  return ESPEJO[servicio];
+}
+
 /** El nivel más alto contratado, en los valores históricos de `tipoServicio`. */
 export function espejoTipoServicio(servicios: Servicio[]): string | null {
   const ordenados = SERVICIOS.filter((s) => servicios.includes(s));

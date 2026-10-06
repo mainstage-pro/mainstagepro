@@ -1,8 +1,15 @@
-// Fuente única de los 3 servicios. La `tipoServicio` liga con el formulario de
-// descubrimiento y el enum Prisma; el `slug` es la ruta pública dedicada.
+// Cómo se cuenta cada escalón de la escalera comercial en la vitrina pública:
+// la foto, el texto de venta y la ruta dedicada. Qué escalones hay, cómo se
+// llaman y con qué valor se guardan los decide `servicios-trato.ts`, que es la
+// fuente — aquí solo se les pone cara.
+import { SERVICIO_LABELS, espejoDeServicio, type Servicio } from "@/lib/servicios-trato";
+
 export type ServicioDetalle = {
+  /// La ruta pública dedicada (`/presentacion/servicio/[slug]`).
   slug: string;
-  tipoServicio: "RENTA" | "PRODUCCION_TECNICA" | "DIRECCION_TECNICA";
+  servicio: Servicio;
+  /// El valor histórico con que el lead de esta página guarda su interés.
+  tipoServicio: string;
   n: string;
   title: string;
   tagline: string;
@@ -14,12 +21,15 @@ export type ServicioDetalle = {
   detailChips: string;
 };
 
-export const SERVICIOS_DETALLE: ServicioDetalle[] = [
+/// El nombre y el valor espejo se derivan del escalón, así que renombrar un
+/// servicio no deja la vitrina anunciando el nombre viejo.
+type ContenidoServicio = Omit<ServicioDetalle, "title" | "tipoServicio">;
+
+const CONTENIDO: ContenidoServicio[] = [
   {
     slug: "renta",
-    tipoServicio: "RENTA",
+    servicio: "RENTA",
     n: "01",
-    title: "Renta de equipo",
     tagline: "Equipo profesional, verificado y respaldado para cada evento.",
     hero: "/images/presentacion/musicales/Musicales-076.jpg",
     resumen:
@@ -42,9 +52,8 @@ export const SERVICIOS_DETALLE: ServicioDetalle[] = [
   },
   {
     slug: "produccion-tecnica",
-    tipoServicio: "PRODUCCION_TECNICA",
+    servicio: "PRODUCCION_TECNICA",
     n: "02",
-    title: "Producción técnica",
     tagline: "Montaje, operación y respaldo técnico integral del evento.",
     hero: "/images/presentacion/musicales/Musicales-016.jpg",
     resumen:
@@ -69,9 +78,8 @@ export const SERVICIOS_DETALLE: ServicioDetalle[] = [
   },
   {
     slug: "direccion-y-operaciones",
-    tipoServicio: "DIRECCION_TECNICA",
+    servicio: "DIRECCION_OPERACIONES",
     n: "03",
-    title: "Dirección y operaciones",
     tagline: "Una sola dirección que responde por todo el evento.",
     hero: "/images/presentacion/musicales/Musicales-055.jpg",
     resumen:
@@ -98,6 +106,12 @@ export const SERVICIOS_DETALLE: ServicioDetalle[] = [
     detailChips: "Concepto · Renders · Frentes · Stage",
   },
 ];
+
+export const SERVICIOS_DETALLE: ServicioDetalle[] = CONTENIDO.map((c) => ({
+  ...c,
+  title: SERVICIO_LABELS[c.servicio],
+  tipoServicio: espejoDeServicio(c.servicio),
+}));
 
 export function getServicio(slug: string) {
   return SERVICIOS_DETALLE.find((s) => s.slug === slug);
