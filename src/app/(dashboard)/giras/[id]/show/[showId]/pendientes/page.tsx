@@ -3,7 +3,6 @@ import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { fmtFechaLarga } from "@/lib/giras";
-import { sembrarChecklistGira } from "@/lib/gira-checklist";
 import PendientesShowPanel from "@/components/giras/PendientesShowPanel";
 
 export const dynamic = "force-dynamic";
@@ -30,16 +29,11 @@ export default async function PendientesShowPage({
   });
   if (!show) notFound();
 
-  // El checklist se siembra a nivel gira (es idempotente) y aquí se recorta a
-  // esta fecha: así una fecha nueva estrena sus renglones sin pasar por la gira.
-  const [items, usuarios] = await Promise.all([
-    sembrarChecklistGira(id),
-    prisma.user.findMany({
-      where: { active: true },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true },
-    }),
-  ]);
+  const usuarios = await prisma.user.findMany({
+    where: { active: true },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
 
   const ciudad = show.ciudad ?? show.venue?.ciudad ?? null;
 
@@ -67,19 +61,6 @@ export default async function PendientesShowPage({
         showId={show.id}
         showLabel={`${ciudad ?? "Fecha"} · ${fmtFechaLarga(show.fecha)}`}
         usuarios={usuarios.map(u => ({ id: u.id, name: u.name ?? "Sin nombre" }))}
-        itemsIniciales={items
-          .filter(i => i.showId === show.id)
-          .map(i => ({
-            id: i.id,
-            showId: i.showId,
-            frente: i.frente,
-            item: i.item,
-            detalle: i.detalle,
-            llave: i.llave,
-            estado: i.estado,
-            responsable: i.responsable,
-            notas: i.notas,
-          }))}
       />
     </div>
   );

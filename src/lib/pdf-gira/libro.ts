@@ -39,7 +39,6 @@ import {
   tituloDeFila,
   type SeccionLibro,
 } from "@/lib/giras";
-import { ESTADOS_CHECKLIST, FRENTES } from "@/lib/gira-advance-checklist";
 import { horasAncla } from "@/lib/show-momentos";
 import { logoBase64, nowStr, resolvePdfImage } from "@/components/pdf/PdfShared";
 import {
@@ -57,10 +56,12 @@ import {
 } from "@/components/pdf/giras/LibroGiraPDF";
 import { bufferDePdf, type PdfGira } from "./render";
 
-const FRENTE_LABEL: Record<string, string> = Object.fromEntries(FRENTES.map((f) => [f.key, f.label]));
-const ESTADO_CHECKLIST_LABEL: Record<string, string> = Object.fromEntries(
-  ESTADOS_CHECKLIST.map((e) => [e.key, e.label]),
-);
+const PRIORIDAD_TAREA_LABEL: Record<string, string> = {
+  URGENTE: "Urgente",
+  ALTA: "Alta",
+  MEDIA: "Media",
+  BAJA: "Baja",
+};
 
 const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
 
@@ -138,7 +139,7 @@ export async function generarLibroGira(giraId: string, secciones: SeccionLibro[]
 
   if (!gira) return null;
 
-  const [crewFilas, viajeFilas, hotelFilas, roomingFilas, setlistFilas, checklistFilas] = await Promise.all([
+  const [crewFilas, viajeFilas, hotelFilas, roomingFilas, setlistFilas, pendienteFilas] = await Promise.all([
     pide("crew")
       ? prisma.giraCrew.findMany({
           where: { giraId, activo: true },
@@ -187,10 +188,28 @@ export async function generarLibroGira(giraId: string, secciones: SeccionLibro[]
         })
       : [],
     pide("pendientes")
-      ? prisma.giraChecklistItem.findMany({
-          where: { giraId, estado: { in: ["PENDIENTE", "PEDIDO"] } },
-          orderBy: [{ frente: "asc" }, { orden: "asc" }],
-          include: { show: { select: { fecha: true, ciudad: true } } },
+      ? prisma.tarea.findMany({
+          where: {
+            giraId,
+            parentId: null,
+            estado: { notIn: ["COMPLETADA", "CANCELADA"] },
+          },
+          // Agrupados por fecha en el PDF, así que el alcance manda sobre la
+          // prioridad: primero los de toda la gira, luego fecha por fecha.
+          orderBy: [
+            { giraShowId: { sort: "asc", nulls: "first" } },
+            { prioridad: "asc" },
+            { createdAt: "asc" },
+          ],
+          select: {
+            id: true,
+            titulo: true,
+            descripcion: true,
+            prioridad: true,
+            fecha: true,
+            asignadoA: { select: { name: true } },
+            giraShow: { select: { fecha: true, ciudad: true } },
+          },
         })
       : [],
   ]);
@@ -411,14 +430,14 @@ export async function generarLibroGira(giraId: string, secciones: SeccionLibro[]
   });
 
   // ── Pendientes ──────────────────────────────────────────────────────────────
-  const pendientes: LibroPendiente[] = checklistFilas.map((c) => ({
-    id: c.id,
-    frenteLabel: FRENTE_LABEL[c.frente] ?? c.frente,
-    alcance: alcanceDe(c.show),
-    item: c.item,
-    detalle: c.detalle,
-    estadoLabel: ESTADO_CHECKLIST_LABEL[c.estado] ?? c.estado,
-    responsable: c.responsable,
+  const pendientes: LibroPendiente[] = pendienteFilas.map((t) => ({
+    id: t.id,
+    alcance: alcanceDe(t.giraShow),
+    item: t.titulo,
+    detalle: t.descripcion,
+    prioridadLabel: PRIORIDAD_TAREA_LABEL[t.prioridad] ?? t.prioridad,
+    cuando: t.fecha ? fmtFechaCorta(t.fecha) : null,
+    responsable: t.asignadoA?.name ?? null,
   }));
 
   const resumenGira = avanceGira(gira.shows.map((s) => ({ riderLineas: s.riderLineas })));

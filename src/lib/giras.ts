@@ -1623,7 +1623,7 @@ export const SECCION_LIBRO_AYUDA: Record<SeccionLibro, string> = {
   logistica: "Vuelos y traslados, hoteles y la rooming list.",
   setlist: "El setlist base y las variantes por show.",
   advance: "Semáforo por show y los indispensables que siguen abiertos.",
-  pendientes: "El checklist del advance agrupado por frente.",
+  pendientes: "Lo que sigue abierto, agrupado por fecha.",
 };
 
 /// Peso del archivo como se lee en pantalla. El modelo lo guarda en bytes porque

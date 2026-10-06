@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, MapPin } from "lucide-react";
-import ChecklistAdvance, { type ItemChecklist } from "./ChecklistAdvance";
 import ListaPendientes, {
   abiertos,
   fechaCorta,
@@ -20,33 +19,21 @@ export interface ShowLigero {
 
 /**
  * Los pendientes de la gira en dos niveles: lo general, que vale para todos los
- * venues, y una fecha por renglón para lo que cada casa contesta distinto. El
- * checklist del advance queda plegado dentro de cada nivel.
+ * venues, y una fecha por renglón para lo que cada casa contesta distinto. Solo
+ * entra lo que se escribe a mano — nada se siembra.
  */
 export default function PendientesGiraPanel({
-  giraId, giraNombre, esTour, shows, itemsIniciales, usuarios,
+  giraId, giraNombre, esTour, shows, usuarios,
 }: {
   giraId: string;
   giraNombre: string;
   esTour: boolean;
   shows: ShowLigero[];
-  itemsIniciales: ItemChecklist[];
   usuarios: Usuario[];
 }) {
   const { tareas, refrescar, crear, alternar } = usePendientesGira(giraId);
   // Las fechas nacen colapsadas: con 5 shows, abrir todo es ilegible.
   const [expandidos, setExpandidos] = useState<Set<string>>(new Set());
-
-  const deGira = useMemo(() => itemsIniciales.filter(i => !i.showId), [itemsIniciales]);
-  const porShow = useMemo(() => {
-    const m = new Map<string, ItemChecklist[]>();
-    for (const i of itemsIniciales) if (i.showId) {
-      const arr = m.get(i.showId) ?? [];
-      arr.push(i);
-      m.set(i.showId, arr);
-    }
-    return m;
-  }, [itemsIniciales]);
 
   const venues = useMemo(
     () => new Set(shows.map(s => s.venue ?? s.ciudad).filter(Boolean)).size,
@@ -71,7 +58,7 @@ export default function PendientesGiraPanel({
           <h2 className="ms-h2">{esTour ? "General de la gira" : "Del show"}</h2>
           <p className="ms-subtitle">
             {esTour
-              ? `Lo que se pide una vez y sirve para ${venues === 1 ? "el venue" : `los ${venues} venues`}: rider vigente, contactos y alcance.`
+              ? `Lo que se pide una vez y sirve para ${venues === 1 ? "el venue" : `los ${venues} venues`}.`
               : "Lo que hay que cerrar antes de la fecha."}
           </p>
         </div>
@@ -87,12 +74,6 @@ export default function PendientesGiraPanel({
             crear={crear}
             alternar={alternar}
             refrescar={refrescar}
-          />
-          <ChecklistAdvance
-            giraId={giraId}
-            showId={null}
-            itemsIniciales={deGira}
-            etiqueta={esTour ? "Checklist del advance de la gira" : "Checklist del advance"}
           />
         </div>
       </section>
@@ -146,12 +127,6 @@ export default function PendientesGiraPanel({
                       crear={crear}
                       alternar={alternar}
                       refrescar={refrescar}
-                    />
-                    <ChecklistAdvance
-                      giraId={giraId}
-                      showId={s.id}
-                      itemsIniciales={porShow.get(s.id) ?? []}
-                      etiqueta="Checklist del advance de esta fecha"
                     />
                     <div className="flex items-center justify-center gap-4 px-4 py-2 border-t border-[#141414]">
                       <Link

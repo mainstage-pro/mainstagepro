@@ -135,11 +135,12 @@ export interface LibroAdvanceShow {
 
 export interface LibroPendiente {
   id: string;
-  frenteLabel: string;
+  /// Toda la gira, o la fecha a la que pertenece: es con lo que se agrupa.
   alcance: string;
   item: string;
   detalle: string | null;
-  estadoLabel: string;
+  prioridadLabel: string;
+  cuando: string | null;
   responsable: string | null;
 }
 
@@ -247,9 +248,9 @@ const COLS_ADVANCE: ColumnaTabla[] = [
 ];
 
 const COLS_PENDIENTES: ColumnaTabla[] = [
-  { label: "Plaza", flex: 2 },
-  { label: "Pendiente", flex: 4 },
-  { label: "Estado", ancho: 62 },
+  { label: "Pendiente", flex: 5 },
+  { label: "Prioridad", ancho: 56 },
+  { label: "Para cuándo", ancho: 70 },
   { label: "Quién", flex: 2 },
 ];
 
@@ -482,15 +483,15 @@ export function LibroGiraPDF({ data }: { data: LibroGiraData }) {
 
   const pendientes: RenglonTabla[] = agrupar(
     data.pendientes,
-    (p) => p.frenteLabel,
+    (p) => p.alcance,
     (p) => ({
       tipo: "fila",
       clave: p.id,
       celdas: [
-        { texto: p.alcance },
         { texto: p.item, sub: p.detalle, fuerte: true },
-        { texto: p.estadoLabel },
-        { texto: p.responsable ?? "—" },
+        { texto: p.prioridadLabel },
+        { texto: p.cuando ?? "Sin agendar" },
+        { texto: p.responsable ?? "Sin asignar" },
       ],
     }),
   );
@@ -634,7 +635,7 @@ export function LibroGiraPDF({ data }: { data: LibroGiraData }) {
           ) : null}
 
           {activa("pendientes") ? (
-            <Seccion titulo="Pendientes por cerrar" nota="El checklist del advance, agrupado por frente. Solo lo que sigue abierto.">
+            <Seccion titulo="Pendientes por cerrar" nota="Agrupados por fecha. Solo lo que sigue abierto.">
               <Tabla columnas={COLS_PENDIENTES} renglones={pendientes} />
             </Seccion>
           ) : null}

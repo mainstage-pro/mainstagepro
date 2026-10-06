@@ -1,6 +1,5 @@
 "use client";
 
-import ChecklistAdvance, { type ItemChecklist } from "./ChecklistAdvance";
 import ListaPendientes, { usePendientesGira, type Usuario } from "./ListaPendientes";
 
 /**
@@ -9,14 +8,13 @@ import ListaPendientes, { usePendientesGira, type Usuario } from "./ListaPendien
  * pestaña de la gira, aquí no estorba.
  */
 export default function PendientesShowPanel({
-  giraId, giraNombre, showId, showLabel, usuarios, itemsIniciales,
+  giraId, giraNombre, showId, showLabel, usuarios,
 }: {
   giraId: string;
   giraNombre: string;
   showId: string;
   showLabel: string;
   usuarios: Usuario[];
-  itemsIniciales: ItemChecklist[];
 }) {
   const { tareas, refrescar, crear, alternar } = usePendientesGira(giraId);
 
@@ -32,12 +30,6 @@ export default function PendientesShowPanel({
         crear={crear}
         alternar={alternar}
         refrescar={refrescar}
-      />
-      <ChecklistAdvance
-        giraId={giraId}
-        showId={showId}
-        itemsIniciales={itemsIniciales}
-        etiqueta="Checklist del advance de esta fecha"
       />
     </div>
   );

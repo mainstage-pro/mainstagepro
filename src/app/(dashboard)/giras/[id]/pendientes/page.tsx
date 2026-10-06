@@ -2,17 +2,16 @@ import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { esGira } from "@/lib/giras";
-import { sembrarChecklistGira } from "@/lib/gira-checklist";
 import BotonDocumentoGira from "@/components/giras/BotonDocumentoGira";
 import PendientesGiraPanel from "@/components/giras/PendientesGiraPanel";
 
 export const dynamic = "force-dynamic";
 
 /**
- * El tablero del advance: el checklist de qué hay que arrancarle a management, al
- * venue y al promotor, más los pendientes que se capturan a mano. Los pendientes
- * son tareas normales (tipoOrigen GIRA), así que se ven igual en Gestión Operativa
- * una vez que tienen fecha y responsable.
+ * Los pendientes de la gira: lo general arriba y una fecha por renglón abajo.
+ * Son tareas normales (tipoOrigen GIRA), así que se ven igual en Gestión
+ * Operativa una vez que tienen fecha y responsable. Nada se siembra: solo entra
+ * lo que se escribe aquí.
  */
 export default async function PendientesGiraPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -35,8 +34,8 @@ export default async function PendientesGiraPage({ params }: { params: Promise<{
 
   if (!gira) notFound();
 
-  const [items, usuarios] = await Promise.all([
-    sembrarChecklistGira(id),
+  const [cuantos, usuarios] = await Promise.all([
+    prisma.tarea.count({ where: { giraId: id, parentId: null, estado: { not: "CANCELADA" } } }),
     prisma.user.findMany({
       where: { active: true },
       orderBy: { name: "asc" },
@@ -50,21 +49,21 @@ export default async function PendientesGiraPage({ params }: { params: Promise<{
     <div className="ms-page space-y-5 pb-16">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="ms-h1">Pendientes del advance</h1>
+          <h1 className="ms-h1">Pendientes</h1>
           <p className="ms-subtitle">
             {tour
-              ? "Lo general de la gira arriba y una fecha por renglón abajo. El checklist del advance queda plegado en cada nivel."
-              : "Lo que falta cerrar antes de la fecha. El checklist del advance queda plegado abajo."}
+              ? "Lo general de la gira arriba y una fecha por renglón abajo. Escribes el pendiente, Enter, y listo."
+              : "Lo que falta cerrar antes de la fecha. Escribes el pendiente, Enter, y listo."}
           </p>
         </div>
 
-        {/* El checklist agrupado por frente es una sección del libro de gira:
-            se recorta en vez de inventar otro documento. */}
+        {/* La lista de pendientes es una sección del libro de gira: se recorta en
+            vez de inventar otro documento. */}
         <BotonDocumentoGira
           url={`/api/giras/${id}/documentos/libro-gira`}
           query="secciones=pendientes"
           label="Pendientes PDF"
-          falta={items.length === 0 ? "sembrar el checklist del advance" : null}
+          falta={cuantos === 0 ? "capturar al menos un pendiente" : null}
           className="shrink-0 max-w-xs"
         />
       </div>
@@ -78,17 +77,6 @@ export default async function PendientesGiraPage({ params }: { params: Promise<{
           fecha: s.fecha.toISOString(),
           ciudad: s.ciudad,
           venue: s.venue?.nombre ?? null,
-        }))}
-        itemsIniciales={items.map(i => ({
-          id: i.id,
-          showId: i.showId,
-          frente: i.frente,
-          item: i.item,
-          detalle: i.detalle,
-          llave: i.llave,
-          estado: i.estado,
-          responsable: i.responsable,
-          notas: i.notas,
         }))}
         usuarios={usuarios.map(u => ({ id: u.id, name: u.name ?? "Sin nombre" }))}
       />
