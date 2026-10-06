@@ -1,5 +1,6 @@
 "use client";
 
+import { createElement } from "react";
 import { Route, ClipboardCheck, FileText } from "lucide-react";
 import PresentacionNav from "@/components/presentacion/PresentacionNav";
 import { R, GOLD } from "@/components/presentacion/anim";
@@ -58,6 +59,46 @@ const COBRO = [
   { unidad: "GIRA", cuerpo: "La temporada completa cerrada. Es la que más conviene cuando el routing ya está armado." },
 ];
 
+/// Se ordena por la taxonomía del catálogo, no por lo que devolvió la consulta.
+/// Lo que no cae en ninguna categoría se va al final.
+function orden(categoria: string | null): number {
+  const i = CATEGORIAS_SERVICIO.indexOf(categoria as (typeof CATEGORIAS_SERVICIO)[number]);
+  return i === -1 ? CATEGORIAS_SERVICIO.length : i;
+}
+
+/// Una tarjeta de servicio del catálogo. La unidad de cobro se calla cuando la
+/// descripción capturada ya la explica: repetirla se leía como contradicción
+/// ("Se cobra por plaza, no por fecha" seguido de "Se cobra por venue").
+function TarjetaServicio({ s, etiqueta }: { s: ServicioGira; etiqueta?: string }) {
+  const yaDicho = /se (cobra|cotiza)/i.test(s.descripcion ?? "");
+  return (
+    <div
+      className="flex items-start gap-4 rounded-xl px-5 py-5 h-full"
+      style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}
+    >
+      {/* createElement y no `const Icon = …`: el icono se resuelve por nombre en
+          tiempo de render y asignarlo a una mayúscula lo vuelve un componente
+          nuevo en cada pasada. */}
+      {createElement(iconoServicio(s.icono), {
+        size: 20,
+        strokeWidth: 1.5,
+        className: "shrink-0 mt-0.5",
+        style: { color: GOLD },
+      })}
+      <div className="min-w-0">
+        {etiqueta && <p className="text-white/25 text-[10px] tracking-[0.18em] uppercase mb-1.5">{etiqueta}</p>}
+        <p className="text-white/85 text-sm font-medium leading-snug">{s.nombre}</p>
+        {s.descripcion && <p className="text-white/40 text-xs leading-relaxed mt-1.5">{s.descripcion}</p>}
+        {!yaDicho && (
+          <p className="text-[#B3985B]/60 text-[11px] mt-2">
+            Se cobra {UNIDAD_COBRO_LABEL[s.unidadDefault] ?? s.unidadDefault}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function GirasClient({
   servicios,
   hero,
@@ -67,20 +108,14 @@ export default function GirasClient({
 }) {
   const { iniciar, loading } = useDescubrimiento();
 
-  // Agrupadas en el orden del catálogo, no el que devolvió la consulta, para que
-  // production management abra siempre y las disciplinas vayan después.
-  const grupos: { categoria: string; label: string; items: ServicioGira[] }[] = CATEGORIAS_SERVICIO.map(
-    (categoria) => ({
-      categoria: categoria as string,
-      label: CATEGORIA_SERVICIO_LABEL[categoria] ?? categoria,
-      items: servicios.filter((s) => s.categoria === categoria),
-    }),
-  ).filter((g) => g.items.length > 0);
-
-  const sinCategoria = servicios.filter((s) => !s.categoria || !CATEGORIAS_SERVICIO.includes(s.categoria as never));
-  if (sinCategoria.length) {
-    grupos.push({ categoria: "OTRO", label: "Otros", items: sinCategoria });
-  }
+  // Production management abre solo porque es el servicio del que cuelga la
+  // alianza; las disciplinas van juntas en una sola rejilla, con su categoría
+  // como etiqueta de la tarjeta. Partirlas en un bloque por categoría dejaba
+  // medio renglón vacío cada vez que una categoría tiene un solo servicio.
+  const nucleo = servicios.filter((s) => s.categoria === "PRODUCTION_MANAGEMENT");
+  const disciplinas = servicios
+    .filter((s) => s.categoria !== "PRODUCTION_MANAGEMENT")
+    .sort((a, b) => orden(a.categoria) - orden(b.categoria));
 
   return (
     <div
@@ -172,7 +207,7 @@ export default function GirasClient({
       </section>
 
       {/* ── Alcance, del catálogo vivo de servicios ── */}
-      {grupos.length > 0 && (
+      {servicios.length > 0 && (
         <section className="py-20 px-6 bg-[#060606] border-y border-white/[0.04]">
           <div className="max-w-5xl mx-auto">
             <R>
@@ -189,36 +224,33 @@ export default function GirasClient({
               </p>
             </R>
 
-            <div className="flex flex-col gap-12">
-              {grupos.map((grupo, gi) => (
-                <R key={grupo.categoria} delay={gi * 80}>
-                  <p className="text-white/30 text-xs tracking-[0.2em] uppercase mb-5">{grupo.label}</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {grupo.items.map((s) => {
-                      const Icon = iconoServicio(s.icono);
-                      return (
-                        <div
-                          key={s.clave}
-                          className="flex items-start gap-4 rounded-xl px-5 py-5"
-                          style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}
-                        >
-                          <Icon size={20} strokeWidth={1.5} className="shrink-0 mt-0.5" style={{ color: GOLD }} />
-                          <div className="min-w-0">
-                            <p className="text-white/85 text-sm font-medium leading-snug">{s.nombre}</p>
-                            {s.descripcion && (
-                              <p className="text-white/40 text-xs leading-relaxed mt-1.5">{s.descripcion}</p>
-                            )}
-                            <p className="text-[#B3985B]/60 text-[11px] mt-2">
-                              Se cobra {UNIDAD_COBRO_LABEL[s.unidadDefault] ?? s.unidadDefault}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </R>
-              ))}
-            </div>
+            {nucleo.length > 0 && (
+              <R>
+                <p className="text-white/30 text-xs tracking-[0.2em] uppercase mb-5">La dirección de la gira</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-14">
+                  {nucleo.map((s) => (
+                    <TarjetaServicio key={s.clave} s={s} />
+                  ))}
+                </div>
+              </R>
+            )}
+
+            {disciplinas.length > 0 && (
+              <R delay={80}>
+                <p className="text-white/30 text-xs tracking-[0.2em] uppercase mb-5">
+                  Disciplinas que podemos cubrir
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {disciplinas.map((s) => (
+                    <TarjetaServicio
+                      key={s.clave}
+                      s={s}
+                      etiqueta={s.categoria ? CATEGORIA_SERVICIO_LABEL[s.categoria] ?? s.categoria : undefined}
+                    />
+                  ))}
+                </div>
+              </R>
+            )}
           </div>
         </section>
       )}
