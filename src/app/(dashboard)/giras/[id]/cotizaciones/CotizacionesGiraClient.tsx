@@ -190,9 +190,18 @@ export default function CotizacionesGiraClient({
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 shrink-0">
-                    {base.length > 0 && (
+                    {base.length === 1 && (
+                      <button
+                        className="ms-btn-secondary text-xs"
+                        disabled={ocupado !== null}
+                        onClick={() => copiarAFecha(base[0].id, s.id, `copiar-${base[0].id}`)}
+                      >
+                        {ocupado === `copiar-${base[0].id}` ? "Copiando…" : "Copiar la base aquí"}
+                      </button>
+                    )}
+                    {base.length > 1 && (
                       <SelectorAccion
-                        etiqueta={base.length === 1 ? "Copiar la base aquí" : "Copiar base…"}
+                        etiqueta="Copiar base…"
                         deshabilitado={ocupado !== null}
                         opciones={base.map((b) => ({
                           valor: b.id,
