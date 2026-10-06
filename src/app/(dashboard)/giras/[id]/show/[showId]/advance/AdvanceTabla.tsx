@@ -92,6 +92,8 @@ export default function AdvanceTabla({ showId, giraId, venue, tieneRider, lineas
   const [nuevo, setNuevo] = useState<{ disciplina: string; concepto: string; cantidad: string; prioridad: string } | null>(
     null,
   );
+  const [modoSeleccion, setModoSeleccion] = useState(false);
+  const [seleccion, setSeleccion] = useState<Set<string>>(new Set());
 
   const pendientes = useRef(new Map<string, Campos>());
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
@@ -222,6 +224,54 @@ export default function AdvanceTabla({ showId, giraId, venue, tieneRider, lineas
       return;
     }
     setLineas((prev) => prev.filter((x) => x.id !== l.id));
+  }
+
+  // ── Selección múltiple (solo para quitar de un jalón) ─────────────────────
+  function alternarSeleccion(id: string) {
+    setSeleccion((prev) => {
+      const s = new Set(prev);
+      if (s.has(id)) s.delete(id);
+      else s.add(id);
+      return s;
+    });
+  }
+
+  function seleccionarVarios(ids: string[], marcar: boolean) {
+    setSeleccion((prev) => {
+      const s = new Set(prev);
+      for (const id of ids) {
+        if (marcar) s.add(id);
+        else s.delete(id);
+      }
+      return s;
+    });
+  }
+
+  function salirDeSeleccion() {
+    setModoSeleccion(false);
+    setSeleccion(new Set());
+  }
+
+  async function quitarSeleccionados() {
+    const ids = [...seleccion];
+    if (!ids.length) return;
+    const ok = await confirm({
+      message: `¿Quitar ${ids.length} ${ids.length === 1 ? "concepto" : "conceptos"} del advance de este show? El rider maestro no se toca.`,
+      danger: true,
+      confirmText: "Quitar",
+    });
+    if (!ok) return;
+    const res = await fetch(`/api/gira-shows/${showId}/advance`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    });
+    if (!res.ok) {
+      toast.error("No se pudieron quitar los renglones");
+      return;
+    }
+    setLineas((prev) => prev.filter((l) => !seleccion.has(l.id)));
+    setSeleccion(new Set());
   }
 
   // ── Derivados ─────────────────────────────────────────────────────────────
@@ -436,6 +486,14 @@ export default function AdvanceTabla({ showId, giraId, venue, tieneRider, lineas
         >
           Solo lo del promotor
         </button>
+        <span className="h-4 w-px bg-[#1e1e1e]" aria-hidden />
+        <button
+          onClick={() => (modoSeleccion ? salirDeSeleccion() : setModoSeleccion(true))}
+          className={modoSeleccion ? "ms-filter-select-active" : "ms-filter-select"}
+          title="Palomear varios conceptos para quitarlos de un jalón"
+        >
+          {modoSeleccion ? "Salir de selección" : "Seleccionar varios"}
+        </button>
       </div>
 
       {/* Renglones */}
@@ -451,15 +509,47 @@ export default function AdvanceTabla({ showId, giraId, venue, tieneRider, lineas
         <div className="space-y-3">
           {grupos.map((g) => (
             <div key={g.disciplina} className="ms-card overflow-hidden">
-              <div className="bg-[#0d0d0d] border-b border-[#1e1e1e] px-4 py-2">
+              <div className="bg-[#0d0d0d] border-b border-[#1e1e1e] px-4 py-2 flex items-center gap-2">
+                {modoSeleccion && (
+                  <input
+                    type="checkbox"
+                    checked={g.filas.every((l) => seleccion.has(l.id))}
+                    onChange={(e) => seleccionarVarios(g.filas.map((l) => l.id), e.target.checked)}
+                    className="accent-[#B3985B] w-4 h-4"
+                    title="Seleccionar todo el departamento"
+                  />
+                )}
                 <span className="ms-section-label">{DISCIPLINA_LABEL[g.disciplina]}</span>
                 <span className="ms-meta ml-2">{g.filas.length} conceptos</span>
               </div>
               {g.filas.map((l) => (
-                <Fila key={l.id} linea={l} guardada={guardadas.has(l.id)} onEditar={editar} onQuitar={quitar} />
+                <Fila
+                  key={l.id}
+                  linea={l}
+                  guardada={guardadas.has(l.id)}
+                  onEditar={editar}
+                  onQuitar={quitar}
+                  seleccionable={modoSeleccion}
+                  seleccionada={seleccion.has(l.id)}
+                  onSeleccionar={alternarSeleccion}
+                />
               ))}
             </div>
           ))}
+        </div>
+      )}
+
+      {modoSeleccion && seleccion.size > 0 && (
+        <div className="sticky bottom-4 z-20 flex flex-wrap items-center gap-3 rounded-xl border border-[#333] bg-[#0d0d0d]/95 px-4 py-2 shadow-lg backdrop-blur">
+          <span className="text-sm text-white">
+            {seleccion.size} {seleccion.size === 1 ? "concepto seleccionado" : "conceptos seleccionados"}
+          </span>
+          <button onClick={() => setSeleccion(new Set())} className="ms-btn-ghost">
+            Limpiar
+          </button>
+          <button onClick={() => void quitarSeleccionados()} className="ms-btn-danger ml-auto">
+            Quitar del advance
+          </button>
         </div>
       )}
 
@@ -513,11 +603,17 @@ function Fila({
   guardada,
   onEditar,
   onQuitar,
+  seleccionable,
+  seleccionada,
+  onSeleccionar,
 }: {
   linea: LineaAdvance;
   guardada: boolean;
   onEditar: (id: string, campos: Campos, inmediato?: boolean) => void;
   onQuitar: (l: LineaAdvance) => Promise<void>;
+  seleccionable: boolean;
+  seleccionada: boolean;
+  onSeleccionar: (id: string) => void;
 }) {
   const noAplica = l.cubiertoPor === "NO_APLICA";
   const cerrada = ESTADOS_RESUELTOS.includes(l.estado);
@@ -547,9 +643,20 @@ function Fila({
 
   // Lo descartado se colapsa a un renglón tachado: deja de pesar en la lectura
   // pero sigue a la vista y se recupera con un clic.
+  const casilla = seleccionable ? (
+    <input
+      type="checkbox"
+      checked={seleccionada}
+      onChange={() => onSeleccionar(l.id)}
+      className="accent-[#B3985B] w-4 h-4 shrink-0"
+      title="Seleccionar para quitarlo en lote"
+    />
+  ) : null;
+
   if (noAplica) {
     return (
       <div className="px-4 py-2 border-b border-[#141414] last:border-0 border-l-2 border-l-[#1a1a1a] flex items-center gap-2">
+        {casilla}
         <span className="text-sm text-[#555] line-through truncate flex-1 min-w-0">{l.concepto}</span>
         <span className={`ms-badge shrink-0 ${CUBIERTO_POR_COLOR.NO_APLICA}`}>{CUBIERTO_POR_LABEL.NO_APLICA}</span>
         <button
@@ -572,6 +679,8 @@ function Fila({
   return (
     <div
       className={`px-4 py-3 border-b border-[#141414] last:border-0 border-l-2 space-y-2 ${
+        seleccionada ? "bg-[#B3985B]/5 " : ""
+      }${
         cerrada
           ? "border-l-emerald-700/60"
           : l.prioridad === "INDISPENSABLE"
@@ -581,6 +690,7 @@ function Fila({
     >
       {/* Qué pide el rider */}
       <div className="flex flex-wrap items-center gap-2">
+        {casilla}
         <input
           value={l.concepto}
           onChange={(e) => onEditar(l.id, { concepto: e.target.value })}

@@ -52,3 +52,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ sho
 
   return NextResponse.json({ linea });
 }
+
+/// Quitar varios renglones de un jalón. Acotado al show para que una lista de ids
+/// prestada no pueda tocar el advance de otra fecha.
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ showId: string }> }) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  const { showId } = await params;
+
+  const body = await req.json().catch(() => ({}));
+  const ids = Array.isArray(body.ids) ? body.ids.filter((id: unknown) => typeof id === "string") : [];
+  if (!ids.length) return NextResponse.json({ error: "No llegó ningún renglón" }, { status: 400 });
+
+  const { count } = await prisma.showRiderLinea.deleteMany({ where: { showId, id: { in: ids } } });
+  return NextResponse.json({ eliminadas: count });
+}
