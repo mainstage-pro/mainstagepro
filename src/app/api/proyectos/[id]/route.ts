@@ -74,6 +74,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
           select: { id: true, numeroCotizacion: true, nombreEvento: true, granTotal: true },
           orderBy: { numeroCotizacion: "asc" },
         },
+        responsivas: true,
+        responsivaToken: true,
         personal: {
           include: {
             tecnico: { select: { id: true, nombre: true, celular: true, rol: { select: { nombre: true } } } },
@@ -147,6 +149,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
           select: { id: true, numeroCotizacion: true, nombreEvento: true, granTotal: true },
           orderBy: { numeroCotizacion: "asc" },
         },
+        responsivas: true,
+        responsivaToken: true,
         personal: {
           include: {
             tecnico: { select: { id: true, nombre: true, celular: true, rol: { select: { nombre: true } } } },

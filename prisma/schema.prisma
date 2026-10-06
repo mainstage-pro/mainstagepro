@@ -80,7 +80,8 @@ model User {
   visionesResponsable            VisionSemanal[]       @relation("VisionSemanalResponsable")
   fallasReportadas               FallaEquipo[]         @relation("FallasReportadas")
 
-  personalInterno PersonalInterno? @relation("PersonalUsuario")
+  personalInterno   PersonalInterno?    @relation("PersonalUsuario")
+  ResponsivaTecnico ResponsivaTecnico[]
 
   @@map("users")
 }
@@ -774,6 +775,7 @@ model Proyecto {
   ordenToken               String?   @unique // Token público de la Orden de Producción (equipo operativo en sitio)
   infoToken                String?   @unique // Token público para que el cliente confirme/complete la info del resumen
   docsToken                String?   @unique // Token público para ver los PDF del proyecto en línea (/doc/{token}/{documento})
+  responsivaToken          String?   @unique // Token público para responsivas del staff
   infoRecibidoEn           DateTime? // Timestamp en que el cliente envió la confirmación de información
   notasPortal              String? // Mensaje visible al cliente en su portal
   responsables             String? // JSON: { produccion, logistica, finanzas, marketing } → { userId, nombre }
@@ -831,6 +833,7 @@ model Proyecto {
   escenarios         ProyectoEscenario[]
   sitePlanes         SitePlan[]
   giraShow           GiraShow?
+  ResponsivaTecnico  ResponsivaTecnico[]
 
   @@map("proyectos")
 }
@@ -1583,6 +1586,7 @@ model Tecnico {
   pagosNomina         PagoNomina[]
   cargaVerificaciones ProyectoCargaVerificador[]
   giraCrew            GiraCrew[]
+  ResponsivaTecnico   ResponsivaTecnico[]
 
   @@map("tecnicos")
 }
@@ -7047,4 +7051,35 @@ model SitePlanEmision {
 
   @@index([varianteId])
   @@map("site_plan_emisiones")
+}
+
+// ── CARTAS RESPONSIVAS ────────────────────────────────────────────────────────
+
+model ResponsivaTecnico {
+  id         String   @id @default(cuid())
+  proyectoId String
+  proyecto   Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  tecnicoId  String
+  tecnico    Tecnico  @relation(fields: [tecnicoId], references: [id], onDelete: Cascade)
+
+  tipoResponsiva  String // GENERAL | RIGGER
+  templateVersion String @default("1.0")
+
+  status          String  @default("PENDIENTE") // PENDIENTE | RECIBIDA | VALIDADA | REQUIERE_CORRECCION
+  datosCapturados Json?
+  firmaUrl        String?
+  pdfUrl          String?
+
+  aceptadoEn       DateTime?
+  enviadoEn        DateTime?
+  validadoEn       DateTime?
+  validadoPorId    String?
+  validadoPor      User?     @relation(fields: [validadoPorId], references: [id])
+  motivoCorreccion String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([proyectoId, tecnicoId])
+  @@map("responsivas_tecnico")
 }
