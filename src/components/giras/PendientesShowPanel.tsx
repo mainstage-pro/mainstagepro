@@ -16,7 +16,7 @@ export default function PendientesShowPanel({
   showLabel: string;
   usuarios: Usuario[];
 }) {
-  const { tareas, crear, alternar, upsert, quitar } = usePendientesGira(giraId);
+  const { tareas, crear, alternar, upsert, quitar, eliminar } = usePendientesGira(giraId);
 
   return (
     <div className="ms-card overflow-hidden">
@@ -31,6 +31,7 @@ export default function PendientesShowPanel({
         alternar={alternar}
         upsert={upsert}
         quitar={quitar}
+        eliminar={eliminar}
       />
     </div>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Calendar, User, ClipboardList } from "lucide-react";
+import { Calendar, User, ClipboardList, Trash2 } from "lucide-react";
 import NuevaTareaModal from "../../operaciones/components/NuevaTareaModal";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -43,6 +43,7 @@ export default function ChecklistEventoTab({
   const [loading, setLoading] = useState(true);
   // Mismo modal "Tarea de proyecto de evento" que en Gestión Operativa.
   const [modal, setModal] = useState<{ mode: "crear" } | { mode: "editar"; tareaId: string } | null>(null);
+  const [porBorrar, setPorBorrar] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -69,6 +70,18 @@ export default function ChecklistEventoTab({
       setTareas(prev => prev.map(x => x.id === t.id ? { ...x, estado: t.estado } : x));
       if (d?.error) alert(d.error);
     }
+  }
+
+  async function eliminar(id: string) {
+    const res = await fetch(`/api/tareas/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      alert(d.error === "Sin permiso"
+        ? "Solo quien la creó (o un administrador) puede borrarla."
+        : (d.error ?? "No se pudo borrar la tarea"));
+      return;
+    }
+    setTareas(prev => prev.filter(x => x.id !== id));
   }
 
   // Alta/edición confirmada en el modal → refleja la tarea en la lista.
@@ -165,7 +178,22 @@ export default function ChecklistEventoTab({
                     )}
                   </div>
                 </div>
-                <span className="shrink-0 self-center text-[11px] text-[#555] opacity-0 group-hover:opacity-100 transition-opacity">Abrir →</span>
+                {porBorrar === t.id ? (
+                  <div onClick={(e) => e.stopPropagation()} className="shrink-0 self-center flex items-center gap-2">
+                    <span className="text-[11px] text-[#888]">¿Borrarla?</span>
+                    <button onClick={() => { setPorBorrar(null); eliminar(t.id); }}
+                      className="text-[11px] font-semibold text-red-400 hover:text-red-300">Sí</button>
+                    <button onClick={() => setPorBorrar(null)} className="text-[11px] text-[#555] hover:text-white">No</button>
+                  </div>
+                ) : (
+                  <div className="shrink-0 self-center flex items-center gap-3 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                    <span className="text-[11px] text-[#555]">Abrir →</span>
+                    <button onClick={(e) => { e.stopPropagation(); setPorBorrar(t.id); }}
+                      title="Borrar la tarea" className="text-[#444] hover:text-red-400 transition-colors">
+                      <Trash2 strokeWidth={1.75} className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}

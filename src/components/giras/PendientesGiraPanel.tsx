@@ -31,7 +31,7 @@ export default function PendientesGiraPanel({
   shows: ShowLigero[];
   usuarios: Usuario[];
 }) {
-  const { tareas, crear, alternar, upsert, quitar } = usePendientesGira(giraId);
+  const { tareas, crear, alternar, upsert, quitar, eliminar } = usePendientesGira(giraId);
   // Las fechas nacen colapsadas: con 5 shows, abrir todo es ilegible.
   const [expandidos, setExpandidos] = useState<Set<string>>(new Set());
 
@@ -101,6 +101,7 @@ export default function PendientesGiraPanel({
             alternar={alternar}
             upsert={upsert}
             quitar={quitar}
+            eliminar={eliminar}
           />
         </div>
       </section>
@@ -155,6 +156,7 @@ export default function PendientesGiraPanel({
                       alternar={alternar}
                       upsert={upsert}
                       quitar={quitar}
+                      eliminar={eliminar}
                     />
                     <div className="flex items-center justify-center gap-4 px-4 py-2 border-t border-[#141414]">
                       <Link
