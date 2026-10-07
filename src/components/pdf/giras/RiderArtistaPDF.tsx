@@ -361,7 +361,7 @@ export function PortadaAnexosPDF({
               }))}
             />
           </Seccion>
-          <Text style={{ fontSize: 7.5, color: "#999999" }}>
+          <Text style={{ fontSize: 8.5, color: "#6a6a6a" }}>
             Los documentos se anexan tal como los entregó el artista; no se recortan ni se reescalan.
           </Text>
         </Cuerpo>

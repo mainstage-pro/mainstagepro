@@ -182,7 +182,9 @@ export async function generarDaySheet(showId: string): Promise<PdfGira | null> {
       id: v.id,
       tipoLabel: TIPO_VIAJE_LABEL[v.tipo] ?? v.tipo,
       concepto: v.concepto,
-      ruta: [v.origen, v.destino].filter(Boolean).join(" → ") || "Sin ruta",
+      // Y no "→": la Helvetica del PDF no trae esa flecha y la imprime como un
+      // apóstrofo suelto.
+      ruta: [v.origen, v.destino].filter(Boolean).join(" » ") || "Sin ruta",
       salida: fmtFechaHora(v.salida),
       llegada: fmtFechaHora(v.llegada),
       operador: v.operador,

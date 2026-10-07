@@ -319,7 +319,9 @@ export async function generarLibroGira(giraId: string, secciones: SeccionLibro[]
     grupo: alcanceDe(v.show),
     tipoLabel: TIPO_VIAJE_LABEL[v.tipo] ?? v.tipo,
     concepto: v.concepto,
-    ruta: [v.origen, v.destino].filter(Boolean).join(" → ") || "Sin ruta",
+    // Y no "→": la Helvetica del PDF no trae esa flecha y la imprime como un
+    // apóstrofo suelto.
+    ruta: [v.origen, v.destino].filter(Boolean).join(" » ") || "Sin ruta",
     salida: fmtFechaHora(v.salida),
     llegada: fmtFechaHora(v.llegada),
     operador: v.operador,

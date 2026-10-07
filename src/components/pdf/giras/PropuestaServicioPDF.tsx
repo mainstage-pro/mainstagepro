@@ -30,7 +30,7 @@ import {
 } from "./GiraDocBase";
 
 const p = StyleSheet.create({
-  parrafo: { fontSize: 8.8, color: C.negro, lineHeight: 1.6 },
+  parrafo: { fontSize: 10, color: C.negro, lineHeight: 1.55 },
   // Bloque de totales: pegado a la derecha, como una factura.
   totales: { marginTop: 10, flexDirection: "row", justifyContent: "flex-end" },
   totalesCaja: { width: "58%" },
@@ -42,9 +42,9 @@ const p = StyleSheet.create({
     borderBottomColor: "#eeeeee",
     borderBottomStyle: "solid",
   },
-  totalLabel: { fontSize: 8.4, color: C.grisMedio },
-  totalLabelNota: { fontSize: 6.4, color: C.grisClaro, marginTop: 1 },
-  totalVal: { fontSize: 8.6, color: C.negro },
+  totalLabel: { fontSize: 9.8, color: C.grisMedio },
+  totalLabelNota: { fontSize: 7.8, color: C.grisMedio, marginTop: 1.5 },
+  totalVal: { fontSize: 10, color: C.negro },
   granFila: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -56,14 +56,14 @@ const p = StyleSheet.create({
     marginTop: 6,
   },
   granLabel: {
-    fontSize: 7,
+    fontSize: 8.2,
     fontFamily: "Helvetica-Bold",
     color: C.dorado,
     textTransform: "uppercase",
-    letterSpacing: 1.2,
+    letterSpacing: 1.4,
   },
-  granVal: { fontSize: 14, fontFamily: "Helvetica-Bold", color: C.blanco },
-  granNota: { fontSize: 6.4, color: C.grisClaro, textAlign: "right", marginTop: 4 },
+  granVal: { fontSize: 17, fontFamily: "Helvetica-Bold", color: C.blanco },
+  granNota: { fontSize: 7.8, color: C.grisMedio, textAlign: "right", marginTop: 5 },
   // Firma
   firmaCaja: {
     borderWidth: 0.5,
@@ -73,11 +73,11 @@ const p = StyleSheet.create({
     padding: 11,
     marginTop: 4,
   },
-  firmaTxt: { fontSize: 8.2, color: C.grisMedio, lineHeight: 1.55 },
+  firmaTxt: { fontSize: 9.6, color: C.grisMedio, lineHeight: 1.5 },
   firmaLineas: { flexDirection: "row", marginTop: 20 },
   firmaCol: { flex: 1, paddingRight: 16 },
   firmaRaya: { borderTopWidth: 0.5, borderTopColor: C.negro, borderTopStyle: "solid", paddingTop: 3 },
-  firmaLabel: { fontSize: 6.2, color: C.grisClaro, textTransform: "uppercase", letterSpacing: 0.7 },
+  firmaLabel: { fontSize: 7.2, color: C.grisMedio, textTransform: "uppercase", letterSpacing: 0.9 },
   aprobada: {
     backgroundColor: "#f2f8f3",
     borderLeftWidth: 2.5,
@@ -88,14 +88,14 @@ const p = StyleSheet.create({
     borderRadius: 2,
   },
   aprobadaLabel: {
-    fontSize: 6.2,
+    fontSize: 7.2,
     fontFamily: "Helvetica-Bold",
     color: "#2f7d47",
     textTransform: "uppercase",
-    letterSpacing: 0.8,
-    marginBottom: 3,
+    letterSpacing: 1,
+    marginBottom: 4,
   },
-  aprobadaTxt: { fontSize: 8.6, color: C.negro, lineHeight: 1.5 },
+  aprobadaTxt: { fontSize: 10, color: C.negro, lineHeight: 1.5 },
 });
 
 // ── Datos que pide el documento ──────────────────────────────────────────────

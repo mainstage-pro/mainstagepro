@@ -8,6 +8,12 @@
  *
  * Hereda la paleta de PdfShared para que un documento de gira y una ficha de
  * proyecto se reconozcan como de la misma casa.
+ *
+ * La escala tipográfica está pensada para leerse de pie y con media luz: estos
+ * papeles se consultan en el foro, de noche, no en un escritorio. De ahí que el
+ * cuerpo arranque en 10 pt y que no haya texto por debajo de 7 pt, y de ahí que
+ * el adorno se haya quitado — rellenos, bordes y zebras en gris clarito no se
+ * ven en penumbra y sí le quitan aire a la letra.
  */
 import React from "react";
 import { Document, Image, Link, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
@@ -17,6 +23,10 @@ import { C } from "../PdfShared";
 /// chico se usa esta variante oscurecida. En fondos negros o dorados va C.dorado.
 export const DORADO_TXT = "#8a6f33";
 
+/// Margen lateral de todo el documento. El hero y la banda sangran a los dos
+/// bordes, así que lo aplica cada bloque y no la página.
+const MARGEN = 30;
+
 export const g = StyleSheet.create({
   // El padding de arriba existe para las páginas de continuación, que no
   // llevan hero y si no arrancan pegadas al borde. En la primera lo cancela
@@ -24,110 +34,112 @@ export const g = StyleSheet.create({
   page: {
     backgroundColor: C.blanco,
     fontFamily: "Helvetica",
-    paddingTop: 28,
-    paddingBottom: 50,
+    paddingTop: 30,
+    paddingBottom: 54,
     paddingHorizontal: 0,
-    fontSize: 8.5,
+    fontSize: 10,
     color: C.negro,
   },
   // Hero negro de ancho completo
   hero: {
     backgroundColor: C.negro,
-    marginTop: -28,
-    paddingHorizontal: 34,
-    paddingTop: 20,
-    paddingBottom: 16,
+    marginTop: -30,
+    paddingHorizontal: MARGEN,
+    paddingTop: 24,
+    paddingBottom: 20,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
   },
-  heroLeft: { flex: 1, paddingRight: 14 },
-  heroTag: { fontSize: 6.5, color: C.dorado, textTransform: "uppercase", letterSpacing: 1.6, marginBottom: 5 },
-  heroTitulo: { fontSize: 16, fontFamily: "Helvetica-Bold", color: C.blanco, lineHeight: 1.2 },
-  heroSub: { fontSize: 9.5, color: "#cccccc", marginTop: 4 },
-  heroMeta: { fontSize: 7.5, color: "#777777", marginTop: 3 },
+  heroLeft: { flex: 1, paddingRight: 16 },
+  heroTag: { fontSize: 7.5, color: C.dorado, textTransform: "uppercase", letterSpacing: 2, marginBottom: 7 },
+  heroTitulo: { fontSize: 20, fontFamily: "Helvetica-Bold", color: C.blanco, lineHeight: 1.18 },
+  heroSub: { fontSize: 11, color: "#d6d6d6", marginTop: 6 },
+  heroMeta: { fontSize: 8.5, color: "#8f8f8f", marginTop: 4 },
   heroRight: { alignItems: "flex-end" },
-  heroLogo: { width: 92, height: 26, objectFit: "contain" },
-  heroLogoArtista: { width: 50, height: 50, objectFit: "contain", marginTop: 10 },
+  heroLogo: { width: 100, height: 28, objectFit: "contain" },
+  heroLogoArtista: { width: 54, height: 54, objectFit: "contain", marginTop: 12 },
   // Banda dorada de datos duros
-  banda: { flexDirection: "row", backgroundColor: C.dorado, paddingHorizontal: 34, paddingVertical: 7 },
-  bandaItem: { flex: 1, paddingRight: 6 },
-  bandaLabel: { fontSize: 5.8, color: "#6b4e1a", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 },
-  bandaVal: { fontSize: 10, fontFamily: "Helvetica-Bold", color: C.negro },
-  bandaSub: { fontSize: 6, color: "#6b4e1a", marginTop: 1 },
+  banda: { flexDirection: "row", backgroundColor: C.dorado, paddingHorizontal: MARGEN, paddingVertical: 9 },
+  bandaItem: { flex: 1, paddingRight: 8 },
+  bandaLabel: { fontSize: 7, color: "#5e4315", textTransform: "uppercase", letterSpacing: 1, marginBottom: 2.5 },
+  bandaVal: { fontSize: 12.5, fontFamily: "Helvetica-Bold", color: C.negro },
+  bandaSub: { fontSize: 7.2, color: "#5e4315", marginTop: 1.5 },
   // Cuerpo
-  body: { paddingHorizontal: 34, paddingTop: 16 },
-  seccion: { marginBottom: 14 },
+  body: { paddingHorizontal: MARGEN, paddingTop: 20 },
+  seccion: { marginBottom: 18 },
+  // Un filete dorado en vez del recuadro negro: a esta escala la barra rellena
+  // pesaba más que el contenido que anuncia.
   secTitulo: {
-    fontSize: 7.2, fontFamily: "Helvetica-Bold", color: C.blanco,
-    textTransform: "uppercase", letterSpacing: 1.3,
-    backgroundColor: C.negro, paddingVertical: 4.5, paddingHorizontal: 8, borderRadius: 3,
+    fontSize: 9, fontFamily: "Helvetica-Bold", color: C.negro,
+    textTransform: "uppercase", letterSpacing: 1.6,
+    paddingBottom: 5, borderBottomWidth: 1.2, borderBottomColor: C.dorado, borderBottomStyle: "solid",
   },
-  secNota: { fontSize: 6.8, color: C.grisClaro, marginTop: 4 },
-  secBody: { marginTop: 7 },
+  secNota: { fontSize: 8, color: C.grisMedio, marginTop: 6, lineHeight: 1.45 },
+  secBody: { marginTop: 10 },
   // Pares clave-valor
   kvGrid: { flexDirection: "row", flexWrap: "wrap" },
-  kvLabel: { fontSize: 6.2, color: C.grisClaro, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 1.5 },
-  kvVal: { fontSize: 8.5, color: C.negro, lineHeight: 1.4 },
-  kvLink: { fontSize: 8, color: "#1a73e8" },
-  // Tabla
-  tabla: { width: "100%", borderWidth: 0.5, borderColor: C.grisLinea, borderStyle: "solid", borderRadius: 3 },
+  kvLabel: { fontSize: 7.2, color: C.grisMedio, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 },
+  kvVal: { fontSize: 10, color: C.negro, lineHeight: 1.4 },
+  kvLink: { fontSize: 9.5, color: "#1a73e8" },
+  // Tabla: sin marco ni relleno, las columnas alineadas al margen del cuerpo y
+  // solo filetes horizontales. Lo que separa los renglones es el aire.
+  tabla: { width: "100%" },
   tablaHd: {
-    flexDirection: "row", backgroundColor: C.grisFondo,
-    paddingVertical: 4, paddingHorizontal: 7,
-    borderBottomWidth: 0.5, borderBottomColor: C.grisLinea, borderBottomStyle: "solid",
+    flexDirection: "row",
+    paddingBottom: 5,
+    borderBottomWidth: 1, borderBottomColor: C.negro, borderBottomStyle: "solid",
   },
   tablaHdTxt: {
-    fontSize: 6.2, fontFamily: "Helvetica-Bold", color: C.grisMedio,
-    textTransform: "uppercase", letterSpacing: 0.5,
-  },
-  tablaFila: {
-    flexDirection: "row", paddingVertical: 4.5, paddingHorizontal: 7,
-    borderBottomWidth: 0.3, borderBottomColor: "#f0f0f0", borderBottomStyle: "solid",
-    alignItems: "flex-start",
-  },
-  tablaFilaAlt: { backgroundColor: "#fafafa" },
-  tablaGrupo: {
-    flexDirection: "row", backgroundColor: "#f1f1f1",
-    paddingVertical: 3.2, paddingHorizontal: 7,
-    borderBottomWidth: 0.5, borderBottomColor: C.grisLinea, borderBottomStyle: "solid",
-  },
-  tablaGrupoTxt: {
-    fontSize: 6.4, fontFamily: "Helvetica-Bold", color: C.negro,
+    fontSize: 7.2, fontFamily: "Helvetica-Bold", color: C.negro,
     textTransform: "uppercase", letterSpacing: 0.8,
   },
-  tablaGrupoChip: { width: 6, height: 6, borderRadius: 1.5, marginRight: 5, marginTop: 0.6 },
-  celda: { fontSize: 8.2, color: C.negro, lineHeight: 1.35 },
-  celdaFuerte: { fontSize: 8.4, fontFamily: "Helvetica-Bold", color: C.negro },
-  celdaSub: { fontSize: 6.6, color: C.grisMedio, marginTop: 1, lineHeight: 1.35 },
+  tablaFila: {
+    flexDirection: "row", paddingVertical: 6.5,
+    borderBottomWidth: 0.4, borderBottomColor: "#e2e2e2", borderBottomStyle: "solid",
+    alignItems: "flex-start",
+  },
+  tablaGrupo: {
+    flexDirection: "row", alignItems: "center",
+    paddingTop: 13, paddingBottom: 5,
+    borderBottomWidth: 0.6, borderBottomColor: C.grisLinea, borderBottomStyle: "solid",
+  },
+  tablaGrupoTxt: {
+    fontSize: 8.2, fontFamily: "Helvetica-Bold", color: C.negro,
+    textTransform: "uppercase", letterSpacing: 1.1,
+  },
+  tablaGrupoChip: { width: 7, height: 7, borderRadius: 2, marginRight: 6 },
+  celda: { fontSize: 9.8, color: C.negro, lineHeight: 1.35 },
+  celdaFuerte: { fontSize: 10, fontFamily: "Helvetica-Bold", color: C.negro },
+  celdaSub: { fontSize: 8.2, color: C.grisMedio, marginTop: 1.5, lineHeight: 1.35 },
   // Caja de nota
   nota: {
-    backgroundColor: "#fffbf2", borderLeftWidth: 2.5, borderLeftColor: C.dorado, borderLeftStyle: "solid",
-    paddingVertical: 7, paddingHorizontal: 9, borderRadius: 2, marginBottom: 7,
+    backgroundColor: "#fffbf2", borderLeftWidth: 3, borderLeftColor: C.dorado, borderLeftStyle: "solid",
+    paddingVertical: 9, paddingHorizontal: 11, borderRadius: 2, marginBottom: 9,
   },
   notaLabel: {
-    fontSize: 6.2, fontFamily: "Helvetica-Bold", color: DORADO_TXT,
-    textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 3,
+    fontSize: 7.2, fontFamily: "Helvetica-Bold", color: DORADO_TXT,
+    textTransform: "uppercase", letterSpacing: 1, marginBottom: 4,
   },
-  notaTxt: { fontSize: 8.4, color: C.negro, lineHeight: 1.55 },
+  notaTxt: { fontSize: 10, color: C.negro, lineHeight: 1.5 },
   // Caja de alerta (lo que falta)
   alerta: {
-    backgroundColor: C.rojoFondo, borderLeftWidth: 2.5, borderLeftColor: C.rojo, borderLeftStyle: "solid",
-    paddingVertical: 7, paddingHorizontal: 9, borderRadius: 2, marginBottom: 7,
+    backgroundColor: C.rojoFondo, borderLeftWidth: 3, borderLeftColor: C.rojo, borderLeftStyle: "solid",
+    paddingVertical: 9, paddingHorizontal: 11, borderRadius: 2, marginBottom: 9,
   },
   alertaLabel: {
-    fontSize: 6.2, fontFamily: "Helvetica-Bold", color: C.rojo,
-    textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 3,
+    fontSize: 7.2, fontFamily: "Helvetica-Bold", color: C.rojo,
+    textTransform: "uppercase", letterSpacing: 1, marginBottom: 4,
   },
-  alertaItem: { fontSize: 8.2, color: C.negro, lineHeight: 1.5 },
-  vacio: { fontSize: 8, color: C.grisClaro, fontStyle: "italic" },
+  alertaItem: { fontSize: 9.8, color: C.negro, lineHeight: 1.5 },
+  vacio: { fontSize: 9.5, color: C.grisMedio, fontStyle: "italic" },
   // Pie fijo
   pie: {
-    position: "absolute", bottom: 16, left: 34, right: 34,
+    position: "absolute", bottom: 18, left: MARGEN, right: MARGEN,
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    borderTopWidth: 0.5, borderTopColor: C.grisLinea, borderTopStyle: "solid", paddingTop: 5,
+    borderTopWidth: 0.5, borderTopColor: C.grisLinea, borderTopStyle: "solid", paddingTop: 6,
   },
-  pieTxt: { fontSize: 6.3, color: C.grisClaro },
+  pieTxt: { fontSize: 7.2, color: C.grisMedio },
 });
 
 // ── Hero ──────────────────────────────────────────────────────────────────────
@@ -233,7 +245,8 @@ export function Datos({ datos }: { datos: Dato[] }) {
 
 export interface ColumnaTabla {
   label: string;
-  /// Ancho fijo en puntos; si falta, la columna reparte el resto con `flex`.
+  /// Ancho fijo en puntos a la escala vieja de 8.2 pt; `estiloColumna` lo crece
+  /// con la letra. Si falta, la columna reparte el resto con `flex`.
   ancho?: number;
   flex?: number;
   alinear?: "left" | "right" | "center";
@@ -252,15 +265,18 @@ export type RenglonTabla =
   | { tipo: "grupo"; clave: string; texto: string; color?: string | null }
   | { tipo: "fila"; clave: string; celdas: CeldaTabla[] };
 
+/// Los anchos fijos de cada documento (teléfonos, horas, fechas) se midieron
+/// para la celda de 8.2 pt. Al crecer la letra se crecen con ella en un solo
+/// lugar, para no reescribir cuarenta números a ojo en cinco archivos.
+const ESCALA_ANCHO = 1.2;
+
 function estiloColumna(c: ColumnaTabla): { width?: number; flex?: number; paddingRight: number } {
-  if (c.ancho) return { width: c.ancho, paddingRight: 4 };
-  return { flex: c.flex ?? 1, paddingRight: 4 };
+  if (c.ancho) return { width: Math.round(c.ancho * ESCALA_ANCHO), paddingRight: 6 };
+  return { flex: c.flex ?? 1, paddingRight: 6 };
 }
 
 export function Tabla({ columnas, renglones }: { columnas: ColumnaTabla[]; renglones: RenglonTabla[] }) {
   if (renglones.length === 0) return <Text style={g.vacio}>Sin renglones todavía.</Text>;
-
-  let alterna = 0;
 
   return (
     <View style={g.tabla}>
@@ -274,7 +290,6 @@ export function Tabla({ columnas, renglones }: { columnas: ColumnaTabla[]; rengl
 
       {renglones.map((r) => {
         if (r.tipo === "grupo") {
-          alterna = 0;
           return (
             <View key={r.clave} style={g.tablaGrupo} wrap={false}>
               {r.color ? <View style={[g.tablaGrupoChip, { backgroundColor: r.color }]} /> : null}
@@ -282,9 +297,8 @@ export function Tabla({ columnas, renglones }: { columnas: ColumnaTabla[]; rengl
             </View>
           );
         }
-        const impar = alterna++ % 2 === 1;
         return (
-          <View key={r.clave} style={impar ? [g.tablaFila, g.tablaFilaAlt] : g.tablaFila} wrap={false}>
+          <View key={r.clave} style={g.tablaFila} wrap={false}>
             {columnas.map((c, i) => {
               const celda = r.celdas[i] ?? { texto: "" };
               return (

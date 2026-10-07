@@ -20,6 +20,32 @@
  */
 
 import { useMemo, useRef, useState } from "react";
+import {
+  BookOpen,
+  CalendarDays,
+  ClipboardCheck,
+  CircleAlert,
+  Download,
+  Eye,
+  FileMusic,
+  FileSignature,
+  FileText,
+  Landmark,
+  LayoutGrid,
+  Link2,
+  Link2Off,
+  ListMusic,
+  // `Map` a secas tapa el Map del lenguaje, que este archivo usa para contar.
+  Map as MapIcon,
+  Paperclip,
+  Plane,
+  SlidersHorizontal,
+  Trash2,
+  Upload,
+  Users,
+  Utensils,
+  type LucideIcon,
+} from "lucide-react";
 import { upload } from "@vercel/blob/client";
 import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
@@ -89,12 +115,14 @@ const DOCS_GIRA = [
     slug: "rider",
     label: "Rider técnico",
     descripcion: "Lo que pide el artista, con prioridad y quién lo pone. Dos páginas: equipo e input/output list.",
+    icono: FileMusic,
     necesitaRider: true,
   },
   {
     slug: "input-list",
     label: "Input y output list",
     descripcion: "Solo las dos listas de canales. Es lo que pide el ingeniero del venue para parchar.",
+    icono: SlidersHorizontal,
     necesitaRider: true,
   },
   {
@@ -102,6 +130,7 @@ const DOCS_GIRA = [
     label: "Setlist",
     descripcion:
       "El repertorio por bloques con duración, tono, BPM, track y los cues de audio, luces y video. Aquí sale el base de la gira; el de una fecha se baja desde su pestaña Setlist.",
+    icono: ListMusic,
     necesitaRider: false,
   },
 ] as const;
@@ -109,9 +138,36 @@ const DOCS_GIRA = [
 /// Lo que se reparte de una fecha. El setlist no está a propósito: se baja desde
 /// la pestaña Setlist de ese show, que es donde se arma.
 const DOCS_PLAZA = [
-  { slug: "day-sheet", label: "Day sheet" },
-  { slug: "advance", label: "Advance" },
+  { slug: "day-sheet", label: "Day sheet", icono: CalendarDays },
+  { slug: "advance", label: "Advance", icono: ClipboardCheck },
 ] as const;
+
+/// Un icono por sección del libro y por tipo de archivo: la lista se lee de un
+/// vistazo cuando se busca "el plano" entre doce renglones de texto parejo.
+const ICONO_SECCION: Record<SeccionLibro, LucideIcon> = {
+  resumen: FileText,
+  shows: CalendarDays,
+  crew: Users,
+  logistica: Plane,
+  setlist: ListMusic,
+  advance: ClipboardCheck,
+  pendientes: CircleAlert,
+};
+
+const ICONO_ARCHIVO: Record<string, LucideIcon> = {
+  RIDER_CASA: Landmark,
+  CONTRATO: FileSignature,
+  PLANO: MapIcon,
+  STAGE_PLOT: LayoutGrid,
+  INPUT_LIST: SlidersHorizontal,
+  HOSPITALIDAD: Utensils,
+  OTRO: Paperclip,
+};
+
+function IconoArchivo({ tipo, className }: { tipo: string; className?: string }) {
+  const Icono = ICONO_ARCHIVO[tipo] ?? Paperclip;
+  return <Icono className={className ?? "w-3 h-3 shrink-0"} />;
+}
 
 function etiquetaShow(p: { fecha: string; ciudad: string | null }): string {
   return [fmtFechaCorta(p.fecha), p.ciudad].filter(Boolean).join(" · ");
@@ -139,11 +195,12 @@ export default function DocumentosClient({
   const [ocupado, setOcupado] = useState<string | null>(null);
 
   // ── Libro de gira ──────────────────────────────────────────────────────────
-  // Arranca con todo prendido: el caso normal es bajar el libro completo, y
-  // apagar secciones es lo excepcional. Si se apagan todas se vuelve al libro
-  // completo en vez de emitir un PDF vacío.
-  const [secciones, setSecciones] = useState<SeccionLibro[]>([...SECCIONES_LIBRO]);
+  // Arranca en blanco: el libro se arma eligiendo, no desmarcando. Prender todo
+  // de entrada hacía que el caso normal fuera bajar siete secciones aunque se
+  // quisiera una, y nadie revisa lo que ya viene palomeado.
+  const [secciones, setSecciones] = useState<SeccionLibro[]>([]);
   const libroCompleto = secciones.length === SECCIONES_LIBRO.length;
+  const sinSeccion = secciones.length === 0;
 
   function alternarSeccion(s: SeccionLibro) {
     setSecciones((prev) =>
@@ -153,7 +210,7 @@ export default function DocumentosClient({
 
   /// Sin el parámetro el generador imprime el libro completo, así que solo se
   /// manda cuando de verdad hay un recorte.
-  const queryLibro = libroCompleto || secciones.length === 0 ? null : `secciones=${secciones.join(",")}`;
+  const queryLibro = libroCompleto ? null : `secciones=${secciones.join(",")}`;
 
   function urlLibro(inline: boolean): string {
     const qs = [inline ? "inline=1" : null, queryLibro].filter(Boolean).join("&");
@@ -331,57 +388,83 @@ export default function DocumentosClient({
     <div className="space-y-6">
       {/* ── Libro de gira ── */}
       <section className="space-y-3">
-        <div>
-          <h2 className="ms-h2">Libro de {esGira(giraTipo) ? "gira" : "show"}</h2>
-          <p className="ms-meta mt-1">
-            El documento maestro: todo lo que se planeó aquí, en un solo PDF. Apaga las secciones que no vayan a
-            servir y el libro se recorta — así el tour manager recibe el libro completo y el crew nada más la hoja
-            que le toca, sin inventar otro documento.
-          </p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="ms-h2 flex items-center gap-2">
+              <BookOpen className="w-4 h-4 shrink-0 text-[#B3985B]" />
+              Libro de {esGira(giraTipo) ? "gira" : "show"}
+            </h2>
+            <p className="ms-meta mt-1">
+              El documento maestro: todo lo que se planeó aquí, en un solo PDF. Elige las secciones que vayas a
+              repartir y el libro se arma con esas — así el tour manager recibe el libro completo y el crew nada más
+              la hoja que le toca, sin inventar otro documento.
+            </p>
+          </div>
+          <button
+            className="ms-btn-ghost shrink-0"
+            onClick={() => setSecciones(libroCompleto ? [] : [...SECCIONES_LIBRO])}
+          >
+            {libroCompleto ? "Quitar todas" : "Libro completo"}
+          </button>
         </div>
 
         <div className="ms-card p-4 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {SECCIONES_LIBRO.map((s) => {
               const dentro = secciones.includes(s);
+              const Icono = ICONO_SECCION[s];
               return (
                 <button
                   key={s}
                   onClick={() => alternarSeccion(s)}
-                  className={`text-left rounded-lg border px-3 py-2 transition-colors ${
+                  className={`text-left rounded-lg border px-3 py-2.5 transition-colors ${
                     dentro
                       ? "border-[#B3985B]/40 bg-[#B3985B]/10"
                       : "border-[#1e1e1e] bg-[#0d0d0d] hover:border-[#2a2a2a]"
                   }`}
                 >
-                  <span className={`text-[13px] ${dentro ? "text-[#B3985B]" : "text-[#6b7280]"}`}>
+                  <span className={`flex items-center gap-2 text-[13px] ${dentro ? "text-[#B3985B]" : "text-[#6b7280]"}`}>
+                    <Icono className="w-3.5 h-3.5 shrink-0" />
                     {SECCION_LIBRO_LABEL[s]}
                   </span>
-                  <span className="block ms-meta mt-0.5 leading-relaxed">{SECCION_LIBRO_AYUDA[s]}</span>
+                  <span className="block ms-meta mt-1 leading-relaxed">{SECCION_LIBRO_AYUDA[s]}</span>
                 </button>
               );
             })}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-[#1a1a1a]">
+          <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-[#1a1a1a]">
             <p className="ms-meta flex-1 min-w-[200px]">
-              {libroCompleto
-                ? `Libro completo · ${SECCIONES_LIBRO.length} secciones`
-                : secciones.length === 0
-                  ? "No queda ninguna sección prendida: se emitirá el libro completo."
+              {sinSeccion
+                ? "Elige al menos una sección para emitir el libro."
+                : libroCompleto
+                  ? `Libro completo · ${SECCIONES_LIBRO.length} secciones`
                   : `${secciones.length} de ${SECCIONES_LIBRO.length} secciones`}
             </p>
-            <a className="ms-btn-secondary" href={urlLibro(true)} target="_blank" rel="noreferrer">
+            <a
+              className={`ms-btn-secondary inline-flex items-center gap-1.5 ${sinSeccion ? "pointer-events-none opacity-40" : ""}`}
+              aria-disabled={sinSeccion}
+              href={urlLibro(true)}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <Eye className="w-3.5 h-3.5 shrink-0" />
               Ver
             </a>
-            <a className="ms-btn-ghost" href={urlLibro(false)}>
+            <a
+              className={`ms-btn-ghost inline-flex items-center gap-1.5 ${sinSeccion ? "pointer-events-none opacity-40" : ""}`}
+              aria-disabled={sinSeccion}
+              href={urlLibro(false)}
+            >
+              <Download className="w-3.5 h-3.5 shrink-0" />
               Descargar
             </a>
             <button
-              className="ms-btn-ghost"
-              disabled={ocupado === "gira:libro-gira"}
+              className="ms-btn-ghost inline-flex items-center gap-1.5"
+              disabled={sinSeccion || ocupado === "gira:libro-gira"}
               onClick={() => compartirDeGira("libro-gira", queryLibro)}
             >
+              <Link2 className="w-3.5 h-3.5 shrink-0" />
               {ocupado === "gira:libro-gira" ? "Generando…" : "Copiar enlace"}
             </button>
           </div>
@@ -391,7 +474,10 @@ export default function DocumentosClient({
       {/* ── Documentos generales ── */}
       <section className="space-y-3">
         <div>
-          <h2 className="ms-h2">Documentos de la gira</h2>
+          <h2 className="ms-h2 flex items-center gap-2">
+            <FileText className="w-4 h-4 shrink-0 text-[#B3985B]" />
+            Documentos de la gira
+          </h2>
           <p className="ms-meta mt-1">
             {rider
               ? `El rider y las listas salen de ${rider.nombre} · versión ${rider.version}${riderHeredado ? " (rider activo del artista, no está enganchado a este registro)" : ""}. El setlist sale del repertorio capturado en la pestaña de Setlist.`
@@ -402,27 +488,38 @@ export default function DocumentosClient({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           {DOCS_GIRA.filter((d) => rider || !d.necesitaRider).map((d) => (
             <div key={d.slug} className="ms-card p-4 flex flex-col gap-3">
-              <div>
-                <p className="text-sm font-medium text-white">{d.label}</p>
-                <p className="ms-meta mt-1 leading-relaxed">{d.descripcion}</p>
+              <div className="flex items-start gap-3">
+                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#B3985B]/30 bg-[#B3985B]/10">
+                  <d.icono className="w-4 h-4 text-[#B3985B]" />
+                </span>
+                <div>
+                  <p className="text-sm font-medium text-white">{d.label}</p>
+                  <p className="ms-meta mt-1 leading-relaxed">{d.descripcion}</p>
+                </div>
               </div>
               <div className="flex flex-wrap items-center gap-2 mt-auto">
                 <a
-                  className="ms-btn-secondary"
+                  className="ms-btn-secondary inline-flex items-center gap-1.5"
                   href={`/api/giras/${giraId}/documentos/${d.slug}?inline=1`}
                   target="_blank"
                   rel="noreferrer"
                 >
+                  <Eye className="w-3.5 h-3.5 shrink-0" />
                   Ver
                 </a>
-                <a className="ms-btn-ghost" href={`/api/giras/${giraId}/documentos/${d.slug}`}>
+                <a
+                  className="ms-btn-ghost inline-flex items-center gap-1.5"
+                  href={`/api/giras/${giraId}/documentos/${d.slug}`}
+                >
+                  <Download className="w-3.5 h-3.5 shrink-0" />
                   Descargar
                 </a>
                 <button
-                  className="ms-btn-ghost"
+                  className="ms-btn-ghost inline-flex items-center gap-1.5"
                   disabled={ocupado === `gira:${d.slug}`}
                   onClick={() => compartirDeGira(d.slug)}
                 >
+                  <Link2 className="w-3.5 h-3.5 shrink-0" />
                   {ocupado === `gira:${d.slug}` ? "Generando…" : "Copiar enlace"}
                 </button>
               </div>
@@ -445,7 +542,8 @@ export default function DocumentosClient({
               Hay un enlace público activo para el libro de gira, el rider, las listas de canales y el setlist.
               Caduca en 180 días desde que se generó.
             </p>
-            <button className="ms-btn-ghost shrink-0" onClick={revocarGira}>
+            <button className="ms-btn-ghost shrink-0 inline-flex items-center gap-1.5" onClick={revocarGira}>
+              <Link2Off className="w-3.5 h-3.5 shrink-0" />
               Revocar enlace
             </button>
           </div>
@@ -455,7 +553,10 @@ export default function DocumentosClient({
       {/* ── Documentos por show ── */}
       <section className="space-y-3">
         <div>
-          <h2 className="ms-h2">Documentos por show</h2>
+          <h2 className="ms-h2 flex items-center gap-2">
+            <CalendarDays className="w-4 h-4 shrink-0 text-[#B3985B]" />
+            Documentos por show
+          </h2>
           <p className="ms-meta mt-1">
             El day sheet y el advance hablan de una fecha, así que se emiten desde el renglón del show; el setlist de
             aquí es el de esa fecha, y si el show no capturó el suyo sale el base avisándolo. El enlace de un show
@@ -514,25 +615,31 @@ export default function DocumentosClient({
                         {DOCS_PLAZA.map((d) => (
                           <span key={d.slug} className="flex items-center gap-1">
                             <a
-                              className="ms-btn-ghost"
+                              className="ms-btn-ghost inline-flex items-center gap-1.5"
                               href={`/api/gira-shows/${p.id}/documentos/${d.slug}?inline=1`}
                               target="_blank"
                               rel="noreferrer"
                             >
+                              <d.icono className="w-3.5 h-3.5 shrink-0" />
                               {d.label}
                             </a>
                             <button
-                              className="ms-btn-ghost"
+                              className="ms-btn-ghost inline-flex items-center gap-1.5"
                               title={`Copiar enlace público del ${d.label.toLowerCase()}`}
                               disabled={ocupado === `show:${p.id}:${d.slug}`}
                               onClick={() => compartirDeShow(p.id, d.slug)}
                             >
+                              <Link2 className="w-3.5 h-3.5 shrink-0" />
                               {ocupado === `show:${p.id}:${d.slug}` ? "…" : "Enlace"}
                             </button>
                           </span>
                         ))}
                         {tokensShow[p.id] && (
-                          <button className="ms-btn-ghost text-red-400" onClick={() => revocarShow(p.id)}>
+                          <button
+                            className="ms-btn-ghost text-red-400 inline-flex items-center gap-1.5"
+                            onClick={() => revocarShow(p.id)}
+                          >
+                            <Link2Off className="w-3.5 h-3.5 shrink-0" />
                             Revocar
                           </button>
                         )}
@@ -549,7 +656,10 @@ export default function DocumentosClient({
       {/* ── Archivero ── */}
       <section className="space-y-3">
         <div>
-          <h2 className="ms-h2">Archivero</h2>
+          <h2 className="ms-h2 flex items-center gap-2">
+            <Paperclip className="w-4 h-4 shrink-0 text-[#B3985B]" />
+            Archivero
+          </h2>
           <p className="ms-meta mt-1">
             Lo que llega de afuera: el rider del venue, el contrato, el plano del foro, la input list que mandó el
             ingeniero local. Un archivo puede ser general o de un show.
@@ -581,10 +691,11 @@ export default function DocumentosClient({
             </label>
             <div className="flex items-end">
               <button
-                className="ms-btn-primary w-full"
+                className="ms-btn-primary w-full inline-flex items-center justify-center gap-1.5"
                 disabled={subiendo}
                 onClick={() => inputArchivo.current?.click()}
               >
+                <Upload className="w-3.5 h-3.5 shrink-0" />
                 {subiendo ? "Subiendo…" : "Subir archivo"}
               </button>
               <input ref={inputArchivo} type="file" className="hidden" onChange={subir} />
@@ -603,7 +714,11 @@ export default function DocumentosClient({
           <>
             <div className="flex flex-wrap gap-1.5">
               {[...porTipo.entries()].map(([tipo, n]) => (
-                <span key={tipo} className={`ms-badge ${TIPO_ARCHIVO_GIRA_COLOR[tipo] ?? "ms-badge-gray"}`}>
+                <span
+                  key={tipo}
+                  className={`ms-badge inline-flex items-center gap-1 ${TIPO_ARCHIVO_GIRA_COLOR[tipo] ?? "ms-badge-gray"}`}
+                >
+                  <IconoArchivo tipo={tipo} />
                   {TIPO_ARCHIVO_GIRA_LABEL[tipo] ?? tipo} · {n}
                 </span>
               ))}
@@ -626,16 +741,20 @@ export default function DocumentosClient({
                     <tr key={a.id} className="ms-tr">
                       <td className="ms-td">
                         <a
-                          className="text-[13px] text-white hover:text-[#B3985B]"
+                          className="inline-flex items-center gap-2 text-[13px] text-white hover:text-[#B3985B]"
                           href={a.url}
                           target="_blank"
                           rel="noreferrer"
                         >
+                          <IconoArchivo tipo={a.tipo} className="w-3.5 h-3.5 shrink-0 text-[#B3985B]" />
                           {a.nombre}
                         </a>
                       </td>
                       <td className="ms-td">
-                        <span className={`ms-badge ${TIPO_ARCHIVO_GIRA_COLOR[a.tipo] ?? "ms-badge-gray"}`}>
+                        <span
+                          className={`ms-badge inline-flex items-center gap-1 ${TIPO_ARCHIVO_GIRA_COLOR[a.tipo] ?? "ms-badge-gray"}`}
+                        >
+                          <IconoArchivo tipo={a.tipo} />
                           {TIPO_ARCHIVO_GIRA_LABEL[a.tipo] ?? a.tipo}
                         </span>
                       </td>
@@ -645,7 +764,11 @@ export default function DocumentosClient({
                       <td className="ms-td text-[13px] text-[#9ca3af]">{fmtTamano(a.tamanoBytes)}</td>
                       <td className="ms-td text-[13px] text-[#9ca3af]">{fmtFechaCorta(a.createdAt)}</td>
                       <td className="ms-td text-right">
-                        <button className="ms-btn-ghost text-red-400" onClick={() => borrarArchivo(a)}>
+                        <button
+                          className="ms-btn-ghost text-red-400 inline-flex items-center gap-1.5"
+                          onClick={() => borrarArchivo(a)}
+                        >
+                          <Trash2 className="w-3.5 h-3.5 shrink-0" />
                           Quitar
                         </button>
                       </td>
