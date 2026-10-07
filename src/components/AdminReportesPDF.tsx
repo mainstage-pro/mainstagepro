@@ -139,7 +139,7 @@ function SectionBalance({ data }: { data: NonNullable<AdminReportePDFData["balan
       <View style={s.kpiRow}>
         <KpiCard label="Total Activos" value={fmt(data.totalActivos)} sub={`${data.cuentas.length} cuentas`} color={BLUE} />
         <KpiCard label="Total Pasivos" value={fmt(data.totalPasivos)} sub={`${data.pasivos.length} deudas activas`} color={AMBER} />
-        <KpiCard label="Patrimonio Neto" value={fmt(data.patrimonioNeto)} sub="Activos − Pasivos" color={data.patrimonioNeto >= 0 ? GREEN : RED} />
+        <KpiCard label="Patrimonio Neto" value={fmt(data.patrimonioNeto)} sub="Activos - Pasivos" color={data.patrimonioNeto >= 0 ? GREEN : RED} />
         <KpiCard label="Flujo del Mes" value={fmt(data.flujoMes)} color={data.flujoMes >= 0 ? GREEN : RED} />
       </View>
       <View style={s.saludBox}>

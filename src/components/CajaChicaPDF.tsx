@@ -65,7 +65,7 @@ export function CajaChicaPDF({ data }: { data: CajaChicaPDFData }) {
             <Text style={[base.td, { flex: 1.4, paddingRight: 4 }]}>{m.categoria ?? "—"}</Text>
             <Text style={[base.td, { width: 56, paddingRight: 4 }]}>{m.metodoPago ?? "—"}</Text>
             <Text style={[base.tdStrong, { width: 66, textAlign: "right", color: m.esIngreso ? "#16a34a" : "#dc2626" }]}>
-              {m.esIngreso ? "+" : "−"}{fmtMoney(m.monto)}
+              {m.esIngreso ? "+" : "-"}{fmtMoney(m.monto)}
             </Text>
           </View>
         ))}

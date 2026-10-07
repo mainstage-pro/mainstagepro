@@ -510,7 +510,7 @@ export function ReporteVentasMensualPDF({ data }: { data: ReporteVentasPDFData }
                         <BarMonto key={z.zona} label={z.zona} monto={z.monto}
                           pct={z.pct} maxMonto={maxZonaMonto} color={COLORS[i % COLORS.length]} />
                       ))
-                    : <Text style={{ fontSize: 7, color: "#15803d" }}>Sin pérdidas este mes ✓</Text>}
+                    : <Text style={{ fontSize: 7, color: "#15803d" }}>Sin pérdidas este mes</Text>}
                 </>
               )}
             </View>

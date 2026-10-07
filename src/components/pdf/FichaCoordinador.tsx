@@ -554,7 +554,7 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
                       {items.map((p, i) => (
                         <View key={i} style={i < items.length - 1 ? s.tblRow : s.tblRowLast} wrap={false}>
                           <Text style={[s.tblTxt, { flex: 1, fontFamily: 'Helvetica-Bold' }]}>
-                            {p.coordinaEnSitio ? '★ ' : ''}{p.nombre}
+                            {p.coordinaEnSitio ? '† ' : ''}{p.nombre}
                           </Text>
                           <View style={{ flex: 1 }}>
                             <Text style={s.tblTxtMuted}>
@@ -583,7 +583,7 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
               })}
               {data.personal.some(p => p.coordinaEnSitio) && (
                 <Text style={{ fontSize: 6.5, color: '#6b6b6b', marginTop: 3 }}>
-                  ★ coordina en sitio — decide los cambios de montaje y es el único que trata con cliente y venue.
+                  † coordina en sitio — decide los cambios de montaje y es el único que trata con cliente y venue.
                 </Text>
               )}
             </View>
@@ -623,8 +623,8 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
             {[
               { label: "Personal asignado", val: `${personalConf}/${data.personal.length} confirmados` },
               { label: "Equipos confirmados", val: `${equipConf}/${data.equipos.length} confirmados` },
-              { label: "Anticipo", val: anticipo ? (anticipo.montoCobrado >= anticipo.monto ? "Cobrado ✓" : `$${anticipo.montoCobrado.toLocaleString()} / $${anticipo.monto.toLocaleString()}`) : "Sin esquema" },
-              { label: "Liquidación", val: liquidacion ? (liquidacion.montoCobrado >= liquidacion.monto ? "Cobrada ✓" : `$${liquidacion.montoCobrado.toLocaleString()} / $${liquidacion.monto.toLocaleString()}`) : "Sin esquema" },
+              { label: "Anticipo", val: anticipo ? (anticipo.montoCobrado >= anticipo.monto ? "Cobrado" : `$${anticipo.montoCobrado.toLocaleString()} / $${anticipo.monto.toLocaleString()}`) : "Sin esquema" },
+              { label: "Liquidación", val: liquidacion ? (liquidacion.montoCobrado >= liquidacion.monto ? "Cobrada" : `$${liquidacion.montoCobrado.toLocaleString()} / $${liquidacion.monto.toLocaleString()}`) : "Sin esquema" },
               { label: "Checklist operativo", val: checkTotal > 0 ? `${checkOk}/${checkTotal} completados` : "Sin ítems" },
             ].map((item, i, arr) => (
               <View key={i} style={i < arr.length - 1 ? s.tblRow : s.tblRowLast} wrap={false}>

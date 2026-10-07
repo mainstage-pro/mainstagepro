@@ -358,7 +358,7 @@ function ReporteUsuario({ data }: { data: RendimientoReporteData }) {
         <View style={s.col}>
           <SectionTitle label="Vencidas sin completar" />
           <View style={s.tableWrap}>
-            {u.criticas.length === 0 && <View style={s.trow}><Text style={[s.tcell, { flex: 1, color: GREEN }]}>Sin tareas vencidas. ✓</Text></View>}
+            {u.criticas.length === 0 && <View style={s.trow}><Text style={[s.tcell, { flex: 1, color: GREEN }]}>Sin tareas vencidas.</Text></View>}
             {u.criticas.map((t, i) => (
               <View key={t.id} style={i % 2 === 0 ? s.trow : s.trowAlt}>
                 <View style={{ flex: 1 }}>

@@ -519,7 +519,7 @@ function Pagina2({ data }: { data: TareasReporteData }) {
           {/* Urgentes sin completar */}
           {data.urgentesIncompletas.length > 0 && (
             <>
-              <SectionTitle label="🚨  Urgentes Sin Completar" />
+              <SectionTitle label="Urgentes Sin Completar" />
               <View style={[s.tableWrap, { marginBottom: 14 }]}>
                 <View style={[s.thead, { backgroundColor: "#7f1d1d" }]}>
                   <Text style={[s.theadCell, { flex: 1 }]}>Tarea</Text>
@@ -545,7 +545,7 @@ function Pagina2({ data }: { data: TareasReporteData }) {
           {/* Tareas atrasadas */}
           {data.tareasAtrasadasDetalle.length > 0 && (
             <>
-              <SectionTitle label="⏰  Tareas con Vencimiento Superado" />
+              <SectionTitle label="Tareas con Vencimiento Superado" />
               <View style={s.tableWrap}>
                 <View style={[s.thead, { backgroundColor: "#78350f" }]}>
                   <Text style={[s.theadCell, { flex: 1 }]}>Tarea</Text>
@@ -579,7 +579,7 @@ function Pagina2({ data }: { data: TareasReporteData }) {
 
           {data.urgentesIncompletas.length === 0 && data.tareasAtrasadasDetalle.length === 0 && (
             <View style={{ padding: 20, backgroundColor: CREAM, borderRadius: 4, alignItems: "center" }}>
-              <Text style={[s.tcell, { color: GREEN, fontFamily: "Helvetica-Bold", fontSize: 10 }]}>✓</Text>
+              <Text style={[s.tcell, { color: GREEN, fontFamily: "Helvetica-Bold", fontSize: 10 }]}>•</Text>
               <Text style={[s.tcellB, { marginTop: 4 }]}>Sin urgentes ni tareas vencidas</Text>
               <Text style={[s.tcell, { marginTop: 2 }]}>Excelente gestión en el período</Text>
             </View>
@@ -630,7 +630,7 @@ function Pagina2({ data }: { data: TareasReporteData }) {
 
           {usuariosConPendientes.length === 0 && (
             <View style={{ padding: 20, backgroundColor: CREAM, borderRadius: 4, alignItems: "center" }}>
-              <Text style={[s.tcell, { color: GREEN, fontFamily: "Helvetica-Bold", fontSize: 10 }]}>✓</Text>
+              <Text style={[s.tcell, { color: GREEN, fontFamily: "Helvetica-Bold", fontSize: 10 }]}>•</Text>
               <Text style={[s.tcellB, { marginTop: 4 }]}>Todos los colaboradores al día</Text>
               <Text style={[s.tcell, { marginTop: 2 }]}>Sin tareas pendientes en el período</Text>
             </View>

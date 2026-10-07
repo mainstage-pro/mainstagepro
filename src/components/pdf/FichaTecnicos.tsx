@@ -128,12 +128,12 @@ export function FichaTecnicos({ data }: { data: FichaTecnicosData }) {
   const transConDatos = data.transportes.filter(t => t.horaSalida || t.choferNombre || t.vehiculoNombre);
 
   // Construir tabla de horarios — solo mostrar filas con hora
-  type HoraItem = { icon: string; label: string; hora: string; ref: string };
+  type HoraItem = { label: string; hora: string; ref: string };
   const horarios: HoraItem[] = [
-    { icon: "🚗", label: "Salida desde bodega", hora: horaSalida, ref: data.puntoSalidaBodega ?? "" },
-    { icon: "🔧", label: "Llegada / inicio de montaje", hora: horaMontaje, ref: data.lugarEvento ?? "" },
-    { icon: "🎤", label: "Inicio del evento", hora: horaInicio, ref: "En sitio" },
-    { icon: "📦", label: "Fin / desmontaje y salida", hora: horaFin, ref: data.lugarEvento ?? "" },
+    { label: "Salida desde bodega", hora: horaSalida, ref: data.puntoSalidaBodega ?? "" },
+    { label: "Llegada / inicio de montaje", hora: horaMontaje, ref: data.lugarEvento ?? "" },
+    { label: "Inicio del evento", hora: horaInicio, ref: "En sitio" },
+    { label: "Fin / desmontaje y salida", hora: horaFin, ref: data.lugarEvento ?? "" },
   ].filter(h => h.hora);
 
   // Quién manda: el coordinador en sitio sale del personal marcado, no del
@@ -173,7 +173,7 @@ export function FichaTecnicos({ data }: { data: FichaTecnicosData }) {
             <View style={s.horaTable}>
               {horarios.map((h, i) => (
                 <View key={i} style={i < horarios.length - 1 ? s.horaRow : s.horaRowLast} wrap={false}>
-                  <Text style={s.horaIcon}>{h.icon}</Text>
+                  <Text style={s.horaIcon}>•</Text>
                   <Text style={s.horaLabel}>{h.label}</Text>
                   <Text style={s.horaVal}>{h.hora}</Text>
                   {h.ref ? <Text style={s.horaRef}>{h.ref}</Text> : null}
@@ -252,7 +252,7 @@ export function FichaTecnicos({ data }: { data: FichaTecnicosData }) {
               {data.personal.map((p, i) => (
                 <View key={i} style={i < data.personal.length - 1 ? s.contactoRow : s.contactoRowLast} wrap={false}>
                   <Text style={[s.contactoTxt, { flex: 1 }]}>
-                    {p.nombre}{p.coordinaEnSitio ? "  ★" : ""}
+                    {p.nombre}{p.coordinaEnSitio ? "  †" : ""}
                   </Text>
                   <Text style={[s.contactoMuted, { width: 110 }]}>
                     {p.rolEnEvento ?? p.rolTecnico ?? "—"}
@@ -262,7 +262,7 @@ export function FichaTecnicos({ data }: { data: FichaTecnicosData }) {
               ))}
             </View>
             <Text style={{ fontSize: 6.5, color: C.grisClaro, marginTop: 4 }}>
-              ★ coordina en sitio
+              † coordina en sitio
             </Text>
           </View>
         )}

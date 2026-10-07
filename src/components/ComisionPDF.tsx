@@ -405,7 +405,7 @@ export function ComisionPDF({ cotizacion: cot, logoSrc }: Props) {
             {descMonto > 0 ? (
               <View style={s.discountRow}>
                 <Text style={s.discountLbl}>Descuento aplicado ({descPct.toFixed(1)}%)</Text>
-                <Text style={s.discountAmt}>−{fmt(descMonto)}</Text>
+                <Text style={s.discountAmt}>-{fmt(descMonto)}</Text>
               </View>
             ) : null}
             {/* Neto */}

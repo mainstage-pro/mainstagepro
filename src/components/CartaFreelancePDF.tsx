@@ -261,7 +261,7 @@ export function CartaFreelancePDF(p: CartaFreelanceProps) {
             {CHECKBOXES.map(cat => (
               <View key={cat} style={s.checkItem}>
                 <View style={cat === p.categoria ? s.checkBoxFilled : s.checkBox}>
-                  {cat === p.categoria && <Text style={s.checkMark}>✓</Text>}
+                  {cat === p.categoria && <Text style={s.checkMark}>X</Text>}
                 </View>
                 <Text style={[s.checkLabel, cat === p.categoria ? { fontFamily: "Helvetica-Bold" } : {}]}>
                   {PUESTO_LABELS[cat]}

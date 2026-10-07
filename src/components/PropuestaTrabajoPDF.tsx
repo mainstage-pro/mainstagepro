@@ -196,7 +196,7 @@ export function PropuestaTrabajoPDF(p: PropuestaProps) {
               <Text style={s.seccionTitulo}>Beneficios y prestaciones</Text>
               {beneficios.map((b, i) => (
                 <View key={i} style={s.listItem}>
-                  <Text style={s.bullet}>▸</Text>
+                  <Text style={s.bullet}>•</Text>
                   <Text style={s.listText}>{b}</Text>
                 </View>
               ))}

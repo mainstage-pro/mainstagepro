@@ -28,7 +28,7 @@ const ORIGEN_LABEL: Record<string, string> = {
   ASIGNADO: "Asignado",
 };
 const ESTADO_LABEL: Record<string, string> = {
-  LIQUIDADO: "Liquidado ✓",
+  LIQUIDADO: "Liquidado",
   PARCIAL: "Anticipo",
   PENDIENTE: "Pendiente",
 };
@@ -225,7 +225,7 @@ export function ReporteVendedorPDF({ data }: { data: ReporteVendedorData }) {
             </View>
             {data.resumen.alcanzaPiso && (
               <View style={{ backgroundColor: "#14532d", borderRadius: 4, paddingHorizontal: 10, paddingVertical: 6 }}>
-                <Text style={{ fontSize: 7, color: GREEN, fontFamily: "Helvetica-Bold" }}>✓ META ALCANZADA — BONO {data.config.pctBono}%</Text>
+                <Text style={{ fontSize: 7, color: GREEN, fontFamily: "Helvetica-Bold" }}>META ALCANZADA — BONO {data.config.pctBono}%</Text>
               </View>
             )}
           </View>
@@ -303,7 +303,7 @@ export function ReporteVendedorPDF({ data }: { data: ReporteVendedorData }) {
                     </View>
                   ) : (
                     <View style={s.verBadgeOk}>
-                      <Text style={s.verTextOk}>Vendedor ✓</Text>
+                      <Text style={s.verTextOk}>Vendedor</Text>
                     </View>
                   )}
                   {d.esDelegado && d.cotizadorNombre && (

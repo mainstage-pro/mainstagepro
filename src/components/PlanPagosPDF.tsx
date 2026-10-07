@@ -280,7 +280,7 @@ export function PlanPagosPDF({ data }: { data: PlanPagosPDFData }) {
                   {paid && cuota.abono && (
                     <View style={s.abonoRow}>
                       <Text style={s.abonoLabel}>
-                        ✓ {esCobro ? "Cobrado" : "Pagado"} el {fmtShort(cuota.abono.fecha)} · {cuota.abono.metodoPago === "TRANSFERENCIA" ? "Transferencia" : cuota.abono.metodoPago === "EFECTIVO" ? "Efectivo" : cuota.abono.metodoPago}
+                        • {esCobro ? "Cobrado" : "Pagado"} el {fmtShort(cuota.abono.fecha)} · {cuota.abono.metodoPago === "TRANSFERENCIA" ? "Transferencia" : cuota.abono.metodoPago === "EFECTIVO" ? "Efectivo" : cuota.abono.metodoPago}
                         {cuota.abono.notas ? ` · ${cuota.abono.notas}` : ""}
                       </Text>
                       <Text style={s.abonoValue}>{fmt(cuota.abono.monto)}</Text>

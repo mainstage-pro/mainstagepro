@@ -1001,7 +1001,7 @@ function PaginaEjecucionCampanas({ d, gen }: { d: ReporteMarketingData; gen: str
                 <Text style={[s.tcellB, { width: 72, textAlign: "right", color: GOLD }]}>{e.presupuesto ? fmxMXN(e.presupuesto) : "—"}</Text>
                 <Text style={[s.tcell, { width: 80, textAlign: "center", fontSize: 6.5 }]}>
                   {new Date(e.fechaInicio).toLocaleDateString("es-MX", { day: "2-digit", month: "short", timeZone: "America/Mexico_City" })}
-                  {" → "}
+                  {" » "}
                   {new Date(e.fechaFin).toLocaleDateString("es-MX", { day: "2-digit", month: "short", timeZone: "America/Mexico_City" })}
                 </Text>
                 <Text style={[s.tcell, { width: 62, textAlign: "center", color: CAMP_EST_COLORS[e.estado] ?? GRAY }]}>
@@ -1111,7 +1111,7 @@ function PaginaResultadosCampanas({ d, gen }: { d: ReporteMarketingData; gen: st
         {ejs.length === 0 ? (
           <View style={[s.analisisBox, { borderLeftColor: "#6b7280" }]}>
             <Text style={[s.analisisText, { fontFamily: "Helvetica-Oblique", color: LIGHT }]}>
-              No hay campañas con resultados para {d.mesLabel}. Los KPIs se registran en Publicidad → Campañas.
+              No hay campañas con resultados para {d.mesLabel}. Los KPIs se registran en Publicidad » Campañas.
             </Text>
           </View>
         ) : (

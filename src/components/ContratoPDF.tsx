@@ -700,7 +700,7 @@ export function ContratoPDF({ trato, cotizacion, appUrl = "", logoSrc }: Contrat
                 {cotizacion!.descuentoTotalPct > 0 && (
                   <View style={s.resFila}>
                     <Text style={s.resLabel}>Descuento ({cotizacion!.descuentoTotalPct.toFixed(1)}%)</Text>
-                    <Text style={{ ...s.resMonto, ...s.resDescuento }}>−{fmtMXN(cotizacion!.montoDescuento)}</Text>
+                    <Text style={{ ...s.resMonto, ...s.resDescuento }}>-{fmtMXN(cotizacion!.montoDescuento)}</Text>
                   </View>
                 )}
                 {cotizacion!.aplicaIva && (

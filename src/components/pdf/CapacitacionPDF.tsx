@@ -95,7 +95,7 @@ export function CapacitacionModuloPDF({ data }: { data: ModuloPDFData }) {
           <Text style={s.h2}>PRERREQUISITOS</Text>
           {data.prerrequisitos.map((p, i) => (
             <View key={i} style={s.li} wrap={false}>
-              <Text style={s.liBullet}>◆</Text>
+              <Text style={s.liBullet}>•</Text>
               <Text style={s.liText}>{p}</Text>
             </View>
           ))}
@@ -107,7 +107,7 @@ export function CapacitacionModuloPDF({ data }: { data: ModuloPDFData }) {
           <Text style={s.h2}>OBJETIVOS DE APRENDIZAJE</Text>
           {data.objetivos.map((o, i) => (
             <View key={i} style={s.li} wrap={false}>
-              <Text style={s.liBullet}>◆</Text>
+              <Text style={s.liBullet}>•</Text>
               <Text style={s.liText}>{o}</Text>
             </View>
           ))}
@@ -143,7 +143,7 @@ export function CapacitacionModuloPDF({ data }: { data: ModuloPDFData }) {
           <Text style={s.h2}>ERRORES COMUNES</Text>
           {data.erroresComunes.map((p, i) => (
             <View key={i} style={s.li} wrap={false}>
-              <Text style={s.liBullet}>✕</Text>
+              <Text style={s.liBullet}>×</Text>
               <Text style={s.liText}>{p}</Text>
             </View>
           ))}
@@ -155,7 +155,7 @@ export function CapacitacionModuloPDF({ data }: { data: ModuloPDFData }) {
           <Text style={s.h2}>CHECKLIST DE APLICACIÓN</Text>
           {data.checklistAplicacion.map((p, i) => (
             <View key={i} style={s.li} wrap={false}>
-              <Text style={s.liBullet}>☐</Text>
+              <Text style={s.liBullet}>[ ]</Text>
               <Text style={s.liText}>{p}</Text>
             </View>
           ))}
@@ -167,7 +167,7 @@ export function CapacitacionModuloPDF({ data }: { data: ModuloPDFData }) {
           <Text style={s.h2}>RECURSOS Y ENLACES</Text>
           {data.recursos.map((p, i) => (
             <View key={i} style={s.li} wrap={false}>
-              <Text style={s.liBullet}>→</Text>
+              <Text style={s.liBullet}>»</Text>
               <Text style={s.liText}>{p}</Text>
             </View>
           ))}

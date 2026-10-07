@@ -444,7 +444,7 @@ function Pagina1({ data }: { data: EstadoResultadosData }) {
           </Text>
           {varIngresos !== null && (
             <Text style={{ fontSize: 7, color: varIngresos >= 0 ? GREEN : RED, marginTop: 2 }}>
-              {varIngresos >= 0 ? "▲" : "▼"} {Math.abs(varIngresos).toFixed(1)}% vs mes anterior
+              {varIngresos >= 0 ? "+" : "-"}{Math.abs(varIngresos).toFixed(1)}% vs mes anterior
             </Text>
           )}
         </View>
@@ -668,7 +668,7 @@ function Pagina2Proyectos({ data }: { data: EstadoResultadosData }) {
                   {p.margenPct.toFixed(0)}%
                 </Text>
                 <Text style={[s.cell, { width: 55, textAlign: "right", color: p.porCobrar > 0 ? AMBER : GRAY3 }]}>
-                  {p.porCobrar > 0 ? fmt(p.porCobrar) : "✓ Liquidado"}
+                  {p.porCobrar > 0 ? fmt(p.porCobrar) : "Liquidado"}
                 </Text>
               </View>
             );
@@ -847,7 +847,7 @@ function Pagina3Analisis({ data }: { data: EstadoResultadosData }) {
             {/* ISR / Cuenta Fiscal */}
             {(a.saldoCuentaFiscalAnterior != null || a.saldoCuentaFiscalActual != null) && (
               <View style={s.isrCard}>
-                <Text style={s.isrTitle}>⚠ CUENTA FISCAL / ISR</Text>
+                <Text style={s.isrTitle}>CUENTA FISCAL / ISR</Text>
                 {a.saldoCuentaFiscalAnterior != null && (
                   <View style={s.isrRow}>
                     <Text style={s.isrLabel}>Saldo cuenta fiscal mes anterior</Text>

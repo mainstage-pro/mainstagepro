@@ -193,7 +193,7 @@ export function ReporteEvaluacion({ data }: { data: ReporteEvaluacionData }) {
                       <View style={s.itemLeft}>
                         <Text style={s.itemLabel}>{it.label}</Text>
                         {resp?.comentario ? <Text style={s.itemComentario}>“{resp.comentario}”</Text> : null}
-                        {est.incidencia ? <Text style={s.incidenciaTag}>● INCIDENCIA</Text> : null}
+                        {est.incidencia ? <Text style={s.incidenciaTag}>• INCIDENCIA</Text> : null}
                       </View>
                       <Text style={[s.badge, badgeStyle]}>{est.label}</Text>
                     </View>

@@ -221,7 +221,7 @@ export function ReciboPagoPDF({ recibo }: { recibo: ReciboData }) {
                 </View>
                 <View style={s.balanceRow}>
                   <Text style={s.balanceLabel}>Este anticipo</Text>
-                  <Text style={[s.balanceValue, { color: GOLD, fontFamily: "Helvetica-Bold" }]}>− {fmt(recibo.monto)}</Text>
+                  <Text style={[s.balanceValue, { color: GOLD, fontFamily: "Helvetica-Bold" }]}>- {fmt(recibo.monto)}</Text>
                 </View>
                 <View style={s.balanceTotalRow}>
                   <Text style={s.balanceTotalLabel}>Saldo restante por pagar</Text>
@@ -243,12 +243,12 @@ export function ReciboPagoPDF({ recibo }: { recibo: ReciboData }) {
                 {recibo.montoAnticipo && recibo.montoAnticipo > 0 && (
                   <View style={s.balanceRow}>
                     <Text style={s.balanceLabel}>Anticipo previo</Text>
-                    <Text style={[s.balanceValue, { color: "#888888" }]}>− {fmt(recibo.montoAnticipo)}</Text>
+                    <Text style={[s.balanceValue, { color: "#888888" }]}>- {fmt(recibo.montoAnticipo)}</Text>
                   </View>
                 )}
                 <View style={s.balanceRow}>
                   <Text style={s.balanceLabel}>Esta liquidación</Text>
-                  <Text style={[s.balanceValue, { color: GOLD, fontFamily: "Helvetica-Bold" }]}>− {fmt(recibo.monto)}</Text>
+                  <Text style={[s.balanceValue, { color: GOLD, fontFamily: "Helvetica-Bold" }]}>- {fmt(recibo.monto)}</Text>
                 </View>
                 <View style={s.balanceTotalRow}>
                   <Text style={s.balanceTotalLabel}>Saldo restante</Text>

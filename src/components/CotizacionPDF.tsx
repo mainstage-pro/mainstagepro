@@ -902,7 +902,7 @@ function TablaEquipos({ lineas, notasSecciones, descCategorias, catLabels, idiom
                 <View key={l.id} style={s.tablaIncluido}>
                   <View style={s.colImg} />
                   <Text style={[s.cellIncluidoMarca, s.colMarca]}>{[l.marca, l.modelo].filter(Boolean).join(" ") || ""}</Text>
-                  <Text style={[s.cellIncluido, s.colDesc]}>✓ {l.descripcion}</Text>
+                  <Text style={[s.cellIncluido, s.colDesc]}>• {l.descripcion}</Text>
                   <Text style={[s.cellIncluido, s.colCant, { textAlign: "center" }]}>{l.cantidad}</Text>
                   <Text style={[s.cellIncluido, s.colDias, { textAlign: "center" }]}>—</Text>
                   <Text style={[s.cellIncluido, s.colPrecio, { textAlign: "right" }]}>{t.incluye}</Text>
@@ -920,7 +920,7 @@ function TablaEquipos({ lineas, notasSecciones, descCategorias, catLabels, idiom
             <View key={l.id} style={s.tablaIncluido}>
               <View style={s.colImg} />
               <Text style={[s.cellIncluidoMarca, s.colMarca]}>{[l.marca, l.modelo].filter(Boolean).join(" ") || ""}</Text>
-              <Text style={[s.cellIncluido, s.colDesc]}>✓ {l.descripcion}</Text>
+              <Text style={[s.cellIncluido, s.colDesc]}>• {l.descripcion}</Text>
               <Text style={[s.cellIncluido, s.colCant, { textAlign: "center" }]}>{l.cantidad}</Text>
               <Text style={[s.cellIncluido, s.colDias, { textAlign: "center" }]}>—</Text>
               <Text style={[s.cellIncluido, s.colPrecio, { textAlign: "right" }]}>{t.incluye}</Text>

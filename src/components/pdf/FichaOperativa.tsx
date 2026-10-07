@@ -827,7 +827,7 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                                 <View key={i} style={i < items.length - 1 ? base.tableRow : base.tableRowLast} wrap={false}>
                                   <View style={{ flex: 1 }}>
                                     <Text style={[base.tdTxt, { fontFamily: "Helvetica-Bold" }]}>
-                                      {p.nombre}{p.coordinaEnSitio ? "  ★ coordina" : ""}
+                                      {p.nombre}{p.coordinaEnSitio ? "  † coordina" : ""}
                                     </Text>
                                     {p.responsabilidad ? (
                                       <Text style={{ fontSize: 7, color: C.grisMedio, marginTop: 1.5 }}>
