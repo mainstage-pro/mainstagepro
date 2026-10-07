@@ -3,12 +3,12 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, MapPin } from "lucide-react";
-import ListaPendientes, {
+import ListaTareasGira, {
   abiertos,
   fechaCorta,
-  usePendientesGira,
+  useTareasGira,
   type Usuario,
-} from "./ListaPendientes";
+} from "./ListaTareasGira";
 
 export interface ShowLigero {
   id: string;
@@ -18,11 +18,11 @@ export interface ShowLigero {
 }
 
 /**
- * Los pendientes de la gira en dos niveles: lo general, que vale para todos los
+ * Las tareas de la gira en dos niveles: lo general, que vale para todos los
  * venues, y una fecha por renglón para lo que cada casa contesta distinto. Solo
  * entra lo que se escribe a mano — nada se siembra.
  */
-export default function PendientesGiraPanel({
+export default function TareasGiraPanel({
   giraId, giraNombre, esTour, shows, usuarios,
 }: {
   giraId: string;
@@ -31,7 +31,7 @@ export default function PendientesGiraPanel({
   shows: ShowLigero[];
   usuarios: Usuario[];
 }) {
-  const { tareas, crear, alternar, upsert, quitar, eliminar } = usePendientesGira(giraId);
+  const { tareas, alternar, upsert, quitar, eliminar } = useTareasGira(giraId);
   // Las fechas nacen colapsadas: con 5 shows, abrir todo es ilegible.
   const [expandidos, setExpandidos] = useState<Set<string>>(new Set());
 
@@ -58,15 +58,15 @@ export default function PendientesGiraPanel({
       {/* ── Avance de toda la gira ───────────────────────────────────────────── */}
       <div className="ms-card rounded-2xl p-5">
         <div className="mb-3">
-          <h3 className="text-white font-semibold text-base">Pendientes de la gira</h3>
+          <h3 className="text-white font-semibold text-base">Tareas de la gira</h3>
           <p className="text-gray-500 text-xs mt-0.5">
-            Escribe y Enter para capturar rápido; haz clic en un pendiente para abrirlo y editarlo
-            (responsable, fechas, comprobación) o borrarlo. Aparece para su responsable en Gestión Operativa.
+            Haz clic en una tarea para abrirla y editarla (responsable, fecha, evidencia).
+            Aparece para su responsable en Gestión Operativa.
           </p>
         </div>
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs text-gray-500">
-            <span>{completadas}/{tareas.length} resueltos</span>
+            <span>{completadas}/{tareas.length} completadas</span>
             <span className={pct === 100 && tareas.length > 0 ? "text-green-400 font-semibold" : "text-[#B3985B]"}>{pct}%</span>
           </div>
           <div className="w-full h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
@@ -89,21 +89,18 @@ export default function PendientesGiraPanel({
           </p>
         </div>
 
-        <div className="ms-card overflow-hidden">
-          <ListaPendientes
-            giraId={giraId}
-            giraNombre={giraNombre}
-            showId={null}
-            showLabel={null}
-            usuarios={usuarios}
-            tareas={tareasDeGira}
-            crear={crear}
-            alternar={alternar}
-            upsert={upsert}
-            quitar={quitar}
-            eliminar={eliminar}
-          />
-        </div>
+        <ListaTareasGira
+          giraId={giraId}
+          giraNombre={giraNombre}
+          showId={null}
+          showLabel={null}
+          usuarios={usuarios}
+          tareas={tareasDeGira}
+          alternar={alternar}
+          upsert={upsert}
+          quitar={quitar}
+          eliminar={eliminar}
+        />
       </section>
 
       {/* ── Por fecha ─────────────────────────────────────────────────────────── */}
@@ -118,7 +115,7 @@ export default function PendientesGiraPanel({
 
           {shows.map(s => {
             const tareasShow = tareas.filter(t => t.giraShowId === s.id);
-            const vivos = abiertos(tareasShow).length;
+            const vivas = abiertos(tareasShow).length;
             const abierto = expandidos.has(s.id);
             const etiquetaFecha = `${fechaCorta(s.fecha)}${s.ciudad ? ` · ${s.ciudad}` : ""}`;
 
@@ -136,8 +133,8 @@ export default function PendientesGiraPanel({
                       </span>
                     )}
                   </div>
-                  <span className={`shrink-0 text-[11px] ${vivos > 0 ? "text-[#B3985B]" : "text-[#444]"}`}>
-                    {vivos > 0 ? `${vivos} pendiente${vivos !== 1 ? "s" : ""}` : "Sin pendientes"}
+                  <span className={`shrink-0 text-[11px] ${vivas > 0 ? "text-[#B3985B]" : "text-[#444]"}`}>
+                    {vivas > 0 ? `${vivas} abierta${vivas !== 1 ? "s" : ""}` : "Sin tareas"}
                   </span>
                   <ChevronDown strokeWidth={2}
                     className={`w-4 h-4 text-[#444] shrink-0 transition-transform ${abierto ? "rotate-180" : ""}`} />
@@ -145,22 +142,24 @@ export default function PendientesGiraPanel({
 
                 {abierto && (
                   <div className="border-t border-[#141414]">
-                    <ListaPendientes
-                      giraId={giraId}
-                      giraNombre={giraNombre}
-                      showId={s.id}
-                      showLabel={etiquetaFecha}
-                      usuarios={usuarios}
-                      tareas={tareasShow}
-                      crear={crear}
-                      alternar={alternar}
-                      upsert={upsert}
-                      quitar={quitar}
-                      eliminar={eliminar}
-                    />
+                    <div className="p-3">
+                      <ListaTareasGira
+                        giraId={giraId}
+                        giraNombre={giraNombre}
+                        showId={s.id}
+                        showLabel={etiquetaFecha}
+                        usuarios={usuarios}
+                        tareas={tareasShow}
+                        alternar={alternar}
+                        upsert={upsert}
+                        quitar={quitar}
+                        eliminar={eliminar}
+                        tarjeta={false}
+                      />
+                    </div>
                     <div className="flex items-center justify-center gap-4 px-4 py-2 border-t border-[#141414]">
                       <Link
-                        href={`/giras/${giraId}/show/${s.id}/pendientes`}
+                        href={`/giras/${giraId}/show/${s.id}/tareas`}
                         className="text-[11px] text-[#B3985B] hover:underline"
                       >
                         Abrir la fecha →

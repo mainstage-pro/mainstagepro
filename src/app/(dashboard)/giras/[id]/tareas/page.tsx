@@ -3,17 +3,17 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { esGira } from "@/lib/giras";
 import BotonDocumentoGira from "@/components/giras/BotonDocumentoGira";
-import PendientesGiraPanel from "@/components/giras/PendientesGiraPanel";
+import TareasGiraPanel from "@/components/giras/TareasGiraPanel";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Los pendientes de la gira: lo general arriba y una fecha por renglón abajo.
+ * Las tareas de la gira: lo general arriba y una fecha por renglón abajo.
  * Son tareas normales (tipoOrigen GIRA), así que se ven igual en Gestión
  * Operativa una vez que tienen fecha y responsable. Nada se siembra: solo entra
  * lo que se escribe aquí.
  */
-export default async function PendientesGiraPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function TareasGiraPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) redirect("/login");
 
@@ -49,26 +49,26 @@ export default async function PendientesGiraPage({ params }: { params: Promise<{
     <div className="ms-page space-y-5 pb-16">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="ms-h1">Pendientes</h1>
+          <h1 className="ms-h1">Tareas</h1>
           <p className="ms-subtitle">
             {tour
-              ? "Lo general de la gira arriba y una fecha por renglón abajo. Escribes el pendiente, Enter, y listo."
-              : "Lo que falta cerrar antes de la fecha. Escribes el pendiente, Enter, y listo."}
+              ? "Lo general de la gira arriba y una fecha por renglón abajo. Cada tarea se abre para asignar responsable, fecha y evidencia."
+              : "Lo que falta cerrar antes de la fecha. Cada tarea se abre para asignar responsable, fecha y evidencia."}
           </p>
         </div>
 
-        {/* La lista de pendientes es una sección del libro de gira: se recorta en
+        {/* La lista de tareas es una sección del libro de gira: se recorta en
             vez de inventar otro documento. */}
         <BotonDocumentoGira
           url={`/api/giras/${id}/documentos/libro-gira`}
           query="secciones=pendientes"
-          label="Pendientes PDF"
-          falta={cuantos === 0 ? "capturar al menos un pendiente" : null}
+          label="Tareas PDF"
+          falta={cuantos === 0 ? "capturar al menos una tarea" : null}
           className="shrink-0 max-w-xs"
         />
       </div>
 
-      <PendientesGiraPanel
+      <TareasGiraPanel
         giraId={id}
         giraNombre={gira.nombre}
         esTour={tour}

@@ -106,8 +106,8 @@ export default async function AdvanceGiraPage({ params }: { params: Promise<{ id
             Esta matriz es para el equipo que se persigue renglón por renglón, y el rider no trae ninguno desglosado
             así. Si de algún bloque sí hace falta el desglose, entra a un show y ármalo desde el rider maestro. Lo que
             haya que perseguir a mano se anota en{" "}
-            <a href={`/giras/${id}/pendientes`} className="text-[#B3985B] hover:underline">
-              Pendientes
+            <a href={`/giras/${id}/tareas`} className="text-[#B3985B] hover:underline">
+              Tareas
             </a>
             .
           </p>

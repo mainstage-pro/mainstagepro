@@ -92,7 +92,7 @@ export default async function ShowLayout({
 
   const enlaces: EnlaceSub[] = [
     { href: `/giras/${id}/show/${showId}`, label: "Resumen", llave: "resumen", exacto: true },
-    { href: `/giras/${id}/show/${showId}/pendientes`, label: "Pendientes", llave: "pendientes" },
+    { href: `/giras/${id}/show/${showId}/tareas`, label: "Tareas", llave: "tareas" },
     { href: `/giras/${id}/show/${showId}/advance`, label: "Advance", llave: "advance" },
     { href: `/giras/${id}/show/${showId}/dia`, label: "Día del show", llave: "dia" },
     { href: `/giras/${id}/show/${showId}/setlist`, label: "Setlist", llave: "setlist" },

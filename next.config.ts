@@ -36,6 +36,9 @@ const nextConfig: NextConfig = {
       },
       // ── Calendario de eventos → Calendarios (módulo con pestañas) ────────────
       { source: "/calendario",               destination: "/calendarios/eventos",       permanent: true },
+      // ── Pendientes de gira → Tareas (son tareas normales, mismo modal) ───────
+      { source: "/giras/:id/pendientes",                 destination: "/giras/:id/tareas",                 permanent: true },
+      { source: "/giras/:id/show/:showId/pendientes",    destination: "/giras/:id/show/:showId/tareas",    permanent: true },
       // ── Proyectos internos → Proyectos de empresa (ruta renombrada) ──────────
       { source: "/proyectos-internos",      destination: "/proyectos-de-empresa",      permanent: true },
       { source: "/proyectos-internos/:id",  destination: "/proyectos-de-empresa/:id",  permanent: true },

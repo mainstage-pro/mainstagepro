@@ -3,11 +3,11 @@ import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { fmtFechaLarga } from "@/lib/giras";
-import PendientesShowPanel from "@/components/giras/PendientesShowPanel";
+import TareasShowPanel from "@/components/giras/TareasShowPanel";
 
 export const dynamic = "force-dynamic";
 
-export default async function PendientesShowPage({
+export default async function TareasShowPage({
   params,
 }: {
   params: Promise<{ id: string; showId: string }>;
@@ -41,21 +41,21 @@ export default async function PendientesShowPage({
     <div className="ms-page space-y-4 pb-16">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="ms-h1">Pendientes de esta fecha</h1>
+          <h1 className="ms-h1">Tareas de esta fecha</h1>
           <p className="ms-subtitle">
             Solo lo de {ciudad ?? "esta fecha"} · {fmtFechaLarga(show.fecha)}
             {show.venue?.nombre ? ` · ${show.venue.nombre}` : ""}
           </p>
         </div>
         <Link
-          href={`/giras/${id}/pendientes`}
+          href={`/giras/${id}/tareas`}
           className="shrink-0 text-[11px] text-[#666] hover:text-[#B3985B]"
         >
-          Ver los de toda la gira →
+          Ver las de toda la gira →
         </Link>
       </div>
 
-      <PendientesShowPanel
+      <TareasShowPanel
         giraId={id}
         giraNombre={show.gira.nombre}
         showId={show.id}

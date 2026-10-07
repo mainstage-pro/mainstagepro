@@ -3928,7 +3928,7 @@ function GirasView({ giras, selectedId, onSelectTarea, onCompleteTarea, onRefres
                 )}
                 <div className="pt-1 px-1">
                   <Link
-                    href={`/giras/${gira.id}/pendientes`}
+                    href={`/giras/${gira.id}/tareas`}
                     onClick={e => e.stopPropagation()}
                     className="text-[11px] text-[#333] hover:text-[#B3985B] transition-colors flex items-center gap-1"
                   >

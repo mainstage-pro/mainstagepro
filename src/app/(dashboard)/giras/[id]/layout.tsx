@@ -58,7 +58,7 @@ export default async function GiraLayout({
     { href: `/giras/${id}/cotizaciones`, label: "Cotizaciones", llave: "cotizaciones" },
     { href: `/giras/${id}/shows`, label: tour ? "Shows" : "Show", llave: "shows" },
     { href: `/giras/${id}/advance`, label: "Advance", llave: "advance" },
-    { href: `/giras/${id}/pendientes`, label: "Pendientes", llave: "pendientes" },
+    { href: `/giras/${id}/tareas`, label: "Tareas", llave: "tareas" },
     { href: `/giras/${id}/crew`, label: "Crew", llave: "crew" },
     { href: `/giras/${id}/logistica`, label: "Viajes y hotel", llave: "logistica" },
     { href: `/giras/${id}/setlist`, label: "Setlist", llave: "setlist" },
