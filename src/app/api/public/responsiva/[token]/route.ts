@@ -31,9 +31,8 @@ export async function GET(req: NextRequest, context: any) {
         tecnicosMap.set(p.tecnicoId, {
           id: p.tecnico.id,
           nombre: p.tecnico.nombre,
-          telefono: p.tecnico.telefono,
+          telefono: p.tecnico.celular,
           roles: [],
-          puesto: p.tecnico.puestoId // we could fetch puesto details if needed
         });
       }
       if (p.rolTecnico) {

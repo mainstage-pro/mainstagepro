@@ -81,6 +81,7 @@ interface Personal {
   esAdicional: boolean;
   necesitaRevision: boolean;
   escenarioId: string | null;
+  tecnicoId: string | null;
   tecnico: { id: string; nombre: string; celular: string | null; rol: { nombre: string } | null } | null;
   // Rol que exige el puesto. Es del slot, no del técnico: un operador de
   // iluminación puede cubrir un puesto de técnico general.
@@ -247,6 +248,8 @@ interface Proyecto {
   infoRecibidoEn: string | null;
   ordenToken: string | null;
   docsToken: string | null;
+  responsivaToken: string | null;
+  responsivas?: { id: string; tecnicoId: string; tipoResponsiva: string; status: string }[];
   /** Avance de los pases de control de carga, para el panel de la orden. */
   cargas?: { id: string; tipo: string; etiqueta: string | null; estado: string; cerradaEn: string | null; avance: { total: number; revisados: number; faltantes: number; danados: number; pct: number } }[];
   notasPortal: string | null;

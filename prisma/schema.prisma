@@ -81,7 +81,7 @@ model User {
   fallasReportadas               FallaEquipo[]         @relation("FallasReportadas")
 
   personalInterno   PersonalInterno?    @relation("PersonalUsuario")
-  ResponsivaTecnico ResponsivaTecnico[]
+  responsivasValidadas ResponsivaTecnico[]
 
   @@map("users")
 }
@@ -833,7 +833,7 @@ model Proyecto {
   escenarios         ProyectoEscenario[]
   sitePlanes         SitePlan[]
   giraShow           GiraShow?
-  ResponsivaTecnico  ResponsivaTecnico[]
+  responsivas        ResponsivaTecnico[]
 
   @@map("proyectos")
 }
@@ -1586,7 +1586,7 @@ model Tecnico {
   pagosNomina         PagoNomina[]
   cargaVerificaciones ProyectoCargaVerificador[]
   giraCrew            GiraCrew[]
-  ResponsivaTecnico   ResponsivaTecnico[]
+  responsivas         ResponsivaTecnico[]
 
   @@map("tecnicos")
 }

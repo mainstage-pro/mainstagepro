@@ -35,10 +35,10 @@ export default function ResponsivasAdminPage(props: { params: Promise<{ id: stri
       body: JSON.stringify({ status, motivoCorreccion })
     });
     if (res.ok) {
-      toast({ title: `Carta ${status.toLowerCase()}`, type: "success" });
+      toast(`Carta ${status.toLowerCase()}`, "success");
       fetchResponsivas();
     } else {
-      toast({ title: "Error al actualizar", type: "error" });
+      toast("Error al actualizar", "error");
     }
   };
 

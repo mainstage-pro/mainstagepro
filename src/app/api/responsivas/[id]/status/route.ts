@@ -5,7 +5,7 @@ import { getSession } from "@/lib/auth";
 export async function PUT(req: NextRequest, context: any) {
   try {
     const session = await getSession();
-    if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
     const { status, motivoCorreccion } = body;

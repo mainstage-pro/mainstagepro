@@ -63,9 +63,9 @@ export default function ResponsivaPage(props: { params: Promise<{ token: string 
         body: JSON.stringify(payload)
       });
       if (res.ok) setSuccess(true);
-      else toast({ title: "Error al enviar", type: "error" });
+      else toast("Error al enviar", "error");
     } catch (e) {
-      toast({ title: "Error de red", type: "error" });
+      toast("Error de red", "error");
     } finally {
       setEnviando(false);
     }
