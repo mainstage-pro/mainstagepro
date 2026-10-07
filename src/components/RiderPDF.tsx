@@ -69,6 +69,8 @@ export type RiderPDFData = {
   contactosEmergencia: string | null
   esRenta?: boolean
   modalidadEntrega?: string | null
+  /** El servicio contratado, para que bodega no prepare una salida con el criterio de otro. */
+  selloServicio?: string | null
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
@@ -89,6 +91,7 @@ const s = StyleSheet.create({
   logo:       { width: 90, height: 24, objectFit: 'contain' },
   headerRight:{ alignItems: 'flex-end' },
   headerTitle:{ fontSize: 9, color: GOLD, letterSpacing: 3, textTransform: 'uppercase', fontFamily: 'Helvetica-Bold' },
+  headerSello:{ fontSize: 7.5, color: INK5, letterSpacing: 1.2, textTransform: 'uppercase', fontFamily: 'Helvetica-Bold', marginTop: 3 },
   headerSub:  { fontSize: 14, color: INK1, fontFamily: 'Helvetica-Bold', marginTop: 2 },
   headerDate: { fontSize: 8, color: INK5, marginTop: 3 },
   // Panel de datos del evento — una sola caja con columnas alineadas
@@ -272,6 +275,9 @@ export function RiderPDF({ data }: { data: RiderPDFData }) {
           }
           <View style={s.headerRight}>
             <Text style={s.headerTitle}>Lista de Carga</Text>
+            {data.selloServicio && (
+              <Text style={s.headerSello}>{data.selloServicio}</Text>
+            )}
             <Text style={s.headerSub}>{data.nombre}</Text>
             {data.fechaEvento && (
               <Text style={s.headerDate}>{fmtFecha(data.fechaEvento)}</Text>

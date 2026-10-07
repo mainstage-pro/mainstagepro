@@ -20,6 +20,7 @@ import { CronologiaEvento } from "./CronologiaEvento";
 import { construirCronologia, BloqueTiempo } from "@/lib/cronologia-evento";
 import { cadenaDeMando, parseReglasMando } from "@/lib/cadena-mando";
 import { frenteLabel } from "@/lib/frentes-produccion";
+import { selloDeServicio } from "@/lib/servicios-trato";
 
 const s = StyleSheet.create({
   // Sección numerada con badge negro
@@ -184,6 +185,8 @@ export interface CheckItemFlat { item: string; completado: boolean; tipo: string
 export interface FichaOperativaData {
   nombre: string; numeroProyecto: string; estado: string;
   tipoEvento: string; tipoServicio: string | null; zona: string;
+  /** JSON de logística de renta: da el nivel contratado para el sello del servicio. */
+  logisticaRenta: string | null;
   fechaEvento: string | null;
   fechasEvento: string | null;
   horariosEvento: string | null;
@@ -296,6 +299,8 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
     data.escenarioAccesos || data.escenarioProveedor || data.escenarioNotas
   );
 
+  const sello = selloDeServicio(data.tipoServicio, data.logisticaRenta);
+
   let seccion = 0;
   const sec = (titulo: string) => { seccion++; return String(seccion); };
 
@@ -312,7 +317,7 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
             <Text style={base.heroNombre}>{data.nombre}</Text>
             <Text style={base.heroMeta}>
               {data.cliente.nombre}{data.cliente.empresa ? ` · ${data.cliente.empresa}` : ""}
-              {data.tipoServicio ? ` · ${MAPS.TIPO_SERVICIO_MAP[data.tipoServicio] ?? data.tipoServicio}` : ""}
+              {sello ? ` · ${sello}` : ""}
             </Text>
           </View>
           {data.logoSrc && <Image src={data.logoSrc} style={base.heroLogo} />}

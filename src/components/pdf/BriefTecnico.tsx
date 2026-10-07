@@ -9,6 +9,7 @@ import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/render
 import { CronologiaEvento } from "./CronologiaEvento";
 import { construirCronologia, BloqueTiempo } from "@/lib/cronologia-evento";
 import { fmt24to12 } from "@/lib/hora";
+import { selloDeServicio } from "@/lib/servicios-trato";
 
 // ─── Estilos locales B&W ──────────────────────────────────────────────────────
 const s = StyleSheet.create({
@@ -235,16 +236,8 @@ export function BriefTecnico({ proyecto, logoSrc }: BriefTecnicoData) {
     EMPRESARIAL: "Empresarial",
     OTRO: "Otro",
   };
-  const TIPO_SERVICIO_MAP: Record<string, string> = {
-    PRODUCCION_TECNICA: "Producción técnica integral",
-    RENTA: "Renta de equipo",
-    DIRECCION_TECNICA: "Dirección y operaciones",
-  };
-
   const tipoEventoLabel = TIPO_EVENTO_MAP[p.tipoEvento] ?? p.tipoEvento;
-  const tipoServicioLabel = p.tipoServicio
-    ? (TIPO_SERVICIO_MAP[p.tipoServicio] ?? p.tipoServicio)
-    : null;
+  const tipoServicioLabel = selloDeServicio(p.tipoServicio);
 
   // Cliente
   const clienteStr = p.cliente.empresa
@@ -340,7 +333,9 @@ export function BriefTecnico({ proyecto, logoSrc }: BriefTecnicoData) {
           <View style={s.headerLeft}>
             {logoSrc && <Image src={logoSrc} style={s.logoImg} />}
             <Text style={s.headerTitle}>INFO PARA TÉCNICOS</Text>
-            <Text style={s.headerSub}>Generales del evento · Equipo técnico</Text>
+            <Text style={s.headerSub}>
+              Generales del evento · {tipoServicioLabel ?? "Equipo técnico"}
+            </Text>
           </View>
           <View style={s.headerRight}>
             <Text style={s.headerProyecto}>{p.numeroProyecto}</Text>

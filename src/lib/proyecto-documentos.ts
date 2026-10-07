@@ -5,6 +5,8 @@
 // proyecto tenga sentido. `bloqueos` impide la descarga (el PDF saldría vacío o
 // sería peligroso operarlo); `advertencias` deja descargar pero avisa.
 
+import { espejoDeServicio, nivelDeRenta, rentaConMontaje } from "@/lib/servicios-trato";
+
 export type TipoDocumento =
   | "FICHA_OPERATIVA"
   | "HOJA_ENTREGA"
@@ -19,6 +21,8 @@ export const DOCUMENTO_LABELS: Record<TipoDocumento, string> = {
 };
 
 export interface ProyectoDocumentoInput {
+  /** Valor espejo de `Proyecto.tipoServicio`: decide qué le puede faltar. */
+  tipoServicio: string | null;
   lugarEvento: string | null;
   direccionVenue: string | null;
   linkMaps: string | null;
@@ -76,6 +80,18 @@ function modalidadEntrega(raw: string | null): { modalidad: string; direccion: s
   }
 }
 
+/** Hay gente nuestra montando y operando: la ficha operativa aplica completa. */
+function operamosEnSitio(p: ProyectoDocumentoInput): boolean {
+  if (p.tipoServicio !== espejoDeServicio("RENTA")) return true;
+  return rentaConMontaje(p.logisticaRenta);
+}
+
+/** Alguien de la casa llega al lugar, aunque sea nada más a dejar el equipo. */
+function vamosAlSitio(p: ProyectoDocumentoInput): boolean {
+  if (p.tipoServicio !== espejoDeServicio("RENTA")) return true;
+  return nivelDeRenta(p.logisticaRenta) !== "SOLO_RENTA";
+}
+
 export function requisitosDocumento(
   tipo: TipoDocumento,
   p: ProyectoDocumentoInput
@@ -114,28 +130,34 @@ export function requisitosDocumento(
     case "FICHA_OPERATIVA": {
       if (sinVenue) advertencias.push("Falta el lugar del evento");
       if (p.equiposCount === 0) advertencias.push("No hay equipo cargado");
-      if (p.personalCount === 0) advertencias.push("No hay técnicos asignados al proyecto");
-      if (falta(p.encargadoNombre)) advertencias.push("Falta el coordinador de producción");
-      if (sinComoLlegar) advertencias.push("Falta dirección del venue o link de Maps");
-      if (sinMontaje) advertencias.push("Falta fecha u hora de montaje");
       if (sinContactoEnSitio) advertencias.push("Sin encargado del lugar ni del cliente");
-      if (p.coordinadoresEnSitio === 0)
-        advertencias.push("Nadie está marcado como coordinador en sitio: el equipo no sabría a quién obedecer");
-      if (p.coordinadoresEnSitio > 1)
-        advertencias.push(`${p.coordinadoresEnSitio} técnicos marcados como coordinador en sitio: debe ser uno solo`);
       if (p.proveedoresSinResponsable > 0)
         advertencias.push(`${p.proveedoresSinResponsable} proveedor(es) sin responsable asignado de la casa`);
       if (p.llevaEscenario && falta(p.escenarioAccesos))
         advertencias.push("Escenario sin bajadas definidas: no sabemos cuántas escaleras ni dónde van");
       if (p.llevaEscenario && falta(p.escenarioMedidas))
         advertencias.push("Escenario sin medidas");
-      if (p.bloquesCronologia === 0) advertencias.push("Cronología vacía");
-      if (p.personalSinAsignar > 0)
-        advertencias.push(`${p.personalSinAsignar} lugar(es) de personal sin técnico`);
-      if (p.personalSinRol > 0) advertencias.push(`${p.personalSinRol} técnico(s) sin rol asignado`);
       if (p.equiposSinConfirmar > 0)
         advertencias.push(`${p.equiposSinConfirmar} equipo(s) sin confirmar`);
-      if (falta(p.contactosEmergencia)) advertencias.push("Sin contactos de emergencia");
+      if (vamosAlSitio(p) && sinComoLlegar)
+        advertencias.push("Falta dirección del venue o link de Maps");
+
+      // En una renta que el cliente recoge y opera no hay crew, montaje ni
+      // cronología nuestros: avisar de lo que no aplica haría la ficha ilegible.
+      if (operamosEnSitio(p)) {
+        if (p.personalCount === 0) advertencias.push("No hay técnicos asignados al proyecto");
+        if (falta(p.encargadoNombre)) advertencias.push("Falta el coordinador de producción");
+        if (sinMontaje) advertencias.push("Falta fecha u hora de montaje");
+        if (p.coordinadoresEnSitio === 0)
+          advertencias.push("Nadie está marcado como coordinador en sitio: el equipo no sabría a quién obedecer");
+        if (p.coordinadoresEnSitio > 1)
+          advertencias.push(`${p.coordinadoresEnSitio} técnicos marcados como coordinador en sitio: debe ser uno solo`);
+        if (p.bloquesCronologia === 0) advertencias.push("Cronología vacía");
+        if (p.personalSinAsignar > 0)
+          advertencias.push(`${p.personalSinAsignar} lugar(es) de personal sin técnico`);
+        if (p.personalSinRol > 0) advertencias.push(`${p.personalSinRol} técnico(s) sin rol asignado`);
+        if (falta(p.contactosEmergencia)) advertencias.push("Sin contactos de emergencia");
+      }
       break;
     }
 

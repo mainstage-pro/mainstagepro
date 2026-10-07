@@ -13,6 +13,7 @@ import {
 } from "@/lib/proyecto-documentos";
 
 const SELECT = {
+  tipoServicio: true,
   lugarEvento: true,
   direccionVenue: true,
   linkMaps: true,
@@ -68,6 +69,7 @@ export async function bloqueosDocumento(
   if (!p) return []; // el endpoint ya responde 404 por su cuenta
 
   const input: ProyectoDocumentoInput = {
+    tipoServicio: p.tipoServicio,
     lugarEvento: p.lugarEvento,
     direccionVenue: p.direccionVenue,
     linkMaps: p.linkMaps,

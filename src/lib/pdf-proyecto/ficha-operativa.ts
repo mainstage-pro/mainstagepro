@@ -116,6 +116,7 @@ export async function generarFichaOperativa(id: string): Promise<PdfProyecto | n
     estado: proyecto.estado,
     tipoEvento: proyecto.tipoEvento,
     tipoServicio: proyecto.tipoServicio ?? null,
+    logisticaRenta: (proyecto as { logisticaRenta?: string | null }).logisticaRenta ?? null,
     zona: proyecto.zona ?? "LOCAL",
     fechaEvento: proyecto.fechaEvento?.toISOString() ?? null,
     fechasEvento: (proyecto as { fechasEvento?: string | null }).fechasEvento ?? null,

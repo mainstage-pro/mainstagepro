@@ -11,6 +11,8 @@
 // funcionando sin tocar nada. Nunca se captura directo.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { RENTA_NIVEL_SERVICIO } from "./form-labels";
+
 export const SERVICIOS = ["RENTA", "PRODUCCION_TECNICA", "DIRECCION_OPERACIONES"] as const;
 export type Servicio = (typeof SERVICIOS)[number];
 
@@ -96,6 +98,61 @@ export function espejoTipoServicio(servicios: Servicio[]): string | null {
 export function serviciosDesdeTipo(tipo: string | null | undefined): Servicio[] {
   const entrada = (Object.entries(ESPEJO) as [Servicio, string][]).find(([, v]) => v === tipo);
   return entrada ? [entrada[0]] : [];
+}
+
+// ── El sello de servicio de los documentos ───────────────────────────────────
+
+const NIVEL_RENTA_LABELS: Record<string, string> = Object.fromEntries(
+  RENTA_NIVEL_SERVICIO.map((n) => [n.id, n.label]),
+);
+
+/** Etiqueta legible del valor espejo que guardan `Proyecto.tipoServicio` y los PDFs. */
+export function etiquetaTipoServicio(tipo: string | null | undefined): string | null {
+  const [servicio] = serviciosDesdeTipo(tipo);
+  return servicio ? SERVICIO_LABELS[servicio] : null;
+}
+
+/** El nivel contratado dentro de renta, leído del JSON de logística del proyecto. */
+export function nivelDeRenta(logisticaRenta: string | null | undefined): string | null {
+  if (!logisticaRenta) return null;
+  try {
+    const d = JSON.parse(logisticaRenta) as Record<string, string>;
+    return d.nivelServicio || d.modalidadServicio || null;
+  } catch {
+    return null;
+  }
+}
+
+/** Etiqueta del nivel contratado dentro de renta, si ya se definió. */
+export function etiquetaNivelRenta(logisticaRenta: string | null | undefined): string | null {
+  const nivel = nivelDeRenta(logisticaRenta);
+  return nivel ? NIVEL_RENTA_LABELS[nivel] ?? nivel : null;
+}
+
+/**
+ * Lo que va impreso en todos los documentos del proyecto para que nadie confunda
+ * un servicio con otro. En renta se baja al nivel contratado, porque su etiqueta
+ * ya dice "Renta + …" y distingue lo que de verdad cambia la operación.
+ */
+export function selloDeServicio(
+  tipoServicio: string | null | undefined,
+  logisticaRenta?: string | null,
+): string | null {
+  if (tipoServicio === ESPEJO.RENTA) {
+    const nivel = etiquetaNivelRenta(logisticaRenta);
+    if (nivel) return nivel;
+  }
+  return etiquetaTipoServicio(tipoServicio);
+}
+
+/**
+ * Renta donde el montaje lo hacemos nosotros. Es la frontera que decide si el
+ * proyecto necesita ficha operativa: hay personal, cronología y traslados que
+ * coordinar, no nada más equipo que entregar y firmar.
+ */
+export function rentaConMontaje(logisticaRenta: string | null | undefined): boolean {
+  const nivel = nivelDeRenta(logisticaRenta);
+  return nivel === "RENTA_MONTAJE" || nivel === "RENTA_FULL";
 }
 
 export function parseCanal(raw: string | null | undefined): CanalOperativo | null {

@@ -4,6 +4,7 @@
  */
 import { StyleSheet } from "@react-pdf/renderer";
 import { fmt24to12, normalizarAmPm } from "@/lib/hora";
+import { SERVICIOS, SERVICIO_LABELS, espejoDeServicio } from "@/lib/servicios-trato";
 
 // ─── Paleta ──────────────────────────────────────────────────────────────────
 export const C = {
@@ -340,11 +341,9 @@ export function agruparPorCategoria(equipos: EquipoFlat[]): Map<string, EquipoFl
 const TIPO_EVENTO_MAP: Record<string, string> = {
   MUSICAL: "Musical", SOCIAL: "Social", EMPRESARIAL: "Empresarial", OTRO: "Otro",
 };
-const TIPO_SERVICIO_MAP: Record<string, string> = {
-  PRODUCCION_TECNICA: "Producción técnica integral",
-  RENTA: "Renta de equipo",
-  DIRECCION_TECNICA: "Dirección y operaciones",
-};
+const TIPO_SERVICIO_MAP: Record<string, string> = Object.fromEntries(
+  SERVICIOS.map((s) => [espejoDeServicio(s), SERVICIO_LABELS[s]]),
+);
 const ZONA_MAP: Record<string, string> = {
   LOCAL: "Local (Querétaro)", BAJIO: "Bajío", NACIONAL: "Nacional",
 };

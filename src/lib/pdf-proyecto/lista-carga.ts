@@ -5,6 +5,7 @@ import { makePdfImageResolver } from '@/components/pdf/PdfShared'
 import { sembrarNotasEquiposProyecto } from '@/lib/notas-equipos'
 import { notaVisibleDeCotizacion, lineasAdicionalesDeCotizacion } from '@/lib/rider-cotizacion'
 import { resumenMontaje } from '@/lib/montaje-reportes'
+import { selloDeServicio } from '@/lib/servicios-trato'
 import { bufferDePdf, type PdfProyecto } from './render'
 import React from 'react'
 import path from 'path'
@@ -57,11 +58,13 @@ export async function generarListaCarga(id: string): Promise<PdfProyecto | null>
   // Renta context: distinguir servicio de renta y su modalidad de entrega
   const tipoServicio = (proyecto as unknown as Record<string, unknown>).tipoServicio as string | null ?? null
   const esRenta = tipoServicio === 'RENTA'
+  const logisticaRenta = (proyecto as unknown as Record<string, unknown>).logisticaRenta
+  const rawLogistica = typeof logisticaRenta === 'string' ? logisticaRenta : null
+  const selloServicio = selloDeServicio(tipoServicio, rawLogistica)
   let modalidadEntrega: string | null = null
   try {
-    const rawLog = (proyecto as unknown as Record<string, unknown>).logisticaRenta
-    if (typeof rawLog === 'string' && rawLog) {
-      const rd = JSON.parse(rawLog) as Record<string, string>
+    if (rawLogistica) {
+      const rd = JSON.parse(rawLogistica) as Record<string, string>
       modalidadEntrega = rd.entrega ?? rd.modalidadEntrega ?? null
     }
   } catch { /* ignore */ }
@@ -228,6 +231,7 @@ export async function generarListaCarga(id: string): Promise<PdfProyecto | null>
     logoSrc,
     esRenta,
     modalidadEntrega,
+    selloServicio,
   }
 
   const buf = await bufferDePdf(

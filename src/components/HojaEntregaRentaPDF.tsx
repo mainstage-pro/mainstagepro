@@ -2,6 +2,7 @@ import React from "react";
 import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
 import { getEquipoDisplayName } from "@/lib/equipoNombre";
 import { lineasAdicionalesDeCotizacion } from "@/lib/rider-cotizacion";
+import { etiquetaNivelRenta, etiquetaTipoServicio } from "@/lib/servicios-trato";
 
 const GOLD   = "#B3985B";
 const BLACK  = "#0a0a0a";
@@ -497,13 +498,6 @@ function EmptyRows({ count }: { count: number }) {
   );
 }
 
-const NIVEL_LABELS: Record<string, string> = {
-  SOLO_RENTA:    "Solo renta (cliente recoge)",
-  RENTA_ENTREGA: "Renta + entrega",
-  RENTA_MONTAJE: "Renta + montaje",
-  RENTA_FULL:    "Renta + operación",
-};
-
 // ─── Component ────────────────────────────────────────────────────────────────
 export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoData; logoSrc?: string | null }) {
   let rentaData: Record<string, string> = {};
@@ -519,8 +513,7 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
 
   const fechaEntrega    = rentaData.fechaEntrega    ? `${fmtDate(rentaData.fechaEntrega)}${rentaData.horaEntrega    ? "  " + rentaData.horaEntrega    : ""}` : "";
   const fechaDevolucion = rentaData.fechaDevolucion ? `${fmtDate(rentaData.fechaDevolucion)}${rentaData.horaDevolucion ? "  " + rentaData.horaDevolucion : ""}` : "";
-  const nivelKey        = rentaData.nivelServicio ?? rentaData.modalidadServicio ?? "";
-  const modalidad       = nivelKey ? (NIVEL_LABELS[nivelKey] ?? nivelKey) : "";
+  const modalidad       = etiquetaNivelRenta(JSON.stringify(rentaData)) ?? "";
   const direccion       = rentaData.direccionEntrega ?? "";
 
   // Folio: PRY-XXX-YYYYMMDD
@@ -630,7 +623,7 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
               </View>
               <View style={s.infoRow}>
                 <Text style={s.infoLabel}>TIPO DE SERVICIO</Text>
-                <Text style={s.infoValue}>{proyecto.tipoServicio === "RENTA" ? "Renta de Equipo" : proyecto.tipoServicio === "PRODUCCION_TECNICA" ? "Producción Técnica" : proyecto.tipoServicio === "DIRECCION_TECNICA" ? "Dirección y operaciones" : proyecto.tipoServicio ?? "Renta de Equipo"}</Text>
+                <Text style={s.infoValue}>{etiquetaTipoServicio(proyecto.tipoServicio) ?? "Renta de equipo"}</Text>
               </View>
               <View style={s.infoRow}>
                 <Text style={s.infoLabel}>MODALIDAD</Text>
