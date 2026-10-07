@@ -19,11 +19,11 @@ export default function ResponsivaPage(props: { params: Promise<{ token: string 
   const [nombreEditado, setNombreEditado] = useState("");
 
   useEffect(() => {
-    if (tecnicos && tecnicoId) {
-      const t = tecnicos.find((x: any) => x.id === tecnicoId);
+    if (data?.tecnicos && tecnicoId) {
+      const t = data.tecnicos.find((x: any) => x.id === tecnicoId);
       if (t) setNombreEditado(t.nombre);
     }
-  }, [tecnicoId, tecnicos]);
+  }, [tecnicoId, data?.tecnicos]);
 
   const { toast } = useToast();
   const router = useRouter();
