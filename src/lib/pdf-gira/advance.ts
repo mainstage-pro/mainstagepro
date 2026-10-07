@@ -62,6 +62,7 @@ export async function generarAdvanceShow(showId: string): Promise<PdfGira | null
     })
     .map((l) => ({
       id: l.id,
+      disciplina: l.disciplina,
       disciplinaLabel: DISCIPLINA_LABEL[l.disciplina] ?? l.disciplina,
       concepto: l.concepto,
       cantidadPedida: l.cantidadPedida,

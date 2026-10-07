@@ -19,7 +19,7 @@
 import React from "react";
 import { fmtDuracion } from "@/lib/giras";
 import {
-  BandaGira, Cuerpo, Document, DORADO_TXT, HeroGira, Nota, PaginaGira, PieGira, Seccion, Tabla,
+  BandaGira, COLOR_DISCIPLINA, Cuerpo, Document, DORADO_TXT, HeroGira, Nota, PaginaGira, PieGira, Seccion, Tabla,
   type ColumnaTabla, type ItemBanda, type RenglonTabla,
 } from "./GiraDocBase";
 
@@ -76,15 +76,8 @@ export interface SetlistDocData {
   generadoEn: string;
 }
 
-/// Un color por disciplina, el mismo en la leyenda y en el filete de su
-/// columna. Oscuros a propósito: el filete tiene que verse impreso y con media
-/// luz, no solo en pantalla.
-const DISCIPLINA = {
-  audio: { label: "Audio", color: "#1d4ed8" },
-  luces: { label: "Iluminación", color: "#a16207" },
-  video: { label: "Video", color: "#6d28d9" },
-} as const;
-
+/// Cada columna de cues lleva el color de su disciplina: el mismo azul que
+/// marca Audio en el advance y en la pantalla, no uno propio de este papel.
 const COLS: ColumnaTabla[] = [
   { label: "#", ancho: 18 },
   { label: "Canción", flex: 4 },
@@ -92,9 +85,9 @@ const COLS: ColumnaTabla[] = [
   { label: "Tono", ancho: 30 },
   { label: "BPM", ancho: 26, alinear: "right" },
   { label: "Track", ancho: 28, alinear: "center" },
-  { label: DISCIPLINA.audio.label, flex: 3, color: DISCIPLINA.audio.color },
-  { label: DISCIPLINA.luces.label, flex: 3, color: DISCIPLINA.luces.color },
-  { label: DISCIPLINA.video.label, flex: 3, color: DISCIPLINA.video.color },
+  { label: "Audio", flex: 3, color: COLOR_DISCIPLINA.AUDIO },
+  { label: "Iluminación", flex: 3, color: COLOR_DISCIPLINA.ILUMINACION },
+  { label: "Video", flex: 3, color: COLOR_DISCIPLINA.VIDEO },
 ];
 
 const sinAcentos = (t: string) =>

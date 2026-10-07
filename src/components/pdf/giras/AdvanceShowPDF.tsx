@@ -8,13 +8,16 @@
  */
 import React from "react";
 import {
-  Alerta, BandaGira, Cuerpo, Datos, Document, HeroGira, Nota, PaginaGira, PieGira, Seccion, Tabla,
+  Alerta, BandaGira, COLOR_DISCIPLINA, Cuerpo, Datos, Document, HeroGira, Nota, PaginaGira, PieGira, Seccion, Tabla,
   type ColumnaTabla, type Dato, type ItemBanda, type RenglonTabla,
 } from "./GiraDocBase";
 import { C } from "../PdfShared";
 
 export interface AdvanceLineaDoc {
   id: string;
+  /// La llave del rider (AUDIO, ILUMINACION…), para pintar el grupo con el
+  /// color de su disciplina. El label ya viene traducido y no sirve de llave.
+  disciplina: string;
   disciplinaLabel: string;
   concepto: string;
   cantidadPedida: number;
@@ -64,12 +67,15 @@ export interface AdvanceShowData {
   generadoEn: string;
 }
 
+/// El concepto se lleva el ancho que le sobra a las demás: es la columna que se
+/// lee, va en letra grande y los nombres de equipo son largos ("Sistema de
+/// monitoreo in-ear Shure PSM1000"). El estado solo tiene que caber "Resuelto".
 const COLS: ColumnaTabla[] = [
-  { label: "Pide el rider", flex: 4 },
+  { label: "Pide el rider", flex: 5 },
   { label: "Cant.", ancho: 32, alinear: "right" },
   { label: "Lo que pone el venue", flex: 3 },
   { label: "Cómo se cubre", flex: 3 },
-  { label: "Estado", ancho: 68 },
+  { label: "Estado", ancho: 48 },
 ];
 
 export function AdvanceShowPDF({ data }: { data: AdvanceShowData }) {
@@ -118,7 +124,12 @@ export function AdvanceShowPDF({ data }: { data: AdvanceShowData }) {
   for (const l of data.lineas) {
     if (l.disciplinaLabel !== disciplinaActual) {
       disciplinaActual = l.disciplinaLabel;
-      renglones.push({ tipo: "grupo", clave: `grupo-${l.id}`, texto: disciplinaActual });
+      renglones.push({
+        tipo: "grupo",
+        clave: `grupo-${l.id}`,
+        texto: disciplinaActual,
+        color: COLOR_DISCIPLINA[l.disciplina] ?? null,
+      });
     }
     renglones.push({
       tipo: "fila",

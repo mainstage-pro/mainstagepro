@@ -26,6 +26,23 @@ import { C } from "../PdfShared";
 /// chico se usa esta variante oscurecida. En fondos negros o dorados va C.dorado.
 export const DORADO_TXT = "#8a6f33";
 
+/// El color de cada disciplina en papel: los mismos tonos que la app usa en
+/// pantalla (`src/lib/disciplinaColors.ts`), oscurecidos para que sobrevivan a
+/// una impresora y a media luz. Van por la llave del rider (`DISCIPLINA_LABEL`
+/// en giras.ts), que es otro vocabulario que el de la pantalla.
+///
+/// Lo que la app no colorea —backline, comunicación, otro— se queda sin color
+/// a propósito: un tono inventado para el papel rompería la correspondencia.
+export const COLOR_DISCIPLINA: Record<string, string> = {
+  AUDIO: "#1d4ed8",
+  ILUMINACION: "#a16207",
+  VIDEO: "#6d28d9",
+  ESCENARIO: "#047857",
+  ENERGIA: "#0e7490",
+  RIGGING: "#b91c1c",
+  PERSONAL: "#4b5563",
+};
+
 /// Margen lateral de todo el documento. El hero y la banda sangran a los dos
 /// bordes, así que lo aplica cada bloque y no la página.
 const MARGEN = 30;
