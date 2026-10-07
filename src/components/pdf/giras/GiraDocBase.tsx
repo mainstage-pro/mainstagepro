@@ -11,9 +11,12 @@
  *
  * La escala tipográfica está pensada para leerse de pie y con media luz: estos
  * papeles se consultan en el foro, de noche, no en un escritorio. De ahí que el
- * cuerpo arranque en 10 pt y que no haya texto por debajo de 7 pt, y de ahí que
- * el adorno se haya quitado — rellenos, bordes y zebras en gris clarito no se
- * ven en penumbra y sí le quitan aire a la letra.
+ * cuerpo arranque en 10 pt y que no haya texto por debajo de 7 pt.
+ *
+ * Y de ahí también que la tabla alterne fondo: a media luz, con el renglón a
+ * medio brazo de distancia, un filete de 0.4 pt no alcanza para saber dónde
+ * acaba una fila y empieza la siguiente. La zebra va en un gris que se ve
+ * impreso (#f1f1f1), no en el #fafafa que solo existe en pantalla.
  */
 import React from "react";
 import { Document, Image, Link, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
@@ -71,7 +74,7 @@ export const g = StyleSheet.create({
   // Un filete dorado en vez del recuadro negro: a esta escala la barra rellena
   // pesaba más que el contenido que anuncia.
   secTitulo: {
-    fontSize: 9, fontFamily: "Helvetica-Bold", color: C.negro,
+    fontSize: 10.5, fontFamily: "Helvetica-Bold", color: C.negro,
     textTransform: "uppercase", letterSpacing: 1.6,
     paddingBottom: 5, borderBottomWidth: 1.2, borderBottomColor: C.dorado, borderBottomStyle: "solid",
   },
@@ -82,12 +85,13 @@ export const g = StyleSheet.create({
   kvLabel: { fontSize: 7.2, color: C.grisMedio, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 },
   kvVal: { fontSize: 10, color: C.negro, lineHeight: 1.4 },
   kvLink: { fontSize: 9.5, color: "#1a73e8" },
-  // Tabla: sin marco ni relleno, las columnas alineadas al margen del cuerpo y
-  // solo filetes horizontales. Lo que separa los renglones es el aire.
+  // Tabla: sin marco, columnas alineadas al margen del cuerpo y fondo alterno.
+  // El relleno sangra 5 pt a los lados para que la letra no quede pegada al
+  // filo de la banda gris.
   tabla: { width: "100%" },
   tablaHd: {
     flexDirection: "row",
-    paddingBottom: 5,
+    paddingBottom: 5, paddingHorizontal: 5, marginHorizontal: -5,
     borderBottomWidth: 1, borderBottomColor: C.negro, borderBottomStyle: "solid",
   },
   tablaHdTxt: {
@@ -96,21 +100,24 @@ export const g = StyleSheet.create({
   },
   tablaFila: {
     flexDirection: "row", paddingVertical: 6.5,
-    borderBottomWidth: 0.4, borderBottomColor: "#e2e2e2", borderBottomStyle: "solid",
-    alignItems: "flex-start",
+    paddingHorizontal: 5, marginHorizontal: -5,
   },
+  tablaFilaAlt: { backgroundColor: "#f1f1f1" },
   tablaGrupo: {
     flexDirection: "row", alignItems: "center",
     paddingTop: 13, paddingBottom: 5,
     borderBottomWidth: 0.6, borderBottomColor: C.grisLinea, borderBottomStyle: "solid",
   },
   tablaGrupoTxt: {
-    fontSize: 8.2, fontFamily: "Helvetica-Bold", color: C.negro,
+    fontSize: 9.5, fontFamily: "Helvetica-Bold", color: C.negro,
     textTransform: "uppercase", letterSpacing: 1.1,
   },
   tablaGrupoChip: { width: 7, height: 7, borderRadius: 2, marginRight: 6 },
   celda: { fontSize: 9.8, color: C.negro, lineHeight: 1.35 },
-  celdaFuerte: { fontSize: 10, fontFamily: "Helvetica-Bold", color: C.negro },
+  celdaFuerte: { fontSize: 10.5, fontFamily: "Helvetica-Bold", color: C.negro },
+  // Para la columna que manda en la tabla — el nombre de la canción, el equipo,
+  // el momento de la corrida. Es el renglón que se busca de reojo.
+  celdaGrande: { fontSize: 12, fontFamily: "Helvetica-Bold", color: C.negro, lineHeight: 1.25 },
   celdaSub: { fontSize: 8.2, color: C.grisMedio, marginTop: 1.5, lineHeight: 1.35 },
   // Caja de nota
   nota: {
@@ -250,13 +257,24 @@ export interface ColumnaTabla {
   ancho?: number;
   flex?: number;
   alinear?: "left" | "right" | "center";
+  /// Pinta el encabezado y un filete vertical al arranque de cada celda, tan
+  /// alto como su propio texto. Es para las columnas que se leen por disciplina
+  /// (audio, luces, video): el color vive en el filete y no en la letra, que a
+  /// media luz necesita todo el contraste que pueda.
+  color?: string;
 }
 
 export interface CeldaTabla {
   texto: string;
   sub?: string | null;
   fuerte?: boolean;
+  /// Para la columna que manda en la tabla: la pone dos puntos arriba del resto
+  /// del renglón. Una sola por fila, o se pierde el efecto.
+  grande?: boolean;
   color?: string;
+  /// Color del `sub`, cuando el subtexto es de otra disciplina que el texto
+  /// principal (los cues del setlist).
+  colorSub?: string;
 }
 
 export type RenglonTabla =
@@ -270,26 +288,41 @@ export type RenglonTabla =
 /// lugar, para no reescribir cuarenta números a ojo en cinco archivos.
 const ESCALA_ANCHO = 1.2;
 
-function estiloColumna(c: ColumnaTabla): { width?: number; flex?: number; paddingRight: number } {
-  if (c.ancho) return { width: Math.round(c.ancho * ESCALA_ANCHO), paddingRight: 6 };
-  return { flex: c.flex ?? 1, paddingRight: 6 };
+function estiloColumna(c: ColumnaTabla) {
+  const caja = c.ancho ? { width: Math.round(c.ancho * ESCALA_ANCHO) } : { flex: c.flex ?? 1 };
+  if (!c.color) return { ...caja, paddingRight: 6 };
+  return {
+    ...caja,
+    paddingRight: 6,
+    paddingLeft: 6,
+    borderLeftWidth: 1.5,
+    borderLeftColor: c.color,
+    borderLeftStyle: "solid" as const,
+  };
 }
 
 export function Tabla({ columnas, renglones }: { columnas: ColumnaTabla[]; renglones: RenglonTabla[] }) {
   if (renglones.length === 0) return <Text style={g.vacio}>Sin renglones todavía.</Text>;
+
+  let alterna = false;
 
   return (
     <View style={g.tabla}>
       <View style={g.tablaHd} fixed>
         {columnas.map((c) => (
           <View key={c.label} style={estiloColumna(c)}>
-            <Text style={[g.tablaHdTxt, { textAlign: c.alinear ?? "left" }]}>{c.label}</Text>
+            <Text style={[g.tablaHdTxt, { textAlign: c.alinear ?? "left" }, c.color ? { color: c.color } : {}]}>
+              {c.label}
+            </Text>
           </View>
         ))}
       </View>
 
       {renglones.map((r) => {
         if (r.tipo === "grupo") {
+          // La zebra se reinicia en cada grupo: así la primera fila de todo
+          // bloque va blanca y dos bloques seguidos no se leen desfasados.
+          alterna = false;
           return (
             <View key={r.clave} style={g.tablaGrupo} wrap={false}>
               {r.color ? <View style={[g.tablaGrupoChip, { backgroundColor: r.color }]} /> : null}
@@ -297,15 +330,18 @@ export function Tabla({ columnas, renglones }: { columnas: ColumnaTabla[]; rengl
             </View>
           );
         }
+        const pintada = alterna;
+        alterna = !alterna;
         return (
-          <View key={r.clave} style={g.tablaFila} wrap={false}>
+          <View key={r.clave} style={pintada ? [g.tablaFila, g.tablaFilaAlt] : g.tablaFila} wrap={false}>
             {columnas.map((c, i) => {
               const celda = r.celdas[i] ?? { texto: "" };
+              const base = celda.grande ? g.celdaGrande : celda.fuerte ? g.celdaFuerte : g.celda;
               return (
                 <View key={c.label} style={estiloColumna(c)}>
                   <Text
                     style={[
-                      celda.fuerte ? g.celdaFuerte : g.celda,
+                      base,
                       { textAlign: c.alinear ?? "left" },
                       celda.color ? { color: celda.color } : {},
                     ]}
@@ -313,7 +349,15 @@ export function Tabla({ columnas, renglones }: { columnas: ColumnaTabla[]; rengl
                     {celda.texto || "—"}
                   </Text>
                   {celda.sub ? (
-                    <Text style={[g.celdaSub, { textAlign: c.alinear ?? "left" }]}>{celda.sub}</Text>
+                    <Text
+                      style={[
+                        g.celdaSub,
+                        { textAlign: c.alinear ?? "left" },
+                        celda.colorSub ? { color: celda.colorSub } : {},
+                      ]}
+                    >
+                      {celda.sub}
+                    </Text>
                   ) : null}
                 </View>
               );
@@ -368,8 +412,20 @@ export function PieGira({ izquierda, derecha }: { izquierda: string; derecha: st
 
 /// Todas las páginas de un documento de gira son carta. El padding no va en la
 /// página porque el hero y la banda sangran a los dos bordes; lo pone `Cuerpo`.
-export function PaginaGira({ children }: { children: React.ReactNode }) {
-  return <Page size="LETTER" style={g.page}>{children}</Page>;
+///
+/// `horizontal` es para los documentos que no caben de pie: el repertorio abre
+/// tres columnas de cues (audio, luces, video) y de 552 pt de ancho no salen.
+export function PaginaGira({
+  children, horizontal,
+}: {
+  children: React.ReactNode;
+  horizontal?: boolean;
+}) {
+  return (
+    <Page size="LETTER" orientation={horizontal ? "landscape" : "portrait"} style={g.page}>
+      {children}
+    </Page>
+  );
 }
 
 export function Cuerpo({ children }: { children: React.ReactNode }) {

@@ -153,7 +153,7 @@ function renglonesDeEquipo(lineas: RiderLineaDoc[]): RenglonTabla[] {
       clave: l.id,
       celdas: [
         { texto: `${l.cantidad}`, sub: l.unidadLabel, fuerte: true },
-        { texto: l.concepto, sub: detalle || null, fuerte: true },
+        { texto: l.concepto, sub: detalle || null, grande: true },
         { texto: l.provistoPorLabel },
       ],
     };

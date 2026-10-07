@@ -75,7 +75,8 @@ export function ListaCanales({ inputs, outputs }: { inputs: CanalInput[]; output
       {
         texto: c.nombre,
         sub: [c.instrumento, c.inserto ? `Inserto: ${c.inserto}` : null, c.notas].filter(Boolean).join(" · ") || null,
-        fuerte: true,
+        // El nombre del canal es lo que se grita entre escenario y FOH.
+        grande: true,
       },
       { texto: c.microfono ?? "—", sub: c.alternativas ? `o ${c.alternativas}` : null },
       { texto: c.soporteLabel ?? "—" },
@@ -91,7 +92,7 @@ export function ListaCanales({ inputs, outputs }: { inputs: CanalInput[]; output
       clave: lado ? `${c.id}-${lado}` : c.id,
       celdas: [
         { texto: String(canal), fuerte: true },
-        { texto: lado ? `${c.nombre} ${lado}` : c.nombre, sub: c.notas, fuerte: true },
+        { texto: lado ? `${c.nombre} ${lado}` : c.nombre, sub: c.notas, grande: true },
         { texto: c.tipoSalidaLabel ?? "—" },
         { texto: c.estereo ? "Estéreo" : "Mono" },
         { texto: c.paraQuien ?? "—" },

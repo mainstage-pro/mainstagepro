@@ -129,7 +129,7 @@ const DOCS_GIRA = [
     slug: "setlist",
     label: "Setlist",
     descripcion:
-      "El repertorio por bloques con duración, tono, BPM, track y los cues de audio, luces y video. Aquí sale el base de la gira; el de una fecha se baja desde su pestaña Setlist.",
+      "El repertorio por bloques con duración, tono, BPM, track y una columna de cues por disciplina: audio, iluminación y video a la vez. Aquí sale el base de la gira; el de una fecha se baja desde su pestaña Setlist.",
     icono: ListMusic,
     necesitaRider: false,
   },

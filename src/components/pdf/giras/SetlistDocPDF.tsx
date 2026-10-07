@@ -10,6 +10,11 @@
  * Los bloques llegan ya derivados del generador (segmentarSetlist), igual que
  * en pantalla y en el libro de gira: la numeración del papel y la de la app no
  * pueden diferir.
+ *
+ * Va horizontal. Audio, luces y video trabajan al mismo tiempo y cada uno busca
+ * su columna sin leer las otras dos; apiladas en un solo renglón de cues había
+ * que descifrar la línea entera para encontrar lo propio. De pie no caben tres
+ * columnas útiles en 552 pt, así que la hoja se acuesta.
  */
 import React from "react";
 import { fmtDuracion } from "@/lib/giras";
@@ -36,8 +41,11 @@ export interface SetlistDocFila {
   tonalidad: string | null;
   bpm: number | null;
   conTrack: boolean;
-  /// Audio, luces y video, ya en una sola línea.
-  cues: string | null;
+  /// Los cues, cada disciplina por separado: en el papel cada uno tiene su
+  /// columna y su color.
+  notasAudio: string | null;
+  notasLuces: string | null;
+  notasVideo: string | null;
   cambio: string | null;
   notas: string | null;
 }
@@ -68,14 +76,25 @@ export interface SetlistDocData {
   generadoEn: string;
 }
 
+/// Un color por disciplina, el mismo en la leyenda y en el filete de su
+/// columna. Oscuros a propósito: el filete tiene que verse impreso y con media
+/// luz, no solo en pantalla.
+const DISCIPLINA = {
+  audio: { label: "Audio", color: "#1d4ed8" },
+  luces: { label: "Iluminación", color: "#a16207" },
+  video: { label: "Video", color: "#6d28d9" },
+} as const;
+
 const COLS: ColumnaTabla[] = [
-  { label: "#", ancho: 20 },
+  { label: "#", ancho: 18 },
   { label: "Canción", flex: 4 },
-  { label: "Dura", ancho: 34 },
-  { label: "Tono", ancho: 32 },
-  { label: "BPM", ancho: 28, alinear: "right" },
-  { label: "Track", ancho: 30, alinear: "center" },
-  { label: "Cues de audio, luces y video", flex: 4 },
+  { label: "Dura", ancho: 32 },
+  { label: "Tono", ancho: 30 },
+  { label: "BPM", ancho: 26, alinear: "right" },
+  { label: "Track", ancho: 28, alinear: "center" },
+  { label: DISCIPLINA.audio.label, flex: 3, color: DISCIPLINA.audio.color },
+  { label: DISCIPLINA.luces.label, flex: 3, color: DISCIPLINA.luces.color },
+  { label: DISCIPLINA.video.label, flex: 3, color: DISCIPLINA.video.color },
 ];
 
 const sinAcentos = (t: string) =>
@@ -118,20 +137,22 @@ function renglones(filas: SetlistDocFila[]): RenglonTabla[] {
         { texto: esMomento ? "·" : String(f.posicion) },
         {
           texto: f.etiqueta ? [f.etiqueta, f.titulo].filter(Boolean).join(" · ") : f.titulo,
-          sub: f.notas,
-          fuerte: true,
+          // El cambio de instrumento vive debajo del título, que es donde lo
+          // busca el músico; no es un cue de nadie más.
+          sub: [f.cambio ? `Cambio: ${f.cambio}` : null, f.notas].filter(Boolean).join(" · ") || null,
+          // El título es lo que se busca de reojo entre canción y canción.
+          grande: true,
           color: esMomento ? DORADO_TXT : undefined,
         },
         { texto: f.duracion },
-        { texto: esMomento ? "" : (f.tonalidad ?? "") },
+        // El tono es el dato que un músico busca a media luz con la guitarra ya
+        // puesta: se imprime pesado aunque la columna sea angosta.
+        { texto: esMomento ? "" : (f.tonalidad ?? ""), fuerte: true },
         { texto: esMomento || !f.bpm ? "" : String(f.bpm) },
         { texto: esMomento ? "" : f.conTrack ? "Sí" : "" },
-        // El cambio de instrumento acompaña a los cues; cuando es lo único que
-        // hay ocupa el renglón principal en vez de dejar un guion arriba.
-        {
-          texto: f.cues ?? (f.cambio ? `Cambio: ${f.cambio}` : ""),
-          sub: f.cues && f.cambio ? `Cambio: ${f.cambio}` : null,
-        },
+        { texto: f.notasAudio ?? "" },
+        { texto: f.notasLuces ?? "" },
+        { texto: f.notasVideo ?? "" },
       ],
     });
   }
@@ -188,7 +209,7 @@ export function SetlistDocPDF({ data }: { data: SetlistDocData }) {
       author="Mainstage Pro"
       creator="Mainstage Pro"
     >
-      <PaginaGira>
+      <PaginaGira horizontal>
         <HeroGira
           tag="Setlist"
           titulo={data.setlistNombre}

@@ -67,7 +67,7 @@ export const DOCUMENTOS_GIRA = {
     ambito: "GIRA",
     label: "Setlist",
     descripcion:
-      "El repertorio por bloques con duración, tono, BPM, track y los cues de audio, luces y video. Desde un show sale el de esa fecha.",
+      "El repertorio por bloques con duración, tono, BPM, track y una columna de cues por disciplina: audio, iluminación y video a la vez. Desde un show sale el de esa fecha.",
     falta: "el repertorio en la pestaña de Setlist",
   },
 } satisfies Record<string, DocumentoGira>;

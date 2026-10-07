@@ -124,7 +124,7 @@ export function AdvanceShowPDF({ data }: { data: AdvanceShowData }) {
       tipo: "fila",
       clave: l.id,
       celdas: [
-        { texto: l.concepto, sub: [l.prioridadLabel, l.notas].filter(Boolean).join(" · ") || null, fuerte: true },
+        { texto: l.concepto, sub: [l.prioridadLabel, l.notas].filter(Boolean).join(" · ") || null, grande: true },
         { texto: String(l.cantidadPedida), fuerte: true },
         { texto: l.ofrecidoCasa ?? "—", sub: l.cantidadCasa ? `${l.cantidadCasa} pza` : null },
         { texto: l.cubiertoPorLabel, sub: l.cantidadCubierta ? `${l.cantidadCubierta} pza` : null },

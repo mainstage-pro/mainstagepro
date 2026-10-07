@@ -315,7 +315,7 @@ function renglonesDeSetlist(sl: LibroSetlist): RenglonTabla[] {
         {
           texto: c.titulo,
           sub: [c.conTrack ? "Con track" : null, c.cues].filter(Boolean).join(" · ") || null,
-          fuerte: true,
+          grande: true,
         },
         { texto: c.duracion },
         { texto: c.tonalidad ?? "—" },
@@ -382,7 +382,7 @@ export function LibroGiraPDF({ data }: { data: LibroGiraData }) {
       {
         texto: [s.ciudad, s.venueNombre].filter(Boolean).join(" · ") || "Por definir",
         sub: s.venueDireccion,
-        fuerte: true,
+        grande: true,
       },
       { texto: fmtHora(s.horaLoadIn) || "—" },
       { texto: fmtHora(s.horaShow) || "—", sub: s.curfew ? `curfew ${fmtHora(s.curfew)}` : null },

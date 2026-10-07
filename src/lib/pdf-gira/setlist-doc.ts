@@ -90,14 +90,11 @@ export async function generarSetlistDoc(giraId: string, showId?: string | null):
     tonalidad: c.tonalidad,
     bpm: c.bpm,
     conTrack: c.conTrack,
-    cues:
-      [
-        c.notasAudio ? `Audio: ${c.notasAudio}` : null,
-        c.notasLuces ? `Luces: ${c.notasLuces}` : null,
-        c.notasVideo ? `Video: ${c.notasVideo}` : null,
-      ]
-        .filter(Boolean)
-        .join(" · ") || null,
+    // Cada disciplina va entera a su columna: el papel la pinta con su color y
+    // ya no hace falta el prefijo "Audio:" que antes desambiguaba la línea.
+    notasAudio: c.notasAudio,
+    notasLuces: c.notasLuces,
+    notasVideo: c.notasVideo,
     cambio: c.cambioInstrumento,
     notas: c.notas,
   });

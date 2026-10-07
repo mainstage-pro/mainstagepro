@@ -188,7 +188,9 @@ export function DaySheetPDF({ data }: { data: DaySheetData }) {
         sub: m.horaFin ? fmtHora(m.horaFin) : m.duracion !== "—" ? m.duracion : null,
         fuerte: true,
       },
-      { texto: m.titulo, sub: [m.tipoLabel, m.notas].filter(Boolean).join(" · ") || null, fuerte: true },
+      // La corrida es la columna vertebral del papel: el momento se lee de un
+      // vistazo desde el escenario y la hora lo acompaña, no al revés.
+      { texto: m.titulo, sub: [m.tipoLabel, m.notas].filter(Boolean).join(" · ") || null, grande: true },
       { texto: m.responsable ?? "—" },
       { texto: m.lugar ?? "—" },
     ];
@@ -199,7 +201,7 @@ export function DaySheetPDF({ data }: { data: DaySheetData }) {
     tipo: "fila",
     clave: p.id,
     celdas: [
-      { texto: p.nombre, fuerte: true },
+      { texto: p.nombre, grande: true },
       { texto: p.funcion, sub: p.origenLabel },
       { texto: fmtHora(p.llamado) || "—" },
       { texto: p.telefono ?? "—" },
