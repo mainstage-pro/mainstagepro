@@ -6464,6 +6464,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         // ── Notas de cotización por sección ──
         let cotNotasSecciones: Record<string, string> = {};
         try { cotNotasSecciones = proyecto.cotizacion?.notasSecciones ? JSON.parse(proyecto.cotizacion.notasSecciones) : {}; } catch { /* ignore */ }
+        {
+          // La nota se guarda aparte de las líneas; descarta las de categorías que ya no se cotizan.
+          const catsVigentes = new Set((proyecto.cotizacion?.lineas ?? [])
+            .filter(l => l.tipo === "EQUIPO_PROPIO" || l.tipo === "EQUIPO_EXTERNO" || l.tipo === "PAQUETE")
+            .map(l => l.notas?.startsWith("cat:") ? l.notas.split("|")[0].slice(4) : "Sin categoría"));
+          cotNotasSecciones = Object.fromEntries(Object.entries(cotNotasSecciones).filter(([cat]) => catsVigentes.has(cat)));
+        }
         const cotObservaciones = proyecto.cotizacion?.observaciones ?? null;
 
         return (

@@ -356,6 +356,12 @@ function CotizadorForm() {
 
   // Notas por categoría de equipo
   const [notasSecciones, setNotasSecciones] = useState<Record<string, string>>({});
+  // La nota vive aparte de las líneas: si ya no queda ninguna línea de esa categoría
+  // su input desaparece de la UI y la nota quedaría huérfana para siempre.
+  const notasSeccionesVigentes = () => {
+    const cats = new Set([...lineasEquipo, ...lineasPaquete].map(l => l.categoria || "Sin categoría"));
+    return Object.fromEntries(Object.entries(notasSecciones).filter(([cat, v]) => cats.has(cat) && v?.trim()));
+  };
 
   // Selectores rápidos
 
@@ -1779,7 +1785,7 @@ function CotizadorForm() {
           personasViaticos: personasViaticosManual !== "" ? personasViaticos : null,
           comidasPorDia: parseInt(comidasPorDia) || 1,
           diasComidas,
-          notasSecciones: Object.keys(notasSecciones).length > 0 ? JSON.stringify(notasSecciones) : null,
+          notasSecciones: (() => { const n = notasSeccionesVigentes(); return Object.keys(n).length > 0 ? JSON.stringify(n) : null; })(),
           jornadasPlan: jornadasPlan.length > 0 ? jornadasPlan : null,
           observaciones,
           lineas: todasLineasAuto,
@@ -1967,7 +1973,7 @@ function CotizadorForm() {
       personasViaticos: personasViaticosManual !== "" ? personasViaticos : null,
       comidasPorDia: parseInt(comidasPorDia) || 1,
       diasComidas,
-      notasSecciones: Object.keys(notasSecciones).length > 0 ? JSON.stringify(notasSecciones) : null,
+      notasSecciones: (() => { const n = notasSeccionesVigentes(); return Object.keys(n).length > 0 ? JSON.stringify(n) : null; })(),
       jornadasPlan: jornadasPlan.length > 0 ? jornadasPlan : null,
       observaciones,
       lineas: todasLineas,
