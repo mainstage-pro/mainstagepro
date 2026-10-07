@@ -76,7 +76,7 @@ function esc(texto: string): string {
 /// Sin worker y sin bajar fuentes por red: esto corre en una función serverless
 /// que no tiene más disco que su propio bundle.
 async function leerPaginas(buffer: Buffer): Promise<PaginaPdf[]> {
-  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  const pdfjs = await import("pdfjs-dist");
   const tarea = pdfjs.getDocument({
     data: new Uint8Array(buffer),
     useSystemFonts: true,
