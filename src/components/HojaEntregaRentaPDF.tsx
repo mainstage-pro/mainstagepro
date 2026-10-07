@@ -1,6 +1,7 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
 import { getEquipoDisplayName } from "@/lib/equipoNombre";
+import { lineasAdicionalesDeCotizacion } from "@/lib/rider-cotizacion";
 
 const GOLD   = "#B3985B";
 const BLACK  = "#0a0a0a";
@@ -436,6 +437,7 @@ interface RiderAccesorioItem {
 }
 interface ProyectoEquipo {
   cantidad: number;
+  equipoId?: string | null;
   equipo: EquipoItem | null;
   descripcionManual?: string | null;
   montaje?: string;
@@ -449,6 +451,7 @@ interface CotizacionLinea {
   modelo: string | null;
   cantidad: number;
   notas: string | null;
+  equipoId?: string | null;
   imagenUrl?: string | null;
 }
 interface CotizacionData {
@@ -535,41 +538,44 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
     groupedInv[cat].push(eq);
   }
 
+  // ─── Equipos adicionales al rider ─────────────────────────────────────────────
+  // Filas libres del proyecto: lo capturado a mano más los conceptos de cotización
+  // que ya se sembraron como fila editable (traen cotLineaId y mandan ellas).
+  type RiderExtra = { id: string; descripcion: string; cantidad: number; notas?: string; montaje?: string; proveedor?: string; cotLineaId?: string };
+  const riderExtraCrudos: RiderExtra[] = (() => {
+    try {
+      const raw = proyecto.equiposRiderExtra;
+      if (typeof raw === "string" && raw) return JSON.parse(raw);
+      if (Array.isArray(raw)) return raw as RiderExtra[];
+    } catch { /* noop */ }
+    return [];
+  })();
+
   // Cotización lines shown as supplementary items (OTRO, EXTERNO, and PROPIO when no inventory)
-  const tiposExtra = proyecto.equipos.length === 0
-    ? ["EQUIPO_PROPIO", "EQUIPO_EXTERNO", "OTRO"]
-    : ["EQUIPO_EXTERNO", "OTRO"];
-  const cotExtras = (proyecto.cotizacion?.lineas ?? []).filter(
-    l => tiposExtra.includes(l.tipo) && !!l.descripcion
-  );
+  const cotExtras = lineasAdicionalesDeCotizacion({
+    lineas: proyecto.cotizacion?.lineas ?? [],
+    equipoIdsEnRider: proyecto.equipos.flatMap(eq => eq.equipoId ? [eq.equipoId] : []),
+    cotLineaIdsSembrados: riderExtraCrudos.flatMap(ex => ex.cotLineaId ? [ex.cotLineaId] : []),
+    hayInventario: proyecto.equipos.length > 0,
+  });
 
   const hasInventory = proyecto.equipos.length > 0;
   const hasCotExtras = cotExtras.length > 0;
 
-  // ─── Equipos adicionales al rider (fuera de cotización) ───────────────────────
-  // Se muestran igual que en el Rider de Carga para mantener uniformidad.
-  type RiderExtra = { id: string; descripcion: string; cantidad: number; notas?: string };
   const equiposRiderExtra: RiderExtra[] = (() => {
-    let parsed: RiderExtra[] = [];
-    try {
-      const raw = proyecto.equiposRiderExtra;
-      if (typeof raw === "string" && raw) parsed = JSON.parse(raw);
-      else if (Array.isArray(raw)) parsed = raw as RiderExtra[];
-    } catch { /* noop */ }
     const norm = (v: string) => v.toLowerCase().replace(/\s+/g, " ").trim();
     const equiposKeys = new Set(
       proyecto.equipos.map(eq => norm(eq.equipo?.descripcion ?? eq.descripcionManual ?? ""))
     );
-    const cotKeys = new Set(cotExtras.map(l => norm(l.descripcion)));
     const seen = new Set<string>();
-    return parsed.filter(ex => {
+    return riderExtraCrudos.filter(ex => {
       const key = norm(ex.descripcion);
       if (!key) return false;
-      if ([...equiposKeys].some(k => k && (k === key || k.includes(key) || key.includes(k)))) return false;
-      if (cotKeys.has(key)) return false;
       if (seen.has(key)) return false;
       seen.add(key);
-      return true;
+      // La fila sembrada desde la cotización es la buena: no se coteja contra nada.
+      if (ex.cotLineaId) return true;
+      return ![...equiposKeys].some(k => k && (k === key || k.includes(key) || key.includes(k)));
     });
   })();
   const hasRiderExtras = equiposRiderExtra.length > 0;
@@ -843,6 +849,11 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
                   <View key={ex.id} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt} wrap={false}>
                     <View style={s.colModelo}>
                       <Text style={s.cellText}>{ex.descripcion}</Text>
+                      {ex.montaje || ex.proveedor ? (
+                        <Text style={{ fontSize: 6, color: GOLD, marginTop: 1 }}>
+                          {[ex.proveedor ? `Renta · ${ex.proveedor}` : null, ex.montaje].filter(Boolean).join("  ·  ")}
+                        </Text>
+                      ) : null}
                       {ex.notas ? <Text style={{ fontSize: 6, color: LIGHT, fontStyle: "italic", marginTop: 1 }}>{ex.notas}</Text> : null}
                     </View>
                     <View style={s.colQty}><Text style={[s.cellText, { textAlign: "center" }]}>{ex.cantidad}</Text></View>

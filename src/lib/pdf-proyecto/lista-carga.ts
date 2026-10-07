@@ -2,7 +2,8 @@ import { prisma } from '@/lib/prisma'
 import { Document } from '@react-pdf/renderer'
 import { RiderPDF } from '@/components/RiderPDF'
 import { makePdfImageResolver } from '@/components/pdf/PdfShared'
-import { sembrarNotasEquiposProyecto, notaVisibleDeCotizacion } from '@/lib/notas-equipos'
+import { sembrarNotasEquiposProyecto } from '@/lib/notas-equipos'
+import { notaVisibleDeCotizacion, lineasAdicionalesDeCotizacion } from '@/lib/rider-cotizacion'
 import { resumenMontaje } from '@/lib/montaje-reportes'
 import { bufferDePdf, type PdfProyecto } from './render'
 import React from 'react'
@@ -70,6 +71,7 @@ export async function generarListaCarga(id: string): Promise<PdfProyecto | null>
     id: string; descripcion: string; cantidad: number
     notas: string; completado: boolean
     accesorios?: { id: string; nombre: string; cantidad: number }[]
+    montaje?: string; proveedor?: string; cotLineaId?: string
   }
   let equiposRiderExtra: EquipoRiderExtra[] = []
   try {
@@ -170,12 +172,13 @@ export async function generarListaCarga(id: string): Promise<PdfProyecto | null>
       const seenExtra = new Set<string>()
       return equiposRiderExtra.filter(ex => {
         const key = ex.descripcion.toLowerCase().replace(/\s+/g, ' ').trim()
-        // Skip if already in proyecto.equipos
-        if ([...equiposKeys].some(k => k === key || k.includes(key) || key.includes(k))) return false
         // Skip if duplicate within equiposRiderExtra
         if (seenExtra.has(key)) return false
         seenExtra.add(key)
-        return true
+        // La fila sembrada desde la cotización es la buena: no se coteja contra nada.
+        if (ex.cotLineaId) return true
+        // Skip if already in proyecto.equipos
+        return ![...equiposKeys].some(k => k === key || k.includes(key) || key.includes(k))
       })
     })(),
     cotizacionLineas: (() => {
@@ -198,11 +201,13 @@ export async function generarListaCarga(id: string): Promise<PdfProyecto | null>
       )
       const seenLineas = new Set<string>()
       type CotLinea = { id: string; tipo: string; descripcion: string; marca: string | null; cantidad: number; notas: string | null; equipoId?: string | null }
-      return (proyecto.cotizacion?.lineas ?? [] as CotLinea[])
-        .filter((l: CotLinea) => ['EQUIPO_EXTERNO', 'OTRO'].includes(l.tipo) && !!l.descripcion)
+      return lineasAdicionalesDeCotizacion({
+        lineas: (proyecto.cotizacion?.lineas ?? []) as CotLinea[],
+        equipoIdsEnRider: equipoIdsEnProyecto,
+        cotLineaIdsSembrados: equiposRiderExtra.flatMap(ex => ex.cotLineaId ? [ex.cotLineaId] : []),
+        hayInventario: proyecto.equipos.length > 0,
+      })
         .filter((l: CotLinea) => {
-          // Skip if this line's equipo is already a ProyectoEquipo
-          if (l.equipoId && equipoIdsEnProyecto.has(l.equipoId)) return false
           // Fallback: skip if description matches any equipo already shown
           const descNorm = l.descripcion.toLowerCase().replace(/\s+/g, ' ').trim()
           if ([...equiposDescNorm].some(k => k === descNorm || k.includes(descNorm) || descNorm.includes(k))) return false

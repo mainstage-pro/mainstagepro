@@ -28,6 +28,7 @@ import { ViabilidadWidget, type ViabilidadActiva, type ViabilidadHistoricoItem }
 import { MontajePosiciones, type Posicion as PosicionMontaje } from "@/components/proyectos/MontajePosiciones";
 import { PanelProveedores } from "@/components/proyectos/PanelProveedores";
 import { parseServicios } from "@/lib/servicios-trato";
+import { lineasAdicionalesDeCotizacion, esLineaDeTextoLibre, extraDesdeLinea, notaVisibleDeCotizacion } from "@/lib/rider-cotizacion";
 import PanelEscenarios from "@/components/proyectos/PanelEscenarios";
 import SelectorEscenario from "@/components/proyectos/SelectorEscenario";
 import { PanelImprevistos } from "@/components/proyectos/PanelImprevistos";
@@ -211,7 +212,7 @@ interface Proyecto {
   encargado: { id: string; name: string } | null;
   tratoId: string | null;
   trato: { tipoEvento: string; tipoServicio: string | null; servicios: string | null; ideasReferencias: string | null; notas: string | null; familyAndFriends: boolean; tradeCalificado: boolean; ventanaMontajeInicio: string | null; ventanaMontajeFin: string | null; responsable: { name: string } | null } | null;
-  cotizacion: { id: string; numeroCotizacion: string; granTotal: number; total: number; aplicaIva: boolean; diasComidas: number; subtotalComidas: number; subtotalOperacion: number; subtotalTransporte: number; subtotalHospedaje: number; subtotalEquiposNeto: number; subtotalTerceros: number; notasSecciones: string | null; observaciones: string | null; lineas: { id: string; tipo: string; descripcion: string; cantidad: number; nivel: string | null; jornada: string | null; precioUnitario: number; notas: string | null; marca: string | null; modelo: string | null; rolTecnicoId: string | null; rolTecnico: { id: string; nombre: string; disciplina: string | null } | null }[] } | null;
+  cotizacion: { id: string; numeroCotizacion: string; granTotal: number; total: number; aplicaIva: boolean; diasComidas: number; subtotalComidas: number; subtotalOperacion: number; subtotalTransporte: number; subtotalHospedaje: number; subtotalEquiposNeto: number; subtotalTerceros: number; notasSecciones: string | null; observaciones: string | null; lineas: { id: string; tipo: string; descripcion: string; cantidad: number; nivel: string | null; jornada: string | null; precioUnitario: number; notas: string | null; marca: string | null; modelo: string | null; equipoId: string | null; rolTecnicoId: string | null; rolTecnico: { id: string; nombre: string; disciplina: string | null } | null }[] } | null;
   // Cotizaciones extra que se facturan solas pero se operan en este mismo proyecto.
   cotizacionesFusionadas?: CotizacionFusionada[];
   logisticaRenta: string | null;
@@ -1298,7 +1299,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   }
 
   // Equipos extra al rider (fuera de cotización)
-  type EquipoRiderExtra = { id: string; descripcion: string; cantidad: number; notas: string; completado: boolean; accesorios?: { id: string; nombre: string; cantidad: number }[]; tipo?: "PROPIO" | "EXTERNO"; proveedor?: string; montaje?: string };
+  type EquipoRiderExtra = { id: string; descripcion: string; cantidad: number; notas: string; completado: boolean; accesorios?: { id: string; nombre: string; cantidad: number }[]; tipo?: "PROPIO" | "EXTERNO"; proveedor?: string; montaje?: string; cotLineaId?: string };
   const [equiposRiderExtra, setEquiposRiderExtra] = useState<EquipoRiderExtra[]>([]);
   const [extraEditTipo, setExtraEditTipo] = useState<"PROPIO" | "EXTERNO">("PROPIO");
   const [extraEditProveedor, setExtraEditProveedor] = useState("");
@@ -1330,6 +1331,24 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       body: JSON.stringify({ equiposRiderExtra: JSON.stringify(data) }),
     });
   }
+
+  // Lo que la cotización pide y todavía no es renglón del rider. Lo que tiene ficha de
+  // catálogo baja solo con el sync; el texto libre (planta de luz, servicios de tercero)
+  // se siembra aquí como fila editable para poder anotarle montaje, notas y accesorios.
+  const lineasCotPendientes = useMemo(
+    () => lineasAdicionalesDeCotizacion({
+      lineas: proyecto?.cotizacion?.lineas ?? [],
+      equipoIdsEnRider: riderEquipos.map(e => e.equipoId),
+      cotLineaIdsSembrados: equiposRiderExtra.flatMap(e => e.cotLineaId ? [e.cotLineaId] : []),
+      hayInventario: riderEquipos.length > 0,
+    }),
+    [proyecto?.cotizacion?.lineas, riderEquipos, equiposRiderExtra],
+  );
+  const cotLineasDeCatalogo = lineasCotPendientes.filter(l => !esLineaDeTextoLibre(l));
+  const extrasMostrados: EquipoRiderExtra[] = [
+    ...equiposRiderExtra,
+    ...lineasCotPendientes.filter(esLineaDeTextoLibre).map(extraDesdeLinea),
+  ];
 
   // Estados para bitácora
   const [notaBitacora, setNotaBitacora] = useState("");
@@ -7031,18 +7050,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               })()}
 
               {(() => {
-                // Compute cotización lines FIRST so empty state is aware of them.
-                // When no inventory is linked (riderEquipos empty) → show ALL cot equipment (PROPIO+EXTERNO+OTRO).
-                // When inventory IS linked → only show EXTERNO+OTRO to avoid duplicating inventory rows.
-                const tiposAMostrar = riderEquipos.length === 0
-                  ? ["EQUIPO_PROPIO", "EQUIPO_EXTERNO", "OTRO"]
-                  : ["EQUIPO_EXTERNO", "OTRO"];
-                const cotLineas = (proyecto.cotizacion?.lineas ?? []).filter(
-                  (l: { tipo: string; descripcion: string }) =>
-                    tiposAMostrar.includes(l.tipo) && !!l.descripcion
-                ) as { id: string; tipo: string; descripcion: string; marca: string | null; cantidad: number; notas: string | null }[];
+                // Solo las líneas con ficha de catálogo que aún no bajaron al rider. El
+                // texto libre se opera abajo, como equipo adicional editable.
+                const cotLineas = cotLineasDeCatalogo;
 
-                if (riderEquipos.length === 0 && cotLineas.length === 0) {
+                if (riderEquipos.length === 0 && extrasMostrados.length === 0 && cotLineas.length === 0) {
                   return (
                     <div className="ms-card py-12 text-center">
                       <p className="text-gray-600 text-sm">Sin equipos en este proyecto</p>
@@ -7535,7 +7547,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                           <span className="text-[10px] text-orange-400/70 font-bold uppercase tracking-widest">
                             {riderEquipos.length === 0 ? "Equipos de cotización" : "Equipos adicionales / Terceros"}
                           </span>
-                          <span className="text-[10px] text-gray-600">desde cotización · {cotLineas.length} ítem{cotLineas.length !== 1 ? "s" : ""}</span>
+                          <span className="text-[10px] text-gray-600">pendientes de bajar al rider · {cotLineas.length} ítem{cotLineas.length !== 1 ? "s" : ""}</span>
                         </div>
                         {cotLineas.map(l => (
                           <div key={l.id} className="border-b border-[#0d0d0d] last:border-0 px-4 py-3">
@@ -7545,7 +7557,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                   {l.descripcion}
                                   {l.marca && <span className="text-gray-500"> · {l.marca}</span>}
                                 </p>
-                                {l.notas && <p className="text-gray-500 text-xs mt-0.5">{l.notas}</p>}
+                                {notaVisibleDeCotizacion(l.notas) && <p className="text-gray-500 text-xs mt-0.5">{notaVisibleDeCotizacion(l.notas)}</p>}
                               </div>
                               <span className="text-gray-400 text-xs shrink-0">×{l.cantidad}</span>
                               <span className={`text-[10px] border px-1.5 py-0.5 rounded shrink-0 ${
@@ -7572,11 +7584,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             {/* ═══════ ZONA 1.25: EQUIPOS EXTRA AL RIDER ═══════ */}
             <SectionDivider label="Equipos adicionales al rider" />
             <div className="space-y-3">
-              <p className="text-gray-500 text-xs">Equipos que se agregan al rider pero no están en la cotización original. Si salen del inventario se suman al listado de arriba con todo y disponibilidad; los manuales se quedan aquí como pendientes por conseguir.</p>
+              <p className="text-gray-500 text-xs">Equipo que no tiene ficha de inventario: lo que la cotización pidió como concepto suelto (plantas de luz, servicios de tercero) más lo que se agregue a mano. Si sale del inventario se suma al listado de arriba con todo y disponibilidad.</p>
 
-              {equiposRiderExtra.length > 0 && (
+              {extrasMostrados.length > 0 && (
                 <div className="ms-table-wrapper divide-y divide-[#1a1a1a]">
-                  {equiposRiderExtra.map(eq => (
+                  {extrasMostrados.map(eq => (
                     <div key={eq.id} className="px-4 py-3">
                       {extraEditId === eq.id ? (
                         /* ── Modo edición inline ── */
@@ -7633,7 +7645,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             <button
                               onClick={() => {
                                 if (!extraEditDesc.trim()) return;
-                                saveEquiposRiderExtra(equiposRiderExtra.map(e => e.id === eq.id ? {
+                                saveEquiposRiderExtra(extrasMostrados.map(e => e.id === eq.id ? {
                                   ...e,
                                   descripcion: extraEditDesc.trim(),
                                   cantidad: extraEditCant,
@@ -7656,7 +7668,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             <input
                               type="checkbox"
                               checked={eq.completado}
-                              onChange={() => saveEquiposRiderExtra(equiposRiderExtra.map(e => e.id === eq.id ? { ...e, completado: !e.completado } : e))}
+                              onChange={() => saveEquiposRiderExtra(extrasMostrados.map(e => e.id === eq.id ? { ...e, completado: !e.completado } : e))}
                               className="w-4 h-4 rounded accent-[#B3985B] shrink-0 cursor-pointer"
                             />
                             <div className="flex-1 min-w-0">
@@ -7673,6 +7685,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                 {eq.montaje && (
                                   <span className="text-[10px] px-1.5 py-0.5 rounded border border-[#2a2a2a] text-gray-400">{eq.montaje}</span>
                                 )}
+                                {eq.cotLineaId && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded border border-[#B3985B]/30 text-[#B3985B]/80">De la cotización</span>
+                                )}
                               </div>
                               {eq.notas && <p className="text-gray-600 text-xs truncate mt-0.5">{eq.notas}</p>}
                             </div>
@@ -7681,10 +7696,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                               onClick={() => { setExtraEditId(eq.id); setExtraEditDesc(eq.descripcion); setExtraEditCant(eq.cantidad); setExtraEditNotas(eq.notas); setExtraEditTipo(eq.tipo ?? "PROPIO"); setExtraEditProveedor(eq.proveedor ?? ""); setExtraEditMontaje(eq.montaje ?? ""); }}
                               className="text-xs text-gray-500 hover:text-[#B3985B] transition-colors shrink-0"
                             >Editar</button>
-                            <button
-                              onClick={() => saveEquiposRiderExtra(equiposRiderExtra.filter(e => e.id !== eq.id))}
-                              className="text-xs text-gray-600 hover:text-red-500 transition-colors shrink-0"
-                            >Eliminar</button>
+                            {eq.cotLineaId ? (
+                              <span className="text-xs text-gray-700 shrink-0" title="Viene de la cotización: se quita desde ahí">Cotizado</span>
+                            ) : (
+                              <button
+                                onClick={() => saveEquiposRiderExtra(extrasMostrados.filter(e => e.id !== eq.id))}
+                                className="text-xs text-gray-600 hover:text-red-500 transition-colors shrink-0"
+                              >Eliminar</button>
+                            )}
                           </div>
 
                           {/* Accesorios del item extra */}
@@ -7696,7 +7715,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                   <span className="flex-1">{a.nombre}</span>
                                   {a.cantidad > 1 && <span className="text-[#B3985B]">×{a.cantidad}</span>}
                                   <button
-                                    onClick={() => saveEquiposRiderExtra(equiposRiderExtra.map(e => e.id === eq.id ? { ...e, accesorios: (e.accesorios ?? []).filter(x => x.id !== a.id) } : e))}
+                                    onClick={() => saveEquiposRiderExtra(extrasMostrados.map(e => e.id === eq.id ? { ...e, accesorios: (e.accesorios ?? []).filter(x => x.id !== a.id) } : e))}
                                     className="text-[#333] hover:text-red-500 leading-none"
                                   >×</button>
                                 </div>
@@ -7715,7 +7734,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                 onKeyDown={e => {
                                   if (e.key === "Enter" && extraAccNombre.trim()) {
                                     const acc = { id: crypto.randomUUID(), nombre: extraAccNombre.trim(), cantidad: extraAccCant };
-                                    saveEquiposRiderExtra(equiposRiderExtra.map(ex => ex.id === eq.id ? { ...ex, accesorios: [...(ex.accesorios ?? []), acc] } : ex));
+                                    saveEquiposRiderExtra(extrasMostrados.map(ex => ex.id === eq.id ? { ...ex, accesorios: [...(ex.accesorios ?? []), acc] } : ex));
                                     setExtraAccNombre(""); setExtraAccCant(1); setExtraAccOpen(null);
                                   }
                                 }}
@@ -7729,7 +7748,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                 disabled={!extraAccNombre.trim()}
                                 onClick={() => {
                                   const acc = { id: crypto.randomUUID(), nombre: extraAccNombre.trim(), cantidad: extraAccCant };
-                                  saveEquiposRiderExtra(equiposRiderExtra.map(ex => ex.id === eq.id ? { ...ex, accesorios: [...(ex.accesorios ?? []), acc] } : ex));
+                                  saveEquiposRiderExtra(extrasMostrados.map(ex => ex.id === eq.id ? { ...ex, accesorios: [...(ex.accesorios ?? []), acc] } : ex));
                                   setExtraAccNombre(""); setExtraAccCant(1); setExtraAccOpen(null);
                                 }}
                                 className="px-2 py-1 bg-[#B3985B] text-black text-xs font-semibold rounded disabled:opacity-40"
@@ -7868,7 +7887,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             proveedor: extraEditTipo === "EXTERNO" ? extraEditProveedor.trim() : "",
                             montaje: extraEditMontaje.trim(),
                           };
-                          saveEquiposRiderExtra([...equiposRiderExtra, nuevo]);
+                          saveEquiposRiderExtra([...extrasMostrados, nuevo]);
                         }
                         setNewExtraEquipoId(""); setNewExtraCant(1); setNewExtraNotas(""); setNewExtraManualDesc("");
                         setExtraEditTipo("PROPIO"); setExtraEditProveedor(""); setExtraEditMontaje("");

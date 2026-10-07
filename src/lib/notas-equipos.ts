@@ -1,19 +1,5 @@
 import { prisma } from "@/lib/prisma";
-
-/**
- * Extrae la nota visible del usuario del campo `notas` de una línea de
- * cotización. En la BD ese campo codifica la categoría y la nota juntas:
- *   "cat:Cat|nota:Texto" · "nota:Texto" · "cat:Cat" (sin nota) · texto plano.
- * Mismo criterio que `getItemNota` en CotizacionPDF, para no filtrar el
- * prefijo `cat:` hacia ficha operativa / rider.
- */
-export function notaVisibleDeCotizacion(notas: string | null | undefined): string | null {
-  if (!notas) return null;
-  if (notas.includes("|nota:")) return notas.split("|nota:")[1]?.trim() || null;
-  if (notas.startsWith("nota:")) return notas.slice(5).trim() || null;
-  if (notas.startsWith("cat:")) return null; // solo categoría, sin nota
-  return notas.trim() || null; // nota plana (legado)
-}
+import { notaVisibleDeCotizacion } from "@/lib/rider-cotizacion";
 
 function esCodificada(n: string): boolean {
   return n.startsWith("cat:") || n.startsWith("nota:") || n.includes("|nota:");

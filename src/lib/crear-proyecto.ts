@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { notaVisibleDeCotizacion } from "@/lib/notas-equipos";
+import { notaVisibleDeCotizacion } from "@/lib/rider-cotizacion";
 import { sincronizarProveedoresDeEquipos } from "@/lib/proveedor-equipos";
 import { etiquetaNivel } from "@/lib/servicios-direccion";
 

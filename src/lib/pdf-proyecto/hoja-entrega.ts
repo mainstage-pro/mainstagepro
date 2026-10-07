@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { Document } from "@react-pdf/renderer";
 import { HojaEntregaRentaPDF } from "@/components/HojaEntregaRentaPDF";
 import { makePdfImageResolver } from "@/components/pdf/PdfShared";
-import { notaVisibleDeCotizacion } from "@/lib/notas-equipos";
+import { notaVisibleDeCotizacion } from "@/lib/rider-cotizacion";
 import { resumenMontaje } from "@/lib/montaje-reportes";
 import { bufferDePdf, type PdfProyecto } from "./render";
 import React from "react";
@@ -23,7 +23,7 @@ export async function generarHojaEntrega(id: string): Promise<PdfProyecto | null
           lineas: {
             where: { tipo: { in: ["EQUIPO_PROPIO", "EQUIPO_EXTERNO", "PAQUETE", "OTRO"] } },
             select: {
-              id: true, tipo: true, descripcion: true, marca: true, modelo: true, cantidad: true, notas: true,
+              id: true, tipo: true, descripcion: true, marca: true, modelo: true, cantidad: true, notas: true, equipoId: true,
               equipo: { select: { imagenUrl: true } },
             },
             orderBy: { orden: "asc" },

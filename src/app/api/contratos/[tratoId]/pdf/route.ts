@@ -9,7 +9,7 @@ import path from "path";
 
 import { validarTokenPresentacion } from "@/lib/presentacion-token";
 import { ensureProcesoVentaColumns } from "@/lib/migraciones-lazy";
-import { notaVisibleDeCotizacion } from "@/lib/notas-equipos";
+import { notaVisibleDeCotizacion } from "@/lib/rider-cotizacion";
 
 export async function GET(
   req: NextRequest,

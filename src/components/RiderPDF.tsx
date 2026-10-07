@@ -37,6 +37,8 @@ type EquipoRiderExtra = {
   notas: string
   completado: boolean
   accesorios?: { id: string; nombre: string; cantidad: number }[]
+  montaje?: string
+  proveedor?: string
 }
 
 export type RiderPDFData = {
@@ -436,6 +438,13 @@ export function RiderPDF({ data }: { data: RiderPDFData }) {
                     <Text style={s.badgeTxt}>×{eq.cantidad}</Text>
                   </View>
                 </View>
+                {(eq.montaje || eq.proveedor) && (
+                  <View style={s.notaRow}>
+                    <Text style={[s.notaTxt, { color: GOLD }]}>
+                      {[eq.proveedor ? `Renta · ${eq.proveedor}` : null, eq.montaje].filter(Boolean).join('  ·  ')}
+                    </Text>
+                  </View>
+                )}
                 {eq.notas && (
                   <View style={s.notaRow}>
                     <Text style={s.notaTxt}>{eq.notas}</Text>
