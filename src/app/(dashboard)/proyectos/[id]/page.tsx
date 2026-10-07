@@ -485,6 +485,26 @@ function CeldaTexto({ value, onChange, placeholder, className }:
   );
 }
 
+// El montaje se guarda como duración (duracionMontajeHrs), pero se captura como
+// hora de término: estas dos funciones traducen entre ambas representaciones.
+function minutosDe(hhmm: string | null | undefined): number | null {
+  const m = /^(\d{1,2}):(\d{2})$/.exec((hhmm ?? "").trim());
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+}
+
+function horaMasHoras(inicio: string | null | undefined, horas: number | null | undefined): string | null {
+  const base = minutosDe(inicio);
+  if (base == null || horas == null || !isFinite(horas)) return null;
+  const min = ((Math.round(base + horas * 60) % 1440) + 1440) % 1440;
+  return `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+}
+
+function horasEntre(inicio: string | null | undefined, fin: string | null | undefined): number | null {
+  const a = minutosDe(inicio), b = minutosDe(fin);
+  if (a == null || b == null) return null;
+  return Math.round((((b - a) % 1440 + 1440) % 1440) / 60 * 100) / 100;
+}
+
 // ─── HourPicker: hora escrita a mano (12h AM/PM) con etiqueta e indicador ──────
 function HourPicker({ label, value, field, onSave, noLabel = false }:
   { label: string; value: string | null; field: string; onSave: (f: string, v: string) => void; noLabel?: boolean }) {
@@ -2139,6 +2159,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       body: JSON.stringify({ horariosEvento: json }),
     });
     setProyecto(p => p ? { ...p, horariosEvento: json } : p);
+  }
+
+  async function guardarTerminoMontaje(hora: string) {
+    const horas = horasEntre(proyecto?.horaInicioMontaje, hora);
+    await fetch(`/api/proyectos/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ duracionMontajeHrs: horas }),
+    });
+    setProyecto(p => p ? { ...p, duracionMontajeHrs: horas } : p);
   }
 
   // ── Guardar un campo booleano (toggle) ──
@@ -4798,7 +4827,19 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <HourPicker label="Hora salida bodega" value={proyecto.horaSalidaBodega} field="horaSalidaBodega" onSave={guardarCampo} />
                   <HourPicker label="Llegada al venue" value={proyecto.horaMontaje} field="horaMontaje" onSave={guardarCampo} />
                   <HourPicker label="Inicio de montaje" value={proyecto.horaInicioMontaje} field="horaInicioMontaje" onSave={guardarCampo} />
-                  <Campo label="Duración montaje (hrs)" value={proyecto.duracionMontajeHrs?.toString() ?? null} field="duracionMontajeHrs" type="number" onSave={guardarCampo} />
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-gray-500 text-xs">Término de montaje</label>
+                      {proyecto.duracionMontajeHrs != null && (
+                        <span className="text-[10px] text-gray-600">{proyecto.duracionMontajeHrs} hrs</span>
+                      )}
+                    </div>
+                    <HoraInput
+                      value={horaMasHoras(proyecto.horaInicioMontaje, proyecto.duracionMontajeHrs)}
+                      onChange={guardarTerminoMontaje}
+                      placeholder={proyecto.horaInicioMontaje ? "ej. 2:30 PM" : "define el inicio primero"}
+                    />
+                  </div>
                 </div>
 
                 {/* ── Subsección 4: Logística de desmontaje ── */}

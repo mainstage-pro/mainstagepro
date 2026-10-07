@@ -371,7 +371,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   const allowed = [
     "estado", "nombre", "horaInicioEvento", "horaFinEvento", "horariosEvento", "fechaMontaje", "fechaEvento", "fechasEvento",
-    "horaInicioMontaje", "duracionMontajeHrs", "lugarEvento", "venueId", "encargadoLugar",
+    "horaInicioMontaje", "lugarEvento", "venueId", "encargadoLugar",
     "encargadoLugarContacto", "encargadoCliente", "encargadoClienteContacto",
     "descripcionGeneral", "detallesEspecificos",
     "transportes", "proveedorCatering", "contactosDireccion",
@@ -394,7 +394,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const relationFields = ["encargadoId"];
   // Campos con tipos especiales (boolean/number/fecha) que no deben pasar por `|| null`
   const booleanFields = ["choferExterno", "aplicaCatering", "montajeDiaAparte", "desmontajeDiaAparte"];
-  const numberFields = ["choferCosto", "duracionDesmontajeHrs", "escenarioAlturaM"];
+  const numberFields = ["choferCosto", "duracionMontajeHrs", "duracionDesmontajeHrs", "escenarioAlturaM"];
   const textNullableFields = ["choferNombre", "recoleccionStatus", "recoleccionNotas", "protocoloSalida", "protocoloEntrada"];
 
   const data: Record<string, unknown> = {};
