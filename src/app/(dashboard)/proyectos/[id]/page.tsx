@@ -9590,10 +9590,22 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       <div className="flex gap-2">
                         <button
                           onClick={() => {
-                            if (!proyecto.responsivaToken) return alert("Guarda o recarga para generar token.");
+                            if (!proyecto.responsivaToken) {
+                              toast.loading("Generando link...");
+                              fetch(`/api/proyectos/${proyecto.id}/responsivas`).then(res => res.json()).then(data => {
+                                toast.dismiss();
+                                if (data.responsivaToken) {
+                                  const link = `${window.location.origin}/responsiva/${data.responsivaToken}`;
+                                  navigator.clipboard.writeText(link);
+                                  toast.success("Link copiado al portapapeles");
+                                  window.location.reload();
+                                }
+                              });
+                              return;
+                            }
                             const link = `${window.location.origin}/responsiva/${proyecto.responsivaToken}`;
-                            navigator.clipboard.writeText(link);
-                            alert("Link copiado: " + link);
+                            navigator.clipboard.writeText(link).catch(() => {});
+                            toast.success("Link copiado al portapapeles");
                           }}
                           className="flex-1 py-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] rounded-lg text-[10px] text-gray-300 transition-colors"
                         >

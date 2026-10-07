@@ -214,6 +214,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   if (!proyecto) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+  if (proyecto && !proyecto.responsivaToken) {
+    const { nanoid } = require("nanoid");
+    const newToken = nanoid(32);
+    await prisma.proyecto.update({ where: { id }, data: { responsivaToken: newToken } });
+    proyecto.responsivaToken = newToken;
+  }
+
 
   // La orden de producción no se "genera": existe. Un proyecto abierto siempre
   // tiene enlace vigente, para que compartirlo sea un botón y no un trámite.
