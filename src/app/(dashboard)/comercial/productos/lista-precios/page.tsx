@@ -1,7 +1,9 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { Download } from "lucide-react";
 import { useToast } from "@/components/Toast";
+import { usePdfDownload } from "@/hooks/usePdfDownload";
 import { getEquipoDisplayName, getEquipoMarcaModelo } from "@/lib/equipoNombre";
 import { coincide } from "@/lib/buscar";
 import { esEquipoDeTercero } from "@/lib/equipo-tipos";
@@ -43,8 +45,17 @@ const SIN_CAT = "__sin-categoria__";
 const ORIGEN_ORDEN = ["PROPIO", "EXTERNO", "PREMIUM"] as const;
 const ORIGEN_LABEL: Record<string, string> = { PROPIO: "Propios", EXTERNO: "Externos", PREMIUM: "Premium" };
 
+const DESCARGAS = [
+  { origen: "PROPIO",  label: "Propios"  },
+  { origen: "EXTERNO", label: "Externos" },
+  { origen: "PREMIUM", label: "Premium"  },
+] as const;
+
+const urlPdf = (origen: string) => `/api/inventario/lista-precios/pdf?origen=${origen}`;
+
 export default function ListaPreciosPage() {
   const toast = useToast();
+  const { downloading, downloadPdf } = usePdfDownload();
   const [equipos, setEquipos] = useState<Equipo[]>([]);
   const [accesorios, setAccesorios] = useState<Accesorio[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
@@ -186,11 +197,26 @@ export default function ListaPreciosPage() {
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-5">
 
-      <div>
-        <h1 className="ms-h1">Lista de precios de renta</h1>
-        <p className="ms-subtitle mt-0.5">
-          Precio unitario de renta de cada equipo y accesorio — el mismo que se usa al cotizar. Inventario propio y de subrenta.
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="ms-h1">Lista de precios de renta</h1>
+          <p className="ms-subtitle mt-0.5">
+            Precio unitario de renta de cada equipo y accesorio — el mismo que se usa al cotizar. Inventario propio y de subrenta.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {DESCARGAS.map(d => (
+            <button key={d.origen}
+              onClick={() => downloadPdf(urlPdf(d.origen), undefined, `Lista de precios · ${d.label}`)}
+              disabled={downloading !== null}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-[#1e1e1e] bg-[#111] text-[#9ca3af] hover:text-white hover:border-[#B3985B]/50 transition-colors disabled:opacity-40">
+              {downloading === urlPdf(d.origen)
+                ? <div className="w-3 h-3 border-2 border-[#B3985B]/30 border-t-[#B3985B] rounded-full animate-spin" />
+                : <Download size={13} className="text-[#B3985B]" />}
+              PDF {d.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
