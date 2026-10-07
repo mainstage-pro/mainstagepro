@@ -146,6 +146,45 @@ export default function ResponsivaPage(props: { params: Promise<{ token: string 
                       <p className="text-sm text-gray-300">{tecnicoSeleccionado.roles.join(', ') || "Técnico"}</p>
                     </div>
                   </div>
+                  
+                  {tecnicoSeleccionado.esRigger ? (
+                    <div className="bg-[#1a1a1a] border border-[#333] rounded-xl p-4 my-6 text-xs text-gray-300 h-64 overflow-y-auto space-y-3 leading-relaxed">
+  <p>
+    En {proyecto.lugar || "_________________"}, a {new Date().toLocaleDateString('es-MX')}, yo <strong>{tecnicoSeleccionado.nombre}</strong> acepto prestar mis servicios especializados de RIGGING para Mainstage Pro. Debido al alto riesgo inherente al trabajo en alturas y elevación de cargas, me obligo a cumplir estrictamente los siguientes lineamientos:
+  </p>
+  <ol className="list-decimal pl-4 space-y-2">
+    <li><strong>Capacidad y Certificación:</strong> Declaro contar con la experiencia, capacitación técnica y capacidad física necesarias para realizar cálculos de carga segura, instalación de puntos de anclaje, manejo de polipastos/motores y trabajo en alturas. Asumo la responsabilidad técnica de las maniobras a mi cargo.</li>
+    <li><strong>Uso de EPP:</strong> Es obligatorio el uso en todo momento de casco de seguridad (con barboquejo), arnés de cuerpo entero, líneas de vida (Y-lanyard), botas de seguridad y guantes. Está estrictamente prohibido iniciar trabajos en altura sin el EPP correctamente colocado.</li>
+    <li><strong>Aseguramiento de Herramientas:</strong> Todas las herramientas manuales, radios y accesorios deben estar sujetos obligatoriamente con cintas o líneas de seguridad (tool lanyards).</li>
+    <li><strong>Inspección Previa de Equipo:</strong> Me comprometo a inspeccionar visual y operativamente todos los motores, eslingas, grilletes, steels y estructuras antes de su izaje.</li>
+    <li><strong>Stop Work Authority (SWA):</strong> Tengo el derecho y la obligación de detener cualquier maniobra de elevación si detecto que los puntos de anclaje no son seguros, si hay sobrecarga, vientos fuertes, o condiciones que comprometan la seguridad estructural.</li>
+    <li><strong>Cargas y Puntos del Recinto:</strong> Me apegaré estrictamente a los límites de carga establecidos por la ingeniería del recinto y el plot aprobado. Queda estrictamente prohibido improvisar puntos de anclaje.</li>
+    <li><strong>Zona Cero y Elevación:</strong> Durante el izaje o descenso de estructuras, coordinaré el despeje total del área inferior ("zona cero"). Ningún técnico debe permanecer debajo de una estructura en movimiento.</li>
+    <li><strong>Estado Físico y Cero Tolerancia:</strong> Declaro presentarme a laborar descansado. Está estrictamente prohibido laborar bajo la influencia de alcohol, drogas, o medicamentos que alteren el sistema nervioso.</li>
+    <li><strong>Responsabilidad Civil:</strong> Asumo responsabilidad total sobre accidentes, colapsos o lesiones a terceros ocasionados por mi negligencia directa, mala práctica, o por omitir deliberadamente estas normativas de seguridad, deslindando a Mainstage Producciones.</li>
+  </ol>
+</div>
+                  ) : (
+                    <div className="bg-[#1a1a1a] border border-[#333] rounded-xl p-4 my-6 text-xs text-gray-300 h-64 overflow-y-auto space-y-3 leading-relaxed">
+  <p>
+    En {proyecto.lugar || "_________________"}, a {new Date().toLocaleDateString('es-MX')}, yo <strong>{tecnicoSeleccionado.nombre}</strong> acepto prestar servicios como freelance para Mainstage Pro y me obligo a cumplir los siguientes lineamientos:
+  </p>
+  <ol className="list-decimal pl-4 space-y-2">
+    <li><strong>Alcance y rol:</strong> Cumpliré con las responsabilidades técnicas del puesto asignado.</li>
+    <li><strong>Horarios y permanencia:</strong> Cumpliré puntualmente los horarios establecidos para bodega, carga, traslado, montaje, show y desmontaje. Permaneceré disponible en mi área durante toda la jornada y avisaré cualquier salida al responsable.</li>
+    <li><strong>Conducta y ética:</strong> Respeto total a cliente, venue, proveedores y equipo. Queda prohibido: agresiones, acoso, discriminación, conflictos y consumo de alcohol o sustancias durante el servicio.</li>
+    <li><strong>Presentación:</strong> Ropa negra o uniforme cuando se solicite; higiene personal y lenguaje profesional en todo momento.</li>
+    <li><strong>Seguridad (EHS):</strong> Seguridad primero: usaré EPP cuando aplique y realizaré únicamente maniobras dentro de mi capacidad y certificación. Si identifico un riesgo, detengo la operación y reporto de inmediato.</li>
+    <li><strong>Comunicación:</strong> Usaré los canales oficiales del evento. Ante duda o error potencial, consulto antes de ejecutar. Reporto avances y envío evidencia cuando se solicite.</li>
+    <li><strong>Orden, limpieza e higiene:</strong> Mantendré las áreas técnicas funcionales, limpias e higiénicas: sin basura, líquidos ni obstáculos. Cableado ordenado e identificable.</li>
+    <li><strong>Uso y cuidado del equipo:</strong> Uso correcto del equipo asignado, sin préstamos ni uso personal. Orden por zonas y resguardo adecuado al finalizar.</li>
+    <li><strong>Daños, pérdidas y faltantes:</strong> Reportaré de inmediato cualquier daño, falla o extravío. Acepto responsabilidad por negligencia, mal uso o falta de reporte oportuno.</li>
+    <li><strong>Incidencias y reporte:</strong> Las incidencias técnicas, operativas o de seguridad se reportan en el momento y al cierre del evento.</li>
+    <li><strong>Operación estándar:</strong> Carga segura; plan de zona; descarga ordenada; seguridad antes que estética; pruebas completas; desmontaje calmado; cables por tipo; regreso y orden final en bodega.</li>
+    <li><strong>Confidencialidad e imagen:</strong> No divulgaré información interna ni publicaré fotos o videos del backstage sin autorización expresa de Mainstage Pro.</li>
+  </ol>
+</div>
+                  )}
 
                   <div className="mb-6">
                     <p className="text-xs text-gray-500 mb-3 font-semibold uppercase tracking-wider">Firma digital</p>
