@@ -136,23 +136,28 @@ export default function ResponsivaPage(props: { params: Promise<{ token: string 
                     </div>
                   )}
                   
-                  <div className="space-y-4 mb-6">
-                    <div>
-                      <p className="text-xs text-gray-500 mb-1">Tipo de responsiva</p>
-                      <p className="text-sm">{tecnicoSeleccionado.esRigger ? "Carta Responsiva de Rigger" : "Carta Responsiva General"}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500 mb-1">Roles asignados</p>
-                      <p className="text-sm text-gray-300">{tecnicoSeleccionado.roles.join(', ') || "Técnico"}</p>
-                    </div>
-                  </div>
-                  
                   {tecnicoSeleccionado.esRigger ? (
-                    <div className="bg-[#1a1a1a] border border-[#333] rounded-xl p-4 my-6 text-xs text-gray-300 h-64 overflow-y-auto space-y-3 leading-relaxed">
-  <p>
-    En {proyecto.lugar || "_________________"}, a {new Date().toLocaleDateString('es-MX')}, yo <strong>{tecnicoSeleccionado.nombre}</strong> acepto prestar mis servicios especializados de RIGGING para Mainstage Pro. Debido al alto riesgo inherente al trabajo en alturas y elevación de cargas, me obligo a cumplir estrictamente los siguientes lineamientos:
+                    <div className="bg-white text-black p-6 sm:p-8 rounded-sm shadow-xl my-6 text-xs sm:text-sm space-y-4 leading-relaxed max-w-2xl mx-auto">
+  <div className="flex justify-between items-start border-b border-gray-300 pb-4 mb-4">
+    <div>
+      <h2 className="font-bold text-sm tracking-wider uppercase text-gray-800">Mainstage Producciones</h2>
+      <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">Producción Técnica</p>
+    </div>
+    <div className="text-right">
+      <h3 className="font-bold text-sm uppercase">Carta Responsiva</h3>
+      <p className="text-[10px] text-gray-500 mt-1">Trabajo en Alturas (Rigging)</p>
+    </div>
+  </div>
+
+  <p className="pt-2">
+    En <strong>{proyecto.lugar || "______________"}</strong>, a <strong>{new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}</strong>
   </p>
-  <ol className="list-decimal pl-4 space-y-2">
+
+  <p className="text-justify">
+    Yo <strong>{tecnicoSeleccionado.nombre}</strong> (Cel: {tecnicoSeleccionado.telefono || "______________"}), acepto prestar mis servicios especializados de RIGGING para Mainstage Pro en el evento <strong>{proyecto.nombre}</strong>. Debido al alto riesgo inherente al trabajo en alturas y elevación de cargas, me obligo a cumplir estrictamente los siguientes lineamientos:
+  </p>
+
+  <ol className="list-decimal pl-5 space-y-2.5 text-justify">
     <li><strong>Capacidad y Certificación:</strong> Declaro contar con la experiencia, capacitación técnica y capacidad física necesarias para realizar cálculos de carga segura, instalación de puntos de anclaje, manejo de polipastos/motores y trabajo en alturas. Asumo la responsabilidad técnica de las maniobras a mi cargo.</li>
     <li><strong>Uso de EPP:</strong> Es obligatorio el uso en todo momento de casco de seguridad (con barboquejo), arnés de cuerpo entero, líneas de vida (Y-lanyard), botas de seguridad y guantes. Está estrictamente prohibido iniciar trabajos en altura sin el EPP correctamente colocado.</li>
     <li><strong>Aseguramiento de Herramientas:</strong> Todas las herramientas manuales, radios y accesorios deben estar sujetos obligatoriamente con cintas o líneas de seguridad (tool lanyards).</li>
@@ -161,15 +166,56 @@ export default function ResponsivaPage(props: { params: Promise<{ token: string 
     <li><strong>Cargas y Puntos del Recinto:</strong> Me apegaré estrictamente a los límites de carga establecidos por la ingeniería del recinto y el plot aprobado. Queda estrictamente prohibido improvisar puntos de anclaje.</li>
     <li><strong>Zona Cero y Elevación:</strong> Durante el izaje o descenso de estructuras, coordinaré el despeje total del área inferior ("zona cero"). Ningún técnico debe permanecer debajo de una estructura en movimiento.</li>
     <li><strong>Estado Físico y Cero Tolerancia:</strong> Declaro presentarme a laborar descansado. Está estrictamente prohibido laborar bajo la influencia de alcohol, drogas, o medicamentos que alteren el sistema nervioso.</li>
-    <li><strong>Responsabilidad Civil:</strong> Asumo responsabilidad total sobre accidentes, colapsos o lesiones a terceros ocasionados por mi negligencia directa, mala práctica, o por omitir deliberadamente estas normativas de seguridad, deslindando a Mainstage Producciones.</li>
+    <li><strong>Responsabilidad Civil:</strong> Asumo responsabilidad total sobre accidentes, colapsos o lesiones a terceros ocasionados por mi negligencia directa, mala práctica, o por omitir deliberadamente estas normativas de seguridad.</li>
   </ol>
+
+  <p className="font-bold text-center mt-6 uppercase text-[11px] border-y border-gray-200 py-3">
+    Declaro que leí, entiendo la responsabilidad técnica, y acepto el contenido de esta carta responsiva.
+  </p>
+
+  <div className="mt-8">
+    <p className="text-xs text-gray-500 mb-2 font-semibold uppercase tracking-wider text-center">Firma del Técnico Rigger</p>
+    <div className="max-w-[320px] mx-auto border border-gray-300 rounded-lg overflow-hidden bg-white shadow-inner">
+      <SignaturePad onEnd={setFirma} theme="light" />
+    </div>
+    
+    <div className="mt-4 text-center space-y-1">
+      <p className="font-bold">{tecnicoSeleccionado.nombre}</p>
+      <p className="text-gray-600 text-[11px]">Roles: {tecnicoSeleccionado.roles.join(', ') || "Rigger"}</p>
+    </div>
+  </div>
+
+  <div className="mt-6 pt-4 border-t border-gray-200">
+    <label className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200 cursor-pointer">
+      <input type="checkbox" checked={aceptado} onChange={e => setAceptado(e.target.checked)} className="mt-1 w-4 h-4 text-[#B3985B] rounded" />
+      <span className="text-xs text-gray-700 leading-relaxed font-medium">
+        He leído y acepto el contenido de esta carta responsiva y confirmo que la información proporcionada es correcta.
+      </span>
+    </label>
+  </div>
 </div>
                   ) : (
-                    <div className="bg-[#1a1a1a] border border-[#333] rounded-xl p-4 my-6 text-xs text-gray-300 h-64 overflow-y-auto space-y-3 leading-relaxed">
-  <p>
-    En {proyecto.lugar || "_________________"}, a {new Date().toLocaleDateString('es-MX')}, yo <strong>{tecnicoSeleccionado.nombre}</strong> acepto prestar servicios como freelance para Mainstage Pro y me obligo a cumplir los siguientes lineamientos:
+                    <div className="bg-white text-black p-6 sm:p-8 rounded-sm shadow-xl my-6 text-xs sm:text-sm space-y-4 leading-relaxed max-w-2xl mx-auto">
+  <div className="flex justify-between items-start border-b border-gray-300 pb-4 mb-4">
+    <div>
+      <h2 className="font-bold text-sm tracking-wider uppercase text-gray-800">Mainstage Producciones</h2>
+      <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">Producción Técnica</p>
+    </div>
+    <div className="text-right">
+      <h3 className="font-bold text-sm uppercase">Carta Responsiva</h3>
+      <p className="text-[10px] text-gray-500 mt-1">Personal Técnico / Freelance</p>
+    </div>
+  </div>
+
+  <p className="pt-2">
+    En <strong>{proyecto.lugar || "______________"}</strong>, a <strong>{new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}</strong>
   </p>
-  <ol className="list-decimal pl-4 space-y-2">
+
+  <p className="text-justify">
+    Yo <strong>{tecnicoSeleccionado.nombre}</strong> (Cel: {tecnicoSeleccionado.telefono || "______________"}), acepto prestar servicios como freelance para Mainstage Pro en el evento <strong>{proyecto.nombre}</strong> y me obligo a cumplir los siguientes lineamientos:
+  </p>
+
+  <ol className="list-decimal pl-5 space-y-2.5 text-justify">
     <li><strong>Alcance y rol:</strong> Cumpliré con las responsabilidades técnicas del puesto asignado.</li>
     <li><strong>Horarios y permanencia:</strong> Cumpliré puntualmente los horarios establecidos para bodega, carga, traslado, montaje, show y desmontaje. Permaneceré disponible en mi área durante toda la jornada y avisaré cualquier salida al responsable.</li>
     <li><strong>Conducta y ética:</strong> Respeto total a cliente, venue, proveedores y equipo. Queda prohibido: agresiones, acoso, discriminación, conflictos y consumo de alcohol o sustancias durante el servicio.</li>
@@ -183,20 +229,33 @@ export default function ResponsivaPage(props: { params: Promise<{ token: string 
     <li><strong>Operación estándar:</strong> Carga segura; plan de zona; descarga ordenada; seguridad antes que estética; pruebas completas; desmontaje calmado; cables por tipo; regreso y orden final en bodega.</li>
     <li><strong>Confidencialidad e imagen:</strong> No divulgaré información interna ni publicaré fotos o videos del backstage sin autorización expresa de Mainstage Pro.</li>
   </ol>
+
+  <p className="font-bold text-center mt-6 uppercase text-[11px] border-y border-gray-200 py-3">
+    Declaro que leí, entiendo y acepto el contenido de esta carta responsiva.
+  </p>
+
+  <div className="mt-8">
+    <p className="text-xs text-gray-500 mb-2 font-semibold uppercase tracking-wider text-center">Firma del Técnico</p>
+    <div className="max-w-[320px] mx-auto border border-gray-300 rounded-lg overflow-hidden bg-white shadow-inner">
+      <SignaturePad onEnd={setFirma} theme="light" />
+    </div>
+    
+    <div className="mt-4 text-center space-y-1">
+      <p className="font-bold">{tecnicoSeleccionado.nombre}</p>
+      <p className="text-gray-600 text-[11px]">Roles: {tecnicoSeleccionado.roles.join(', ') || "Técnico"}</p>
+    </div>
+  </div>
+
+  <div className="mt-6 pt-4 border-t border-gray-200">
+    <label className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200 cursor-pointer">
+      <input type="checkbox" checked={aceptado} onChange={e => setAceptado(e.target.checked)} className="mt-1 w-4 h-4 text-[#B3985B] rounded" />
+      <span className="text-xs text-gray-700 leading-relaxed font-medium">
+        He leído y acepto el contenido de esta carta responsiva y confirmo que la información proporcionada es correcta.
+      </span>
+    </label>
+  </div>
 </div>
                   )}
-
-                  <div className="mb-6">
-                    <p className="text-xs text-gray-500 mb-3 font-semibold uppercase tracking-wider">Firma digital</p>
-                    <SignaturePad onEnd={setFirma} />
-                  </div>
-
-                  <label className="flex items-start gap-3 mb-6 p-3 bg-[#1a1a1a] rounded-xl border border-[#333] cursor-pointer">
-                    <input type="checkbox" checked={aceptado} onChange={e => setAceptado(e.target.checked)} className="mt-1 bg-black border-[#444] rounded" />
-                    <span className="text-xs text-gray-300 leading-relaxed">
-                      He leído y acepto el contenido de esta carta responsiva y confirmo que la información proporcionada es correcta.
-                    </span>
-                  </label>
 
                   <button
                     onClick={handleSubmit}

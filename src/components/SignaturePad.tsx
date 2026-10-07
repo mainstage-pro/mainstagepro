@@ -1,7 +1,7 @@
 "use client";
 import React, { useRef, useState, useEffect } from 'react';
 
-export function SignaturePad({ onEnd }: { onEnd: (dataUrl: string | null) => void }) {
+export function SignaturePad({ onEnd, theme = "dark" }: { onEnd: (dataUrl: string | null) => void, theme?: "dark" | "light" }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasStroke, setHasStroke] = useState(false);
@@ -11,7 +11,7 @@ export function SignaturePad({ onEnd }: { onEnd: (dataUrl: string | null) => voi
     if (canvas) {
       const ctx = canvas.getContext('2d');
       if (ctx) {
-        ctx.strokeStyle = '#fff';
+        ctx.strokeStyle = theme === 'light' ? '#000' : '#fff';
         ctx.lineWidth = 2;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
@@ -80,7 +80,7 @@ export function SignaturePad({ onEnd }: { onEnd: (dataUrl: string | null) => voi
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="border border-[#333] rounded-xl overflow-hidden bg-[#111]">
+      <div className={`border rounded-xl overflow-hidden ${theme === "light" ? "border-gray-300 bg-gray-50" : "border-[#333] bg-[#111]"}`}>
         <canvas
           ref={canvasRef}
           width={320}
@@ -96,7 +96,7 @@ export function SignaturePad({ onEnd }: { onEnd: (dataUrl: string | null) => voi
         />
       </div>
       <div className="flex justify-end">
-        <button type="button" onClick={clear} className="text-xs text-gray-500 hover:text-white transition-colors">
+        <button type="button" onClick={clear} className={`text-xs transition-colors ${theme === "light" ? "text-gray-500 hover:text-black" : "text-gray-500 hover:text-white"}`}>
           Limpiar firma
         </button>
       </div>
