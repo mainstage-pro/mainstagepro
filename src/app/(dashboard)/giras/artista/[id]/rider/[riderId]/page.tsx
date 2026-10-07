@@ -17,7 +17,6 @@ export default async function RiderFichaPage({ params }: { params: Promise<{ id:
       esActivo: true,
       activo: true,
       contexto: true,
-      origen: true,
       archivoUrl: true,
       archivoNombre: true,
       archivoTamanoBytes: true,

@@ -29,7 +29,7 @@ export default async function GirasListaPage() {
             fecha: true,
             ciudad: true,
             venue: { select: { nombre: true } },
-            riderLineas: { select: { prioridad: true, estado: true, cubiertoPor: true } },
+            repartos: { select: { prioridad: true, estado: true, cubiertoPor: true } },
           },
         },
       },

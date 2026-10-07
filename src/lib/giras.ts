@@ -1163,7 +1163,7 @@ export function fmtRango(inicio: Date | string | null | undefined, fin: Date | s
 
 // ── Avance agregado de la gira ───────────────────────────────────────────────
 export interface ShowResumible {
-  riderLineas: LineaAdvanceResumible[];
+  repartos: LineaAdvanceResumible[];
 }
 
 export interface ResumenGira {
@@ -1178,7 +1178,7 @@ export interface ResumenGira {
 }
 
 export function avanceGira(shows: ShowResumible[]): ResumenGira {
-  const resumenes = shows.map((s) => resumirAdvance(s.riderLineas));
+  const resumenes = shows.map((s) => resumirAdvance(s.repartos));
   const conLineas = resumenes.filter((r) => r.total > 0);
 
   const avance = conLineas.length
@@ -1327,17 +1327,6 @@ export function contextoRiderLabel(contexto: string | null | undefined): string 
   if (!contexto) return CONTEXTO_RIDER_LABEL.GENERAL;
   return CONTEXTO_RIDER_LABEL[contexto] ?? contexto;
 }
-
-/// GENERADO: la ficha se captura aquí y el PDF lo arma la plataforma.
-/// CARGADO: el artista ya trae su PDF y solo lo guardamos; los números críticos
-/// se capturan igual para que el advance y la cotización sigan funcionando.
-export const ORIGENES_RIDER = ["GENERADO", "CARGADO"] as const;
-export type OrigenRider = (typeof ORIGENES_RIDER)[number];
-
-export const ORIGEN_RIDER_LABEL: Record<string, string> = {
-  GENERADO: "Armado en la plataforma",
-  CARGADO: "Documento del artista",
-};
 
 // ── Rider: secciones libres ──────────────────────────────────────────────────
 /// Los nueve bloques fijos cubren el rider típico; lo que un artista pide fuera

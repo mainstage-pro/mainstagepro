@@ -15,10 +15,10 @@ import type { Document } from "@react-pdf/renderer";
 import path from "path";
 import { prisma } from "@/lib/prisma";
 import {
+  DISCIPLINA_LABEL,
   ESTADO_GIRA_LABEL,
   ESTADO_SHOW_LABEL,
   ORIGEN_CREW_LABEL,
-  PRIORIDAD_LABEL,
   ROL_PERSONA_LABEL,
   SECCIONES_LIBRO,
   SEMAFORO_LABEL,
@@ -39,6 +39,7 @@ import {
   tituloDeFila,
   type SeccionLibro,
 } from "@/lib/giras";
+import { sigueAbierta } from "@/lib/advance-gira";
 import { horasAncla } from "@/lib/show-momentos";
 import { logoBase64, nowStr, resolvePdfImage } from "@/components/pdf/PdfShared";
 import {
@@ -125,9 +126,16 @@ export async function generarLibroGira(giraId: string, secciones: SeccionLibro[]
               contactoTecnicoEmail: true,
             },
           },
-          riderLineas: {
+          repartos: {
             orderBy: [{ orden: "asc" }, { createdAt: "asc" }],
-            select: { concepto: true, prioridad: true, estado: true, cubiertoPor: true },
+            select: {
+              descripcion: true,
+              disciplina: true,
+              prioridad: true,
+              estado: true,
+              cubiertoPor: true,
+              porConseguir: true,
+            },
           },
           // El itinerario del libro imprime cuatro horas por fecha, y cada una se
           // busca por su llave entre los momentos del día.
@@ -408,11 +416,8 @@ export async function generarLibroGira(giraId: string, secciones: SeccionLibro[]
   });
 
   // ── Advance consolidado ─────────────────────────────────────────────────────
-  const resuelta = (l: { estado: string; cubiertoPor: string }) =>
-    l.cubiertoPor === "NO_APLICA" ? true : l.cubiertoPor === "NO_CUBIERTO" ? false : ["CONFIRMADO", "SUSTITUCION_APROBADA"].includes(l.estado);
-
   const advance: LibroAdvanceShow[] = gira.shows.map((s) => {
-    const r = resumirAdvance(s.riderLineas);
+    const r = resumirAdvance(s.repartos);
     return {
       id: s.id,
       etiqueta: etiquetaShow(s),
@@ -425,9 +430,15 @@ export async function generarLibroGira(giraId: string, secciones: SeccionLibro[]
       avance: r.avance,
       semaforoLabel: SEMAFORO_LABEL[r.semaforo] ?? r.semaforo,
       cerradoEn: s.advanceCerradoEn ? fmtFechaHora(s.advanceCerradoEn) : null,
-      pendientes: s.riderLineas
-        .filter((l) => l.prioridad === "INDISPENSABLE" && !resuelta(l))
-        .map((l) => `${l.concepto} (${PRIORIDAD_LABEL[l.prioridad] ?? l.prioridad})`),
+      // Lo que falta hacer pesa más que la etiqueta de prioridad: el tour manager
+      // abre esta sección para saber a quién llamar, no para leer «indispensable».
+      pendientes: s.repartos
+        .filter((x) => x.prioridad === "INDISPENSABLE" && sigueAbierta(x))
+        .map((x) =>
+          [`${x.descripcion} (${DISCIPLINA_LABEL[x.disciplina] ?? x.disciplina})`, x.porConseguir]
+            .filter(Boolean)
+            .join(" — "),
+        ),
     };
   });
 
@@ -442,7 +453,7 @@ export async function generarLibroGira(giraId: string, secciones: SeccionLibro[]
     responsable: t.asignadoA?.name ?? null,
   }));
 
-  const resumenGira = avanceGira(gira.shows.map((s) => ({ riderLineas: s.riderLineas })));
+  const resumenGira = avanceGira(gira.shows.map((s) => ({ repartos: s.repartos })));
   const ciudades = new Set(
     gira.shows.map((s) => (s.ciudad ?? s.venue?.ciudad ?? "").trim().toLowerCase()).filter(Boolean),
   );

@@ -272,18 +272,9 @@ export async function generarRiderArtista(riderId: string, giraNombre: string | 
   const publicDir = path.join(process.cwd(), "public");
   const nombreArchivo = `Rider-${slugArchivo(rider.artista.nombre)}-v${rider.version}.pdf`;
 
-  // Rider cargado: el documento es el del artista. No se re-maqueta (perdería el
-  // formato que ellos negocian) pero sí se le pegan los anexos que se hayan
-  // subido aparte, que es lo que hace falta al mandarlo.
-  if (rider.origen === "CARGADO" && rider.archivoUrl) {
-    const original = await leerPdfAnexo(rider.archivoUrl, publicDir);
-    if (original) {
-      const { pdfs } = await leerAnexos(rider, publicDir);
-      const buf = await anexarPdfs(original, rider, pdfs, publicDir);
-      return { buf, filename: rider.archivoNombre || nombreArchivo };
-    }
-  }
-
+  // El PDF que mandó el artista se queda adjunto en su ficha para consulta y no
+  // sale por aquí: el documento de la casa siempre se maqueta con lo que esté
+  // capturado en la ficha, que es la transcripción del suyo.
   const { inputs, outputs } = partirCanales(rider);
   const { imagenes, pdfs } = await leerAnexos(rider, publicDir);
 

@@ -39,7 +39,7 @@ export default async function DocumentosGiraPage({ params }: { params: Promise<{
           estado: true,
           docsToken: true,
           venue: { select: { nombre: true } },
-          _count: { select: { momentos: true, riderLineas: true } },
+          _count: { select: { momentos: true, repartos: true } },
         },
       },
     },
@@ -75,7 +75,7 @@ export default async function DocumentosGiraPage({ params }: { params: Promise<{
     // El renglón del show enseña qué tan armado está su día: ahora son momentos
     // de `ShowMomento`, el esqueleto y lo que esta fecha agregó.
     momentos: s._count.momentos,
-    renglonesAdvance: s._count.riderLineas,
+    renglonesAdvance: s._count.repartos,
   }));
 
   const filas: ArchivoFila[] = archivos.map((a) => ({

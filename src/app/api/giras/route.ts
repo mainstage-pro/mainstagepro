@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
           estado: true,
           riderEnviadoEn: true,
           venue: { select: { id: true, nombre: true } },
-          riderLineas: { select: { prioridad: true, estado: true, cubiertoPor: true } },
+          repartos: { select: { prioridad: true, estado: true, cubiertoPor: true } },
           _count: { select: { crew: true } },
         },
       },

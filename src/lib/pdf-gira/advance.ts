@@ -1,8 +1,8 @@
 // src/lib/pdf-gira/advance.ts
 //
-// El advance del show: lo que pide el rider contra lo que pone el venue. El
-// PDF se manda al foro tal cual, así que aquí NO entra ni el costo ni el nombre
-// del proveedor aunque el modelo los traiga: eso se queda del lado nuestro.
+// El advance del show: quién pone qué, departamento por departamento. El PDF se
+// manda al foro tal cual, así que aquí NO entra ni el costo ni el nombre del
+// proveedor aunque el modelo los traiga: eso se queda del lado nuestro.
 
 import React from "react";
 import type { Document } from "@react-pdf/renderer";
@@ -20,11 +20,11 @@ import {
   fmtFechaLarga,
   resumirAdvance,
 } from "@/lib/giras";
-import { sigueAbierta } from "@/lib/advance-gira";
+import { fmtCantidad, panelDelShow, sigueAbierta } from "@/lib/advance-gira";
 import { logoBase64, nowStr, resolvePdfImage } from "@/components/pdf/PdfShared";
 import {
   AdvanceShowPDF,
-  type AdvanceLineaDoc,
+  type AdvanceRepartoDoc,
   type AdvanceShowData,
 } from "@/components/pdf/giras/AdvanceShowPDF";
 import { bufferDePdf, type PdfGira } from "./render";
@@ -36,7 +36,7 @@ export async function generarAdvanceShow(showId: string): Promise<PdfGira | null
     where: { id: showId },
     include: {
       venue: true,
-      riderLineas: { orderBy: [{ orden: "asc" }, { createdAt: "asc" }] },
+      repartos: { orderBy: [{ orden: "asc" }, { createdAt: "asc" }] },
       gira: {
         select: {
           nombre: true,
@@ -50,33 +50,45 @@ export async function generarAdvanceShow(showId: string): Promise<PdfGira | null
   if (!show) return null;
 
   const resumen = resumirAdvance(
-    show.riderLineas.map((l) => ({ prioridad: l.prioridad, estado: l.estado, cubiertoPor: l.cubiertoPor })),
+    show.repartos.map((r) => ({ prioridad: r.prioridad, estado: r.estado, cubiertoPor: r.cubiertoPor })),
   );
 
-  const lineas: AdvanceLineaDoc[] = [...show.riderLineas]
+  const repartos: AdvanceRepartoDoc[] = [...show.repartos]
     .sort((a, b) => {
       const da = ORDEN_DISCIPLINA[a.disciplina] ?? 99;
       const db = ORDEN_DISCIPLINA[b.disciplina] ?? 99;
       if (da !== db) return da - db;
       return a.orden - b.orden;
     })
-    .map((l) => ({
-      id: l.id,
-      disciplina: l.disciplina,
-      disciplinaLabel: DISCIPLINA_LABEL[l.disciplina] ?? l.disciplina,
-      concepto: l.concepto,
-      cantidadPedida: l.cantidadPedida,
-      prioridadLabel: PRIORIDAD_LABEL[l.prioridad] ?? l.prioridad,
-      ofrecidoCasa: l.ofrecidoCasa,
-      cantidadCasa: l.cantidadCasa,
-      cubiertoPorLabel: CUBIERTO_POR_LABEL[l.cubiertoPor] ?? l.cubiertoPor,
-      cantidadCubierta: l.cantidadCubierta,
-      estadoLabel: ESTADO_ADVANCE_LABEL[l.estado] ?? l.estado,
+    .map((r) => ({
+      id: r.id,
+      disciplina: r.disciplina,
+      disciplinaLabel: DISCIPLINA_LABEL[r.disciplina] ?? r.disciplina,
+      descripcion: r.descripcion,
+      cantidad: fmtCantidad(r.cantidad, r.unidad),
+      especificaciones: r.especificaciones,
+      prioridadLabel: PRIORIDAD_LABEL[r.prioridad] ?? r.prioridad,
+      cubiertoPorLabel: CUBIERTO_POR_LABEL[r.cubiertoPor] ?? r.cubiertoPor,
+      estadoLabel: ESTADO_ADVANCE_LABEL[r.estado] ?? r.estado,
       // Mismo criterio que el semáforo y que el advance consolidado, para que los
       // tres nunca se contradigan: confirmado o "no aplica" cuentan como cerrados.
-      resuelta: !sigueAbierta(l),
-      notas: l.notas,
+      resuelto: !sigueAbierta(r),
+      porConseguir: r.porConseguir,
+      notas: r.notas,
     }));
+
+  // Lo que el rider pide y no quedó en ningún renglón. El panel ya hace el cotejo
+  // contra el rider de la gira; reproducirlo aquí lo dejaría desincronizado.
+  const panel = await panelDelShow(showId);
+  const sinRepartir = (panel?.disciplinas ?? []).flatMap((d) =>
+    d.puntos
+      .filter((p) => p.repartido === 0)
+      .map((p) =>
+        [`${fmtCantidad(p.cantidad, p.unidad)} ${p.concepto} (${d.label})`, p.especificaciones]
+          .filter(Boolean)
+          .join(" — "),
+      ),
+  );
 
   const ciudad = show.ciudad ?? show.venue?.ciudad ?? null;
   const publicDir = path.join(process.cwd(), "public");
@@ -113,7 +125,8 @@ export async function generarAdvanceShow(showId: string): Promise<PdfGira | null
       semaforoLabel: SEMAFORO_LABEL[resumen.semaforo] ?? resumen.semaforo,
     },
     cerradoEn: show.advanceCerradoEn ? fmtFechaHora(show.advanceCerradoEn) : null,
-    lineas,
+    repartos,
+    sinRepartir,
     logoSrc: logoBase64(publicDir),
     logoArtistaSrc: await resolvePdfImage(show.gira.artista.logoUrl, publicDir),
     generadoEn: nowStr(),

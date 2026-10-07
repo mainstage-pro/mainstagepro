@@ -1,9 +1,13 @@
-// Transcribe el Word del rider del artista a la ficha de la plataforma.
+// Transcribe el rider del artista (PDF o Word) a la ficha de la plataforma.
 //
 // Dos llamadas, un solo endpoint: sin `secciones` lee el documento y devuelve la
 // propuesta para que se corrija en pantalla; con `secciones` guarda lo que quedó
 // aprobado. La lectura es determinista (ver src/lib/rider-docx-import.ts): lo
 // que el documento no dice, no se inventa aquí.
+//
+// El PDF no tiene su propio parser semántico: se reconstruye su estructura a un
+// HTML mínimo (src/lib/rider-pdf-import.ts) y lo lee el mismo `leerRiderDocx`,
+// porque dos parsers divergen y el que se usa menos se podre.
 //
 // La unidad es el PUNTO, no el equipo: una sección del documento entra como un
 // punto del rider con su texto completo, y es eso lo que se coteja con el venue
@@ -23,6 +27,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { DISCIPLINAS, leerSeccionesExtra } from "@/lib/giras";
 import { leerRiderDocx } from "@/lib/rider-docx-import";
+import { pdfAHtml } from "@/lib/rider-pdf-import";
 
 export const runtime = "nodejs";
 
@@ -119,17 +124,33 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ rid
     const res = await fetch(url);
     if (!res.ok) return NextResponse.json({ error: "No se pudo bajar el documento" }, { status: 502 });
 
+    const buffer = Buffer.from(await res.arrayBuffer());
+    // El tipo se decide por los bytes, no por la extensión de la URL: el rider
+    // llega con el nombre que le puso el artista y a veces miente.
+    const esPdf = buffer.subarray(0, 5).toString("latin1") === "%PDF-";
+
+    let html: string;
     try {
-      const buffer = Buffer.from(await res.arrayBuffer());
-      const { value } = await mammoth.convertToHtml({ buffer });
-      const lectura = leerRiderDocx(value);
-      if (lectura.secciones.length === 0) {
-        return NextResponse.json({ error: "No se reconoció nada en ese documento" }, { status: 400 });
-      }
-      return NextResponse.json(lectura);
+      html = esPdf ? await pdfAHtml(buffer) : (await mammoth.convertToHtml({ buffer })).value;
     } catch {
-      return NextResponse.json({ error: "Ese archivo no se pudo leer como Word (.docx)" }, { status: 400 });
+      return NextResponse.json(
+        { error: esPdf ? "Ese PDF no se pudo abrir" : "Ese archivo no se pudo leer como PDF ni como Word (.docx)" },
+        { status: 400 },
+      );
     }
+
+    const lectura = leerRiderDocx(html);
+    if (lectura.secciones.length === 0) {
+      return NextResponse.json(
+        {
+          error: esPdf
+            ? "Ese PDF no trae texto, solo imagen: está escaneado y hay que capturarlo a mano."
+            : "No se reconoció nada en ese documento",
+        },
+        { status: 400 },
+      );
+    }
+    return NextResponse.json(lectura);
   }
 
   // ── Guardado ──────────────────────────────────────────────────────────────

@@ -2,11 +2,7 @@
 
 import Migas from "@/components/giras/Migas";
 import SubNav, { type EnlaceSub } from "@/app/(dashboard)/giras/[id]/SubNav";
-import {
-  CONTEXTO_RIDER_COLOR,
-  CONTEXTO_RIDER_LABEL,
-  ORIGEN_RIDER_LABEL,
-} from "@/lib/giras";
+import { CONTEXTO_RIDER_COLOR, CONTEXTO_RIDER_LABEL } from "@/lib/giras";
 
 interface Props {
   artistaId: string;
@@ -17,7 +13,7 @@ interface Props {
   esActivo: boolean;
   formacion: string | null;
   contexto: string;
-  origen: string;
+  archivoUrl: string | null;
   archivoNombre: string | null;
   inputs: number;
   outputs: number;
@@ -28,7 +24,6 @@ interface Props {
 }
 
 export default function CabeceraRider(p: Props) {
-  const cargado = p.origen === "CARGADO";
   return (
     <div className="px-4 md:px-6 pt-4 md:pt-6 border-b border-[#1a1a1a]">
       <Migas
@@ -46,11 +41,9 @@ export default function CabeceraRider(p: Props) {
           <p className="ms-subtitle mt-0.5">
             v{p.version}
             {p.formacion ? ` · ${p.formacion}` : ""}
-            {cargado
-              ? ` · ${p.archivoNombre ?? "documento del artista"}`
-              : ` · ${p.inputs} inputs · ${p.outputs} mixes · ${p.conceptos} ${
-                  p.conceptos === 1 ? "concepto" : "conceptos"
-                } de equipo`}
+            {` · ${p.inputs} inputs · ${p.outputs} mixes · ${p.conceptos} ${
+              p.conceptos === 1 ? "concepto" : "conceptos"
+            } de equipo`}
             {" · "}
             {p.contactos} {p.contactos === 1 ? "contacto" : "contactos"} · {p.anexos}{" "}
             {p.anexos === 1 ? "anexo" : "anexos"}
@@ -60,7 +53,6 @@ export default function CabeceraRider(p: Props) {
           <span className={`ms-badge ${CONTEXTO_RIDER_COLOR[p.contexto] ?? "ms-badge-gray"}`}>
             {CONTEXTO_RIDER_LABEL[p.contexto] ?? p.contexto}
           </span>
-          {cargado && <span className="ms-badge ms-badge-gray">{ORIGEN_RIDER_LABEL.CARGADO}</span>}
           {/* «Vigente» es por contexto: el de festival no apaga al de tour. */}
           {p.esActivo ? (
             <span className="ms-badge ms-badge-gold">Vigente en {CONTEXTO_RIDER_LABEL[p.contexto] ?? p.contexto}</span>
@@ -77,14 +69,19 @@ export default function CabeceraRider(p: Props) {
           >
             Rider PDF
           </a>
-          {!cargado && (
-            <a
-              className="ms-btn-ghost"
-              href={`/api/artista-riders/${p.riderId}/documentos/input-list?inline=1`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Input/output list
+          <a
+            className="ms-btn-ghost"
+            href={`/api/artista-riders/${p.riderId}/documentos/input-list?inline=1`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Input/output list
+          </a>
+          {/* El PDF que mandó el artista se queda fijo para consulta: no sustituye
+              a la ficha, se cotejan uno contra otro. */}
+          {p.archivoUrl && (
+            <a className="ms-btn-ghost" href={p.archivoUrl} target="_blank" rel="noreferrer">
+              {p.archivoNombre ?? "PDF del artista"}
             </a>
           )}
         </div>

@@ -136,13 +136,5 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ ride
     include: { equipo: { select: { id: true, descripcion: true, marca: true, modelo: true } } },
   });
 
-  // Apagar "en advance" aquí tiene que pesar lo mismo que apagarlo desde la fecha:
-  // el renglón de trabajo desaparece de todas las fechas. Si solo se ocultara, el
-  // semáforo y los PDF seguirían contándolo como pendiente.
-  const apagadas = lineas.filter((l) => !l.enAdvance).map((l) => l.id);
-  if (apagadas.length) {
-    await prisma.showRiderLinea.deleteMany({ where: { riderLineaId: { in: apagadas } } });
-  }
-
   return NextResponse.json({ lineas });
 }

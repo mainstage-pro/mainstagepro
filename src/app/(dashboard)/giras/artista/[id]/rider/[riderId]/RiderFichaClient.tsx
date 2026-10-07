@@ -10,7 +10,6 @@ import {
   CONTEXTOS_RIDER,
   CONTEXTO_RIDER_AYUDA,
   CONTEXTO_RIDER_LABEL,
-  ORIGEN_RIDER_LABEL,
   SECCIONES_RIDER,
   fmtTamano,
   type SeccionExtraRider,
@@ -22,7 +21,6 @@ export interface RiderFicha {
   version: number;
   esActivo: boolean;
   contexto: string;
-  origen: string;
   archivoUrl: string | null;
   archivoNombre: string | null;
   archivoTamanoBytes: number | null;
@@ -94,7 +92,6 @@ export default function RiderFichaClient({ artistaId, rider }: Props) {
   const [extrasOriginal, setExtrasOriginal] = useState<SeccionExtraRider[]>(rider.seccionesExtra);
   const [guardando, setGuardando] = useState(false);
   const [doc, setDoc] = useState({
-    origen: rider.origen,
     archivoUrl: rider.archivoUrl,
     archivoNombre: rider.archivoNombre,
     archivoTamanoBytes: rider.archivoTamanoBytes,
@@ -102,7 +99,6 @@ export default function RiderFichaClient({ artistaId, rider }: Props) {
   const [subiendo, setSubiendo] = useState(false);
   const inputPdf = useRef<HTMLInputElement>(null);
 
-  const cargado = doc.origen === "CARGADO";
   const sucio =
     JSON.stringify(form) !== JSON.stringify(original) ||
     JSON.stringify(extras) !== JSON.stringify(extrasOriginal);
@@ -123,7 +119,7 @@ export default function RiderFichaClient({ artistaId, rider }: Props) {
     setExtras((p) => p.filter((s) => s.id !== id));
   }
 
-  /// El rider cargado se guarda aparte del formulario: el PATCH debe salir en el
+  /// El PDF adjunto se guarda aparte del formulario: el PATCH debe salir en el
   /// momento en que termina la subida, no cuando el usuario se acuerde de guardar.
   async function parchearDoc(campos: Record<string, unknown>) {
     const res = await fetch(`/api/artista-riders/${rider.id}`, {
@@ -152,14 +148,13 @@ export default function RiderFichaClient({ artistaId, rider }: Props) {
         handleUploadUrl: "/api/upload/token",
       });
       const campos = {
-        origen: "CARGADO",
         archivoUrl: blob.url,
         archivoNombre: file.name,
         archivoTamanoBytes: file.size,
       };
       if (await parchearDoc(campos)) {
         setDoc(campos);
-        toast.success("Rider del artista cargado");
+        toast.success("PDF del artista adjunto");
       }
     } catch {
       toast.error("No se pudo subir el documento");
@@ -169,11 +164,11 @@ export default function RiderFichaClient({ artistaId, rider }: Props) {
     }
   }
 
-  async function volverAGenerado() {
-    const campos = { origen: "GENERADO", archivoUrl: null, archivoNombre: null, archivoTamanoBytes: null };
+  async function quitarPdf() {
+    const campos = { archivoUrl: null, archivoNombre: null, archivoTamanoBytes: null };
     if (await parchearDoc(campos)) {
       setDoc(campos);
-      toast.success("El rider vuelve a armarse en la plataforma");
+      toast.success("Se quitó el PDF de referencia");
     }
   }
 
@@ -248,76 +243,61 @@ export default function RiderFichaClient({ artistaId, rider }: Props) {
           el tipo aquí, esta versión pasa a competir por «vigente» en el tipo nuevo.
         </p>
 
-        {!cargado && (
-          <div>
-            <label className="ms-label block mb-1.5">Requerimientos generales</label>
-            <textarea
-              className="ms-textarea w-full"
-              rows={3}
-              placeholder="El párrafo de apertura del rider: lo que aplica a todos los departamentos."
-              value={form.requerimientosGenerales}
-              onChange={(e) => set("requerimientosGenerales", e.target.value)}
-            />
-          </div>
-        )}
+        <div>
+          <label className="ms-label block mb-1.5">Requerimientos generales</label>
+          <textarea
+            className="ms-textarea w-full"
+            rows={3}
+            placeholder="El párrafo de apertura del rider: lo que aplica a todos los departamentos."
+            value={form.requerimientosGenerales}
+            onChange={(e) => set("requerimientosGenerales", e.target.value)}
+          />
+        </div>
       </section>
 
-      {/* El artista que ya tiene un rider que le funciona no debería recapturarlo:
-          se sube su PDF y la plataforma solo le pega los anexos y lo distribuye. */}
+      {/* El PDF que ya trae el artista no sustituye a la ficha: se queda fijo para
+          consulta y es de ahí de donde se transcribe. El documento que manda la
+          plataforma siempre sale de esta ficha. */}
       <section className="ms-card p-4 space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="ms-section-label">De dónde sale el documento</p>
-          <span className={`ms-badge ${cargado ? "ms-badge-gray" : "ms-badge-gold"}`}>
-            {ORIGEN_RIDER_LABEL[doc.origen] ?? doc.origen}
-          </span>
-        </div>
+        <p className="ms-section-label">El PDF original del artista</p>
+        <p className="ms-micro">
+          Se queda adjunto para consulta y para cotejar la transcripción: no reemplaza a la ficha ni apaga ninguna
+          pestaña. El rider que la plataforma manda al foro y al promotor siempre se arma con lo que esté capturado
+          aquí.
+        </p>
 
-        {cargado ? (
-          <>
-            <p className="ms-micro">
-              El PDF del artista se manda tal como está: no se re-maqueta para no perder el formato que ellos
-              negocian. Lo único que se le agrega son los anexos marcados «incluir en el PDF».
-            </p>
-            <div className="ms-card-deep p-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-              <a
-                href={doc.archivoUrl ?? "#"}
-                target="_blank"
-                rel="noreferrer"
-                className="text-[13px] text-white hover:text-[#B3985B] transition-colors"
-              >
-                {doc.archivoNombre ?? "Documento del artista"}
-              </a>
-              {doc.archivoTamanoBytes ? (
-                <span className="ms-micro">{fmtTamano(doc.archivoTamanoBytes)}</span>
-              ) : null}
-              <div className="flex items-center gap-2 ml-auto">
-                <button
-                  className="ms-btn-secondary disabled:opacity-50"
-                  onClick={() => inputPdf.current?.click()}
-                  disabled={subiendo}
-                >
-                  {subiendo ? "Subiendo…" : "Reemplazar PDF"}
-                </button>
-                <button className="ms-btn-ghost" onClick={() => void volverAGenerado()} disabled={subiendo}>
-                  Armarlo en la plataforma
-                </button>
-              </div>
-            </div>
-          </>
-        ) : (
-          <>
-            <p className="ms-micro">
-              Esta versión se arma aquí: la plataforma maqueta el rider con las notas, la input/output list, el equipo
-              que pide y los contactos. Si el artista ya trae un rider que le funciona, súbelo y se usa ese.
-            </p>
-            <button
-              className="ms-btn-secondary disabled:opacity-50"
-              onClick={() => inputPdf.current?.click()}
-              disabled={subiendo}
+        {doc.archivoUrl ? (
+          <div className="ms-card-deep p-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+            <a
+              href={doc.archivoUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-[13px] text-white hover:text-[#B3985B] transition-colors"
             >
-              {subiendo ? "Subiendo…" : "Cargar el rider del artista (PDF)"}
-            </button>
-          </>
+              {doc.archivoNombre ?? "PDF del artista"}
+            </a>
+            {doc.archivoTamanoBytes ? <span className="ms-micro">{fmtTamano(doc.archivoTamanoBytes)}</span> : null}
+            <div className="flex items-center gap-2 ml-auto">
+              <button
+                className="ms-btn-secondary disabled:opacity-50"
+                onClick={() => inputPdf.current?.click()}
+                disabled={subiendo}
+              >
+                {subiendo ? "Subiendo…" : "Reemplazar PDF"}
+              </button>
+              <button className="ms-btn-ghost" onClick={() => void quitarPdf()} disabled={subiendo}>
+                Quitar
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            className="ms-btn-secondary disabled:opacity-50"
+            onClick={() => inputPdf.current?.click()}
+            disabled={subiendo}
+          >
+            {subiendo ? "Subiendo…" : "Adjuntar el PDF del artista"}
+          </button>
         )}
 
         <input
@@ -329,7 +309,6 @@ export default function RiderFichaClient({ artistaId, rider }: Props) {
         />
       </section>
 
-      {!cargado && (
       <section className="ms-card p-4 space-y-4">
         <p className="ms-section-label">Números que condicionan el show</p>
         <p className="ms-micro">
@@ -379,65 +358,56 @@ export default function RiderFichaClient({ artistaId, rider }: Props) {
           </div>
         </div>
       </section>
-      )}
 
-      {!cargado && (
-        <>
-          <RiderDocTranscribir riderId={rider.id} />
+      <RiderDocTranscribir riderId={rider.id} archivoUrl={doc.archivoUrl} archivoNombre={doc.archivoNombre} />
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {NOTAS.map((n) => (
-              <section key={n.campo as string} className="ms-card p-4 space-y-2">
-                <p className="ms-section-label">{n.titulo}</p>
-                <p className="ms-micro">{n.ayuda}</p>
-                <textarea
-                  className="ms-textarea w-full"
-                  rows={4}
-                  value={form[n.campo as string] ?? ""}
-                  onChange={(e) => set(n.campo as string, e.target.value)}
-                />
-              </section>
-            ))}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {NOTAS.map((n) => (
+          <section key={n.campo as string} className="ms-card p-4 space-y-2">
+            <p className="ms-section-label">{n.titulo}</p>
+            <p className="ms-micro">{n.ayuda}</p>
+            <textarea
+              className="ms-textarea w-full"
+              rows={4}
+              value={form[n.campo as string] ?? ""}
+              onChange={(e) => set(n.campo as string, e.target.value)}
+            />
+          </section>
+        ))}
 
-            {extras.map((s) => (
-              <section key={s.id} className="ms-card p-4 space-y-2">
-                <div className="flex items-start gap-2">
-                  <input
-                    className="ms-input flex-1"
-                    placeholder="Título de la sección (ej. Pirotecnia, Seguridad, Prensa)"
-                    value={s.titulo}
-                    onChange={(e) => editarSeccion(s.id, "titulo", e.target.value)}
-                  />
-                  <button
-                    onClick={() => quitarSeccion(s.id)}
-                    className="ms-btn-ghost shrink-0"
-                    title="Quitar sección"
-                  >
-                    Quitar
-                  </button>
-                </div>
-                <textarea
-                  className="ms-textarea w-full"
-                  rows={4}
-                  placeholder="Lo que pide el artista en esta sección."
-                  value={s.contenido}
-                  onChange={(e) => editarSeccion(s.id, "contenido", e.target.value)}
-                />
-              </section>
-            ))}
-          </div>
+        {extras.map((s) => (
+          <section key={s.id} className="ms-card p-4 space-y-2">
+            <div className="flex items-start gap-2">
+              <input
+                className="ms-input flex-1"
+                placeholder="Título de la sección (ej. Pirotecnia, Seguridad, Prensa)"
+                value={s.titulo}
+                onChange={(e) => editarSeccion(s.id, "titulo", e.target.value)}
+              />
+              <button onClick={() => quitarSeccion(s.id)} className="ms-btn-ghost shrink-0" title="Quitar sección">
+                Quitar
+              </button>
+            </div>
+            <textarea
+              className="ms-textarea w-full"
+              rows={4}
+              placeholder="Lo que pide el artista en esta sección."
+              value={s.contenido}
+              onChange={(e) => editarSeccion(s.id, "contenido", e.target.value)}
+            />
+          </section>
+        ))}
+      </div>
 
-          <button
-            onClick={agregarSeccion}
-            className="w-full ms-card border-dashed text-[13px] text-[#777] hover:text-[#B3985B] py-3 transition-colors"
-          >
-            + Agregar otra sección
-          </button>
-          <p className="ms-micro">
-            Las secciones que agregues se imprimen al final de las notas del rider, con el título que les pongas.
-          </p>
-        </>
-      )}
+      <button
+        onClick={agregarSeccion}
+        className="w-full ms-card border-dashed text-[13px] text-[#777] hover:text-[#B3985B] py-3 transition-colors"
+      >
+        + Agregar otra sección
+      </button>
+      <p className="ms-micro">
+        Las secciones que agregues se imprimen al final de las notas del rider, con el título que les pongas.
+      </p>
 
       <div className="flex flex-wrap items-center gap-2">
         <button

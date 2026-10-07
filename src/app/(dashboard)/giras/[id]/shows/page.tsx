@@ -21,7 +21,7 @@ export default async function GiraShowsPage({ params }: { params: Promise<{ id: 
         orderBy: [{ fecha: "asc" }, { orden: "asc" }],
         include: {
           venue: { select: { id: true, nombre: true, ciudad: true, estado: true, capacidadPersonas: true } },
-          riderLineas: { select: { prioridad: true, estado: true, cubiertoPor: true } },
+          repartos: { select: { prioridad: true, estado: true, cubiertoPor: true } },
           _count: { select: { crew: true, momentos: true } },
         },
       },
@@ -31,7 +31,7 @@ export default async function GiraShowsPage({ params }: { params: Promise<{ id: 
   if (!gira) notFound();
 
   const shows: ShowEditable[] = gira.shows.map((s) => {
-    const resumen = resumirAdvance(s.riderLineas);
+    const resumen = resumirAdvance(s.repartos);
     return {
       id: s.id,
       fecha: s.fecha.toISOString(),

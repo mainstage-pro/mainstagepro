@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { CONTEXTOS_RIDER, ORIGENES_RIDER, leerSeccionesExtra } from "@/lib/giras";
+import { CONTEXTOS_RIDER, leerSeccionesExtra } from "@/lib/giras";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -61,11 +61,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       ? body.contexto
       : (origen?.contexto ?? "GENERAL");
 
-  const tipoOrigen: string =
-    typeof body.origen === "string" && (ORIGENES_RIDER as readonly string[]).includes(body.origen)
-      ? body.origen
-      : "GENERADO";
-
   const nombre: string =
     (typeof body.nombre === "string" && body.nombre.trim()) ||
     (origen ? `${origen.nombre} v${version}` : `Rider ${artista.nombre} v${version}`);
@@ -83,7 +78,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         version,
         esActivo: true,
         contexto,
-        origen: tipoOrigen,
+        // El PDF del artista, si lo trae, se adjunta como referencia: la ficha
+        // se captura igual y es ella la que genera el documento de la casa.
         archivoUrl: typeof body.archivoUrl === "string" ? body.archivoUrl : null,
         archivoNombre: typeof body.archivoNombre === "string" ? body.archivoNombre : null,
         archivoTamanoBytes:

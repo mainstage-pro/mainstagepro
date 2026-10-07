@@ -16,7 +16,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ sh
       "VOLCAR_ADVANCE_VENUE",
       "GiraShow",
       showId,
-      `Ficha del venue actualizada desde el advance: ${r.creadas} nuevos, ${r.actualizadas} actualizados`,
+      `Ficha del venue actualizada desde el reparto: ${r.creadas} nuevos, ${r.actualizadas} actualizados`,
       { ...r },
     );
 

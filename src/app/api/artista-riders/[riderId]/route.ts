@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { CONTEXTOS_RIDER, ORIGENES_RIDER, leerSeccionesExtra } from "@/lib/giras";
+import { CONTEXTOS_RIDER, leerSeccionesExtra } from "@/lib/giras";
 
 const TEXTO = [
   "nombre",
@@ -93,9 +93,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ri
 
   if ("contexto" in body && (CONTEXTOS_RIDER as readonly string[]).includes(body.contexto)) {
     data.contexto = body.contexto;
-  }
-  if ("origen" in body && (ORIGENES_RIDER as readonly string[]).includes(body.origen)) {
-    data.origen = body.origen;
   }
 
   // Vigente DENTRO de su contexto: el rider de festival no apaga al de tour.

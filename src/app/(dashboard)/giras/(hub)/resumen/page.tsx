@@ -44,13 +44,13 @@ export default async function GirasResumenPage() {
       advanceCerradoEn: true,
       venue: { select: { id: true, nombre: true } },
       gira: { select: { id: true, nombre: true, tipo: true, artista: { select: { nombre: true } } } },
-      riderLineas: { select: { prioridad: true, estado: true, cubiertoPor: true } },
+      repartos: { select: { prioridad: true, estado: true, cubiertoPor: true } },
       _count: { select: { crew: true } },
     },
   });
 
   const vista = shows.map((s) => {
-    const resumen = resumirAdvance(s.riderLineas);
+    const resumen = resumirAdvance(s.repartos);
     return {
       ...s,
       resumen,

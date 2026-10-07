@@ -63,7 +63,7 @@ export default async function GiraResumenPage({ params }: { params: Promise<{ id
               contactoTecnicoNombre: true,
             },
           },
-          riderLineas: { select: { prioridad: true, estado: true, cubiertoPor: true } },
+          repartos: { select: { prioridad: true, estado: true, cubiertoPor: true } },
           cotizaciones: { select: { estado: true, granTotal: true } },
           _count: { select: { crew: true } },
         },
@@ -147,7 +147,7 @@ export default async function GiraResumenPage({ params }: { params: Promise<{ id
   const venues = [...porVenue.values()];
 
   const shows: ShowResumen[] = gira.shows.map((s) => {
-    const resumen = resumirAdvance(s.riderLineas);
+    const resumen = resumirAdvance(s.repartos);
     const equipo = equipoDeFecha(s.cotizaciones);
     return {
       id: s.id,

@@ -32,7 +32,7 @@ export default async function GiraLayout({
       artista: { select: { nombre: true } },
       shows: {
         orderBy: { fecha: "asc" },
-        select: { fecha: true, riderLineas: { select: { prioridad: true, estado: true, cubiertoPor: true } } },
+        select: { fecha: true, repartos: { select: { prioridad: true, estado: true, cubiertoPor: true } } },
       },
     },
   });

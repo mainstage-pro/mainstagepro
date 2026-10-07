@@ -1,10 +1,13 @@
 /**
- * AdvanceShowPDF.tsx — El advance del show.
+ * AdvanceShowPDF.tsx — El advance del show, departamento por departamento.
  *
- * Tres columnas y una pregunta: qué pide el rider, qué pone el venue y qué falta.
- * Es el documento con el que se cierra el advance por escrito, así que no lleva
- * costos ni nombres de proveedor: eso se queda del lado nuestro y el documento
- * se puede mandar al foro tal cual.
+ * Una fila por renglón de reparto y una sola pregunta: quién pone qué. No es una
+ * lista de cajas; es el acuerdo con el foro escrito como se negoció al teléfono
+ * («el PA y la consola los pones tú, la microfonía la traemos»).
+ *
+ * Es el documento con el que se cierra el advance por escrito y se manda al foro
+ * tal cual, así que no lleva costos ni nombres de proveedor: eso se queda del lado
+ * nuestro.
  */
 import React from "react";
 import {
@@ -13,21 +16,21 @@ import {
 } from "./GiraDocBase";
 import { C } from "../PdfShared";
 
-export interface AdvanceLineaDoc {
+export interface AdvanceRepartoDoc {
   id: string;
   /// La llave del rider (AUDIO, ILUMINACION…), para pintar el grupo con el
   /// color de su disciplina. El label ya viene traducido y no sirve de llave.
   disciplina: string;
   disciplinaLabel: string;
-  concepto: string;
-  cantidadPedida: number;
+  descripcion: string;
+  /// Cantidad y unidad ya resueltas en una cadena: «6 wedges», «1 servicio», «—».
+  cantidad: string;
+  especificaciones: string | null;
   prioridadLabel: string;
-  ofrecidoCasa: string | null;
-  cantidadCasa: number;
   cubiertoPorLabel: string;
-  cantidadCubierta: number;
   estadoLabel: string;
-  resuelta: boolean;
+  resuelto: boolean;
+  porConseguir: string | null;
   notas: string | null;
 }
 
@@ -61,21 +64,24 @@ export interface AdvanceShowData {
     semaforoLabel: string;
   };
   cerradoEn: string | null;
-  lineas: AdvanceLineaDoc[];
+  repartos: AdvanceRepartoDoc[];
+  /// Lo que el rider pide y no quedó en ningún renglón de reparto. Va en una
+  /// alerta aparte: es lo único que de verdad cuesta caro descubrir en sitio.
+  sinRepartir: string[];
   logoSrc: string | null;
   logoArtistaSrc: string | null;
   generadoEn: string;
 }
 
-/// El concepto se lleva el ancho que le sobra a las demás: es la columna que se
-/// lee, va en letra grande y los nombres de equipo son largos ("Sistema de
-/// monitoreo in-ear Shure PSM1000"). El estado solo tiene que caber "Resuelto".
+/// La descripción se lleva el ancho que le sobra: es la columna que se lee y los
+/// bloques son largos ("PA y consola de FOH con sistema de monitoreo in-ear").
+/// «Qué falta» es la segunda más importante: sin ella el foro no sabe qué hacer.
 const COLS: ColumnaTabla[] = [
-  { label: "Pide el rider", flex: 5 },
-  { label: "Cant.", ancho: 32, alinear: "right" },
-  { label: "Lo que pone el venue", flex: 3 },
-  { label: "Cómo se cubre", flex: 3 },
-  { label: "Estado", ancho: 48 },
+  { label: "Qué es", flex: 5 },
+  { label: "Cuánto", ancho: 50 },
+  { label: "Quién lo pone", ancho: 70 },
+  { label: "Cómo va", ancho: 52 },
+  { label: "Qué falta para cerrarlo", flex: 3 },
 ];
 
 export function AdvanceShowPDF({ data }: { data: AdvanceShowData }) {
@@ -121,25 +127,29 @@ export function AdvanceShowPDF({ data }: { data: AdvanceShowData }) {
 
   const renglones: RenglonTabla[] = [];
   let disciplinaActual = "";
-  for (const l of data.lineas) {
-    if (l.disciplinaLabel !== disciplinaActual) {
-      disciplinaActual = l.disciplinaLabel;
+  for (const r of data.repartos) {
+    if (r.disciplinaLabel !== disciplinaActual) {
+      disciplinaActual = r.disciplinaLabel;
       renglones.push({
         tipo: "grupo",
-        clave: `grupo-${l.id}`,
+        clave: `grupo-${r.id}`,
         texto: disciplinaActual,
-        color: COLOR_DISCIPLINA[l.disciplina] ?? null,
+        color: COLOR_DISCIPLINA[r.disciplina] ?? null,
       });
     }
     renglones.push({
       tipo: "fila",
-      clave: l.id,
+      clave: r.id,
       celdas: [
-        { texto: l.concepto, sub: [l.prioridadLabel, l.notas].filter(Boolean).join(" · ") || null, grande: true },
-        { texto: String(l.cantidadPedida), fuerte: true },
-        { texto: l.ofrecidoCasa ?? "—", sub: l.cantidadCasa ? `${l.cantidadCasa} pza` : null },
-        { texto: l.cubiertoPorLabel, sub: l.cantidadCubierta ? `${l.cantidadCubierta} pza` : null },
-        { texto: l.estadoLabel, color: l.resuelta ? C.verde : C.amarillo },
+        {
+          texto: r.descripcion,
+          sub: [r.especificaciones, r.prioridadLabel, r.notas].filter(Boolean).join(" · ") || null,
+          grande: true,
+        },
+        { texto: r.cantidad, fuerte: true },
+        { texto: r.cubiertoPorLabel },
+        { texto: r.estadoLabel, color: r.resuelto ? C.verde : C.amarillo },
+        { texto: r.porConseguir ?? "—" },
       ],
     });
   }
@@ -147,10 +157,19 @@ export function AdvanceShowPDF({ data }: { data: AdvanceShowData }) {
   // Lo que falta se saca aparte y arriba: es la única razón por la que alguien
   // abre este documento dos días antes del show.
   const peso = (prioridad: string) => (prioridad === "Indispensable" ? 0 : prioridad === "Importante" ? 1 : 2);
-  const faltantes = data.lineas
-    .filter((l) => !l.resuelta)
+  const faltantes = data.repartos
+    .filter((r) => !r.resuelto)
     .sort((a, b) => peso(a.prioridadLabel) - peso(b.prioridadLabel))
-    .map((l) => `${l.cantidadPedida} × ${l.concepto} (${l.disciplinaLabel}) — ${l.prioridadLabel.toLowerCase()} · ${l.cubiertoPorLabel.toLowerCase()}`);
+    .map((r) =>
+      [
+        `${r.cantidad} ${r.descripcion} (${r.disciplinaLabel})`,
+        r.prioridadLabel.toLowerCase(),
+        r.cubiertoPorLabel.toLowerCase(),
+        r.porConseguir,
+      ]
+        .filter(Boolean)
+        .join(" — "),
+    );
 
   return (
     <Document title={`Advance — ${data.artistaNombre} — ${lugar}`} author="Mainstage Pro" creator="Mainstage Pro">
@@ -186,9 +205,16 @@ export function AdvanceShowPDF({ data }: { data: AdvanceShowData }) {
             <Alerta label={`Falta cerrar (${faltantes.length})`} items={faltantes} />
           ) : null}
 
+          {data.sinRepartir.length > 0 ? (
+            <Alerta
+              label={`El rider lo pide y no está repartido (${data.sinRepartir.length})`}
+              items={data.sinRepartir}
+            />
+          ) : null}
+
           <Seccion
-            titulo="Rider pedido contra lo que pone el venue"
-            nota="Una fila por concepto del rider. Lo que queda sin cubrir es lo que hay que rentar o negociar."
+            titulo="Quién pone qué"
+            nota="Un renglón por bloque del departamento. Lo que no pone el foro es lo que hay que rentar o pedirle al promotor."
           >
             <Tabla columnas={COLS} renglones={renglones} />
           </Seccion>

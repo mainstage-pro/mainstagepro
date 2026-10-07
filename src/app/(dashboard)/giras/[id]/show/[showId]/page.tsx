@@ -22,7 +22,7 @@ export default async function ShowResumenPage({ params }: { params: Promise<{ id
           rider: { select: { id: true, nombre: true, version: true } },
         },
       },
-      riderLineas: { select: { prioridad: true, estado: true, cubiertoPor: true } },
+      repartos: { select: { prioridad: true, estado: true, cubiertoPor: true } },
       proyecto: { select: { id: true, numeroProyecto: true } },
       cotizaciones: {
         select: {
@@ -41,7 +41,7 @@ export default async function ShowResumenPage({ params }: { params: Promise<{ id
 
   if (!show || show.giraId !== id) notFound();
 
-  const resumen = resumirAdvance(show.riderLineas);
+  const resumen = resumirAdvance(show.repartos);
 
   // El directorio del artista es la única fuente de personas: el promotor de la
   // fecha se elige de aquí para que la siguiente fecha con el mismo promotor no

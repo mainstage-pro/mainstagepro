@@ -13,6 +13,10 @@ const nextConfig: NextConfig = {
   outputFileTracingExcludes: {
     "*": ["./public/images/**", "./public/uploads/**"],
   },
+  // pdfjs se carga con `await import()` dentro del endpoint que transcribe el
+  // rider del artista. Empaquetarlo rompe su resolución de worker y de fuentes:
+  // va por `require` nativo de Node.
+  serverExternalPackages: ["pdfjs-dist"],
   experimental: {
     staleTimes: {
       dynamic: 30,

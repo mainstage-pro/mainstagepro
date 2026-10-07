@@ -51,7 +51,7 @@ export default async function ShowLayout({
           rider: { select: { id: true, version: true } },
         },
       },
-      riderLineas: { select: { prioridad: true, estado: true, cubiertoPor: true } },
+      repartos: { select: { prioridad: true, estado: true, cubiertoPor: true } },
     },
   });
 
@@ -86,7 +86,7 @@ export default async function ShowLayout({
     venue: s.venue?.nombre ?? null,
   }));
 
-  const resumen = resumirAdvance(show.riderLineas);
+  const resumen = resumirAdvance(show.repartos);
   const dias = diasRestantes(show.fecha);
   const tour = esGira(show.gira.tipo);
 

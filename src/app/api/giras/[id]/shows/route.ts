@@ -33,7 +33,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     orderBy: [{ fecha: "asc" }, { orden: "asc" }],
     include: {
       venue: { select: { id: true, nombre: true, ciudad: true, estado: true, capacidadPersonas: true } },
-      riderLineas: { select: { prioridad: true, estado: true, cubiertoPor: true } },
+      repartos: { select: { prioridad: true, estado: true, cubiertoPor: true } },
       _count: { select: { crew: true, momentos: true } },
     },
   });

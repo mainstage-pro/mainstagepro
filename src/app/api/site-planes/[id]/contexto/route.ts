@@ -90,15 +90,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
       },
       orderBy: { orden: "asc" },
     }),
-    prisma.showRiderLinea.findMany({
+    prisma.showAdvanceReparto.findMany({
       where: { showId: plan.showId },
-      select: {
-        id: true,
-        concepto: true,
-        disciplina: true,
-        cantidadPedida: true,
-        equipo: { select: { marca: true, modelo: true } },
-      },
+      select: { id: true, descripcion: true, disciplina: true, cantidad: true, especificaciones: true },
       orderBy: [{ disciplina: "asc" }, { orden: "asc" }],
     }),
     show.proyectoId
@@ -116,14 +110,6 @@ export async function GET(_req: NextRequest, { params }: Params) {
       : Promise.resolve([]),
   ]);
 
-  // El proveedor del rider también cuenta: ahí es donde se captura el equipo de
-  // tercero, y de ahí se derivan los ProveedorEvento.
-  const proveedoresRider = await prisma.showRiderLinea.findMany({
-    where: { showId: plan.showId, proveedorId: { not: null } },
-    select: { proveedor: { select: { id: true, nombre: true, telefono: true, giro: true } } },
-    distinct: ["proveedorId"],
-  });
-
   const responsables: ContextoSitePlan["responsables"] = crew.map(c => ({
     id: c.id,
     nombre: c.tecnico?.nombre ?? c.persona?.nombre ?? c.nombreLibre ?? "Sin nombre",
@@ -139,27 +125,14 @@ export async function GET(_req: NextRequest, { params }: Params) {
     });
   }
 
-  const vistos = new Set<string>();
-  const listaProveedores: ContextoSitePlan["proveedores"] = [];
-  for (const p of proveedores) {
-    vistos.add(p.nombreProveedor.toLowerCase());
-    listaProveedores.push({
-      id: p.id,
-      nombre: p.nombreProveedor,
-      detalle: p.servicioEquipo ?? p.responsable,
-      contacto: p.telefonoProveedor,
-    });
-  }
-  for (const { proveedor } of proveedoresRider) {
-    if (!proveedor || vistos.has(proveedor.nombre.toLowerCase())) continue;
-    vistos.add(proveedor.nombre.toLowerCase());
-    listaProveedores.push({
-      id: proveedor.id,
-      nombre: proveedor.nombre,
-      detalle: proveedor.giro,
-      contacto: proveedor.telefono,
-    });
-  }
+  // El advance no guarda proveedor: el equipo de tercero se captura una sola vez
+  // en el rider del proyecto y de ahí ya salieron estos ProveedorEvento.
+  const listaProveedores: ContextoSitePlan["proveedores"] = proveedores.map((p) => ({
+    id: p.id,
+    nombre: p.nombreProveedor,
+    detalle: p.servicioEquipo ?? p.responsable,
+    contacto: p.telefonoProveedor,
+  }));
 
   const ventanas: ContextoSitePlan["ventanas"] = ordenarBloques(show.momentos).map(m => ({
     id: m.id,
@@ -188,11 +161,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
     proveedores: listaProveedores,
     rider: rider.map(r => ({
       id: r.id,
-      concepto: r.concepto,
-      detalle: [r.disciplina, [r.equipo?.marca, r.equipo?.modelo].filter(Boolean).join(" ")]
-        .filter(Boolean)
-        .join(" · "),
-      cantidad: r.cantidadPedida,
+      concepto: r.descripcion,
+      detalle: [r.disciplina, r.especificaciones].filter(Boolean).join(" · "),
+      cantidad: r.cantidad ?? 0,
     })),
     ventanas,
     venue: show.venue ?? venueDirecto,

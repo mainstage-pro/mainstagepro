@@ -12,7 +12,6 @@ import {
   CONTEXTO_RIDER_AYUDA,
   CONTEXTO_RIDER_COLOR,
   CONTEXTO_RIDER_LABEL,
-  ORIGEN_RIDER_LABEL,
   PLANTILLA_INPUT_BANDA,
   PLANTILLA_OUTPUT_BANDA,
   numerarSalidas,
@@ -28,7 +27,6 @@ export interface RiderFila {
   esActivo: boolean;
   formacion: string | null;
   contexto: string;
-  origen: string;
   archivoNombre: string | null;
   canalesMinimos: number | null;
   mixesMonitor: number | null;
@@ -47,7 +45,9 @@ interface Props {
   ridersIniciales: RiderFila[];
 }
 
-type Arranque = "VACIO" | "PLANTILLA" | "CLON" | "CARGADO";
+/// De dónde sale la ficha. El PDF del artista ya no es una de estas opciones: se
+/// adjunta aparte, como referencia, y se puede combinar con cualquiera de las tres.
+type Arranque = "VACIO" | "PLANTILLA" | "CLON";
 
 export default function RidersArtistaClient({ artistaId, artistaNombre, tipoFormacion, ridersIniciales }: Props) {
   const router = useRouter();
@@ -118,17 +118,13 @@ export default function RidersArtistaClient({ artistaId, artistaNombre, tipoForm
       setError("Elige de cuál versión se copia.");
       return;
     }
-    if (arranque === "CARGADO" && !pdf) {
-      setError("Elige el PDF del rider del artista.");
-      return;
-    }
     setTrabajando(true);
     setError(null);
     try {
-      // El PDF sube antes de crear la versión: si falla la subida no queda un
-      // rider cargado apuntando a nada.
+      // El PDF sube antes de crear la versión: si falla la subida no queda una
+      // ficha apuntando a un archivo que no existe.
       let archivo: { archivoUrl: string; archivoNombre: string; archivoTamanoBytes: number } | null = null;
-      if (arranque === "CARGADO" && pdf) {
+      if (pdf) {
         const blob = await upload(`riders/${artistaId}/${Date.now()}-rider.pdf`, pdf, {
           access: "public",
           handleUploadUrl: "/api/upload/token",
@@ -143,7 +139,6 @@ export default function RidersArtistaClient({ artistaId, artistaNombre, tipoForm
           nombre: nombre.trim(),
           contexto,
           clonarDeId: arranque === "CLON" ? clonarDeId : null,
-          origen: arranque === "CARGADO" ? "CARGADO" : "GENERADO",
           ...(archivo ?? {}),
         }),
       });
@@ -285,9 +280,11 @@ export default function RidersArtistaClient({ artistaId, artistaNombre, tipoForm
                     <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
                       <span className="ms-micro">v{r.version}</span>
                       {r.esActivo && <span className="ms-badge ms-badge-gold">Vigente</span>}
-                      {r.origen === "CARGADO" && (
-                        <span className="ms-badge ms-badge-gray" title={r.archivoNombre ?? undefined}>
-                          {ORIGEN_RIDER_LABEL.CARGADO}
+                      {/* El PDF del artista es referencia adjunta, no otro tipo de
+                          rider: la ficha es la que manda en todos los casos. */}
+                      {r.archivoNombre && (
+                        <span className="ms-badge ms-badge-gray" title={r.archivoNombre}>
+                          PDF del artista
                         </span>
                       )}
                     </div>
@@ -297,12 +294,10 @@ export default function RidersArtistaClient({ artistaId, artistaNombre, tipoForm
                     {r.mixesMonitor ? <div className="ms-micro">{r.mixesMonitor} mixes de monitor</div> : null}
                   </td>
                   <td className="ms-td text-right text-[#9ca3af] text-[13px] tabular-nums">
-                    {r.origen === "CARGADO" ? "—" : r.canales}
+                    {r.canales}
                     {r.canalesMinimos ? <div className="ms-micro">mín. {r.canalesMinimos}</div> : null}
                   </td>
-                  <td className="ms-td text-right text-[#9ca3af] text-[13px] tabular-nums">
-                    {r.origen === "CARGADO" ? "—" : r.lineas}
-                  </td>
+                  <td className="ms-td text-right text-[#9ca3af] text-[13px] tabular-nums">{r.lineas}</td>
                   <td className="ms-td text-right text-[#9ca3af] text-[13px] tabular-nums">{r.contactos}</td>
                   <td className="ms-td text-right text-[#9ca3af] text-[13px] tabular-nums">{r.anexos}</td>
                   <td className="ms-td text-right text-[#9ca3af] text-[13px] tabular-nums">{r.giras}</td>
@@ -399,27 +394,35 @@ export default function RidersArtistaClient({ artistaId, artistaNombre, tipoForm
               detalle="Solo la cabecera; las listas se capturan a mano."
               onClick={() => setArranque("VACIO")}
             />
-            <Opcion
-              activa={arranque === "CARGADO"}
-              titulo="Cargar el rider que ya usa el artista"
-              detalle="Su PDF se manda tal cual, sin recapturarlo. La plataforma le pega los anexos y lo distribuye."
-              onClick={() => setArranque("CARGADO")}
-            />
-            {arranque === "CARGADO" && (
-              <div className="ms-card-deep p-3 flex flex-wrap items-center gap-2">
-                <button className="ms-btn-secondary" onClick={() => inputPdf.current?.click()}>
-                  {pdf ? "Cambiar PDF" : "Elegir PDF"}
+          </div>
+
+          {/* El PDF del artista no compite con las tres opciones de arriba: es el
+              documento de referencia del que se transcribe la ficha, y se queda
+              adjunto para cotejar. */}
+          <div className="space-y-2">
+            <label className="ms-label block">El PDF del artista (opcional)</label>
+            <p className="ms-micro">
+              Si el artista ya trae su rider en PDF, adjúntalo: se queda fijo para consulta y desde la ficha se puede
+              transcribir a la plataforma. El documento que se manda al foro siempre se arma con la ficha.
+            </p>
+            <div className="ms-card-deep p-3 flex flex-wrap items-center gap-2">
+              <button className="ms-btn-secondary" onClick={() => inputPdf.current?.click()}>
+                {pdf ? "Cambiar PDF" : "Elegir PDF"}
+              </button>
+              <span className="ms-micro">{pdf ? pdf.name : "Ningún archivo elegido"}</span>
+              {pdf && (
+                <button className="ms-btn-ghost" onClick={() => setPdf(null)}>
+                  Quitar
                 </button>
-                <span className="ms-micro">{pdf ? pdf.name : "Ningún archivo elegido"}</span>
-                <input
-                  ref={inputPdf}
-                  type="file"
-                  accept="application/pdf"
-                  className="hidden"
-                  onChange={(e) => setPdf(e.target.files?.[0] ?? null)}
-                />
-              </div>
-            )}
+              )}
+              <input
+                ref={inputPdf}
+                type="file"
+                accept="application/pdf"
+                className="hidden"
+                onChange={(e) => setPdf(e.target.files?.[0] ?? null)}
+              />
+            </div>
           </div>
 
           {tipoFormacion && tipoFormacion !== "BANDA" && arranque === "PLANTILLA" && (

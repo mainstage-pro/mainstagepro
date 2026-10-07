@@ -56,11 +56,21 @@ const DESTINOS: { valor: string; label: string }[] = [
 ];
 
 /**
- * Mete el Word del rider del artista a la ficha. La lectura es literal: lo que
- * el documento no dice se queda vacío, y cada renglón trae su texto original
+ * Mete el rider del artista (PDF o Word) a la ficha. La lectura es literal: lo
+ * que el documento no dice se queda vacío, y cada renglón trae su texto original
  * para poder compararlo. Nada se guarda hasta que se revisa aquí.
  */
-export default function RiderDocTranscribir({ riderId }: { riderId: string }) {
+export default function RiderDocTranscribir({
+  riderId,
+  archivoUrl,
+  archivoNombre,
+}: {
+  riderId: string;
+  /// El PDF ya adjunto en la ficha. Si está, se transcribe de ahí sin volverlo a
+  /// subir: es el documento que de todos modos se va a cotejar contra la ficha.
+  archivoUrl?: string | null;
+  archivoNombre?: string | null;
+}) {
   const router = useRouter();
   const toast = useToast();
 
@@ -71,47 +81,65 @@ export default function RiderDocTranscribir({ riderId }: { riderId: string }) {
   const [reemplazar, setReemplazar] = useState(false);
   const input = useRef<HTMLInputElement>(null);
 
+  async function transcribirDesde(url: string) {
+    const res = await fetch(`/api/artista-riders/${riderId}/transcribir`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ archivoUrl: url }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      toast.error(d.error ?? "No se pudo leer el documento");
+      return;
+    }
+    type SeccionLeida = {
+      titulo: string | null;
+      parrafos: string[];
+      departamento: string | null;
+      lista: string | null;
+      renglones: Omit<Renglon, "clave">[];
+    };
+    const leidas: Seccion[] = (d.secciones as SeccionLeida[]).map((s, i) => ({
+      clave: `s-${i}`,
+      titulo: s.titulo ?? "",
+      texto: s.parrafos.join("\n\n"),
+      destino: "SECCION",
+      departamento: s.departamento ?? "OTRO",
+      clase: s.lista ?? "PUNTO",
+      renglones: s.renglones.map((r, j) => ({ ...r, clave: `s-${i}-r-${j}` })),
+    }));
+    if (leidas.length === 0) {
+      toast.error("No se sacó texto del documento. Si es un PDF escaneado hay que capturarlo a mano.");
+      return;
+    }
+    setSecciones(leidas);
+    setAviso(
+      `${leidas.length} secciones · ${d.totalRenglones} renglones · ${d.totalParrafos} párrafos, en el orden del documento`,
+    );
+  }
+
+  async function leerAdjunto() {
+    if (!archivoUrl) return;
+    setTrabajando(true);
+    try {
+      await transcribirDesde(archivoUrl);
+    } finally {
+      setTrabajando(false);
+    }
+  }
+
   async function leer(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setTrabajando(true);
     try {
-      // El .docx sube directo del navegador a Blob y el servidor lo baja de
+      // El documento sube directo del navegador a Blob y el servidor lo baja de
       // ahí: así no pega con el límite de las funciones serverless.
       const blob = await upload(`riders/${riderId}/${Date.now()}-${file.name}`, file, {
         access: "public",
         handleUploadUrl: "/api/upload/token",
       });
-      const res = await fetch(`/api/artista-riders/${riderId}/transcribir`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ archivoUrl: blob.url }),
-      });
-      const d = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        toast.error(d.error ?? "No se pudo leer el documento");
-        return;
-      }
-      type SeccionLeida = {
-        titulo: string | null;
-        parrafos: string[];
-        departamento: string | null;
-        lista: string | null;
-        renglones: Omit<Renglon, "clave">[];
-      };
-      const leidas: Seccion[] = (d.secciones as SeccionLeida[]).map((s, i) => ({
-        clave: `s-${i}`,
-        titulo: s.titulo ?? "",
-        texto: s.parrafos.join("\n\n"),
-        destino: "SECCION",
-        departamento: s.departamento ?? "OTRO",
-        clase: s.lista ?? "PUNTO",
-        renglones: s.renglones.map((r, j) => ({ ...r, clave: `s-${i}-r-${j}` })),
-      }));
-      setSecciones(leidas);
-      setAviso(
-        `${leidas.length} secciones · ${d.totalRenglones} renglones · ${d.totalParrafos} párrafos, en el orden del documento`,
-      );
+      await transcribirDesde(blob.url);
     } catch {
       toast.error("No se pudo subir el documento");
     } finally {
@@ -199,14 +227,15 @@ export default function RiderDocTranscribir({ riderId }: { riderId: string }) {
   if (!abierto) {
     return (
       <section className="ms-card p-4 space-y-2">
-        <p className="ms-section-label">Transcribir el rider desde Word</p>
+        <p className="ms-section-label">Transcribir el documento del artista</p>
         <p className="ms-micro">
-          Sube el .docx del artista y se lee tal como viene: cada sección del documento entra como un punto del rider,
-          con su título y su texto completo, y es ese punto el que se coteja con el venue y con el promotor en cada
-          fecha. El input y el output list se van a la pestaña de canales. Lo revisas antes de que se guarde nada.
+          Lee el PDF (o el .docx) tal como viene y lo vuelca a esta ficha: cada sección del documento entra como un
+          punto del rider, con su título y su texto completo, y es ese punto el que se coteja con el venue y con el
+          promotor en cada fecha. El input y el output list se van a la pestaña de canales. Lo revisas antes de que se
+          guarde nada.
         </p>
         <button className="ms-btn-secondary" onClick={() => setAbierto(true)}>
-          Subir el rider en Word
+          {archivoUrl ? "Transcribir el PDF adjunto" : "Subir el rider del artista"}
         </button>
       </section>
     );
@@ -216,7 +245,7 @@ export default function RiderDocTranscribir({ riderId }: { riderId: string }) {
     <section className="ms-card p-4 space-y-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
-          <p className="ms-section-label">Transcribir el rider desde Word</p>
+          <p className="ms-section-label">Transcribir el documento del artista</p>
           <p className="ms-micro mt-0.5">
             Solo entra lo que el documento dice. Cada sección es un punto que se coteja completo; si de algún bloque
             necesitas perseguir equipo por equipo, cámbialo a &quot;Equipo, uno por renglón&quot;.
@@ -236,18 +265,23 @@ export default function RiderDocTranscribir({ riderId }: { riderId: string }) {
 
       {secciones === null ? (
         <div className="flex flex-wrap items-center gap-2">
+          {archivoUrl && (
+            <button className="ms-btn-primary disabled:opacity-40" onClick={() => void leerAdjunto()} disabled={trabajando}>
+              {trabajando ? "Leyendo el documento…" : `Leer ${archivoNombre ?? "el PDF adjunto"}`}
+            </button>
+          )}
           <button
-            className="ms-btn-primary disabled:opacity-40"
+            className={`${archivoUrl ? "ms-btn-secondary" : "ms-btn-primary"} disabled:opacity-40`}
             onClick={() => input.current?.click()}
             disabled={trabajando}
           >
-            {trabajando ? "Leyendo el documento…" : "Elegir el .docx"}
+            {trabajando ? "Leyendo el documento…" : archivoUrl ? "Leer otro documento" : "Elegir el PDF o el .docx"}
           </button>
           <span className="ms-micro">Todavía no se guarda nada: primero revisas la lectura.</span>
           <input
             ref={input}
             type="file"
-            accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            accept=".pdf,application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             className="hidden"
             onChange={(e) => void leer(e)}
           />

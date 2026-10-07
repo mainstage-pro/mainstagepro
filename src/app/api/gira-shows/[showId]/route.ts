@@ -58,7 +58,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ sho
       },
       venue: true,
       promotorPersona: { select: SELECT_PERSONA },
-      riderLineas: { select: { prioridad: true, estado: true, cubiertoPor: true } },
+      repartos: { select: { prioridad: true, estado: true, cubiertoPor: true } },
       _count: { select: { crew: true, momentos: true, archivos: true, viajes: true, roomings: true } },
     },
   });
@@ -269,7 +269,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const { showId } = await params;
   const existente = await prisma.giraShow.findUnique({
     where: { id: showId },
-    select: { id: true, giraId: true, ciudad: true, fecha: true, _count: { select: { riderLineas: true } } },
+    select: { id: true, giraId: true, ciudad: true, fecha: true, _count: { select: { repartos: true } } },
   });
   if (!existente) return NextResponse.json({ error: "El show no existe" }, { status: 404 });
 
@@ -284,7 +284,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     "GiraShow",
     showId,
     `Quitó el show del ${existente.fecha.toISOString().slice(0, 10)}${existente.ciudad ? ` en ${existente.ciudad}` : ""}`,
-    { renglonesAdvance: existente._count.riderLineas },
+    { renglonesAdvance: existente._count.repartos },
   );
 
   return NextResponse.json({ ok: true });

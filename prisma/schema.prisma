@@ -1227,7 +1227,6 @@ model Equipo {
   plantillas_cotizacion_lineas plantillas_cotizacion_lineas[]
   fallas                       FallaEquipo[]
   artistaRiderLineas           ArtistaRiderLinea[]
-  showRiderLineas              ShowRiderLinea[]
   propuestaLineas              PropuestaServicioLinea[]
 
   @@map("equipos")
@@ -1639,7 +1638,6 @@ model Proveedor {
   accesorios        Accesorio[]
   gastosRecurrentes GastoRecurrente[]
   eventos           ProveedorEvento[]
-  showRiderLineas   ShowRiderLinea[]
 
   @@map("proveedores")
 }
@@ -5988,10 +5986,11 @@ model ArtistaRider {
   /// TOUR|FESTIVAL|PRIVADO|TEATRO|SHOWCASE|ACUSTICO|GENERAL
   contexto String @default("GENERAL")
 
-  /// GENERADO (se arma aquí) | CARGADO (el artista trajo su propio PDF).
-  /// En el cargado los números críticos se capturan igual: el advance y la
-  /// cotización leen esos campos, no el documento.
-  origen             String  @default("GENERADO")
+  /// El documento original del artista, tal como nos lo mandó. Se queda fijo de
+  /// consulta y NO sustituye a la ficha: el PDF que manda la plataforma siempre se
+  /// arma de los campos de abajo, porque es lo único que el advance, la cotización
+  /// y los documentos de gira saben leer. Se transcribe una vez
+  /// (`/api/artista-riders/[id]/transcribir`) y después queda para cotejar.
   archivoUrl         String?
   archivoNombre      String?
   archivoTamanoBytes Int?
@@ -6150,10 +6149,11 @@ model ArtistaRiderLinea {
   prioridad   String @default("INDISPENSABLE") // INDISPENSABLE|IMPORTANTE|DESEABLE
   provistoPor String @default("CASA") // CASA|ARTISTA|MAINSTAGE|POR_DEFINIR
 
-  /// Si este concepto se coteja con la casa en el advance de cada fecha. El rider
-  /// es la transcripción literal del documento y ahí caben el entarimado con faldón,
-  /// las toallas y el agua; nada de eso se negocia renglón por renglón con el jefe
-  /// técnico del foro. Apagarlo borra el renglón de trabajo en todas las fechas.
+  /// Si este punto aparece en el cotejo del advance de cada fecha. El rider es la
+  /// transcripción literal del documento y ahí caben el entarimado con faldón, las
+  /// toallas y el agua; nada de eso se negocia con el jefe técnico del foro.
+  /// Apagarlo solo lo saca del cotejo: el reparto que ya se haya escrito en una
+  /// fecha se queda, porque ese es trabajo hecho al teléfono.
   enAdvance Boolean @default(true)
 
   notas     String?
@@ -6161,7 +6161,7 @@ model ArtistaRiderLinea {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  showLineas ShowRiderLinea[]
+  repartos ShowAdvanceReparto[]
 
   @@index([riderId])
   @@map("artista_rider_lineas")
@@ -6290,7 +6290,7 @@ model GiraShow {
   updatedAt DateTime @updatedAt
 
   cotizaciones    Cotizacion[]
-  riderLineas     ShowRiderLinea[]
+  repartos        ShowAdvanceReparto[]
   momentos        ShowMomento[]
   invitados       ShowInvitado[]
   canales         ShowCanal[]
@@ -6486,52 +6486,56 @@ model GiraChecklistItem {
   @@map("gira_checklist_items")
 }
 
-/// El advance: una fila por concepto del rider, por show. Rider pedido vs. casa vs. faltante.
-model ShowRiderLinea {
+/// El advance de una fecha, en renglones de REPARTO agrupados por departamento.
+///
+/// Un reparto no es un equipo: es un bloque del departamento con una sola
+/// respuesta a "quién lo pone". "PA y consola de FOH" cabe en un renglón si el
+/// foro lo pone completo, y la microfonía va en otro porque la trae el artista.
+/// El advance anterior era una fila por concepto del rider multiplicada por cada
+/// fecha — cincuenta renglones por cinco plazas que nadie contesta uno por uno al
+/// teléfono. Lo que se negocia es el bloque, no la caja.
+///
+/// La lista que se le manda al promotor se deriva: es lo que quedó en PROMOTOR.
+/// Aquí no hay costo ni proveedor a propósito: el equipo de tercero se captura
+/// una sola vez en el rider del proyecto y de ahí salen el proveedor y su cuenta
+/// por pagar (`src/lib/proveedor-equipos.ts`).
+model ShowAdvanceReparto {
   id     String   @id @default(cuid())
   showId String
   show   GiraShow @relation(fields: [showId], references: [id], onDelete: Cascade)
 
+  disciplina String
+
+  /// El punto del rider que este renglón cubre, cuando nació de ahí. Es lo que
+  /// permite decir qué pide el rider y todavía no se reparte: sin esta liga, el
+  /// cotejo contra el documento del artista se hace de memoria.
   riderLineaId String?
-  riderLinea   ArtistaRiderLinea? @relation(fields: [riderLineaId], references: [id])
+  riderLinea   ArtistaRiderLinea? @relation(fields: [riderLineaId], references: [id], onDelete: SetNull)
 
-  disciplina     String
-  concepto       String
-  cantidadPedida Int    @default(1)
-  prioridad      String @default("INDISPENSABLE")
+  descripcion      String
+  cantidad         Int?
+  unidad           String? // UNIDADES_RIDER
+  especificaciones String? // marca, modelo, alternativas aceptables
 
-  ofrecidoCasa String? // lo que responde el contra-rider de la casa
-  cantidadCasa Int     @default(0)
+  prioridad String @default("INDISPENSABLE") // INDISPENSABLE|IMPORTANTE|DESEABLE
 
   /// Quién lo pone: POR_DEFINIR|CASA|PROMOTOR|MAINSTAGE|ARTISTA|NO_APLICA
-  cubiertoPor      String @default("POR_DEFINIR")
-  cantidadCubierta Int    @default(0)
-
-  /// Entra en la lista que se le manda al promotor. Es la selección manual de lo
-  /// que de verdad vamos a pelear: un rider trae decenas de renglones de boilerplate
-  /// y pedirlos todos quema el capital con el promotor.
-  pedirAlPromotor Boolean @default(false)
-
-  equipoId String?
-  equipo   Equipo? @relation(fields: [equipoId], references: [id])
-
-  proveedorId String?
-  proveedor   Proveedor? @relation(fields: [proveedorId], references: [id])
-
-  costoEstimado   Float?
-  costoConfirmado Float?
+  cubiertoPor String @default("POR_DEFINIR")
 
   /// PENDIENTE|CONFIRMADO|RECHAZADO|SUSTITUCION_APROBADA
-  estado             String  @default("PENDIENTE")
-  aprobadoPorArtista Boolean @default(false)
+  estado String @default("PENDIENTE")
+
+  /// Lo que falta hacer para cerrarlo: "pedirle 4 wedges al promotor",
+  /// "confirmar si el foro trae subs". Es la nota de gestión, no la especificación.
+  porConseguir String?
 
   notas     String?
   orden     Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([showId])
-  @@map("show_rider_lineas")
+  @@index([showId, disciplina])
+  @@map("show_advance_repartos")
 }
 
 /// Quién va: crew de Mainstage, integrantes del artista, técnicos de casa o de proveedor.

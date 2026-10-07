@@ -24,7 +24,7 @@ export default async function RiderLayout({
       formacion: true,
       activo: true,
       contexto: true,
-      origen: true,
+      archivoUrl: true,
       archivoNombre: true,
       artista: { select: { nombre: true } },
       canales: { select: { tipo: true } },
@@ -35,19 +35,14 @@ export default async function RiderLayout({
   if (!rider || !rider.activo) notFound();
 
   const base = `/giras/artista/${id}/rider/${riderId}`;
-  // Un rider cargado es el PDF del artista: sus listas no se capturan aquí, pero
-  // contactos y anexos sí se le pegan al documento.
-  const cargado = rider.origen === "CARGADO";
+  // La ficha es el origen del rider, haya o no PDF del artista adjunto: el PDF
+  // se queda fijo para consulta y la ficha es lo que se transcribe y se exporta.
   const enlaces: EnlaceSub[] = [
     { href: base, label: "Ficha y notas", llave: "ficha", exacto: true },
-    ...(cargado
-      ? []
-      : [
-          { href: `${base}/montaje`, label: "Montaje y soundcheck", llave: "montaje" },
-          { href: `${base}/inputs`, label: "Input list", llave: "inputs" },
-          { href: `${base}/outputs`, label: "Output list", llave: "outputs" },
-          { href: `${base}/equipo`, label: "Equipo que pide", llave: "equipo" },
-        ]),
+    { href: `${base}/montaje`, label: "Montaje y soundcheck", llave: "montaje" },
+    { href: `${base}/inputs`, label: "Input list", llave: "inputs" },
+    { href: `${base}/outputs`, label: "Output list", llave: "outputs" },
+    { href: `${base}/equipo`, label: "Equipo que pide", llave: "equipo" },
     { href: `${base}/contactos`, label: "A quién llamar", llave: "contactos" },
     { href: `${base}/anexos`, label: "Stage plots y anexos", llave: "anexos" },
   ];
@@ -63,7 +58,7 @@ export default async function RiderLayout({
         esActivo={rider.esActivo}
         formacion={rider.formacion}
         contexto={rider.contexto}
-        origen={rider.origen}
+        archivoUrl={rider.archivoUrl}
         archivoNombre={rider.archivoNombre}
         inputs={rider.canales.filter((c) => c.tipo === "INPUT").length}
         outputs={rider.canales.filter((c) => c.tipo === "OUTPUT").length}

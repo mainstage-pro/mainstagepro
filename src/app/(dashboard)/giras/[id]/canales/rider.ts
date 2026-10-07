@@ -25,7 +25,6 @@ export async function riderEditableDeGira(giraId: string) {
       nombre: true,
       version: true,
       contexto: true,
-      origen: true,
       canalesMinimos: true,
       mixesMonitor: true,
     },
