@@ -9591,9 +9591,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                         <button
                           onClick={() => {
                             if (!proyecto.responsivaToken) {
-                              toast.loading("Generando link...");
+                              toast.info("Generando link...");
                               fetch(`/api/proyectos/${proyecto.id}/responsivas`).then(res => res.json()).then(data => {
-                                toast.dismiss();
+                                
                                 if (data.responsivaToken) {
                                   const link = `${window.location.origin}/responsiva/${data.responsivaToken}`;
                                   navigator.clipboard.writeText(link);
