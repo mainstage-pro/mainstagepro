@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ClipboardList, Repeat, Calendar, Building2,
-  ChevronLeft, X, FileText, Camera, Paperclip, Check, Handshake, Link2, Contact, Music,
+  ChevronLeft, X, FileText, Camera, Paperclip, Check, Handshake, Link2, Contact, Music, Trash2,
 } from "lucide-react";
 import DatePicker from "@/components/ui/DatePicker";
 import RecurrenciaInput from "./RecurrenciaInput";
@@ -95,6 +95,8 @@ interface Props {
   tareaIdEdicion?: string | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onCreated: (tarea: any) => void;
+  // Si se da, el modal ofrece borrar la tarea en edición y avisa al cerrarse.
+  onDeleted?: (tareaId: string) => void;
 }
 
 export default function NuevaTareaModal({
@@ -105,7 +107,7 @@ export default function NuevaTareaModal({
   clienteIdInicial = null, clienteNombre = null,
   giraIdInicial = null, giraNombre = null, giraShowIdInicial = null, giraShowLabel = null,
   proyectoInternoIdInicial = null, proyectoInternoNombre = null, faseInicialId = null,
-  tareaIdEdicion = null, onCreated,
+  tareaIdEdicion = null, onCreated, onDeleted,
 }: Props) {
   const [tipo, setTipo]           = useState<TipoKey | null>(null);
   const [titulo, setTitulo]       = useState("");
@@ -133,6 +135,7 @@ export default function NuevaTareaModal({
   const [faseId, setFaseId]       = useState<string | null>(null);
   const [error, setError]         = useState<string | null>(null);
   const [saving, setSaving]       = useState(false);
+  const [confirmaBorrar, setConfirmaBorrar] = useState(false);
   // Pegado multilínea: cada renglón se vuelve una tarea independiente (null = una sola tarea).
   const [lineasLote, setLineasLote] = useState<string[] | null>(null);
   const [creadasLote, setCreadasLote] = useState(0);
@@ -168,7 +171,7 @@ export default function NuevaTareaModal({
       setTratoId(tratoIdInicial ?? null);
       setClienteId(clienteIdInicial ?? null);
       setGiraId(giraIdInicial ?? null); setGiraShowId(giraShowIdInicial ?? null);
-      setError(null); setSaving(false);
+      setError(null); setSaving(false); setConfirmaBorrar(false);
       setLineasLote(null); setCreadasLote(0);
       setAdjuntos([]); setArchivosExistentes([]); setAddingUrl(false); setUrlManual(""); setNombreManual("");
     }
@@ -301,6 +304,27 @@ export default function NuevaTareaModal({
       try { await fetch(`/api/tareas/${tareaId}/archivos`, { method: "POST", body: form }); } catch { /* no bloquea el guardado */ }
     }
     setSubiendoAdjuntos(false);
+  }
+
+  async function borrar() {
+    if (!tareaIdEdicion) return;
+    setSaving(true); setError(null);
+    try {
+      const res = await fetch(`/api/tareas/${tareaIdEdicion}`, { method: "DELETE" });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        setError(json.error === "Sin permiso"
+          ? "Solo quien la creó (o un administrador) puede borrarla."
+          : (json.error ?? "No se pudo borrar la tarea"));
+        setSaving(false); setConfirmaBorrar(false);
+        return;
+      }
+      onDeleted?.(tareaIdEdicion);
+      onClose();
+    } catch {
+      setError("Error de red. Intenta de nuevo.");
+      setSaving(false); setConfirmaBorrar(false);
+    }
   }
 
   async function submit() {
@@ -901,6 +925,25 @@ export default function NuevaTareaModal({
         {/* ── Footer ─────────────────────────────────────────────────────── */}
         {tipo && (
           <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-[#141414] bg-[#080808]">
+            {modoEdicion && onDeleted && (
+              confirmaBorrar ? (
+                <div className="mr-auto flex items-center gap-2">
+                  <span className="text-[11.5px] text-[#888]">¿Borrarla?</span>
+                  <button onClick={borrar} disabled={saving}
+                    className="text-[12px] font-semibold text-red-400 hover:text-red-300 disabled:opacity-40">
+                    {saving ? "Borrando…" : "Sí, borrar"}
+                  </button>
+                  <button onClick={() => setConfirmaBorrar(false)} className="text-[12px] text-[#555] hover:text-white">
+                    No
+                  </button>
+                </div>
+              ) : (
+                <button onClick={() => setConfirmaBorrar(true)} disabled={saving}
+                  className="mr-auto inline-flex items-center gap-1.5 text-[12px] text-[#555] hover:text-red-400 px-2 py-1.5 rounded-lg transition-colors disabled:opacity-40">
+                  <Trash2 size={13} /> Borrar
+                </button>
+              )
+            )}
             <button onClick={onClose} className="text-[12px] text-[#555] hover:text-white px-3 py-1.5 rounded-lg transition-colors">
               Cancelar
             </button>

@@ -31,7 +31,7 @@ export default function PendientesGiraPanel({
   shows: ShowLigero[];
   usuarios: Usuario[];
 }) {
-  const { tareas, refrescar, crear, alternar } = usePendientesGira(giraId);
+  const { tareas, crear, alternar, upsert, quitar } = usePendientesGira(giraId);
   // Las fechas nacen colapsadas: con 5 shows, abrir todo es ilegible.
   const [expandidos, setExpandidos] = useState<Set<string>>(new Set());
 
@@ -39,6 +39,9 @@ export default function PendientesGiraPanel({
     () => new Set(shows.map(s => s.venue ?? s.ciudad).filter(Boolean)).size,
     [shows],
   );
+
+  const completadas = tareas.filter(t => t.estado === "COMPLETADA").length;
+  const pct = tareas.length > 0 ? Math.round((completadas / tareas.length) * 100) : 0;
 
   function toggleShow(id: string) {
     setExpandidos(prev => {
@@ -52,6 +55,29 @@ export default function PendientesGiraPanel({
 
   return (
     <div className="space-y-6">
+      {/* ── Avance de toda la gira ───────────────────────────────────────────── */}
+      <div className="ms-card rounded-2xl p-5">
+        <div className="mb-3">
+          <h3 className="text-white font-semibold text-base">Pendientes de la gira</h3>
+          <p className="text-gray-500 text-xs mt-0.5">
+            Escribe y Enter para capturar rápido; haz clic en un pendiente para abrirlo y editarlo
+            (responsable, fechas, comprobación) o borrarlo. Aparece para su responsable en Gestión Operativa.
+          </p>
+        </div>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs text-gray-500">
+            <span>{completadas}/{tareas.length} resueltos</span>
+            <span className={pct === 100 && tareas.length > 0 ? "text-green-400 font-semibold" : "text-[#B3985B]"}>{pct}%</span>
+          </div>
+          <div className="w-full h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${pct === 100 && tareas.length > 0 ? "bg-green-500" : "bg-[#B3985B]"}`}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        </div>
+      </div>
+
       {/* ── General: lo que vale para todas las fechas ───────────────────────── */}
       <section className="space-y-2">
         <div>
@@ -73,7 +99,8 @@ export default function PendientesGiraPanel({
             tareas={tareasDeGira}
             crear={crear}
             alternar={alternar}
-            refrescar={refrescar}
+            upsert={upsert}
+            quitar={quitar}
           />
         </div>
       </section>
@@ -126,7 +153,8 @@ export default function PendientesGiraPanel({
                       tareas={tareasShow}
                       crear={crear}
                       alternar={alternar}
-                      refrescar={refrescar}
+                      upsert={upsert}
+                      quitar={quitar}
                     />
                     <div className="flex items-center justify-center gap-4 px-4 py-2 border-t border-[#141414]">
                       <Link

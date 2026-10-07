@@ -183,6 +183,7 @@ export default function ChecklistEventoTab({
           proyectoEventoNombre={proyectoNombre}
           tareaIdEdicion={modal.mode === "editar" ? modal.tareaId : null}
           onCreated={(t) => upsertTarea(t as TareaProyecto)}
+          onDeleted={(id) => setTareas(prev => prev.filter(x => x.id !== id))}
         />
       )}
     </div>
