@@ -80,6 +80,14 @@ export async function POST(req: NextRequest, context: any) {
 
     if (!proyecto) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+    
+    if (datosCapturados?.nombre) {
+      await prisma.tecnico.update({
+        where: { id: tecnicoId },
+        data: { nombre: datosCapturados.nombre }
+      });
+    }
+
     const responsiva = await prisma.responsivaTecnico.upsert({
       where: {
         proyectoId_tecnicoId: {

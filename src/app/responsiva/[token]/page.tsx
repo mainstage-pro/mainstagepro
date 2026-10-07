@@ -16,6 +16,14 @@ export default function ResponsivaPage(props: { params: Promise<{ token: string 
   const [aceptado, setAceptado] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [nombreEditado, setNombreEditado] = useState("");
+
+  useEffect(() => {
+    if (tecnicos && tecnicoId) {
+      const t = tecnicos.find((x: any) => x.id === tecnicoId);
+      if (t) setNombreEditado(t.nombre);
+    }
+  }, [tecnicoId, tecnicos]);
 
   const { toast } = useToast();
   const router = useRouter();
@@ -52,7 +60,7 @@ export default function ResponsivaPage(props: { params: Promise<{ token: string 
         firmaUrl: firma, // in a real app, upload to blob first. here we just save base64
         tipoResponsiva,
         datosCapturados: {
-          nombre: tecnicoSeleccionado.nombre,
+          nombre: nombreEditado,
           telefono: tecnicoSeleccionado.telefono,
           roles: tecnicoSeleccionado.roles
         }
@@ -140,7 +148,7 @@ export default function ResponsivaPage(props: { params: Promise<{ token: string 
                     <div className="bg-white text-black p-6 sm:p-8 rounded-sm shadow-xl my-6 text-xs sm:text-sm space-y-4 leading-relaxed max-w-2xl mx-auto">
   <div className="flex justify-between items-start border-b border-gray-300 pb-4 mb-4">
     <div>
-      <h2 className="font-bold text-sm tracking-wider uppercase text-gray-800">Mainstage Producciones</h2>
+      <img src="/logo.png" alt="Mainstage Producciones" className="h-6 sm:h-8 object-contain" />
       <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">Producción Técnica</p>
     </div>
     <div className="text-right">
@@ -154,7 +162,7 @@ export default function ResponsivaPage(props: { params: Promise<{ token: string 
   </p>
 
   <p className="text-justify">
-    Yo <strong>{tecnicoSeleccionado.nombre}</strong> (Cel: {tecnicoSeleccionado.telefono || "______________"}), acepto prestar mis servicios especializados de RIGGING para Mainstage Pro en el evento <strong>{proyecto.nombre}</strong>. Debido al alto riesgo inherente al trabajo en alturas y elevación de cargas, me obligo a cumplir estrictamente los siguientes lineamientos:
+    Yo <strong>{nombreEditado}</strong> (Cel: {tecnicoSeleccionado.telefono || "______________"}), acepto prestar mis servicios especializados de RIGGING para Mainstage Pro en el evento <strong>{proyecto.nombre}</strong>. Debido al alto riesgo inherente al trabajo en alturas y elevación de cargas, me obligo a cumplir estrictamente los siguientes lineamientos:
   </p>
 
   <ol className="list-decimal pl-5 space-y-2.5 text-justify">
@@ -180,8 +188,13 @@ export default function ResponsivaPage(props: { params: Promise<{ token: string 
     </div>
     
     <div className="mt-4 text-center space-y-1">
-      <p className="font-bold">{tecnicoSeleccionado.nombre}</p>
-      <p className="text-gray-600 text-[11px]">Roles: {tecnicoSeleccionado.roles.join(', ') || "Rigger"}</p>
+      <input 
+        type="text" 
+        value={nombreEditado} 
+        onChange={e => setNombreEditado(e.target.value)}
+        className="font-bold text-center w-full border-b border-gray-300 focus:border-[#B3985B] focus:outline-none pb-1 bg-transparent"
+        placeholder="Escribe tu nombre completo"
+      />
     </div>
   </div>
 
@@ -198,7 +211,7 @@ export default function ResponsivaPage(props: { params: Promise<{ token: string 
                     <div className="bg-white text-black p-6 sm:p-8 rounded-sm shadow-xl my-6 text-xs sm:text-sm space-y-4 leading-relaxed max-w-2xl mx-auto">
   <div className="flex justify-between items-start border-b border-gray-300 pb-4 mb-4">
     <div>
-      <h2 className="font-bold text-sm tracking-wider uppercase text-gray-800">Mainstage Producciones</h2>
+      <img src="/logo.png" alt="Mainstage Producciones" className="h-6 sm:h-8 object-contain" />
       <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">Producción Técnica</p>
     </div>
     <div className="text-right">
@@ -212,7 +225,7 @@ export default function ResponsivaPage(props: { params: Promise<{ token: string 
   </p>
 
   <p className="text-justify">
-    Yo <strong>{tecnicoSeleccionado.nombre}</strong> (Cel: {tecnicoSeleccionado.telefono || "______________"}), acepto prestar servicios como freelance para Mainstage Pro en el evento <strong>{proyecto.nombre}</strong> y me obligo a cumplir los siguientes lineamientos:
+    Yo <strong>{nombreEditado}</strong> (Cel: {tecnicoSeleccionado.telefono || "______________"}), acepto prestar servicios como freelance para Mainstage Pro en el evento <strong>{proyecto.nombre}</strong> y me obligo a cumplir los siguientes lineamientos:
   </p>
 
   <ol className="list-decimal pl-5 space-y-2.5 text-justify">
@@ -241,8 +254,13 @@ export default function ResponsivaPage(props: { params: Promise<{ token: string 
     </div>
     
     <div className="mt-4 text-center space-y-1">
-      <p className="font-bold">{tecnicoSeleccionado.nombre}</p>
-      <p className="text-gray-600 text-[11px]">Roles: {tecnicoSeleccionado.roles.join(', ') || "Técnico"}</p>
+      <input 
+        type="text" 
+        value={nombreEditado} 
+        onChange={e => setNombreEditado(e.target.value)}
+        className="font-bold text-center w-full border-b border-gray-300 focus:border-[#B3985B] focus:outline-none pb-1 bg-transparent"
+        placeholder="Escribe tu nombre completo"
+      />
     </div>
   </div>
 
