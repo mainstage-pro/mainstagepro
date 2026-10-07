@@ -11,7 +11,7 @@
 // funcionando sin tocar nada. Nunca se captura directo.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { RENTA_NIVEL_SERVICIO } from "./form-labels";
+import { RENTA_MODALIDAD_ENTREGA, RENTA_NIVEL_SERVICIO } from "./form-labels";
 
 export const SERVICIOS = ["RENTA", "PRODUCCION_TECNICA", "DIRECCION_OPERACIONES"] as const;
 export type Servicio = (typeof SERVICIOS)[number];
@@ -153,6 +153,66 @@ export function selloDeServicio(
 export function rentaConMontaje(logisticaRenta: string | null | undefined): boolean {
   const nivel = nivelDeRenta(logisticaRenta);
   return nivel === "RENTA_MONTAJE" || nivel === "RENTA_FULL";
+}
+
+// ── Logística de renta ───────────────────────────────────────────────────────
+
+const ENTREGA_LABELS: Record<string, string> = Object.fromEntries(
+  RENTA_MODALIDAD_ENTREGA.map((m) => [m.id, m.label]),
+);
+
+export interface LogisticaRenta {
+  nivel: string | null;
+  entrega: string | null;
+  fechaEntrega: string | null;
+  horaEntrega: string | null;
+  fechaDevolucion: string | null;
+  horaDevolucion: string | null;
+  direccionEntrega: string | null;
+  quienEntrega: string | null;
+  quienRecibe: string | null;
+  /** "Sí" / "No" si el cliente ya lo contestó; null mientras no se especifique. */
+  tecnicoPropio: string | null;
+  notas: string | null;
+}
+
+/**
+ * Lee el JSON de logística de renta con las etiquetas ya resueltas, para que la
+ * captura de la página y lo que sale impreso digan exactamente lo mismo. Los
+ * nombres viejos (`modalidadServicio`, `modalidadEntrega`, `descripcionEquipos`)
+ * siguen vivos en proyectos capturados antes del rediseño del formulario.
+ */
+export function datosLogisticaRenta(raw: string | null | undefined): LogisticaRenta | null {
+  if (!raw) return null;
+  let d: Record<string, string>;
+  try {
+    d = JSON.parse(raw) as Record<string, string>;
+  } catch {
+    return null;
+  }
+  if (!d || typeof d !== "object") return null;
+
+  const v = (x: string | undefined) => (x && x.trim() ? x.trim() : null);
+  const nivel = v(d.nivelServicio) ?? v(d.modalidadServicio);
+  const entrega = v(d.entrega) ?? v(d.modalidadEntrega);
+
+  const datos: LogisticaRenta = {
+    nivel: nivel ? NIVEL_RENTA_LABELS[nivel] ?? nivel : null,
+    entrega: entrega ? ENTREGA_LABELS[entrega] ?? entrega : null,
+    fechaEntrega: v(d.fechaEntrega),
+    horaEntrega: v(d.horaEntrega),
+    fechaDevolucion: v(d.fechaDevolucion),
+    horaDevolucion: v(d.horaDevolucion),
+    direccionEntrega: v(d.direccionEntrega),
+    quienEntrega: v(d.quienEntrega),
+    quienRecibe: v(d.quienRecibe),
+    tecnicoPropio: d.tecnicoPropio === "SI" ? "Sí" : d.tecnicoPropio === "NO" ? "No" : null,
+    notas: v(d.notasLogistica) ?? v(d.descripcionEquipos),
+  };
+
+  // El JSON puede venir del trato (`ideasReferencias`), donde hay capturas que no
+  // son logística de renta. Sin un solo dato que imprimir, no hay sección.
+  return Object.values(datos).some(Boolean) ? datos : null;
 }
 
 export function parseCanal(raw: string | null | undefined): CanalOperativo | null {

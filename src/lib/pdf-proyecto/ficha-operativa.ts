@@ -22,7 +22,7 @@ export async function generarFichaOperativa(id: string): Promise<PdfProyecto | n
     include: {
       cliente: { select: { nombre: true, empresa: true, telefono: true } },
       encargado: { select: { name: true, personalInterno: { select: { telefono: true } } } },
-      trato: { select: { notas: true } },
+      trato: { select: { notas: true, ideasReferencias: true } },
       personal: {
         include: {
           tecnico: { select: { nombre: true, celular: true, rol: { select: { nombre: true } } } },
@@ -116,7 +116,12 @@ export async function generarFichaOperativa(id: string): Promise<PdfProyecto | n
     estado: proyecto.estado,
     tipoEvento: proyecto.tipoEvento,
     tipoServicio: proyecto.tipoServicio ?? null,
-    logisticaRenta: (proyecto as { logisticaRenta?: string | null }).logisticaRenta ?? null,
+    // Mismo fallback que la página: hay proyectos cuya logística se capturó en
+    // el trato y nunca se volvió a tocar desde que existe el proyecto.
+    logisticaRenta:
+      (proyecto as { logisticaRenta?: string | null }).logisticaRenta ||
+      proyecto.trato?.ideasReferencias ||
+      null,
     zona: proyecto.zona ?? "LOCAL",
     fechaEvento: proyecto.fechaEvento?.toISOString() ?? null,
     fechasEvento: (proyecto as { fechasEvento?: string | null }).fechasEvento ?? null,
@@ -144,6 +149,7 @@ export async function generarFichaOperativa(id: string): Promise<PdfProyecto | n
     descripcionGeneral: proyecto.descripcionGeneral ?? null,
     detallesEspecificos: proyecto.detallesEspecificos ?? null,
     comentariosFinales: proyecto.comentariosFinales ?? null,
+    notasBriefTecnico: proyecto.notasBriefTecnico ?? null,
     briefObjetivo: proyecto.briefObjetivo ?? null,
     briefAcomodo: proyecto.briefAcomodo ?? null,
     briefRestricciones: proyecto.briefRestricciones ?? null,

@@ -20,7 +20,7 @@ import { CronologiaEvento } from "./CronologiaEvento";
 import { construirCronologia, BloqueTiempo } from "@/lib/cronologia-evento";
 import { cadenaDeMando, parseReglasMando } from "@/lib/cadena-mando";
 import { frenteLabel } from "@/lib/frentes-produccion";
-import { selloDeServicio } from "@/lib/servicios-trato";
+import { datosLogisticaRenta, selloDeServicio } from "@/lib/servicios-trato";
 
 const s = StyleSheet.create({
   // Sección numerada con badge negro
@@ -202,6 +202,8 @@ export interface FichaOperativaData {
   linkMaps: string | null; indicacionesAcceso: string | null;
   indicacionesCliente: string | null;
   descripcionGeneral: string | null; detallesEspecificos: string | null; comentariosFinales: string | null;
+  /** Lo que el coordinador le escribe al crew. En renta la ficha es su único destino. */
+  notasBriefTecnico: string | null;
   briefObjetivo: string | null; briefAcomodo: string | null; briefRestricciones: string | null;
   escenarioMedidas: string | null; escenarioAlturaM: number | null;
   escenarioAccesos: string | null; escenarioProveedor: string | null;
@@ -300,6 +302,9 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
   );
 
   const sello = selloDeServicio(data.tipoServicio, data.logisticaRenta);
+  const renta = datosLogisticaRenta(data.logisticaRenta);
+  const fechaHora = (f: string | null, h: string | null) =>
+    [fmtFechaDiaCorta(f), fmtHora(h)].filter(Boolean).join(" · ") || null;
 
   let seccion = 0;
   const sec = (titulo: string) => { seccion++; return String(seccion); };
@@ -431,6 +436,40 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                     Acceso al venue
                   </Text>
                   <Text style={base.textBoxContent}>{data.indicacionesAcceso}</Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* ENTREGA Y DEVOLUCIÓN — en renta es la operación entera: a qué hora
+              sale el equipo, a dónde llega, quién lo entrega y quién lo firma. */}
+          {renta && (
+            <View style={base.section}>
+              <SecNum num={sec("renta")} titulo="Entrega y devolución del equipo" />
+              <KVPar
+                izq={{ label: "Nivel de servicio", value: renta.nivel, bold: true }}
+                der={{ label: "Modalidad de entrega", value: renta.entrega, bold: true }}
+              />
+              <KVPar
+                izq={{ label: "Entrega", value: fechaHora(renta.fechaEntrega, renta.horaEntrega), bold: true }}
+                der={{ label: "Devolución / recolección", value: fechaHora(renta.fechaDevolucion, renta.horaDevolucion), bold: true }}
+              />
+              {renta.direccionEntrega && (
+                <View style={base.kvGrid}>
+                  <KV label="Dirección de entrega" value={renta.direccionEntrega} full />
+                </View>
+              )}
+              <KVPar
+                izq={{ label: "Entrega (Mainstage)", value: renta.quienEntrega, bold: true }}
+                der={{ label: "Recibe (cliente)", value: renta.quienRecibe, bold: true }}
+              />
+              <KVPar izq={{ label: "¿Cliente tiene técnico propio?", value: renta.tecnicoPropio }} />
+              {renta.notas && (
+                <View style={[base.textBox, { marginTop: 6 }]}>
+                  <Text style={{ fontSize: 6.5, fontFamily: "Helvetica-Bold", color: C.grisClaro, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 3 }}>
+                    Instrucciones de logística
+                  </Text>
+                  <Text style={base.textBoxContent}>{renta.notas}</Text>
                 </View>
               )}
             </View>
@@ -836,9 +875,17 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
           )}
 
           {/* 13. NOTAS */}
-          {(data.descripcionGeneral || data.tratoNotas || data.detallesEspecificos || data.comentariosFinales || data.indicacionesCliente) && (
+          {(data.descripcionGeneral || data.tratoNotas || data.detallesEspecificos || data.comentariosFinales || data.indicacionesCliente || data.notasBriefTecnico) && (
             <View style={base.section}>
               <SecNum num={sec("notas")} titulo="Notas" />
+              {/* Abre el bloque: es lo único aquí escrito para quien opera. En renta
+                  su otro destino, "Info para Técnicos", ni siquiera se genera. */}
+              {data.notasBriefTecnico && (
+                <View style={s.notaBox}>
+                  <Text style={s.notaLabel}>Notas para el equipo técnico</Text>
+                  <Text style={s.notaText}>{data.notasBriefTecnico}</Text>
+                </View>
+              )}
               {data.descripcionGeneral && (
                 <View style={s.notaBox}>
                   <Text style={s.notaLabel}>Descripción general</Text>
