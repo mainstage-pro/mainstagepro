@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { PLANTILLA_INPUT_BANDA, SOPORTES_MIC, SOPORTE_MIC_LABEL } from "@/lib/giras";
 import { useAutoguardadoCanales } from "@/hooks/useAutoguardadoCanales";
 import EstadoGuardado from "@/components/EstadoGuardado";
+import { FilaArrastrable, TablaOrdenable, ThArrastre } from "@/components/ui/TablaOrdenable";
 import ImportarCanales, { type RiderOrigen } from "../ImportarCanales";
 
 export interface CanalInput {
@@ -20,7 +21,9 @@ export interface CanalInput {
 }
 
 /// Las filas nuevas viven sin id hasta el primer guardado; el PUT las crea.
-type Fila = Omit<CanalInput, "id"> & { id: string | null; clave: string };
+/// El número de canal no se guarda en la fila: es la posición en la lista, así
+/// que arrastrar un renglón ya es renumerar.
+type Fila = Omit<CanalInput, "id" | "numero"> & { id: string | null; clave: string };
 
 interface Props {
   riderId: string;
@@ -36,14 +39,24 @@ function nuevaClave() {
 }
 
 function aFila(c: CanalInput): Fila {
-  return { ...c, clave: c.id };
+  return {
+    id: c.id,
+    clave: c.id,
+    nombre: c.nombre,
+    instrumento: c.instrumento,
+    microfono: c.microfono,
+    alternativas: c.alternativas,
+    soporte: c.soporte,
+    phantom: c.phantom,
+    inserto: c.inserto,
+    notas: c.notas,
+  };
 }
 
-function filaVacia(numero: number): Fila {
+function filaVacia(): Fila {
   return {
     id: null,
     clave: nuevaClave(),
-    numero,
     nombre: "",
     instrumento: null,
     microfono: null,
@@ -93,33 +106,18 @@ export default function InputListClient({ riderId, canalesMinimos, canalesInicia
   }
 
   function agregar() {
-    setFilas((prev) => [...prev, filaVacia(prev.length + 1)]);
+    setFilas((prev) => [...prev, filaVacia()]);
   }
 
   function quitar(clave: string) {
-    setFilas((prev) => prev.filter((f) => f.clave !== clave).map((f, i) => ({ ...f, numero: i + 1 })));
-  }
-
-  function mover(clave: string, delta: number) {
-    setFilas((prev) => {
-      const i = prev.findIndex((f) => f.clave === clave);
-      const j = i + delta;
-      if (i < 0 || j < 0 || j >= prev.length) return prev;
-      const copia = [...prev];
-      [copia[i], copia[j]] = [copia[j], copia[i]];
-      return copia.map((f, k) => ({ ...f, numero: k + 1 }));
-    });
-  }
-
-  function renumerar() {
-    setFilas((prev) => prev.map((f, i) => ({ ...f, numero: i + 1 })));
+    setFilas((prev) => prev.filter((f) => f.clave !== clave));
   }
 
   function sembrarPlantilla() {
     setFilas((prev) => [
       ...prev,
-      ...PLANTILLA_INPUT_BANDA.map((c, i) => ({
-        ...filaVacia(prev.length + i + 1),
+      ...PLANTILLA_INPUT_BANDA.map((c) => ({
+        ...filaVacia(),
         nombre: c.nombre,
         instrumento: c.instrumento ?? null,
         microfono: c.microfono ?? null,
@@ -130,7 +128,14 @@ export default function InputListClient({ riderId, canalesMinimos, canalesInicia
     ]);
   }
 
-  const conNombre = filas.filter((f) => f.nombre.trim()).length;
+  // El canal se cuenta sobre lo que de verdad se guarda: la fila a medio
+  // capturar no existe en el rider y no se puede llevar un número.
+  const numeroPorClave = new Map<string, number>();
+  for (const f of filas) {
+    if (f.nombre.trim()) numeroPorClave.set(f.clave, numeroPorClave.size + 1);
+  }
+
+  const conNombre = numeroPorClave.size;
   const faltanCanales = canalesMinimos !== null && conNombre > canalesMinimos;
 
   return (
@@ -190,11 +195,12 @@ export default function InputListClient({ riderId, canalesMinimos, canalesInicia
           </p>
         </div>
       ) : (
-        <div className="ms-table-wrapper overflow-x-auto">
+        <TablaOrdenable filas={filas} claveDe={(f) => f.clave} onReordenar={setFilas}>
           <table className="w-full min-w-[1420px]">
             <thead className="ms-thead">
               <tr>
-                <th className="ms-th text-left w-[60px]">#</th>
+                <ThArrastre />
+                <th className="ms-th text-left w-[52px]">#</th>
                 <th className="ms-th text-left w-[170px]">Canal</th>
                 <th className="ms-th text-left w-[160px]">Instrumento</th>
                 <th className="ms-th text-left w-[200px]">Micrófono preferido</th>
@@ -203,20 +209,14 @@ export default function InputListClient({ riderId, canalesMinimos, canalesInicia
                 <th className="ms-th text-center w-[60px]">48V</th>
                 <th className="ms-th text-left w-[150px]">Inserto</th>
                 <th className="ms-th text-left w-[170px]">Notas</th>
-                <th className="ms-th w-[80px]" />
+                <th className="ms-th w-[48px]" />
               </tr>
             </thead>
             <tbody>
-              {filas.map((f, i) => (
-                <tr key={f.clave} className="ms-tr align-top">
+              {filas.map((f) => (
+                <FilaArrastrable key={f.clave} clave={f.clave} titulo="Arrastrar para cambiar el número de canal">
                   <td className="ms-td">
-                    <input
-                      type="number"
-                      min={1}
-                      className="ms-input-inline w-full"
-                      value={f.numero}
-                      onChange={(e) => set(f.clave, { numero: Number(e.target.value) })}
-                    />
+                    <span className="font-semibold text-white tabular-nums">{numeroPorClave.get(f.clave) ?? "—"}</span>
                   </td>
                   <td className="ms-td">
                     <input
@@ -291,23 +291,7 @@ export default function InputListClient({ riderId, canalesMinimos, canalesInicia
                     />
                   </td>
                   <td className="ms-td">
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => mover(f.clave, -1)}
-                        disabled={i === 0}
-                        className="text-[#555] hover:text-white disabled:opacity-30 transition-colors"
-                        title="Subir"
-                      >
-                        ↑
-                      </button>
-                      <button
-                        onClick={() => mover(f.clave, 1)}
-                        disabled={i === filas.length - 1}
-                        className="text-[#555] hover:text-white disabled:opacity-30 transition-colors"
-                        title="Bajar"
-                      >
-                        ↓
-                      </button>
+                    <div className="flex items-center justify-end">
                       <button
                         onClick={() => quitar(f.clave)}
                         className="text-[#555] hover:text-red-400 transition-colors"
@@ -317,22 +301,22 @@ export default function InputListClient({ riderId, canalesMinimos, canalesInicia
                       </button>
                     </div>
                   </td>
-                </tr>
+                </FilaArrastrable>
               ))}
             </tbody>
           </table>
-        </div>
+        </TablaOrdenable>
       )}
 
       {filas.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
-          <button onClick={renumerar} className="ms-btn-ghost">
-            Renumerar 1…{filas.length}
-          </button>
           <button className="ms-btn-ghost" onClick={agregar}>
             + Canal
           </button>
           <EstadoGuardado estado={estado} onReintentar={guardarYa} />
+          <span className="ms-micro">
+            El número de canal es la posición en la lista: arrastra el renglón por la manija para renumerar.
+          </span>
         </div>
       )}
     </div>

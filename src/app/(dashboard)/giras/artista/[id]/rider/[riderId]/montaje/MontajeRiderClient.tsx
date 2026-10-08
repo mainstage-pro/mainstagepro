@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/Toast";
+import { FilaArrastrable, TablaOrdenable, ThArrastre } from "@/components/ui/TablaOrdenable";
 import { PLANTILLA_BLOQUES_RIDER, TIPOS_BLOQUE, TIPO_BLOQUE_LABEL } from "@/lib/giras";
 
 export interface BloqueRider {
@@ -15,7 +16,9 @@ export interface BloqueRider {
   orden: number;
 }
 
-type Fila = Omit<BloqueRider, "id"> & { id: string | null; clave: string };
+/// El orden del bloque no se guarda en la fila: es su posición en la lista, así
+/// que arrastrar un renglón ya es reordenar el montaje.
+type Fila = Omit<BloqueRider, "id" | "orden"> & { id: string | null; clave: string };
 
 interface Props {
   riderId: string;
@@ -29,10 +32,18 @@ function nuevaClave() {
 }
 
 function aFila(b: BloqueRider): Fila {
-  return { ...b, clave: b.id };
+  return {
+    id: b.id,
+    clave: b.id,
+    titulo: b.titulo,
+    tipo: b.tipo,
+    duracionMin: b.duracionMin,
+    responsable: b.responsable,
+    contenido: b.contenido,
+  };
 }
 
-function filaVacia(orden: number): Fila {
+function filaVacia(): Fila {
   return {
     id: null,
     clave: nuevaClave(),
@@ -41,7 +52,6 @@ function filaVacia(orden: number): Fila {
     duracionMin: null,
     responsable: null,
     contenido: null,
-    orden,
   };
 }
 
@@ -67,29 +77,18 @@ export default function MontajeRiderClient({ riderId, bloquesIniciales }: Props)
   }
 
   function agregar() {
-    setFilas((prev) => [...prev, filaVacia(prev.length)]);
+    setFilas((prev) => [...prev, filaVacia()]);
   }
 
   function quitar(clave: string) {
-    setFilas((prev) => prev.filter((f) => f.clave !== clave).map((f, i) => ({ ...f, orden: i })));
-  }
-
-  function mover(clave: string, delta: number) {
-    setFilas((prev) => {
-      const i = prev.findIndex((f) => f.clave === clave);
-      const j = i + delta;
-      if (i < 0 || j < 0 || j >= prev.length) return prev;
-      const copia = [...prev];
-      [copia[i], copia[j]] = [copia[j], copia[i]];
-      return copia.map((f, k) => ({ ...f, orden: k }));
-    });
+    setFilas((prev) => prev.filter((f) => f.clave !== clave));
   }
 
   function sembrarPlantilla() {
     setFilas((prev) => [
       ...prev,
-      ...PLANTILLA_BLOQUES_RIDER.map((b, i) => ({
-        ...filaVacia(prev.length + i),
+      ...PLANTILLA_BLOQUES_RIDER.map((b) => ({
+        ...filaVacia(),
         titulo: b.titulo,
         tipo: b.tipo,
         duracionMin: b.duracionMin,
@@ -192,21 +191,22 @@ export default function MontajeRiderClient({ riderId, bloquesIniciales }: Props)
           </p>
         </div>
       ) : (
-        <div className="ms-table-wrapper overflow-x-auto">
+        <TablaOrdenable filas={filas} claveDe={(f) => f.clave} onReordenar={setFilas}>
           <table className="w-full min-w-[1100px]">
             <thead className="ms-thead">
               <tr>
+                <ThArrastre />
                 <th className="ms-th text-left w-[240px]">Bloque</th>
                 <th className="ms-th text-left w-[150px]">Tipo</th>
                 <th className="ms-th text-left w-[110px]">Duración</th>
                 <th className="ms-th text-left w-[180px]">Quién lo ejecuta</th>
                 <th className="ms-th text-left">Qué pasa en el bloque</th>
-                <th className="ms-th w-[80px]" />
+                <th className="ms-th w-[48px]" />
               </tr>
             </thead>
             <tbody>
-              {filas.map((f, i) => (
-                <tr key={f.clave} className="ms-tr align-top">
+              {filas.map((f) => (
+                <FilaArrastrable key={f.clave} clave={f.clave} titulo="Arrastrar para cambiar el orden del montaje">
                   <td className="ms-td">
                     <input
                       className="ms-input-inline w-full"
@@ -258,23 +258,7 @@ export default function MontajeRiderClient({ riderId, bloquesIniciales }: Props)
                     />
                   </td>
                   <td className="ms-td">
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => mover(f.clave, -1)}
-                        disabled={i === 0}
-                        className="text-[#555] hover:text-white disabled:opacity-30 transition-colors"
-                        title="Subir"
-                      >
-                        ↑
-                      </button>
-                      <button
-                        onClick={() => mover(f.clave, 1)}
-                        disabled={i === filas.length - 1}
-                        className="text-[#555] hover:text-white disabled:opacity-30 transition-colors"
-                        title="Bajar"
-                      >
-                        ↓
-                      </button>
+                    <div className="flex items-center justify-end">
                       <button
                         onClick={() => quitar(f.clave)}
                         className="text-[#555] hover:text-red-400 transition-colors"
@@ -284,11 +268,11 @@ export default function MontajeRiderClient({ riderId, bloquesIniciales }: Props)
                       </button>
                     </div>
                   </td>
-                </tr>
+                </FilaArrastrable>
               ))}
             </tbody>
           </table>
-        </div>
+        </TablaOrdenable>
       )}
 
       {filas.length > 0 && (

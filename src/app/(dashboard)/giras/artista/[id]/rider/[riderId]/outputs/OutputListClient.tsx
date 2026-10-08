@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Combobox, type ComboboxOption } from "@/components/Combobox";
 import { useAutoguardadoCanales } from "@/hooks/useAutoguardadoCanales";
 import EstadoGuardado from "@/components/EstadoGuardado";
+import { FilaArrastrable, TablaOrdenable, ThArrastre } from "@/components/ui/TablaOrdenable";
 import ImportarCanales, { type RiderOrigen } from "../ImportarCanales";
 import {
   PLANTILLA_OUTPUT_BANDA,
@@ -121,17 +122,6 @@ export default function OutputListClient({
     setFilas((prev) => prev.filter((f) => f.clave !== clave));
   }
 
-  function mover(clave: string, delta: number) {
-    setFilas((prev) => {
-      const i = prev.findIndex((f) => f.clave === clave);
-      const j = i + delta;
-      if (i < 0 || j < 0 || j >= prev.length) return prev;
-      const copia = [...prev];
-      [copia[i], copia[j]] = [copia[j], copia[i]];
-      return copia;
-    });
-  }
-
   function sembrarPlantilla() {
     setFilas((prev) => [
       ...prev,
@@ -148,7 +138,12 @@ export default function OutputListClient({
   const conNombre = utiles.length;
   const canales = totalCanalesSalida(utiles);
   const descuadre = mixesMonitor !== null && mixesMonitor !== conNombre;
-  const numeradas = numerarSalidas(filas);
+
+  // El canal se cuenta sobre lo que de verdad se guarda: el mix a medio capturar
+  // no existe en el rider y no ocupa salida de consola.
+  const etiquetaPorClave = new Map(
+    numerarSalidas(utiles).map((f) => [f.clave, etiquetaCanalSalida(f.canal, f.estereo)]),
+  );
 
   return (
     <div className="ms-page space-y-4">
@@ -220,25 +215,26 @@ export default function OutputListClient({
           </p>
         </div>
       ) : (
-        <div className="ms-table-wrapper overflow-x-auto">
+        <TablaOrdenable filas={filas} claveDe={(f) => f.clave} onReordenar={setFilas}>
           <table className="w-full min-w-[1040px]">
             <thead className="ms-thead">
               <tr>
+                <ThArrastre />
                 <th className="ms-th text-left w-[76px]">Canal</th>
                 <th className="ms-th text-left w-[200px]">Salida / mix</th>
                 <th className="ms-th text-left w-[180px]">Tipo</th>
                 <th className="ms-th text-center w-[80px]">Estéreo</th>
                 <th className="ms-th text-left w-[240px]">De quién es el mix</th>
                 <th className="ms-th text-left w-[200px]">Notas</th>
-                <th className="ms-th w-[80px]" />
+                <th className="ms-th w-[48px]" />
               </tr>
             </thead>
             <tbody>
-              {numeradas.map((f, i) => (
-                <tr key={f.clave} className="ms-tr align-top">
+              {filas.map((f) => (
+                <FilaArrastrable key={f.clave} clave={f.clave} titulo="Arrastrar para cambiar el orden de los mixes">
                   <td className="ms-td">
                     <span className="font-semibold text-white tabular-nums">
-                      {etiquetaCanalSalida(f.canal, f.estereo)}
+                      {etiquetaPorClave.get(f.clave) ?? "—"}
                     </span>
                     {f.estereo && <p className="ms-micro">L y R</p>}
                   </td>
@@ -293,23 +289,7 @@ export default function OutputListClient({
                     />
                   </td>
                   <td className="ms-td">
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => mover(f.clave, -1)}
-                        disabled={i === 0}
-                        className="text-[#555] hover:text-white disabled:opacity-30 transition-colors"
-                        title="Subir"
-                      >
-                        ↑
-                      </button>
-                      <button
-                        onClick={() => mover(f.clave, 1)}
-                        disabled={i === filas.length - 1}
-                        className="text-[#555] hover:text-white disabled:opacity-30 transition-colors"
-                        title="Bajar"
-                      >
-                        ↓
-                      </button>
+                    <div className="flex items-center justify-end">
                       <button
                         onClick={() => quitar(f.clave)}
                         className="text-[#555] hover:text-red-400 transition-colors"
@@ -319,11 +299,11 @@ export default function OutputListClient({
                       </button>
                     </div>
                   </td>
-                </tr>
+                </FilaArrastrable>
               ))}
             </tbody>
           </table>
-        </div>
+        </TablaOrdenable>
       )}
 
       {filas.length > 0 && (
@@ -332,6 +312,9 @@ export default function OutputListClient({
             + Salida
           </button>
           <EstadoGuardado estado={estado} onReintentar={guardarYa} />
+          <span className="ms-micro">
+            El canal es la posición en la lista: arrastra el renglón por la manija para renumerar.
+          </span>
         </div>
       )}
     </div>
