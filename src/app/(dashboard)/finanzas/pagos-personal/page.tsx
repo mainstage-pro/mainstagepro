@@ -155,9 +155,28 @@ function EditablePersonalRow({ pp, roles, tecnicos, pendingEdits, onEdit }: {
   const [editingRol, setEditingRol] = useState(false);
   const [editingTecnico, setEditingTecnico] = useState(false);
   const [editingMonto, setEditingMonto] = useState(false);
-  const [editingNotas, setEditingNotas] = useState(false);
-
   const merged = { ...pp, ...pendingEdits };
+  const [editingNotas, setEditingNotas] = useState(false);
+  const [editingBloque, setEditingBloque] = useState(false);
+  const [participacionVal, setParticipacionVal] = useState(merged.participacion || "MONTAJE");
+  const [fechaVal, setFechaVal] = useState(merged.fechaJornada || "");
+  const [jornadaVal, setJornadaVal] = useState(merged.jornada || "");
+
+  useEffect(() => {
+    setParticipacionVal(merged.participacion || "MONTAJE");
+    setFechaVal(merged.fechaJornada || "");
+    setJornadaVal(merged.jornada || "");
+  }, [merged.participacion, merged.fechaJornada, merged.jornada]);
+
+  const handleBloqueBlur = () => {
+    setEditingBloque(false);
+    onEdit(pp.id, { 
+      participacion: participacionVal, 
+      fechaJornada: fechaVal || null, 
+      jornada: jornadaVal || null 
+    }, pp);
+  };
+
   
   const [montoVal, setMontoVal] = useState(merged.tarifaAcordada?.toString() || "");
   const [notasVal, setNotasVal] = useState(merged.notas || "");
@@ -261,7 +280,52 @@ function EditablePersonalRow({ pp, roles, tecnicos, pendingEdits, onEdit }: {
         )}
       </div>
 
-      <p className="text-xs text-gray-500">{pp.jornada ?? "—"}</p>
+      <div className="relative -mx-1 px-1 py-0.5 rounded cursor-pointer hover:bg-[#222]">
+        {editingBloque ? (
+          <div className="absolute left-0 top-full mt-1 z-50 w-[220px] bg-[#111] border border-[#333] rounded-lg shadow-2xl p-3 flex flex-col gap-2">
+            <div className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">Etapa y Jornada</div>
+            <select
+              value={participacionVal}
+              onChange={e => setParticipacionVal(e.target.value)}
+              className="w-full bg-[#1a1a1a] border border-[#222] rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+            >
+              <option value="MONTAJE">Montaje</option>
+              <option value="OPERACION">Operación</option>
+              <option value="DESMONTAJE">Desmontaje</option>
+              <option value="TRANSPORTE">Transporte</option>
+              <option value="OTRO">Otro</option>
+            </select>
+            <input
+              type="date"
+              value={fechaVal}
+              onChange={e => setFechaVal(e.target.value)}
+              className="w-full bg-[#1a1a1a] border border-[#222] rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B] [color-scheme:dark]"
+            />
+            <select
+              value={jornadaVal}
+              onChange={e => setJornadaVal(e.target.value)}
+              className="w-full bg-[#1a1a1a] border border-[#222] rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+            >
+              <option value="">Jornada: Sin definir</option>
+              <option value="CORTA">Corta (0-8 hrs)</option>
+              <option value="MEDIA">Media (8-12 hrs)</option>
+              <option value="LARGA">Larga (+12 hrs)</option>
+              <option value="COMPLETA">Completa (Viáticos)</option>
+              <option value="CUARTO">Cuarto / Hotel</option>
+            </select>
+            <button onClick={handleBloqueBlur} className="w-full mt-1 bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold text-xs py-1.5 rounded transition-colors">
+              Aplicar a técnico
+            </button>
+          </div>
+        ) : (
+          <p 
+            className="text-xs text-gray-400 truncate w-full h-full"
+            onClick={() => { if (pp.estadoPago !== "PAGADO") setEditingBloque(true); }}
+          >
+            {merged.jornada || "—"}
+          </p>
+        )}
+      </div>
       
       {/* Monto & Notas Editable */}
       <div className="relative flex items-center justify-end gap-1.5 -mx-1 px-1 py-0.5 rounded hover:bg-[#222]">
@@ -335,6 +399,7 @@ export default function PagosPersonalPage() {
   const [ciclo, setCiclo] = useState(cicloActual);
   const [pendingEdits, setPendingEdits] = useState<Record<string, Partial<PersonalSlot>>>({});
   const [savingBatch, setSavingBatch] = useState(false);
+  const [editingGroup, setEditingGroup] = useState<string | null>(null);
 
   const [data, setData] = useState<CicloData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -712,12 +777,49 @@ export default function PagosPersonalPage() {
                         const [tipo, fecha] = key.split("|");
                         return (
                           <div key={key}>
-                            <div className="px-4 py-1 bg-[#0d0d0d] flex items-center gap-2">
+                            <div className="px-4 py-1.5 bg-[#0d0d0d] flex items-center gap-2 cursor-pointer hover:bg-[#1a1a1a] transition-colors relative group" onClick={() => {
+                              if (editingGroup === key) setEditingGroup(null);
+                              else setEditingGroup(key);
+                            }}>
                               <span className={`text-[10px] font-semibold uppercase tracking-wider ${TIPO_COLORS[tipo] ?? "text-gray-400"}`}>
                                 {TIPO_LABELS[tipo] ?? tipo}
                               </span>
-                              {fecha && <span className="text-[10px] text-gray-600">{fmtDate(fecha)}</span>}
+                              {fecha && <span className="text-[10px] text-gray-500">{fmtDate(fecha)}</span>}
+                              <span className="text-[10px] text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">✎ Editar bloque</span>
                               <span className="text-[10px] text-gray-700 ml-auto">{slots.length} técnico{slots.length !== 1 ? "s" : ""}</span>
+                              
+                              {editingGroup === key && (
+                                <div className="absolute left-4 top-full mt-1 z-50 w-[240px] bg-[#111] border border-[#333] rounded-lg shadow-2xl p-3 flex flex-col gap-2" onClick={e => e.stopPropagation()}>
+                                  <div className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">Modificar bloque entero</div>
+                                  <select
+                                    defaultValue={tipo}
+                                    id={`select-tipo-${key}`}
+                                    className="w-full bg-[#1a1a1a] border border-[#222] rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+                                  >
+                                    <option value="MONTAJE">Montaje</option>
+                                    <option value="OPERACION">Operación</option>
+                                    <option value="DESMONTAJE">Desmontaje</option>
+                                    <option value="TRANSPORTE">Transporte</option>
+                                    <option value="OTRO">Otro</option>
+                                  </select>
+                                  <input
+                                    type="date"
+                                    defaultValue={fecha}
+                                    id={`select-fecha-${key}`}
+                                    className="w-full bg-[#1a1a1a] border border-[#222] rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B] [color-scheme:dark]"
+                                  />
+                                  <button onClick={() => {
+                                    const newTipo = (document.getElementById(`select-tipo-${key}`) as HTMLSelectElement).value;
+                                    const newFecha = (document.getElementById(`select-fecha-${key}`) as HTMLInputElement).value;
+                                    slots.forEach(pp => {
+                                      handleEdit(pp.id, { participacion: newTipo, fechaJornada: newFecha || null }, pp);
+                                    });
+                                    setEditingGroup(null);
+                                  }} className="w-full mt-1 bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold text-xs py-1.5 rounded transition-colors">
+                                    Aplicar a todos ({slots.length})
+                                  </button>
+                                </div>
+                              )}
                             </div>
 
                             {slots.map((pp) => (
