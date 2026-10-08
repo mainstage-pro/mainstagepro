@@ -75,8 +75,15 @@ function esc(texto: string): string {
 
 /// Sin worker y sin bajar fuentes por red: esto corre en una función serverless
 /// que no tiene más disco que su propio bundle.
+///
+/// OJO: el build `legacy` no es opcional ni es herencia vieja. El bundle moderno
+/// de pdfjs-dist 6 asume APIs de navegador, avisa «Please use the legacy build in
+/// Node.js environments» y truena al abrir el documento con
+/// `hashOriginal.toHex is not a function`. Compila igual, así que el daño no se
+/// ve hasta que alguien transcribe un rider en producción. No lo cambies a
+/// `import("pdfjs-dist")`.
 async function leerPaginas(buffer: Buffer): Promise<PaginaPdf[]> {
-  const pdfjs = await import("pdfjs-dist");
+  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
   const tarea = pdfjs.getDocument({
     data: new Uint8Array(buffer),
     useSystemFonts: true,
