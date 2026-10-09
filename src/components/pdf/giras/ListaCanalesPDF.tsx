@@ -23,6 +23,8 @@ export interface CanalInput {
   soporteLabel: string | null;
   phantom: boolean;
   inserto: string | null;
+  /// Ya resuelto a texto: "Playback · out 1".
+  rig: string | null;
   notas: string | null;
 }
 
@@ -33,6 +35,15 @@ export interface CanalOutput {
   tipoSalidaLabel: string | null;
   estereo: boolean;
   paraQuien: string | null;
+  rig: string | null;
+  notas: string | null;
+}
+
+/// Los equipos del artista por los que pasa la señal antes de la consola.
+export interface RigLista {
+  id: string;
+  nombre: string;
+  descripcion: string;
   notas: string | null;
 }
 
@@ -50,6 +61,7 @@ export interface ListaCanalesData {
   giraNombre: string | null;
   inputs: CanalInput[];
   outputs: CanalOutput[];
+  rigs: RigLista[];
   /// Solo si la gira parcha una interfaz antes de la consola. No va dentro del
   /// rider: la interfaz es de la casa, no del artista.
   prePatch: { entradas: PuertoPrePatch[]; salidas: PuertoPrePatch[] } | null;
@@ -58,20 +70,34 @@ export interface ListaCanalesData {
   generadoEn: string;
 }
 
-const COLS_INPUT: ColumnaTabla[] = [
-  { label: "#", ancho: 22, alinear: "right" },
-  { label: "Canal", flex: 3 },
-  { label: "Micrófono / DI", flex: 3 },
-  { label: "Soporte", ancho: 64 },
-  { label: "48 V", ancho: 28, alinear: "center" },
-];
+/// La columna del rig solo aparece si alguien la usa: la mayoría de los riders
+/// entra con cable directo y una columna de rayas solo roba ancho al papel.
+function colsInput(conRig: boolean): ColumnaTabla[] {
+  return [
+    { label: "#", ancho: 22, alinear: "right" },
+    { label: "Canal", flex: 3 },
+    { label: "Mic / DI / Línea", flex: 3 },
+    ...(conRig ? [{ label: "Rig", flex: 2 } as ColumnaTabla] : []),
+    { label: "Soporte", ancho: 64 },
+    { label: "48 V", ancho: 28, alinear: "center" },
+  ];
+}
 
-const COLS_OUTPUT: ColumnaTabla[] = [
-  { label: "#", ancho: 22, alinear: "right" },
-  { label: "Mix", flex: 3 },
-  { label: "Tipo", ancho: 76 },
-  { label: "Formato", ancho: 48 },
-  { label: "Para quién", flex: 2 },
+function colsOutput(conRig: boolean): ColumnaTabla[] {
+  return [
+    { label: "#", ancho: 22, alinear: "right" },
+    { label: "Mix", flex: 3 },
+    { label: "Tipo", ancho: 76 },
+    { label: "Formato", ancho: 48 },
+    { label: "Para quién", flex: 2 },
+    ...(conRig ? [{ label: "Rig", flex: 2 } as ColumnaTabla] : []),
+  ];
+}
+
+const COLS_RIG: ColumnaTabla[] = [
+  { label: "Rig", ancho: 80 },
+  { label: "Cadena de señal", flex: 4 },
+  { label: "Notas", flex: 2 },
 ];
 
 const COLS_PRE_PATCH: ColumnaTabla[] = [
@@ -101,7 +127,18 @@ function tablaPrePatch(puertos: PuertoPrePatch[]): RenglonTabla[] {
 
 /// El bloque de las dos tablas, sin encabezado de documento: lo usa el documento
 /// propio y también la segunda página del rider.
-export function ListaCanales({ inputs, outputs }: { inputs: CanalInput[]; outputs: CanalOutput[] }) {
+export function ListaCanales({
+  inputs,
+  outputs,
+  rigs = [],
+}: {
+  inputs: CanalInput[];
+  outputs: CanalOutput[];
+  rigs?: RigLista[];
+}) {
+  const conRigInput = inputs.some((c) => c.rig);
+  const conRigOutput = outputs.some((c) => c.rig);
+
   const filasInput: RenglonTabla[] = inputs.map((c) => ({
     tipo: "fila",
     clave: c.id,
@@ -114,6 +151,7 @@ export function ListaCanales({ inputs, outputs }: { inputs: CanalInput[]; output
         grande: true,
       },
       { texto: c.microfono ?? "—", sub: c.alternativas ? `o ${c.alternativas}` : null },
+      ...(conRigInput ? [{ texto: c.rig ?? "Directo" }] : []),
       { texto: c.soporteLabel ?? "—" },
       { texto: c.phantom ? "Sí" : "—" },
     ],
@@ -131,18 +169,40 @@ export function ListaCanales({ inputs, outputs }: { inputs: CanalInput[]; output
         { texto: c.tipoSalidaLabel ?? "—" },
         { texto: c.estereo ? "Estéreo" : "Mono" },
         { texto: c.paraQuien ?? "—" },
+        ...(conRigOutput ? [{ texto: c.rig ?? "Directo" }] : []),
       ],
     })),
   );
 
+  const filasRig: RenglonTabla[] = rigs.map((r) => ({
+    tipo: "fila",
+    clave: r.id,
+    celdas: [
+      { texto: r.nombre, fuerte: true },
+      { texto: r.descripcion || "—", grande: true },
+      { texto: r.notas ?? "—" },
+    ],
+  }));
+
   return (
     <>
+      {/* Va antes de las listas a propósito: el que parcha necesita saber qué
+          cajas llegan al escenario antes de leer canal por canal. */}
+      {filasRig.length > 0 && (
+        <Seccion
+          titulo="Rigs de línea"
+          nota="Equipo del artista por el que pasa la señal antes de la consola. En las listas, cada canal dice de qué rig y de qué puerto sale."
+        >
+          <Tabla columnas={COLS_RIG} renglones={filasRig} />
+        </Seccion>
+      )}
+
       <Seccion titulo="Input list" nota="El orden del patch es el número de canal: no se reacomoda en sitio.">
-        <Tabla columnas={COLS_INPUT} renglones={filasInput} />
+        <Tabla columnas={colsInput(conRigInput)} renglones={filasInput} />
       </Seccion>
 
       <Seccion titulo="Output list" nota="Un renglón por salida de consola: el mix estéreo se abre en L y R.">
-        <Tabla columnas={COLS_OUTPUT} renglones={filasOutput} />
+        <Tabla columnas={colsOutput(conRigOutput)} renglones={filasOutput} />
       </Seccion>
     </>
   );
@@ -177,7 +237,7 @@ export function ListaCanalesPDF({ data }: { data: ListaCanalesData }) {
           derecha={`Input / output list · ${data.generadoEn}`}
         />
         <Cuerpo>
-          <ListaCanales inputs={data.inputs} outputs={data.outputs} />
+          <ListaCanales inputs={data.inputs} outputs={data.outputs} rigs={data.rigs} />
 
           {/* Otra lista, no una continuación: el puerto de la interfaz no tiene
               que coincidir con el canal de consola de arriba. */}

@@ -25,8 +25,14 @@ export default async function RiderOutputsPage({ params }: { params: Promise<{ i
           tipoSalida: true,
           estereo: true,
           personaId: true,
+          rigId: true,
+          rigPuerto: true,
           notas: true,
         },
+      },
+      rigs: {
+        orderBy: { orden: "asc" },
+        select: { id: true, nombre: true, equipo: true, cadena: true, conexion: true, notas: true },
       },
     },
   });
@@ -64,6 +70,7 @@ export default async function RiderOutputsPage({ params }: { params: Promise<{ i
       riderId={riderId}
       mixesMonitor={rider.mixesMonitor}
       canalesIniciales={rider.canales as CanalOutput[]}
+      rigsIniciales={rider.rigs}
       personas={personas}
       origenes={origenes}
       divergenciasIniciales={await fechasConAjuste(riderId)}

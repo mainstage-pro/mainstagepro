@@ -80,7 +80,7 @@ model User {
   visionesResponsable            VisionSemanal[]       @relation("VisionSemanalResponsable")
   fallasReportadas               FallaEquipo[]         @relation("FallasReportadas")
 
-  personalInterno   PersonalInterno?    @relation("PersonalUsuario")
+  personalInterno      PersonalInterno?    @relation("PersonalUsuario")
   responsivasValidadas ResponsivaTecnico[]
 
   @@map("users")
@@ -6029,6 +6029,7 @@ model ArtistaRider {
   bloques   ArtistaRiderBloque[]
   contactos ArtistaRiderContacto[]
   archivos  ArtistaRiderArchivo[]
+  rigs      ArtistaRiderRig[]
   giras     Gira[]
 
   @@index([artistaId])
@@ -6093,6 +6094,41 @@ model ArtistaRiderArchivo {
   @@map("artista_rider_archivos")
 }
 
+/// Un equipo del artista que entrega (o recibe) señal de línea: la interfaz del
+/// playback, la interfaz de voces, el mixer del DJ, el rack de in-ears.
+///
+/// Existe para no repetir la cadena en cada renglón del input list. En papel
+/// nadie escribe "MacBook → Ableton → Apollo" doce veces: se declara el rig una
+/// vez y cada canal dice de qué rig y de qué puerto sale. El input list sigue
+/// diciendo lo que la consola recibe; la cadena de arriba vive aquí.
+///
+/// No es el pre-patch de interfaz (PrePatchCanal): ese es de la casa y vive en
+/// la gira. Este es equipo del artista y viaja con su rider.
+model ArtistaRiderRig {
+  id      String       @id @default(cuid())
+  riderId String
+  rider   ArtistaRider @relation(fields: [riderId], references: [id], onDelete: Cascade)
+
+  /// Como lo nombra el crew: "Playback", "Voces", "DJ".
+  nombre   String
+  /// Marca y modelo: "UA Apollo x8p", "Behringer UMC1820".
+  equipo   String?
+  /// La cadena completa antes de este equipo: "MacBook Pro + Ableton Live 12".
+  cadena   String?
+  /// Cómo entrega la señal: XLR balanceado, TRS, AES.
+  conexion String?
+  notas    String?
+
+  canales ArtistaRiderCanal[]
+
+  orden     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([riderId])
+  @@map("artista_rider_rigs")
+}
+
 /// Input list y output list en una sola tabla, discriminadas por `tipo`.
 model ArtistaRiderCanal {
   id      String       @id @default(cuid())
@@ -6104,12 +6140,21 @@ model ArtistaRiderCanal {
   nombre String
 
   // INPUT
+  /// Qué suena: voz, guitarra, secuencia. Texto libre con sugerencias.
   instrumento  String?
+  /// Cómo llega a la consola: micrófono, DI o línea. El nombre del campo quedó
+  /// de cuando la columna solo admitía micrófonos.
   microfono    String?
   alternativas String?
   soporte      String? // TRIPIE_CORTO|TRIPIE_LARGO|CLIP|DI|SUBSNAKE|NINGUNO
   phantom      Boolean @default(false)
   inserto      String?
+
+  /// De qué equipo del artista sale (INPUT) o a cuál entra (OUTPUT) este canal,
+  /// y por qué puerto suyo: "1", "1-2", "L". Null = cable directo a la consola.
+  rigId     String?
+  rig       ArtistaRiderRig? @relation(fields: [rigId], references: [id], onDelete: SetNull)
+  rigPuerto String?
 
   // OUTPUT
   tipoSalida String? // IEM|WEDGE|SIDEFILL|DRUM_FILL|SUB_DRUM|PA|SHOUT

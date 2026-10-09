@@ -24,6 +24,7 @@ import {
   TIPOS_SALIDA,
   canalesDeSalida,
   etiquetaCanalSalida,
+  etiquetaRig,
   type RequerimientoInvitado,
 } from "@/lib/giras";
 
@@ -143,6 +144,8 @@ const SELECT_CANAL_MAESTRO = {
   soporte: true,
   phantom: true,
   inserto: true,
+  rigPuerto: true,
+  rig: { select: { nombre: true, equipo: true } },
   tipoSalida: true,
   estereo: true,
   notas: true,
@@ -214,6 +217,9 @@ export interface FilaCanal {
   soporte: string | null;
   phantom: boolean;
   inserto: string | null;
+  /// Por qué equipo del artista pasa la señal, ya resuelto a texto: "Playback ·
+  /// out 1". Los rigs se declaran en el rider y la fecha no los ajusta.
+  rig: string | null;
   tipoSalida: string | null;
   estereo: boolean;
   notas: string | null;
@@ -334,6 +340,8 @@ type CanalMaestro = {
   soporte: string | null;
   phantom: boolean;
   inserto: string | null;
+  rigPuerto: string | null;
+  rig: { nombre: string; equipo: string | null } | null;
   tipoSalida: string | null;
   estereo: boolean;
   notas: string | null;
@@ -455,6 +463,7 @@ function filaDeMaestro(c: CanalMaestro): FilaCanal {
     soporte: c.soporte,
     phantom: c.phantom,
     inserto: c.inserto,
+    rig: c.rig ? etiquetaRig(c.rig, c.rigPuerto) : null,
     tipoSalida: c.tipoSalida,
     estereo: c.estereo,
     notas: c.notas,
@@ -483,6 +492,7 @@ function filaDeShow(c: CanalShow, invitados: Map<string, InvitadoShow>): FilaCan
     soporte: c.soporte,
     phantom: c.phantom,
     inserto: null,
+    rig: null,
     tipoSalida: c.tipoSalida,
     estereo: c.estereo,
     notas: c.notas,

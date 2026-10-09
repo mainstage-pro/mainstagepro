@@ -17,7 +17,23 @@ export default async function CanalesOutputGiraPage({ params }: { params: Promis
   const canales = await prisma.artistaRiderCanal.findMany({
     where: { riderId: rider.id, tipo: "OUTPUT" },
     orderBy: { numero: "asc" },
-    select: { id: true, numero: true, nombre: true, tipoSalida: true, estereo: true, personaId: true, notas: true },
+    select: {
+      id: true,
+      numero: true,
+      nombre: true,
+      tipoSalida: true,
+      estereo: true,
+      personaId: true,
+      rigId: true,
+      rigPuerto: true,
+      notas: true,
+    },
+  });
+
+  const rigs = await prisma.artistaRiderRig.findMany({
+    where: { riderId: rider.id },
+    orderBy: { orden: "asc" },
+    select: { id: true, nombre: true, equipo: true, cadena: true, conexion: true, notas: true },
   });
 
   const personas = await prisma.artistaPersona.findMany({
@@ -34,6 +50,7 @@ export default async function CanalesOutputGiraPage({ params }: { params: Promis
       riderId={rider.id}
       mixesMonitor={rider.mixesMonitor}
       canalesIniciales={canales as CanalOutput[]}
+      rigsIniciales={rigs}
       personas={personas}
       origenes={origenes}
       divergenciasIniciales={await fechasConAjuste(rider.id)}

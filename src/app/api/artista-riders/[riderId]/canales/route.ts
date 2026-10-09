@@ -16,6 +16,8 @@ interface CanalEntrante {
   soporte?: string | null;
   phantom?: boolean;
   inserto?: string | null;
+  rigId?: string | null;
+  rigPuerto?: string | null;
   tipoSalida?: string | null;
   estereo?: boolean;
   personaId?: string | null;
@@ -32,6 +34,8 @@ interface CanalDatos {
   soporte: string | null;
   phantom: boolean;
   inserto: string | null;
+  rigId: string | null;
+  rigPuerto: string | null;
   tipoSalida: string | null;
   estereo: boolean;
   personaId: string | null;
@@ -97,6 +101,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ ride
     ).map((c) => c.id),
   );
 
+  const rigsValidos = new Set(
+    (await prisma.artistaRiderRig.findMany({ where: { riderId }, select: { id: true } })).map((r) => r.id),
+  );
+
   // El nombre puede quedar vacío: un renglón abierto es un canal que ya cuenta en
   // la lista y lleva su número, y todavía no se sabe qué va a entrar por él.
   const entrantes = (body.canales as CanalEntrante[])
@@ -107,6 +115,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ ride
       const soporte = c.soporte && (SOPORTES_MIC as readonly string[]).includes(c.soporte) ? c.soporte : null;
       const tipoSalida =
         c.tipoSalida && (TIPOS_SALIDA as readonly string[]).includes(c.tipoSalida) ? c.tipoSalida : null;
+      const rigId = c.rigId && rigsValidos.has(c.rigId) ? c.rigId : null;
       return {
         id: c.id && idsVivos.has(c.id) ? c.id : null,
         datos: {
@@ -119,6 +128,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ ride
           soporte: tipo === "INPUT" ? soporte : null,
           phantom: tipo === "INPUT" ? c.phantom === true : false,
           inserto: tipo === "INPUT" ? texto(c.inserto) : null,
+          // El rig sirve en las dos listas: la interfaz entrega entradas y el
+          // rack de in-ears recibe salidas.
+          rigId,
+          rigPuerto: rigId ? texto(c.rigPuerto) : null,
           tipoSalida: tipo === "OUTPUT" ? tipoSalida : null,
           estereo: tipo === "OUTPUT" ? c.estereo === true : false,
           personaId: tipo === "OUTPUT" ? personaId : null,

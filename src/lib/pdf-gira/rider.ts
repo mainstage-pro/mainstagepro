@@ -21,7 +21,9 @@ import {
   TIPO_FORMACION_LABEL,
   TIPO_SALIDA_LABEL,
   UNIDAD_RIDER_LABEL,
+  descripcionRig,
   esImagenArchivo,
+  etiquetaRig,
   fmtFechaLarga,
   leerSeccionesExtra,
 } from "@/lib/giras";
@@ -44,6 +46,7 @@ import {
   type CanalOutput,
   type ListaCanalesData,
   type PuertoPrePatch,
+  type RigLista,
 } from "@/components/pdf/giras/ListaCanalesPDF";
 import { leerPdfAnexo, resolverImagenAnexo, unirPdfs } from "./anexos";
 import { bufferDePdf, type PdfGira } from "./render";
@@ -61,6 +64,7 @@ async function leerRider(riderId: string) {
         orderBy: [{ tipo: "asc" }, { numero: "asc" }],
         include: { persona: { select: { nombre: true } } },
       },
+      rigs: { orderBy: [{ orden: "asc" }, { createdAt: "asc" }] },
       lineas: { orderBy: [{ orden: "asc" }, { createdAt: "asc" }] },
       bloques: { orderBy: [{ orden: "asc" }, { createdAt: "asc" }] },
       contactos: { where: { enPdf: true }, orderBy: [{ orden: "asc" }, { createdAt: "asc" }] },
@@ -91,6 +95,7 @@ function partirCanales(rider: RiderCompleto): { inputs: CanalInput[]; outputs: C
       soporteLabel: c.soporte ? (SOPORTE_MIC_LABEL[c.soporte] ?? c.soporte) : null,
       phantom: c.phantom,
       inserto: c.inserto,
+      rig: rigEtiqueta(rider, c.rigId, c.rigPuerto),
       notas: c.notas,
     }));
 
@@ -103,10 +108,25 @@ function partirCanales(rider: RiderCompleto): { inputs: CanalInput[]; outputs: C
       tipoSalidaLabel: c.tipoSalida ? (TIPO_SALIDA_LABEL[c.tipoSalida] ?? c.tipoSalida) : null,
       estereo: c.estereo,
       paraQuien: c.persona ? c.persona.nombre : null,
+      rig: rigEtiqueta(rider, c.rigId, c.rigPuerto),
       notas: c.notas,
     }));
 
   return { inputs, outputs };
+}
+
+function rigEtiqueta(rider: RiderCompleto, rigId: string | null, puerto: string | null): string | null {
+  const rig = rigId ? rider.rigs.find((r) => r.id === rigId) : null;
+  return rig ? etiquetaRig(rig, puerto) : null;
+}
+
+function rigsDelRider(rider: RiderCompleto): RigLista[] {
+  return rider.rigs.map((r) => ({
+    id: r.id,
+    nombre: r.nombre,
+    descripcion: descripcionRig(r),
+    notas: r.notas,
+  }));
 }
 
 function aLineaDoc(l: RiderCompleto["lineas"][number]): RiderLineaDoc {
@@ -307,6 +327,7 @@ export async function generarRiderArtista(riderId: string, giraNombre: string | 
     totalLineas: rider.lineas.length,
     inputs,
     outputs,
+    rigs: rigsDelRider(rider),
     contactos: leerContactos(rider),
     anexos: imagenes,
     logoSrc: logoBase64(publicDir),
@@ -354,6 +375,7 @@ async function canalesDeLaFecha(showId: string): Promise<{ inputs: CanalInput[];
       soporteLabel: f.soporte ? (SOPORTE_MIC_LABEL[f.soporte] ?? f.soporte) : null,
       phantom: f.phantom,
       inserto: f.inserto,
+      rig: f.rig,
       notas: f.notas,
     })),
     outputs: outputs.map((f) => ({
@@ -363,6 +385,7 @@ async function canalesDeLaFecha(showId: string): Promise<{ inputs: CanalInput[];
       tipoSalidaLabel: f.tipoSalida ? (TIPO_SALIDA_LABEL[f.tipoSalida] ?? f.tipoSalida) : null,
       estereo: f.estereo,
       paraQuien: f.paraQuien,
+      rig: f.rig,
       notas: f.notas,
     })),
   };
@@ -412,6 +435,7 @@ export async function generarListaCanales(
     giraNombre: [giraNombre, fecha].filter(Boolean).join(" · ") || null,
     inputs,
     outputs,
+    rigs: rigsDelRider(rider),
     prePatch: await prePatchDelDocumento(giraId ?? null, showId ?? null),
     logoSrc: logoBase64(publicDir),
     logoArtistaSrc: await resolvePdfImage(rider.artista.logoUrl, publicDir),

@@ -28,8 +28,14 @@ export default async function RiderInputsPage({ params }: { params: Promise<{ id
           soporte: true,
           phantom: true,
           inserto: true,
+          rigId: true,
+          rigPuerto: true,
           notas: true,
         },
+      },
+      rigs: {
+        orderBy: { orden: "asc" },
+        select: { id: true, nombre: true, equipo: true, cadena: true, conexion: true, notas: true },
       },
     },
   });
@@ -60,6 +66,7 @@ export default async function RiderInputsPage({ params }: { params: Promise<{ id
       riderId={riderId}
       canalesMinimos={rider.canalesMinimos}
       canalesIniciales={rider.canales as CanalInput[]}
+      rigsIniciales={rider.rigs}
       origenes={origenes}
       divergenciasIniciales={await fechasConAjuste(riderId)}
     />

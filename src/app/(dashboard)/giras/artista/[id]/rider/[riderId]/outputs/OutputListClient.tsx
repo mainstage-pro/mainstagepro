@@ -9,6 +9,7 @@ import { FilaArrastrable, TablaOrdenable, ThArrastre } from "@/components/ui/Tab
 import AbrirRenglones from "@/components/giras/AbrirRenglones";
 import ImportarCanales, { type RiderOrigen } from "../ImportarCanales";
 import AvisoFechasAjustadas from "../AvisoFechasAjustadas";
+import RigsRider, { CeldaRig, type RigRider } from "../RigsRider";
 import type { FechaConAjuste } from "@/lib/show-canales";
 import {
   PLANTILLA_OUTPUT_BANDA,
@@ -27,6 +28,8 @@ export interface CanalOutput {
   tipoSalida: string | null;
   estereo: boolean;
   personaId: string | null;
+  rigId: string | null;
+  rigPuerto: string | null;
   notas: string | null;
 }
 
@@ -37,6 +40,7 @@ interface Props {
   riderId: string;
   mixesMonitor: number | null;
   canalesIniciales: CanalOutput[];
+  rigsIniciales: RigRider[];
   personas: { id: string; nombre: string; rol: string; instrumento: string | null }[];
   origenes: RiderOrigen[];
   /// Por renglón del rider, las fechas que lo traen distinto en su plaza.
@@ -62,6 +66,8 @@ function filaVacia(): Fila {
     tipoSalida: null,
     estereo: false,
     personaId: null,
+    rigId: null,
+    rigPuerto: null,
     notas: null,
   };
 }
@@ -71,11 +77,13 @@ export default function OutputListClient({
   riderId,
   mixesMonitor,
   canalesIniciales,
+  rigsIniciales,
   personas,
   origenes,
   divergenciasIniciales,
 }: Props) {
   const [filas, setFilas] = useState<Fila[]>(canalesIniciales.map(aFila));
+  const [rigs, setRigs] = useState(rigsIniciales);
   const [divergencias, setDivergencias] = useState(divergenciasIniciales);
 
   // Se guarda el primer canal de consola del mix, no su posición: el estéreo se
@@ -92,6 +100,8 @@ export default function OutputListClient({
           tipoSalida: f.tipoSalida,
           estereo: f.estereo,
           personaId: f.personaId,
+          rigId: f.rigId,
+          rigPuerto: f.rigPuerto,
           notas: f.notas,
         },
       })),
@@ -226,6 +236,8 @@ export default function OutputListClient({
         </p>
       )}
 
+      <RigsRider riderId={riderId} rigs={rigs} onRigs={setRigs} />
+
       {filas.length === 0 ? (
         <div className="ms-empty-state">
           <p className="text-sm text-[#6b7280]">
@@ -234,7 +246,7 @@ export default function OutputListClient({
         </div>
       ) : (
         <TablaOrdenable filas={filas} claveDe={(f) => f.clave} onReordenar={setFilas}>
-          <table className="w-full min-w-[1040px]">
+          <table className="w-full min-w-[1240px]">
             <thead className="ms-thead">
               <tr>
                 <ThArrastre />
@@ -243,6 +255,7 @@ export default function OutputListClient({
                 <th className="ms-th text-left w-[180px]">Tipo</th>
                 <th className="ms-th text-center w-[80px]">Estéreo</th>
                 <th className="ms-th text-left w-[240px]">De quién es el mix</th>
+                <th className="ms-th text-left w-[200px]">Rig / puerto</th>
                 <th className="ms-th text-left w-[200px]">Notas</th>
                 <th className="ms-th w-[48px]" />
               </tr>
@@ -302,6 +315,15 @@ export default function OutputListClient({
                       placeholder="Sin dueño"
                       className="w-full"
                       disabled={personas.length === 0}
+                    />
+                  </td>
+                  <td className="ms-td">
+                    <CeldaRig
+                      rigs={rigs}
+                      rigId={f.rigId}
+                      rigPuerto={f.rigPuerto}
+                      placeholderPuerto="in 1"
+                      onChange={(campos) => set(f.clave, campos)}
                     />
                   </td>
                   <td className="ms-td">

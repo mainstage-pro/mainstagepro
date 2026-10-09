@@ -15,7 +15,7 @@ import {
   BandaGira, Cuerpo, Datos, Document, HeroGira, Nota, PaginaGira, PieGira, Seccion, Tabla, Text,
   type ColumnaTabla, type Dato, type ItemBanda, type RenglonTabla,
 } from "./GiraDocBase";
-import { ListaCanales, type CanalInput, type CanalOutput } from "./ListaCanalesPDF";
+import { ListaCanales, type CanalInput, type CanalOutput, type RigLista } from "./ListaCanalesPDF";
 
 /// Hueco útil de una página carta con hero: 612 − 68 de margen horizontal,
 /// 792 menos el hero, el pie y los paddings. Es el marco en el que se encaja un
@@ -101,6 +101,7 @@ export interface RiderArtistaData {
   totalLineas: number;
   inputs: CanalInput[];
   outputs: CanalOutput[];
+  rigs: RigLista[];
   contactos: RiderContactoDoc[];
   anexos: RiderAnexoDoc[];
   logoSrc: string | null;
@@ -292,7 +293,7 @@ export function RiderArtistaPDF({ data }: { data: RiderArtistaData }) {
           derecha={`Rider técnico · ${data.generadoEn}`}
         />
         <Cuerpo>
-          <ListaCanales inputs={data.inputs} outputs={data.outputs} />
+          <ListaCanales inputs={data.inputs} outputs={data.outputs} rigs={data.rigs} />
         </Cuerpo>
       </PaginaGira>
 

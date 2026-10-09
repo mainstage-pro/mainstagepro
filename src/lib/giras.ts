@@ -170,6 +170,54 @@ export const SOPORTE_MIC_LABEL: Record<string, string> = {
   NINGUNO: "Sin soporte",
 };
 
+/// Qué suena en el canal, antes de que haya micrófono o caja directa de por
+/// medio. Son sugerencias, no un catálogo cerrado: el campo sigue siendo libre
+/// porque cada rider trae fuentes que ninguna lista contempla.
+export const FUENTES_CANAL = [
+  "Voz",
+  "Coro",
+  "Batería",
+  "Percusión",
+  "Guitarra eléctrica",
+  "Guitarra acústica",
+  "Bajo",
+  "Teclado",
+  "Secuencia / playback",
+  "Click",
+  "CDJ / mixer",
+  "Viento",
+  "Cuerda",
+  "Ambiente",
+  "Talkback",
+  "Respaldo",
+] as const;
+
+/// Cómo entrega la señal un rig. También son sugerencias.
+export const CONEXIONES_RIG = ["XLR balanceado", "TRS balanceado", "Jack TS", "AES/EBU", "Dante", "USB"] as const;
+
+export interface RigDeRider {
+  nombre: string;
+  equipo?: string | null;
+  cadena?: string | null;
+  conexion?: string | null;
+}
+
+/// Cómo se lee un rig dentro del renglón: "Playback · out 1". El equipo y la
+/// cadena NO se repiten aquí; se declaran una vez en el bloque de rigs.
+export function etiquetaRig(rig: RigDeRider, puerto?: string | null): string {
+  const p = puerto?.trim();
+  return p ? `${rig.nombre} · ${p}` : rig.nombre;
+}
+
+/// El renglón del bloque de rigs: de dónde viene la señal y cómo sale.
+export function descripcionRig(rig: RigDeRider): string {
+  const cadena = rig.cadena?.trim();
+  const equipo = rig.equipo?.trim();
+  // Separador » y no →: Helvetica core, la fuente del PDF, no imprime la flecha.
+  const camino = [cadena, equipo].filter(Boolean).join(" » ");
+  return [camino, rig.conexion?.trim()].filter(Boolean).join(" · ");
+}
+
 export const TIPOS_SALIDA = ["IEM", "WEDGE", "SIDEFILL", "DRUM_FILL", "SUB_DRUM", "PA", "SHOUT"] as const;
 
 export const TIPO_SALIDA_LABEL: Record<string, string> = {

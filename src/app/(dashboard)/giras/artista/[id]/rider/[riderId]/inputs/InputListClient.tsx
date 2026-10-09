@@ -1,13 +1,14 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { PLANTILLA_INPUT_BANDA, SOPORTES_MIC, SOPORTE_MIC_LABEL } from "@/lib/giras";
+import { FUENTES_CANAL, PLANTILLA_INPUT_BANDA, SOPORTES_MIC, SOPORTE_MIC_LABEL } from "@/lib/giras";
 import { useAutoguardadoCanales } from "@/hooks/useAutoguardadoCanales";
 import EstadoGuardado from "@/components/EstadoGuardado";
 import { FilaArrastrable, TablaOrdenable, ThArrastre } from "@/components/ui/TablaOrdenable";
 import AbrirRenglones from "@/components/giras/AbrirRenglones";
 import ImportarCanales, { type RiderOrigen } from "../ImportarCanales";
 import AvisoFechasAjustadas from "../AvisoFechasAjustadas";
+import RigsRider, { CeldaRig, type RigRider } from "../RigsRider";
 import type { FechaConAjuste } from "@/lib/show-canales";
 
 export interface CanalInput {
@@ -20,6 +21,8 @@ export interface CanalInput {
   soporte: string | null;
   phantom: boolean;
   inserto: string | null;
+  rigId: string | null;
+  rigPuerto: string | null;
   notas: string | null;
 }
 
@@ -32,6 +35,7 @@ interface Props {
   riderId: string;
   canalesMinimos: number | null;
   canalesIniciales: CanalInput[];
+  rigsIniciales: RigRider[];
   origenes: RiderOrigen[];
   /// Por renglón del rider, las fechas que lo traen distinto en su plaza.
   divergenciasIniciales: Record<string, FechaConAjuste[]>;
@@ -54,6 +58,8 @@ function aFila(c: CanalInput): Fila {
     soporte: c.soporte,
     phantom: c.phantom,
     inserto: c.inserto,
+    rigId: c.rigId,
+    rigPuerto: c.rigPuerto,
     notas: c.notas,
   };
 }
@@ -69,6 +75,8 @@ function filaVacia(): Fila {
     soporte: null,
     phantom: false,
     inserto: null,
+    rigId: null,
+    rigPuerto: null,
     notas: null,
   };
 }
@@ -77,10 +85,12 @@ export default function InputListClient({
   riderId,
   canalesMinimos,
   canalesIniciales,
+  rigsIniciales,
   origenes,
   divergenciasIniciales,
 }: Props) {
   const [filas, setFilas] = useState<Fila[]>(canalesIniciales.map(aFila));
+  const [rigs, setRigs] = useState(rigsIniciales);
   const [divergencias, setDivergencias] = useState(divergenciasIniciales);
 
   /// Todo renglón viaja, con nombre o sin él: un renglón abierto es un canal que
@@ -99,6 +109,8 @@ export default function InputListClient({
           soporte: f.soporte,
           phantom: f.phantom,
           inserto: f.inserto,
+          rigId: f.rigId,
+          rigPuerto: f.rigPuerto,
           notas: f.notas,
         },
       })),
@@ -154,12 +166,18 @@ export default function InputListClient({
 
   return (
     <div className="ms-page space-y-4">
+      <datalist id="fuentes-canal">
+        {FUENTES_CANAL.map((f) => (
+          <option key={f} value={f} />
+        ))}
+      </datalist>
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="ms-h2">Input list</h2>
           <p className="ms-subtitle mt-1">
-            Canal por canal, con el micrófono preferido y sus alternativas: es lo que se negocia con el venue sin
-            discutir.
+            Canal por canal: qué suena, por qué micrófono, caja directa o línea llega a la consola y qué alternativas
+            se aceptan. Es lo que se negocia con el venue sin discutir.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -208,6 +226,8 @@ export default function InputListClient({
         </div>
       </div>
 
+      <RigsRider riderId={riderId} rigs={rigs} onRigs={setRigs} />
+
       {filas.length === 0 ? (
         <div className="ms-empty-state">
           <p className="text-sm text-[#6b7280]">
@@ -216,15 +236,16 @@ export default function InputListClient({
         </div>
       ) : (
         <TablaOrdenable filas={filas} claveDe={(f) => f.clave} onReordenar={setFilas}>
-          <table className="w-full min-w-[1420px]">
+          <table className="w-full min-w-[1620px]">
             <thead className="ms-thead">
               <tr>
                 <ThArrastre />
                 <th className="ms-th text-left w-[52px]">#</th>
                 <th className="ms-th text-left w-[170px]">Canal</th>
-                <th className="ms-th text-left w-[160px]">Instrumento</th>
-                <th className="ms-th text-left w-[200px]">Micrófono preferido</th>
+                <th className="ms-th text-left w-[160px]">Fuente</th>
+                <th className="ms-th text-left w-[200px]">Mic / DI / Línea</th>
                 <th className="ms-th text-left w-[200px]">Alternativas aceptables</th>
+                <th className="ms-th text-left w-[200px]">Rig / puerto</th>
                 <th className="ms-th text-left w-[150px]">Soporte</th>
                 <th className="ms-th text-center w-[60px]">48V</th>
                 <th className="ms-th text-left w-[150px]">Inserto</th>
@@ -256,6 +277,7 @@ export default function InputListClient({
                   <td className="ms-td">
                     <input
                       className="ms-input-inline w-full"
+                      list="fuentes-canal"
                       placeholder="ej. Bombo"
                       value={f.instrumento ?? ""}
                       onChange={(e) => set(f.clave, { instrumento: e.target.value })}
@@ -264,7 +286,7 @@ export default function InputListClient({
                   <td className="ms-td">
                     <input
                       className="ms-input-inline w-full"
-                      placeholder="ej. Shure Beta 91A"
+                      placeholder="ej. Beta 91A · DI J48 · línea"
                       value={f.microfono ?? ""}
                       onChange={(e) => set(f.clave, { microfono: e.target.value })}
                     />
@@ -275,6 +297,14 @@ export default function InputListClient({
                       placeholder="ej. Audix D6, AKG D112"
                       value={f.alternativas ?? ""}
                       onChange={(e) => set(f.clave, { alternativas: e.target.value })}
+                    />
+                  </td>
+                  <td className="ms-td">
+                    <CeldaRig
+                      rigs={rigs}
+                      rigId={f.rigId}
+                      rigPuerto={f.rigPuerto}
+                      onChange={(campos) => set(f.clave, campos)}
                     />
                   </td>
                   <td className="ms-td">

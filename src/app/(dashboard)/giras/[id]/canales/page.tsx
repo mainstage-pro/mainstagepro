@@ -27,8 +27,16 @@ export default async function CanalesInputGiraPage({ params }: { params: Promise
       soporte: true,
       phantom: true,
       inserto: true,
+      rigId: true,
+      rigPuerto: true,
       notas: true,
     },
+  });
+
+  const rigs = await prisma.artistaRiderRig.findMany({
+    where: { riderId: rider.id },
+    orderBy: { orden: "asc" },
+    select: { id: true, nombre: true, equipo: true, cadena: true, conexion: true, notas: true },
   });
 
   const origenes = await origenesDeImportacion(rider.artistaId, rider.id, "INPUT");
@@ -38,6 +46,7 @@ export default async function CanalesInputGiraPage({ params }: { params: Promise
       riderId={rider.id}
       canalesMinimos={rider.canalesMinimos}
       canalesIniciales={canales as CanalInput[]}
+      rigsIniciales={rigs}
       origenes={origenes}
       divergenciasIniciales={await fechasConAjuste(rider.id)}
     />
