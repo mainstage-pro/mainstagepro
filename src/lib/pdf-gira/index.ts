@@ -10,7 +10,8 @@ import { generarDaySheet } from "./day-sheet";
 import { generarAdvanceShow } from "./advance";
 import { generarListaCanales, generarRiderArtista } from "./rider";
 import { generarLibroGira, parseSecciones } from "./libro";
-import { generarSetlistDoc } from "./setlist-doc";
+import { elegirSetlist, generarSetlistDoc } from "./setlist-doc";
+import { generarSetlistEscenario } from "./setlist-escenario";
 import { riderDeGira } from "@/lib/rider-de-gira";
 
 export type { PdfGira } from "./render";
@@ -70,12 +71,26 @@ export const DOCUMENTOS_GIRA = {
       "El repertorio por bloques con duración, tono, BPM, track y una columna de cues por disciplina: audio, iluminación y video a la vez. Desde un show sale el de esa fecha.",
     falta: "el repertorio en la pestaña de Setlist",
   },
+  "setlist-escenario": {
+    ambito: "GIRA",
+    label: "Setlist de escenario",
+    descripcion:
+      "El mismo repertorio en letra gigante y sin membrete, para pegarlo en el piso del escenario. Desde un show sale el de esa fecha.",
+    falta: "el repertorio en la pestaña de Setlist",
+  },
 } satisfies Record<string, DocumentoGira>;
 
 export type SlugDocGira = keyof typeof DOCUMENTOS_GIRA;
 
 export function esSlugDocGira(slug: string): slug is SlugDocGira {
   return slug in DOCUMENTOS_GIRA;
+}
+
+/// La hoja de escenario se emite por setlist; desde la gira o una fecha hay que
+/// resolver primero cuál toca, con la misma regla que el setlist de la casa.
+async function escenarioDeSetlist(giraId: string, showId?: string | null): Promise<PdfGira | null> {
+  const elegido = await elegirSetlist(giraId, showId);
+  return elegido ? generarSetlistEscenario(elegido.id) : null;
 }
 
 /// Genera el PDF de un documento de show. El rider, las listas y el libro se
@@ -91,6 +106,7 @@ export async function generarDocDeShow(
   // El setlist es de gira, pero cada fecha puede tener su variante: desde un
   // show se emite la de ese show y, si no la capturaron, el base avisando.
   if (slug === "setlist") return generarSetlistDoc(giraId, showId);
+  if (slug === "setlist-escenario") return escenarioDeSetlist(giraId, showId);
   // La lista de canales también: desde una fecha lleva lo que los invitados de
   // ese show colgaron de la cola del rider maestro.
   if (slug === "input-list") {
@@ -110,6 +126,7 @@ export async function generarDocDeGira(
   if (DOCUMENTOS_GIRA[slug].ambito === "SHOW") return null;
   if (slug === "libro-gira") return generarLibroGira(giraId, parseSecciones(secciones));
   if (slug === "setlist") return generarSetlistDoc(giraId);
+  if (slug === "setlist-escenario") return escenarioDeSetlist(giraId, null);
 
   // El rider y las listas salen del rider maestro; sin rider no hay documento.
   const resuelto = await riderDeGira(giraId);

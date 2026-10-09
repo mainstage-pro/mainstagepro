@@ -39,9 +39,15 @@ function slugArchivo(texto: string): string {
   );
 }
 
-export async function generarSetlistDoc(giraId: string, showId?: string | null): Promise<PdfGira | null> {
-  // Primero se decide QUÉ setlist se imprime y luego se trae con canciones: una
-  // gira de veinte fechas tiene veinte variantes y no hay por qué leerlas todas.
+/// Qué setlist imprime una gira o una fecha: la variante del show si la capturó
+/// y si no el base, avisando que se heredó. La hoja de escenario sigue la misma
+/// regla, así que vive aquí y no dentro del generador.
+export async function elegirSetlist(
+  giraId: string,
+  showId?: string | null,
+): Promise<{ id: string; heredado: boolean } | null> {
+  // Se decide QUÉ setlist se imprime antes de traerlo con canciones: una gira de
+  // veinte fechas tiene veinte variantes y no hay por qué leerlas todas.
   const candidatos = await prisma.giraSetlist.findMany({
     where: { giraId },
     select: { id: true, showId: true, esBase: true },
@@ -51,7 +57,13 @@ export async function generarSetlistDoc(giraId: string, showId?: string | null):
 
   const propio = showId ? (candidatos.find((s) => s.showId === showId) ?? null) : null;
   const elegido = propio ?? candidatos.find((s) => s.esBase) ?? candidatos[0];
-  const heredado = !!showId && !propio;
+  return { id: elegido.id, heredado: !!showId && !propio };
+}
+
+export async function generarSetlistDoc(giraId: string, showId?: string | null): Promise<PdfGira | null> {
+  const elegido = await elegirSetlist(giraId, showId);
+  if (!elegido) return null;
+  const heredado = elegido.heredado;
 
   const [setlist, show] = await Promise.all([
     prisma.giraSetlist.findUnique({

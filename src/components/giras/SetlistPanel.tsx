@@ -32,6 +32,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
+import BotonDocumentoGira from "@/components/giras/BotonDocumentoGira";
 import {
   bloquesNormalizados,
   COLORES_BLOQUE,
@@ -509,15 +510,12 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
                     {s.duracionMin ? ` · ${s.duracionMin} min de slot` : ""}
                   </p>
                 </div>
-                <div className="flex items-center gap-3 shrink-0">
+                <div className="flex flex-wrap items-center gap-3 shrink-0">
                   {s.canciones.length > 0 && (
-                    <a
-                      href={`/api/gira-setlists/${s.id}/escenario`}
-                      className="ms-micro text-[#6b7280] hover:text-white transition-colors"
-                      title="PDF de letra gigante para pegar en el piso del escenario. El formato con membrete está en Documentos."
-                    >
-                      Descargar PDF de escenario
-                    </a>
+                    <BotonDocumentoGira
+                      url={`/api/gira-setlists/${s.id}/escenario`}
+                      label="PDF de escenario"
+                    />
                   )}
                   <button
                     onClick={() => setAbierto(expandido ? null : s.id)}

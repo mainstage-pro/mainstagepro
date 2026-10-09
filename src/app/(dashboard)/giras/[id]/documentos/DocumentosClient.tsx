@@ -9,8 +9,8 @@
  *  2. Documentos de la gira — rider, listas de canales y setlist. Valen para
  *     todos los shows: los dos primeros salen del rider maestro y el setlist
  *     del repertorio base.
- *  3. Documentos por show — day sheet, advance y el setlist de la fecha. Un
- *     renglón por show, con su botón de descarga y su enlace público.
+ *  3. Documentos por show — day sheet, advance y los dos setlists de la fecha.
+ *     Un renglón por show, con su botón de descarga y su enlace público.
  *  4. Archivero — lo que llega de afuera y hay que tener a mano.
  *
  * Cada documento se descarga o se comparte desde su propio renglón: no hay
@@ -40,6 +40,7 @@ import {
   Paperclip,
   Plane,
   SlidersHorizontal,
+  Theater,
   Trash2,
   Upload,
   Users,
@@ -49,6 +50,7 @@ import {
 import { upload } from "@vercel/blob/client";
 import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
+import { usePdfDownload } from "@/hooks/usePdfDownload";
 import {
   ESTADO_SHOW_COLOR,
   ESTADO_SHOW_LABEL,
@@ -129,17 +131,27 @@ const DOCS_GIRA = [
     slug: "setlist",
     label: "Setlist",
     descripcion:
-      "El repertorio por bloques con duración, tono, BPM, track y una columna de cues por disciplina: audio, iluminación y video a la vez. Aquí sale el base de la gira; el de una fecha se baja desde su pestaña Setlist.",
+      "El repertorio por bloques con duración, tono, BPM, track y una columna de cues por disciplina: audio, iluminación y video a la vez. Aquí sale el base de la gira; el de una fecha está en el renglón de su show.",
     icono: ListMusic,
+    necesitaRider: false,
+  },
+  {
+    slug: "setlist-escenario",
+    label: "Setlist de escenario",
+    descripcion:
+      "El mismo repertorio en letra gigante y sin membrete, el que se pega en el piso. Aquí sale el base de la gira; el de una fecha también está en el renglón de su show.",
+    icono: Theater,
     necesitaRider: false,
   },
 ] as const;
 
-/// Lo que se reparte de una fecha. El setlist no está a propósito: se baja desde
-/// la pestaña Setlist de ese show, que es donde se arma.
+/// Lo que se reparte de una fecha. El setlist va en los dos formatos: si el show
+/// no capturó su variante sale el base de la gira, avisándolo.
 const DOCS_PLAZA = [
   { slug: "day-sheet", label: "Day sheet", icono: CalendarDays },
   { slug: "advance", label: "Advance", icono: ClipboardCheck },
+  { slug: "setlist", label: "Setlist", icono: ListMusic },
+  { slug: "setlist-escenario", label: "Escenario", icono: Theater },
 ] as const;
 
 /// Un icono por sección del libro y por tipo de archivo: la lista se lee de un
@@ -171,6 +183,37 @@ function IconoArchivo({ tipo, className }: { tipo: string; className?: string })
 
 function etiquetaShow(p: { fecha: string; ciudad: string | null }): string {
   return [fmtFechaCorta(p.fecha), p.ciudad].filter(Boolean).join(" · ");
+}
+
+/// La descarga no es un enlace: en el celular un `<a>` con Content-Disposition
+/// abre el visor del sistema y el PDF se queda sin guardar. Pasando por la hoja
+/// de compartir se puede mandar por WhatsApp, guardar o abrir.
+function BotonDescargar({
+  url,
+  label,
+  disabled,
+  compacto,
+}: {
+  url: string;
+  label: string;
+  disabled?: boolean;
+  compacto?: boolean;
+}) {
+  const { downloading, downloadPdf } = usePdfDownload();
+  const generando = downloading === url;
+
+  return (
+    <button
+      type="button"
+      className={`ms-btn-ghost inline-flex items-center gap-1.5 ${disabled ? "opacity-40" : ""}`}
+      disabled={disabled || generando}
+      title={`Descargar ${label.toLowerCase()}`}
+      onClick={() => downloadPdf(url, undefined, label)}
+    >
+      <Download className="w-3.5 h-3.5 shrink-0" />
+      {compacto ? (generando ? "…" : "") : generando ? "Generando…" : "Descargar"}
+    </button>
+  );
 }
 
 export default function DocumentosClient({
@@ -451,14 +494,7 @@ export default function DocumentosClient({
               <Eye className="w-3.5 h-3.5 shrink-0" />
               Ver
             </a>
-            <a
-              className={`ms-btn-ghost inline-flex items-center gap-1.5 ${sinSeccion ? "pointer-events-none opacity-40" : ""}`}
-              aria-disabled={sinSeccion}
-              href={urlLibro(false)}
-            >
-              <Download className="w-3.5 h-3.5 shrink-0" />
-              Descargar
-            </a>
+            <BotonDescargar url={urlLibro(false)} label="Libro de gira" disabled={sinSeccion} />
             <button
               className="ms-btn-ghost inline-flex items-center gap-1.5"
               disabled={sinSeccion || ocupado === "gira:libro-gira"}
@@ -507,13 +543,7 @@ export default function DocumentosClient({
                   <Eye className="w-3.5 h-3.5 shrink-0" />
                   Ver
                 </a>
-                <a
-                  className="ms-btn-ghost inline-flex items-center gap-1.5"
-                  href={`/api/giras/${giraId}/documentos/${d.slug}`}
-                >
-                  <Download className="w-3.5 h-3.5 shrink-0" />
-                  Descargar
-                </a>
+                <BotonDescargar url={`/api/giras/${giraId}/documentos/${d.slug}`} label={d.label} />
                 <button
                   className="ms-btn-ghost inline-flex items-center gap-1.5"
                   disabled={ocupado === `gira:${d.slug}`}
@@ -558,9 +588,9 @@ export default function DocumentosClient({
             Documentos por show
           </h2>
           <p className="ms-meta mt-1">
-            El day sheet y el advance hablan de una fecha, así que se emiten desde el renglón del show; el setlist de
-            aquí es el de esa fecha, y si el show no capturó el suyo sale el base avisándolo. El enlace de un show
-            abre además el rider: es el único que se le manda al foro.
+            Estos cuatro hablan de una fecha, así que se emiten desde el renglón del show; los dos setlists son los de
+            esa fecha, y si el show no capturó el suyo sale el base avisándolo. El enlace de un show abre además el
+            rider: es el único que se le manda al foro.
           </p>
         </div>
 
@@ -572,7 +602,7 @@ export default function DocumentosClient({
           </div>
         ) : (
           <div className="ms-table-wrapper overflow-x-auto">
-            <table className="w-full min-w-[840px]">
+            <table className="w-full min-w-[1080px]">
               <thead className="ms-thead">
                 <tr>
                   <th className="ms-th text-left">Show</th>
@@ -623,6 +653,11 @@ export default function DocumentosClient({
                               <d.icono className="w-3.5 h-3.5 shrink-0" />
                               {d.label}
                             </a>
+                            <BotonDescargar
+                              url={`/api/gira-shows/${p.id}/documentos/${d.slug}`}
+                              label={`${d.label} · ${etiquetaShow(p)}`}
+                              compacto
+                            />
                             <button
                               className="ms-btn-ghost inline-flex items-center gap-1.5"
                               title={`Copiar enlace público del ${d.label.toLowerCase()}`}
