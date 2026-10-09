@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { fechasConAjuste } from "@/lib/show-canales";
 import InputListClient, {
   type CanalInput,
 } from "@/app/(dashboard)/giras/artista/[id]/rider/[riderId]/inputs/InputListClient";
@@ -38,6 +39,7 @@ export default async function CanalesInputGiraPage({ params }: { params: Promise
       canalesMinimos={rider.canalesMinimos}
       canalesIniciales={canales as CanalInput[]}
       origenes={origenes}
+      divergenciasIniciales={await fechasConAjuste(rider.id)}
     />
   );
 }

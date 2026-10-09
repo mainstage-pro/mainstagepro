@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { fechasConAjuste } from "@/lib/show-canales";
 import InputListClient, { type CanalInput } from "./InputListClient";
 import type { RiderOrigen } from "../ImportarCanales";
 
@@ -60,6 +61,7 @@ export default async function RiderInputsPage({ params }: { params: Promise<{ id
       canalesMinimos={rider.canalesMinimos}
       canalesIniciales={rider.canales as CanalInput[]}
       origenes={origenes}
+      divergenciasIniciales={await fechasConAjuste(riderId)}
     />
   );
 }

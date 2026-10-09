@@ -2,7 +2,8 @@
  * Los canales de consola de una fecha concreta.
  *
  * El rider maestro del artista (`ArtistaRiderCanal`) es la base de toda la gira
- * y NUNCA se escribe desde aquí. Lo que esta fecha hace con él vive en
+ * y NUNCA se escribe desde aquí —subir un ajuste al rider es una petición
+ * explícita y vive en su endpoint—. Lo que esta fecha hace con él vive en
  * `ShowCanal` de dos maneras: canales propios de la plaza, que van en la cola
  * (si el rider llega al input 32, el micrófono del telonero es el 33), y
  * AJUSTES, que son renglones del rider cambiados o quitados solo en esta fecha.
@@ -348,6 +349,17 @@ export interface RiderMaestro {
   canales: CanalMaestro[];
 }
 
+/// El rider que lee una gira sin rider enganchado: el vigente del artista,
+/// prefiriendo el general.
+export async function riderVigenteDelArtista(artistaId: string): Promise<string | null> {
+  const vigentes = await prisma.artistaRider.findMany({
+    where: { artistaId, activo: true, esActivo: true },
+    orderBy: { version: "desc" },
+    select: { id: true, contexto: true },
+  });
+  return (vigentes.find((r) => r.contexto === "GENERAL") ?? vigentes[0])?.id ?? null;
+}
+
 /**
  * El rider maestro contra el que se numera esta fecha.
  *
@@ -366,12 +378,7 @@ export async function riderMaestroDelShow(showId: string): Promise<RiderMaestro 
   let riderId = show.gira.riderId;
   let deLaGira = true;
   if (!riderId) {
-    const vigentes = await prisma.artistaRider.findMany({
-      where: { artistaId: show.gira.artistaId, activo: true, esActivo: true },
-      orderBy: { version: "desc" },
-      select: { id: true, contexto: true },
-    });
-    riderId = (vigentes.find((r) => r.contexto === "GENERAL") ?? vigentes[0])?.id ?? null;
+    riderId = await riderVigenteDelArtista(show.gira.artistaId);
     deLaGira = false;
   }
   if (!riderId) return null;
@@ -603,6 +610,113 @@ export async function listasDelShow(showId: string): Promise<ListasDelShow> {
     prisma.showInvitado.findMany({ where: { showId }, select: SELECT_INVITADO }),
   ]);
   return unificarCanales(rider?.canales ?? [], canales, invitados);
+}
+
+// ── Divergencia rider ↔ fechas ───────────────────────────────────────────────
+/// Lo que un ajuste de fecha captura, y por lo tanto lo único que puede diferir
+/// del rider. Lo que no está aquí (las alternativas de micrófono, el inserto, de
+/// quién es el mix) lo sigue mandando el rider en todas las plazas.
+const CAMPOS_AJUSTABLES = [
+  "nombre",
+  "instrumento",
+  "microfono",
+  "soporte",
+  "phantom",
+  "tipoSalida",
+  "estereo",
+  "notas",
+] as const;
+
+export interface FechaConAjuste {
+  showId: string;
+  giraId: string;
+  gira: string;
+  /// ISO, para que viaje igual desde la página y desde la respuesta del guardado.
+  fecha: string;
+  ciudad: string | null;
+  /// La fecha no cambió el renglón: lo sacó de su lista.
+  oculto: boolean;
+}
+
+/**
+ * Qué fechas traen un renglón de este rider distinto a como el rider lo dice.
+ *
+ * Es lo que el rider maestro no puede saber solo: editar un renglón aquí NO
+ * mueve a la plaza que ya lo ajustó, así que la lista se queda con su versión en
+ * silencio. Se cuenta solo lo que de verdad divergió —un ajuste puede acabar
+ * igual al rider si el rider se movió hacia él— y solo de fechas que leen este
+ * rider: el ajuste de una gira que ya cambió de rider es huérfano y no se
+ * parcha.
+ */
+export async function fechasConAjuste(riderId: string): Promise<Record<string, FechaConAjuste[]>> {
+  const canales = await prisma.artistaRiderCanal.findMany({
+    where: { riderId },
+    select: { id: true, nombre: true, instrumento: true, microfono: true, soporte: true, phantom: true, tipoSalida: true, estereo: true, notas: true },
+  });
+  if (!canales.length) return {};
+
+  const ajustes = await prisma.showCanal.findMany({
+    where: {
+      riderCanalId: { in: canales.map((c) => c.id) },
+      // Una plaza cancelada no es un pendiente: su ajuste no tiene que avisar nada.
+      show: { estado: { not: "CANCELADO" }, gira: { activo: true, estado: { not: "CANCELADA" } } },
+    },
+    select: {
+      riderCanalId: true,
+      oculto: true,
+      nombre: true,
+      instrumento: true,
+      microfono: true,
+      soporte: true,
+      phantom: true,
+      tipoSalida: true,
+      estereo: true,
+      notas: true,
+      show: {
+        select: {
+          id: true,
+          fecha: true,
+          ciudad: true,
+          giraId: true,
+          gira: { select: { nombre: true, riderId: true, artistaId: true } },
+        },
+      },
+    },
+    orderBy: { show: { fecha: "asc" } },
+  });
+
+  const porId = new Map(canales.map((c) => [c.id, c]));
+  const vigentePorArtista = new Map<string, string | null>();
+  const fechas: Record<string, FechaConAjuste[]> = {};
+
+  for (const a of ajustes) {
+    const maestro = a.riderCanalId ? porId.get(a.riderCanalId) : undefined;
+    if (!maestro) continue;
+
+    const { gira } = a.show;
+    if (gira.riderId) {
+      if (gira.riderId !== riderId) continue;
+    } else {
+      if (!vigentePorArtista.has(gira.artistaId)) {
+        vigentePorArtista.set(gira.artistaId, await riderVigenteDelArtista(gira.artistaId));
+      }
+      if (vigentePorArtista.get(gira.artistaId) !== riderId) continue;
+    }
+
+    const difiere = CAMPOS_AJUSTABLES.some((campo) => (a[campo] ?? null) !== (maestro[campo] ?? null));
+    if (!a.oculto && !difiere) continue;
+
+    (fechas[maestro.id] ??= []).push({
+      showId: a.show.id,
+      giraId: a.show.giraId,
+      gira: gira.nombre,
+      fecha: a.show.fecha.toISOString(),
+      ciudad: a.show.ciudad,
+      oculto: a.oculto,
+    });
+  }
+
+  return fechas;
 }
 
 /**

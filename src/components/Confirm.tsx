@@ -59,7 +59,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
             {state.title && (
               <h3 className="text-white font-semibold text-base">{state.title}</h3>
             )}
-            <p className="text-gray-300 text-sm leading-relaxed">{state.message}</p>
+            <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-line">{state.message}</p>
             <div className="flex gap-3 pt-1">
               <button
                 onClick={() => handleChoice(false)}

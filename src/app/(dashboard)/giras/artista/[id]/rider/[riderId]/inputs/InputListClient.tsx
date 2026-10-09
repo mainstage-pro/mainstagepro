@@ -6,6 +6,8 @@ import { useAutoguardadoCanales } from "@/hooks/useAutoguardadoCanales";
 import EstadoGuardado from "@/components/EstadoGuardado";
 import { FilaArrastrable, TablaOrdenable, ThArrastre } from "@/components/ui/TablaOrdenable";
 import ImportarCanales, { type RiderOrigen } from "../ImportarCanales";
+import AvisoFechasAjustadas from "../AvisoFechasAjustadas";
+import type { FechaConAjuste } from "@/lib/show-canales";
 
 export interface CanalInput {
   id: string;
@@ -30,6 +32,8 @@ interface Props {
   canalesMinimos: number | null;
   canalesIniciales: CanalInput[];
   origenes: RiderOrigen[];
+  /// Por renglón del rider, las fechas que lo traen distinto en su plaza.
+  divergenciasIniciales: Record<string, FechaConAjuste[]>;
 }
 
 let contador = 0;
@@ -68,8 +72,15 @@ function filaVacia(): Fila {
   };
 }
 
-export default function InputListClient({ riderId, canalesMinimos, canalesIniciales, origenes }: Props) {
+export default function InputListClient({
+  riderId,
+  canalesMinimos,
+  canalesIniciales,
+  origenes,
+  divergenciasIniciales,
+}: Props) {
   const [filas, setFilas] = useState<Fila[]>(canalesIniciales.map(aFila));
+  const [divergencias, setDivergencias] = useState(divergenciasIniciales);
 
   const aPayload = useCallback(
     (fs: Fila[]) =>
@@ -99,6 +110,7 @@ export default function InputListClient({ riderId, canalesMinimos, canalesInicia
     filas,
     setFilas,
     aPayload,
+    onDivergencias: setDivergencias,
   });
 
   function set(clave: string, campos: Partial<Fila>) {
@@ -226,6 +238,13 @@ export default function InputListClient({ riderId, canalesMinimos, canalesInicia
                       onChange={(e) => set(f.clave, { nombre: e.target.value })}
                     />
                     {!f.nombre.trim() && <span className="ms-micro text-amber-300">sin nombre no se guarda</span>}
+                    <AvisoFechasAjustadas
+                      riderId={riderId}
+                      canalId={f.id}
+                      nombre={f.nombre}
+                      fechas={(f.id && divergencias[f.id]) || []}
+                      onRealineado={setDivergencias}
+                    />
                   </td>
                   <td className="ms-td">
                     <input

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { SOPORTES_MIC, TIPOS_SALIDA } from "@/lib/giras";
+import { fechasConAjuste } from "@/lib/show-canales";
 
 type Tipo = "INPUT" | "OUTPUT";
 
@@ -146,5 +147,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ ride
     orderBy: { numero: "asc" },
   });
 
-  return NextResponse.json({ canales });
+  // Cambiar el rider puede dejar de ser una divergencia (el rider se movió hacia
+  // lo que la plaza ya decía) o volverse una: el aviso se recalcula cada vez.
+  return NextResponse.json({ canales, divergencias: await fechasConAjuste(riderId) });
 }

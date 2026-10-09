@@ -71,15 +71,59 @@ export function TablaOrdenable<T>({
   );
 }
 
+/// Un renglón que vive en la misma tabla pero cuyo orden no se decide aquí.
+/// Lleva la manija apagada para que la columna no se recorra y para que el
+/// `titulo` explique dónde sí se cambia.
+function FilaFija({ titulo, className, children }: { titulo: string; className: string; children: ReactNode }) {
+  return (
+    <tr className={className}>
+      <td className="ms-td">
+        <span className="text-[#2a2a2a] cursor-default" title={titulo}>
+          ⠿
+        </span>
+      </td>
+      {children}
+    </tr>
+  );
+}
+
 export function FilaArrastrable({
   clave,
   titulo,
   className = "ms-tr align-top",
+  fijo = false,
   children,
 }: {
   clave: string;
   titulo: string;
   className?: string;
+  /// El renglón se queda quieto: la manija se ve apagada y `titulo` dice por qué.
+  fijo?: boolean;
+  children: ReactNode;
+}) {
+  if (fijo) {
+    return (
+      <FilaFija titulo={titulo} className={className}>
+        {children}
+      </FilaFija>
+    );
+  }
+  return (
+    <FilaSortable clave={clave} titulo={titulo} className={className}>
+      {children}
+    </FilaSortable>
+  );
+}
+
+function FilaSortable({
+  clave,
+  titulo,
+  className,
+  children,
+}: {
+  clave: string;
+  titulo: string;
+  className: string;
   children: ReactNode;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: clave });

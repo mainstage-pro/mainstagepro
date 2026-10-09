@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/Toast";
+import type { FechaConAjuste } from "@/lib/show-canales";
 
 export type EstadoAutoguardado = "limpio" | "pendiente" | "guardando" | "guardado" | "error";
 
@@ -22,6 +23,10 @@ interface Opciones<F extends FilaCanal> {
   /// Cada entrada lleva la clave de la fila que la originó para poder devolverle el
   /// id que asignó el servidor; el orden tiene que ser el mismo que el del PUT.
   aPayload: (filas: F[]) => { clave: string; canal: Record<string, unknown> }[];
+  /// Qué fechas traen cada renglón distinto a como el rider lo dice. Llega en la
+  /// respuesta del guardado porque editar el rider cambia quién divergía: si el
+  /// rider se movió hacia lo que la plaza decía, ya no hay nada que avisar.
+  onDivergencias?: (divergencias: Record<string, FechaConAjuste[]>) => void;
 }
 
 const DEBOUNCE_MS = 900;
@@ -38,6 +43,7 @@ export function useAutoguardadoCanales<F extends FilaCanal>({
   filas,
   setFilas,
   aPayload,
+  onDivergencias,
 }: Opciones<F>): { estado: EstadoAutoguardado; guardarYa: () => void } {
   const router = useRouter();
   const toast = useToast();
@@ -46,6 +52,7 @@ export function useAutoguardadoCanales<F extends FilaCanal>({
 
   const filasRef = useRef(filas);
   const aPayloadRef = useRef(aPayload);
+  const onDivergenciasRef = useRef(onDivergencias);
   const enviarRef = useRef<() => void>(() => {});
 
   const firmaGuardada = useRef(firma(filas));
@@ -99,6 +106,9 @@ export function useAutoguardadoCanales<F extends FilaCanal>({
       }
 
       firmaGuardada.current = sig;
+      if (d.divergencias) {
+        onDivergenciasRef.current?.(d.divergencias as Record<string, FechaConAjuste[]>);
+      }
       const guardados = (d.canales as { id: string }[]) ?? [];
       const porClave = new Map(items.map((it, i) => [it.clave, guardados[i]?.id ?? null]));
       // Los ids del cliente tienen que reflejar lo que quedó en la BD: la fila a la
@@ -126,6 +136,7 @@ export function useAutoguardadoCanales<F extends FilaCanal>({
   useEffect(() => {
     filasRef.current = filas;
     aPayloadRef.current = aPayload;
+    onDivergenciasRef.current = onDivergencias;
     enviarRef.current = () => void enviar();
   });
 
