@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
 import { useNavConfig } from "@/components/nav/NavConfigProvider";
+import { EditInput, useSingleDoubleClick } from "@/components/nav/editable";
 import {
   ContextoArrastreTabs,
   arrastreReciente,
@@ -28,8 +30,36 @@ function llaveDe(e: EnlaceSub) {
   return e.llave ?? e.href;
 }
 
-function TabArrastrable({ enlace, activo }: { enlace: EnlaceSub; activo: boolean }) {
+function TabArrastrable({
+  enlace,
+  etiqueta,
+  activo,
+  editando,
+  onEditar,
+  onGuardar,
+  onCancelar,
+}: {
+  enlace: EnlaceSub;
+  etiqueta: string;
+  activo: boolean;
+  editando: boolean;
+  onEditar: () => void;
+  onGuardar: (v: string) => void;
+  onCancelar: () => void;
+}) {
   const { ref, style, arrastre } = useTabArrastrable(llaveDe(enlace));
+  const router = useRouter();
+  const clic = useSingleDoubleClick(() => {
+    if (!arrastreReciente()) router.push(enlace.href);
+  }, onEditar);
+
+  if (editando) {
+    return (
+      <span ref={ref} style={style} className="flex items-center px-2 py-1.5 shrink-0 w-40">
+        <EditInput initial={etiqueta} onCommit={onGuardar} onCancel={onCancelar} />
+      </span>
+    );
+  }
 
   return (
     <Link
@@ -39,11 +69,14 @@ function TabArrastrable({ enlace, activo }: { enlace: EnlaceSub; activo: boolean
       {...arrastre}
       draggable={false}
       onClick={(e) => {
-        if (arrastreReciente()) e.preventDefault();
+        // Cmd/ctrl/medio: deja que el navegador abra en otra pestaña.
+        if (e.metaKey || e.ctrlKey || e.button === 1) return;
+        e.preventDefault();
+        clic(e);
       }}
       className={`${claseTab(activo, true)} cursor-pointer select-none`}
     >
-      {enlace.label}
+      {etiqueta}
     </Link>
   );
 }
@@ -53,18 +86,23 @@ function TabArrastrable({ enlace, activo }: { enlace: EnlaceSub; activo: boolean
 /// dispositivo, porque vive en AppConfig.
 export default function SubNav({ enlaces, scope }: { enlaces: EnlaceSub[]; scope: string }) {
   const pathname = usePathname();
-  const { tabsOrder, isAdmin, saveTabsOrder } = useNavConfig();
+  const { labels, tabsOrder, isAdmin, saveLabel, saveTabsOrder } = useNavConfig();
+  const [editando, setEditando] = useState<string | null>(null);
 
   const ordenados = ordenarPorLlaves(enlaces, tabsOrder[scope], llaveDe);
   const esActivo = (e: EnlaceSub) =>
     e.exacto ? pathname === e.href : pathname === e.href || pathname.startsWith(`${e.href}/`);
+  // El nombre se guarda por scope+llave, no por href: el href trae el id del
+  // registro y el renombre debe valer para todas las giras, shows y artistas.
+  const llaveLabel = (e: EnlaceSub) => `tab:${scope}:${llaveDe(e)}`;
+  const etiquetaDe = (e: EnlaceSub) => labels[llaveLabel(e)] ?? e.label;
 
   if (!isAdmin) {
     return (
       <nav className={BARRA}>
         {ordenados.map((e) => (
           <Link key={e.href} href={e.href} className={claseTab(esActivo(e), true)}>
-            {e.label}
+            {etiquetaDe(e)}
           </Link>
         ))}
       </nav>
@@ -78,7 +116,19 @@ export default function SubNav({ enlaces, scope }: { enlaces: EnlaceSub[]; scope
         onReordenar={(llaves) => saveTabsOrder(scope, llaves)}
       >
         {ordenados.map((e) => (
-          <TabArrastrable key={e.href} enlace={e} activo={esActivo(e)} />
+          <TabArrastrable
+            key={e.href}
+            enlace={e}
+            etiqueta={etiquetaDe(e)}
+            activo={esActivo(e)}
+            editando={editando === llaveDe(e)}
+            onEditar={() => setEditando(llaveDe(e))}
+            onGuardar={(v) => {
+              saveLabel(llaveLabel(e), v);
+              setEditando(null);
+            }}
+            onCancelar={() => setEditando(null)}
+          />
         ))}
       </ContextoArrastreTabs>
     </nav>
