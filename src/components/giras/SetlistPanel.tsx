@@ -2,9 +2,10 @@
 
 /**
  * Setlist de la gira y el de cada fecha. El repertorio se teclea una vez en el
- * base y la fecha abre con una copia propia (la siembra el servidor al abrir su
- * pestaña): ahí se mueve el orden, se recorta por curfew o se mete la canción
- * del invitado sin tocarle el repertorio a las demás noches.
+ * base, que es el único lugar donde está todo lo de la gira y donde se decide a
+ * qué fechas va cada renglón. El servidor siembra de ahí la copia de la noche
+ * al abrir su pestaña: ahí se mueve el orden, se recorta por curfew o se mete
+ * la canción del invitado sin tocarle el repertorio a las demás.
  *
  * Los renglones que no son canción (intro, presentación, pausa, cierre) van en
  * la misma lista: son los que parten el show en bloques, y el bloque se deriva
@@ -60,6 +61,16 @@ export interface CancionFila {
   notasVideo: string | null;
   cambioInstrumento: string | null;
   notas: string | null;
+  /// En qué fechas va el renglón. Vacío = en todas. Solo se captura en el base.
+  soloEnShows: string[];
+  /// El renglón del base del que nació esta copia; nulo si nació en la noche.
+  origenId: string | null;
+}
+
+export interface ShowDeLaGira {
+  id: string;
+  fecha: Date | string;
+  ciudad: string | null;
 }
 
 export interface SetlistFila {
@@ -81,6 +92,8 @@ interface Props {
   /// Quién más se sube al escenario esa noche, para ofrecerlos al marcar de quién
   /// es la canción. Son los invitados de la fecha; un cover se escribe a mano.
   invitados?: { nombre: string; rol: string | null }[];
+  /// Las fechas de la gira, para decidir en el base a cuáles va cada renglón.
+  shows?: ShowDeLaGira[];
 }
 
 const DEMORA_GUARDADO = 700;
@@ -118,7 +131,7 @@ function RenglonArrastrable({ id, className, children }: { id: string; className
   );
 }
 
-export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciales, invitados }: Props) {
+export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciales, invitados, shows }: Props) {
   const toast = useToast();
   const confirmar = useConfirm();
 
@@ -137,6 +150,9 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
   // despliega en el mismo renglón y no flotando: la tabla va dentro de un
   // contenedor con scroll horizontal, que recortaría cualquier popover.
   const [paleta, setPaleta] = useState<string | null>(null);
+  // Qué renglón tiene abierto el selector de fechas, por la misma razón que la
+  // paleta: se despliega en un renglón propio debajo y no flotando.
+  const [fechas, setFechas] = useState<string | null>(null);
 
   // Los temporizadores viven en un ref: si se recrearan en cada render, cada
   // tecla abriría un guardado nuevo en vez de reemplazar el pendiente.
@@ -249,6 +265,18 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
   }
 
   async function quitarCancion(setlistId: string, cancion: CancionFila) {
+    // Quitar de una noche un renglón que vino del base le cambia el alcance al
+    // base, que es lo único que evita que la siembra lo regrese. Se avisa.
+    if (alcance === "SHOW" && cancion.origenId) {
+      const ok = await confirmar({
+        title: `Quitar «${cancion.titulo || "sin título"}» de esta fecha`,
+        message:
+          "En el setlist base queda marcada como que no va en esta noche. Las demás fechas no se tocan y el renglón sigue en el repertorio de la gira.",
+        confirmText: "Quitar de esta fecha",
+      });
+      if (!ok) return;
+    }
+
     const res = await fetch(`/api/gira-setlist-canciones/${cancion.id}`, { method: "DELETE" });
     if (!res.ok) {
       toast.error("No se pudo quitar la canción");
@@ -256,6 +284,87 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
     }
     setSetlists((prev) =>
       prev.map((s) => (s.id === setlistId ? { ...s, canciones: s.canciones.filter((c) => c.id !== cancion.id) } : s)),
+    );
+  }
+
+  // ── A qué fechas va un renglón ─────────────────────────────────────────────
+  const todasLasFechas = shows?.map((s) => s.id) ?? [];
+
+  function alternarFecha(setlistId: string, c: CancionFila, idShow: string, marcado: boolean) {
+    const actual = c.soloEnShows.length ? c.soloEnShows : todasLasFechas;
+    const siguiente = marcado ? [...actual, idShow] : actual.filter((x) => x !== idShow);
+    if (!siguiente.length) {
+      toast.error("Si no va en ninguna fecha, quita el renglón del setlist.");
+      return;
+    }
+    // Palomeadas todas se guarda vacío: así una fecha que se dé de alta después
+    // hereda el renglón sin que nadie tenga que volver a abrir este selector.
+    const valor = siguiente.length === todasLasFechas.length ? [] : siguiente;
+    editarCancion(setlistId, c.id, { soloEnShows: valor }, true);
+  }
+
+  function etiquetaFechas(c: CancionFila) {
+    if (!c.soloEnShows.length) return "Todas";
+    if (c.soloEnShows.length === 1) {
+      const s = shows?.find((x) => x.id === c.soloEnShows[0]);
+      return s ? fmtFechaCorta(s.fecha) : "1 fecha";
+    }
+    return `${c.soloEnShows.length} fechas`;
+  }
+
+  /// Funciones planas y no componentes: declarados aquí adentro, un componente
+  /// cambia de identidad en cada render y React le remontaría el selector
+  /// abierto a media captura.
+  function celdaFechas(c: CancionFila) {
+    const todas = c.soloEnShows.length === 0;
+    return (
+      <td className="ms-td">
+        <button
+          onClick={() => setFechas(fechas === c.id ? null : c.id)}
+          className={`ms-micro px-1.5 py-0.5 rounded-sm border transition-colors ${
+            todas
+              ? "border-[#1a1a1a] text-[#6b7280] hover:text-white"
+              : "border-[#B3985B]/40 text-[#B3985B] hover:border-[#B3985B]"
+          }`}
+          title={todas ? "Va en todas las fechas de la gira" : "Solo va en algunas fechas"}
+        >
+          {etiquetaFechas(c)}
+        </button>
+      </td>
+    );
+  }
+
+  function filaFechas(setlistId: string, c: CancionFila, columnas: number) {
+    if (fechas !== c.id) return null;
+    return (
+      <tr className="bg-[#0d0d0d]">
+        <td className="ms-td" colSpan={columnas}>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 py-1">
+            <span className="ms-micro text-[#9ca3af]">¿En qué fechas va «{c.titulo || "sin título"}»?</span>
+            <label className="flex items-center gap-1.5 ms-micro text-white cursor-pointer">
+              <input
+                type="checkbox"
+                checked={c.soloEnShows.length === 0}
+                onChange={() => editarCancion(setlistId, c.id, { soloEnShows: [] }, true)}
+                className="accent-[#B3985B] w-3.5 h-3.5"
+              />
+              Todas
+            </label>
+            {shows?.map((s) => (
+              <label key={s.id} className="flex items-center gap-1.5 ms-micro text-[#9ca3af] cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={c.soloEnShows.length === 0 || c.soloEnShows.includes(s.id)}
+                  onChange={(e) => alternarFecha(setlistId, c, s.id, e.target.checked)}
+                  className="accent-[#B3985B] w-3.5 h-3.5"
+                />
+                {fmtFechaCorta(s.fecha)}
+                {s.ciudad ? ` · ${s.ciudad}` : ""}
+              </label>
+            ))}
+          </div>
+        </td>
+      </tr>
     );
   }
 
@@ -346,8 +455,8 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
           <h2 className="ms-h2">Setlist</h2>
           <p className="ms-subtitle mt-0.5">
             {alcance === "SHOW"
-              ? "El repertorio de esta fecha. Salió del base de la gira y lo que cambies aquí se queda en esta noche."
-              : "El base es el repertorio de la gira; cada fecha abre con su copia."}{" "}
+              ? "Lo que va esta noche. El base de la gira decide qué renglones llegan aquí; lo que cambies en esta tabla —orden, tono, cues— se queda en esta fecha."
+              : "El repertorio completo de la gira. Cada renglón va a todas las fechas salvo que en la columna Fechas le marques en cuáles; las fechas se siembran de aquí al abrir su pestaña."}{" "}
             Arrastra un renglón de la manija para moverlo de lugar o de bloque.
           </p>
         </div>
@@ -364,8 +473,8 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
         <div className="ms-empty-state">
           <p className="text-sm text-gray-400">
             {alcance === "SHOW"
-              ? "Esta fecha se quedó sin setlist. Recarga la pestaña y se vuelve a copiar del base de la gira."
-              : "Todavía no hay setlist. Crea el base de la gira y cada fecha abre con su copia."}
+              ? "Esta fecha se quedó sin setlist. Recarga la pestaña y se vuelve a sembrar del base de la gira."
+              : "Todavía no hay setlist. Crea el base de la gira y de ahí se siembra cada fecha."}
           </p>
         </div>
       ) : (
@@ -375,6 +484,10 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
           const segmentos = segmentarSetlist(s.canciones);
           const totalCanciones = s.canciones.filter((c) => esCancion(c.tipo)).length;
           const totalBloques = segmentos.filter((x) => x.clase === "bloque").length;
+          // A qué fechas va un renglón se decide en el base y solo ahí: en la
+          // noche la columna sobra, porque lo que se ve ya es lo que le toca.
+          const verFechas = s.esBase && !s.showId && todasLasFechas.length > 0;
+          const columnas = verFechas ? 16 : 15;
 
           return (
             <section key={s.id} className={`ms-card ${expandido ? "border-[#B3985B]/30" : ""}`}>
@@ -472,7 +585,7 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
                     >
                       <SortableContext items={s.canciones.map((c) => c.id)} strategy={verticalListSortingStrategy}>
                         <div className="ms-table-wrapper overflow-x-auto">
-                      <table className="min-w-[1570px] w-full">
+                      <table className={`${verFechas ? "min-w-[1930px]" : "min-w-[1790px]"} w-full`}>
                         <thead className="ms-thead">
                           <tr>
                             <th className="ms-th w-[30px]" />
@@ -488,6 +601,8 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
                             <th className="ms-th w-[180px]">Luces</th>
                             <th className="ms-th w-[180px]">Video</th>
                             <th className="ms-th w-[160px]">Cambio de instrumento</th>
+                            <th className="ms-th w-[220px]">Notas</th>
+                            {verFechas && <th className="ms-th w-[110px]">Fechas</th>}
                             <th className="ms-th w-[40px]" />
                           </tr>
                         </thead>
@@ -496,7 +611,8 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
                             if (seg.clase === "momento") {
                               const c = seg.fila;
                               return (
-                                <RenglonArrastrable key={c.id} id={c.id} className="ms-tr align-top bg-[#121212]">
+                                <Fragment key={c.id}>
+                                <RenglonArrastrable id={c.id} className="ms-tr align-top bg-[#121212]">
                                   <td className="ms-td">
                                     <select
                                       value={c.tipo}
@@ -529,7 +645,7 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
                                       className="ms-input-inline w-full"
                                     />
                                   </td>
-                                  <td className="ms-td" colSpan={8}>
+                                  <td className="ms-td" colSpan={9}>
                                     <input
                                       value={c.notas ?? ""}
                                       onChange={(e) => editarCancion(s.id, c.id, { notas: e.target.value })}
@@ -537,6 +653,7 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
                                       className="ms-input-inline w-full"
                                     />
                                   </td>
+                                  {verFechas && celdaFechas(c)}
                                   <td className="ms-td text-right">
                                     <button
                                       onClick={() => void quitarCancion(s.id, c)}
@@ -547,6 +664,8 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
                                     </button>
                                   </td>
                                 </RenglonArrastrable>
+                                {verFechas && filaFechas(s.id, c, columnas)}
+                                </Fragment>
                               );
                             }
 
@@ -555,7 +674,7 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
                             return (
                               <Fragment key={seg.clave}>
                                 <tr className="bg-[#0d0d0d]">
-                                  <td className="ms-td" colSpan={14}>
+                                  <td className="ms-td" colSpan={columnas}>
                                     <span className="inline-flex items-center gap-2">
                                       <button
                                         onClick={() => setPaleta(paleta === seg.anclaId ? null : seg.anclaId)}
@@ -609,7 +728,8 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
                                   </td>
                                 </tr>
                                 {seg.canciones.map(({ fila: c, posicion }) => (
-                                  <RenglonArrastrable key={c.id} id={c.id} className="ms-tr align-top">
+                                  <Fragment key={c.id}>
+                                  <RenglonArrastrable id={c.id} className="ms-tr align-top">
                                     <td className="ms-td">
                                       <select
                                         value={c.tipo}
@@ -717,16 +837,34 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
                                         className="ms-input-inline w-full"
                                       />
                                     </td>
+                                    <td className="ms-td">
+                                      {/* Lo que no es de una disciplina sola:
+                                          de qué va la canción, con quién sale,
+                                          qué pidió el artista para ese momento. */}
+                                      <input
+                                        value={c.notas ?? ""}
+                                        onChange={(e) => editarCancion(s.id, c.id, { notas: e.target.value })}
+                                        placeholder="Nota general de la canción"
+                                        className="ms-input-inline w-full"
+                                      />
+                                    </td>
+                                    {verFechas && celdaFechas(c)}
                                     <td className="ms-td text-right">
                                       <button
                                         onClick={() => void quitarCancion(s.id, c)}
                                         className="text-[#555] hover:text-red-400 transition-colors"
-                                        title="Quitar canción"
+                                        title={
+                                          alcance === "SHOW"
+                                            ? "Quitar de esta fecha: el base deja de mandarla a esta noche"
+                                            : "Quitar canción"
+                                        }
                                       >
                                         ✕
                                       </button>
                                     </td>
                                   </RenglonArrastrable>
+                                  {verFechas && filaFechas(s.id, c, columnas)}
+                                  </Fragment>
                                 ))}
                               </Fragment>
                             );

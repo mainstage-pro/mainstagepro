@@ -66,6 +66,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ca
     data.bloqueColor = v || null;
   }
 
+  // A qué fechas va el renglón. Vacío significa "a todas", así que una fecha
+  // que se dé de alta después lo hereda sin que nadie vuelva a palomearla.
+  if ("soloEnShows" in body) {
+    if (!Array.isArray(body.soloEnShows)) {
+      return NextResponse.json({ error: "Las fechas deben venir en una lista" }, { status: 400 });
+    }
+    data.soloEnShows = [...new Set(body.soloEnShows.filter((v: unknown) => typeof v === "string" && v))];
+  }
+
   if (!Object.keys(data).length) return NextResponse.json({ error: "Nada por actualizar" }, { status: 400 });
 
   try {
@@ -81,10 +90,37 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { cancionId } = await params;
-  try {
-    await prisma.giraSetlistCancion.delete({ where: { id: cancionId } });
-    return NextResponse.json({ ok: true });
-  } catch {
-    return NextResponse.json({ error: "No se pudo quitar la canción" }, { status: 404 });
+
+  const cancion = await prisma.giraSetlistCancion.findUnique({
+    where: { id: cancionId },
+    select: { id: true, origenId: true, setlist: { select: { giraId: true, showId: true } } },
+  });
+  if (!cancion) return NextResponse.json({ error: "No se pudo quitar la canción" }, { status: 404 });
+
+  // Quitar de una fecha un renglón que vino del base es decirle al base que esa
+  // noche no va. Borrar solo la copia no alcanzaría: la siguiente visita a la
+  // pestaña se la volvería a sembrar.
+  const { giraId, showId } = cancion.setlist;
+  if (showId && cancion.origenId) {
+    const origen = await prisma.giraSetlistCancion.findUnique({
+      where: { id: cancion.origenId },
+      select: { soloEnShows: true },
+    });
+    if (origen) {
+      const alcance = origen.soloEnShows.length
+        ? origen.soloEnShows
+        : (await prisma.giraShow.findMany({ where: { giraId }, select: { id: true } })).map((s) => s.id);
+      const quedan = alcance.filter((id) => id !== showId);
+      // Si ya no va en ninguna fecha deja de ser repertorio: se borra del base y
+      // la cascada se lleva esta copia. Guardar la lista vacía diría "en todas".
+      if (!quedan.length) {
+        await prisma.giraSetlistCancion.delete({ where: { id: cancion.origenId } });
+        return NextResponse.json({ ok: true });
+      }
+      await prisma.giraSetlistCancion.update({ where: { id: cancion.origenId }, data: { soloEnShows: quedan } });
+    }
   }
+
+  await prisma.giraSetlistCancion.delete({ where: { id: cancionId } });
+  return NextResponse.json({ ok: true });
 }

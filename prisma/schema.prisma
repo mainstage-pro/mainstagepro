@@ -6776,10 +6776,23 @@ model GiraSetlistCancion {
   cambioInstrumento String?
   notas             String?
 
+  /// A qué fechas va el renglón. Vacío = a todas, que es lo normal. Solo lo
+  /// llena el base de la gira: ahí se decide que una canción es de una noche
+  /// —la del invitado, el cover de esa plaza— y no de las demás.
+  soloEnShows String[]
+
+  /// El renglón del base del que nació esta copia. Es lo que deja volver a
+  /// sembrar una fecha sin duplicarle lo que ya tiene, y hace que borrar del
+  /// base arrastre las copias en vez de dejarlas huérfanas.
+  origenId String?
+  origen   GiraSetlistCancion?  @relation("SetlistOrigen", fields: [origenId], references: [id], onDelete: Cascade)
+  copias   GiraSetlistCancion[] @relation("SetlistOrigen")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([setlistId])
+  @@index([origenId])
   @@map("gira_setlist_canciones")
 }
 

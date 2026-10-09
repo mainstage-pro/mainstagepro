@@ -17,12 +17,20 @@ export default async function SetlistGiraPage({ params }: { params: Promise<{ id
   if (!gira) notFound();
 
   // Solo el repertorio de la gira: el de cada noche se lee y se ajusta en la
-  // pestaña Setlist de su fecha, que es donde se opera.
-  const setlists = await prisma.giraSetlist.findMany({
-    where: { giraId: id, showId: null },
-    orderBy: [{ esBase: "desc" }, { createdAt: "asc" }],
-    include: INCLUDE_SETLIST,
-  });
+  // pestaña Setlist de su fecha, que es donde se opera. Las fechas se traen
+  // para poder marcar aquí a cuáles va cada renglón.
+  const [setlists, shows] = await Promise.all([
+    prisma.giraSetlist.findMany({
+      where: { giraId: id, showId: null },
+      orderBy: [{ esBase: "desc" }, { createdAt: "asc" }],
+      include: INCLUDE_SETLIST,
+    }),
+    prisma.giraShow.findMany({
+      where: { giraId: id },
+      orderBy: { fecha: "asc" },
+      select: { id: true, fecha: true, ciudad: true },
+    }),
+  ]);
 
   return (
     <div className="ms-page space-y-5 pb-16">
@@ -30,9 +38,10 @@ export default async function SetlistGiraPage({ params }: { params: Promise<{ id
         <div className="min-w-0">
           <h1 className="ms-h1">Setlist base</h1>
           <p className="ms-subtitle">
-            El repertorio se teclea una vez aquí, con sus notas de audio, luces y video, y los momentos que no se cantan
-            —intro, presentación, pausas— van en la misma lista: son los que parten el show en bloques. Cada fecha abre
-            con su copia de este base y ahí se le mueve el orden o se le mete la canción del invitado.
+            El repertorio se teclea una vez aquí, con sus notas de audio, luces, video y las generales, y los momentos
+            que no se cantan —intro, presentación, pausas— van en la misma lista: son los que parten el show en
+            bloques. Aquí está todo lo de la gira; si una canción es de una sola noche márcalo en la columna Fechas y
+            solo esa fecha la recibe.
           </p>
         </div>
 
@@ -48,7 +57,7 @@ export default async function SetlistGiraPage({ params }: { params: Promise<{ id
         />
       </div>
 
-      <SetlistPanel giraId={id} alcance="GIRA" setlistsIniciales={setlists} />
+      <SetlistPanel giraId={id} alcance="GIRA" setlistsIniciales={setlists} shows={shows} />
     </div>
   );
 }

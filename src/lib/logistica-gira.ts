@@ -6,7 +6,10 @@
  * los endpoints tienen que devolver exactamente la misma fila: si el endpoint
  * trae un campo que la página no, la UI se queda a medias al refrescar.
  */
+import type { Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
+
+const ORDEN_CANCIONES = [{ orden: "asc" }, { createdAt: "asc" }] as Prisma.GiraSetlistCancionOrderByWithRelationInput[];
 
 export const INCLUDE_CREW = {
   tecnico: { select: { id: true, nombre: true, celular: true } },
@@ -53,65 +56,110 @@ export const INCLUDE_VIAJE = {
 } as const;
 
 export const INCLUDE_SETLIST = {
-  canciones: { orderBy: { orden: "asc" } },
+  // El desempate por createdAt importa desde que una fecha puede recibir
+  // renglones del base después de haber reordenado los suyos: el sembrado llega
+  // con el orden que traía en el base y puede empatar con uno de la casa.
+  canciones: { orderBy: ORDEN_CANCIONES },
   show: { select: { id: true, fecha: true, ciudad: true } },
 } as const;
 
-/**
- * El setlist de una fecha. Si todavía no tiene, nace copiado del base de la
- * gira la primera vez que alguien abre su pestaña —igual que el esqueleto de
- * horarios del día—, para que el orden de esta noche se ajuste sin reescribirle
- * el repertorio a las demás fechas.
- *
- * Quitarlo y volver a entrar lo trae otra vez del base: así se vuelve a
- * sincronizar una fecha que se quedó atrás.
- */
-export async function asegurarSetlistDeFecha(giraId: string, showId: string) {
-  const propio = await prisma.giraSetlist.findFirst({
-    where: { giraId, showId },
-    orderBy: { createdAt: "asc" },
-    include: INCLUDE_SETLIST,
-  });
-  if (propio) return propio;
+type CancionDelBase = Awaited<ReturnType<typeof cancionesDelBase>>[number];
 
+async function cancionesDelBase(giraId: string) {
   const base = await prisma.giraSetlist.findFirst({
     where: { giraId, esBase: true },
-    include: { canciones: { orderBy: { orden: "asc" } } },
+    include: { canciones: { orderBy: ORDEN_CANCIONES } },
+  });
+  return base?.canciones ?? [];
+}
+
+/// La copia que se guarda en la fecha. `soloEnShows` no viaja: a qué noches va
+/// un renglón se decide en el base y nada más ahí.
+function copiaDelBase(c: CancionDelBase, setlistId: string) {
+  return {
+    setlistId,
+    origenId: c.id,
+    tipo: c.tipo,
+    orden: c.orden,
+    titulo: c.titulo,
+    artistaInvitado: c.artistaInvitado,
+    bloqueNombre: c.bloqueNombre,
+    bloqueColor: c.bloqueColor,
+    duracionSeg: c.duracionSeg,
+    tonalidad: c.tonalidad,
+    bpm: c.bpm,
+    conTrack: c.conTrack,
+    notasAudio: c.notasAudio,
+    notasLuces: c.notasLuces,
+    notasVideo: c.notasVideo,
+    cambioInstrumento: c.cambioInstrumento,
+    notas: c.notas,
+  };
+}
+
+/**
+ * El setlist de una fecha, sembrado del base de la gira cada vez que alguien
+ * abre su pestaña. El base es el repertorio completo y manda sobre qué va esa
+ * noche; la fecha manda sobre cómo va: ahí se mueve el orden, se corrige el
+ * tono o se escribe el cue, y la siembra no pisa nada de eso.
+ *
+ * Siembra lo que le toca y todavía no tiene, y se lleva lo que el base dejó de
+ * mandarle a esta fecha. Lo que nació en la noche (sin `origenId`) ni se toca.
+ */
+export async function asegurarSetlistDeFecha(giraId: string, showId: string) {
+  const [propio, delBase] = await Promise.all([
+    prisma.giraSetlist.findFirst({
+      where: { giraId, showId },
+      orderBy: { createdAt: "asc" },
+      include: INCLUDE_SETLIST,
+    }),
+    cancionesDelBase(giraId),
+  ]);
+
+  const leToca = (c: CancionDelBase) => c.soloEnShows.length === 0 || c.soloEnShows.includes(showId);
+
+  if (!propio) {
+    const base = await prisma.giraSetlist.findFirst({
+      where: { giraId, esBase: true },
+      select: { duracionMin: true, notas: true },
+    });
+    const setlist = await prisma.giraSetlist.create({
+      data: {
+        giraId,
+        showId,
+        nombre: "Setlist de esta fecha",
+        duracionMin: base?.duracionMin ?? null,
+        notas: base?.notas ?? null,
+      },
+    });
+    const siembra = delBase.filter(leToca);
+    if (siembra.length) {
+      await prisma.giraSetlistCancion.createMany({ data: siembra.map((c) => copiaDelBase(c, setlist.id)) });
+    }
+    return prisma.giraSetlist.findUniqueOrThrow({ where: { id: setlist.id }, include: INCLUDE_SETLIST });
+  }
+
+  const porOrigen = new Map(delBase.map((c) => [c.id, c]));
+  const yaSembradas = new Set(propio.canciones.map((c) => c.origenId).filter(Boolean));
+
+  const faltantes = delBase.filter((c) => leToca(c) && !yaSembradas.has(c.id));
+  const sobrantes = propio.canciones.filter((c) => {
+    const origen = c.origenId ? porOrigen.get(c.origenId) : null;
+    return !!origen && !leToca(origen);
   });
 
-  return prisma.giraSetlist.create({
-    data: {
-      giraId,
-      showId,
-      nombre: "Setlist de esta fecha",
-      duracionMin: base?.duracionMin ?? null,
-      notas: base?.notas ?? null,
-      ...(base?.canciones.length
-        ? {
-            canciones: {
-              create: base.canciones.map((c) => ({
-                tipo: c.tipo,
-                orden: c.orden,
-                titulo: c.titulo,
-                artistaInvitado: c.artistaInvitado,
-                bloqueNombre: c.bloqueNombre,
-                bloqueColor: c.bloqueColor,
-                duracionSeg: c.duracionSeg,
-                tonalidad: c.tonalidad,
-                bpm: c.bpm,
-                conTrack: c.conTrack,
-                notasAudio: c.notasAudio,
-                notasLuces: c.notasLuces,
-                notasVideo: c.notasVideo,
-                cambioInstrumento: c.cambioInstrumento,
-                notas: c.notas,
-              })),
-            },
-          }
-        : {}),
-    },
-    include: INCLUDE_SETLIST,
-  });
+  if (!faltantes.length && !sobrantes.length) return propio;
+
+  await prisma.$transaction([
+    ...(sobrantes.length
+      ? [prisma.giraSetlistCancion.deleteMany({ where: { id: { in: sobrantes.map((c) => c.id) } } })]
+      : []),
+    ...(faltantes.length
+      ? [prisma.giraSetlistCancion.createMany({ data: faltantes.map((c) => copiaDelBase(c, propio.id)) })]
+      : []),
+  ]);
+
+  return prisma.giraSetlist.findUniqueOrThrow({ where: { id: propio.id }, include: INCLUDE_SETLIST });
 }
 
 // ── Candidatos de los selectores ─────────────────────────────────────────────
