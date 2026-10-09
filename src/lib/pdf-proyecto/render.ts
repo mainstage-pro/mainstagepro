@@ -6,7 +6,9 @@
 // byte por byte y no hay un segundo diseño que mantener.
 
 import { NextResponse } from "next/server";
+import React from "react";
 import ReactPDF, { Document } from "@react-pdf/renderer";
+import { limpiarTextosPdf } from "@/lib/pdf-texto";
 
 export interface PdfProyecto {
   buf: Buffer;
@@ -16,7 +18,12 @@ export interface PdfProyecto {
 export async function bufferDePdf(
   elemento: React.ReactElement<React.ComponentProps<typeof Document>>
 ): Promise<Buffer> {
-  const stream = await ReactPDF.renderToStream(elemento);
+  // Último punto común antes de dibujar: aquí se quitan los caracteres que la
+  // Helvetica del PDF no imprime. Se hace sobre las props del componente raíz
+  // porque todos los generadores de gira y proyecto le pasan ahí su objeto de
+  // datos, y así ningún campo nuevo se escapa (ver src/lib/pdf-texto.ts).
+  const limpio = React.cloneElement(elemento, limpiarTextosPdf(elemento.props));
+  const stream = await ReactPDF.renderToStream(limpio);
   return new Promise<Buffer>((resolve, reject) => {
     const chunks: Buffer[] = [];
     stream.on("data", (chunk: Buffer | Uint8Array) => chunks.push(Buffer.from(chunk)));
