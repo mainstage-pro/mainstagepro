@@ -97,10 +97,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ ride
     ).map((c) => c.id),
   );
 
+  // El nombre puede quedar vacío: un renglón abierto es un canal que ya cuenta en
+  // la lista y lleva su número, y todavía no se sabe qué va a entrar por él.
   const entrantes = (body.canales as CanalEntrante[])
-    .map((c, i): { id: string | null; datos: CanalDatos } | null => {
-      const nombre = texto(c.nombre);
-      if (!nombre) return null;
+    .map((c, i): { id: string | null; datos: CanalDatos } => {
+      const nombre = texto(c.nombre) ?? "";
       const n = Number(c.numero);
       const personaId = c.personaId && personasValidas.has(c.personaId) ? c.personaId : null;
       const soporte = c.soporte && (SOPORTES_MIC as readonly string[]).includes(c.soporte) ? c.soporte : null;
@@ -124,8 +125,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ ride
           notas: texto(c.notas),
         },
       };
-    })
-    .filter((c): c is { id: string | null; datos: CanalDatos } => c !== null);
+    });
 
   const conservados = entrantes.map((e) => e.id).filter((id): id is string => !!id);
 

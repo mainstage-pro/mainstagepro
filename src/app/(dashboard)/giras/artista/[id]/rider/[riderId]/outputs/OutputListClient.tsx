@@ -6,6 +6,7 @@ import { Combobox, type ComboboxOption } from "@/components/Combobox";
 import { useAutoguardadoCanales } from "@/hooks/useAutoguardadoCanales";
 import EstadoGuardado from "@/components/EstadoGuardado";
 import { FilaArrastrable, TablaOrdenable, ThArrastre } from "@/components/ui/TablaOrdenable";
+import AbrirRenglones from "@/components/giras/AbrirRenglones";
 import ImportarCanales, { type RiderOrigen } from "../ImportarCanales";
 import AvisoFechasAjustadas from "../AvisoFechasAjustadas";
 import type { FechaConAjuste } from "@/lib/show-canales";
@@ -78,10 +79,11 @@ export default function OutputListClient({
   const [divergencias, setDivergencias] = useState(divergenciasIniciales);
 
   // Se guarda el primer canal de consola del mix, no su posición: el estéreo se
-  // llevó dos números y la lista tiene que poder reconstruirse tal cual.
+  // llevó dos números y la lista tiene que poder reconstruirse tal cual. Todo
+  // renglón viaja, con nombre o sin él: el renglón abierto ya ocupa su salida.
   const aPayload = useCallback(
     (fs: Fila[]) =>
-      numerarSalidas(fs.filter((f) => f.nombre.trim())).map((f) => ({
+      numerarSalidas(fs).map((f) => ({
         clave: f.clave,
         canal: {
           id: f.id,
@@ -125,6 +127,12 @@ export default function OutputListClient({
     setFilas((prev) => [...prev, filaVacia()]);
   }
 
+  /// Abre N renglones de un golpe: cuando ya se sabe que son 12 mixes, se numeran
+  /// los 12 y el detalle se llena después.
+  function abrir(cantidad: number) {
+    setFilas((prev) => [...prev, ...Array.from({ length: cantidad }, filaVacia)]);
+  }
+
   function quitar(clave: string) {
     setFilas((prev) => prev.filter((f) => f.clave !== clave));
   }
@@ -141,15 +149,12 @@ export default function OutputListClient({
     ]);
   }
 
-  const utiles = filas.filter((f) => f.nombre.trim());
-  const conNombre = utiles.length;
-  const canales = totalCanalesSalida(utiles);
-  const descuadre = mixesMonitor !== null && mixesMonitor !== conNombre;
+  const porCapturar = filas.filter((f) => !f.nombre.trim()).length;
+  const canales = totalCanalesSalida(filas);
+  const descuadre = mixesMonitor !== null && mixesMonitor !== filas.length;
 
-  // El canal se cuenta sobre lo que de verdad se guarda: el mix a medio capturar
-  // no existe en el rider y no ocupa salida de consola.
   const etiquetaPorClave = new Map(
-    numerarSalidas(utiles).map((f) => [f.clave, etiquetaCanalSalida(f.canal, f.estereo)]),
+    numerarSalidas(filas).map((f) => [f.clave, etiquetaCanalSalida(f.canal, f.estereo)]),
   );
 
   return (
@@ -178,14 +183,20 @@ export default function OutputListClient({
           <button className="ms-btn-ghost" onClick={agregar}>
             + Salida
           </button>
+          <AbrirRenglones que={["salida", "salidas"]} onAbrir={abrir} />
           <EstadoGuardado estado={estado} onReintentar={guardarYa} />
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="ms-stat-card">
-          <p className="ms-label">Mixes capturados</p>
-          <p className="text-xl font-semibold mt-1 text-white">{conNombre}</p>
+          <p className="ms-label">Mixes de la lista</p>
+          <p className="text-xl font-semibold mt-1 text-white">{filas.length}</p>
+          {porCapturar > 0 && (
+            <p className="ms-micro text-amber-300 mt-0.5">
+              {porCapturar} {porCapturar === 1 ? "renglón" : "renglones"} sin capturar
+            </p>
+          )}
         </div>
         <div className="ms-stat-card">
           <p className="ms-label">Canales de consola</p>
@@ -252,7 +263,6 @@ export default function OutputListClient({
                       value={f.nombre}
                       onChange={(e) => set(f.clave, { nombre: e.target.value })}
                     />
-                    {!f.nombre.trim() && <span className="ms-micro text-amber-300">sin nombre no se guarda</span>}
                     <AvisoFechasAjustadas
                       riderId={riderId}
                       canalId={f.id}
@@ -325,6 +335,7 @@ export default function OutputListClient({
           <button className="ms-btn-ghost" onClick={agregar}>
             + Salida
           </button>
+          <AbrirRenglones que={["salida", "salidas"]} onAbrir={abrir} />
           <EstadoGuardado estado={estado} onReintentar={guardarYa} />
           <span className="ms-micro">
             El canal es la posición en la lista: arrastra el renglón por la manija para renumerar.

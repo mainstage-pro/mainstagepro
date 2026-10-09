@@ -22,6 +22,7 @@ import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
 import { FilaArrastrable, TablaOrdenable, ThArrastre } from "@/components/ui/TablaOrdenable";
 import type { FilaPuerto, ListasPrePatch, TipoCanal } from "@/lib/pre-patch";
+import AbrirRenglones from "./AbrirRenglones";
 
 interface Props {
   giraId: string;
@@ -160,6 +161,28 @@ export default function PrePatchInterfaz({ giraId, showId, conPrePatchInicial, l
       if (d.listas) setListas(d.listas as ListasPrePatch);
       setConPrePatch(true);
       setNuevo({ ...NUEVO, tipo: nuevo.tipo });
+    } finally {
+      setTrabajando(false);
+    }
+  }
+
+  /// Abre N renglones vacíos de un lado: cuando ya se sabe que son 32 entradas, se
+  /// numeran las 32 de una vez y el nombre se llena después.
+  async function abrir(tipo: TipoCanal, cantidad: number) {
+    setTrabajando(true);
+    try {
+      const res = await fetch(`/api/giras/${giraId}/pre-patch`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo, cantidad, showId: showId ?? null }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(d.error ?? "No se pudieron abrir los puertos");
+        return;
+      }
+      if (d.listas) setListas(d.listas as ListasPrePatch);
+      setConPrePatch(true);
     } finally {
       setTrabajando(false);
     }
@@ -403,6 +426,8 @@ export default function PrePatchInterfaz({ giraId, showId, conPrePatchInicial, l
         subirALaGira={subirALaGira}
         reordenar={reordenar}
         reordenando={reordenando === "INPUT"}
+        abrir={abrir}
+        trabajando={trabajando}
       />
 
       <TablaPuertos
@@ -418,6 +443,8 @@ export default function PrePatchInterfaz({ giraId, showId, conPrePatchInicial, l
         subirALaGira={subirALaGira}
         reordenar={reordenar}
         reordenando={reordenando === "OUTPUT"}
+        abrir={abrir}
+        trabajando={trabajando}
       />
 
       {listas.quitados.length > 0 && (
@@ -465,6 +492,8 @@ interface TablaProps {
   subirALaGira: (fila: FilaPuerto) => Promise<void>;
   reordenar: (tipo: TipoCanal, ids: string[]) => Promise<void>;
   reordenando: boolean;
+  abrir: (tipo: TipoCanal, cantidad: number) => Promise<void>;
+  trabajando: boolean;
 }
 
 function TablaPuertos({
@@ -480,6 +509,8 @@ function TablaPuertos({
   subirALaGira,
   reordenar,
   reordenando,
+  abrir,
+  trabajando,
 }: TablaProps) {
   /// Desde una fecha solo se arrastra lo que nació ahí: los puertos de la gira
   /// llevan el orden de la gira, que es el mismo en todas las plazas.
@@ -487,9 +518,16 @@ function TablaPuertos({
 
   return (
     <div className="space-y-2">
-      <div>
-        <h4 className="ms-section-label">{titulo}</h4>
-        <p className="ms-meta mt-0.5">{nota}</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h4 className="ms-section-label">{titulo}</h4>
+          <p className="ms-meta mt-0.5">{nota}</p>
+        </div>
+        <AbrirRenglones
+          que={tipo === "INPUT" ? ["entrada", "entradas"] : ["salida", "salidas"]}
+          trabajando={trabajando}
+          onAbrir={(cantidad) => abrir(tipo, cantidad)}
+        />
       </div>
 
       {filas.length === 0 ? (
@@ -545,6 +583,7 @@ function TablaPuertos({
                       <input
                         value={valor(f, "nombre")}
                         onChange={(e) => escribir(f, "nombre", e.target.value)}
+                        placeholder="Por capturar"
                         className="ms-input-inline w-full"
                       />
                       {deLaFecha && <span className="ms-badge ms-badge-amber mt-1 inline-block">de esta fecha</span>}

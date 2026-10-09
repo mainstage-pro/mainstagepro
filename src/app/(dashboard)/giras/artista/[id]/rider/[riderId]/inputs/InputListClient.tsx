@@ -5,6 +5,7 @@ import { PLANTILLA_INPUT_BANDA, SOPORTES_MIC, SOPORTE_MIC_LABEL } from "@/lib/gi
 import { useAutoguardadoCanales } from "@/hooks/useAutoguardadoCanales";
 import EstadoGuardado from "@/components/EstadoGuardado";
 import { FilaArrastrable, TablaOrdenable, ThArrastre } from "@/components/ui/TablaOrdenable";
+import AbrirRenglones from "@/components/giras/AbrirRenglones";
 import ImportarCanales, { type RiderOrigen } from "../ImportarCanales";
 import AvisoFechasAjustadas from "../AvisoFechasAjustadas";
 import type { FechaConAjuste } from "@/lib/show-canales";
@@ -82,25 +83,25 @@ export default function InputListClient({
   const [filas, setFilas] = useState<Fila[]>(canalesIniciales.map(aFila));
   const [divergencias, setDivergencias] = useState(divergenciasIniciales);
 
+  /// Todo renglón viaja, con nombre o sin él: un renglón abierto es un canal que
+  /// ya cuenta y lleva su número aunque todavía no se sepa qué entra por ahí.
   const aPayload = useCallback(
     (fs: Fila[]) =>
-      fs
-        .filter((f) => f.nombre.trim())
-        .map((f, i) => ({
-          clave: f.clave,
-          canal: {
-            id: f.id,
-            numero: i + 1,
-            nombre: f.nombre,
-            instrumento: f.instrumento,
-            microfono: f.microfono,
-            alternativas: f.alternativas,
-            soporte: f.soporte,
-            phantom: f.phantom,
-            inserto: f.inserto,
-            notas: f.notas,
-          },
-        })),
+      fs.map((f, i) => ({
+        clave: f.clave,
+        canal: {
+          id: f.id,
+          numero: i + 1,
+          nombre: f.nombre,
+          instrumento: f.instrumento,
+          microfono: f.microfono,
+          alternativas: f.alternativas,
+          soporte: f.soporte,
+          phantom: f.phantom,
+          inserto: f.inserto,
+          notas: f.notas,
+        },
+      })),
     [],
   );
 
@@ -119,6 +120,12 @@ export default function InputListClient({
 
   function agregar() {
     setFilas((prev) => [...prev, filaVacia()]);
+  }
+
+  /// Abre N renglones de un golpe: cuando ya se sabe que son 32 canales, se
+  /// numeran los 32 y el detalle se llena después.
+  function abrir(cantidad: number) {
+    setFilas((prev) => [...prev, ...Array.from({ length: cantidad }, filaVacia)]);
   }
 
   function quitar(clave: string) {
@@ -140,15 +147,10 @@ export default function InputListClient({
     ]);
   }
 
-  // El canal se cuenta sobre lo que de verdad se guarda: la fila a medio
-  // capturar no existe en el rider y no se puede llevar un número.
-  const numeroPorClave = new Map<string, number>();
-  for (const f of filas) {
-    if (f.nombre.trim()) numeroPorClave.set(f.clave, numeroPorClave.size + 1);
-  }
-
-  const conNombre = numeroPorClave.size;
-  const faltanCanales = canalesMinimos !== null && conNombre > canalesMinimos;
+  // El número es la posición en la lista: el renglón abierto ya ocupa un canal de
+  // consola aunque todavía no diga qué entra por él.
+  const porCapturar = filas.filter((f) => !f.nombre.trim()).length;
+  const faltanCanales = canalesMinimos !== null && filas.length > canalesMinimos;
 
   return (
     <div className="ms-page space-y-4">
@@ -176,14 +178,20 @@ export default function InputListClient({
           <button className="ms-btn-ghost" onClick={agregar}>
             + Canal
           </button>
+          <AbrirRenglones que={["canal", "canales"]} onAbrir={abrir} />
           <EstadoGuardado estado={estado} onReintentar={guardarYa} />
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="ms-stat-card">
-          <p className="ms-label">Canales capturados</p>
-          <p className="text-xl font-semibold mt-1 text-white">{conNombre}</p>
+          <p className="ms-label">Canales de la lista</p>
+          <p className="text-xl font-semibold mt-1 text-white">{filas.length}</p>
+          {porCapturar > 0 && (
+            <p className="ms-micro text-amber-300 mt-0.5">
+              {porCapturar} {porCapturar === 1 ? "renglón" : "renglones"} sin capturar
+            </p>
+          )}
         </div>
         <div className="ms-stat-card">
           <p className="ms-label">Canales mínimos de la ficha</p>
@@ -225,10 +233,10 @@ export default function InputListClient({
               </tr>
             </thead>
             <tbody>
-              {filas.map((f) => (
+              {filas.map((f, i) => (
                 <FilaArrastrable key={f.clave} clave={f.clave} titulo="Arrastrar para cambiar el número de canal">
                   <td className="ms-td">
-                    <span className="font-semibold text-white tabular-nums">{numeroPorClave.get(f.clave) ?? "—"}</span>
+                    <span className="font-semibold text-white tabular-nums">{i + 1}</span>
                   </td>
                   <td className="ms-td">
                     <input
@@ -237,7 +245,6 @@ export default function InputListClient({
                       value={f.nombre}
                       onChange={(e) => set(f.clave, { nombre: e.target.value })}
                     />
-                    {!f.nombre.trim() && <span className="ms-micro text-amber-300">sin nombre no se guarda</span>}
                     <AvisoFechasAjustadas
                       riderId={riderId}
                       canalId={f.id}
@@ -332,6 +339,7 @@ export default function InputListClient({
           <button className="ms-btn-ghost" onClick={agregar}>
             + Canal
           </button>
+          <AbrirRenglones que={["canal", "canales"]} onAbrir={abrir} />
           <EstadoGuardado estado={estado} onReintentar={guardarYa} />
           <span className="ms-micro">
             El número de canal es la posición en la lista: arrastra el renglón por la manija para renumerar.

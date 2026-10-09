@@ -65,10 +65,10 @@ export function camposDeCanal(
   const esInput = tipo === "INPUT";
   const data: Record<string, unknown> = {};
 
+  // El nombre puede quedar vacío: un renglón abierto es un canal que ya cuenta
+  // en la lista y todavía no se sabe qué va a entrar por él.
   if ("nombre" in body) {
-    const nombre = typeof body.nombre === "string" ? body.nombre.trim() : "";
-    if (!nombre) return { error: "El canal necesita un nombre" };
-    data.nombre = nombre;
+    data.nombre = typeof body.nombre === "string" ? body.nombre.trim() : "";
   }
 
   for (const campo of ["instrumento", "microfono", "notas"] as const) {

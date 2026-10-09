@@ -26,6 +26,7 @@ import {
   TIPO_SALIDA_LABEL,
 } from "@/lib/giras";
 import type { FilaCanal, ListasDelShow, TipoCanal } from "@/lib/show-canales";
+import AbrirRenglones from "./AbrirRenglones";
 
 interface Props {
   showId: string;
@@ -188,6 +189,27 @@ export default function CanalesShow({ showId, listas, invitados, onListas, onInv
 
   /// Borra el `ShowCanal` del renglón. En un canal propio de la fecha es quitarlo
   /// de la lista; en un ajuste es devolver el renglón a como lo dice el rider.
+  /// Abre N renglones vacíos en la cola de la fecha: cuando ya se sabe que son 32
+  /// entradas, se numeran las 32 de una vez y el nombre se llena después.
+  async function abrir(tipo: TipoCanal, cantidad: number) {
+    setTrabajando(true);
+    try {
+      const res = await fetch(`/api/gira-shows/${showId}/canales`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo, cantidad }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(d.error ?? "No se pudieron abrir los canales");
+        return;
+      }
+      if (d.listas) onListas(d.listas as ListasDelShow);
+    } finally {
+      setTrabajando(false);
+    }
+  }
+
   async function borrarCanal(fila: FilaCanal): Promise<void> {
     if (!fila.canalShowId) return;
     const res = await fetch(`/api/show-canales/${fila.canalShowId}`, { method: "DELETE" });
@@ -539,6 +561,8 @@ export default function CanalesShow({ showId, listas, invitados, onListas, onInv
         subirAlRider={subirAlRider}
         reordenar={reordenar}
         reordenando={reordenando === "INPUT"}
+        abrir={abrir}
+        trabajando={trabajando}
       />
 
       <TablaCanales
@@ -554,6 +578,8 @@ export default function CanalesShow({ showId, listas, invitados, onListas, onInv
         subirAlRider={subirAlRider}
         reordenar={reordenar}
         reordenando={reordenando === "OUTPUT"}
+        abrir={abrir}
+        trabajando={trabajando}
       />
 
       {listas.quitados.length > 0 && (
@@ -604,6 +630,8 @@ interface TablaProps {
   subirAlRider: (fila: FilaCanal) => Promise<void>;
   reordenar: (tipo: TipoCanal, ids: string[]) => Promise<void>;
   reordenando: boolean;
+  abrir: (tipo: TipoCanal, cantidad: number) => Promise<void>;
+  trabajando: boolean;
 }
 
 function TablaCanales({
@@ -619,6 +647,8 @@ function TablaCanales({
   subirAlRider,
   reordenar,
   reordenando,
+  abrir,
+  trabajando,
 }: TablaProps) {
   const esInput = tipo === "INPUT";
   /// Solo la cola de la fecha se arrastra: los renglones del rider llevan el
@@ -627,9 +657,16 @@ function TablaCanales({
 
   return (
     <section className="space-y-2">
-      <div>
-        <h3 className="ms-section-label">{titulo}</h3>
-        <p className="ms-meta mt-0.5">{nota}</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="ms-section-label">{titulo}</h3>
+          <p className="ms-meta mt-0.5">{nota}</p>
+        </div>
+        <AbrirRenglones
+          que={esInput ? ["entrada", "entradas"] : ["salida", "salidas"]}
+          trabajando={trabajando}
+          onAbrir={(cantidad) => abrir(tipo, cantidad)}
+        />
       </div>
 
       {filas.length === 0 ? (
@@ -696,6 +733,7 @@ function TablaCanales({
                       <input
                         value={valor(f, "nombre")}
                         onChange={(e) => escribir(f, "nombre", e.target.value)}
+                        placeholder="Por capturar"
                         className="ms-input-inline w-full"
                       />
                       {delShow && <span className="ms-badge ms-badge-amber mt-1 inline-block">de esta fecha</span>}

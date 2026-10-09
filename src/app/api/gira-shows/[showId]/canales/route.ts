@@ -29,10 +29,24 @@ function texto(v: unknown): string | null {
   return typeof v === "string" && v.trim() ? v.trim() : null;
 }
 
+/// Hasta cuántos renglones se abren de un golpe. El tope es para que un dedo
+/// pegado en el teclado no siembre mil canales.
+const TOPE_CANTIDAD = 128;
+
+function cuantos(v: unknown): number | null {
+  if (v === undefined || v === null) return null;
+  const n = Math.trunc(Number(v));
+  return Number.isFinite(n) && n >= 1 && n <= TOPE_CANTIDAD ? n : null;
+}
+
 /**
  * Un canal a mano: lo que se agregó en plaza y no cae en la lista corta de
  * requerimientos (el talkback del road manager, el shout del DJ). Puede o no
  * colgar de un invitado.
+ *
+ * Con `cantidad` se abren N renglones vacíos de una vez: cuando ya se sabe que
+ * son 32 entradas, se numeran las 32 y el nombre se llena después. Sin ella es
+ * el alta de un canal con todo capturado.
  *
  * El número no se acepta del cliente — lo pone el servidor a continuación del
  * rider maestro.
@@ -52,8 +66,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ sho
   }
   const tipo = body.tipo;
 
-  const nombre = texto(body.nombre);
-  if (!nombre) return NextResponse.json({ error: "El canal necesita un nombre" }, { status: 400 });
+  const cantidad = cuantos(body.cantidad);
 
   // Un canal puede colgar de un invitado, pero solo de uno de ESTE show: con el
   // id de otra fecha la cascada borraría un canal que no le toca.
@@ -85,6 +98,36 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ sho
   ]);
 
   const numero = siguienteNumero(tipo, rider?.canales ?? [], delShow);
+  const lado = tipo === "INPUT" ? "entrada" : "salida";
+
+  // Renglones abiertos: nacen vacíos y corridos. Ninguno es estéreo, así que
+  // cada uno se lleva un canal y los números van de uno en uno.
+  if (cantidad) {
+    await prisma.showCanal.createMany({
+      data: Array.from({ length: cantidad }, (_, i) => ({
+        showId,
+        invitadoId,
+        tipo,
+        numero: numero + i,
+        nombre: "",
+        orden: (max._max.orden ?? 0) + (i + 1) * 10,
+      })),
+    });
+
+    await logActividad(
+      session.id,
+      "CREAR",
+      "ShowCanal",
+      showId,
+      `Abrió ${cantidad} ${cantidad === 1 ? lado : `${lado}s`} en la lista de esta fecha`,
+      { showId, cantidad },
+    );
+
+    return NextResponse.json({ listas: await listasDelShow(showId) });
+  }
+
+  const nombre = texto(body.nombre);
+  if (!nombre) return NextResponse.json({ error: "El canal necesita un nombre" }, { status: 400 });
 
   const canal = await prisma.showCanal.create({
     data: {
@@ -110,7 +153,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ sho
     "CREAR",
     "ShowCanal",
     canal.id,
-    `Agregó ${tipo === "INPUT" ? "la entrada" : "la salida"} ${numero} «${nombre}» a esta fecha`,
+    `Agregó la ${lado} ${numero} «${nombre}» a esta fecha`,
     { showId, invitadoId },
   );
 

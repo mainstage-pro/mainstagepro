@@ -33,10 +33,10 @@ export function camposDePuerto(
 ): { data: Record<string, unknown> } | { error: string } {
   const data: Record<string, unknown> = {};
 
+  // El nombre puede quedar vacío: un renglón abierto es un puerto que ya existe
+  // en la interfaz y todavía no se sabe qué se le va a cablear.
   if ("nombre" in body) {
-    const nombre = typeof body.nombre === "string" ? body.nombre.trim() : "";
-    if (!nombre) return { error: "El puerto necesita un nombre" };
-    data.nombre = nombre;
+    data.nombre = typeof body.nombre === "string" ? body.nombre.trim() : "";
   }
 
   if ("notas" in body) {

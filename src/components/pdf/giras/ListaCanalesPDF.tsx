@@ -80,13 +80,20 @@ const COLS_PRE_PATCH: ColumnaTabla[] = [
   { label: "Notas", flex: 3 },
 ];
 
+/// Un renglón abierto es un canal que ya cuenta y todavía no se sabe qué va por
+/// él: en papel sale con su número y una raya, no en blanco, para que quien
+/// cablea vea que el lugar está apartado.
+function oGuion(nombre: string): string {
+  return nombre.trim() || "—";
+}
+
 function tablaPrePatch(puertos: PuertoPrePatch[]): RenglonTabla[] {
   return puertos.map((p) => ({
     tipo: "fila",
     clave: p.id,
     celdas: [
       { texto: String(p.puerto), fuerte: true },
-      { texto: p.nombre, grande: true },
+      { texto: oGuion(p.nombre), grande: true },
       { texto: p.notas ?? "—" },
     ],
   }));
@@ -101,7 +108,7 @@ export function ListaCanales({ inputs, outputs }: { inputs: CanalInput[]; output
     celdas: [
       { texto: String(c.numero), fuerte: true },
       {
-        texto: c.nombre,
+        texto: oGuion(c.nombre),
         sub: [c.instrumento, c.inserto ? `Inserto: ${c.inserto}` : null, c.notas].filter(Boolean).join(" · ") || null,
         // El nombre del canal es lo que se grita entre escenario y FOH.
         grande: true,
@@ -120,7 +127,7 @@ export function ListaCanales({ inputs, outputs }: { inputs: CanalInput[]; output
       clave: lado ? `${c.id}-${lado}` : c.id,
       celdas: [
         { texto: String(canal), fuerte: true },
-        { texto: lado ? `${c.nombre} ${lado}` : c.nombre, sub: c.notas, grande: true },
+        { texto: lado ? `${oGuion(c.nombre)} ${lado}` : oGuion(c.nombre), sub: c.notas, grande: true },
         { texto: c.tipoSalidaLabel ?? "—" },
         { texto: c.estereo ? "Estéreo" : "Mono" },
         { texto: c.paraQuien ?? "—" },
