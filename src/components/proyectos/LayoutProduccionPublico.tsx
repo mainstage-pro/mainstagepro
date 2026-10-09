@@ -154,17 +154,18 @@ export default function LayoutProduccionPublico({ doc }: { doc: DocumentoLayout 
             <rect x={0} y={0} width={VB_ANCHO} height={vbLargo} fill="#0d0d0d" stroke="#2a2a2a" strokeWidth="0.5" />
             <rect x={0} y={0} width={VB_ANCHO} height={vbLargo} fill="url(#rej)" />
 
-            {piezas.map(p => (
-              <rect
-                key={p.id}
-                x={p.x * pxPorM} y={p.y * pxPorM}
-                width={Math.max(0.6, p.anchoM * pxPorM)} height={Math.max(0.6, p.largoM * pxPorM)}
-                transform={`rotate(${p.rot} ${(p.x + p.anchoM / 2) * pxPorM} ${(p.y + p.largoM / 2) * pxPorM})`}
-                fill={p.colgado ? "#1d2436" : "#1a1a1a"}
-                stroke={p.colgado ? "#3c4a6b" : "#2e2e2e"}
-                strokeWidth={0.35}
-              />
-            ))}
+            {areasZona.map(a => {
+              const activa = abierta === a.clave;
+              return (
+                <rect
+                  key={a.id}
+                  onClick={() => abrir(a.clave)} className="cursor-pointer"
+                  x={a.x * pxPorM} y={a.y * pxPorM} width={a.anchoM * pxPorM} height={a.largoM * pxPorM} rx={1}
+                  fill={a.color} fillOpacity={activa ? 0.34 : 0.16}
+                  stroke={a.color} strokeOpacity={activa ? 1 : 0.85} strokeWidth={activa ? 1.3 : 0.7}
+                />
+              );
+            })}
 
             {areasSub.map(a => (
               <rect
@@ -175,8 +176,34 @@ export default function LayoutProduccionPublico({ doc }: { doc: DocumentoLayout 
               />
             ))}
 
+            {/* El equipo va encima de las áreas: si queda debajo, el tinte de la zona lo apaga. */}
+            {piezas.map(p => {
+              const x = p.x * pxPorM;
+              const y = p.y * pxPorM;
+              const w = Math.max(0.6, p.anchoM * pxPorM);
+              const h = Math.max(0.6, p.largoM * pxPorM);
+              const giro = `rotate(${p.rot} ${x + w / 2} ${y + h / 2})`;
+              return p.imagenUrl ? (
+                <image
+                  key={p.id} href={p.imagenUrl} transform={giro}
+                  x={x} y={y} width={w} height={h}
+                  preserveAspectRatio="xMidYMid meet"
+                  style={{ pointerEvents: "none" }}
+                />
+              ) : (
+                <rect
+                  key={p.id} transform={giro}
+                  x={x} y={y} width={w} height={h}
+                  fill={p.colgado ? "#1d2436" : "#1a1a1a"}
+                  stroke={p.colgado ? "#3c4a6b" : "#2e2e2e"}
+                  strokeWidth={0.35}
+                  style={{ pointerEvents: "none" }}
+                />
+              );
+            })}
+
+            {/* Los rótulos al final: tienen que leerse encima del equipo. */}
             {areasZona.map(a => {
-              const activa = abierta === a.clave;
               const bx = a.x * pxPorM;
               const by = a.y * pxPorM;
               const bw = a.anchoM * pxPorM;
@@ -184,23 +211,16 @@ export default function LayoutProduccionPublico({ doc }: { doc: DocumentoLayout 
               const pad = r.fs * 0.5;
               const tx = bx + 0.6 + pad;
               return (
-                <g key={a.id} onClick={() => abrir(a.clave)} className="cursor-pointer">
-                  <rect
-                    x={bx} y={by} width={bw} height={a.largoM * pxPorM} rx={1}
-                    fill={a.color} fillOpacity={activa ? 0.34 : 0.16}
-                    stroke={a.color} strokeOpacity={activa ? 1 : 0.85} strokeWidth={activa ? 1.3 : 0.7}
-                  />
+                <g key={`r${a.id}`} style={{ pointerEvents: "none" }}>
                   <rect
                     x={bx + 0.6} y={by + 0.6}
                     width={Math.min(bw - 1.2, r.ancho + pad * 2)}
                     height={r.lineas.length * r.fs * 1.2 + pad * 1.4}
                     rx={r.fs * 0.3} fill={a.color} fillOpacity={0.95}
-                    style={{ pointerEvents: "none" }}
                   />
                   <text
                     x={tx} y={by + 0.6 + pad * 0.7 + r.fs * 0.92}
                     fill="#050505" fontSize={r.fs} fontWeight={700}
-                    style={{ pointerEvents: "none" }}
                   >
                     {r.lineas.map((l, i) => (
                       <tspan key={i} x={tx} dy={i === 0 ? 0 : r.fs * 1.2}>{l}</tspan>
