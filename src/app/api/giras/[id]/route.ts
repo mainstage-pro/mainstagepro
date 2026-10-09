@@ -98,6 +98,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       : body.rolMainstage || null;
   }
   if (typeof body.moneda === "string" && body.moneda) data.moneda = body.moneda;
+  // Apagar el pre-patch no borra los puertos capturados: deja de pedirlos en cada
+  // fecha, y volver a prenderlo los encuentra como estaban.
+  if (typeof body.conPrePatch === "boolean") data.conPrePatch = body.conPrePatch;
   if ("notas" in body) data.notas = typeof body.notas === "string" && body.notas.trim() ? body.notas.trim() : null;
   if (typeof body.activo === "boolean") data.activo = body.activo;
 

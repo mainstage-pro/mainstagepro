@@ -6219,6 +6219,11 @@ model Gira {
   rolMainstage String? // JSON: claves de ServicioPM que asumimos en esta gira
   moneda       String  @default("MXN")
 
+  /// Esta gira parcha una interfaz antes de la consola y el pre-patch se captura
+  /// en «Invitados y canales». Apagado por default: la mayoría no la ocupa y una
+  /// lista vacía en cada fecha sería ruido.
+  conPrePatch Boolean @default(false)
+
   contactoPrincipalId String?
   contactoPrincipal   ArtistaPersona? @relation("GiraContactoPrincipal", fields: [contactoPrincipalId], references: [id])
 
@@ -6232,6 +6237,7 @@ model Gira {
   shows        GiraShow[]
   cotizaciones Cotizacion[]
 
+  prePatch   PrePatchCanal[]
   crew       GiraCrew[]
   hospedajes GiraHospedaje[]
   roomings   GiraRooming[]
@@ -6294,6 +6300,7 @@ model GiraShow {
   momentos        ShowMomento[]
   invitados       ShowInvitado[]
   canales         ShowCanal[]
+  prePatch        PrePatchCanal[]
   stagePlots      ShowStagePlot[]
   crew            GiraCrew[]
   roomings        GiraRooming[]
@@ -6426,6 +6433,53 @@ model ShowCanal {
   @@index([showId])
   @@index([invitadoId])
   @@map("show_canales")
+}
+
+/// Un puerto del pre-patch de la interfaz.
+///
+/// No es el input list del show: ese dice qué canal de consola es cada
+/// instrumento. Esto dice qué entra y qué sale por cada puerto FÍSICO de la
+/// interfaz que va antes de la consola, que es otro papel y otra numeración —el
+/// puerto 1 de la interfaz no tiene que ser el canal 1 del show—. Es lista libre
+/// a propósito: no cuelga del input list ni se deriva de él.
+///
+/// La interfaz es la misma toda la gira, así que el pre-patch vive en la gira
+/// (`showId` null) y cada fecha puede meterse con él igual que con el rider:
+/// puertos propios de la plaza en la cola y AJUSTES de un puerto de la gira solo
+/// en esa fecha (`baseId`). Borrar el ajuste devuelve el puerto a como lo dice la
+/// gira.
+model PrePatchCanal {
+  id     String @id @default(cuid())
+  giraId String
+  gira   Gira   @relation(fields: [giraId], references: [id], onDelete: Cascade)
+
+  /// Null = puerto de toda la gira. Con fecha = puerto que solo existe en esa
+  /// plaza o, si trae `baseId`, el ajuste de un puerto de la gira.
+  showId String?
+  show   GiraShow? @relation(fields: [showId], references: [id], onDelete: Cascade)
+
+  /// El puerto de la gira con el que se está metiendo esta fecha.
+  baseId  String?
+  base    PrePatchCanal?  @relation("AjustesPrePatch", fields: [baseId], references: [id], onDelete: Cascade)
+  ajustes PrePatchCanal[] @relation("AjustesPrePatch")
+
+  /// Solo en ajustes: en esta plaza ese puerto de la gira no se parcha y sale de
+  /// la lista. Lo que viene después se recorre.
+  oculto Boolean @default(false)
+
+  tipo   String // INPUT|OUTPUT
+  nombre String
+  notas  String?
+  orden  Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// Una fecha ajusta un puerto de la gira una sola vez.
+  @@unique([showId, baseId])
+  @@index([giraId, tipo])
+  @@index([showId])
+  @@map("pre_patch_canales")
 }
 
 /// El plano de escenario de esta fecha, en metros y visto desde el público. Es

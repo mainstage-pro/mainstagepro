@@ -26,6 +26,7 @@ import {
   leerSeccionesExtra,
 } from "@/lib/giras";
 import { listasDelShow } from "@/lib/show-canales";
+import { listasDelAlcance } from "@/lib/pre-patch";
 import { logoBase64, nowStr, resolvePdfImage } from "@/components/pdf/PdfShared";
 import {
   PortadaAnexosPDF,
@@ -42,6 +43,7 @@ import {
   type CanalInput,
   type CanalOutput,
   type ListaCanalesData,
+  type PuertoPrePatch,
 } from "@/components/pdf/giras/ListaCanalesPDF";
 import { leerPdfAnexo, resolverImagenAnexo, unirPdfs } from "./anexos";
 import { bufferDePdf, type PdfGira } from "./render";
@@ -366,12 +368,35 @@ async function canalesDeLaFecha(showId: string): Promise<{ inputs: CanalInput[];
   };
 }
 
+/// El pre-patch de la interfaz, si esta gira parcha una. Solo entra a este
+/// documento: es la lista de la casa, no del artista, y el rider no la lleva.
+async function prePatchDelDocumento(
+  giraId: string | null,
+  showId: string | null,
+): Promise<ListaCanalesData["prePatch"]> {
+  if (!giraId) return null;
+  const gira = await prisma.gira.findUnique({ where: { id: giraId }, select: { conPrePatch: true } });
+  if (!gira?.conPrePatch) return null;
+
+  const listas = await listasDelAlcance(giraId, showId);
+  const aPuerto = (f: { id: string; puerto: number; nombre: string; notas: string | null }): PuertoPrePatch => ({
+    id: f.id,
+    puerto: f.puerto,
+    nombre: f.nombre,
+    notas: f.notas,
+  });
+  return { entradas: listas.entradas.map(aPuerto), salidas: listas.salidas.map(aPuerto) };
+}
+
 export async function generarListaCanales(
   riderId: string,
   giraNombre: string | null,
   /// Si se emite desde una fecha, la lista incluye los canales de los invitados
   /// de ese show. Sin él sale la del rider maestro, que es la de toda la gira.
   showId?: string | null,
+  /// El pre-patch vive en la gira, no en el rider: sin gira el documento sale
+  /// solo con las listas de consola.
+  giraId?: string | null,
 ): Promise<PdfGira | null> {
   const rider = await leerRider(riderId);
   if (!rider) return null;
@@ -387,6 +412,7 @@ export async function generarListaCanales(
     giraNombre: [giraNombre, fecha].filter(Boolean).join(" · ") || null,
     inputs,
     outputs,
+    prePatch: await prePatchDelDocumento(giraId ?? null, showId ?? null),
     logoSrc: logoBase64(publicDir),
     logoArtistaSrc: await resolvePdfImage(rider.artista.logoUrl, publicDir),
     generadoEn: nowStr(),

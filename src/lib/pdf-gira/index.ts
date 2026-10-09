@@ -95,7 +95,7 @@ export async function generarDocDeShow(
   // ese show colgaron de la cola del rider maestro.
   if (slug === "input-list") {
     const resuelto = await riderDeGira(giraId);
-    return resuelto ? generarListaCanales(resuelto.riderId, resuelto.giraNombre, showId) : null;
+    return resuelto ? generarListaCanales(resuelto.riderId, resuelto.giraNombre, showId, giraId) : null;
   }
   return generarDocDeGira(slug, giraId, secciones);
 }
@@ -114,6 +114,6 @@ export async function generarDocDeGira(
   // El rider y las listas salen del rider maestro; sin rider no hay documento.
   const resuelto = await riderDeGira(giraId);
   if (!resuelto) return null;
-  if (slug === "input-list") return generarListaCanales(resuelto.riderId, resuelto.giraNombre);
+  if (slug === "input-list") return generarListaCanales(resuelto.riderId, resuelto.giraNombre, null, giraId);
   return generarRiderArtista(resuelto.riderId, resuelto.giraNombre);
 }

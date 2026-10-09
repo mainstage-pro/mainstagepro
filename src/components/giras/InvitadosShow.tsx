@@ -18,13 +18,18 @@ import { useCallback, useRef, useState } from "react";
 import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
 import { REQUERIMIENTOS_INVITADO, ROLES_INVITADO, ROL_INVITADO_LABEL } from "@/lib/giras";
+import type { ListasPrePatch } from "@/lib/pre-patch";
 import type { InvitadoConCanales, ListasDelShow } from "@/lib/show-canales";
 import CanalesShow from "./CanalesShow";
+import PrePatchInterfaz from "./PrePatchInterfaz";
 
 interface Props {
   showId: string;
+  giraId: string;
   invitadosIniciales: InvitadoConCanales[];
   listasIniciales: ListasDelShow;
+  conPrePatch: boolean;
+  prePatchInicial: ListasPrePatch;
 }
 
 interface Nuevo {
@@ -37,7 +42,14 @@ const NUEVO: Nuevo = { nombre: "", rol: "TELONERO", momento: "" };
 
 const DEMORA_GUARDADO = 700;
 
-export default function InvitadosShow({ showId, invitadosIniciales, listasIniciales }: Props) {
+export default function InvitadosShow({
+  showId,
+  giraId,
+  invitadosIniciales,
+  listasIniciales,
+  conPrePatch,
+  prePatchInicial,
+}: Props) {
   const toast = useToast();
   const confirmar = useConfirm();
 
@@ -391,6 +403,15 @@ export default function InvitadosShow({ showId, invitadosIniciales, listasInicia
           invitados={invitados.map((i) => ({ id: i.id, nombre: i.nombre, rol: i.rol }))}
           onListas={setListas}
           onInvitadosDesfasados={() => void cargarInvitados()}
+        />
+
+        {/* Misma pestaña, otra lista: el pre-patch de la interfaz va antes de la
+            consola y no se deriva de los canales de arriba. */}
+        <PrePatchInterfaz
+          giraId={giraId}
+          showId={showId}
+          conPrePatchInicial={conPrePatch}
+          listasIniciales={prePatchInicial}
         />
       </section>
     </div>

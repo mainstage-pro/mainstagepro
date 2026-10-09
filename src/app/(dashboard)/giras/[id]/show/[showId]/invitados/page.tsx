@@ -9,6 +9,7 @@ import {
   riderMaestroDelShow,
   unificarCanales,
 } from "@/lib/show-canales";
+import { listasPrePatchDelShow } from "@/lib/pre-patch";
 import BotonDocumentoGira from "@/components/giras/BotonDocumentoGira";
 import InvitadosShow from "@/components/giras/InvitadosShow";
 
@@ -39,16 +40,25 @@ export default async function InvitadosShowPage({
       fecha: true,
       ciudad: true,
       venue: { select: { nombre: true, ciudad: true } },
-      gira: { select: { id: true, nombre: true, artistaId: true, artista: { select: { nombre: true } } } },
+      gira: {
+        select: {
+          id: true,
+          nombre: true,
+          artistaId: true,
+          conPrePatch: true,
+          artista: { select: { nombre: true } },
+        },
+      },
     },
   });
 
   if (!show) notFound();
 
-  const [rider, invitados, canales] = await Promise.all([
+  const [rider, invitados, canales, prePatch] = await Promise.all([
     riderMaestroDelShow(showId),
     invitadosDelShow(showId),
     canalesDelShow(showId),
+    listasPrePatchDelShow(showId, id),
   ]);
 
   const listas = unificarCanales(rider?.canales ?? [], canales, invitados);
@@ -105,7 +115,14 @@ export default async function InvitadosShowPage({
         </div>
       )}
 
-      <InvitadosShow showId={show.id} invitadosIniciales={invitados} listasIniciales={listas} />
+      <InvitadosShow
+        showId={show.id}
+        giraId={show.giraId}
+        invitadosIniciales={invitados}
+        listasIniciales={listas}
+        conPrePatch={show.gira.conPrePatch}
+        prePatchInicial={prePatch}
+      />
     </div>
   );
 }

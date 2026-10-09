@@ -36,6 +36,13 @@ export interface CanalOutput {
   notas: string | null;
 }
 
+export interface PuertoPrePatch {
+  id: string;
+  puerto: number;
+  nombre: string;
+  notas: string | null;
+}
+
 export interface ListaCanalesData {
   artistaNombre: string;
   riderNombre: string;
@@ -43,6 +50,9 @@ export interface ListaCanalesData {
   giraNombre: string | null;
   inputs: CanalInput[];
   outputs: CanalOutput[];
+  /// Solo si la gira parcha una interfaz antes de la consola. No va dentro del
+  /// rider: la interfaz es de la casa, no del artista.
+  prePatch: { entradas: PuertoPrePatch[]; salidas: PuertoPrePatch[] } | null;
   logoSrc: string | null;
   logoArtistaSrc: string | null;
   generadoEn: string;
@@ -63,6 +73,24 @@ const COLS_OUTPUT: ColumnaTabla[] = [
   { label: "Formato", ancho: 48 },
   { label: "Para quién", flex: 2 },
 ];
+
+const COLS_PRE_PATCH: ColumnaTabla[] = [
+  { label: "Puerto", ancho: 36, alinear: "right" },
+  { label: "Qué se cablea", flex: 3 },
+  { label: "Notas", flex: 3 },
+];
+
+function tablaPrePatch(puertos: PuertoPrePatch[]): RenglonTabla[] {
+  return puertos.map((p) => ({
+    tipo: "fila",
+    clave: p.id,
+    celdas: [
+      { texto: String(p.puerto), fuerte: true },
+      { texto: p.nombre, grande: true },
+      { texto: p.notas ?? "—" },
+    ],
+  }));
+}
 
 /// El bloque de las dos tablas, sin encabezado de documento: lo usa el documento
 /// propio y también la segunda página del rider.
@@ -143,6 +171,23 @@ export function ListaCanalesPDF({ data }: { data: ListaCanalesData }) {
         />
         <Cuerpo>
           <ListaCanales inputs={data.inputs} outputs={data.outputs} />
+
+          {/* Otra lista, no una continuación: el puerto de la interfaz no tiene
+              que coincidir con el canal de consola de arriba. */}
+          {data.prePatch?.entradas.length ? (
+            <Seccion
+              titulo="Pre-patch de interfaz — entradas"
+              nota="Qué entra por cada puerto físico de la interfaz, antes de la consola. La numeración es propia: no sigue al input list."
+            >
+              <Tabla columnas={COLS_PRE_PATCH} renglones={tablaPrePatch(data.prePatch.entradas)} />
+            </Seccion>
+          ) : null}
+
+          {data.prePatch?.salidas.length ? (
+            <Seccion titulo="Pre-patch de interfaz — salidas" nota="Qué sale por cada puerto de la interfaz.">
+              <Tabla columnas={COLS_PRE_PATCH} renglones={tablaPrePatch(data.prePatch.salidas)} />
+            </Seccion>
+          ) : null}
         </Cuerpo>
       </PaginaGira>
     </Document>

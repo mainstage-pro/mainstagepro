@@ -40,6 +40,7 @@ export default async function CanalesGiraLayout({
   const enlaces: EnlaceSub[] = [
     { href: `/giras/${id}/canales`, label: "Input list", llave: "canales-input", exacto: true },
     { href: `/giras/${id}/canales/salidas`, label: "Output list", llave: "canales-output" },
+    { href: `/giras/${id}/canales/pre-patch`, label: "Pre-patch de interfaz", llave: "canales-pre-patch" },
   ];
 
   return (
