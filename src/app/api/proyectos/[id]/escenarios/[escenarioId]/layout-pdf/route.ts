@@ -28,9 +28,13 @@ export async function GET(req: NextRequest, { params }: Params) {
   const resolver = makePdfImageResolver(publicDir);
 
   // Una miniatura por URL, no por renglón: el mismo modelo se repite muchas veces.
+  // El plano también dibuja la foto, y una pieza puede traer una que ya no esté en la lista.
   const urls = [
     ...new Set(
-      doc.zonas.flatMap(z => z.subzonas.flatMap(s => s.equipos.map(e => e.imagenUrl))).filter(Boolean) as string[],
+      [
+        ...doc.zonas.flatMap(z => z.subzonas.flatMap(s => s.equipos.map(e => e.imagenUrl))),
+        ...doc.plano.piezas.map(p => p.imagenUrl),
+      ].filter(Boolean) as string[],
     ),
   ];
   const resueltas = await Promise.all(urls.map(u => resolver(u)));

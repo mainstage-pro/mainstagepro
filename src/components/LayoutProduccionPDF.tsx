@@ -253,6 +253,36 @@ function Fila({ label, valor, acento }: { label: string; valor: string; acento?:
 }
 
 /**
+ * El renderer de react-pdf sí dibuja imágenes dentro del `<Svg>`, pero sus tipos no
+ * declaran las props de SVG (`x`, `y`, `transform`) porque `Image` es la de flujo.
+ */
+const ImagenSvg = Image as unknown as React.ComponentType<{
+  src: string;
+  x: number;
+  y: number;
+  transform?: string;
+  style: { width: number; height: number };
+}>;
+
+/**
+ * Centra la foto dentro de la huella sin deformarla. El SVG de react-pdf ignora
+ * `preserveAspectRatio`, así que el encaje se calcula aquí leyendo el tamaño real
+ * del PNG (cabecera IHDR). Si no se puede leer, la foto llena la huella.
+ */
+function encajar(dataUrl: string, x: number, y: number, w: number, h: number) {
+  const coma = dataUrl.indexOf(",");
+  const cab = coma < 0 ? Buffer.alloc(0) : Buffer.from(dataUrl.slice(coma + 1, coma + 65), "base64");
+  if (cab.length < 24 || cab.toString("ascii", 12, 16) !== "IHDR") return { x, y, w, h };
+  const px = cab.readUInt32BE(16);
+  const py = cab.readUInt32BE(20);
+  if (!px || !py) return { x, y, w, h };
+  const escala = Math.min(w / px, h / py);
+  const ancho = px * escala;
+  const alto = py * escala;
+  return { x: x + (w - ancho) / 2, y: y + (h - alto) / 2, w: ancho, h: alto };
+}
+
+/**
  * El plano cenital, redibujado en vectores para impresión. No es una captura de
  * pantalla: se arma con las mismas áreas y piezas del editor pero en claro, que
  * es como se lee en sitio con una hoja en la mano.
@@ -266,11 +296,13 @@ function Plano({
   ancho,
   alto,
   colorDeZona,
+  thumbs,
 }: {
   doc: DocumentoLayout;
   ancho: number;
   alto: number;
   colorDeZona: (a: Area) => string;
+  thumbs: Record<string, string>;
 }) {
   const { anchoM, largoM, areas, piezas } = doc.plano;
   const escala = Math.min(ancho / anchoM, alto / largoM);
@@ -348,17 +380,30 @@ function Plano({
           />
         ))}
 
-        {piezas.map(p => (
-          <Rect
-            key={p.id}
-            x={dx + p.x * escala} y={dy + p.y * escala}
-            width={Math.max(1.5, p.anchoM * escala)} height={Math.max(1.5, p.largoM * escala)}
-            fill={p.colgado ? "#e6e9f1" : "#e9e7e2"}
-            stroke={p.colgado ? "#7b88a6" : "#a8a49c"}
-            strokeWidth={0.5}
-            strokeDasharray={p.colgado ? "1.6 1.1" : undefined}
-          />
-        ))}
+        {piezas.map(p => {
+          const x = dx + p.x * escala;
+          const y = dy + p.y * escala;
+          const w = Math.max(1.5, p.anchoM * escala);
+          const h = Math.max(1.5, p.largoM * escala);
+          // La rotación de react-pdf dentro del SVG es la estándar siempre que se le
+          // pase el centro; sin él gira alrededor del origen del plano.
+          const giro = p.rot ? `rotate(${p.rot}, ${x + w / 2}, ${y + h / 2})` : undefined;
+          const foto = p.imagenUrl ? thumbs[p.imagenUrl] : undefined;
+          if (foto) {
+            const caja = encajar(foto, x, y, w, h);
+            return <ImagenSvg key={p.id} src={foto} x={caja.x} y={caja.y} style={{ width: caja.w, height: caja.h }} transform={giro} />;
+          }
+          return (
+            <Rect
+              key={p.id}
+              x={x} y={y} width={w} height={h} transform={giro}
+              fill={p.colgado ? "#e6e9f1" : "#e9e7e2"}
+              stroke={p.colgado ? "#7b88a6" : "#a8a49c"}
+              strokeWidth={0.5}
+              strokeDasharray={p.colgado ? "1.6 1.1" : undefined}
+            />
+          );
+        })}
 
         {/* Los rótulos van al final: tienen que quedar encima de las piezas. */}
         {subzonas.map(a => <Rotulo key={`r${a.id}`} a={a} maximo={5.5} mayusculas={false} />)}
@@ -526,7 +571,7 @@ export default function LayoutProduccionPDF({
 
           {/* Centro: el plano. */}
           <View style={{ width: PLANO_ANCHO, marginHorizontal: GAP_COL }}>
-            <Plano doc={doc} ancho={PLANO_ANCHO} alto={PLANO_ALTO} colorDeZona={colorDeZona} />
+            <Plano doc={doc} ancho={PLANO_ANCHO} alto={PLANO_ALTO} colorDeZona={colorDeZona} thumbs={thumbs} />
             <Text style={s.planoPie}>
               VISTA CENITAL · CUADRÍCULA DE 1 m · {plano.anchoM} × {plano.largoM} m
             </Text>
