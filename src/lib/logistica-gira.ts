@@ -7,6 +7,7 @@
  * trae un campo que la página no, la UI se queda a medias al refrescar.
  */
 import type { Prisma } from "@prisma/client";
+import { bloquesNormalizados } from "./giras";
 import { prisma } from "./prisma";
 
 const ORDEN_CANCIONES = [{ orden: "asc" }, { createdAt: "asc" }] as Prisma.GiraSetlistCancionOrderByWithRelationInput[];
@@ -160,6 +161,63 @@ export async function asegurarSetlistDeFecha(giraId: string, showId: string) {
   ]);
 
   return prisma.giraSetlist.findUniqueOrThrow({ where: { id: propio.id }, include: INCLUDE_SETLIST });
+}
+
+/**
+ * Pone a todas las fechas en el orden del base. Es un acto explícito porque la
+ * fecha manda sobre cómo va el show: la siembra nunca mueve lo que ya está ahí,
+ * así que un base reordenado después de que alguien abrió la fecha solo llega
+ * por aquí. Siembra de paso la fecha que todavía no tenía setlist.
+ *
+ * Lo que nació en la noche no está en el base y por eso no tiene lugar propio:
+ * se queda pegado al renglón que hoy lo precede.
+ */
+export async function bajarOrdenDelBase(giraId: string) {
+  const [shows, base] = await Promise.all([
+    prisma.giraShow.findMany({ where: { giraId }, orderBy: { fecha: "asc" }, select: { id: true } }),
+    cancionesDelBase(giraId),
+  ]);
+  if (!base.length) return { fechas: 0, renglones: 0 };
+
+  const posicionEnBase = new Map(base.map((c, i) => [c.id, i]));
+  let fechas = 0;
+  let renglones = 0;
+
+  for (const show of shows) {
+    const setlist = await asegurarSetlistDeFecha(giraId, show.id);
+
+    let ancla = -1;
+    let pegado = 0;
+    const conClave = setlist.canciones.map((c) => {
+      const pos = c.origenId ? posicionEnBase.get(c.origenId) : undefined;
+      if (pos === undefined) return { c, lugar: ancla, pegado: ++pegado };
+      ancla = pos;
+      pegado = 0;
+      return { c, lugar: pos, pegado: 0 };
+    });
+    conClave.sort((a, b) => a.lugar - b.lugar || a.pegado - b.pegado);
+
+    const finales = conClave.map((x) => x.c);
+    const bloques = new Map(bloquesNormalizados(finales).map((b) => [b.id, b]));
+
+    const cambios = finales.flatMap((c, i) => {
+      const b = bloques.get(c.id);
+      if (c.orden === i * 10 && !b) return [];
+      return [
+        prisma.giraSetlistCancion.update({
+          where: { id: c.id },
+          data: b ? { orden: i * 10, bloqueNombre: b.bloqueNombre, bloqueColor: b.bloqueColor } : { orden: i * 10 },
+        }),
+      ];
+    });
+    if (!cambios.length) continue;
+
+    await prisma.$transaction(cambios);
+    fechas++;
+    renglones += cambios.length;
+  }
+
+  return { fechas, renglones };
 }
 
 // ── Candidatos de los selectores ─────────────────────────────────────────────

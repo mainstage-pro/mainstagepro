@@ -420,6 +420,35 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
     }
   }
 
+  /// El orden del base a todas las fechas. La siembra automática nunca mueve lo
+  /// que ya está en una noche, así que reordenar el base no llega solo: esto es
+  /// lo que lo baja, y de paso siembra la fecha que todavía no se había abierto.
+  async function bajarOrden() {
+    const ok = await confirmar({
+      title: "Bajar el orden a todas las fechas",
+      message: `Las ${todasLasFechas.length} fechas de la gira quedan en el orden de este base. Lo que se agregó en una noche —la canción del invitado, el cover— se queda pegado al renglón que hoy lo precede, y el resto de lo capturado en la fecha (tonos, cues, duraciones) no se toca.`,
+      confirmText: "Bajar el orden",
+    });
+    if (!ok) return;
+
+    setTrabajando(true);
+    try {
+      const res = await fetch(`/api/giras/${giraId}/setlists/orden-a-fechas`, { method: "POST" });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(d.error ?? "No se pudo bajar el orden a las fechas");
+        return;
+      }
+      toast.success(
+        d.fechas === 0
+          ? "Las fechas ya estaban en este orden"
+          : `${d.fechas} ${d.fechas === 1 ? "fecha" : "fechas"} al orden del base · ${d.renglones} renglones movidos`,
+      );
+    } finally {
+      setTrabajando(false);
+    }
+  }
+
   async function quitarSetlist(s: SetlistFila) {
     const ok = await confirmar({
       title: "Quitar el setlist",
@@ -463,6 +492,16 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
         </div>
         {alcance === "GIRA" && (
           <div className="flex flex-wrap gap-2">
+            {todasLasFechas.length > 0 && setlists.some((s) => s.esBase && s.canciones.length > 0) && (
+              <button
+                onClick={() => void bajarOrden()}
+                disabled={trabajando}
+                className="ms-btn-secondary disabled:opacity-50"
+                title="Deja las fechas de la gira en el orden de este setlist base"
+              >
+                Bajar el orden a las fechas
+              </button>
+            )}
             <button onClick={() => void crear()} disabled={trabajando} className="ms-btn-secondary disabled:opacity-50">
               Setlist en blanco
             </button>
