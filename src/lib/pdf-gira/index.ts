@@ -8,6 +8,7 @@
 import type { PdfGira } from "./render";
 import { generarDaySheet } from "./day-sheet";
 import { generarAdvanceShow } from "./advance";
+import { generarTransporteProduccion } from "./transporte";
 import { generarListaCanales, generarRiderArtista } from "./rider";
 import { generarLibroGira, parseSecciones } from "./libro";
 import { elegirSetlist, generarSetlistDoc } from "./setlist-doc";
@@ -51,6 +52,12 @@ export const DOCUMENTOS_GIRA = {
     ambito: "SHOW",
     label: "Advance del show",
     descripcion: "Lo que pide el rider contra lo que pone el venue y lo que falta cerrar. Sin costos ni proveedores.",
+  },
+  transporte: {
+    ambito: "SHOW",
+    label: "Transporte de producción",
+    descripcion: "Los traslados de Mainstage para esta fecha: quién sale, a qué hora y en qué. Sin el transporte del artista.",
+    falta: "un traslado de producción capturado en Logística",
   },
   rider: {
     ambito: "GIRA",
@@ -103,6 +110,7 @@ export async function generarDocDeShow(
 ): Promise<PdfGira | null> {
   if (slug === "day-sheet") return generarDaySheet(showId);
   if (slug === "advance") return generarAdvanceShow(showId);
+  if (slug === "transporte") return generarTransporteProduccion(showId);
   // El setlist es de gira, pero cada fecha puede tener su variante: desde un
   // show se emite la de ese show y, si no la capturaron, el base avisando.
   if (slug === "setlist") return generarSetlistDoc(giraId, showId);

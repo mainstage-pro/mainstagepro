@@ -55,6 +55,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ca
   }
 
   if ("conTrack" in body) data.conTrack = !!body.conTrack;
+  if ("nuevoBloque" in body) data.nuevoBloque = !!body.nuevoBloque;
 
   // El color termina pintado en un style inline y en el relleno del PDF, así que
   // entra como hexadecimal o no entra. Vacío significa "el de la paleta".

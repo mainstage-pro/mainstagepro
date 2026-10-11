@@ -43,6 +43,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       giraId: id,
       showId: typeof body.showId === "string" && body.showId ? body.showId : null,
       crewId: typeof body.crewId === "string" && body.crewId ? body.crewId : null,
+      personaId: typeof body.personaId === "string" && body.personaId ? body.personaId : null,
       tipo,
       ...Object.fromEntries(
         TEXTO.map((campo) => {

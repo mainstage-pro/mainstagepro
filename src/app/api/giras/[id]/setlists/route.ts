@@ -79,6 +79,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                 orden: c.orden,
                 titulo: c.titulo,
                 artistaInvitado: c.artistaInvitado,
+                nuevoBloque: c.nuevoBloque,
                 bloqueNombre: c.bloqueNombre,
                 bloqueColor: c.bloqueColor,
                 duracionSeg: c.duracionSeg,

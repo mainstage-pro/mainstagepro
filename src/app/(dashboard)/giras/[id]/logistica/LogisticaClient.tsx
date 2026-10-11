@@ -67,6 +67,8 @@ export interface ViajeFila {
   id: string;
   showId: string | null;
   crewId: string | null;
+  personaId: string | null;
+  nombreLibre: string | null;
   tipo: string;
   concepto: string | null;
   origen: string | null;
@@ -346,14 +348,6 @@ export default function LogisticaClient({
   const opcionesOcupante: ComboboxOption[] = useMemo(
     () => [{ value: "", label: "— Sin asignar —" }, ...ocupantes.map((o) => ({ value: o.valor, label: o.etiqueta, group: o.grupo }))],
     [ocupantes],
-  );
-
-  const opcionesCrew: ComboboxOption[] = useMemo(
-    () => [
-      { value: "", label: "— Todo el grupo —" },
-      ...crew.map((c) => ({ value: c.id, label: `${c.nombre} — ${c.funcion}`, group: "Crew" })),
-    ],
-    [crew],
   );
 
   const hotelesVisibles = useMemo(() => {
@@ -840,8 +834,11 @@ export default function LogisticaClient({
                           editarViaje(
                             v.id,
                             // Al volverse grupal el renglón deja de ser de una persona:
-                            // si se quedara el crewId, el vuelo del grupo parecería de uno.
-                            e.target.checked ? { esGrupal: true, crewId: null } : { esGrupal: false },
+                            // si se quedara alguien asignado, el traslado del grupo
+                            // parecería de uno solo.
+                            e.target.checked
+                              ? { esGrupal: true, crewId: null, personaId: null }
+                              : { esGrupal: false },
                             true,
                           )
                         }
@@ -850,12 +847,26 @@ export default function LogisticaClient({
                     </td>
                     <td className="ms-td">
                       <Combobox
-                        value={v.crewId ?? ""}
-                        onChange={(nuevo) => editarViaje(v.id, { crewId: nuevo || null, esGrupal: nuevo ? false : v.esGrupal }, true)}
-                        options={opcionesCrew}
+                        value={claveRooming(v)}
+                        onChange={(nuevo) =>
+                          editarViaje(
+                            v.id,
+                            { ...partirClaveRooming(nuevo), esGrupal: nuevo ? false : v.esGrupal },
+                            true,
+                          )
+                        }
+                        options={opcionesOcupante}
                         placeholder="Todo el grupo"
                         className="ms-input-inline w-full"
                       />
+                      {!v.crewId && !v.personaId && (
+                        <input
+                          value={v.nombreLibre ?? ""}
+                          onChange={(e) => editarViaje(v.id, { nombreLibre: e.target.value })}
+                          placeholder="o escribe el nombre"
+                          className="ms-input-inline w-full mt-1"
+                        />
+                      )}
                     </td>
                     <td className="ms-td">
                       <select

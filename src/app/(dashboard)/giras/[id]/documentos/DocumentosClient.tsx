@@ -42,6 +42,7 @@ import {
   SlidersHorizontal,
   Theater,
   Trash2,
+  Truck,
   Upload,
   Users,
   Utensils,
@@ -150,6 +151,7 @@ const DOCS_GIRA = [
 const DOCS_PLAZA = [
   { slug: "day-sheet", label: "Day sheet", icono: CalendarDays },
   { slug: "advance", label: "Advance", icono: ClipboardCheck },
+  { slug: "transporte", label: "Transporte", icono: Truck },
   { slug: "setlist", label: "Setlist", icono: ListMusic },
   { slug: "setlist-escenario", label: "Escenario", icono: Theater },
 ] as const;

@@ -34,7 +34,7 @@ import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
 import BotonDocumentoGira from "@/components/giras/BotonDocumentoGira";
 import {
-  bloquesNormalizados,
+  agruparEnBloques,
   COLORES_BLOQUE,
   esCancion,
   fmtFechaCorta,
@@ -51,6 +51,7 @@ export interface CancionFila {
   orden: number;
   titulo: string;
   artistaInvitado: string | null;
+  nuevoBloque: boolean;
   bloqueNombre: string | null;
   bloqueColor: string | null;
   duracionSeg: number | null;
@@ -154,6 +155,10 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
   // Qué renglón tiene abierto el selector de fechas, por la misma razón que la
   // paleta: se despliega en un renglón propio debajo y no flotando.
   const [fechas, setFechas] = useState<string | null>(null);
+  // La clave del bloque que se está arrastrando por su encabezado, con drag
+  // nativo del navegador y no dnd-kit: así no compite con el arrastre de
+  // canciones sueltas, que ya vive en su propio sensor.
+  const [bloqueArrastrando, setBloqueArrastrando] = useState<string | null>(null);
 
   // Los temporizadores viven en un ref: si se recrearan en cada render, cada
   // tecla abriría un guardado nuevo en vez de reemplazar el pendiente.
@@ -198,11 +203,15 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
     timers.set(cancionId, setTimeout(() => void guardar(), DEMORA_GUARDADO));
   }
 
-  async function agregarCancion(setlistId: string, tipo = "CANCION"): Promise<CancionFila | null> {
+  async function agregarCancion(
+    setlistId: string,
+    tipo = "CANCION",
+    extra: Record<string, unknown> = {},
+  ): Promise<CancionFila | null> {
     const res = await fetch(`/api/gira-setlists/${setlistId}/canciones`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ titulo: "", tipo }),
+      body: JSON.stringify({ titulo: "", tipo, ...extra }),
     });
     const d = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -220,13 +229,11 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
     if (c) setFocoInvitado(c.id);
   }
 
-  /// Un bloque nuevo es la pausa que lo abre más su primera canción: sin la
-  /// pausa el renglón se pegaría a la tanda anterior, y sin la canción el
-  /// bloque no existiría todavía.
+  /// El bloque nuevo nace marcado (nuevoBloque) y al final de la lista; se
+  /// arrastra a donde debe abrir la tanda. Ya no hace falta una pausa que lo
+  /// anuncie: el renglón que abre el bloque puede ser cualquier tipo.
   async function agregarBloque(setlistId: string) {
-    const hayFilas = (setlists.find((s) => s.id === setlistId)?.canciones.length ?? 0) > 0;
-    if (hayFilas) await agregarCancion(setlistId, "PAUSA");
-    await agregarCancion(setlistId);
+    await agregarCancion(setlistId, "CANCION", { nuevoBloque: true });
   }
 
   async function reordenar(setlistId: string, e: DragEndEvent) {
@@ -241,15 +248,42 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
     const hasta = s.canciones.findIndex((c) => c.id === over.id);
     if (desde < 0 || hasta < 0) return;
 
-    // El nombre y el color del bloque se reacomodan igual que en el servidor
-    // para que la pantalla no muestre un bloque bautizado que al recargar
-    // aparece sin nombre.
-    const movidas = arrayMove(s.canciones, desde, hasta).map((c, i) => ({ ...c, orden: i * 10 }));
-    const bloques = new Map(bloquesNormalizados(movidas).map((c) => [c.id, c]));
-    const finales = movidas.map((c) => {
-      const b = bloques.get(c.id);
-      return b ? { ...c, bloqueNombre: b.bloqueNombre, bloqueColor: b.bloqueColor } : c;
+    // El nombre, el color y el nuevoBloque de cada fila viajan con ella: no hay
+    // nada que recalcular al moverla, a diferencia del modelo viejo.
+    const finales = arrayMove(s.canciones, desde, hasta).map((c, i) => ({ ...c, orden: i * 10 }));
+
+    setSetlists((prev) => prev.map((x) => (x.id === setlistId ? { ...x, canciones: finales } : x)));
+
+    const res = await fetch(`/api/gira-setlists/${setlistId}/canciones/orden`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: finales.map((c) => c.id) }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "No se pudo guardar el nuevo orden");
+      setSetlists(previo);
+    }
+  }
+
+  /// Lo mismo que reordenar() pero moviendo un bloque entero —su encabezado más
+  /// las filas que le siguen— de un jalón, para reubicar tandas completas sin
+  /// arrastrar renglón por renglón.
+  async function moverBloque(setlistId: string, claveOrigen: string, claveDestino: string) {
+    if (claveOrigen === claveDestino) return;
+
+    const previo = setlists;
+    const s = previo.find((x) => x.id === setlistId);
+    if (!s) return;
+
+    const grupos = agruparEnBloques(s.canciones);
+    const desde = grupos.findIndex((g) => g.clave === claveOrigen);
+    const hasta = grupos.findIndex((g) => g.clave === claveDestino);
+    if (desde < 0 || hasta < 0) return;
+
+    const finales = arrayMove(grupos, desde, hasta)
+      .flatMap((g) => g.filas)
+      .map((c, i) => ({ ...c, orden: i * 10 }));
 
     setSetlists((prev) => prev.map((x) => (x.id === setlistId ? { ...x, canciones: finales } : x)));
 
@@ -266,6 +300,19 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
   }
 
   async function quitarCancion(setlistId: string, cancion: CancionFila) {
+    // El nombre y el color del bloque viven en la fila que lo abre (nuevoBloque),
+    // sea canción o momento: quitarla se los lleva con ella y la tanda se funde
+    // con la anterior. Sin aviso, el nombre se pierde en silencio.
+    if (cancion.nuevoBloque && cancion.bloqueNombre?.trim()) {
+      const ok = await confirmar({
+        title: `Quitar «${esCancion(cancion.tipo) ? cancion.titulo || "sin título" : TIPO_FILA_SETLIST_LABEL[cancion.tipo] ?? cancion.tipo}»`,
+        message: `Este renglón es el encabezado del bloque «${cancion.bloqueNombre}». Al quitarlo, esa tanda pierde el nombre y sus canciones se funden con el bloque anterior.`,
+        confirmText: "Quitar de todos modos",
+        danger: true,
+      });
+      if (!ok) return;
+    }
+
     // Quitar de una noche un renglón que vino del base le cambia el alcance al
     // base, que es lo único que evita que la siembra lo regrese. Se avisa.
     if (alcance === "SHOW" && cancion.origenId) {
@@ -487,7 +534,8 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
             {alcance === "SHOW"
               ? "Lo que va esta noche. El base de la gira decide qué renglones llegan aquí; lo que cambies en esta tabla —orden, tono, cues— se queda en esta fecha."
               : "El repertorio completo de la gira. Cada renglón va a todas las fechas salvo que en la columna Fechas le marques en cuáles; las fechas se siembran de aquí al abrir su pestaña."}{" "}
-            Arrastra un renglón de la manija para moverlo de lugar o de bloque.
+            Arrastra un renglón de la manija para moverlo de lugar o de bloque; arrastra el ⠿⠿ del encabezado de un
+            bloque para reubicar la tanda completa.
           </p>
         </div>
         {alcance === "GIRA" && (
@@ -523,7 +571,7 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
           const segundos = s.canciones.reduce((t, c) => t + (c.duracionSeg ?? 0), 0);
           const segmentos = segmentarSetlist(s.canciones);
           const totalCanciones = s.canciones.filter((c) => esCancion(c.tipo)).length;
-          const totalBloques = segmentos.filter((x) => x.clase === "bloque").length;
+          const totalBloques = segmentos.length;
           // A qué fechas va un renglón se decide en el base y solo ahí: en la
           // noche la columna sobra, porque lo que se ve ya es lo que le toca.
           const verFechas = s.esBase && !s.showId && todasLasFechas.length > 0;
@@ -645,74 +693,36 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
                         </thead>
                         <tbody>
                           {segmentos.map((seg) => {
-                            if (seg.clase === "momento") {
-                              const c = seg.fila;
-                              return (
-                                <Fragment key={c.id}>
-                                <RenglonArrastrable id={c.id} className="ms-tr align-top bg-[#121212]">
-                                  <td className="ms-td">
-                                    <select
-                                      value={c.tipo}
-                                      onChange={(e) => editarCancion(s.id, c.id, { tipo: e.target.value }, true)}
-                                      className="ms-input-inline w-full"
-                                    >
-                                      {TIPOS_FILA_SETLIST.map((t) => (
-                                        <option key={t} value={t}>
-                                          {TIPO_FILA_SETLIST_LABEL[t]}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </td>
-                                  <td className="ms-td ms-micro text-[#555]">—</td>
-                                  <td className="ms-td">
-                                    <input
-                                      value={c.titulo}
-                                      onChange={(e) => editarCancion(s.id, c.id, { titulo: e.target.value })}
-                                      placeholder="ej. Intro (video)"
-                                      className="ms-input-inline w-full"
-                                    />
-                                  </td>
-                                  <td className="ms-td">
-                                    <input
-                                      defaultValue={fmtMinSeg(c.duracionSeg)}
-                                      onBlur={(e) =>
-                                        editarCancion(s.id, c.id, { duracionSeg: segundosDesdeTexto(e.target.value) }, true)
-                                      }
-                                      placeholder="1:30"
-                                      className="ms-input-inline w-full"
-                                    />
-                                  </td>
-                                  <td className="ms-td" colSpan={9}>
-                                    <input
-                                      value={c.notas ?? ""}
-                                      onChange={(e) => editarCancion(s.id, c.id, { notas: e.target.value })}
-                                      placeholder="Qué pasa en este momento: video pregrabado, cambio de vestuario, presentación de la banda…"
-                                      className="ms-input-inline w-full"
-                                    />
-                                  </td>
-                                  {verFechas && celdaFechas(c)}
-                                  <td className="ms-td text-right">
-                                    <button
-                                      onClick={() => void quitarCancion(s.id, c)}
-                                      className="text-[#555] hover:text-red-400 transition-colors"
-                                      title="Quitar momento"
-                                    >
-                                      ✕
-                                    </button>
-                                  </td>
-                                </RenglonArrastrable>
-                                {verFechas && filaFechas(s.id, c, columnas)}
-                                </Fragment>
-                              );
-                            }
-
-                            const segundosBloque = seg.canciones.reduce((t, x) => t + (x.fila.duracionSeg ?? 0), 0);
+                            const totalCancionesBloque = seg.renglones.filter((r) => r.clase === "cancion").length;
+                            const segundosBloque = seg.renglones.reduce((t, r) => t + (r.fila.duracionSeg ?? 0), 0);
 
                             return (
                               <Fragment key={seg.clave}>
-                                <tr className="bg-[#0d0d0d]">
+                                <tr
+                                  className={`bg-[#0d0d0d] ${bloqueArrastrando === seg.anclaId ? "opacity-40" : ""}`}
+                                  onDragOver={(e) => {
+                                    if (bloqueArrastrando) e.preventDefault();
+                                  }}
+                                  onDrop={(e) => {
+                                    e.preventDefault();
+                                    if (bloqueArrastrando) void moverBloque(s.id, bloqueArrastrando, seg.anclaId);
+                                    setBloqueArrastrando(null);
+                                  }}
+                                >
                                   <td className="ms-td" colSpan={columnas}>
                                     <span className="inline-flex items-center gap-2">
+                                      <span
+                                        draggable
+                                        onDragStart={(e) => {
+                                          e.dataTransfer.effectAllowed = "move";
+                                          setBloqueArrastrando(seg.anclaId);
+                                        }}
+                                        onDragEnd={() => setBloqueArrastrando(null)}
+                                        className="cursor-grab active:cursor-grabbing text-[#444] hover:text-white transition-colors select-none"
+                                        title="Arrastrar para mover todo el bloque"
+                                      >
+                                        ⠿⠿
+                                      </span>
                                       <button
                                         onClick={() => setPaleta(paleta === seg.anclaId ? null : seg.anclaId)}
                                         className="inline-flex items-center justify-center w-5 h-5 rounded-sm text-[11px] font-bold text-black"
@@ -757,152 +767,254 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
                                         </span>
                                       ) : (
                                         <span className="ms-micro text-[#9ca3af]">
-                                          {seg.canciones.length} canciones
+                                          {totalCancionesBloque} canciones
                                           {segundosBloque > 0 ? ` · ${Math.round(segundosBloque / 60)} min` : ""}
                                         </span>
                                       )}
                                     </span>
                                   </td>
                                 </tr>
-                                {seg.canciones.map(({ fila: c, posicion }) => (
-                                  <Fragment key={c.id}>
-                                  <RenglonArrastrable id={c.id} className="ms-tr align-top">
-                                    <td className="ms-td">
-                                      <select
-                                        value={c.tipo}
-                                        onChange={(e) => editarCancion(s.id, c.id, { tipo: e.target.value }, true)}
-                                        className="ms-input-inline w-full"
-                                      >
-                                        {TIPOS_FILA_SETLIST.map((t) => (
-                                          <option key={t} value={t}>
-                                            {TIPO_FILA_SETLIST_LABEL[t]}
-                                          </option>
-                                        ))}
-                                      </select>
-                                    </td>
-                                    <td className="ms-td ms-micro tabular-nums">{posicion}</td>
-                                    <td className="ms-td">
-                                      <input
-                                        value={c.titulo}
-                                        onChange={(e) => editarCancion(s.id, c.id, { titulo: e.target.value })}
-                                        placeholder="Título"
-                                        className="ms-input-inline w-full"
-                                      />
-                                    </td>
-                                    <td className="ms-td">
-                                      {/* Vacío = la canción es del artista de la
-                                          gira. Se escribe solo cuando no lo es. */}
-                                      <input
-                                        list={invitados?.length ? listaInvitados : undefined}
-                                        value={c.artistaInvitado ?? ""}
-                                        onChange={(e) => editarCancion(s.id, c.id, { artistaInvitado: e.target.value })}
-                                        autoFocus={c.id === focoInvitado}
-                                        placeholder="—"
-                                        title="De quién es la canción si no es del artista: el invitado que la canta o el cover"
-                                        className="ms-input-inline w-full"
-                                      />
-                                    </td>
-                                    <td className="ms-td">
-                                      <input
-                                        defaultValue={fmtMinSeg(c.duracionSeg)}
-                                        onBlur={(e) =>
-                                          editarCancion(s.id, c.id, { duracionSeg: segundosDesdeTexto(e.target.value) }, true)
-                                        }
-                                        placeholder="3:45"
-                                        className="ms-input-inline w-full"
-                                      />
-                                    </td>
-                                    <td className="ms-td">
-                                      <input
-                                        value={c.tonalidad ?? ""}
-                                        onChange={(e) => editarCancion(s.id, c.id, { tonalidad: e.target.value })}
-                                        placeholder="Am"
-                                        className="ms-input-inline w-full"
-                                      />
-                                    </td>
-                                    <td className="ms-td">
-                                      <input
-                                        type="number"
-                                        min={0}
-                                        value={c.bpm ?? ""}
-                                        onChange={(e) =>
-                                          editarCancion(s.id, c.id, {
-                                            bpm: e.target.value === "" ? null : Number(e.target.value),
-                                          })
-                                        }
-                                        className="ms-input-inline w-full"
-                                      />
-                                    </td>
-                                    <td className="ms-td text-center">
-                                      <input
-                                        type="checkbox"
-                                        checked={c.conTrack}
-                                        onChange={(e) => editarCancion(s.id, c.id, { conTrack: e.target.checked }, true)}
-                                        className="accent-[#B3985B] w-4 h-4"
-                                        title="Lleva track"
-                                      />
-                                    </td>
-                                    <td className="ms-td">
-                                      <input
-                                        value={c.notasAudio ?? ""}
-                                        onChange={(e) => editarCancion(s.id, c.id, { notasAudio: e.target.value })}
-                                        placeholder="…"
-                                        className="ms-input-inline w-full"
-                                      />
-                                    </td>
-                                    <td className="ms-td">
-                                      <input
-                                        value={c.notasLuces ?? ""}
-                                        onChange={(e) => editarCancion(s.id, c.id, { notasLuces: e.target.value })}
-                                        placeholder="…"
-                                        className="ms-input-inline w-full"
-                                      />
-                                    </td>
-                                    <td className="ms-td">
-                                      <input
-                                        value={c.notasVideo ?? ""}
-                                        onChange={(e) => editarCancion(s.id, c.id, { notasVideo: e.target.value })}
-                                        placeholder="…"
-                                        className="ms-input-inline w-full"
-                                      />
-                                    </td>
-                                    <td className="ms-td">
-                                      <input
-                                        value={c.cambioInstrumento ?? ""}
-                                        onChange={(e) => editarCancion(s.id, c.id, { cambioInstrumento: e.target.value })}
-                                        placeholder="ej. acústica"
-                                        className="ms-input-inline w-full"
-                                      />
-                                    </td>
-                                    <td className="ms-td">
-                                      {/* Lo que no es de una disciplina sola:
-                                          de qué va la canción, con quién sale,
-                                          qué pidió el artista para ese momento. */}
-                                      <input
-                                        value={c.notas ?? ""}
-                                        onChange={(e) => editarCancion(s.id, c.id, { notas: e.target.value })}
-                                        placeholder="Nota general de la canción"
-                                        className="ms-input-inline w-full"
-                                      />
-                                    </td>
-                                    {verFechas && celdaFechas(c)}
-                                    <td className="ms-td text-right">
-                                      <button
-                                        onClick={() => void quitarCancion(s.id, c)}
-                                        className="text-[#555] hover:text-red-400 transition-colors"
-                                        title={
-                                          alcance === "SHOW"
-                                            ? "Quitar de esta fecha: el base deja de mandarla a esta noche"
-                                            : "Quitar canción"
-                                        }
-                                      >
-                                        ✕
-                                      </button>
-                                    </td>
-                                  </RenglonArrastrable>
-                                  {verFechas && filaFechas(s.id, c, columnas)}
-                                  </Fragment>
-                                ))}
+                                {seg.renglones.map((r) => {
+                                  const c = r.fila;
+
+                                  /// El toggle que decide si esta fila abre su propia tanda: vive en la
+                                  /// celda del tipo porque es la única columna que tienen en común la
+                                  /// canción y el momento, y así no hace falta otra columna aparte.
+                                  const toggleBloque = (
+                                    <button
+                                      onClick={() => editarCancion(s.id, c.id, { nuevoBloque: !c.nuevoBloque }, true)}
+                                      className={`shrink-0 w-4 h-4 rounded-sm border text-[9px] leading-none flex items-center justify-center transition-colors ${
+                                        c.nuevoBloque
+                                          ? "border-[#B3985B] text-[#B3985B]"
+                                          : "border-[#2a2a2a] text-[#444] hover:text-white hover:border-[#444]"
+                                      }`}
+                                      title={
+                                        c.nuevoBloque
+                                          ? "Quitar el inicio de bloque: se funde con la tanda anterior"
+                                          : "Marcar como inicio de un bloque nuevo"
+                                      }
+                                    >
+                                      ▸
+                                    </button>
+                                  );
+
+                                  if (r.clase === "momento") {
+                                    return (
+                                      <Fragment key={c.id}>
+                                      <RenglonArrastrable id={c.id} className="ms-tr align-top bg-[#121212]">
+                                        <td className="ms-td">
+                                          <div className="flex items-center gap-1">
+                                            {toggleBloque}
+                                            <select
+                                              value={c.tipo}
+                                              onChange={(e) => editarCancion(s.id, c.id, { tipo: e.target.value }, true)}
+                                              className="ms-input-inline w-full"
+                                            >
+                                              {TIPOS_FILA_SETLIST.map((t) => (
+                                                <option key={t} value={t}>
+                                                  {TIPO_FILA_SETLIST_LABEL[t]}
+                                                </option>
+                                              ))}
+                                            </select>
+                                          </div>
+                                        </td>
+                                        <td className="ms-td ms-micro text-[#555]">—</td>
+                                        <td className="ms-td">
+                                          <input
+                                            value={c.titulo}
+                                            onChange={(e) => editarCancion(s.id, c.id, { titulo: e.target.value })}
+                                            placeholder="ej. Intro (video)"
+                                            className="ms-input-inline w-full"
+                                          />
+                                        </td>
+                                        <td className="ms-td">
+                                          <input
+                                            defaultValue={fmtMinSeg(c.duracionSeg)}
+                                            onBlur={(e) =>
+                                              editarCancion(
+                                                s.id,
+                                                c.id,
+                                                { duracionSeg: segundosDesdeTexto(e.target.value) },
+                                                true,
+                                              )
+                                            }
+                                            placeholder="1:30"
+                                            className="ms-input-inline w-full"
+                                          />
+                                        </td>
+                                        <td className="ms-td" colSpan={9}>
+                                          <input
+                                            value={c.notas ?? ""}
+                                            onChange={(e) => editarCancion(s.id, c.id, { notas: e.target.value })}
+                                            placeholder="Qué pasa en este momento: video pregrabado, cambio de vestuario, presentación de la banda…"
+                                            className="ms-input-inline w-full"
+                                          />
+                                        </td>
+                                        {verFechas && celdaFechas(c)}
+                                        <td className="ms-td text-right">
+                                          <button
+                                            onClick={() => void quitarCancion(s.id, c)}
+                                            className="text-[#555] hover:text-red-400 transition-colors"
+                                            title="Quitar momento"
+                                          >
+                                            ✕
+                                          </button>
+                                        </td>
+                                      </RenglonArrastrable>
+                                      {verFechas && filaFechas(s.id, c, columnas)}
+                                      </Fragment>
+                                    );
+                                  }
+
+                                  const posicion = r.posicion;
+                                  return (
+                                    <Fragment key={c.id}>
+                                    <RenglonArrastrable id={c.id} className="ms-tr align-top">
+                                      <td className="ms-td">
+                                        <div className="flex items-center gap-1">
+                                          {toggleBloque}
+                                          <select
+                                            value={c.tipo}
+                                            onChange={(e) => editarCancion(s.id, c.id, { tipo: e.target.value }, true)}
+                                            className="ms-input-inline w-full"
+                                          >
+                                            {TIPOS_FILA_SETLIST.map((t) => (
+                                              <option key={t} value={t}>
+                                                {TIPO_FILA_SETLIST_LABEL[t]}
+                                              </option>
+                                            ))}
+                                          </select>
+                                        </div>
+                                      </td>
+                                      <td className="ms-td ms-micro tabular-nums">{posicion}</td>
+                                      <td className="ms-td">
+                                        <input
+                                          value={c.titulo}
+                                          onChange={(e) => editarCancion(s.id, c.id, { titulo: e.target.value })}
+                                          placeholder="Título"
+                                          className="ms-input-inline w-full"
+                                        />
+                                      </td>
+                                      <td className="ms-td">
+                                        {/* Vacío = la canción es del artista de la
+                                            gira. Se escribe solo cuando no lo es. */}
+                                        <input
+                                          list={invitados?.length ? listaInvitados : undefined}
+                                          value={c.artistaInvitado ?? ""}
+                                          onChange={(e) => editarCancion(s.id, c.id, { artistaInvitado: e.target.value })}
+                                          autoFocus={c.id === focoInvitado}
+                                          placeholder="—"
+                                          title="De quién es la canción si no es del artista: el invitado que la canta o el cover"
+                                          className="ms-input-inline w-full"
+                                        />
+                                      </td>
+                                      <td className="ms-td">
+                                        <input
+                                          defaultValue={fmtMinSeg(c.duracionSeg)}
+                                          onBlur={(e) =>
+                                            editarCancion(
+                                              s.id,
+                                              c.id,
+                                              { duracionSeg: segundosDesdeTexto(e.target.value) },
+                                              true,
+                                            )
+                                          }
+                                          placeholder="3:45"
+                                          className="ms-input-inline w-full"
+                                        />
+                                      </td>
+                                      <td className="ms-td">
+                                        <input
+                                          value={c.tonalidad ?? ""}
+                                          onChange={(e) => editarCancion(s.id, c.id, { tonalidad: e.target.value })}
+                                          placeholder="Am"
+                                          className="ms-input-inline w-full"
+                                        />
+                                      </td>
+                                      <td className="ms-td">
+                                        <input
+                                          type="number"
+                                          min={0}
+                                          value={c.bpm ?? ""}
+                                          onChange={(e) =>
+                                            editarCancion(s.id, c.id, {
+                                              bpm: e.target.value === "" ? null : Number(e.target.value),
+                                            })
+                                          }
+                                          className="ms-input-inline w-full"
+                                        />
+                                      </td>
+                                      <td className="ms-td text-center">
+                                        <input
+                                          type="checkbox"
+                                          checked={c.conTrack}
+                                          onChange={(e) => editarCancion(s.id, c.id, { conTrack: e.target.checked }, true)}
+                                          className="accent-[#B3985B] w-4 h-4"
+                                          title="Lleva track"
+                                        />
+                                      </td>
+                                      <td className="ms-td">
+                                        <input
+                                          value={c.notasAudio ?? ""}
+                                          onChange={(e) => editarCancion(s.id, c.id, { notasAudio: e.target.value })}
+                                          placeholder="…"
+                                          className="ms-input-inline w-full"
+                                        />
+                                      </td>
+                                      <td className="ms-td">
+                                        <input
+                                          value={c.notasLuces ?? ""}
+                                          onChange={(e) => editarCancion(s.id, c.id, { notasLuces: e.target.value })}
+                                          placeholder="…"
+                                          className="ms-input-inline w-full"
+                                        />
+                                      </td>
+                                      <td className="ms-td">
+                                        <input
+                                          value={c.notasVideo ?? ""}
+                                          onChange={(e) => editarCancion(s.id, c.id, { notasVideo: e.target.value })}
+                                          placeholder="…"
+                                          className="ms-input-inline w-full"
+                                        />
+                                      </td>
+                                      <td className="ms-td">
+                                        <input
+                                          value={c.cambioInstrumento ?? ""}
+                                          onChange={(e) => editarCancion(s.id, c.id, { cambioInstrumento: e.target.value })}
+                                          placeholder="ej. acústica"
+                                          className="ms-input-inline w-full"
+                                        />
+                                      </td>
+                                      <td className="ms-td">
+                                        {/* Lo que no es de una disciplina sola:
+                                            de qué va la canción, con quién sale,
+                                            qué pidió el artista para ese momento. */}
+                                        <input
+                                          value={c.notas ?? ""}
+                                          onChange={(e) => editarCancion(s.id, c.id, { notas: e.target.value })}
+                                          placeholder="Nota general de la canción"
+                                          className="ms-input-inline w-full"
+                                        />
+                                      </td>
+                                      {verFechas && celdaFechas(c)}
+                                      <td className="ms-td text-right">
+                                        <button
+                                          onClick={() => void quitarCancion(s.id, c)}
+                                          className="text-[#555] hover:text-red-400 transition-colors"
+                                          title={
+                                            alcance === "SHOW"
+                                              ? "Quitar de esta fecha: el base deja de mandarla a esta noche"
+                                              : "Quitar canción"
+                                          }
+                                        >
+                                          ✕
+                                        </button>
+                                      </td>
+                                    </RenglonArrastrable>
+                                    {verFechas && filaFechas(s.id, c, columnas)}
+                                    </Fragment>
+                                  );
+                                })}
                               </Fragment>
                             );
                           })}

@@ -371,15 +371,12 @@ export async function generarLibroGira(giraId: string, secciones: SeccionLibro[]
     // imprima; el que no es canción va sin número y corta el bloque.
     const ubicacion = new Map<string, { posicion: number | null; bloque: number | null; bloqueNombre: string | null }>();
     for (const seg of segmentarSetlist(sl.canciones)) {
-      if (seg.clase === "momento") {
-        ubicacion.set(seg.fila.id, { posicion: null, bloque: null, bloqueNombre: null });
-        continue;
-      }
-      for (const [i, c] of seg.canciones.entries()) {
-        ubicacion.set(c.fila.id, {
-          posicion: c.posicion,
-          bloque: seg.numero,
-          bloqueNombre: i === 0 ? seg.nombre : null,
+      for (const r of seg.renglones) {
+        const esAncla = r.fila.id === seg.anclaId;
+        ubicacion.set(r.fila.id, {
+          posicion: r.clase === "cancion" ? r.posicion : null,
+          bloque: r.clase === "cancion" || esAncla ? seg.numero : null,
+          bloqueNombre: esAncla ? seg.nombre : null,
         });
       }
     }

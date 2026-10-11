@@ -46,35 +46,40 @@ export async function generarSetlistEscenario(setlistId: string): Promise<PdfGir
   let canciones = 0;
 
   for (const seg of segmentarSetlist(setlist.canciones)) {
-    if (seg.clase === "momento") {
-      const c = seg.fila;
-      const etiqueta = TIPO_FILA_SETLIST_LABEL[c.tipo] ?? c.tipo;
-      renglones.push({
-        id: c.id,
-        posicion: null,
-        // El título repetido ("Pausa" bajo la etiqueta Pausa) no dice nada: se
-        // imprime uno solo.
-        titulo: c.titulo.trim().toLowerCase() === etiqueta.toLowerCase() ? etiqueta : `${etiqueta} · ${c.titulo}`,
-        detalle: c.notas,
-        bloque: null,
-        bloqueNombre: null,
-        color: null,
-        abreBloque: false,
-      });
-      continue;
-    }
+    for (const r of seg.renglones) {
+      // El bloque puede abrir con una pausa o con la propia canción: la barra
+      // se pinta en la fila que de verdad lo ancla, no en la primera del tipo
+      // que sea.
+      const esAncla = r.fila.id === seg.anclaId;
 
-    for (const [i, c] of seg.canciones.entries()) {
+      if (r.clase === "momento") {
+        const c = r.fila;
+        const etiqueta = TIPO_FILA_SETLIST_LABEL[c.tipo] ?? c.tipo;
+        renglones.push({
+          id: c.id,
+          posicion: null,
+          // El título repetido ("Pausa" bajo la etiqueta Pausa) no dice nada: se
+          // imprime uno solo.
+          titulo: c.titulo.trim().toLowerCase() === etiqueta.toLowerCase() ? etiqueta : `${etiqueta} · ${c.titulo}`,
+          detalle: c.notas,
+          bloque: esAncla ? seg.numero : null,
+          bloqueNombre: esAncla ? seg.nombre : null,
+          color: esAncla ? seg.color : null,
+          abreBloque: esAncla,
+        });
+        continue;
+      }
+
       canciones += 1;
       renglones.push({
-        id: c.fila.id,
-        posicion: c.posicion,
-        titulo: tituloDeFila(c.fila.titulo, c.fila.artistaInvitado),
+        id: r.fila.id,
+        posicion: r.posicion,
+        titulo: tituloDeFila(r.fila.titulo, r.fila.artistaInvitado),
         detalle: null,
         bloque: seg.numero,
-        bloqueNombre: i === 0 ? seg.nombre : null,
+        bloqueNombre: esAncla ? seg.nombre : null,
         color: seg.color,
-        abreBloque: i === 0,
+        abreBloque: esAncla,
       });
     }
   }

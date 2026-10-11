@@ -7,7 +7,6 @@
  * trae un campo que la página no, la UI se queda a medias al refrescar.
  */
 import type { Prisma } from "@prisma/client";
-import { bloquesNormalizados } from "./giras";
 import { prisma } from "./prisma";
 
 const ORDEN_CANCIONES = [{ orden: "asc" }, { createdAt: "asc" }] as Prisma.GiraSetlistCancionOrderByWithRelationInput[];
@@ -53,6 +52,7 @@ export const INCLUDE_VIAJE = {
       persona: { select: { nombre: true } },
     },
   },
+  persona: { select: { id: true, nombre: true, rol: true } },
   show: { select: { id: true, fecha: true, ciudad: true } },
 } as const;
 
@@ -84,6 +84,7 @@ function copiaDelBase(c: CancionDelBase, setlistId: string) {
     orden: c.orden,
     titulo: c.titulo,
     artistaInvitado: c.artistaInvitado,
+    nuevoBloque: c.nuevoBloque,
     bloqueNombre: c.bloqueNombre,
     bloqueColor: c.bloqueColor,
     duracionSeg: c.duracionSeg,
@@ -198,17 +199,12 @@ export async function bajarOrdenDelBase(giraId: string) {
     conClave.sort((a, b) => a.lugar - b.lugar || a.pegado - b.pegado);
 
     const finales = conClave.map((x) => x.c);
-    const bloques = new Map(bloquesNormalizados(finales).map((b) => [b.id, b]));
 
+    // El bloque de cada fila es suyo y no se recalcula por posición: solo el
+    // orden cambia al bajar el del base.
     const cambios = finales.flatMap((c, i) => {
-      const b = bloques.get(c.id);
-      if (c.orden === i * 10 && !b) return [];
-      return [
-        prisma.giraSetlistCancion.update({
-          where: { id: c.id },
-          data: b ? { orden: i * 10, bloqueNombre: b.bloqueNombre, bloqueColor: b.bloqueColor } : { orden: i * 10 },
-        }),
-      ];
+      if (c.orden === i * 10) return [];
+      return [prisma.giraSetlistCancion.update({ where: { id: c.id }, data: { orden: i * 10 } })];
     });
     if (!cambios.length) continue;
 

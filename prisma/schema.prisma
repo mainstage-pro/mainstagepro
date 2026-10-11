@@ -5963,6 +5963,7 @@ model ArtistaPersona {
   riderContactos    ArtistaRiderContacto[]
   crew              GiraCrew[]
   roomings          GiraRooming[]
+  viajes            GiraViaje[]
   giras             Gira[]                 @relation("GiraContactoPrincipal")
   showsComoPromotor GiraShow[]             @relation("ShowsComoPromotor")
 
@@ -6747,6 +6748,11 @@ model GiraViaje {
   crewId String?
   crew   GiraCrew? @relation(fields: [crewId], references: [id], onDelete: Cascade)
 
+  personaId String?
+  persona   ArtistaPersona? @relation(fields: [personaId], references: [id])
+
+  nombreLibre String?
+
   tipo          String    @default("VUELO") // VUELO|VAN|AUTOBUS|TREN|TAXI|TERRESTRE
   concepto      String?
   origen        String?
@@ -6806,9 +6812,13 @@ model GiraSetlistCancion {
   /// cantarla o el cover que se toca esa noche. Es texto porque el invitado de la
   /// fecha vive en ShowInvitado y el cover no está en ninguna lista.
   artistaInvitado   String?
-  /// Nombre y color de la tanda que esta fila abre ("Acústico", "Cierre"). Solo
-  /// cuentan en el momento que la precede; el número se sigue derivando, y el
-  /// color solo se guarda cuando alguien lo elige distinto al de la paleta.
+  /// Si esta fila abre una tanda nueva. Es explícito y no depende de que haya
+  /// una pausa antes: una canción puede abrir bloque ella sola, y borrar la
+  /// pausa de al lado no funde la tanda con la anterior.
+  nuevoBloque       Boolean @default(false)
+  /// Nombre y color de la tanda que esta fila abre ("Acústico", "Cierre").
+  /// Solo cuentan cuando nuevoBloque es true; el número se sigue derivando, y
+  /// el color solo se guarda cuando alguien lo elige distinto al de la paleta.
   bloqueNombre      String?
   bloqueColor       String?
   duracionSeg       Int?

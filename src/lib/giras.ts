@@ -733,114 +733,91 @@ export function colorDeBloque(numero: number): string {
 export interface FilaDeSetlist {
   id: string;
   tipo: string;
+  nuevoBloque?: boolean;
   bloqueNombre?: string | null;
   bloqueColor?: string | null;
 }
 
-export type SegmentoSetlist<T> =
-  | {
-      clase: "bloque";
-      clave: string;
-      numero: number;
-      /// El que se pinta: el elegido a mano si lo hay, si no el de la paleta.
-      color: string;
-      /// Solo el elegido a mano. Null cuando el bloque sigue con el de la
-      /// paleta, que es lo que deja volver a "automático" sin adivinar.
-      colorPropio: string | null;
-      /// Como le dice el crew a la tanda ("Acústico", "Cierre"). Null mientras
-      /// nadie la bautice: entonces el bloque se llama por su número y ya.
-      nombre: string | null;
-      /// En qué fila están escritos ese nombre y ese color, para saber a quién
-      /// editarle.
-      anclaId: string;
-      canciones: { fila: T; posicion: number }[];
-    }
-  | { clase: "momento"; clave: string; fila: T };
+/// Un renglón dentro de un bloque: canción numerada o momento (pausa, intro…)
+/// que solo interrumpe para un aviso y no parte la tanda.
+export type RenglonDeBloque<T> = { clase: "cancion"; fila: T; posicion: number } | { clase: "momento"; fila: T };
 
-/// Los bloques no se capturan: son las tandas de canciones que quedan entre dos
-/// momentos. Derivarlos evita que el número del bloque y el color se
-/// desincronicen de las canciones que lo forman.
+export interface SegmentoSetlist<T> {
+  clave: string;
+  numero: number;
+  /// El que se pinta: el elegido a mano si lo hay, si no el de la paleta.
+  color: string;
+  /// Solo el elegido a mano. Null cuando el bloque sigue con el de la
+  /// paleta, que es lo que deja volver a "automático" sin adivinar.
+  colorPropio: string | null;
+  /// Como le dice el crew a la tanda ("Acústico", "Cierre"). Null mientras
+  /// nadie la bautice: entonces el bloque se llama por su número y ya.
+  nombre: string | null;
+  /// La fila que abre el bloque (nuevoBloque = true), para saber a quién
+  /// editarle el nombre y el color.
+  anclaId: string;
+  renglones: RenglonDeBloque<T>[];
+}
+
+/// Dónde empieza cada bloque es explícito (`nuevoBloque`) y no depende de que
+/// haya una pausa antes: una canción puede abrir su propia tanda, y una pausa
+/// puede ser solo un aviso dentro del bloque que ya está abierto. Así se puede
+/// brincar de un bloque a otro sin pausa de por medio, y borrar una pausa
+/// nunca funde dos tandas que el crew quiso separadas.
 ///
-/// El nombre sí hay que guardarlo, porque no hay de dónde deducirlo, y se ancla
-/// al momento que abre la tanda — no a su primera canción. Si viviera en la
-/// canción, arrastrar esa canción a otro bloque se llevaría el nombre con ella
-/// y rebautizaría la tanda de destino. El momento no se mueve solo, así que la
-/// tanda conserva su nombre pase lo que pase con las canciones.
-///
-/// El primer bloque es la excepción: cuando el show abre cantando no hay
-/// momento antes, y ahí el nombre no tiene más remedio que vivir en la canción.
+/// El nombre y el color viven en la fila que abre el bloque y se quedan ahí
+/// pase lo que pase con el resto: no se recalculan al reordenar ni al borrar
+/// renglones vecinos.
 export function segmentarSetlist<T extends FilaDeSetlist>(filas: T[]): SegmentoSetlist<T>[] {
   const segmentos: SegmentoSetlist<T>[] = [];
   let posicion = 0;
   let numero = 0;
 
   for (const fila of filas) {
-    if (!esCancion(fila.tipo)) {
-      segmentos.push({ clase: "momento", clave: fila.id, fila });
-      continue;
+    if (fila.nuevoBloque || segmentos.length === 0) {
+      numero += 1;
+      const colorPropio = fila.bloqueColor?.trim() || null;
+      segmentos.push({
+        clave: `bloque-${numero}`,
+        numero,
+        color: colorPropio ?? colorDeBloque(numero),
+        colorPropio,
+        nombre: fila.bloqueNombre?.trim() || null,
+        anclaId: fila.id,
+        renglones: [],
+      });
     }
 
-    posicion += 1;
-    const ultimo = segmentos[segmentos.length - 1];
-    if (ultimo?.clase === "bloque") {
-      // Cuando el ancla es una canción, el nombre y el color pueden estar en
-      // cualquiera de la tanda: reordenar dentro del bloque cambia cuál va
-      // primero, y se recogen igual antes de reacomodarlos.
-      if (ultimo.anclaId === ultimo.canciones[0].fila.id) {
-        ultimo.nombre ??= fila.bloqueNombre?.trim() || null;
-        ultimo.colorPropio ??= fila.bloqueColor?.trim() || null;
-        ultimo.color = ultimo.colorPropio ?? ultimo.color;
-      }
-      ultimo.canciones.push({ fila, posicion });
-      continue;
+    const actual = segmentos[segmentos.length - 1];
+    if (esCancion(fila.tipo)) {
+      posicion += 1;
+      actual.renglones.push({ clase: "cancion", fila, posicion });
+    } else {
+      actual.renglones.push({ clase: "momento", fila });
     }
-
-    numero += 1;
-    const ancla = ultimo?.clase === "momento" ? ultimo.fila : fila;
-    const colorPropio = ancla.bloqueColor?.trim() || null;
-    segmentos.push({
-      clase: "bloque",
-      clave: `bloque-${numero}`,
-      numero,
-      color: colorPropio ?? colorDeBloque(numero),
-      colorPropio,
-      nombre: ancla.bloqueNombre?.trim() || null,
-      anclaId: ancla.id,
-      canciones: [{ fila, posicion }],
-    });
   }
 
   return segmentos;
 }
 
-export interface BloqueNormalizado {
-  id: string;
-  bloqueNombre: string | null;
-  bloqueColor: string | null;
+export interface GrupoDeBloque<T> {
+  /// El id de la fila que abre el grupo — el mismo valor que `anclaId` en
+  /// segmentarSetlist, para que arrastrar el encabezado en pantalla y agrupar
+  /// aquí hablen de la misma fila.
+  clave: string;
+  filas: T[];
 }
 
-/// Tras reordenar, el nombre y el color de una tanda pueden haber quedado
-/// escritos en una fila que ya no ancla ningún bloque: la canción que abría el
-/// show y ahora va a media tanda, o el momento que quedó al final. Esto dice qué
-/// filas hay que reescribir para que lo guardado diga lo mismo que lo que se ve.
-export function bloquesNormalizados<T extends FilaDeSetlist>(filas: T[]): BloqueNormalizado[] {
-  const debeSer = new Map<string, { nombre: string | null; color: string | null }>(
-    filas.map((f) => [f.id, { nombre: null, color: null }]),
-  );
-  for (const seg of segmentarSetlist(filas)) {
-    if (seg.clase === "bloque") debeSer.set(seg.anclaId, { nombre: seg.nombre, color: seg.colorPropio });
+/// Igual que segmentarSetlist pero sin separar canciones de momentos: para
+/// mover un bloque completo —su encabezado y todo lo que contiene— de un
+/// jalón, sin tener que arrastrar renglón por renglón.
+export function agruparEnBloques<T extends FilaDeSetlist>(filas: T[]): GrupoDeBloque<T>[] {
+  const grupos: T[][] = [];
+  for (const fila of filas) {
+    if (fila.nuevoBloque || grupos.length === 0) grupos.push([]);
+    grupos[grupos.length - 1].push(fila);
   }
-
-  return filas
-    .filter((f) => {
-      const d = debeSer.get(f.id);
-      return (f.bloqueNombre?.trim() || null) !== d?.nombre || (f.bloqueColor?.trim() || null) !== d?.color;
-    })
-    .map((f) => ({
-      id: f.id,
-      bloqueNombre: debeSer.get(f.id)?.nombre ?? null,
-      bloqueColor: debeSer.get(f.id)?.color ?? null,
-    }));
+  return grupos.map((filas) => ({ clave: filas[0].id, filas }));
 }
 
 // ── Crew ─────────────────────────────────────────────────────────────────────

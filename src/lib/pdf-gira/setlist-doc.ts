@@ -112,42 +112,46 @@ export async function generarSetlistDoc(giraId: string, showId?: string | null):
   });
 
   for (const seg of segmentarSetlist(setlist.canciones)) {
-    if (seg.clase === "momento") {
-      const c = seg.fila;
-      momentos += 1;
-      segMomentos += c.duracionSeg ?? 0;
-      const etiqueta = TIPO_FILA_SETLIST_LABEL[c.tipo] ?? c.tipo;
-      filas.push({
-        id: c.id,
-        posicion: null,
-        bloque: null,
-        bloqueNombre: null,
-        bloqueColor: null,
-        abreBloque: false,
-        etiqueta,
-        // El título repetido ("Pausa" debajo de la etiqueta Pausa) no informa:
-        // se imprime uno solo.
-        titulo: c.titulo.trim().toLowerCase() === etiqueta.toLowerCase() ? "" : c.titulo,
-        ...detalle(c),
-      });
-      continue;
-    }
-
     bloques += 1;
-    for (const [i, c] of seg.canciones.entries()) {
+    for (const r of seg.renglones) {
+      // El bloque puede abrir con una pausa o con la propia canción: la fila
+      // que lo marca es la que de verdad lo ancla.
+      const esAncla = r.fila.id === seg.anclaId;
+
+      if (r.clase === "momento") {
+        const c = r.fila;
+        momentos += 1;
+        segMomentos += c.duracionSeg ?? 0;
+        const etiqueta = TIPO_FILA_SETLIST_LABEL[c.tipo] ?? c.tipo;
+        filas.push({
+          id: c.id,
+          posicion: null,
+          bloque: esAncla ? seg.numero : null,
+          bloqueNombre: esAncla ? seg.nombre : null,
+          bloqueColor: esAncla ? seg.color : null,
+          abreBloque: esAncla,
+          etiqueta,
+          // El título repetido ("Pausa" debajo de la etiqueta Pausa) no informa:
+          // se imprime uno solo.
+          titulo: c.titulo.trim().toLowerCase() === etiqueta.toLowerCase() ? "" : c.titulo,
+          ...detalle(c),
+        });
+        continue;
+      }
+
       canciones += 1;
-      segCanciones += c.fila.duracionSeg ?? 0;
-      if (!c.fila.duracionSeg) sinDuracion += 1;
+      segCanciones += r.fila.duracionSeg ?? 0;
+      if (!r.fila.duracionSeg) sinDuracion += 1;
       filas.push({
-        id: c.fila.id,
-        posicion: c.posicion,
+        id: r.fila.id,
+        posicion: r.posicion,
         bloque: seg.numero,
-        bloqueNombre: i === 0 ? seg.nombre : null,
-        bloqueColor: i === 0 ? seg.color : null,
-        abreBloque: i === 0,
+        bloqueNombre: esAncla ? seg.nombre : null,
+        bloqueColor: esAncla ? seg.color : null,
+        abreBloque: esAncla,
         etiqueta: null,
-        titulo: tituloDeFila(c.fila.titulo, c.fila.artistaInvitado),
-        ...detalle(c.fila),
+        titulo: tituloDeFila(r.fila.titulo, r.fila.artistaInvitado),
+        ...detalle(r.fila),
       });
     }
   }

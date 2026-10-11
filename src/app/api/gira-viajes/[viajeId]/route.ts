@@ -5,9 +5,9 @@ import { logActividad } from "@/lib/actividad";
 import { TIPOS_VIAJE, TIPO_VIAJE_LABEL, parseFechaHoraGira } from "@/lib/giras";
 import { INCLUDE_VIAJE } from "@/lib/logistica-gira";
 
-const TEXTO = ["concepto", "origen", "destino", "operador", "identificador", "reserva", "notas"] as const;
+const TEXTO = ["concepto", "origen", "destino", "operador", "identificador", "reserva", "notas", "nombreLibre"] as const;
 const FECHAS = ["salida", "llegada"] as const;
-const RELACIONES = ["showId", "crewId"] as const;
+const RELACIONES = ["showId", "crewId", "personaId"] as const;
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ viajeId: string }> }) {
   const session = await getSession();
