@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useState, useMemo, use, type Dispatch, type SetStateAction } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatCurrency, formatPct } from "@/lib/cotizador";
@@ -716,6 +716,103 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
     }
   }
 
+  // ─── Viabilidad recalculada en vivo ──────────────────────────────────────────
+  // Memoizado por `cot`: estos filtros/reduces no deben repetirse cuando el único
+  // estado que cambia es ajeno a la cotización (ej. escribir en renderNotas o
+  // fechaInputVal), que es lo que pasaba antes en cada tecleo.
+  const calc = useMemo(() => {
+    if (!cot) {
+      return {
+        costoOperacion: 0, costoExterno: 0, costoOtros: 0,
+        costoVivo: 0, utilidadViva: 0, pctVivo: 0,
+        semaforo: "RIESGO" as const, semaforoColor: "text-gray-400",
+        lineasEquipo: [] as Linea[], lineasExterno: [] as Linea[], lineasPaquete: [] as Linea[],
+        lineasOp: [] as Linea[], lineasLog: [] as Linea[], lineasOcasional: [] as Linea[],
+        subtotalEquipo: 0, subtotalPaquete: 0, subtotalExterno: 0, subtotalOp: 0, subtotalLog: 0,
+        subtotalOcasional: 0, subtotalGastosProd: 0, subtotalAdicionales: 0, subtotalPaqueteNeto: 0,
+        subtotalChofer: 0, notasSecciones: {} as Record<string, string>,
+        equiposPorCat: {} as Record<string, Linea[]>, renderEquipos: "",
+      };
+    }
+
+    // Costos de operación técnica + logística (subtotal = precio = costo para Mainstage)
+    const costoOperacion = cot.lineas
+      .filter(l => !l.esIncluido && ["OPERACION_TECNICA", "DJ", "TRANSPORTE", "COMIDA", "HOSPEDAJE"].includes(l.tipo))
+      .reduce((s, l) => s + l.subtotal, 0);
+
+    // Costos de equipo externo (proveedor): usa costoExterno si existe, si no usa precioUnitario como costo
+    const costoExterno = cot.lineas
+      .filter(l => !l.esIncluido && l.tipo === "EQUIPO_EXTERNO")
+      .reduce((s, l) => {
+        const costoUnit = (l.costoExterno != null && l.costoExterno > 0) ? l.costoExterno : l.precioUnitario;
+        return s + costoUnit * l.cantidad * l.dias;
+      }, 0);
+
+    // Costos de conceptos adicionales (OTRO): al 100% (costoUnitario o precioUnitario)
+    const costoOtros = cot.lineas
+      .filter(l => !l.esIncluido && l.tipo === "OTRO")
+      .reduce((s, l) => {
+        const costoUnit = (l.costoUnitario > 0) ? l.costoUnitario : l.precioUnitario;
+        return s + costoUnit * l.cantidad * l.dias;
+      }, 0);
+
+    const costoVivo = costoOperacion + costoExterno + costoOtros;
+    const utilidadViva = cot.total - costoVivo;
+    const pctVivo = cot.total > 0 ? utilidadViva / cot.total : 0;
+    const semaforo = pctVivo >= 0.55 ? "IDEAL" : pctVivo >= 0.40 ? "REGULAR" : pctVivo >= 0.25 ? "MINIMO" : "RIESGO";
+    const semaforoColor = { IDEAL: "text-green-400", REGULAR: "text-yellow-400", MINIMO: "text-orange-400", RIESGO: "text-gray-400" }[semaforo];
+
+    const lineasEquipo = cot.lineas.filter((l) => l.tipo === "EQUIPO_PROPIO");
+    const lineasExterno = cot.lineas.filter((l) => l.tipo === "EQUIPO_EXTERNO");
+    const lineasPaquete = cot.lineas.filter((l) => l.tipo === "PAQUETE");
+    const lineasOp = cot.lineas.filter((l) => l.tipo === "OPERACION_TECNICA" || l.tipo === "DJ");
+    const lineasLog = cot.lineas.filter((l) => ["TRANSPORTE", "COMIDA", "HOSPEDAJE"].includes(l.tipo));
+    const lineasOcasional = cot.lineas.filter((l) => l.tipo === "OTRO");
+
+    const subtotalEquipo = lineasEquipo.reduce((s, l) => s + l.subtotal, 0);
+    const subtotalPaquete = lineasPaquete.reduce((s, l) => s + l.subtotal, 0);
+    const subtotalExterno = lineasExterno.reduce((s, l) => s + l.subtotal, 0);
+    const subtotalOp = lineasOp.reduce((s, l) => s + l.subtotal, 0);
+    const subtotalLog = lineasLog.reduce((s, l) => s + l.subtotal, 0);
+    const subtotalOcasional = lineasOcasional.reduce((s, l) => s + l.subtotal, 0);
+    // La comisión interna viaja como línea OTRO; en el resumen va en su propio renglón.
+    const subtotalGastosProd = lineasOcasional
+      .filter((l) => l.descripcion === "Gastos de Producción")
+      .reduce((s, l) => s + l.subtotal, 0);
+    const subtotalAdicionales = subtotalOcasional - subtotalGastosProd;
+    // El descuento corre sobre equipos + paquetes; el neto guardado es solo el de equipos.
+    const subtotalPaqueteNeto = subtotalPaquete > 0
+      ? cot.subtotalEquiposBruto + subtotalPaquete - cot.montoDescuento - cot.subtotalEquiposNeto
+      : 0;
+    const subtotalChofer = cot.incluirChofer ? 500 : 0;
+
+    // Notas por sección (guardadas en notasSecciones JSON)
+    const notasSecciones: Record<string, string> = cot.notasSecciones
+      ? JSON.parse(cot.notasSecciones) : {};
+
+    // Agrupar equipos propios por categoría (usando notas que guardan categoria:NombreCat)
+    const equiposPorCat: Record<string, Linea[]> = {};
+    for (const l of lineasEquipo) {
+      const cat = l.notas?.startsWith("cat:") ? l.notas.split('|')[0].slice(4) : "Equipos";
+      if (!equiposPorCat[cat]) equiposPorCat[cat] = [];
+      equiposPorCat[cat].push(l);
+    }
+
+    const renderEquipos = cot.lineas
+      .filter(l => !["TRANSPORTE", "COMIDA", "HOSPEDAJE"].includes(l.tipo))
+      .map(l => `• ${l.cantidad > 1 ? `${l.cantidad}x ` : ""}${[l.marca, l.modelo].filter(Boolean).join(' ') || l.descripcion}${([l.marca, l.modelo].filter(Boolean).join(' ') !== l.descripcion) ? ` (${l.descripcion})` : ""}`)
+      .join("\n");
+
+    return {
+      costoOperacion, costoExterno, costoOtros,
+      costoVivo, utilidadViva, pctVivo, semaforo, semaforoColor,
+      lineasEquipo, lineasExterno, lineasPaquete, lineasOp, lineasLog, lineasOcasional,
+      subtotalEquipo, subtotalPaquete, subtotalExterno, subtotalOp, subtotalLog, subtotalOcasional,
+      subtotalGastosProd, subtotalAdicionales, subtotalPaqueteNeto, subtotalChofer,
+      notasSecciones, equiposPorCat, renderEquipos,
+    };
+  }, [cot]);
+
   if (loading) return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-4">
       <div className="h-8 w-64 bg-[#1a1a1a] rounded-lg animate-pulse" />
@@ -728,79 +825,19 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   );
   if (!cot) return <div className="text-red-400 text-sm p-6">Cotización no encontrada</div>;
 
-  // ─── Viabilidad recalculada en vivo ──────────────────────────────────────────
-  // Costos de operación técnica + logística (subtotal = precio = costo para Mainstage)
-  const costoOperacion = cot.lineas
-    .filter(l => !l.esIncluido && ["OPERACION_TECNICA", "DJ", "TRANSPORTE", "COMIDA", "HOSPEDAJE"].includes(l.tipo))
-    .reduce((s, l) => s + l.subtotal, 0);
-
-  // Costos de equipo externo (proveedor): usa costoExterno si existe, si no usa precioUnitario como costo
-  const costoExterno = cot.lineas
-    .filter(l => !l.esIncluido && l.tipo === "EQUIPO_EXTERNO")
-    .reduce((s, l) => {
-      const costoUnit = (l.costoExterno != null && l.costoExterno > 0) ? l.costoExterno : l.precioUnitario;
-      return s + costoUnit * l.cantidad * l.dias;
-    }, 0);
-
-  // Costos de conceptos adicionales (OTRO): al 100% (costoUnitario o precioUnitario)
-  const costoOtros = cot.lineas
-    .filter(l => !l.esIncluido && l.tipo === "OTRO")
-    .reduce((s, l) => {
-      const costoUnit = (l.costoUnitario > 0) ? l.costoUnitario : l.precioUnitario;
-      return s + costoUnit * l.cantidad * l.dias;
-    }, 0);
-
-  const costoVivo = costoOperacion + costoExterno + costoOtros;
-  const utilidadViva = cot.total - costoVivo;
-  const pctVivo = cot.total > 0 ? utilidadViva / cot.total : 0;
-  const semaforo = pctVivo >= 0.55 ? "IDEAL" : pctVivo >= 0.40 ? "REGULAR" : pctVivo >= 0.25 ? "MINIMO" : "RIESGO";
-  const semaforoColor = { IDEAL: "text-green-400", REGULAR: "text-yellow-400", MINIMO: "text-orange-400", RIESGO: "text-gray-400" }[semaforo];
-
-  const lineasEquipo = cot.lineas.filter((l) => l.tipo === "EQUIPO_PROPIO");
-  const lineasExterno = cot.lineas.filter((l) => l.tipo === "EQUIPO_EXTERNO");
-  const lineasPaquete = cot.lineas.filter((l) => l.tipo === "PAQUETE");
-  const lineasOp = cot.lineas.filter((l) => l.tipo === "OPERACION_TECNICA" || l.tipo === "DJ");
-  const lineasLog = cot.lineas.filter((l) => ["TRANSPORTE", "COMIDA", "HOSPEDAJE"].includes(l.tipo));
-  const lineasOcasional = cot.lineas.filter((l) => l.tipo === "OTRO");
-
-  const subtotalEquipo = lineasEquipo.reduce((s, l) => s + l.subtotal, 0);
-  const subtotalPaquete = lineasPaquete.reduce((s, l) => s + l.subtotal, 0);
-  const subtotalExterno = lineasExterno.reduce((s, l) => s + l.subtotal, 0);
-  const subtotalOp = lineasOp.reduce((s, l) => s + l.subtotal, 0);
-  const subtotalLog = lineasLog.reduce((s, l) => s + l.subtotal, 0);
-  const subtotalOcasional = lineasOcasional.reduce((s, l) => s + l.subtotal, 0);
-  // La comisión interna viaja como línea OTRO; en el resumen va en su propio renglón.
-  const subtotalGastosProd = lineasOcasional
-    .filter((l) => l.descripcion === "Gastos de Producción")
-    .reduce((s, l) => s + l.subtotal, 0);
-  const subtotalAdicionales = subtotalOcasional - subtotalGastosProd;
-  // El descuento corre sobre equipos + paquetes; el neto guardado es solo el de equipos.
-  const subtotalPaqueteNeto = subtotalPaquete > 0
-    ? cot.subtotalEquiposBruto + subtotalPaquete - cot.montoDescuento - cot.subtotalEquiposNeto
-    : 0;
-  const subtotalChofer = cot.incluirChofer ? 500 : 0;
-
-  // Notas por sección (guardadas en notasSecciones JSON)
-  const notasSecciones: Record<string, string> = cot.notasSecciones
-    ? JSON.parse(cot.notasSecciones) : {};
-
-  // Agrupar equipos propios por categoría (usando notas que guardan categoria:NombreCat)
-  const equiposPorCat: Record<string, Linea[]> = {};
-  for (const l of lineasEquipo) {
-    const cat = l.notas?.startsWith("cat:") ? l.notas.split('|')[0].slice(4) : "Equipos";
-    if (!equiposPorCat[cat]) equiposPorCat[cat] = [];
-    equiposPorCat[cat].push(l);
-  }
+  const {
+    costoOperacion, costoExterno, costoOtros,
+    costoVivo, utilidadViva, pctVivo, semaforo, semaforoColor,
+    lineasEquipo, lineasExterno, lineasPaquete, lineasOp, lineasLog, lineasOcasional,
+    subtotalEquipo, subtotalPaquete, subtotalExterno, subtotalOp, subtotalLog, subtotalOcasional,
+    subtotalGastosProd, subtotalAdicionales, subtotalPaqueteNeto, subtotalChofer,
+    notasSecciones, equiposPorCat, renderEquipos,
+  } = calc;
 
   const LETRAS_LABELS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
   const letrasUsadas = new Set(opciones.map(o => o.opcionLetra));
   const siguienteLetra = LETRAS_LABELS.find(l => !letrasUsadas.has(l));
   const tieneOpciones = opciones.length > 1 || (opciones.length === 1 && cot.grupoId);
-
-  const renderEquipos = cot.lineas
-    .filter(l => !["TRANSPORTE", "COMIDA", "HOSPEDAJE"].includes(l.tipo))
-    .map(l => `• ${l.cantidad > 1 ? `${l.cantidad}x ` : ""}${[l.marca, l.modelo].filter(Boolean).join(' ') || l.descripcion}${([l.marca, l.modelo].filter(Boolean).join(' ') !== l.descripcion) ? ` (${l.descripcion})` : ""}`)
-    .join("\n");
 
   const buildRenderMsg = () => [
       `🎬 *Solicitud de Render — Mainstage Pro*`,
