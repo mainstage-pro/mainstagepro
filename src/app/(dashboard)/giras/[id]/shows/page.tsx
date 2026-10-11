@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { obtenerGiraConShows } from "@/lib/gira-data";
 import { resumirAdvance } from "@/lib/giras";
 import ShowsClient, { type ShowEditable } from "./ShowsClient";
 
@@ -12,21 +12,7 @@ export default async function GiraShowsPage({ params }: { params: Promise<{ id: 
 
   const { id } = await params;
 
-  const gira = await prisma.gira.findUnique({
-    where: { id },
-    select: {
-      id: true,
-      nombre: true,
-      shows: {
-        orderBy: [{ fecha: "asc" }, { orden: "asc" }],
-        include: {
-          venue: { select: { id: true, nombre: true, ciudad: true, estado: true, capacidadPersonas: true } },
-          repartos: { select: { prioridad: true, estado: true, cubiertoPor: true } },
-          _count: { select: { crew: true, momentos: true } },
-        },
-      },
-    },
-  });
+  const gira = await obtenerGiraConShows(id);
 
   if (!gira) notFound();
 

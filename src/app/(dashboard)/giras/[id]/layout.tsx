@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { obtenerGiraConShows } from "@/lib/gira-data";
 import { avanceGira, esGira, fmtRango } from "@/lib/giras";
 import CabeceraGira from "./CabeceraGira";
 import type { EnlaceSub } from "./SubNav";
@@ -19,23 +19,7 @@ export default async function GiraLayout({
 
   const { id } = await params;
 
-  const gira = await prisma.gira.findUnique({
-    where: { id },
-    select: {
-      id: true,
-      nombre: true,
-      tipo: true,
-      estado: true,
-      fechaInicio: true,
-      fechaFin: true,
-      artistaId: true,
-      artista: { select: { nombre: true } },
-      shows: {
-        orderBy: { fecha: "asc" },
-        select: { fecha: true, repartos: { select: { prioridad: true, estado: true, cubiertoPor: true } } },
-      },
-    },
-  });
+  const gira = await obtenerGiraConShows(id);
 
   if (!gira) notFound();
 
