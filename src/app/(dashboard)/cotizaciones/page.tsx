@@ -31,6 +31,7 @@ type Cotizacion = {
 export default function CotizacionesPage() {
   const [cotizaciones, setCotizaciones] = useState<Cotizacion[]>([]);
   const [busqueda, setBusqueda] = useState("");
+  const [visibles, setVisibles] = useState(50);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [asistenteAbierto, setAsistenteAbierto] = useState(false);
@@ -65,6 +66,8 @@ export default function CotizacionesPage() {
         return coincide(busqueda, cot.numeroCotizacion, cot.cliente.nombre, cot.cliente.empresa, evento);
       })
     : cotizaciones;
+  const cotizacionesVisibles = cotizacionesFiltradas.slice(0, visibles);
+  const hayMas = cotizacionesFiltradas.length > visibles;
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
@@ -93,7 +96,7 @@ export default function CotizacionesPage() {
         <input
           type="text"
           value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
+          onChange={(e) => { setBusqueda(e.target.value); setVisibles(50); }}
           placeholder="Buscar por número, cliente o evento..."
           className="w-full md:max-w-md bg-[#111] border border-[#1a1a1a] rounded-lg px-4 py-2 text-sm text-white placeholder-[#555] focus:outline-none focus:border-[#B3985B]/50 transition-colors"
         />
@@ -127,7 +130,7 @@ export default function CotizacionesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#1a1a1a]">
-              {cotizacionesFiltradas.map((cot) => (
+              {cotizacionesVisibles.map((cot) => (
                 <tr
                   key={cot.id}
                   onClick={() => router.push(`/cotizaciones/${cot.id}`)}
@@ -202,6 +205,16 @@ export default function CotizacionesPage() {
               ))}
             </tbody>
           </table>
+          </div>
+        )}
+        {hayMas && (
+          <div className="text-center py-4">
+            <button
+              onClick={() => setVisibles(v => v + 50)}
+              className="px-4 py-2 rounded-lg border border-[#1a1a1a] text-sm text-[#9ca3af] hover:text-white hover:border-[#B3985B]/50 transition-colors"
+            >
+              Cargar más ({cotizacionesFiltradas.length - visibles} restantes)
+            </button>
           </div>
         )}
       </div>
