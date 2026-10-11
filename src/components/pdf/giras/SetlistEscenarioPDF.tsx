@@ -60,7 +60,6 @@ const SANGRIA_CUERPO = 7;
 /// el título ya se lee desde el fondo del foro, y el repertorio completo cabe en
 /// dos o tres hojas en vez de media resma.
 const FUENTE_MAXIMA = 40;
-const GRIS_MOMENTO = "#9a9a9a";
 
 const s = StyleSheet.create({
   page: { backgroundColor: "#ffffff", fontFamily: "Helvetica", padding: PADDING },
@@ -91,12 +90,12 @@ const s = StyleSheet.create({
   titulo: { fontFamily: "Helvetica-Bold", color: "#000000" },
   momento: {
     fontFamily: "Helvetica-Bold",
-    color: GRIS_MOMENTO,
+    color: "#000000",
     textTransform: "uppercase",
     letterSpacing: 0.8,
     textAlign: "center",
   },
-  detalle: { color: GRIS_MOMENTO, marginTop: 2, textAlign: "center" },
+  detalle: { color: "#000000", marginTop: 2, textAlign: "center" },
   bloqueNombre: { fontFamily: "Helvetica-Bold", textTransform: "uppercase", letterSpacing: 0.8, textAlign: "center" },
 });
 
