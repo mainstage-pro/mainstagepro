@@ -6,6 +6,8 @@ export function MiniaturaLinea({ src, size = 32 }: { src?: string | null; size?:
     <img
       src={src || "/logo-icon.png"}
       alt=""
+      loading="lazy"
+      decoding="async"
       style={{ width: size, height: size }}
       className={`object-contain rounded shrink-0 ${src ? "opacity-75" : "opacity-15"}`}
     />
