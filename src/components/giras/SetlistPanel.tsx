@@ -245,8 +245,15 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
     if (!s) return;
 
     const desde = s.canciones.findIndex((c) => c.id === active.id);
-    const hasta = s.canciones.findIndex((c) => c.id === over.id);
+    let hasta = s.canciones.findIndex((c) => c.id === over.id);
     if (desde < 0 || hasta < 0) return;
+
+    // Arrastrar hacia arriba y soltar justo sobre la ancla de un bloque la
+    // desplaza en vez de entrar a su tanda: se recorre un lugar más para que
+    // la fila se sume al bloque (salvo que ella misma abra uno, que es el
+    // arrastre para reubicar dónde empieza una tanda nueva).
+    const activa = s.canciones[desde];
+    if (desde > hasta && !activa.nuevoBloque && s.canciones[hasta]?.nuevoBloque) hasta += 1;
 
     // El nombre, el color y el nuevoBloque de cada fila viajan con ella: no hay
     // nada que recalcular al moverla, a diferencia del modelo viejo.
