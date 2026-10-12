@@ -244,20 +244,52 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
     const s = previo.find((x) => x.id === setlistId);
     if (!s) return;
 
-    const desde = s.canciones.findIndex((c) => c.id === active.id);
-    let hasta = s.canciones.findIndex((c) => c.id === over.id);
-    if (desde < 0 || hasta < 0) return;
+    const desde0 = s.canciones.findIndex((c) => c.id === active.id);
+    if (desde0 < 0) return;
+    const activaOriginal = s.canciones[desde0];
+
+    // Si la fila que se arrastra abre bloque, al irse deja al resto de su
+    // tanda sin ancla: la fila que le seguía se promueve para que esas
+    // canciones no se fundan solas con el bloque anterior. Hereda el nombre y
+    // el color, que antes vivían en la fila que se va.
+    let base = s.canciones;
+    const flagsNuevos = new Map<string, Partial<CancionFila>>();
+    const siguienteOriginal = s.canciones[desde0 + 1];
+    if (activaOriginal.nuevoBloque && siguienteOriginal && !siguienteOriginal.nuevoBloque) {
+      const promocion = {
+        nuevoBloque: true,
+        bloqueNombre: activaOriginal.bloqueNombre,
+        bloqueColor: activaOriginal.bloqueColor,
+      };
+      base = s.canciones.map((c) => (c.id === siguienteOriginal.id ? { ...c, ...promocion } : c));
+      flagsNuevos.set(siguienteOriginal.id, promocion);
+    }
+
+    const desde = base.findIndex((c) => c.id === active.id);
+    let hasta = base.findIndex((c) => c.id === over.id);
+    if (hasta < 0) return;
+    const activa = base[desde];
 
     // Arrastrar hacia arriba y soltar justo sobre la ancla de un bloque la
     // desplaza en vez de entrar a su tanda: se recorre un lugar más para que
     // la fila se sume al bloque (salvo que ella misma abra uno, que es el
     // arrastre para reubicar dónde empieza una tanda nueva).
-    const activa = s.canciones[desde];
-    if (desde > hasta && !activa.nuevoBloque && s.canciones[hasta]?.nuevoBloque) hasta += 1;
+    if (desde > hasta && !activa.nuevoBloque && base[hasta]?.nuevoBloque) hasta += 1;
 
-    // El nombre, el color y el nuevoBloque de cada fila viajan con ella: no hay
-    // nada que recalcular al moverla, a diferencia del modelo viejo.
-    const finales = arrayMove(s.canciones, desde, hasta).map((c, i) => ({ ...c, orden: i * 10 }));
+    let finales = arrayMove(base, desde, hasta);
+
+    // Si la activa abre bloque y cae a la mitad de una tanda ya existente (la
+    // fila que le queda enseguida no es ancla, o sea no hay un límite ahí), se
+    // funde como renglón normal en vez de partir esa tanda en dos: nada más
+    // cambia de bloque salvo la fila que se está arrastrando.
+    const idx = finales.findIndex((c) => c.id === active.id);
+    const siguienteFinal = finales[idx + 1];
+    if (finales[idx].nuevoBloque && siguienteFinal && !siguienteFinal.nuevoBloque) {
+      finales = finales.map((c) => (c.id === active.id ? { ...c, nuevoBloque: false } : c));
+      flagsNuevos.set(active.id as string, { nuevoBloque: false });
+    }
+
+    finales = finales.map((c, i) => ({ ...c, orden: i * 10 }));
 
     setSetlists((prev) => prev.map((x) => (x.id === setlistId ? { ...x, canciones: finales } : x)));
 
@@ -270,6 +302,23 @@ export default function SetlistPanel({ giraId, alcance, showId, setlistsIniciale
       const d = await res.json().catch(() => ({}));
       toast.error(d.error ?? "No se pudo guardar el nuevo orden");
       setSetlists(previo);
+      return;
+    }
+
+    if (flagsNuevos.size > 0) {
+      const resultados = await Promise.all(
+        [...flagsNuevos.entries()].map(([cancionId, campos]) =>
+          fetch(`/api/gira-setlist-canciones/${cancionId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(campos),
+          }),
+        ),
+      );
+      if (resultados.some((r) => !r.ok)) {
+        toast.error("No se pudo guardar el cambio de bloque");
+        setSetlists(previo);
+      }
     }
   }
 
