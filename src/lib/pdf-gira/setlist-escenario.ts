@@ -75,7 +75,7 @@ export async function generarSetlistEscenario(setlistId: string): Promise<PdfGir
         id: r.fila.id,
         posicion: r.posicion,
         titulo: tituloDeFila(r.fila.titulo, r.fila.artistaInvitado),
-        detalle: null,
+        detalle: r.fila.notas,
         bloque: seg.numero,
         bloqueNombre: esAncla ? seg.nombre : null,
         color: seg.color,
