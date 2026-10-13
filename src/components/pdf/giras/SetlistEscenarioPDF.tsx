@@ -95,7 +95,7 @@ const s = StyleSheet.create({
     letterSpacing: 0.8,
     textAlign: "center",
   },
-  detalle: { color: "#000000", marginTop: 2, textAlign: "center" },
+  detalle: { color: "#5a5a5a", marginTop: 2, textAlign: "center" },
   bloqueNombre: { fontFamily: "Helvetica-Bold", textTransform: "uppercase", letterSpacing: 0.8, textAlign: "center" },
 });
 
@@ -149,7 +149,7 @@ export function SetlistEscenarioPDF({ data }: { data: SetlistEscenarioData }) {
 
   const fuente = Math.min(porAncho, (alto / porHoja) * 0.68);
   const fuenteMomento = Math.max(fuente * 0.5, 7);
-  const fuenteDetalle = Math.max(fuente * 0.28, 6);
+  const fuenteDetalle = Math.max(fuente * 0.4, 9);
 
   return (
     <Document
@@ -201,6 +201,7 @@ export function SetlistEscenarioPDF({ data }: { data: SetlistEscenarioData }) {
                         <Text style={[s.titulo, { fontSize: fuente, marginRight: fuente * 0.45 }]}>{r.posicion}.</Text>
                         <Text style={[s.titulo, { fontSize: fuente }]}>{r.titulo}</Text>
                       </View>
+                      {r.detalle ? <Text style={[s.detalle, { fontSize: fuenteDetalle }]}>{r.detalle}</Text> : null}
                     </>
                   )}
                 </View>
