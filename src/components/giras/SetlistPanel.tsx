@@ -106,13 +106,19 @@ const DEMORA_GUARDADO = 700;
 function RenglonArrastrable({ id, className, children }: { id: string; className: string; children: ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
 
+  // Solo el renglón que se arrastra se mueve en pantalla. Los demás se quedan
+  // quietos en su lugar: dnd-kit por default desliza a TODOS los renglones
+  // para "hacerle hueco" al que se arrastra, tratando el setlist como una
+  // lista plana sin bloques — eso hace que un renglón de otro bloque parezca
+  // brincar de tanda a media arrastrada, aunque el resultado real al soltar
+  // siempre respeta los bloques. El cálculo final sigue en reordenar().
   return (
     <tr
       ref={setNodeRef}
       className={className}
       style={{
-        transform: CSS.Transform.toString(transform),
-        transition,
+        transform: isDragging ? CSS.Transform.toString(transform) : undefined,
+        transition: isDragging ? transition : undefined,
         opacity: isDragging ? 0.4 : undefined,
         position: isDragging ? "relative" : undefined,
         zIndex: isDragging ? 10 : undefined,
