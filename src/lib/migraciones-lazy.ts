@@ -961,3 +961,25 @@ export async function ensureEquipoVentaColumns() {
   }
   _equipoVentaReady = true;
 }
+
+/**
+ * Notas y aprendizajes de gira (giras.evaluacion, gira_shows.evaluacion):
+ * JSON de texto libre, ver src/lib/gira-evaluacion.ts. Red de seguridad para
+ * dev/local; en prod se aplica antes del deploy con scripts/ddl-giras-notas.ts.
+ */
+let _giraNotasReady = false;
+
+export async function ensureGiraNotasColumns() {
+  if (_giraNotasReady) return;
+  if (!await columnExists("giras", "evaluacion")) {
+    try {
+      await prisma.$executeRawUnsafe(`ALTER TABLE giras ADD COLUMN IF NOT EXISTS "evaluacion" JSONB`);
+    } catch { /* ya existe */ }
+  }
+  if (!await columnExists("gira_shows", "evaluacion")) {
+    try {
+      await prisma.$executeRawUnsafe(`ALTER TABLE gira_shows ADD COLUMN IF NOT EXISTS "evaluacion" JSONB`);
+    } catch { /* ya existe */ }
+  }
+  _giraNotasReady = true;
+}

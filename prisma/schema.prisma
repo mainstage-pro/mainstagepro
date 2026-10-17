@@ -6276,6 +6276,11 @@ model Gira {
   notas       String?
   portalToken String? @unique
 
+  /// Autocrítica general de la gira completa (post-gira): resumen, aciertos,
+  /// áreas de mejora. Ver src/lib/gira-evaluacion.ts. El detalle por fecha vive
+  /// en GiraShow.evaluacion.
+  evaluacion Json?
+
   activo    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -6338,6 +6343,11 @@ model GiraShow {
 
   notas     String?
   docsToken String?  @unique
+
+  /// Notas y aprendizajes de este show (coordinación, tiempos, montaje,
+  /// soundcheck, show, desmontaje). Ver src/lib/gira-evaluacion.ts.
+  evaluacion Json?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

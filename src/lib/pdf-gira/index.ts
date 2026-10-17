@@ -13,6 +13,7 @@ import { generarListaCanales, generarRiderArtista } from "./rider";
 import { generarLibroGira, parseSecciones } from "./libro";
 import { elegirSetlist, generarSetlistDoc } from "./setlist-doc";
 import { generarSetlistEscenario } from "./setlist-escenario";
+import { generarNotasAprendizajes } from "./notas";
 import { riderDeGira } from "@/lib/rider-de-gira";
 
 export type { PdfGira } from "./render";
@@ -85,6 +86,13 @@ export const DOCUMENTOS_GIRA = {
       "El mismo repertorio en letra gigante y sin membrete, para pegarlo en el piso del escenario. Desde un show sale el de esa fecha.",
     falta: "el repertorio en la pestaña de Setlist",
   },
+  "notas-aprendizajes": {
+    ambito: "GIRA",
+    label: "Notas y aprendizajes",
+    descripcion:
+      "Las notas de cada show (coordinación, tiempos, montaje, soundcheck, show, desmontaje) más la autocrítica general de la gira, listas para presentar en junta de equipo.",
+    falta: "notas capturadas en la pestaña Notas y aprendizajes",
+  },
 } satisfies Record<string, DocumentoGira>;
 
 export type SlugDocGira = keyof typeof DOCUMENTOS_GIRA;
@@ -135,6 +143,7 @@ export async function generarDocDeGira(
   if (slug === "libro-gira") return generarLibroGira(giraId, parseSecciones(secciones));
   if (slug === "setlist") return generarSetlistDoc(giraId);
   if (slug === "setlist-escenario") return escenarioDeSetlist(giraId, null);
+  if (slug === "notas-aprendizajes") return generarNotasAprendizajes(giraId);
 
   // El rider y las listas salen del rider maestro; sin rider no hay documento.
   const resuelto = await riderDeGira(giraId);

@@ -37,6 +37,7 @@ import {
   ListMusic,
   // `Map` a secas tapa el Map del lenguaje, que este archivo usa para contar.
   Map as MapIcon,
+  NotebookPen,
   Paperclip,
   Plane,
   SlidersHorizontal,
@@ -142,6 +143,14 @@ const DOCS_GIRA = [
     descripcion:
       "El mismo repertorio en letra gigante y sin membrete, el que se pega en el piso. Aquí sale el base de la gira; el de una fecha también está en el renglón de su show.",
     icono: Theater,
+    necesitaRider: false,
+  },
+  {
+    slug: "notas-aprendizajes",
+    label: "Notas y aprendizajes",
+    descripcion:
+      "Las notas de cada show más la autocrítica general de la gira, en un solo documento para la junta de equipo.",
+    icono: NotebookPen,
     necesitaRider: false,
   },
 ] as const;
