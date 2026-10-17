@@ -616,6 +616,10 @@ export const MOMENTOS_SUGERIDOS: MomentoPlantilla[] = [
   { llave: "ENSAYO", titulo: "Ensayo", tipo: "SOUNDCHECK", rango: true },
   { llave: "CAMBIO", titulo: "Cambio de escenario", tipo: "MONTAJE", rango: true },
   { llave: "APERTURA", titulo: "Acto de apertura", tipo: "PROGRAMA", rango: true },
+  { llave: "TRANSPORTE_CREW_IDA", titulo: "Transporte de crew - ida al venue", tipo: "LOGISTICA", rango: true },
+  { llave: "TRANSPORTE_CREW_REGRESO", titulo: "Transporte de crew - regreso al venue", tipo: "LOGISTICA", rango: true },
+  { llave: "TRANSPORTE_TALENTO_IDA", titulo: "Transporte de talento - ida al venue", tipo: "LOGISTICA", rango: true },
+  { llave: "TRANSPORTE_TALENTO_REGRESO", titulo: "Transporte de talento - regreso al venue", tipo: "LOGISTICA", rango: true },
 ];
 
 // ── Invitados del show ───────────────────────────────────────────────────────
