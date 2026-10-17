@@ -595,12 +595,21 @@ function CotizadorForm() {
         const esManualMonto = cot.descuentoManualEsMonto ?? false;
         const montoFijo = cot.descuentoFijoMonto ?? 0;
         const pctFF = cot.descuentoFamilyFriendsPct ?? 0;
+        const pctEsp = cot.descuentoEspecialPct ?? 0;
+        let manualCargado = false;
         if (esManualMonto && montoFijo > 0) {
           setManualActivo(true); setManualEsMonto(true); setManualValor(String(montoFijo));
           setManualRazon(cot.descuentoManualRazon ?? "");
+          manualCargado = true;
         } else if (!esManualMonto && pctFF > 0) {
           setManualActivo(true); setManualEsMonto(false); setManualValor(String(Math.round(pctFF * 100)));
           setManualRazon(cot.descuentoManualRazon ?? "");
+          manualCargado = true;
+        } else if (!esManualMonto && pctEsp > 0) {
+          // Retrocompat: cotizaciones legacy tenían el descuento especial en descuentoEspecialPct
+          setManualActivo(true); setManualEsMonto(false); setManualValor(String(Math.round(pctEsp * 100)));
+          setManualRazon(cot.descuentoEspecialNota ?? "");
+          manualCargado = true;
         }
         // Pago anticipado
         if (cot.pagoAnticipadoActivo) {
@@ -620,7 +629,7 @@ function CotizadorForm() {
         }
         // Retrocompat: preservar descuentos legacy sin control de UI
         if ((cot.descuentoMultidiaPct ?? 0) > 0) setDMultidiaPreservado(cot.descuentoMultidiaPct);
-        if ((cot.descuentoEspecialPct ?? 0) > 0) { setDEspecialPreservado(cot.descuentoEspecialPct); setDEspecialNotaPreservada(cot.descuentoEspecialNota ?? null); }
+        if (!manualCargado && (cot.descuentoEspecialPct ?? 0) > 0) { setDEspecialPreservado(cot.descuentoEspecialPct); setDEspecialNotaPreservada(cot.descuentoEspecialNota ?? null); }
         if ((cot.descuentoPatrocinioPct ?? 0) > 0) { setDPatrocinioPreservado(cot.descuentoPatrocinioPct); setDPatrocinioNotaPreservada(cot.descuentoPatrocinioNota ?? null); }
         // Si hay descuento fijo legacy (sin manualEsMonto flag) → preservar
         if (!esManualMonto && montoFijo > 0 && pctFF === 0) setDFijoPreservado(montoFijo);
@@ -1608,19 +1617,19 @@ function CotizadorForm() {
           ? (basePostB2b > 0 ? montoManual / basePostB2b : 0)
           : (parseFloat(manualValor) || 0) / 100)
       : 0;
+    // Preservados (legacy retrocompat)
+    const montoDescuentoLegacy = subtotalEquiposBruto * (dMultidiaPreservado + dEspecialPreservado + dPatrocinioPreservado) + dFijoPreservado;
+
     // Neto descontado sobre la base combinada, repartido proporcionalmente entre
     // equipos y paquetes para conservar cada línea (y no alterar el pago anticipado).
     // Sin base descontable (cotización 100% de terceros y servicios) el descuento de
     // monto fijo no se puede repartir: se resta del total en vez de dejar netos negativos,
     // que contaminarían la base de comisión del vendedor.
-    const descuentoGlobal = baseDescuentable === 0 ? montoManual : 0;
-    const netoDescuentable = baseDescuentable === 0 ? 0 : basePostB2b - montoManual;
+    const descuentoGlobal = baseDescuentable === 0 ? (montoManual + montoDescuentoLegacy) : 0;
+    const netoDescuentable = baseDescuentable === 0 ? 0 : Math.max(0, basePostB2b - montoManual - montoDescuentoLegacy);
     const shareEquipos = baseDescuentable > 0 ? subtotalEquiposBruto / baseDescuentable : 0;
     const subtotalEquiposNeto = netoDescuentable * shareEquipos;
     const subtotalPaquetesNeto = netoDescuentable - subtotalEquiposNeto;
-
-    // Preservados (legacy retrocompat)
-    const montoDescuentoLegacy = subtotalEquiposBruto * (dMultidiaPreservado + dEspecialPreservado + dPatrocinioPreservado) + dFijoPreservado;
 
     const montoDescuento = montoVolumen + montoB2b + montoManual + montoDescuentoLegacy;
     const descuentoTotalPct = baseDescuentable > 0 ? montoDescuento / baseDescuentable : 0;
