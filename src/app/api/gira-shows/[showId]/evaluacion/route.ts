@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { ensureGiraNotasColumns } from "@/lib/migraciones-lazy";
-import {
-  emptyGiraShowEvaluacion,
-  type GiraShowEvaluacionData,
-} from "@/lib/gira-evaluacion";
+import { parseGiraShowEvaluacion } from "@/lib/gira-evaluacion";
 
 export async function GET(
   _req: NextRequest,
@@ -39,27 +37,21 @@ export async function PUT(
 
   const existente = await prisma.giraShow.findUnique({
     where: { id: showId },
-    select: { evaluacion: true },
+    select: { id: true },
   });
   if (!existente) return NextResponse.json({ error: "Show no encontrado" }, { status: 404 });
 
-  const prev = { ...emptyGiraShowEvaluacion(), ...((existente.evaluacion as GiraShowEvaluacionData | null) ?? {}) };
-  const texto = (v: unknown, fallback: string) => (typeof v === "string" ? v : fallback);
-
-  const data: GiraShowEvaluacionData = {
-    coordinacionLogistica: texto(body.coordinacionLogistica, prev.coordinacionLogistica),
-    tiemposProduccion: texto(body.tiemposProduccion, prev.tiemposProduccion),
-    montaje: texto(body.montaje, prev.montaje),
-    soundcheck: texto(body.soundcheck, prev.soundcheck),
-    show: texto(body.show, prev.show),
-    desmontaje: texto(body.desmontaje, prev.desmontaje),
-    notas: texto(body.notas, prev.notas),
+  const data = {
+    ...parseGiraShowEvaluacion(body),
     actualizadoPorId: session.id,
     actualizadoPorNombre: session.name,
     actualizadoEn: new Date().toISOString(),
   };
 
-  await prisma.giraShow.update({ where: { id: showId }, data: { evaluacion: data } });
+  await prisma.giraShow.update({
+    where: { id: showId },
+    data: { evaluacion: data as unknown as Prisma.InputJsonValue },
+  });
 
   return NextResponse.json({ evaluacion: data });
 }

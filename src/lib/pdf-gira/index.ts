@@ -13,7 +13,7 @@ import { generarListaCanales, generarRiderArtista } from "./rider";
 import { generarLibroGira, parseSecciones } from "./libro";
 import { elegirSetlist, generarSetlistDoc } from "./setlist-doc";
 import { generarSetlistEscenario } from "./setlist-escenario";
-import { generarNotasAprendizajes } from "./notas";
+import { generarNotasAprendizajes, generarNotasShow } from "./notas";
 import { riderDeGira } from "@/lib/rider-de-gira";
 
 export type { PdfGira } from "./render";
@@ -90,8 +90,14 @@ export const DOCUMENTOS_GIRA = {
     ambito: "GIRA",
     label: "Notas y aprendizajes",
     descripcion:
-      "Las notas de cada show (coordinación, tiempos, montaje, soundcheck, show, desmontaje) más la autocrítica general de la gira, listas para presentar en junta de equipo.",
+      "Las notas de cada show (coordinación, tiempos, montaje, soundcheck, show, desmontaje) más los temas generales de la producción, el resumen ejecutivo y los aciertos a repetir, listos para presentar en junta de equipo.",
     falta: "notas capturadas en la pestaña Notas y aprendizajes",
+  },
+  "notas-show": {
+    ambito: "SHOW",
+    label: "Notas y aprendizajes",
+    descripcion: "El reporte de hallazgos (falla + solución propuesta) y comentarios de esta fecha.",
+    falta: "notas capturadas en la pestaña Notas y aprendizajes de este show",
   },
 } satisfies Record<string, DocumentoGira>;
 
@@ -119,6 +125,7 @@ export async function generarDocDeShow(
   if (slug === "day-sheet") return generarDaySheet(showId);
   if (slug === "advance") return generarAdvanceShow(showId);
   if (slug === "transporte") return generarTransporteProduccion(showId);
+  if (slug === "notas-show") return generarNotasShow(showId);
   // El setlist es de gira, pero cada fecha puede tener su variante: desde un
   // show se emite la de ese show y, si no la capturaron, el base avisando.
   if (slug === "setlist") return generarSetlistDoc(giraId, showId);

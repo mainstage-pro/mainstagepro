@@ -1,17 +1,22 @@
 "use client";
 
 /**
- * Notas y aprendizajes de un show: textareas libres que se autoguardan, sin
- * validación ni gate de "completar" — la estructura solo sirve de guía de qué
- * anotar. Mismo mecanismo de guardado que evaluacion-post-evento (debounce +
- * merge en servidor), pero sin checklist, evidencia ni gastos.
+ * Notas y aprendizajes de un show: un tema por bloque de producción
+ * (coordinación, montaje, soundcheck...), cada uno con sus hallazgos
+ * (falla + solución propuesta) y un espacio de comentarios abiertos. Se
+ * autoguarda con el mismo mecanismo que las evaluaciones post-evento
+ * (debounce + merge en servidor), sin checklist, evidencia ni gastos.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import TemaEvaluacionEditor from "./TemaEvaluacionEditor";
 import {
-  CAMPOS_EVALUACION_SHOW,
+  TEMAS_SHOW,
   emptyGiraShowEvaluacion,
+  parseGiraShowEvaluacion,
   type GiraShowEvaluacionData,
+  type TemaEvaluacion,
+  type TemaShowId,
 } from "@/lib/gira-evaluacion";
 
 export default function NotasShowPanel({ showId }: { showId: string }) {
@@ -24,7 +29,7 @@ export default function NotasShowPanel({ showId }: { showId: string }) {
     (async () => {
       const r = await fetch(`/api/gira-shows/${showId}/evaluacion`, { cache: "no-store" });
       const d = await r.json();
-      if (d.evaluacion) setData({ ...emptyGiraShowEvaluacion(), ...d.evaluacion });
+      setData(parseGiraShowEvaluacion(d.evaluacion));
       setLoading(false);
     })();
   }, [showId]);
@@ -39,9 +44,9 @@ export default function NotasShowPanel({ showId }: { showId: string }) {
     setEstado(r.ok ? "saved" : "idle");
   }, [showId]);
 
-  const setCampo = (campo: keyof GiraShowEvaluacionData, valor: string) => {
+  const setTema = (id: TemaShowId, tema: TemaEvaluacion) => {
     setData((prev) => {
-      const next = { ...prev, [campo]: valor };
+      const next = { ...prev, temas: { ...prev.temas, [id]: tema } };
       if (saveTimer.current) clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(() => persistir(next), 800);
       return next;
@@ -53,21 +58,18 @@ export default function NotasShowPanel({ showId }: { showId: string }) {
   const estadoTxt = estado === "saving" ? "Guardando…" : estado === "saved" ? "Guardado" : "";
 
   return (
-    <div className="max-w-2xl space-y-5">
+    <div className="max-w-2xl space-y-7">
       <div className="flex justify-end">
         <span className={`text-[11px] h-4 ${estado === "saving" ? "text-[#666]" : "text-green-500"}`}>{estadoTxt}</span>
       </div>
-      {CAMPOS_EVALUACION_SHOW.map((campo) => (
-        <div key={campo.id}>
-          <label className="block text-sm text-white font-medium mb-1.5">{campo.label}</label>
-          <textarea
-            value={data[campo.id]}
-            onChange={(e) => setCampo(campo.id, e.target.value)}
-            placeholder={campo.placeholder}
-            rows={3}
-            className="ms-textarea"
-          />
-        </div>
+      {TEMAS_SHOW.map((t) => (
+        <TemaEvaluacionEditor
+          key={t.id}
+          label={t.label}
+          ayuda={t.ayuda}
+          tema={data.temas[t.id]}
+          onChange={(tema) => setTema(t.id, tema)}
+        />
       ))}
     </div>
   );

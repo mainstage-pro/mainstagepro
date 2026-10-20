@@ -3,6 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { fmtFechaLarga } from "@/lib/giras";
+import { parseGiraShowEvaluacion, showEvaluacionTieneContenido } from "@/lib/gira-evaluacion";
+import BotonDocumentoGira from "@/components/giras/BotonDocumentoGira";
 import NotasShowPanel from "@/components/giras/NotasShowPanel";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +25,7 @@ export default async function NotasShowPage({
       id: true,
       fecha: true,
       ciudad: true,
+      evaluacion: true,
       venue: { select: { nombre: true, ciudad: true } },
       gira: { select: { nombre: true } },
     },
@@ -30,6 +33,7 @@ export default async function NotasShowPage({
   if (!show) notFound();
 
   const ciudad = show.ciudad ?? show.venue?.ciudad ?? null;
+  const hayContenido = showEvaluacionTieneContenido(parseGiraShowEvaluacion(show.evaluacion));
 
   return (
     <div className="ms-page space-y-4 pb-16">
@@ -41,12 +45,16 @@ export default async function NotasShowPage({
             {show.venue?.nombre ? ` · ${show.venue.nombre}` : ""}
           </p>
         </div>
-        <Link
-          href={`/giras/${id}/notas`}
-          className="shrink-0 text-[11px] text-[#666] hover:text-[#B3985B]"
-        >
-          Ver la autocrítica de toda la gira →
-        </Link>
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          <BotonDocumentoGira
+            url={`/api/gira-shows/${show.id}/documentos/notas-show`}
+            label="Generar documento"
+            falta={hayContenido ? null : "hallazgos o comentarios capturados aquí"}
+          />
+          <Link href={`/giras/${id}/notas`} className="text-[11px] text-[#666] hover:text-[#B3985B]">
+            Ver la autocrítica de toda la gira →
+          </Link>
+        </div>
       </div>
 
       <NotasShowPanel showId={show.id} />

@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { ensureGiraNotasColumns } from "@/lib/migraciones-lazy";
-import {
-  emptyGiraEvaluacion,
-  type GiraEvaluacionData,
-} from "@/lib/gira-evaluacion";
+import { parseGiraEvaluacion } from "@/lib/gira-evaluacion";
 
 export async function GET(
   _req: NextRequest,
@@ -39,24 +37,21 @@ export async function PUT(
 
   const existente = await prisma.gira.findUnique({
     where: { id },
-    select: { evaluacion: true },
+    select: { id: true },
   });
   if (!existente) return NextResponse.json({ error: "Gira no encontrada" }, { status: 404 });
 
-  const prev = { ...emptyGiraEvaluacion(), ...((existente.evaluacion as GiraEvaluacionData | null) ?? {}) };
-  const texto = (v: unknown, fallback: string) => (typeof v === "string" ? v : fallback);
-
-  const data: GiraEvaluacionData = {
-    resumenGeneral: texto(body.resumenGeneral, prev.resumenGeneral),
-    aciertos: texto(body.aciertos, prev.aciertos),
-    areasMejora: texto(body.areasMejora, prev.areasMejora),
-    notas: texto(body.notas, prev.notas),
+  const data = {
+    ...parseGiraEvaluacion(body),
     actualizadoPorId: session.id,
     actualizadoPorNombre: session.name,
     actualizadoEn: new Date().toISOString(),
   };
 
-  await prisma.gira.update({ where: { id }, data: { evaluacion: data } });
+  await prisma.gira.update({
+    where: { id },
+    data: { evaluacion: data as unknown as Prisma.InputJsonValue },
+  });
 
   return NextResponse.json({ evaluacion: data });
 }

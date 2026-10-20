@@ -9,8 +9,9 @@
  *  2. Documentos de la gira — rider, listas de canales y setlist. Valen para
  *     todos los shows: los dos primeros salen del rider maestro y el setlist
  *     del repertorio base.
- *  3. Documentos por show — day sheet, advance y los dos setlists de la fecha.
- *     Un renglón por show, con su botón de descarga y su enlace público.
+ *  3. Documentos por show — day sheet, advance, transporte, los dos setlists y
+ *     las notas de la fecha. Un renglón por show, con su botón de descarga y
+ *     su enlace público.
  *  4. Archivero — lo que llega de afuera y hay que tener a mano.
  *
  * Cada documento se descarga o se comparte desde su propio renglón: no hay
@@ -163,6 +164,7 @@ const DOCS_PLAZA = [
   { slug: "transporte", label: "Transporte", icono: Truck },
   { slug: "setlist", label: "Setlist", icono: ListMusic },
   { slug: "setlist-escenario", label: "Escenario", icono: Theater },
+  { slug: "notas-show", label: "Notas", icono: NotebookPen },
 ] as const;
 
 /// Un icono por sección del libro y por tipo de archivo: la lista se lee de un
@@ -599,7 +601,7 @@ export default function DocumentosClient({
             Documentos por show
           </h2>
           <p className="ms-meta mt-1">
-            Estos cuatro hablan de una fecha, así que se emiten desde el renglón del show; los dos setlists son los de
+            Estos hablan de una fecha, así que se emiten desde el renglón del show; los dos setlists son los de
             esa fecha, y si el show no capturó el suyo sale el base avisándolo. El enlace de un show abre además el
             rider: es el único que se le manda al foro.
           </p>

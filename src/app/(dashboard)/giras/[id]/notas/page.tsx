@@ -1,7 +1,12 @@
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { showEvaluacionTieneContenido, giraEvaluacionTieneContenido, type GiraShowEvaluacionData, type GiraEvaluacionData } from "@/lib/gira-evaluacion";
+import {
+  showEvaluacionTieneContenido,
+  giraEvaluacionTieneContenido,
+  parseGiraShowEvaluacion,
+  parseGiraEvaluacion,
+} from "@/lib/gira-evaluacion";
 import BotonDocumentoGira from "@/components/giras/BotonDocumentoGira";
 import NotasGiraPanel from "@/components/giras/NotasGiraPanel";
 
@@ -28,8 +33,8 @@ export default async function NotasGiraPage({
   });
   if (!gira) notFound();
 
-  const hayNotasDeShow = gira.shows.some((s) => showEvaluacionTieneContenido(s.evaluacion as GiraShowEvaluacionData | null));
-  const hayContenido = hayNotasDeShow || giraEvaluacionTieneContenido(gira.evaluacion as GiraEvaluacionData | null);
+  const hayNotasDeShow = gira.shows.some((s) => showEvaluacionTieneContenido(parseGiraShowEvaluacion(s.evaluacion)));
+  const hayContenido = hayNotasDeShow || giraEvaluacionTieneContenido(parseGiraEvaluacion(gira.evaluacion));
 
   return (
     <div className="ms-page space-y-4 pb-16">
