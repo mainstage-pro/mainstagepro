@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { marcarFilaNominaPagada } from "@/lib/nomina-pagos";
+import { marcarFilaNominaPagada, getCategoriaPersonalFreelance } from "@/lib/nomina-pagos";
 import { datosBancarios, SELECT_BANCARIOS_TECNICO, type DatosBancarios } from "@/lib/datos-bancarios";
 import { desgloseBonos, SELECT_BONOS, totalPagoPersonal } from "@/lib/pago-personal";
 
@@ -44,6 +44,7 @@ export async function GET(req: NextRequest) {
         include: {
           tecnico: { select: { id: true, nombre: true, ...SELECT_BANCARIOS_TECNICO } },
           rolTecnico: { select: { nombre: true } },
+          movimiento: { select: { id: true, monto: true } },
         },
         orderBy: [{ participacion: "asc" }, { fechaJornada: "asc" }, { id: "asc" }],
       },
@@ -58,22 +59,41 @@ export async function GET(req: NextRequest) {
     cliente: p.cliente?.nombre ?? "",
     fechaEvento: p.fechaEvento?.toISOString().slice(0, 10) ?? "",
     presupuestoOp: p.cotizacion?.subtotalOperacion ?? 0,
-    personal: p.personal.map((pp) => ({
-      id: pp.id,
-      tecnicoId: pp.tecnicoId,
-      tecnicoNombre: pp.tecnico?.nombre ?? null,
-      rolTecnicoId: pp.rolTecnicoId,
-      rolNombre: pp.rolTecnico?.nombre ?? null,
-      participacion: pp.participacion,
-      fechaJornada: pp.fechaJornada,
-      nivel: pp.nivel,
-      jornada: pp.jornada,
-      tarifaAcordada: pp.tarifaAcordada,
-      bonos: desgloseBonos(pp),
-      pagoTotal: totalPagoPersonal(pp),
-      estadoPago: pp.estadoPago,
-      notas: pp.notas,
-    })),
+    personal: p.personal.map((pp) => {
+      const pagoTotal = totalPagoPersonal(pp);
+      const tarifaTotal = pagoTotal ?? 0;
+      const montoPagado = pp.movimiento?.monto ?? (pp.estadoPago === "PAGADO" ? tarifaTotal : 0);
+      const montoPendiente = Math.max(0, tarifaTotal - montoPagado);
+      let estadoEfectivo = pp.estadoPago;
+      if (tarifaTotal > 0) {
+        if (montoPendiente <= 0.01) {
+          estadoEfectivo = "PAGADO";
+        } else if (montoPagado > 0.01) {
+          estadoEfectivo = "PARCIAL";
+        } else {
+          estadoEfectivo = "PENDIENTE";
+        }
+      }
+
+      return {
+        id: pp.id,
+        tecnicoId: pp.tecnicoId,
+        tecnicoNombre: pp.tecnico?.nombre ?? null,
+        rolTecnicoId: pp.rolTecnicoId,
+        rolNombre: pp.rolTecnico?.nombre ?? null,
+        participacion: pp.participacion,
+        fechaJornada: pp.fechaJornada,
+        nivel: pp.nivel,
+        jornada: pp.jornada,
+        tarifaAcordada: pp.tarifaAcordada,
+        bonos: desgloseBonos(pp),
+        pagoTotal,
+        montoPagado,
+        montoPendiente,
+        estadoPago: estadoEfectivo,
+        notas: pp.notas,
+      };
+    }),
   }));
 
   // Build nomina: aggregate by technician across all projects
@@ -83,7 +103,15 @@ export async function GET(req: NextRequest) {
       tecnicoId: string;
       tecnicoNombre: string;
       datosBancarios: DatosBancarios | null;
-      pagos: { proyectoId: string; proyectoNombre: string; monto: number; estadoPago: string }[];
+      pagos: {
+        proyectoId: string;
+        proyectoNombre: string;
+        monto: number;
+        totalTarifa: number;
+        montoPagado: number;
+        montoPendiente: number;
+        estadoPago: string;
+      }[];
     }
   >();
 
@@ -101,16 +129,27 @@ export async function GET(req: NextRequest) {
         });
       }
       const entry = tecMap.get(key)!;
+      const tarifaSlot = pagoPP;
+      const pagadoSlot = pp.movimiento?.monto ?? (pp.estadoPago === "PAGADO" ? tarifaSlot : 0);
+      const pendienteSlot = Math.max(0, tarifaSlot - pagadoSlot);
+
       const existing = entry.pagos.find((x) => x.proyectoId === p.id);
       if (existing) {
-        existing.monto += pagoPP;
-        if (pp.estadoPago !== "PAGADO") existing.estadoPago = "PENDIENTE";
+        existing.totalTarifa += tarifaSlot;
+        existing.montoPagado += pagadoSlot;
+        existing.montoPendiente += pendienteSlot;
+        existing.monto = existing.montoPendiente > 0 ? existing.montoPendiente : existing.totalTarifa;
+        existing.estadoPago = existing.montoPendiente <= 0.01 ? "PAGADO" : existing.montoPagado > 0.01 ? "PARCIAL" : "PENDIENTE";
       } else {
+        const estadoEfectivo = pendienteSlot <= 0.01 ? "PAGADO" : pagadoSlot > 0.01 ? "PARCIAL" : "PENDIENTE";
         entry.pagos.push({
           proyectoId: p.id,
           proyectoNombre: p.nombre,
-          monto: pagoPP,
-          estadoPago: pp.estadoPago,
+          monto: pendienteSlot > 0 ? pendienteSlot : tarifaSlot,
+          totalTarifa: tarifaSlot,
+          montoPagado: pagadoSlot,
+          montoPendiente: pendienteSlot,
+          estadoPago: estadoEfectivo,
         });
       }
     }
@@ -119,7 +158,7 @@ export async function GET(req: NextRequest) {
   const nomina = Array.from(tecMap.values())
     .map((t) => ({
       ...t,
-      total: t.pagos.reduce((s, x) => s + (x.estadoPago === "PENDIENTE" ? x.monto : 0), 0),
+      total: t.pagos.reduce((s, x) => s + x.montoPendiente, 0),
       todosPagados: t.pagos.every((x) => x.estadoPago === "PAGADO"),
     }))
     .sort((a, b) => a.tecnicoNombre.localeCompare(b.tecnicoNombre));
@@ -194,15 +233,27 @@ export async function POST(req: NextRequest) {
 
   const fechaPago = fecha ? new Date(fecha + "T12:00:00Z") : new Date();
 
-  // Filas de nómina pendientes del técnico en estos proyectos (lo que se paga).
+  // Filas de nómina pendientes o con saldo parcial del técnico en estos proyectos
   const filasPendientes = await prisma.proyectoPersonal.findMany({
-    where: { tecnicoId, proyectoId: { in: proyectoIds }, estadoPago: "PENDIENTE" },
-    select: { id: true, tarifaAcordada: true, ...SELECT_BONOS, proyectoId: true },
+    where: {
+      tecnicoId,
+      proyectoId: { in: proyectoIds },
+      estadoPago: { in: ["PENDIENTE", "PARCIAL"] },
+    },
+    include: {
+      movimiento: { select: { id: true, monto: true } },
+      tecnico: { select: { nombre: true } },
+      rolTecnico: { select: { nombre: true } },
+      proyecto: { select: { nombre: true } },
+    },
   });
 
-  // Total adeudado: preferir el que envía la UI (coincide con las tarifas
-  // mostradas); si no, sumar las tarifas de las filas pendientes.
-  const filasTotal = filasPendientes.reduce((s, f) => s + (totalPagoPersonal(f) ?? 0), 0);
+  // Total adeudado real: tarifa total menos lo ya cubierto por movimientos
+  const filasTotal = filasPendientes.reduce((s, f) => {
+    const total = totalPagoPersonal(f) ?? 0;
+    const pagado = f.movimiento?.monto ?? 0;
+    return s + Math.max(0, total - pagado);
+  }, 0);
   const totalOwed = totalOwedFromClient ?? filasTotal;
 
   // ── Determinar método/cuenta/referencia "primario" y total pagado ──────────
@@ -242,22 +293,32 @@ export async function POST(req: NextRequest) {
     const entradasADistribuir = validEntradas.length > 0 ? validEntradas : [{ monto: totalOwed, metodoPago: metodoPrimario, cuentaOrigenId: cuentaPrimaria, referencia: refPrimaria }];
 
     await prisma.$transaction(async (tx) => {
-      for (const fila of filasPendientes) {
-        let filaMontoPendiente = totalPagoPersonal(fila) ?? 0;
-        let filaVinculada = false;
+      const categoriaFreelanceId = await getCategoriaPersonalFreelance(tx);
 
-        // Si la fila no tiene monto, igual la marcamos como pagada
+      for (const fila of filasPendientes) {
+        const tarifaTotalFila = totalPagoPersonal(fila) ?? 0;
+        const yaPagadoFila = fila.movimiento?.monto ?? 0;
+        let filaMontoPendiente = Math.max(0, tarifaTotalFila - yaPagadoFila);
+
+        // Si la fila no tiene monto pendiente, aseguramos su estado
         if (filaMontoPendiente <= 0.01) {
-          const movId = await marcarFilaNominaPagada(tx, fila.id, {
-            fecha: fechaPago,
-            metodoPago: entradasADistribuir[0].metodoPago,
-            cuentaOrigenId: entradasADistribuir[0].cuentaOrigenId || null,
-            referencia: entradasADistribuir[0].referencia || null,
-            notas: notasPago,
-            creadoPor: session.id,
-            overrideMonto: 0,
-          });
-          if (movId) movIds.push(movId);
+          if (!fila.movimientoId) {
+            const movId = await marcarFilaNominaPagada(tx, fila.id, {
+              fecha: fechaPago,
+              metodoPago: entradasADistribuir[0].metodoPago,
+              cuentaOrigenId: entradasADistribuir[0].cuentaOrigenId || null,
+              referencia: entradasADistribuir[0].referencia || null,
+              notas: notasPago,
+              creadoPor: session.id,
+              overrideMonto: 0,
+            });
+            if (movId) movIds.push(movId);
+          } else {
+            await tx.proyectoPersonal.update({
+              where: { id: fila.id },
+              data: { estadoPago: "PAGADO" },
+            });
+          }
           continue;
         }
 
@@ -267,8 +328,8 @@ export async function POST(req: NextRequest) {
           const montoAUsar = Math.min(filaMontoPendiente, entradaRestante);
 
           if (montoAUsar > 0.01) {
-            if (!filaVinculada) {
-              // El primer pago o la mayor parte se vincula directamente a la fila
+            if (!fila.movimientoId) {
+              // El primer pago se vincula directamente a la fila
               const movId = await marcarFilaNominaPagada(tx, fila.id, {
                 fecha: fechaPago,
                 metodoPago: entradaActual.metodoPago,
@@ -279,29 +340,60 @@ export async function POST(req: NextRequest) {
                 overrideMonto: montoAUsar,
               });
               if (movId) movIds.push(movId);
-              filaVinculada = true;
             } else {
-              // Si la fila requirió fondos de múltiples cuentas, las partes restantes se
-              // crean como movimientos sueltos para mantener la integridad del ledger.
+              // Complemento de pago (cuando la fila ya tenía un pago inicial registrado)
+              const tecNombre = fila.tecnico?.nombre ?? tecnico?.nombre ?? "Técnico";
+              const rolNombre = fila.rolEnEvento ?? fila.rolTecnico?.nombre ?? "Puesto";
+              const concepto = `Nómina — ${tecNombre} · ${rolNombre} (Complemento) | ${fila.proyecto?.nombre ?? "Proyecto"}`;
               const mov = await tx.movimientoFinanciero.create({
                 data: {
                   tipo: "GASTO",
                   fecha: fechaPago,
-                  concepto: `Nómina — ${tecnico?.nombre ?? tecnicoId} (Complemento)`,
+                  concepto,
                   monto: montoAUsar,
                   metodoPago: entradaActual.metodoPago,
                   cuentaOrigenId: entradaActual.cuentaOrigenId || null,
                   referencia: entradaActual.referencia || null,
                   notas: notasPago,
-                  proyectoId: fila.proyectoId, // usamos el id del proyecto al que pertenecía la fila
+                  proyectoId: fila.proyectoId,
+                  categoriaId: categoriaFreelanceId,
                   creadoPor: session.id,
                 },
               });
               movIds.push(mov.id);
+
+              // Actualizar CxP si existe
+              const cxp = await tx.cuentaPagar.findFirst({
+                where: {
+                  tecnicoId: fila.tecnicoId,
+                  proyectoId: fila.proyectoId,
+                  tipoAcreedor: "TECNICO",
+                },
+                orderBy: { createdAt: "desc" },
+              });
+              if (cxp) {
+                const nuevoPagado = (cxp.montoPagado ?? 0) + montoAUsar;
+                const nuevoEstado = nuevoPagado >= cxp.monto - 0.01 ? "LIQUIDADO" : "PARCIAL";
+                await tx.cuentaPagar.update({
+                  where: { id: cxp.id },
+                  data: {
+                    montoPagado: nuevoPagado,
+                    estado: nuevoEstado,
+                    fechaPagoReal: fechaPago,
+                  },
+                });
+              }
             }
 
             filaMontoPendiente -= montoAUsar;
             entradaRestante -= montoAUsar;
+
+            // Actualizar estado de la fila según saldo restante
+            const nuevoEstado = filaMontoPendiente <= 0.01 ? "PAGADO" : "PARCIAL";
+            await tx.proyectoPersonal.update({
+              where: { id: fila.id },
+              data: { estadoPago: nuevoEstado },
+            });
 
             if (entradaRestante < 0.01) {
               entradaIdx++;

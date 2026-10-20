@@ -72,7 +72,37 @@ export async function ensureOperacionTecnicaColumns() {
       );
     } catch { /* ya existe */ }
   }
+
+  // Rol "Extras" garantizado en el catálogo para horas extras y adicionales
+  try {
+    await ensureRolExtras();
+  } catch { /* noop */ }
+
   _ready = true;
+}
+
+export async function ensureRolExtras() {
+  const existe = await prisma.rolTecnico.findFirst({
+    where: { nombre: { equals: "Extras", mode: "insensitive" } },
+  });
+  if (!existe) {
+    await prisma.rolTecnico.create({
+      data: {
+        nombre: "Extras",
+        disciplina: "STAFF_GENERAL",
+        tipoPago: "POR_HORA",
+        tarifaHoraAAA: 300,
+        tarifaHoraAA: 250,
+        tarifaHoraA: 200,
+        tarifaPlanaAAA: 500,
+        tarifaPlanaAA: 400,
+        tarifaPlanaA: 300,
+        descripcion: "Horas extras, servicios complementarios y cargos adicionales",
+        activo: true,
+        orden: 98,
+      },
+    });
+  }
 }
 
 /**

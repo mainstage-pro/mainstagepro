@@ -21,6 +21,8 @@ interface PersonalSlot {
   nivel: string | null;
   jornada: string | null;
   tarifaAcordada: number | null;
+  montoPagado?: number;
+  montoPendiente?: number;
   notas?: string | null;
   estadoPago: string;
 }
@@ -38,6 +40,9 @@ interface NominaPago {
   proyectoId: string;
   proyectoNombre: string;
   monto: number;
+  totalTarifa?: number;
+  montoPagado?: number;
+  montoPendiente?: number;
   estadoPago: string;
 }
 
@@ -235,7 +240,7 @@ function EditablePersonalRow({ pp, roles, tecnicos, pendingEdits, onEdit }: {
       {/* Técnico Editable */}
       <div 
         className="-mx-1 px-1 py-0.5 rounded cursor-pointer hover:bg-[#222]"
-        onClick={() => { if (!editingTecnico && pp.estadoPago !== "PAGADO") setEditingTecnico(true); }}
+        onClick={() => { if (!editingTecnico) setEditingTecnico(true); }}
       >
         {editingTecnico ? (
           <select 
@@ -260,7 +265,7 @@ function EditablePersonalRow({ pp, roles, tecnicos, pendingEdits, onEdit }: {
       {/* Rol Editable */}
       <div 
         className="-mx-1 px-1 py-0.5 rounded cursor-pointer hover:bg-[#222]"
-        onClick={() => { if (!editingRol && pp.estadoPago !== "PAGADO") setEditingRol(true); }}
+        onClick={() => { if (!editingRol) setEditingRol(true); }}
       >
         {editingRol ? (
           <select 
@@ -320,7 +325,7 @@ function EditablePersonalRow({ pp, roles, tecnicos, pendingEdits, onEdit }: {
         ) : (
           <p 
             className="text-xs text-gray-400 truncate w-full h-full"
-            onClick={() => { if (pp.estadoPago !== "PAGADO") setEditingBloque(true); }}
+            onClick={() => { setEditingBloque(true); }}
           >
             {merged.jornada || "—"}
           </p>
@@ -363,7 +368,7 @@ function EditablePersonalRow({ pp, roles, tecnicos, pendingEdits, onEdit }: {
         ) : (
           <>
             <button 
-              onClick={() => { if (pp.estadoPago !== "PAGADO") setEditingNotas(true); }}
+              onClick={() => { setEditingNotas(true); }}
               className={`p-1 rounded-md transition-colors ${merged.notas ? 'text-[#B3985B] bg-[#B3985B]/10 hover:bg-[#B3985B]/20' : 'text-gray-600 hover:text-gray-400'}`}
               title={merged.notas || "Añadir nota o extra"}
             >
@@ -371,7 +376,7 @@ function EditablePersonalRow({ pp, roles, tecnicos, pendingEdits, onEdit }: {
             </button>
             <p 
               className={`text-sm font-medium cursor-pointer text-right min-w-[50px] ${merged.tarifaAcordada != null ? "text-white" : "text-gray-600"}`}
-              onClick={() => { if (pp.estadoPago !== "PAGADO") setEditingMonto(true); }}
+              onClick={() => { setEditingMonto(true); }}
             >
               {merged.tarifaAcordada != null ? fmt(merged.tarifaAcordada) : "—"}
             </p>
@@ -380,14 +385,18 @@ function EditablePersonalRow({ pp, roles, tecnicos, pendingEdits, onEdit }: {
       </div>
 
       <div className="flex justify-end">
-        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+        <span
+          title={pp.estadoPago === "PARCIAL" && pp.montoPagado != null ? `Pagado: ${fmt(pp.montoPagado)} · Resta: ${fmt(pp.montoPendiente ?? 0)}` : undefined}
+          className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
           pp.estadoPago === "PAGADO"
             ? "bg-green-900/40 text-green-400"
-            : merged.tarifaAcordada != null
-              ? "bg-yellow-900/30 text-yellow-400"
-              : "text-gray-700"
+            : pp.estadoPago === "PARCIAL"
+              ? "bg-blue-900/40 text-blue-300 border border-blue-700/50"
+              : merged.tarifaAcordada != null
+                ? "bg-yellow-900/30 text-yellow-400"
+                : "text-gray-700"
         }`}>
-          {pp.tecnicoId ? (pp.estadoPago === "PAGADO" ? "Pagado" : "Pend.") : "—"}
+          {pp.tecnicoId ? (pp.estadoPago === "PAGADO" ? "Pagado" : pp.estadoPago === "PARCIAL" ? "Parcial" : "Pend.") : "—"}
         </span>
       </div>
     </div>
@@ -403,6 +412,18 @@ export default function PagosPersonalPage() {
 
   const [data, setData] = useState<CicloData | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Estado para agregar extra / rol a un proyecto desde pagos-personal
+  const [addingExtraProyectoId, setAddingExtraProyectoId] = useState<string | null>(null);
+  const [nuevoExtraForm, setNuevoExtraForm] = useState({
+    tecnicoId: "",
+    rolTecnicoId: "",
+    participacion: "OPERACION",
+    jornada: "CORTA",
+    tarifaAcordada: "",
+    notas: "",
+  });
+  const [guardandoExtra, setGuardandoExtra] = useState(false);
 
   // Shared modal state
   const [pagoTarget, setPagoTarget] = useState<NominaRow[] | null>(null);
@@ -494,10 +515,43 @@ export default function PagosPersonalPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  async function guardarNuevoExtra(proyectoId: string) {
+    if (!nuevoExtraForm.tecnicoId && !nuevoExtraForm.rolTecnicoId) {
+      alert("Selecciona al menos un técnico o un rol para el puesto");
+      return;
+    }
+    setGuardandoExtra(true);
+    try {
+      const res = await fetch(`/api/proyectos/${proyectoId}/personal`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...nuevoExtraForm,
+          tarifaAcordada: nuevoExtraForm.tarifaAcordada ? parseFloat(nuevoExtraForm.tarifaAcordada) : null,
+          esAdicional: true,
+        }),
+      });
+      if (res.ok) {
+        setAddingExtraProyectoId(null);
+        setNuevoExtraForm({
+          tecnicoId: "",
+          rolTecnicoId: "",
+          participacion: "OPERACION",
+          jornada: "CORTA",
+          tarifaAcordada: "",
+          notas: "",
+        });
+        await load();
+      }
+    } finally {
+      setGuardandoExtra(false);
+    }
+  }
+
   function abrirModalPago(rows: NominaRow[]) {
     const pendingRows = rows.map(r => {
-      const pendingPagos = r.pagos.filter(p => p.estadoPago === "PENDIENTE");
-      return { ...r, pagos: pendingPagos, total: pendingPagos.reduce((s, p) => s + p.monto, 0) };
+      const pendingPagos = r.pagos.filter(p => p.estadoPago !== "PAGADO" && (p.montoPendiente ?? p.monto) > 0);
+      return { ...r, pagos: pendingPagos, total: pendingPagos.reduce((s, p) => s + (p.montoPendiente ?? p.monto), 0) };
     }).filter(r => r.pagos.length > 0);
 
     const initialSelected = new Set<string>();
@@ -847,10 +901,141 @@ export default function PagosPersonalPage() {
                         </span>
                       )}
                     </div>
-                    <Link href={`/proyectos/${p.id}`} className="text-xs text-gray-600 hover:text-[#B3985B] transition-colors">
-                      Editar en proyecto →
-                    </Link>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const extrasRol = data.roles.find(r => r.nombre.toLowerCase().includes("extra"));
+                          setNuevoExtraForm({
+                            tecnicoId: "",
+                            rolTecnicoId: extrasRol?.id || "",
+                            participacion: "OPERACION",
+                            jornada: "CORTA",
+                            tarifaAcordada: "",
+                            notas: "",
+                          });
+                          setAddingExtraProyectoId(addingExtraProyectoId === p.id ? null : p.id);
+                        }}
+                        className="text-xs text-[#B3985B] hover:text-white transition-colors font-medium flex items-center gap-1"
+                      >
+                        {addingExtraProyectoId === p.id ? "✕ Cancelar" : "+ Agregar rol / extra"}
+                      </button>
+                      <Link href={`/proyectos/${p.id}`} className="text-xs text-gray-600 hover:text-[#B3985B] transition-colors">
+                        Editar en proyecto →
+                      </Link>
+                    </div>
                   </div>
+
+                  {addingExtraProyectoId === p.id && (
+                    <div className="p-4 bg-[#141414] border-t border-[#222] space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">
+                          Agregar rol / horas extras a {p.nombre}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setAddingExtraProyectoId(null)}
+                          className="text-gray-500 hover:text-white text-xs"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                        <div>
+                          <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Técnico</label>
+                          <select
+                            value={nuevoExtraForm.tecnicoId}
+                            onChange={e => setNuevoExtraForm(prev => ({ ...prev, tecnicoId: e.target.value }))}
+                            className="w-full bg-[#1a1a1a] border border-[#333] text-white text-xs rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]"
+                          >
+                            <option value="">— Sin asignar —</option>
+                            {data.tecnicos.map(t => (
+                              <option key={t.id} value={t.id}>{t.nombre}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Rol</label>
+                          <select
+                            value={nuevoExtraForm.rolTecnicoId}
+                            onChange={e => setNuevoExtraForm(prev => ({ ...prev, rolTecnicoId: e.target.value }))}
+                            className="w-full bg-[#1a1a1a] border border-[#333] text-white text-xs rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]"
+                          >
+                            <option value="">— Sin rol —</option>
+                            {data.roles.map(r => (
+                              <option key={r.id} value={r.id}>{r.nombre}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Tarifa acordada ($)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={nuevoExtraForm.tarifaAcordada}
+                            onChange={e => setNuevoExtraForm(prev => ({ ...prev, tarifaAcordada: e.target.value }))}
+                            placeholder="0.00"
+                            className="w-full bg-[#1a1a1a] border border-[#333] text-white text-xs rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Participación</label>
+                          <select
+                            value={nuevoExtraForm.participacion}
+                            onChange={e => setNuevoExtraForm(prev => ({ ...prev, participacion: e.target.value }))}
+                            className="w-full bg-[#1a1a1a] border border-[#333] text-white text-xs rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]"
+                          >
+                            <option value="OPERACION">Operación</option>
+                            <option value="MONTAJE">Montaje</option>
+                            <option value="DESMONTAJE">Desmontaje</option>
+                            <option value="TRANSPORTE">Transporte</option>
+                            <option value="OTRO">Otro</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Jornada</label>
+                          <select
+                            value={nuevoExtraForm.jornada}
+                            onChange={e => setNuevoExtraForm(prev => ({ ...prev, jornada: e.target.value }))}
+                            className="w-full bg-[#1a1a1a] border border-[#333] text-white text-xs rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]"
+                          >
+                            <option value="CORTA">Corta (0-8 hrs)</option>
+                            <option value="MEDIA">Media (8-12 hrs)</option>
+                            <option value="LARGA">Larga (+12 hrs)</option>
+                            <option value="COMPLETA">Completa (Viáticos)</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Notas / Horas extras</label>
+                          <input
+                            type="text"
+                            value={nuevoExtraForm.notas}
+                            onChange={e => setNuevoExtraForm(prev => ({ ...prev, notas: e.target.value }))}
+                            placeholder="Ej. 3 horas extras, apoyo adicional..."
+                            className="w-full bg-[#1a1a1a] border border-[#333] text-white text-xs rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex justify-end gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setAddingExtraProyectoId(null)}
+                          className="px-3 py-1.5 rounded text-xs text-gray-400 hover:text-white"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => guardarNuevoExtra(p.id)}
+                          disabled={guardandoExtra || (!nuevoExtraForm.tecnicoId && !nuevoExtraForm.rolTecnicoId)}
+                          className="px-4 py-1.5 rounded bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold text-xs disabled:opacity-50 transition-colors"
+                        >
+                          {guardandoExtra ? "Guardando..." : "Guardar extra"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -895,13 +1080,22 @@ export default function PagosPersonalPage() {
                           <div key={pago.proyectoId} className="flex items-center justify-between">
                             <p className="text-xs text-gray-500 truncate max-w-[200px]">{pago.proyectoNombre}</p>
                             <div className="flex items-center gap-2">
-                              <p className="text-xs text-gray-300">{fmt(pago.monto)}</p>
+                              <p className="text-xs text-gray-300">
+                                {fmt(pago.monto)}
+                                {pago.estadoPago === "PARCIAL" && pago.totalTarifa && (
+                                  <span className="text-[10px] text-gray-500 ml-1">
+                                    (resta {fmt(pago.monto)})
+                                  </span>
+                                )}
+                              </p>
                               <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
                                 pago.estadoPago === "PAGADO"
                                   ? "bg-green-900/30 text-green-400"
+                                  : pago.estadoPago === "PARCIAL"
+                                  ? "bg-blue-900/30 text-blue-400"
                                   : "bg-yellow-900/20 text-yellow-500"
                               }`}>
-                                {pago.estadoPago === "PAGADO" ? "✓" : "Pend."}
+                                {pago.estadoPago === "PAGADO" ? "✓" : pago.estadoPago === "PARCIAL" ? "Parc." : "Pend."}
                               </span>
                             </div>
                           </div>

@@ -58,6 +58,23 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     },
   });
 
+  // Ajuste automático de estado si la tarifa acordada cambia respecto a lo ya pagado
+  if ("tarifaAcordada" in body && canEditTecnicoCosts && !("estadoPago" in body)) {
+    const nuevaTarifa = body.tarifaAcordada != null ? parseFloat(body.tarifaAcordada as string) : null;
+    if (previo?.movimientoId && nuevaTarifa != null) {
+      const mov = await prisma.movimientoFinanciero.findUnique({
+        where: { id: previo.movimientoId },
+        select: { monto: true },
+      });
+      const pagado = mov?.monto ?? 0;
+      if (nuevaTarifa > pagado + 0.01) {
+        data.estadoPago = "PARCIAL";
+      } else if (Math.abs(nuevaTarifa - pagado) <= 0.01) {
+        data.estadoPago = "PAGADO";
+      }
+    }
+  }
+
   // Encargar a alguien y pagarle por encargarse es un solo acto: la estrella de
   // "coordina en sitio" arrastra el bono, para no tener dos botones que dicen lo
   // mismo y puedan quedar en desacuerdo. El monto se congela al aplicarse.
@@ -144,6 +161,33 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           estado: "PENDIENTE",
         },
       });
+    }
+  }
+
+  // ── Si la tarifa cambió y ya existía CxP, sincronizar su monto y estado ─────
+  if ("tarifaAcordada" in body && personal.tecnicoId && personal.proyectoId) {
+    const tarifaActual = totalPagoPersonal(personal);
+    if (tarifaActual != null) {
+      const cxpExistente = await prisma.cuentaPagar.findFirst({
+        where: {
+          tecnicoId: personal.tecnicoId,
+          proyectoId: personal.proyectoId,
+          tipoAcreedor: "TECNICO",
+        },
+        orderBy: { createdAt: "desc" },
+      });
+      if (cxpExistente) {
+        const pagado = cxpExistente.montoPagado ?? 0;
+        const estadoCxp = tarifaActual <= pagado + 0.01
+          ? "LIQUIDADO"
+          : pagado > 0.01
+          ? "PARCIAL"
+          : "PENDIENTE";
+        await prisma.cuentaPagar.update({
+          where: { id: cxpExistente.id },
+          data: { monto: tarifaActual, estado: estadoCxp },
+        });
+      }
     }
   }
 
