@@ -62,13 +62,21 @@ export async function GET(req: NextRequest) {
     personal: p.personal.map((pp) => {
       const pagoTotal = totalPagoPersonal(pp);
       const tarifaTotal = pagoTotal ?? 0;
-      const montoPagado = pp.movimiento?.monto ?? (pp.estadoPago === "PAGADO" ? tarifaTotal : 0);
-      const montoPendiente = Math.max(0, tarifaTotal - montoPagado);
+      const esPagado = pp.estadoPago === "PAGADO";
+      const esParcial = pp.estadoPago === "PARCIAL";
+
+      const montoPagado = esPagado
+        ? tarifaTotal
+        : (pp.movimiento?.monto ?? 0);
+      const montoPendiente = esPagado
+        ? 0
+        : Math.max(0, tarifaTotal - montoPagado);
+
       let estadoEfectivo = pp.estadoPago;
       if (tarifaTotal > 0) {
-        if (montoPendiente <= 0.01) {
+        if (esPagado || montoPendiente <= 0.01) {
           estadoEfectivo = "PAGADO";
-        } else if (montoPagado > 0.01) {
+        } else if (esParcial || montoPagado > 0.01) {
           estadoEfectivo = "PARCIAL";
         } else {
           estadoEfectivo = "PENDIENTE";
@@ -130,8 +138,9 @@ export async function GET(req: NextRequest) {
       }
       const entry = tecMap.get(key)!;
       const tarifaSlot = pagoPP;
-      const pagadoSlot = pp.movimiento?.monto ?? (pp.estadoPago === "PAGADO" ? tarifaSlot : 0);
-      const pendienteSlot = Math.max(0, tarifaSlot - pagadoSlot);
+      const esPagadoSlot = pp.estadoPago === "PAGADO";
+      const pagadoSlot = esPagadoSlot ? tarifaSlot : (pp.movimiento?.monto ?? 0);
+      const pendienteSlot = esPagadoSlot ? 0 : Math.max(0, tarifaSlot - pagadoSlot);
 
       const existing = entry.pagos.find((x) => x.proyectoId === p.id);
       if (existing) {
@@ -234,11 +243,10 @@ export async function POST(req: NextRequest) {
   const fechaPago = fecha ? new Date(fecha + "T12:00:00Z") : new Date();
 
   // Filas de nómina pendientes o con saldo parcial del técnico en estos proyectos
-  const filasPendientes = await prisma.proyectoPersonal.findMany({
+  const todasFilas = await prisma.proyectoPersonal.findMany({
     where: {
       tecnicoId,
       proyectoId: { in: proyectoIds },
-      estadoPago: { in: ["PENDIENTE", "PARCIAL"] },
     },
     include: {
       movimiento: { select: { id: true, monto: true } },
@@ -246,6 +254,13 @@ export async function POST(req: NextRequest) {
       rolTecnico: { select: { nombre: true } },
       proyecto: { select: { nombre: true } },
     },
+  });
+
+  const filasPendientes = todasFilas.filter((f) => {
+    if (f.estadoPago === "PENDIENTE" || f.estadoPago === "PARCIAL") return true;
+    const total = totalPagoPersonal(f) ?? 0;
+    const pagado = f.movimiento?.monto ?? 0;
+    return total > pagado + 0.01;
   });
 
   // Total adeudado real: tarifa total menos lo ya cubierto por movimientos
