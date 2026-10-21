@@ -45,6 +45,7 @@ interface GastoProveedor {
   estado: EstadoGasto;
   solicitadoPor: string | null;
   fechaSolicitud: string | null;
+  notas: string | null;
 }
 
 function estadoDeCxP(estado: string): EstadoGasto {
@@ -80,6 +81,7 @@ export async function GET(req: NextRequest) {
           id: true, nombreProveedor: true, servicioEquipo: true, tipoAcreedor: true,
           proveedorId: true, tecnicoId: true, personalId: true, costoAcordado: true,
           unidades: true, imprevisto: true, solicitadoPor: true, fechaSolicitud: true,
+          notas: true,
           proveedor: { select: SELECT_BANCARIOS_PROVEEDOR },
           tecnico: { select: SELECT_BANCARIOS_TECNICO },
           personal: { select: SELECT_BANCARIOS_PERSONAL },
@@ -93,7 +95,7 @@ export async function GET(req: NextRequest) {
         orderBy: { fechaCompromiso: "asc" },
         select: {
           id: true, concepto: true, monto: true, montoPagado: true, montoCompensado: true,
-          estado: true, tipoAcreedor: true,
+          estado: true, tipoAcreedor: true, notas: true,
           proveedor: { select: { id: true, nombre: true, empresa: true, ...SELECT_BANCARIOS_PROVEEDOR } },
           tecnico: { select: { id: true, nombre: true, ...SELECT_BANCARIOS_TECNICO } },
           proveedorEvento: { select: { id: true } },
@@ -130,6 +132,7 @@ export async function GET(req: NextRequest) {
         estado: cxp ? estadoDeCxP(cxp.estado) : "SIN_CXP",
         solicitadoPor: pe.solicitadoPor,
         fechaSolicitud: pe.fechaSolicitud?.toISOString().slice(0, 10) ?? null,
+        notas: pe.notas ?? null,
       });
     }
 
@@ -159,6 +162,7 @@ export async function GET(req: NextRequest) {
         estado: estadoDeCxP(c.estado),
         solicitadoPor: null,
         fechaSolicitud: null,
+        notas: c.notas ?? null,
       });
     }
 

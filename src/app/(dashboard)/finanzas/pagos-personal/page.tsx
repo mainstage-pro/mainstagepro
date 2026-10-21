@@ -148,14 +148,17 @@ const METODOS = [
 
 
 
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, X } from "lucide-react";
 
-function EditablePersonalRow({ pp, roles, tecnicos, pendingEdits, onEdit }: { 
+function EditablePersonalRow({ pp, proyectoId, roles, tecnicos, pendingEdits, onEdit, onDelete, isDeleting }: { 
   pp: PersonalSlot; 
+  proyectoId: string;
   roles: { id: string; nombre: string }[]; 
   tecnicos: { id: string; nombre: string }[];
   pendingEdits: Partial<PersonalSlot>; 
   onEdit: (id: string, changes: Partial<PersonalSlot>, originalRow?: PersonalSlot) => void;
+  onDelete?: (personalId: string, proyectoId: string, label: string) => void;
+  isDeleting?: boolean;
 }) {
   const [editingRol, setEditingRol] = useState(false);
   const [editingTecnico, setEditingTecnico] = useState(false);
@@ -236,7 +239,7 @@ function EditablePersonalRow({ pp, roles, tecnicos, pendingEdits, onEdit }: {
   const displayTecnico = tecnicos.find(t => t.id === merged.tecnicoId)?.nombre ?? pp.tecnicoNombre ?? "Sin asignar";
 
   return (
-    <div className={`grid grid-cols-[1fr_1fr_90px_100px_72px] gap-2 px-4 py-2 border-b border-[#0d0d0d] last:border-0 items-center transition-colors ${hasPending ? 'bg-[#B3985B]/5' : 'hover:bg-[#111]'}`}>
+    <div className={`grid grid-cols-[1fr_1fr_90px_100px_72px_32px] gap-2 px-4 py-2 border-b border-[#0d0d0d] last:border-0 items-center transition-colors ${hasPending ? 'bg-[#B3985B]/5' : 'hover:bg-[#111]'}`}>
       {/* Técnico Editable */}
       <div 
         className="-mx-1 px-1 py-0.5 rounded cursor-pointer hover:bg-[#222]"
@@ -399,6 +402,22 @@ function EditablePersonalRow({ pp, roles, tecnicos, pendingEdits, onEdit }: {
           {pp.tecnicoId ? (pp.estadoPago === "PAGADO" ? "Pagado" : pp.estadoPago === "PARCIAL" ? "Parcial" : "Pend.") : "—"}
         </span>
       </div>
+
+      {/* Quitar rol / puesto */}
+      <div className="flex justify-center">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete?.(pp.id, proyectoId, `${displayTecnico} · ${displayRol}`);
+          }}
+          disabled={isDeleting}
+          className="p-1 rounded text-gray-600 hover:text-red-400 hover:bg-red-950/30 transition-colors disabled:opacity-40"
+          title="Quitar rol / puesto de este proyecto"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
     </div>
   );
 }
@@ -424,6 +443,33 @@ export default function PagosPersonalPage() {
     notas: "",
   });
   const [guardandoExtra, setGuardandoExtra] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  async function handleDeletePersonal(personalId: string, proyectoId: string, label: string) {
+    if (!confirm(`¿Eliminar "${label}" de este proyecto?`)) return;
+    setDeletingId(personalId);
+    try {
+      const res = await fetch(`/api/proyectos/${proyectoId}/personal/${personalId}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setPendingEdits(prev => {
+          if (!prev[personalId]) return prev;
+          const next = { ...prev };
+          delete next[personalId];
+          return next;
+        });
+        await load();
+      } else {
+        alert("Error al eliminar el puesto del proyecto");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error de red al eliminar el puesto");
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   // Shared modal state
   const [pagoTarget, setPagoTarget] = useState<NominaRow[] | null>(null);
@@ -821,9 +867,9 @@ export default function PagosPersonalPage() {
                     <p className="text-gray-600 text-xs text-center py-4">Sin personal registrado</p>
                   ) : (
                     <div>
-                      <div className="grid grid-cols-[1fr_1fr_90px_100px_72px] gap-2 px-4 py-1.5 border-b border-[#0d0d0d]">
-                        {["Técnico", "Rol", "Tipo · Fecha", "Tarifa", "Estado"].map((h) => (
-                          <p key={h} className="text-[10px] text-gray-600 uppercase tracking-wider font-semibold">{h}</p>
+                      <div className="grid grid-cols-[1fr_1fr_90px_100px_72px_32px] gap-2 px-4 py-1.5 border-b border-[#0d0d0d]">
+                        {["Técnico", "Rol", "Tipo · Fecha", "Tarifa", "Estado", ""].map((h, i) => (
+                          <p key={i} className="text-[10px] text-gray-600 uppercase tracking-wider font-semibold">{h}</p>
                         ))}
                       </div>
 
@@ -880,10 +926,13 @@ export default function PagosPersonalPage() {
                               <EditablePersonalRow
                                 key={pp.id}
                                 pp={pp}
+                                proyectoId={p.id}
                                 roles={data.roles}
                                 tecnicos={data.tecnicos}
                                 pendingEdits={pendingEdits[pp.id] || {}}
                                 onEdit={handleEdit}
+                                onDelete={handleDeletePersonal}
+                                isDeleting={deletingId === pp.id}
                               />
                             ))}
                           </div>

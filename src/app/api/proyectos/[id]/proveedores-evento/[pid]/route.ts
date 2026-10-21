@@ -33,6 +33,7 @@ export async function PATCH(
     data.unidades =
       body.unidades === null || body.unidades === "" ? null : Math.max(1, Math.round(Number(body.unidades)));
   }
+  if (body.imprevisto !== undefined) data.imprevisto = Boolean(body.imprevisto);
   if (body.fechaSolicitud !== undefined) {
     data.fechaSolicitud = body.fechaSolicitud ? new Date(body.fechaSolicitud) : null;
   }

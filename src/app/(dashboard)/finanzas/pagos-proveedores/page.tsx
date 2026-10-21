@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { FileText } from "lucide-react";
+import { FileText, MessageSquare, X } from "lucide-react";
 import ModalRegistrarPago, {
   type GrupoPago,
   type PagoCapturado,
@@ -30,6 +30,7 @@ interface Gasto {
   estado: "SIN_CXP" | "PENDIENTE" | "PARCIAL" | "PAGADO";
   solicitadoPor: string | null;
   fechaSolicitud: string | null;
+  notas: string | null;
 }
 
 interface ProyectoCiclo {
@@ -144,6 +145,85 @@ export default function PagosProveedoresPage() {
   const [pagoTarget, setPagoTarget] = useState<Acreedor[] | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [formalizando, setFormalizando] = useState<string | null>(null);
+
+  // Estado para agregar proveedor / gasto a un proyecto
+  const [addingGastoProyectoId, setAddingGastoProyectoId] = useState<string | null>(null);
+  const [nuevoGastoForm, setNuevoGastoForm] = useState({
+    proveedorId: "",
+    concepto: "",
+    origen: "COORDINADO" as "COORDINADO" | "IMPREVISTO",
+    costoAcordado: "",
+    unidades: "1",
+    notas: "",
+  });
+  const [guardandoGasto, setGuardandoGasto] = useState(false);
+  const [deletingGastoId, setDeletingGastoId] = useState<string | null>(null);
+
+  async function guardarNuevoGasto(proyectoId: string) {
+    if (!nuevoGastoForm.concepto.trim()) {
+      alert("Ingresa al menos el concepto o servicio del gasto");
+      return;
+    }
+    setGuardandoGasto(true);
+    try {
+      const selectedProv = data?.proveedores.find(p => p.id === nuevoGastoForm.proveedorId);
+      const res = await fetch(`/api/proyectos/${proyectoId}/proveedores-evento`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tipoAcreedor: "PROVEEDOR",
+          proveedorId: nuevoGastoForm.proveedorId || null,
+          nombreProveedor: selectedProv ? (selectedProv.empresa || selectedProv.nombre) : "Sin proveedor",
+          servicioEquipo: nuevoGastoForm.concepto.trim(),
+          costoAcordado: nuevoGastoForm.costoAcordado ? parseFloat(nuevoGastoForm.costoAcordado) : null,
+          unidades: nuevoGastoForm.unidades ? parseInt(nuevoGastoForm.unidades) : 1,
+          imprevisto: nuevoGastoForm.origen === "IMPREVISTO",
+          notas: nuevoGastoForm.notas?.trim() || null,
+        }),
+      });
+      if (res.ok) {
+        setAddingGastoProyectoId(null);
+        setNuevoGastoForm({
+          proveedorId: "",
+          concepto: "",
+          origen: "COORDINADO",
+          costoAcordado: "",
+          unidades: "1",
+          notas: "",
+        });
+        await load();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Error al agregar el gasto a proveedores");
+      }
+    } finally {
+      setGuardandoGasto(false);
+    }
+  }
+
+  async function handleDeleteGasto(gasto: Gasto, proyectoId: string) {
+    if (!confirm(`¿Eliminar "${gasto.acreedorNombre} · ${gasto.concepto}" de este proyecto?`)) return;
+    setDeletingGastoId(gasto.id);
+    try {
+      if (gasto.proveedorEventoId) {
+        const res = await fetch(`/api/proyectos/${proyectoId}/proveedores-evento/${gasto.proveedorEventoId}`, {
+          method: "DELETE",
+        });
+        if (!res.ok) throw new Error("Error al eliminar proveedorEvento");
+      } else if (gasto.cuentaPagarId) {
+        const res = await fetch(`/api/cuentas-pagar/${gasto.cuentaPagarId}`, {
+          method: "DELETE",
+        });
+        if (!res.ok) throw new Error("Error al eliminar cuentaPagar");
+      }
+      await load();
+    } catch (e) {
+      console.error(e);
+      alert("Error al eliminar el gasto del proyecto");
+    } finally {
+      setDeletingGastoId(null);
+    }
+  }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -365,9 +445,9 @@ export default function PagosProveedoresPage() {
                     <p className="text-gray-600 text-xs text-center py-4">Sin gastos registrados</p>
                   ) : (
                     <div>
-                      <div className="grid grid-cols-[1fr_1fr_60px_100px_72px] gap-2 px-4 py-1.5 border-b border-[#0d0d0d]">
-                        {["Acreedor", "Concepto", "Unid.", "Monto", "Estado"].map((h) => (
-                          <p key={h} className="text-[10px] text-gray-600 uppercase tracking-wider font-semibold">
+                      <div className="grid grid-cols-[1fr_1fr_90px_100px_72px_32px] gap-2 px-4 py-1.5 border-b border-[#0d0d0d]">
+                        {["Proveedor", "Concepto", "Origen", "Monto", "Estado", ""].map((h, i) => (
+                          <p key={i} className="text-[10px] text-gray-600 uppercase tracking-wider font-semibold">
                             {h}
                           </p>
                         ))}
@@ -394,7 +474,9 @@ export default function PagosProveedoresPage() {
                                 gasto={g} 
                                 proveedores={data?.proveedores ?? []} 
                                 proyectoId={p.id} 
-                                onUpdate={load} 
+                                onUpdate={load}
+                                onDelete={handleDeleteGasto}
+                                isDeleting={deletingGastoId === g.id}
                               />
                             ))}
                           </div>
@@ -420,13 +502,125 @@ export default function PagosProveedoresPage() {
                         </span>
                       )}
                     </div>
-                    <Link
-                      href={`/proyectos/${p.id}`}
-                      className="text-xs text-gray-600 hover:text-[#B3985B] transition-colors"
-                    >
-                      Editar en proyecto →
-                    </Link>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNuevoGastoForm({
+                            proveedorId: "",
+                            concepto: "",
+                            origen: "COORDINADO",
+                            costoAcordado: "",
+                            unidades: "1",
+                            notas: "",
+                          });
+                          setAddingGastoProyectoId(addingGastoProyectoId === p.id ? null : p.id);
+                        }}
+                        className="text-xs text-[#B3985B] hover:text-white transition-colors font-medium flex items-center gap-1"
+                      >
+                        <span>+</span> Agregar proveedor / gasto
+                      </button>
+                      <Link
+                        href={`/proyectos/${p.id}`}
+                        className="text-xs text-gray-600 hover:text-[#B3985B] transition-colors"
+                      >
+                        Ver proyecto →
+                      </Link>
+                    </div>
                   </div>
+
+                  {/* Formulario inline para agregar proveedor / gasto */}
+                  {addingGastoProyectoId === p.id && (
+                    <div className="p-4 bg-[#141414] border-t border-[#222] space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">
+                          Nuevo gasto / proveedor para {p.nombre}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setAddingGastoProyectoId(null)}
+                          className="text-gray-500 hover:text-white text-xs"
+                        >
+                          ✕ Cerrar
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                        <div>
+                          <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Proveedor / Acreedor</label>
+                          <select
+                            value={nuevoGastoForm.proveedorId}
+                            onChange={e => setNuevoGastoForm(f => ({ ...f, proveedorId: e.target.value }))}
+                            className="w-full bg-[#1a1a1a] border border-[#333] text-white text-xs rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]"
+                          >
+                            <option value="">Sin proveedor específico</option>
+                            {data?.proveedores.map(prov => (
+                              <option key={prov.id} value={prov.id}>{prov.empresa || prov.nombre}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Concepto / Servicio</label>
+                          <input
+                            type="text"
+                            value={nuevoGastoForm.concepto}
+                            onChange={e => setNuevoGastoForm(f => ({ ...f, concepto: e.target.value }))}
+                            placeholder="Ej. Renta de microfonía, Flete..."
+                            className="w-full bg-[#1a1a1a] border border-[#333] text-white text-xs rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Origen</label>
+                          <select
+                            value={nuevoGastoForm.origen}
+                            onChange={e => setNuevoGastoForm(f => ({ ...f, origen: e.target.value as "COORDINADO" | "IMPREVISTO" }))}
+                            className="w-full bg-[#1a1a1a] border border-[#333] text-white text-xs rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]"
+                          >
+                            <option value="COORDINADO">Coordinado en preproducción</option>
+                            <option value="IMPREVISTO">Imprevisto del evento</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Costo acordado ($)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={nuevoGastoForm.costoAcordado}
+                            onChange={e => setNuevoGastoForm(f => ({ ...f, costoAcordado: e.target.value }))}
+                            placeholder="0.00"
+                            className="w-full bg-[#1a1a1a] border border-[#333] text-white text-xs rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]"
+                          />
+                        </div>
+                        <div className="md:col-span-4">
+                          <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Notas internas (opcional)</label>
+                          <input
+                            type="text"
+                            value={nuevoGastoForm.notas}
+                            onChange={e => setNuevoGastoForm(f => ({ ...f, notas: e.target.value }))}
+                            placeholder="Ej. Flete incluido, pagar al entregar, etc..."
+                            className="w-full bg-[#1a1a1a] border border-[#333] text-white text-xs rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex justify-end gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setAddingGastoProyectoId(null)}
+                          className="px-3 py-1.5 rounded text-xs text-gray-400 hover:text-white"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => guardarNuevoGasto(p.id)}
+                          disabled={guardandoGasto || !nuevoGastoForm.concepto.trim()}
+                          className="px-4 py-1.5 rounded bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold text-xs disabled:opacity-50 transition-colors"
+                        >
+                          {guardandoGasto ? "Guardando..." : "Guardar gasto"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -591,32 +785,54 @@ function EditableGastoRow({
   gasto,
   proveedores,
   proyectoId,
-  onUpdate
+  onUpdate,
+  onDelete,
+  isDeleting,
 }: {
   gasto: Gasto;
   proveedores: { id: string; nombre: string; empresa: string | null }[];
   proyectoId: string;
   onUpdate: () => void;
+  onDelete?: (gasto: Gasto, proyectoId: string) => void;
+  isDeleting?: boolean;
 }) {
   const [editingAcreedor, setEditingAcreedor] = useState(false);
   const [editingConcepto, setEditingConcepto] = useState(false);
+  const [editingOrigen, setEditingOrigen] = useState(false);
   const [editingMonto, setEditingMonto] = useState(false);
+  const [editingNotas, setEditingNotas] = useState(false);
 
   const [acreedorVal, setAcreedorVal] = useState(gasto.acreedorId || "");
   const [conceptoVal, setConceptoVal] = useState(gasto.concepto || "");
+  const [origenVal, setOrigenVal] = useState<"COORDINADO" | "IMPREVISTO" | "DIRECTO">(gasto.origen);
+  const [unidadesVal, setUnidadesVal] = useState(gasto.unidades?.toString() || "1");
   const [montoVal, setMontoVal] = useState(gasto.monto?.toString() || "");
+  const [notasVal, setNotasVal] = useState(gasto.notas || "");
 
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    setAcreedorVal(gasto.acreedorId || "");
+    setConceptoVal(gasto.concepto || "");
+    setOrigenVal(gasto.origen);
+    setUnidadesVal(gasto.unidades?.toString() || "1");
+    setMontoVal(gasto.monto?.toString() || "");
+    setNotasVal(gasto.notas || "");
+  }, [gasto.acreedorId, gasto.concepto, gasto.origen, gasto.unidades, gasto.monto, gasto.notas]);
+
   async function saveAcreedor(provId: string) {
-    if (provId === gasto.acreedorId) { setEditingAcreedor(false); return; }
+    if (provId === (gasto.acreedorId || "")) { setEditingAcreedor(false); return; }
     setSaving(true);
     try {
       if (gasto.proveedorEventoId) {
+        const prov = proveedores.find(p => p.id === provId);
         await fetch(`/api/proyectos/${proyectoId}/proveedores-evento/${gasto.proveedorEventoId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ proveedorId: provId || null }),
+          body: JSON.stringify({ 
+            proveedorId: provId || null,
+            nombreProveedor: prov ? (prov.empresa || prov.nombre) : "Sin proveedor"
+          }),
         });
       } else if (gasto.cuentaPagarId) {
         await fetch(`/api/cuentas-pagar/${gasto.cuentaPagarId}`, {
@@ -657,6 +873,27 @@ function EditableGastoRow({
     }
   }
 
+  async function saveOrigen() {
+    setEditingOrigen(false);
+    setSaving(true);
+    try {
+      const u = parseInt(unidadesVal) || 1;
+      if (gasto.proveedorEventoId) {
+        await fetch(`/api/proyectos/${proyectoId}/proveedores-evento/${gasto.proveedorEventoId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            imprevisto: origenVal === "IMPREVISTO",
+            unidades: u,
+          }),
+        });
+      }
+      onUpdate();
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function saveMonto() {
     const num = parseFloat(montoVal);
     if (isNaN(num) || num === gasto.monto) { setEditingMonto(false); return; }
@@ -682,8 +919,34 @@ function EditableGastoRow({
     }
   }
 
+  async function saveNotas() {
+    setEditingNotas(false);
+    const trimmed = notasVal.trim();
+    if (trimmed === (gasto.notas || "")) return;
+    setSaving(true);
+    try {
+      if (gasto.proveedorEventoId) {
+        await fetch(`/api/proyectos/${proyectoId}/proveedores-evento/${gasto.proveedorEventoId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ notas: trimmed || null }),
+        });
+      } else if (gasto.cuentaPagarId) {
+        await fetch(`/api/cuentas-pagar/${gasto.cuentaPagarId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ notas: trimmed || null }),
+        });
+      }
+      onUpdate();
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
-    <div className="grid grid-cols-[1fr_1fr_60px_100px_72px] gap-2 px-4 py-2 border-b border-[#0d0d0d] last:border-0 items-center hover:bg-[#111] transition-colors">
+    <div className="grid grid-cols-[1fr_1fr_90px_100px_72px_32px] gap-2 px-4 py-2 border-b border-[#0d0d0d] last:border-0 items-center hover:bg-[#111] transition-colors">
+      {/* 1. Proveedor / Acreedor Editable */}
       <div 
         className={`min-w-0 -mx-1 px-1 py-0.5 rounded ${gasto.estado !== "PAGADO" ? "cursor-pointer hover:bg-[#222]" : ""}`}
         onClick={() => { if (!editingAcreedor && gasto.estado !== "PAGADO") setEditingAcreedor(true); }}
@@ -698,7 +961,7 @@ function EditableGastoRow({
             }}
             onBlur={() => setEditingAcreedor(false)}
             disabled={saving}
-            className="w-full bg-[#1a1a1a] border border-[#222] rounded px-1.5 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+            className="w-full bg-[#1a1a1a] border border-[#333] text-white text-xs rounded px-1 py-0.5 focus:outline-none focus:border-[#B3985B]"
           >
             <option value="">Sin proveedor</option>
             {proveedores.map(p => (
@@ -707,7 +970,7 @@ function EditableGastoRow({
           </select>
         ) : (
           <>
-            <p className="text-sm text-white truncate">{gasto.acreedorNombre}</p>
+            <p className="text-sm text-white truncate">{gasto.acreedorNombre || "Sin proveedor"}</p>
             <p className="text-[10px] text-gray-600">
               {TIPO_ACREEDOR_LABEL[gasto.tipoAcreedor] ?? gasto.tipoAcreedor}
             </p>
@@ -715,6 +978,7 @@ function EditableGastoRow({
         )}
       </div>
 
+      {/* 2. Concepto / Servicio Editable */}
       <div 
         className={`min-w-0 -mx-1 px-1 py-0.5 rounded ${gasto.estado !== "PAGADO" ? "cursor-pointer hover:bg-[#222]" : ""}`}
         onClick={() => { if (!editingConcepto && gasto.estado !== "PAGADO") setEditingConcepto(true); }}
@@ -728,7 +992,7 @@ function EditableGastoRow({
             onBlur={saveConcepto}
             onKeyDown={e => e.key === "Enter" && saveConcepto()}
             disabled={saving}
-            className="w-full bg-[#1a1a1a] border border-[#222] rounded px-1.5 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+            className="w-full bg-[#1a1a1a] border border-[#333] text-white text-xs rounded px-1 py-0.5 focus:outline-none focus:border-[#B3985B]"
           />
         ) : (
           <>
@@ -740,13 +1004,71 @@ function EditableGastoRow({
         )}
       </div>
 
-      <p className="text-xs text-gray-500">{gasto.unidades ?? "—"}</p>
+      {/* 3. Origen / Unidades Editable */}
+      <div className="relative -mx-1 px-1 py-0.5 rounded cursor-pointer hover:bg-[#222]">
+        {editingOrigen ? (
+          <div className="absolute left-0 top-full mt-1 z-50 w-[220px] bg-[#111] border border-[#333] rounded-lg shadow-2xl p-3 flex flex-col gap-2" onClick={e => e.stopPropagation()}>
+            <div className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">Origen y Unidades</div>
+            <select
+              value={origenVal}
+              onChange={e => setOrigenVal(e.target.value as "COORDINADO" | "IMPREVISTO" | "DIRECTO")}
+              className="w-full bg-[#1a1a1a] border border-[#222] rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+            >
+              <option value="COORDINADO">Coordinado</option>
+              <option value="IMPREVISTO">Imprevisto</option>
+              {gasto.origen === "DIRECTO" && <option value="DIRECTO">Directo CxP</option>}
+            </select>
+            <div>
+              <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Unidades</label>
+              <input
+                type="number"
+                min="1"
+                value={unidadesVal}
+                onChange={e => setUnidadesVal(e.target.value)}
+                className="w-full bg-[#1a1a1a] border border-[#222] rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+              />
+            </div>
+            <button
+              onClick={saveOrigen}
+              disabled={saving}
+              className="w-full mt-1 bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold text-xs py-1.5 rounded transition-colors"
+            >
+              Aplicar cambios
+            </button>
+          </div>
+        ) : (
+          <div onClick={() => { if (gasto.estado !== "PAGADO") setEditingOrigen(true); }}>
+            <span className={`text-[10px] font-semibold uppercase tracking-wider ${ORIGEN_COLOR[gasto.origen]}`}>
+              {ORIGEN_LABEL[gasto.origen] || gasto.origen}
+            </span>
+            {gasto.unidades != null && gasto.unidades > 1 && (
+              <span className="text-[10px] text-gray-500 ml-1">×{gasto.unidades}</span>
+            )}
+          </div>
+        )}
+      </div>
 
-      <div 
-        className={`text-right -mx-1 px-1 py-0.5 rounded ${gasto.estado !== "PAGADO" ? "cursor-pointer hover:bg-[#222]" : ""}`}
-        onClick={() => { if (!editingMonto && gasto.estado !== "PAGADO") setEditingMonto(true); }}
-      >
-        {editingMonto ? (
+      {/* 4. Monto & Notas Editable */}
+      <div className="relative flex items-center justify-end gap-1.5 -mx-1 px-1 py-0.5 rounded hover:bg-[#222]">
+        {editingNotas ? (
+          <div className="absolute right-0 top-full mt-1 z-50 w-[250px] bg-[#111] border border-[#333] rounded-lg shadow-2xl p-2" onClick={e => e.stopPropagation()}>
+            <div className="text-[10px] text-gray-400 mb-1.5 font-medium uppercase tracking-wider">Nota interna (Proveedor)</div>
+            <textarea
+              autoFocus
+              value={notasVal}
+              onChange={e => setNotasVal(e.target.value)}
+              onBlur={saveNotas}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  saveNotas();
+                }
+              }}
+              className="w-full bg-[#1a1a1a] border border-[#222] rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B] resize-none h-[60px]"
+              placeholder="Escribe comentarios de uso interno..."
+            />
+          </div>
+        ) : editingMonto ? (
           <input
             autoFocus
             type="number"
@@ -757,20 +1079,34 @@ function EditableGastoRow({
             onBlur={saveMonto}
             onKeyDown={e => e.key === "Enter" && saveMonto()}
             disabled={saving}
-            className="w-full text-right bg-[#1a1a1a] border border-[#222] rounded px-1.5 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+            className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm text-right rounded px-1 py-0.5 focus:outline-none focus:border-[#B3985B]"
+            placeholder="0"
           />
         ) : (
           <>
-            <p className={`text-sm font-medium ${gasto.monto > 0 ? "text-white" : "text-gray-600"}`}>
-              {gasto.monto > 0 ? fmt(gasto.monto) : "—"}
-            </p>
-            {gasto.estado === "PARCIAL" && (
-              <p className="text-[10px] text-yellow-500">resta {fmt(gasto.saldo)}</p>
-            )}
+            <button 
+              onClick={() => { setEditingNotas(true); }}
+              className={`p-1 rounded-md transition-colors ${gasto.notas ? 'text-[#B3985B] bg-[#B3985B]/10 hover:bg-[#B3985B]/20' : 'text-gray-600 hover:text-gray-400'}`}
+              title={gasto.notas || "Añadir nota interna"}
+            >
+              <MessageSquare className="w-3 h-3" />
+            </button>
+            <div 
+              className={`cursor-pointer text-right min-w-[50px] ${gasto.estado !== "PAGADO" ? "" : "pointer-events-none"}`}
+              onClick={() => { if (gasto.estado !== "PAGADO") setEditingMonto(true); }}
+            >
+              <p className={`text-sm font-medium ${gasto.monto > 0 ? "text-white" : "text-gray-600"}`}>
+                {gasto.monto > 0 ? fmt(gasto.monto) : "—"}
+              </p>
+              {gasto.estado === "PARCIAL" && (
+                <p className="text-[10px] text-yellow-500">resta {fmt(gasto.saldo)}</p>
+              )}
+            </div>
           </>
         )}
       </div>
 
+      {/* 5. Estado Pill */}
       <div className="flex justify-end">
         <span
           className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
@@ -795,6 +1131,22 @@ function EditableGastoRow({
                   ? "Sin CxP"
                   : "—"}
         </span>
+      </div>
+
+      {/* 6. Tache / Eliminar */}
+      <div className="flex justify-center">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete?.(gasto, proyectoId);
+          }}
+          disabled={isDeleting}
+          className="p-1 rounded text-gray-600 hover:text-red-400 hover:bg-red-950/30 transition-colors disabled:opacity-40"
+          title="Eliminar gasto de este proyecto"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
       </div>
     </div>
   );
