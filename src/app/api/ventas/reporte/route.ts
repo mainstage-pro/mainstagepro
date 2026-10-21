@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
     const totalFacturado = cxc.reduce((s, c) => s + c.monto, 0);
     const totalCobrado = cxc.reduce((s, c) => s + c.montoCobrado, 0);
     const liquidado100 = totalFacturado > 0 && totalCobrado >= totalFacturado;
-    const tienAnticipo = cxc.some(
+    const tienAnticipo = totalCobrado > 0 || cxc.some(
       (c) => c.tipoPago === "ANTICIPO" && c.montoCobrado > 0
     );
 

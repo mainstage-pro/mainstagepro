@@ -133,7 +133,7 @@ export default function PortalCliente() {
     { label: "Cotización aprobada", done: proyecto.cotizacion?.estado === "APROBADA" },
     {
       label: "Anticipo pagado",
-      done: proyecto.cuentasCobrar.some(c => c.tipoPago === "ANTICIPO" && (c.estado === "PAGADO" || c.estado === "PARCIAL")),
+      done: proyecto.cuentasCobrar.some(c => (c.tipoPago === "ANTICIPO" || c.tipoPago === "TOTAL") && (c.estado === "PAGADO" || c.estado === "PARCIAL" || c.estado === "LIQUIDADO" || (c.montoCobrado ?? 0) > 0)),
     },
     { label: "Equipo técnico confirmado", done: proyecto.personal.length > 0 },
     { label: "Evento realizado", done: proyecto.estado === "COMPLETADO" },

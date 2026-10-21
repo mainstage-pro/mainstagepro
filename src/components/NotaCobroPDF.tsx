@@ -134,6 +134,7 @@ export interface NotaCobroData {
   cliente?: { nombre: string; empresa?: string | null; telefono?: string | null } | null;
   proyecto?: { nombre: string; numeroProyecto: string | number; fechaEvento?: string | null } | null;
   cotizacion?: { numeroCotizacion: string } | null;
+  abonos?: Array<{ monto: number; fecha: string; metodoPago?: string | null }>;
 }
 
 export function NotaCobroPDF({ nota }: { nota: NotaCobroData }) {
@@ -141,20 +142,30 @@ export function NotaCobroPDF({ nota }: { nota: NotaCobroData }) {
   const ajuste   = (nota.montoOriginal != null) ? nota.monto - nota.montoOriginal : 0;
   const gt       = baseGt + ajuste;
   const anticipo = nota.montoAnticipo ?? 0;
-  const saldo    = Math.max(0, gt - anticipo);
+
+  // Si esta CxC es un anticipo separado (su monto es menor al total y su tipoPago es ANTICIPO)
+  const isAnticipoSeparado = nota.tipoPago === "ANTICIPO" && nota.monto < gt;
+  const saldo = isAnticipoSeparado
+    ? Math.max(0, nota.monto - (nota.montoCobrado || 0))
+    : Math.max(0, gt - anticipo);
 
   const clienteNombre  = nota.cliente?.nombre  ?? "Cliente";
   const clienteEmpresa = nota.cliente?.empresa ?? null;
   const logoSrc        = nota.logoSrc ?? null;
   
-  const isLiquidado = nota.estado === "LIQUIDADO" || nota.montoCobrado >= nota.monto;
-  const hasPayment = nota.montoCobrado > 0;
+  const isLiquidado = nota.estado === "LIQUIDADO" || (isAnticipoSeparado ? (nota.montoCobrado || 0) >= nota.monto : saldo <= 0.01);
+  const hasPayment = (nota.montoCobrado || 0) > 0 || anticipo > 0;
   
   let paymentMethod = "";
   if (hasPayment && nota.cuentaDestino) {
     const isEfectivo = nota.cuentaDestino.banco?.toLowerCase().includes("efectivo") || nota.cuentaDestino.banco?.toLowerCase().includes("caja") || nota.cuentaDestino.nombre.toLowerCase().includes("caja");
     paymentMethod = isEfectivo ? "Efectivo" : `Transferencia (${nota.cuentaDestino.banco || nota.cuentaDestino.nombre})`;
   }
+
+  // Fecha del último abono o cobro si existe
+  const ultimoAbonoFecha = nota.abonos && nota.abonos.length > 0
+    ? nota.abonos[nota.abonos.length - 1].fecha
+    : (nota.fechaCobroReal ?? null);
 
   return (
     <Document>
@@ -226,34 +237,59 @@ export function NotaCobroPDF({ nota }: { nota: NotaCobroData }) {
           {/* Resumen de cobros */}
           <Text style={s.sectionLabel}>RESUMEN DE COBROS</Text>
           <View style={s.balanceBox}>
-            <View style={s.balanceTable}>
-              <View style={s.balanceRow}>
-                <Text style={s.balanceLabel}>Total del servicio</Text>
-                <Text style={s.balanceValue}>{fmt(gt)}</Text>
+            {isAnticipoSeparado ? (
+              <View style={s.balanceTable}>
+                <View style={s.balanceRow}>
+                  <Text style={s.balanceLabel}>Total del servicio</Text>
+                  <Text style={s.balanceValue}>{fmt(gt)}</Text>
+                </View>
+                <View style={s.balanceRow}>
+                  <Text style={s.balanceLabel}>Anticipo acordado</Text>
+                  <Text style={s.balanceValue}>{fmt(nota.monto)}</Text>
+                </View>
+                {nota.montoCobrado > 0 && (
+                  <View style={[s.balanceRow, { borderBottomWidth: 0 }]}>
+                    <Text style={s.balanceLabel}>
+                      {ultimoAbonoFecha ? `Abono recibido (${fmtDate(ultimoAbonoFecha)})` : "Abono recibido"}
+                    </Text>
+                    <Text style={s.balancePaid}>- {fmt(nota.montoCobrado)}</Text>
+                  </View>
+                )}
               </View>
-              <View style={[s.balanceRow, { borderBottomWidth: 0 }]}>
-                <Text style={s.balanceLabel}>Anticipo recibido</Text>
-                <Text style={anticipo > 0 ? s.balancePaid : s.balanceValue}>
-                  {anticipo > 0 ? `- ${fmt(anticipo)}` : "Sin anticipo"}
-                </Text>
+            ) : (
+              <View style={s.balanceTable}>
+                <View style={s.balanceRow}>
+                  <Text style={s.balanceLabel}>Total del servicio</Text>
+                  <Text style={s.balanceValue}>{fmt(gt)}</Text>
+                </View>
+                <View style={[s.balanceRow, { borderBottomWidth: 0 }]}>
+                  <Text style={s.balanceLabel}>
+                    {anticipo > 0 && ultimoAbonoFecha ? `Anticipo recibido (${fmtDate(ultimoAbonoFecha)})` : "Anticipo recibido"}
+                  </Text>
+                  <Text style={anticipo > 0 ? s.balancePaid : s.balanceValue}>
+                    {anticipo > 0 ? `- ${fmt(anticipo)}` : "Sin anticipo"}
+                  </Text>
+                </View>
               </View>
-            </View>
+            )}
             <View style={s.balanceTotalRow}>
-              <Text style={s.balanceTotalLabel}>RESTA POR PAGAR</Text>
-              <Text style={saldo === 0 ? s.balanceTotalZero : s.balanceTotalValue}>
+              <Text style={s.balanceTotalLabel}>
+                {isAnticipoSeparado ? "TOTAL ANTICIPO A PAGAR" : "RESTA POR PAGAR"}
+              </Text>
+              <Text style={saldo <= 0.01 ? s.balanceTotalZero : s.balanceTotalValue}>
                 {fmt(saldo)}
               </Text>
             </View>
           </View>
 
           {/* Fecha de pago */}
-          {isLiquidado && nota.fechaCobroReal ? (
+          {isLiquidado && (nota.fechaCobroReal || ultimoAbonoFecha) ? (
             <View style={[s.dueDateBox, s.dueDateBoxPaid]}>
               <View>
                 <Text style={[s.dueDateLabel, s.dueDateLabelPaid]}>PAGO RECIBIDO EL</Text>
                 {paymentMethod && <Text style={{ fontSize: 7.5, color: "#166534", marginTop: 2 }}>Vía {paymentMethod}</Text>}
               </View>
-              <Text style={s.dueDateValue}>{fmtDate(nota.fechaCobroReal)}</Text>
+              <Text style={s.dueDateValue}>{fmtDate(nota.fechaCobroReal ?? ultimoAbonoFecha!)}</Text>
             </View>
           ) : (
             <View style={s.dueDateBox}>

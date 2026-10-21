@@ -64,7 +64,7 @@ export default function DocumentosClienteModal({ trato }: { trato: TratoLite }) 
   const selectedCot = trato.cotizaciones.find(c => c.id === selectedCotId) ?? cotDefault ?? null;
   const proyecto = selectedCot?.proyecto ?? null;
 
-  // Buscar la cuenta por cobrar del anticipo para el proyecto seleccionado.
+  // Buscar la cuenta por cobrar (anticipo o total) para el proyecto seleccionado.
   useEffect(() => {
     if (!open || !proyecto) {
       setAnticipoCxcId(null);
@@ -73,11 +73,16 @@ export default function DocumentosClienteModal({ trato }: { trato: TratoLite }) 
     let cancel = false;
     setCargandoAnticipo(true);
     setAnticipoCxcId(null);
-    fetch(`/api/cuentas-cobrar?proyectoId=${proyecto.id}&tipoPago=ANTICIPO`)
+    fetch(`/api/cuentas-cobrar?proyectoId=${proyecto.id}`)
       .then(r => (r.ok ? r.json() : []))
-      .then((cuentas: Array<{ id: string }>) => {
+      .then((cuentas: Array<{ id: string; tipoPago?: string }>) => {
         if (cancel) return;
-        setAnticipoCxcId(Array.isArray(cuentas) && cuentas.length > 0 ? cuentas[0].id : null);
+        if (!Array.isArray(cuentas) || cuentas.length === 0) {
+          setAnticipoCxcId(null);
+          return;
+        }
+        const cxc = cuentas.find(c => c.tipoPago === "ANTICIPO") ?? cuentas[0];
+        setAnticipoCxcId(cxc ? cxc.id : null);
       })
       .catch(() => { if (!cancel) setAnticipoCxcId(null); })
       .finally(() => { if (!cancel) setCargandoAnticipo(false); });
@@ -138,23 +143,23 @@ export default function DocumentosClienteModal({ trato }: { trato: TratoLite }) 
     },
     {
       key: "nota",
-      label: "Nota de cobro del anticipo",
+      label: "Nota de cobro",
       desc: cargandoAnticipo
-        ? "Buscando anticipo…"
+        ? "Buscando cobro…"
         : anticipoCxcId
-        ? "Nota con datos bancarios para el anticipo"
+        ? "Nota con datos bancarios y saldo"
         : proyecto
-        ? "No hay anticipo registrado en el proyecto"
+        ? "No hay cobros registrados en el proyecto"
         : "Disponible al crear el proyecto",
       icon: CreditCard,
       enabled: !!anticipoCxcId,
-      hint: !proyecto ? "Requiere proyecto" : !anticipoCxcId && !cargandoAnticipo ? "Sin anticipo" : undefined,
+      hint: !proyecto ? "Requiere proyecto" : !anticipoCxcId && !cargandoAnticipo ? "Sin cobros" : undefined,
       onClick: () =>
         anticipoCxcId &&
         downloadPdf(
           `/api/cuentas-cobrar/${anticipoCxcId}/nota?t=${Date.now()}`,
-          `Nota-anticipo-${ref}.pdf`,
-          "Nota de cobro del anticipo"
+          `Nota-cobro-${ref}.pdf`,
+          "Nota de cobro"
         ),
     },
   ];

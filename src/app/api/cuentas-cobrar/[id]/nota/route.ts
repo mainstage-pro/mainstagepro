@@ -17,10 +17,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const cxc = await prisma.cuentaCobrar.findUnique({
     where: { id },
     include: {
-      cliente:    { select: { nombre: true, empresa: true, telefono: true } },
-      proyecto:   { select: { nombre: true, numeroProyecto: true, fechaEvento: true } },
-      cotizacion: { select: { numeroCotizacion: true, granTotal: true } },
+      cliente:       { select: { nombre: true, empresa: true, telefono: true } },
+      proyecto:      { select: { nombre: true, numeroProyecto: true, fechaEvento: true } },
+      cotizacion:    { select: { numeroCotizacion: true, granTotal: true } },
       cuentaDestino: { select: { nombre: true, banco: true } },
+      abonos:        { select: { monto: true, fecha: true, metodoPago: true }, orderBy: { fecha: "asc" } },
     },
   });
 
@@ -37,29 +38,36 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     granTotal = proy?.cotizacion?.granTotal ?? null;
   }
 
-  // ── 2. Anticipo ─────────────────────────────────────────────────────────────
-  // Prioridad 1: CxC separadas de tipo ANTICIPO en el mismo proyecto/cotización
-  // Prioridad 2: montoCobrado de esta misma CxC (caso pago parcial en un solo registro)
+  // ── 2. Anticipo / Pagos recibidos ───────────────────────────────────────────
+  // Sumar todos los abonos o pagos YA REALIZADOS previamente para este proyecto/cotización.
+  // 1. Otras CxCs de tipo ANTICIPO del mismo proyecto (id !== cxc.id y solo lo realmente cobrado)
+  // 2. Lo que ya se haya cobrado en esta misma CxC (montoCobrado)
   let montoAnticipo: number | null = null;
+  let cobradoOtrasCxC = 0;
 
-  if (cxc.proyectoId) {
-    const anticipos = await prisma.cuentaCobrar.findMany({
-      where: { proyectoId: cxc.proyectoId, tipoPago: "ANTICIPO" },
-      select: { monto: true },
+  if (cxc.proyectoId || cxc.cotizacionId) {
+    const otras = await prisma.cuentaCobrar.findMany({
+      where: {
+        id: { not: cxc.id },
+        ...(cxc.proyectoId ? { proyectoId: cxc.proyectoId } : { cotizacionId: cxc.cotizacionId! }),
+      },
+      select: { monto: true, montoCobrado: true, estado: true, tipoPago: true },
     });
-    const total = anticipos.reduce((s, a) => s + a.monto, 0);
-    if (total > 0) montoAnticipo = total;
-  } else if (cxc.cotizacionId) {
-    const anticipos = await prisma.cuentaCobrar.findMany({
-      where: { cotizacionId: cxc.cotizacionId, tipoPago: "ANTICIPO" },
-      select: { monto: true },
-    });
-    const total = anticipos.reduce((s, a) => s + a.monto, 0);
-    if (total > 0) montoAnticipo = total;
+
+    for (const otra of otras) {
+      if (cxc.tipoPago === "LIQUIDACION" || cxc.tipoPago === "TOTAL" || cxc.tipoPago === "OTRO") {
+        const pagado = otra.estado === "LIQUIDADO" ? otra.monto : (otra.montoCobrado || 0);
+        cobradoOtrasCxC += pagado;
+      } else if (otra.tipoPago === "ANTICIPO") {
+        const pagado = otra.estado === "LIQUIDADO" ? otra.monto : (otra.montoCobrado || 0);
+        cobradoOtrasCxC += pagado;
+      }
+    }
   }
 
-  if (montoAnticipo === null && cxc.montoCobrado > 0) {
-    montoAnticipo = cxc.montoCobrado;
+  const totalRecibido = cobradoOtrasCxC + (cxc.montoCobrado || 0);
+  if (totalRecibido > 0) {
+    montoAnticipo = totalRecibido;
   }
 
   // ── 3. Logo ─────────────────────────────────────────────────────────────────
@@ -90,6 +98,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       ? { nombre: cxc.proyecto.nombre, numeroProyecto: cxc.proyecto.numeroProyecto, fechaEvento: cxc.proyecto.fechaEvento?.toISOString() ?? null }
       : null,
     cotizacion:      cxc.cotizacion ? { numeroCotizacion: cxc.cotizacion.numeroCotizacion } : null,
+    abonos:          cxc.abonos?.map(a => ({
+      monto: a.monto,
+      fecha: a.fecha.toISOString(),
+      metodoPago: a.metodoPago,
+    })) ?? [],
   };
 
   try {

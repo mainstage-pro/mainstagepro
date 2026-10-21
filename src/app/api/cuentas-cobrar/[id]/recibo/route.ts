@@ -37,7 +37,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       granTotal = proyecto?.cotizacion?.granTotal ?? null;
     }
     const cxcAnticipo = await prisma.cuentaCobrar.findFirst({
-      where: { proyectoId: cxc.proyectoId, tipoPago: "ANTICIPO" },
+      where: { proyectoId: cxc.proyectoId, tipoPago: "ANTICIPO", id: { not: cxc.id } },
       select: { monto: true },
     });
     montoAnticipo = cxcAnticipo?.monto ?? null;

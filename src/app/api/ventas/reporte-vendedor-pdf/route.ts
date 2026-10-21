@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
     const totalFacturado = cxc.reduce((s, c) => s + c.monto, 0);
     const totalCobrado = cxc.reduce((s, c) => s + c.montoCobrado, 0);
     const liquidado100 = totalFacturado > 0 && totalCobrado >= totalFacturado;
-    const tienAnticipo = cxc.some(c => c.tipoPago === "ANTICIPO" && c.montoCobrado > 0);
+    const tienAnticipo = totalCobrado > 0 || cxc.some(c => c.tipoPago === "ANTICIPO" && c.montoCobrado > 0);
 
     let pctComision = 0;
     if (trato.origenVenta === "CLIENTE_PROPIO") pctComision = config!.pctClientePropio;
