@@ -463,9 +463,21 @@ export default function PagosProveedoresPage() {
                               >
                                 {ORIGEN_LABEL[origen]}
                               </span>
-                              <span className="text-[10px] text-gray-700 ml-auto">
-                                {filas.length} renglón{filas.length !== 1 ? "es" : ""}
-                              </span>
+                              <div className="ml-auto flex items-center gap-2">
+                                <span className="text-[10px] text-gray-600">
+                                  {filas.length} renglón{filas.length !== 1 ? "es" : ""}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setAddingGastoProyectoId(p.id);
+                                    setNuevoGastoForm(f => ({ ...f, origen: origen === "IMPREVISTO" ? "IMPREVISTO" : "COORDINADO" }));
+                                  }}
+                                  className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#B3985B]/20 text-[#B3985B] hover:bg-[#B3985B] hover:text-black transition-colors"
+                                >
+                                  + Agregar gasto
+                                </button>
+                              </div>
                             </div>
 
                             {filas.map((g) => (
@@ -479,6 +491,22 @@ export default function PagosProveedoresPage() {
                                 isDeleting={deletingGastoId === g.id}
                               />
                             ))}
+
+                            <div className="px-4 py-1.5 bg-[#0a0a0a] border-b border-[#0d0d0d] flex items-center justify-between group hover:bg-[#111] transition-colors">
+                              <span className="text-[11px] text-gray-600 group-hover:text-gray-400 transition-colors">
+                                ¿Falta registrar un gasto de {ORIGEN_LABEL[origen]?.toLowerCase() || origen}?
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setAddingGastoProyectoId(p.id);
+                                  setNuevoGastoForm(f => ({ ...f, origen: origen === "IMPREVISTO" ? "IMPREVISTO" : "COORDINADO" }));
+                                }}
+                                className="text-xs text-[#B3985B] hover:text-[#c9a96a] font-medium flex items-center gap-1 transition-colors"
+                              >
+                                + Agregar gasto a este origen
+                              </button>
+                            </div>
                           </div>
                         );
                       })}

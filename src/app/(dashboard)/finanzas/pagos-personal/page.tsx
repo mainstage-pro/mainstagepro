@@ -445,6 +445,52 @@ export default function PagosPersonalPage() {
   const [guardandoExtra, setGuardandoExtra] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // Estado para agregar slot inline directo a un bloque
+  const [inlineSlotGroup, setInlineSlotGroup] = useState<string | null>(null);
+  const [inlineSlotForm, setInlineSlotForm] = useState({
+    tecnicoId: "",
+    rolTecnicoId: "",
+    jornada: "CORTA",
+    tarifaAcordada: "",
+  });
+  const [guardandoInlineSlot, setGuardandoInlineSlot] = useState(false);
+
+  async function guardarSlotInline(proyectoId: string, participacion: string, fechaJornada?: string) {
+    setGuardandoInlineSlot(true);
+    try {
+      const res = await fetch(`/api/proyectos/${proyectoId}/personal`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tecnicoId: inlineSlotForm.tecnicoId || null,
+          rolTecnicoId: inlineSlotForm.rolTecnicoId || null,
+          participacion,
+          fechaJornada: fechaJornada || null,
+          jornada: inlineSlotForm.jornada || "CORTA",
+          tarifaAcordada: inlineSlotForm.tarifaAcordada ? parseFloat(inlineSlotForm.tarifaAcordada) : null,
+        }),
+      });
+      if (res.ok) {
+        setInlineSlotGroup(null);
+        setInlineSlotForm({
+          tecnicoId: "",
+          rolTecnicoId: "",
+          jornada: "CORTA",
+          tarifaAcordada: "",
+        });
+        await load();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Error al agregar el slot de personal");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error de conexión al agregar el slot");
+    } finally {
+      setGuardandoInlineSlot(false);
+    }
+  }
+
   async function handleDeletePersonal(personalId: string, proyectoId: string, label: string) {
     if (!confirm(`¿Eliminar "${label}" de este proyecto?`)) return;
     setDeletingId(personalId);
@@ -886,7 +932,30 @@ export default function PagosPersonalPage() {
                               </span>
                               {fecha && <span className="text-[10px] text-gray-500">{fmtDate(fecha)}</span>}
                               <span className="text-[10px] text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">✎ Editar bloque</span>
-                              <span className="text-[10px] text-gray-700 ml-auto">{slots.length} técnico{slots.length !== 1 ? "s" : ""}</span>
+                              <div className="ml-auto flex items-center gap-2">
+                                <span className="text-[10px] text-gray-500">{slots.length} técnico{slots.length !== 1 ? "s" : ""}</span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (inlineSlotGroup === `${p.id}-${key}`) {
+                                      setInlineSlotGroup(null);
+                                    } else {
+                                      setInlineSlotGroup(`${p.id}-${key}`);
+                                      setInlineSlotForm({
+                                        tecnicoId: "",
+                                        rolTecnicoId: "",
+                                        jornada: "CORTA",
+                                        tarifaAcordada: "",
+                                      });
+                                    }
+                                  }}
+                                  className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#B3985B]/20 text-[#B3985B] hover:bg-[#B3985B] hover:text-black transition-colors"
+                                  title="Agregar un nuevo slot de personal a este bloque"
+                                >
+                                  {inlineSlotGroup === `${p.id}-${key}` ? "✕ Cerrar" : "+ Agregar slot"}
+                                </button>
+                              </div>
                               
                               {editingGroup === key && (
                                 <div className="absolute left-4 top-full mt-1 z-50 w-[240px] bg-[#111] border border-[#333] rounded-lg shadow-2xl p-3 flex flex-col gap-2" onClick={e => e.stopPropagation()}>
@@ -935,6 +1004,100 @@ export default function PagosPersonalPage() {
                                 isDeleting={deletingId === pp.id}
                               />
                             ))}
+
+                            {inlineSlotGroup === `${p.id}-${key}` ? (
+                              <div className="grid grid-cols-[1fr_1fr_90px_100px_72px_32px] gap-2 px-4 py-2 bg-[#181818] border-b border-[#222] items-center animate-in fade-in">
+                                <div>
+                                  <select
+                                    value={inlineSlotForm.tecnicoId}
+                                    onChange={e => setInlineSlotForm(f => ({ ...f, tecnicoId: e.target.value }))}
+                                    className="w-full bg-[#111] border border-[#333] text-white text-xs rounded px-1.5 py-1 focus:outline-none focus:border-[#B3985B]"
+                                  >
+                                    <option value="">Sin asignar</option>
+                                    {data.tecnicos.map(t => (
+                                      <option key={t.id} value={t.id}>{t.nombre}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div>
+                                  <select
+                                    value={inlineSlotForm.rolTecnicoId}
+                                    onChange={e => setInlineSlotForm(f => ({ ...f, rolTecnicoId: e.target.value }))}
+                                    className="w-full bg-[#111] border border-[#333] text-white text-xs rounded px-1.5 py-1 focus:outline-none focus:border-[#B3985B]"
+                                  >
+                                    <option value="">Sin rol</option>
+                                    {data.roles.map(r => (
+                                      <option key={r.id} value={r.id}>{r.nombre}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div>
+                                  <select
+                                    value={inlineSlotForm.jornada}
+                                    onChange={e => setInlineSlotForm(f => ({ ...f, jornada: e.target.value }))}
+                                    className="w-full bg-[#111] border border-[#333] text-white text-xs rounded px-1.5 py-1 focus:outline-none focus:border-[#B3985B]"
+                                  >
+                                    <option value="CORTA">Corta</option>
+                                    <option value="MEDIA">Media</option>
+                                    <option value="LARGA">Larga</option>
+                                    <option value="COMPLETA">Completa</option>
+                                  </select>
+                                </div>
+                                <div>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={inlineSlotForm.tarifaAcordada}
+                                    onChange={e => setInlineSlotForm(f => ({ ...f, tarifaAcordada: e.target.value }))}
+                                    onKeyDown={e => { if (e.key === "Enter") guardarSlotInline(p.id, tipo, fecha); }}
+                                    placeholder="Tarifa ($)"
+                                    className="w-full bg-[#111] border border-[#333] text-white text-xs text-right rounded px-1.5 py-1 focus:outline-none focus:border-[#B3985B]"
+                                  />
+                                </div>
+                                <div className="flex justify-end">
+                                  <button
+                                    type="button"
+                                    onClick={() => guardarSlotInline(p.id, tipo, fecha)}
+                                    disabled={guardandoInlineSlot}
+                                    className="px-2.5 py-1 rounded bg-[#B3985B] hover:bg-[#c9a96a] text-black text-xs font-semibold transition-colors disabled:opacity-50"
+                                  >
+                                    {guardandoInlineSlot ? "..." : "Agregar"}
+                                  </button>
+                                </div>
+                                <div className="flex justify-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => setInlineSlotGroup(null)}
+                                    className="p-1 rounded text-gray-500 hover:text-white transition-colors"
+                                    title="Cancelar"
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="px-4 py-1.5 bg-[#0a0a0a] border-b border-[#0d0d0d] flex items-center justify-between group hover:bg-[#111] transition-colors">
+                                <span className="text-[11px] text-gray-600 group-hover:text-gray-400 transition-colors">
+                                  ¿Falta personal en {TIPO_LABELS[tipo]?.toLowerCase() || tipo}{fecha ? ` · ${fmtDate(fecha)}` : ""}?
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setInlineSlotGroup(`${p.id}-${key}`);
+                                    setInlineSlotForm({
+                                      tecnicoId: "",
+                                      rolTecnicoId: "",
+                                      jornada: "CORTA",
+                                      tarifaAcordada: "",
+                                    });
+                                  }}
+                                  className="text-xs text-[#B3985B] hover:text-[#c9a96a] font-medium flex items-center gap-1 transition-colors"
+                                >
+                                  + Agregar slot de personal
+                                </button>
+                              </div>
+                            )}
                           </div>
                         );
                       })}
