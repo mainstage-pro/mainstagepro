@@ -35,8 +35,8 @@ function temaAPdf(id: string, titulo: string, tema: TemaEvaluacion): TemaPdf | n
     id,
     titulo,
     hallazgos: tema.hallazgos
-      .filter((h) => h.falla.trim() || h.solucion.trim())
-      .map((h) => ({ severidad: h.severidad, falla: h.falla, solucion: h.solucion })),
+      .filter((h) => h.falla.trim() || h.solucion.trim() || h.propuestaMejora.trim())
+      .map((h) => ({ severidad: h.severidad, falla: h.falla, solucion: h.solucion, propuestaMejora: h.propuestaMejora })),
     comentarios: tema.comentarios.trim() || null,
   };
 }
@@ -85,6 +85,7 @@ export async function generarNotasAprendizajes(giraId: string): Promise<PdfGira 
     resumenGeneral: giraEvaluacion.resumenGeneral.trim() || null,
     temasGira: temasGiraAPdf(giraEvaluacion),
     aciertos: giraEvaluacion.aciertos.trim() || null,
+    agradecimientos: giraEvaluacion.agradecimientos.trim() || null,
     logoSrc: logoBase64(publicDir),
     logoArtistaSrc: await resolvePdfImage(gira.artista.logoUrl, publicDir),
     generadoEn: nowStr(),

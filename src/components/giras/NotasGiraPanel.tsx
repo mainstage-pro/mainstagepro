@@ -3,11 +3,14 @@
 /**
  * Autocrítica general de la gira: un resumen ejecutivo, los temas que
  * importan a toda la producción (cada uno con sus hallazgos y comentarios,
- * igual que por show) y los aciertos que vale la pena repetir en la próxima
- * gira. Más breve que el detalle por fecha, porque ese ya vive en cada show.
- * Mismo mecanismo de autoguardado.
+ * igual que por show), los aciertos que vale la pena repetir en la próxima
+ * gira y, al final, un agradecimiento especial opcional (artista, manager,
+ * equipo) que solo aparece si se activa explícitamente. Más breve que el
+ * detalle por fecha, porque ese ya vive en cada show. Mismo mecanismo de
+ * autoguardado.
  */
 
+import { Plus, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import TemaEvaluacionEditor from "./TemaEvaluacionEditor";
 import {
@@ -23,13 +26,16 @@ export default function NotasGiraPanel({ giraId }: { giraId: string }) {
   const [data, setData] = useState<GiraEvaluacionData>(emptyGiraEvaluacion());
   const [loading, setLoading] = useState(true);
   const [estado, setEstado] = useState<"idle" | "saving" | "saved">("idle");
+  const [mostrarAgradecimiento, setMostrarAgradecimiento] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     (async () => {
       const r = await fetch(`/api/giras/${giraId}/evaluacion`, { cache: "no-store" });
       const d = await r.json();
-      setData(parseGiraEvaluacion(d.evaluacion));
+      const evaluacion = parseGiraEvaluacion(d.evaluacion);
+      setData(evaluacion);
+      setMostrarAgradecimiento(evaluacion.agradecimientos.trim().length > 0);
       setLoading(false);
     })();
   }, [giraId]);
@@ -94,6 +100,43 @@ export default function NotasGiraPanel({ giraId }: { giraId: string }) {
           rows={3}
           className="ms-textarea"
         />
+      </div>
+
+      <div>
+        {mostrarAgradecimiento ? (
+          <>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-sm text-white font-medium">Agradecimientos (opcional)</label>
+              <button
+                type="button"
+                onClick={() => {
+                  setMostrarAgradecimiento(false);
+                  guardar({ ...data, agradecimientos: "" });
+                }}
+                className="text-[#555] hover:text-red-400 shrink-0"
+                title="Quitar agradecimientos"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <textarea
+              value={data.agradecimientos}
+              onChange={(e) => guardar({ ...data, agradecimientos: e.target.value })}
+              placeholder="Agradecimiento especial al artista, al manager y al equipo involucrado..."
+              rows={3}
+              className="ms-textarea"
+            />
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setMostrarAgradecimiento(true)}
+            className="ms-btn-ghost inline-flex items-center gap-1.5 text-[12px]"
+          >
+            <Plus className="w-3.5 h-3.5 shrink-0" />
+            Agregar agradecimiento especial
+          </button>
+        )}
       </div>
     </div>
   );

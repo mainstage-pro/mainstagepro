@@ -24,6 +24,7 @@ export interface NotasAprendizajesData {
   resumenGeneral: string | null;
   temasGira: TemaPdf[];
   aciertos: string | null;
+  agradecimientos: string | null;
   logoSrc: string | null;
   logoArtistaSrc: string | null;
   generadoEn: string;
@@ -75,6 +76,12 @@ export function NotasAprendizajesPDF({ data }: { data: NotasAprendizajesData }) 
           <Seccion titulo="Aciertos a repetir">
             <Nota texto={data.aciertos} />
           </Seccion>
+
+          {data.agradecimientos && (
+            <Seccion titulo="Agradecimientos">
+              <Nota texto={data.agradecimientos} />
+            </Seccion>
+          )}
         </Cuerpo>
       </PaginaGira>
     </Document>

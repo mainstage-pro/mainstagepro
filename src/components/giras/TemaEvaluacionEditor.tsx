@@ -2,10 +2,11 @@
 
 /**
  * Un tema de notas y aprendizajes: una lista de hallazgos (falla o situación +
- * la solución que se propone, con severidad) y un espacio de comentarios
- * abiertos para lo que no encaja como hallazgo puntual. La misma pieza sirve
- * para los temas por show y los temas generales de la gira — solo cambia el
- * label y la ayuda que le pasa el panel que la monta.
+ * solución aplicada en el momento + propuesta de mejora a futuro, con
+ * severidad) y un espacio de comentarios abiertos para lo que no encaja como
+ * hallazgo puntual. La misma pieza sirve para los temas por show y los temas
+ * generales de la gira — solo cambia el label y la ayuda que le pasa el panel
+ * que la monta.
  */
 
 import { Plus, Trash2 } from "lucide-react";
@@ -24,7 +25,7 @@ const SEVERIDAD_ESTILO: Record<Severidad, string> = {
 };
 
 function nuevoHallazgo(): Hallazgo {
-  return { id: crypto.randomUUID(), severidad: "IMPORTANTE", falla: "", solucion: "" };
+  return { id: crypto.randomUUID(), severidad: "IMPORTANTE", falla: "", solucion: "", propuestaMejora: "" };
 }
 
 export default function TemaEvaluacionEditor({
@@ -83,7 +84,7 @@ export default function TemaEvaluacionEditor({
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <div>
                   <label className="ms-label">Falla o situación</label>
                   <textarea
@@ -95,11 +96,21 @@ export default function TemaEvaluacionEditor({
                   />
                 </div>
                 <div>
-                  <label className="ms-label">Solución propuesta</label>
+                  <label className="ms-label">Solución aplicada</label>
                   <textarea
                     value={h.solucion}
                     onChange={(e) => actualizar(h.id, { solucion: e.target.value })}
-                    placeholder="Qué se propone para que no se repita..."
+                    placeholder="Qué se hizo en el momento para resolverlo..."
+                    rows={2}
+                    className="ms-textarea"
+                  />
+                </div>
+                <div>
+                  <label className="ms-label">Propuesta de mejora</label>
+                  <textarea
+                    value={h.propuestaMejora}
+                    onChange={(e) => actualizar(h.id, { propuestaMejora: e.target.value })}
+                    placeholder="Qué cambiar para que no se vuelva a repetir..."
                     rows={2}
                     className="ms-textarea"
                   />

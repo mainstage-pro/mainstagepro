@@ -1,9 +1,10 @@
 /**
  * NotasBloques.tsx — las piezas que comparten el PDF de notas de un show y el
- * de la gira completa: la tarjeta de un hallazgo (falla + solución, con su
- * color de severidad) y el bloque de un tema (sus hallazgos más el comentario
- * abierto). Separado de los documentos que las usan porque el de la gira
- * repite el mismo bloque una vez por show y otra vez por tema general.
+ * de la gira completa: la tarjeta de un hallazgo (falla + solución aplicada +
+ * propuesta de mejora, con su color de severidad) y el bloque de un tema (sus
+ * hallazgos más el comentario abierto). Separado de los documentos que las
+ * usan porque el de la gira repite el mismo bloque una vez por show y otra
+ * vez por tema general.
  */
 import React from "react";
 import { StyleSheet, Text, View } from "@react-pdf/renderer";
@@ -16,6 +17,7 @@ export interface HallazgoPdf {
   severidad: SeveridadPdf;
   falla: string;
   solucion: string;
+  propuestaMejora: string;
 }
 
 export interface TemaPdf {
@@ -75,8 +77,12 @@ function HallazgoCard({ h }: { h: HallazgoPdf }) {
           <Text style={s.colTxt}>{h.falla || "—"}</Text>
         </View>
         <View style={s.col}>
-          <Text style={s.colLabel}>Solución propuesta</Text>
+          <Text style={s.colLabel}>Solución aplicada</Text>
           <Text style={s.colTxt}>{h.solucion || "—"}</Text>
+        </View>
+        <View style={[s.col, { paddingRight: 0 }]}>
+          <Text style={s.colLabel}>Propuesta de mejora</Text>
+          <Text style={s.colTxt}>{h.propuestaMejora || "—"}</Text>
         </View>
       </View>
     </View>

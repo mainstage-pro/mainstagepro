@@ -1,0 +1,52 @@
+[
+  {
+    "id": "cmuqf6b650002122rlg1foriq",
+    "evaluacion": null
+  },
+  {
+    "id": "cmuqf37ue00062aivaraie5qu",
+    "evaluacion": {
+      "temas": {
+        "show": {
+          "hallazgos": [],
+          "comentarios": ""
+        },
+        "montaje": {
+          "hallazgos": [],
+          "comentarios": ""
+        },
+        "desmontaje": {
+          "hallazgos": [],
+          "comentarios": ""
+        },
+        "soundcheck": {
+          "hallazgos": [],
+          "comentarios": ""
+        },
+        "tiemposProduccion": {
+          "hallazgos": [],
+          "comentarios": ""
+        },
+        "coordinacionLogistica": {
+          "hallazgos": [],
+          "comentarios": ""
+        }
+      },
+      "actualizadoEn": "2026-10-20T03:30:17.215Z",
+      "actualizadoPorId": "cmnrpg62h0000zmizxpydetsm",
+      "actualizadoPorNombre": "Mauricio Hernández"
+    }
+  },
+  {
+    "id": "cmuqf572n0001vraddxhllpqq",
+    "evaluacion": null
+  },
+  {
+    "id": "cmuqg8gmw0001bh2v1n4yl01c",
+    "evaluacion": null
+  },
+  {
+    "id": "cmuqg8n9x00016biaet5g4b5y",
+    "evaluacion": null
+  }
+]

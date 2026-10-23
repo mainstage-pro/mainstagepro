@@ -22,6 +22,7 @@ export interface Hallazgo {
   severidad: Severidad;
   falla: string;
   solucion: string;
+  propuestaMejora: string;
 }
 
 export interface TemaEvaluacion {
@@ -36,7 +37,19 @@ export function temaVacio(): TemaEvaluacion {
 export function temaTieneContenido(t: TemaEvaluacion | null | undefined): boolean {
   if (!t) return false;
   if ((t.comentarios ?? "").trim().length > 0) return true;
-  return (t.hallazgos ?? []).some((h) => h.falla.trim().length > 0 || h.solucion.trim().length > 0);
+  return (t.hallazgos ?? []).some(
+    (h) => h.falla.trim().length > 0 || h.solucion.trim().length > 0 || (h.propuestaMejora ?? "").trim().length > 0,
+  );
+}
+
+function normalizarHallazgo(h: Partial<Hallazgo>): Hallazgo {
+  return {
+    id: typeof h.id === "string" ? h.id : crypto.randomUUID(),
+    severidad: h.severidad ?? "IMPORTANTE",
+    falla: typeof h.falla === "string" ? h.falla : "",
+    solucion: typeof h.solucion === "string" ? h.solucion : "",
+    propuestaMejora: typeof h.propuestaMejora === "string" ? h.propuestaMejora : "",
+  };
 }
 
 function construirTemas<K extends string>(
@@ -48,7 +61,9 @@ function construirTemas<K extends string>(
     const crudo = (valor?.[d.id] ?? null) as Partial<TemaEvaluacion> | null;
     out[d.id] = {
       comentarios: typeof crudo?.comentarios === "string" ? crudo.comentarios : "",
-      hallazgos: Array.isArray(crudo?.hallazgos) ? (crudo.hallazgos as Hallazgo[]) : [],
+      hallazgos: Array.isArray(crudo?.hallazgos)
+        ? (crudo.hallazgos as Partial<Hallazgo>[]).map(normalizarHallazgo)
+        : [],
     };
   }
   return out;
@@ -169,6 +184,9 @@ export interface GiraEvaluacionData {
   resumenGeneral: string;
   temas: Record<TemaGiraId, TemaEvaluacion>;
   aciertos: string;
+  // Opcional: agradecimiento de cierre al artista, manager y equipo. Vacío =
+  // no se incluye en el documento.
+  agradecimientos: string;
   actualizadoPorId: string | null;
   actualizadoPorNombre: string | null;
   actualizadoEn: string | null;
@@ -179,6 +197,7 @@ export function emptyGiraEvaluacion(): GiraEvaluacionData {
     resumenGeneral: "",
     temas: construirTemas(TEMAS_GIRA, null),
     aciertos: "",
+    agradecimientos: "",
     actualizadoPorId: null,
     actualizadoPorNombre: null,
     actualizadoEn: null,
@@ -191,6 +210,7 @@ export function parseGiraEvaluacion(raw: unknown): GiraEvaluacionData {
     resumenGeneral: typeof r.resumenGeneral === "string" ? r.resumenGeneral : "",
     temas: construirTemas(TEMAS_GIRA, r.temas as Record<string, unknown> | null | undefined),
     aciertos: typeof r.aciertos === "string" ? r.aciertos : "",
+    agradecimientos: typeof r.agradecimientos === "string" ? r.agradecimientos : "",
     actualizadoPorId: typeof r.actualizadoPorId === "string" ? r.actualizadoPorId : null,
     actualizadoPorNombre: typeof r.actualizadoPorNombre === "string" ? r.actualizadoPorNombre : null,
     actualizadoEn: typeof r.actualizadoEn === "string" ? r.actualizadoEn : null,
@@ -199,6 +219,6 @@ export function parseGiraEvaluacion(raw: unknown): GiraEvaluacionData {
 
 export function giraEvaluacionTieneContenido(d: GiraEvaluacionData | null | undefined): boolean {
   if (!d) return false;
-  if (d.resumenGeneral.trim().length > 0 || d.aciertos.trim().length > 0) return true;
+  if (d.resumenGeneral.trim().length > 0 || d.aciertos.trim().length > 0 || d.agradecimientos.trim().length > 0) return true;
   return TEMAS_GIRA.some((t) => temaTieneContenido(d.temas?.[t.id]));
 }
