@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
-import { ClipboardList } from "lucide-react";
+import { ClipboardList, FileText, CheckCircle2 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -144,12 +144,26 @@ function PlanPagosModal({ pasivo, onClose, onSaved }: PlanModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div className="bg-[#0e0e0e] border border-[#2a2a2a] rounded-2xl w-full max-w-lg mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-        <div className="p-5 border-b border-[#1e1e1e]">
-          <h2 className="text-white font-semibold text-base">Plan de pagos — {pasivo.nombre}</h2>
-          <p className="text-gray-500 text-xs mt-1">
-            Restante: {fmt(pasivo.montoTotal - pasivo.montoPagado)}
-            <span className="text-[#333] ml-2">· Total deuda: {fmt(pasivo.montoTotal)}</span>
-          </p>
+        <div className="p-5 border-b border-[#1e1e1e] flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-white font-semibold text-base">Plan de pagos — {pasivo.nombre}</h2>
+            <p className="text-gray-500 text-xs mt-1">
+              Restante: {fmt(pasivo.montoTotal - pasivo.montoPagado)}
+              <span className="text-[#333] ml-2">· Total deuda: {fmt(pasivo.montoTotal)}</span>
+            </p>
+          </div>
+          {pasivo.cuotas.length > 0 && (
+            <a
+              href={`/api/finanzas/pasivos/${pasivo.id}/pdf`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-1.5 rounded-lg border border-[#B3985B]/40 text-[#B3985B] text-xs hover:bg-[#B3985B]/10 transition-colors flex items-center gap-1.5 flex-shrink-0"
+              title="Descargar estado de cuenta / recibo de pagos en PDF"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>PDF</span>
+            </a>
+          )}
         </div>
         <div className="p-5 space-y-4">
           {/* Num cuotas */}
@@ -265,6 +279,42 @@ export default function PasivosPage() {
     const r = await fetch(`/api/finanzas/pasivos/${p.id}`, { method: "DELETE" });
     if (r.ok) { toast.success("Deuda eliminada"); cargar(true); }
     else toast.error("Error al eliminar");
+  }
+
+  async function marcarTodasPagadas(pasivoId: string) {
+    try {
+      const r = await fetch(`/api/finanzas/pasivos/${pasivoId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ marcarTodasPagadas: true }),
+      });
+      if (r.ok) {
+        toast.success("Cuotas marcadas como pagadas y pasivo liquidado");
+        cargar(true);
+      } else {
+        toast.error("Error al actualizar cuotas");
+      }
+    } catch {
+      toast.error("Error de conexión");
+    }
+  }
+
+  async function toggleCuota(pasivoId: string, cuotaId: string, nuevoEstado: string) {
+    try {
+      const r = await fetch(`/api/finanzas/pasivos/${pasivoId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cuotaId, cuotaEstado: nuevoEstado }),
+      });
+      if (r.ok) {
+        toast.success(`Cuota actualizada a ${nuevoEstado}`);
+        cargar(true);
+      } else {
+        toast.error("Error al actualizar cuota");
+      }
+    } catch {
+      toast.error("Error de conexión");
+    }
   }
 
   // ── Totales ────────────────────────────────────────────────────────────────
@@ -519,6 +569,16 @@ export default function PasivosPage() {
                       <p className="text-orange-400 text-sm font-semibold">{fmt(pendiente)}</p>
                     </div>
                     <div className="flex gap-2">
+                      <a
+                        href={`/api/finanzas/pasivos/${p.id}/pdf`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 rounded-lg border border-[#B3985B]/40 text-[#B3985B] text-xs hover:bg-[#B3985B]/10 transition-colors flex items-center gap-1.5"
+                        title="Descargar estado de cuenta / recibo de pagos en PDF"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        <span>PDF</span>
+                      </a>
                       <button onClick={() => setPlanModal(p)}
                         className="px-3 py-1.5 rounded-lg border border-[#B3985B]/40 text-[#B3985B] text-xs hover:bg-[#B3985B]/10 transition-colors">
                         {p.cuotas.length > 0 ? "Ver plan" : "Plan de pagos"}
@@ -537,22 +597,63 @@ export default function PasivosPage() {
 
                 {/* Cuotas expandidas */}
                 {isOpen && p.cuotas.length > 0 && (
-                  <div className="border-t border-[#1e1e1e] px-4 py-3">
-                    <p className="text-gray-500 text-xs mb-2">Plan de pagos generado ({p.cuotas.length} cuotas)</p>
+                  <div className="border-t border-[#1e1e1e] px-4 py-3 bg-[#0c0c0c]">
+                    <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        <p className="text-gray-400 text-xs font-medium">Control de Pagos ({p.cuotas.length} cuotas)</p>
+                        {cuotasPagadas === p.cuotas.length && (
+                          <span className="text-[10px] text-green-400 bg-green-950/60 border border-green-800/60 px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" />
+                            100% Pagado
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {p.cuotas.some(c => c.estado !== "PAGADO") && p.montoPagado >= p.montoTotal && (
+                          <button
+                            onClick={() => marcarTodasPagadas(p.id)}
+                            className="text-[11px] text-green-400 hover:text-green-300 underline font-medium"
+                          >
+                            Marcar todas las cuotas como pagadas
+                          </button>
+                        )}
+                        <a
+                          href={`/api/finanzas/pasivos/${p.id}/pdf`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 text-xs text-[#B3985B] hover:text-[#c9aa67] transition-colors"
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                          <span>Descargar PDF</span>
+                        </a>
+                      </div>
+                    </div>
                     <div className="space-y-1.5">
                       {p.cuotas.map(c => (
-                        <div key={c.id} className="flex items-center justify-between text-xs">
-                          <span className="text-gray-500">Cuota {c.numeroCuota}</span>
-                          <span className="text-gray-400">{fmtDate(c.fechaVencimiento)}</span>
-                          <span className="text-white font-medium">{fmt(c.monto)}</span>
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] ${
-                            c.estado === "PAGADO" ? "bg-green-900/30 text-green-400" :
-                            c.estado === "VENCIDO" ? "bg-red-900/30 text-red-400" :
-                            "bg-yellow-900/30 text-yellow-400"
-                          }`}>{c.estado}</span>
-                          {c.cuentaPagarId && (
-                            <span className="text-[#B3985B] text-[10px]">CXP generada ✓</span>
-                          )}
+                        <div key={c.id} className="flex items-center justify-between text-xs py-1.5 border-b border-[#181818] last:border-0">
+                          <div className="flex items-center gap-3">
+                            <span className="text-gray-500 w-16">Cuota {c.numeroCuota}</span>
+                            <span className="text-gray-400">{fmtDate(c.fechaVencimiento)}</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-white font-medium">{fmt(c.monto)}</span>
+                            <button
+                              onClick={() => toggleCuota(p.id, c.id, c.estado === "PAGADO" ? "PENDIENTE" : "PAGADO")}
+                              title="Clic para cambiar estado de pago"
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-all hover:opacity-80 ${
+                                c.estado === "PAGADO" ? "bg-green-900/30 text-green-400 border border-green-700/40" :
+                                c.estado === "VENCIDO" ? "bg-red-900/30 text-red-400 border border-red-700/40" :
+                                "bg-yellow-900/30 text-yellow-400 border border-yellow-700/40"
+                              }`}
+                            >
+                              {c.estado}
+                            </button>
+                            {c.cuentaPagarId ? (
+                              <span className="text-[#B3985B] text-[10px] w-24 text-right">CXP generada ✓</span>
+                            ) : (
+                              <span className="text-gray-600 text-[10px] w-24 text-right">Pago directo</span>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>

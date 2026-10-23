@@ -9,7 +9,29 @@ export async function GET() {
   const pasivos = await prisma.pasivoDeuda.findMany({
     include: {
       proveedor: { select: { id: true, nombre: true } },
-      cuotas: { orderBy: { numeroCuota: "asc" } },
+      cuotas: {
+        orderBy: { numeroCuota: "asc" },
+        include: {
+          cuentaPagar: {
+            select: {
+              id: true,
+              monto: true,
+              montoPagado: true,
+              estado: true,
+              fechaPagoReal: true,
+              abonos: {
+                select: {
+                  id: true,
+                  monto: true,
+                  fecha: true,
+                  metodoPago: true,
+                },
+                orderBy: { fecha: "asc" },
+              },
+            },
+          },
+        },
+      },
     },
     orderBy: { createdAt: "desc" },
   });

@@ -11,7 +11,29 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     where: { id },
     include: {
       proveedor: { select: { id: true, nombre: true } },
-      cuotas: { orderBy: { numeroCuota: "asc" } },
+      cuotas: {
+        orderBy: { numeroCuota: "asc" },
+        include: {
+          cuentaPagar: {
+            select: {
+              id: true,
+              monto: true,
+              montoPagado: true,
+              estado: true,
+              fechaPagoReal: true,
+              abonos: {
+                select: {
+                  id: true,
+                  monto: true,
+                  fecha: true,
+                  metodoPago: true,
+                },
+                orderBy: { fecha: "asc" },
+              },
+            },
+          },
+        },
+      },
     },
   });
   if (!pasivo) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
@@ -39,6 +61,76 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     },
     include: { proveedor: { select: { id: true, nombre: true } }, cuotas: true },
   });
+  return NextResponse.json({ pasivo });
+}
+
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  const { id } = await params;
+  const body = await req.json();
+
+  if (body.marcarTodasPagadas) {
+    await prisma.cuotaDeuda.updateMany({
+      where: { pasivoDeudaId: id },
+      data: { estado: "PAGADO" },
+    });
+    const pasivo = await prisma.pasivoDeuda.update({
+      where: { id },
+      data: { estado: "LIQUIDADO" },
+      include: {
+        proveedor: { select: { id: true, nombre: true } },
+        cuotas: { orderBy: { numeroCuota: "asc" } },
+      },
+    });
+    return NextResponse.json({ pasivo });
+  }
+
+  if (body.cuotaId && body.cuotaEstado) {
+    await prisma.cuotaDeuda.update({
+      where: { id: body.cuotaId },
+      data: { estado: body.cuotaEstado },
+    });
+  }
+
+  if (body.estado) {
+    await prisma.pasivoDeuda.update({
+      where: { id },
+      data: { estado: body.estado },
+    });
+  }
+
+  const pasivo = await prisma.pasivoDeuda.findUnique({
+    where: { id },
+    include: {
+      proveedor: { select: { id: true, nombre: true } },
+      cuotas: {
+        orderBy: { numeroCuota: "asc" },
+        include: {
+          cuentaPagar: {
+            select: {
+              id: true,
+              monto: true,
+              montoPagado: true,
+              estado: true,
+              fechaPagoReal: true,
+              abonos: {
+                select: {
+                  id: true,
+                  monto: true,
+                  fecha: true,
+                  metodoPago: true,
+                },
+                orderBy: { fecha: "asc" },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
   return NextResponse.json({ pasivo });
 }
 

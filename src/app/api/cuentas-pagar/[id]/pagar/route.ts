@@ -88,7 +88,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     if (cxp.cuotaDeuda) {
-      await tx.pasivoDeuda.update({
+      const pasivoActualizado = await tx.pasivoDeuda.update({
         where: { id: cxp.cuotaDeuda.pasivoDeudaId },
         data: {
           montoPagado: { increment: montoAbono },
@@ -98,6 +98,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         await tx.cuotaDeuda.update({
           where: { id: cxp.cuotaDeuda.id },
           data: { estado: "PAGADO" },
+        });
+      }
+      if (pasivoActualizado.montoPagado >= pasivoActualizado.montoTotal) {
+        await tx.pasivoDeuda.update({
+          where: { id: pasivoActualizado.id },
+          data: { estado: "LIQUIDADO" },
         });
       }
     }
