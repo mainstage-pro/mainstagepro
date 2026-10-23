@@ -1182,7 +1182,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   // Plantillas por fase. Cada una alimenta su propia cronología: el acarreo de bodega es
   // logística general y nunca operación, ocurra o no el mismo día del evento.
   const MONTAJE_ITEMS = [
-    "Llamado en bodega", "Cargar transporte", "Traslado a venue", "Llegada a venue y descarga de equipos",
+    "Llamado", "Cargar transporte", "Traslado a venue", "Llegada a venue y descarga de equipos",
     "Acomodo seccionado de equipos", "Inicio de montaje", "Fin de montaje", "Pruebas de sonido", "Pruebas de iluminación",
   ];
   const EVENTO_ITEMS = ["Inicio de evento", "Fin de evento"];
@@ -4087,7 +4087,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     horaSalidaBodega: proyecto.horaSalidaBodega, horaDesmontaje: proyecto.horaDesmontaje,
     duracionDesmontajeHrs: proyecto.duracionDesmontajeHrs, desmontajeDiaAparte: proyecto.desmontajeDiaAparte,
     fechaDesmontaje: proyecto.fechaDesmontaje,
-    llamadoBodega: proyecto.llamadoBodega, lugarLlamado: proyecto.lugarLlamado, lugarEvento: proyecto.lugarEvento,
+    llamadoBodega: proyecto.llamadoBodega, lugarLlamado: proyecto.lugarLlamado,
+    puntoSalidaBodega: proyecto.puntoSalidaBodega, lugarEvento: proyecto.lugarEvento,
   };
   const nombresProveedor = Object.fromEntries(proyecto.proveedoresEvento.map(p => [p.id, p.nombreProveedor]));
 
@@ -4708,7 +4709,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                               <HourPicker label="Hora inicio del evento" value={h.inicio} field={`inicio-${fecha}`} onSave={(_f, v) => guardarHorarioDia(fecha, di, "inicio", v)} />
                               <HourPicker label="Hora fin del evento" value={h.fin} field={`fin-${fecha}`} onSave={(_f, v) => guardarHorarioDia(fecha, di, "fin", v)} />
-                              <HourPicker label="Llamado en bodega" value={h.llamado} field={`llamado-${fecha}`} onSave={(_f, v) => guardarHorarioDia(fecha, di, "llamado", v)} />
+                              <HourPicker label="Llamado" value={h.llamado} field={`llamado-${fecha}`} onSave={(_f, v) => guardarHorarioDia(fecha, di, "llamado", v)} />
                               <div>
                                 {di > 0 && (
                                   <label className="flex items-center gap-2 mb-1.5 cursor-pointer">
@@ -4783,9 +4784,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       <div className="col-span-1" />
                     </>
                   )}
-                  {/* ── Llamado en bodega (fecha + hora) ── */}
+                  {/* ── Llamado (fecha + hora) ── */}
                   <div className="col-span-2">
-                    <label className="text-xs text-gray-500 block mb-1">Llamado en bodega</label>
+                    <label className="text-xs text-gray-500 block mb-1">Llamado</label>
                     <div className="flex gap-2">
                       {/* Date part */}
                       <input
@@ -10095,7 +10096,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         horaSalidaBodega: proyecto.horaSalidaBodega, horaDesmontaje: proyecto.horaDesmontaje,
         duracionDesmontajeHrs: proyecto.duracionDesmontajeHrs, desmontajeDiaAparte: proyecto.desmontajeDiaAparte,
         fechaDesmontaje: proyecto.fechaDesmontaje,
-        llamadoBodega: proyecto.llamadoBodega, lugarLlamado: proyecto.lugarLlamado, lugarEvento: proyecto.lugarEvento,
+        llamadoBodega: proyecto.llamadoBodega, lugarLlamado: proyecto.lugarLlamado,
+        puntoSalidaBodega: proyecto.puntoSalidaBodega, lugarEvento: proyecto.lugarEvento,
       }, {
         bloques: proyecto.bloquesTiempo,
         nombresProveedor: Object.fromEntries(proyecto.proveedoresEvento.map(p => [p.id, p.nombreProveedor])),

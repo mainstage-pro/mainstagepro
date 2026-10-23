@@ -278,7 +278,8 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
     horaSalidaBodega: data.horaSalidaBodega, horaDesmontaje: data.horaDesmontaje,
     duracionDesmontajeHrs: data.duracionDesmontajeHrs, desmontajeDiaAparte: data.desmontajeDiaAparte,
     fechaDesmontaje: data.fechaDesmontaje,
-    llamadoBodega: data.llamadoBodega, lugarLlamado: data.lugarLlamado, lugarEvento: data.lugarEvento,
+    llamadoBodega: data.llamadoBodega, lugarLlamado: data.lugarLlamado,
+    puntoSalidaBodega: data.puntoSalidaBodega, lugarEvento: data.lugarEvento,
   }, { bloques: data.bloquesTiempo, nombresProveedor: data.nombresProveedor });
 
   // Quién manda: el coordinador sale del personal, el resto de los contactos ya capturados.

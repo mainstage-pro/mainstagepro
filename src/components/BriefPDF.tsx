@@ -242,6 +242,7 @@ export interface BriefData {
   fechaDesmontaje: Date | string | null;
   duracionDesmontajeHrs: number | null;
   horaSalidaBodega: string | null;
+  puntoSalidaBodega?: string | null;
   horaDesmontaje: string | null;
   llamadoBodega: Date | string | null;
   lugarLlamado: string | null;
@@ -295,7 +296,8 @@ export function BriefPDF({
     horaSalidaBodega: proyecto.horaSalidaBodega, horaDesmontaje: proyecto.horaDesmontaje,
     duracionDesmontajeHrs: proyecto.duracionDesmontajeHrs, desmontajeDiaAparte: proyecto.desmontajeDiaAparte,
     fechaDesmontaje: proyecto.fechaDesmontaje,
-    llamadoBodega: proyecto.llamadoBodega, lugarLlamado: proyecto.lugarLlamado, lugarEvento: proyecto.lugarEvento,
+    llamadoBodega: proyecto.llamadoBodega, lugarLlamado: proyecto.lugarLlamado,
+    puntoSalidaBodega: proyecto.puntoSalidaBodega, lugarEvento: proyecto.lugarEvento,
   }, { bloques: proyecto.bloquesTiempo, nombresProveedor: proyecto.nombresProveedor });
 
   const generado = normalizarAmPm(new Date().toLocaleDateString("es-MX", {

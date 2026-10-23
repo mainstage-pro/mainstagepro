@@ -123,6 +123,8 @@ export type ProyectoCronologia = {
   fechaDesmontaje?: Date | string | null;
   llamadoBodega: Date | string | null;
   lugarLlamado: string | null;
+  /** Punto de salida hacia el venue; no siempre es la bodega. */
+  puntoSalidaBodega?: string | null;
   lugarEvento: string | null;
 };
 
@@ -244,7 +246,10 @@ export type MomentoJornada = keyof HorariosResumen | "inicioEvento" | "finEvento
  * imprima dos veces el mismo instante.
  */
 export const MOMENTO_DE_ACTIVIDAD: Record<string, MomentoJornada> = {
+  // "Llamado en bodega" es el título legado de la plantilla; se conserva para que
+  // las filas ya capturadas con ese texto sigan deduplicando contra el derivado.
   "Llamado en bodega": "llamadoBodega",
+  "Llamado": "llamadoBodega",
   "Traslado a venue": "salidaBodega",
   "Llegada a venue y descarga de equipos": "llegadaVenue",
   "Inicio de montaje": "inicioMontaje",
@@ -322,7 +327,7 @@ export function derivadosLogistica(
     const montajeFecha = p.fechaMontaje ? fechaISOaDia(p.fechaMontaje) : llamadoFecha;
     if (interno && (h.llamadoBodega || p.lugarLlamado)) {
       previos.push({
-        label: "Llamado en bodega",
+        label: "Llamado",
         hora: h.llamadoBodega ?? "Por definir",
         // Solo mostramos la fecha del llamado si el montaje es día aparte (contexto distinto al día del evento).
         fecha: diaAparte ? fechaCorta(llamadoFecha ?? montajeFecha) : null,
@@ -332,7 +337,7 @@ export function derivadosLogistica(
       });
     }
     if (interno && h.salidaBodega) {
-      previos.push({ label: "Salida de bodega", hora: h.salidaBodega, fecha: null, nota: null, tipo: "MONTAJE", momento: "salidaBodega" });
+      previos.push({ label: "Salida", hora: h.salidaBodega, fecha: null, nota: p.puntoSalidaBodega ?? null, tipo: "MONTAJE", momento: "salidaBodega" });
     }
     if (h.llegadaVenue) {
       previos.push({ label: "Llegada al venue", hora: h.llegadaVenue, fecha: null, nota: p.lugarEvento, tipo: "MONTAJE", momento: "llegadaVenue" });
@@ -422,9 +427,8 @@ export function construirCronologia(
       });
 
   // ── Ítems de montaje ──
-  // Orden cronológico: llamado en bodega → salida de bodega → llegada al venue →
+  // Orden cronológico: llamado → salida → llegada al venue →
   // inicio de montaje → término aproximado de montaje.
-  const llamadoHora = horaDeDateTime(p.llamadoBodega);
   const llamadoFecha = p.llamadoBodega ? fechaISOaDia(p.llamadoBodega) : null;
   const montajeFecha = p.fechaMontaje ? fechaISOaDia(p.fechaMontaje) : llamadoFecha;
   const desmontajeFecha = p.fechaDesmontaje ? fechaISOaDia(p.fechaDesmontaje) : null;
@@ -459,11 +463,13 @@ export function construirCronologia(
   // ── Bloques por día del evento ──
   const ultimoDia = dias.length - 1;
   // Llamado base para el día 1:
-  //  - Montaje día aparte → el día 1 (día del evento) muestra su llamado desde llamadoBodega,
-  //    sin duplicar, porque el bloque "Montaje" va en otro día.
+  //  - Montaje día aparte → null: el llamado ya se mostró en el bloque "Montaje" del día
+  //    anterior; repetirlo en el día del evento duplicaría la misma hora y lugar. Si el
+  //    día del evento tiene su propio llamado, se captura aparte en horariosEvento y
+  //    horarioDeDia ya lo respeta (gana sobre este valor base).
   //  - Montaje el mismo día → null: el llamado ya se antepone al día 1 dentro de itemsMontaje
-  //    ("Llamado en bodega"), así que no se repite.
-  const baseLlamadoDia1 = montajeDiaAparte ? llamadoHora : null;
+  //    ("Llamado"), así que no se repite.
+  const baseLlamadoDia1 = null;
   dias.forEach((fecha, i) => {
     const h = horarioDeDia(fecha, i, dias, p.horariosEvento, {
       inicio: p.horaInicioEvento,

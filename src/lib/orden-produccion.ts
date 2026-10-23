@@ -166,6 +166,7 @@ export async function ordenPorToken(token: string) {
     fechaDesmontaje: p.fechaDesmontaje ?? null,
     llamadoBodega: p.llamadoBodega ?? null,
     lugarLlamado: p.lugarLlamado ?? null,
+    puntoSalidaBodega: p.puntoSalidaBodega ?? null,
     lugarEvento: p.lugarEvento ?? null,
   };
 

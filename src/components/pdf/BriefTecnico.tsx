@@ -263,6 +263,7 @@ export function BriefTecnico({ proyecto, logoSrc }: BriefTecnicoData) {
     fechaDesmontaje: p.fechaDesmontaje,
     llamadoBodega: p.llamadoBodega,
     lugarLlamado: p.lugarLlamado,
+    puntoSalidaBodega: p.puntoSalidaBodega,
     lugarEvento: p.lugarEvento,
   }, { bloques: p.bloquesTiempo, nombresProveedor: p.nombresProveedor });
 
