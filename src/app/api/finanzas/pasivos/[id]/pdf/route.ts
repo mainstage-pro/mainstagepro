@@ -57,7 +57,6 @@ export async function GET(
       ? c.cuentaPagar.fechaPagoReal.toISOString()
       : null;
     const metodoPago = primerAbono?.metodoPago || (c.cuentaPagar?.estado === "LIQUIDADO" ? "Transferencia" : null);
-    const cuentaOrigen = primerAbono?.cuentaOrigen?.nombre || c.cuentaPagar?.cuentaOrigen?.nombre || null;
 
     // Si la deuda global ya está 100% pagada o la cuota tiene estado PAGADO
     const estado = (esTotalmentePagado || c.estado === "PAGADO") ? "PAGADO" : c.estado;
@@ -69,7 +68,6 @@ export async function GET(
       estado,
       fechaPago,
       metodoPago,
-      cuentaOrigen,
       saldoInsoluto,
     };
   });
@@ -85,7 +83,6 @@ export async function GET(
           concepto: c.cuentaPagar?.concepto || `Cuota ${c.numeroCuota}`,
           monto: a.monto,
           metodoPago: a.metodoPago,
-          cuentaOrigen: a.cuentaOrigen?.nombre || null,
         });
       });
     }

@@ -230,6 +230,16 @@ function fmtDateLong(iso: string | null | undefined) {
   });
 }
 
+function fmtMetodo(m: string | null | undefined, paid: boolean) {
+  if (!m) return paid ? "Transferencia" : "Programada";
+  const up = m.toUpperCase().trim();
+  if (up === "TRANSFERENCIA") return "Transferencia";
+  if (up === "EFECTIVO") return "Efectivo";
+  if (up === "TARJETA") return "Tarjeta";
+  if (up === "CHEQUE") return "Cheque";
+  return m;
+}
+
 // ── Types ────────────────────────────────────────────────────────────────────
 export interface PasivoCuotaPDF {
   numeroCuota: number;
@@ -238,7 +248,6 @@ export interface PasivoCuotaPDF {
   estado: string; // PENDIENTE | PAGADO | VENCIDO
   fechaPago?: string | null;
   metodoPago?: string | null;
-  cuentaOrigen?: string | null;
   referencia?: string | null;
   saldoInsoluto: number;
 }
@@ -249,7 +258,6 @@ export interface PasivoAbonoPDF {
   concepto: string;
   monto: number;
   metodoPago: string;
-  cuentaOrigen?: string | null;
 }
 
 export interface PasivoPDFData {
@@ -443,7 +451,7 @@ export function PasivoEstadoCuentaPDF({ data }: { data: PasivoPDFData }) {
                   <Text style={[s.thText, s.colNum]}>#</Text>
                   <Text style={[s.thText, s.colVenc]}>Vencimiento</Text>
                   <Text style={[s.thText, s.colPago]}>Fecha Pago</Text>
-                  <Text style={[s.thText, s.colMetodo]}>Método / Referencia</Text>
+                  <Text style={[s.thText, s.colMetodo]}>Método de Pago</Text>
                   <Text style={[s.thText, s.colMonto]}>Cuota</Text>
                   <Text style={[s.thText, s.colSaldo]}>Saldo Insoluto</Text>
                   <Text style={[s.thText, s.colEstado]}>Estado</Text>
@@ -468,11 +476,7 @@ export function PasivoEstadoCuentaPDF({ data }: { data: PasivoPDFData }) {
                         {c.fechaPago ? fmtDate(c.fechaPago) : paid ? fmtDate(c.fechaVencimiento) : "—"}
                       </Text>
                       <Text style={[s.tdMetodo, s.colMetodo]}>
-                        {c.metodoPago
-                          ? `${c.metodoPago}${c.cuentaOrigen ? ` (${c.cuentaOrigen})` : ""}`
-                          : paid
-                          ? "Transferencia bancaria"
-                          : "Programada"}
+                        {fmtMetodo(c.metodoPago, paid)}
                       </Text>
                       <Text style={[s.tdMonto, s.colMonto, paid ? { color: GREEN } : {}]}>
                         {fmt(c.monto)}
@@ -500,25 +504,23 @@ export function PasivoEstadoCuentaPDF({ data }: { data: PasivoPDFData }) {
             </View>
           )}
 
-          {/* ── Desglose de abonos bancarios registrados ── */}
+          {/* ── Desglose de abonos registrados ── */}
           {data.abonos.length > 0 && (
             <View wrap={false}>
               <Text style={s.sectionLabel}>DETALLE DE TRANSFERENCIAS Y ABONOS APLICADOS</Text>
               <View style={s.abonosTable}>
                 <View style={s.abonoTh}>
-                  <Text style={[s.thText, { width: 75 }]}>Fecha</Text>
+                  <Text style={[s.thText, { width: 85 }]}>Fecha</Text>
                   <Text style={[s.thText, { flex: 1 }]}>Concepto / Referencia</Text>
-                  <Text style={[s.thText, { width: 100 }]}>Cuenta Origen</Text>
-                  <Text style={[s.thText, { width: 90 }]}>Método</Text>
-                  <Text style={[s.thText, { width: 80, textAlign: "right" }]}>Importe</Text>
+                  <Text style={[s.thText, { width: 120 }]}>Método de Pago</Text>
+                  <Text style={[s.thText, { width: 90, textAlign: "right" }]}>Importe</Text>
                 </View>
                 {data.abonos.map((a) => (
                   <View key={a.id} style={s.abonoTr}>
-                    <Text style={[s.tdPago, { width: 75 }]}>{fmtDate(a.fecha)}</Text>
+                    <Text style={[s.tdPago, { width: 85 }]}>{fmtDate(a.fecha)}</Text>
                     <Text style={[s.tdVenc, { flex: 1 }]}>{a.concepto}</Text>
-                    <Text style={[s.tdMetodo, { width: 100 }]}>{a.cuentaOrigen || "Banco Mainstage"}</Text>
-                    <Text style={[s.tdMetodo, { width: 90 }]}>{a.metodoPago}</Text>
-                    <Text style={[s.tdMonto, { width: 80, color: GREEN }]}>{fmt(a.monto)}</Text>
+                    <Text style={[s.tdMetodo, { width: 120 }]}>{fmtMetodo(a.metodoPago, true)}</Text>
+                    <Text style={[s.tdMonto, { width: 90, color: GREEN }]}>{fmt(a.monto)}</Text>
                   </View>
                 ))}
               </View>
