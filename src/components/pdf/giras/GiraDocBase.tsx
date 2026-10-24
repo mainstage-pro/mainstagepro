@@ -244,6 +244,26 @@ export function Seccion({
   nota?: string | null;
   children: React.ReactNode;
 }) {
+  // Cuando el cuerpo entero es una sola `Nota` (resumen ejecutivo, aciertos,
+  // agradecimientos...), el título y su caja se amarran en un solo bloque que
+  // no se parte: `minPresenceAhead` por sí solo reserva aire pero no garantiza
+  // que la Nota quepa en ese aire, y el título se queda solo al fondo de la
+  // página con el párrafo ya en la siguiente. Con varios hijos (tablas,
+  // bloques de tema) sí conviene que la sección respire entre página y
+  // página, así que ahí se deja el comportamiento de antes.
+  const hijos = React.Children.toArray(children);
+  const esNotaSola = hijos.length === 1 && React.isValidElement(hijos[0]) && hijos[0].type === Nota;
+
+  if (esNotaSola) {
+    return (
+      <View style={g.seccion} wrap={false}>
+        <Text style={g.secTitulo}>{titulo}</Text>
+        {nota ? <Text style={g.secNota}>{nota}</Text> : null}
+        <View style={g.secBody}>{hijos[0]}</View>
+      </View>
+    );
+  }
+
   return (
     <View style={g.seccion}>
       {/* `minPresenceAhead` evita que el título quede solo al fondo de una página
