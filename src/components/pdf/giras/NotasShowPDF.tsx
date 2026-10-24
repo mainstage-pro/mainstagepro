@@ -5,8 +5,8 @@
  * solo hace falta repartir el reporte de una fecha.
  */
 import React from "react";
-import { Cuerpo, Document, HeroGira, PaginaGira, PieGira, Seccion } from "./GiraDocBase";
-import { TemaBloque, type TemaPdf } from "./NotasBloques";
+import { BandaGira, Cuerpo, Document, HeroGira, PaginaGira, PieGira, Seccion, type ItemBanda } from "./GiraDocBase";
+import { resumenTemas, TemaBloque, type TemaPdf } from "./NotasBloques";
 
 export interface NotasShowData {
   giraNombre: string;
@@ -20,6 +20,18 @@ export interface NotasShowData {
 }
 
 export function NotasShowPDF({ data }: { data: NotasShowData }) {
+  // El venue manda sobre la fecha: es lo que se reconoce de un vistazo. Si no
+  // se capturó venue/ciudad, la fecha se queda sola de título y no hay nada
+  // que repetir en el subtítulo.
+  const r = resumenTemas(data.temas);
+  const banda: ItemBanda[] = (
+    [
+      { label: "Temas con hallazgos", valor: String(r.temas) },
+      { label: "Hallazgos", valor: String(r.hallazgos) },
+      r.criticos > 0 ? { label: "Críticos", valor: String(r.criticos) } : null,
+    ].filter((i): i is ItemBanda => i !== null)
+  );
+
   return (
     <Document
       title={`Documento de retroalimentación — ${data.artistaNombre} — ${data.showTitulo}`}
@@ -29,12 +41,13 @@ export function NotasShowPDF({ data }: { data: NotasShowData }) {
       <PaginaGira>
         <HeroGira
           tag="Documento de retroalimentación"
-          titulo={data.showTitulo}
-          subtitulo={data.showSubtitulo ? `${data.artistaNombre} · ${data.showSubtitulo}` : data.artistaNombre}
+          titulo={data.showSubtitulo ?? data.showTitulo}
+          subtitulo={data.showSubtitulo ? `${data.artistaNombre} · ${data.showTitulo}` : data.artistaNombre}
           meta={data.giraNombre}
           logoSrc={data.logoSrc}
           logoArtistaSrc={data.logoArtistaSrc}
         />
+        <BandaGira items={banda} />
 
         <PieGira
           izquierda={`${data.artistaNombre} · ${data.giraNombre}`}
@@ -42,7 +55,7 @@ export function NotasShowPDF({ data }: { data: NotasShowData }) {
         />
 
         <Cuerpo>
-          <Seccion titulo={data.showTitulo}>
+          <Seccion titulo="Temas con hallazgos">
             {data.temas.map((t) => (
               <TemaBloque key={t.id} tema={t} />
             ))}

@@ -9,24 +9,14 @@
  */
 import React from "react";
 import { C } from "../PdfShared";
-import { Cuerpo, Document, HeroGira, Nota, PaginaGira, PieGira, Seccion, Tabla } from "./GiraDocBase";
-import { TemaBloque, type TemaPdf } from "./NotasBloques";
+import { CabeceraShow, Cuerpo, Document, HeroGira, Nota, PaginaGira, PieGira, Seccion, Tabla, View } from "./GiraDocBase";
+import { resumenTemas, TemaBloque, type TemaPdf } from "./NotasBloques";
 
 export interface NotaShow {
   id: string;
-  titulo: string;
   fecha: string;
   lugar: string | null;
   temas: TemaPdf[];
-}
-
-/// Para la tabla resumen: cuántos temas trajeron algo que anotar y, de eso,
-/// cuántos hallazgos y cuántos de severidad crítica. Da una lectura de bulto
-/// de la gira antes de entrar al detalle fecha por fecha.
-function resumenShow(s: NotaShow) {
-  const hallazgos = s.temas.flatMap((t) => t.hallazgos);
-  const criticos = hallazgos.filter((h) => h.severidad === "CRITICA").length;
-  return { temas: s.temas.length, hallazgos: hallazgos.length, criticos };
 }
 
 const INTRO =
@@ -76,26 +66,28 @@ export function NotasAprendizajesPDF({ data }: { data: NotasAprendizajesData }) 
           </Seccion>
 
           {data.shows.length > 0 && (
-            <Seccion titulo="Resumen de fechas">
+            <Seccion
+              titulo="Resumen de fechas"
+              nota="Las cifras completas, por tema, están en el detalle de cada fecha más abajo."
+            >
               <Tabla
                 columnas={[
-                  { label: "Fecha", flex: 2 },
-                  { label: "Lugar", flex: 3 },
-                  { label: "Temas con hallazgos", flex: 2, alinear: "center" },
-                  { label: "Hallazgos", flex: 1, alinear: "center" },
-                  { label: "Críticos", flex: 1, alinear: "center" },
+                  { label: "Show", flex: 4 },
+                  { label: "Hallazgos", flex: 2, alinear: "center" },
                 ]}
                 renglones={data.shows.map((s) => {
-                  const r = resumenShow(s);
+                  const r = resumenTemas(s.temas);
                   return {
                     tipo: "fila",
                     clave: s.id,
                     celdas: [
-                      { texto: s.fecha },
-                      { texto: s.lugar ?? "—" },
-                      { texto: String(r.temas), fuerte: true },
-                      { texto: String(r.hallazgos) },
-                      { texto: r.criticos > 0 ? String(r.criticos) : "—", color: r.criticos > 0 ? C.rojo : undefined },
+                      { texto: s.lugar ?? s.fecha, sub: s.lugar ? s.fecha : null, grande: true },
+                      {
+                        texto: r.hallazgos > 0 ? String(r.hallazgos) : "—",
+                        fuerte: true,
+                        sub: r.criticos > 0 ? `${r.criticos} crítico${r.criticos > 1 ? "s" : ""}` : null,
+                        colorSub: C.rojo,
+                      },
                     ],
                   };
                 })}
@@ -103,13 +95,21 @@ export function NotasAprendizajesPDF({ data }: { data: NotasAprendizajesData }) 
             </Seccion>
           )}
 
-          {data.shows.map((s) => (
-            <Seccion key={s.id} titulo={s.titulo}>
-              {s.temas.map((t) => (
-                <TemaBloque key={t.id} tema={t} />
-              ))}
+          {data.shows.length > 0 && (
+            <Seccion titulo="Detalle por fecha">
+              {data.shows.map((s) => {
+                const r = resumenTemas(s.temas);
+                return (
+                  <View key={s.id} style={{ marginBottom: 18 }}>
+                    <CabeceraShow lugar={s.lugar} fecha={s.fecha} hallazgos={r.hallazgos} criticos={r.criticos} />
+                    {s.temas.map((t) => (
+                      <TemaBloque key={t.id} tema={t} />
+                    ))}
+                  </View>
+                );
+              })}
             </Seccion>
-          ))}
+          )}
 
           <Seccion titulo="Resumen ejecutivo de la gira">
             <Nota texto={data.resumenGeneral} />

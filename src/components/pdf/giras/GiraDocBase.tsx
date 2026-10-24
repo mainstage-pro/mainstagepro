@@ -91,12 +91,30 @@ export const g = StyleSheet.create({
   // Un filete dorado en vez del recuadro negro: a esta escala la barra rellena
   // pesaba más que el contenido que anuncia.
   secTitulo: {
-    fontSize: 10.5, fontFamily: "Helvetica-Bold", color: C.negro,
+    fontSize: 11.5, fontFamily: "Helvetica-Bold", color: C.negro,
     textTransform: "uppercase", letterSpacing: 1.6,
     paddingBottom: 5, borderBottomWidth: 1.2, borderBottomColor: C.dorado, borderBottomStyle: "solid",
   },
   secNota: { fontSize: 8, color: C.grisMedio, marginTop: 6, lineHeight: 1.45 },
   secBody: { marginTop: 10 },
+  // Caja de identificación de un show (fecha/venue + sus cifras), para
+  // documentos que listan varios shows seguidos: mismo lenguaje visual que
+  // `nota` (franja dorada) para que se lea "de la casa" y no como un invento
+  // aparte, pero en fila para que las cifras quepan a la derecha.
+  cabeceraShow: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    backgroundColor: "#fffbf2", borderLeftWidth: 3, borderLeftColor: C.dorado, borderLeftStyle: "solid",
+    borderRadius: 2, paddingVertical: 9, paddingHorizontal: 11, marginBottom: 11,
+  },
+  cabeceraShowLugar: { fontSize: 13, fontFamily: "Helvetica-Bold", color: C.negro, lineHeight: 1.2 },
+  cabeceraShowFecha: { fontSize: 8.5, color: C.grisMedio, marginTop: 2 },
+  cabeceraShowBadges: { flexDirection: "row" },
+  cabeceraShowBadge: {
+    fontSize: 7.3, fontFamily: "Helvetica-Bold", color: C.grisMedio, backgroundColor: C.blanco,
+    textTransform: "uppercase", letterSpacing: 0.4,
+    borderWidth: 0.75, borderColor: C.grisLinea, borderStyle: "solid",
+    borderRadius: 9, paddingHorizontal: 8, paddingVertical: 3, marginLeft: 6,
+  },
   // Pares clave-valor
   kvGrid: { flexDirection: "row", flexWrap: "wrap" },
   kvLabel: { fontSize: 7.2, color: C.grisMedio, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 },
@@ -228,9 +246,46 @@ export function Seccion({
 }) {
   return (
     <View style={g.seccion}>
-      <Text style={g.secTitulo}>{titulo}</Text>
+      {/* `minPresenceAhead` evita que el título quede solo al fondo de una página
+          con su contenido ya en la siguiente: exige algo de aire detrás antes de
+          imprimirlo, o lo empuja completo a la página nueva. */}
+      <Text style={g.secTitulo} minPresenceAhead={50}>
+        {titulo}
+      </Text>
       {nota ? <Text style={g.secNota}>{nota}</Text> : null}
       <View style={g.secBody}>{children}</View>
+    </View>
+  );
+}
+
+// ── Cabecera de show ──────────────────────────────────────────────────────────
+
+/// Identifica de qué fecha se está hablando antes de entrar al detalle: el
+/// venue manda (es lo que se reconoce de un vistazo), la fecha va chica
+/// debajo. Las cifras de hallazgos viven aquí y no en una tabla de resumen
+/// aparte, para no repetir la misma cuenta en dos lugares del documento.
+export function CabeceraShow({
+  lugar, fecha, hallazgos, criticos,
+}: {
+  lugar: string | null;
+  fecha: string;
+  hallazgos: number;
+  criticos: number;
+}) {
+  return (
+    <View style={g.cabeceraShow} wrap={false} minPresenceAhead={90}>
+      <View style={{ flex: 1, paddingRight: 10 }}>
+        <Text style={g.cabeceraShowLugar}>{lugar ?? fecha}</Text>
+        {lugar ? <Text style={g.cabeceraShowFecha}>{fecha}</Text> : null}
+      </View>
+      <View style={g.cabeceraShowBadges}>
+        <Text style={g.cabeceraShowBadge}>{hallazgos === 1 ? "1 hallazgo" : `${hallazgos} hallazgos`}</Text>
+        {criticos > 0 ? (
+          <Text style={[g.cabeceraShowBadge, { color: C.rojo, borderColor: C.rojo }]}>
+            {criticos === 1 ? "1 crítico" : `${criticos} críticos`}
+          </Text>
+        ) : null}
+      </View>
     </View>
   );
 }

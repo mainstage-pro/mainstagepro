@@ -72,7 +72,6 @@ export async function generarNotasAprendizajes(giraId: string): Promise<PdfGira 
 
   const shows: NotaShow[] = showsConContenido.map((s) => ({
     id: s.id,
-    titulo: [fmtFechaLarga(s.fecha), [s.ciudad, s.venue?.nombre].filter(Boolean).join(" · ")].filter(Boolean).join(" — "),
     fecha: fmtFechaLarga(s.fecha),
     lugar: [s.ciudad, s.venue?.nombre].filter(Boolean).join(" · ") || null,
     temas: temasShowAPdf(parseGiraShowEvaluacion(s.evaluacion)),
