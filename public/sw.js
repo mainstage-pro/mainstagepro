@@ -65,6 +65,14 @@ self.addEventListener("fetch", (event) => {
   if (url.pathname.startsWith("/doc/")) return;
   if (/^\/api\/proyectos\/[^/]+\/(fichas\/operativa|rider-pdf|brief-tecnico|hoja-entrega)$/.test(url.pathname)) return;
 
+  // Mismo motivo que arriba: los documentos de gira (notas y aprendizajes
+  // condensa textos largos con IA antes de generar el PDF) pueden tardar más
+  // que NETWORK_TIMEOUT_MS. Dejarlos pasar directo en vez de que el SW los
+  // aborte y devuelva el JSON de "sin conexión" a medio descargar.
+  if (/^\/api\/giras\/[^/]+\/documentos\//.test(url.pathname)) return;
+  if (/^\/api\/gira-shows\/[^/]+\/documentos\//.test(url.pathname)) return;
+  if (url.pathname.startsWith("/gira-doc/")) return;
+
   // La página de rescate y el propio SW nunca deben pasar por esta lógica: si el SW
   // está atorado, /clear.html es la única salida y no puede depender de que la red
   // responda a tiempo dentro de este mismo worker.
