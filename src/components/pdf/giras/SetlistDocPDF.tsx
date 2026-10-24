@@ -90,6 +90,11 @@ const COLS: ColumnaTabla[] = [
   { label: "Video", flex: 3, color: COLOR_DISCIPLINA.VIDEO },
 ];
 
+const INTRO =
+  "Este documento es el repertorio de la gira en el formato de trabajo de la casa: tono, BPM, pistas y los " +
+  "cues de audio, iluminación y video de cada canción, listo para repartirse junto con los demás documentos " +
+  "de la fecha.";
+
 const sinAcentos = (t: string) =>
   t
     .normalize("NFD")
@@ -223,6 +228,8 @@ export function SetlistDocPDF({ data }: { data: SetlistDocData }) {
         <PieGira izquierda={encabezado} derecha={`Setlist · ${data.generadoEn}`} />
 
         <Cuerpo>
+          <Nota texto={INTRO} />
+
           {data.heredado ? (
             <Nota
               label="Repertorio heredado"

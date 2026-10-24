@@ -182,6 +182,11 @@ export interface LibroGiraData {
   generadoEn: string;
 }
 
+const INTRO =
+  "Este es el libro de la gira: un solo documento que concentra routing, crew, logística, repertorio, " +
+  "estado del advance y pendientes, para quien necesita ver el panorama completo sin perseguir media " +
+  "docena de PDFs sueltos.";
+
 const COLS_SHOWS: ColumnaTabla[] = [
   { label: "Fecha", ancho: 56 },
   { label: "Ciudad y foro", flex: 3 },
@@ -523,6 +528,8 @@ export function LibroGiraPDF({ data }: { data: LibroGiraData }) {
         />
 
         <Cuerpo>
+          <Nota texto={INTRO} />
+
           {/* Un libro recortado lo dice en la cara: si al lector le falta algo,
               sabe que es porque no se imprimió, no porque no se planeó. */}
           {data.secciones.length < SECCIONES_LIBRO.length && (

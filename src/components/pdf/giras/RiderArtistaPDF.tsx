@@ -109,10 +109,20 @@ export interface RiderArtistaData {
   generadoEn: string;
 }
 
+const INTRO =
+  "Este documento es el rider técnico vigente del artista: lo que el show necesita para montarse, " +
+  "departamento por departamento, con el equipo, los tiempos y quién pone cada cosa. Es la base contra la " +
+  "que el venue arma su advance y contra la que se compara cada fecha de la gira.";
+
 const COLS_EQUIPO: ColumnaTabla[] = [
   { label: "Cant.", ancho: 38, alinear: "right" },
   { label: "Equipo", flex: 5 },
   { label: "Lo pone", ancho: 64 },
+];
+
+const COLS_RESUMEN_DEPTOS: ColumnaTabla[] = [
+  { label: "Departamento", flex: 4 },
+  { label: "Renglones de equipo", flex: 2, alinear: "center" },
 ];
 
 const COLS_BLOQUES: ColumnaTabla[] = [
@@ -244,6 +254,23 @@ export function RiderArtistaPDF({ data }: { data: RiderArtistaData }) {
         />
 
         <Cuerpo>
+          <Seccion titulo="Acerca de este documento">
+            <Nota texto={INTRO} />
+          </Seccion>
+
+          {data.secciones.length > 1 && (
+            <Seccion titulo="Resumen por departamento">
+              <Tabla
+                columnas={COLS_RESUMEN_DEPTOS}
+                renglones={data.secciones.map((s) => ({
+                  tipo: "fila",
+                  clave: s.clave,
+                  celdas: [{ texto: s.titulo, fuerte: true }, { texto: String(s.lineas.length) }],
+                }))}
+              />
+            </Seccion>
+          )}
+
           <Seccion titulo="1. Formación y escenario">
             <Datos datos={datosEscenario} />
             <Nota label="Requerimientos generales" texto={data.requerimientosGenerales} />

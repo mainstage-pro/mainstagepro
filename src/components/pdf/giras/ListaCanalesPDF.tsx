@@ -8,10 +8,14 @@
  */
 import React from "react";
 import {
-  BandaGira, Cuerpo, Document, HeroGira, PaginaGira, PieGira, Seccion, Tabla,
+  BandaGira, Cuerpo, Document, HeroGira, Nota, PaginaGira, PieGira, Seccion, Tabla,
   type ColumnaTabla, type ItemBanda, type RenglonTabla,
 } from "./GiraDocBase";
 import { expandirSalida, numerarSalidas, totalCanalesSalida } from "@/lib/giras";
+
+const INTRO =
+  "Esta lista concentra únicamente los canales de entrada y salida para el ingeniero del venue: lo que " +
+  "necesita para parchar la consola, sin tener que leer el rider completo.";
 
 export interface CanalInput {
   id: string;
@@ -237,6 +241,7 @@ export function ListaCanalesPDF({ data }: { data: ListaCanalesData }) {
           derecha={`Input / output list · ${data.generadoEn}`}
         />
         <Cuerpo>
+          <Nota texto={INTRO} />
           <ListaCanales inputs={data.inputs} outputs={data.outputs} rigs={data.rigs} />
 
           {/* Otra lista, no una continuación: el puerto de la interfaz no tiene

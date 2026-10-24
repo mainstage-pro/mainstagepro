@@ -8,14 +8,32 @@
  * antes de llegar aquí.
  */
 import React from "react";
-import { Cuerpo, Document, HeroGira, Nota, PaginaGira, PieGira, Seccion } from "./GiraDocBase";
+import { C } from "../PdfShared";
+import { Cuerpo, Document, HeroGira, Nota, PaginaGira, PieGira, Seccion, Tabla } from "./GiraDocBase";
 import { TemaBloque, type TemaPdf } from "./NotasBloques";
 
 export interface NotaShow {
   id: string;
   titulo: string;
+  fecha: string;
+  lugar: string | null;
   temas: TemaPdf[];
 }
+
+/// Para la tabla resumen: cuántos temas trajeron algo que anotar y, de eso,
+/// cuántos hallazgos y cuántos de severidad crítica. Da una lectura de bulto
+/// de la gira antes de entrar al detalle fecha por fecha.
+function resumenShow(s: NotaShow) {
+  const hallazgos = s.temas.flatMap((t) => t.hallazgos);
+  const criticos = hallazgos.filter((h) => h.severidad === "CRITICA").length;
+  return { temas: s.temas.length, hallazgos: hallazgos.length, criticos };
+}
+
+const INTRO =
+  "Este documento concentra la retroalimentación técnica registrada en cada fecha de la gira: lo que se " +
+  "identificó durante el montaje o el show, la solución que se aplicó en el momento y la propuesta de mejora " +
+  "para la próxima ocasión. No es un reporte de fallas — es la memoria de lo aprendido, para que la siguiente " +
+  "gira arranque un paso adelante de esta.";
 
 export interface NotasAprendizajesData {
   giraNombre: string;
@@ -33,13 +51,13 @@ export interface NotasAprendizajesData {
 export function NotasAprendizajesPDF({ data }: { data: NotasAprendizajesData }) {
   return (
     <Document
-      title={`Notas y aprendizajes — ${data.artistaNombre} — ${data.giraNombre}`}
+      title={`Documento de retroalimentación — ${data.artistaNombre} — ${data.giraNombre}`}
       author="Mainstage Pro"
       creator="Mainstage Pro"
     >
       <PaginaGira>
         <HeroGira
-          tag="Notas y aprendizajes"
+          tag="Documento de retroalimentación"
           titulo={data.giraNombre}
           subtitulo={data.artistaNombre}
           meta="Mejora continua para la próxima gira"
@@ -49,10 +67,42 @@ export function NotasAprendizajesPDF({ data }: { data: NotasAprendizajesData }) 
 
         <PieGira
           izquierda={`${data.artistaNombre} · ${data.giraNombre}`}
-          derecha={`Notas y aprendizajes · ${data.generadoEn}`}
+          derecha={`Documento de retroalimentación · ${data.generadoEn}`}
         />
 
         <Cuerpo>
+          <Seccion titulo="Acerca de este documento">
+            <Nota texto={INTRO} />
+          </Seccion>
+
+          {data.shows.length > 0 && (
+            <Seccion titulo="Resumen de fechas">
+              <Tabla
+                columnas={[
+                  { label: "Fecha", flex: 2 },
+                  { label: "Lugar", flex: 3 },
+                  { label: "Temas con hallazgos", flex: 2, alinear: "center" },
+                  { label: "Hallazgos", flex: 1, alinear: "center" },
+                  { label: "Críticos", flex: 1, alinear: "center" },
+                ]}
+                renglones={data.shows.map((s) => {
+                  const r = resumenShow(s);
+                  return {
+                    tipo: "fila",
+                    clave: s.id,
+                    celdas: [
+                      { texto: s.fecha },
+                      { texto: s.lugar ?? "—" },
+                      { texto: String(r.temas), fuerte: true },
+                      { texto: String(r.hallazgos) },
+                      { texto: r.criticos > 0 ? String(r.criticos) : "—", color: r.criticos > 0 ? C.rojo : undefined },
+                    ],
+                  };
+                })}
+              />
+            </Seccion>
+          )}
+
           {data.shows.map((s) => (
             <Seccion key={s.id} titulo={s.titulo}>
               {s.temas.map((t) => (

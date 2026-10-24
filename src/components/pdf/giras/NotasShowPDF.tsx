@@ -22,13 +22,13 @@ export interface NotasShowData {
 export function NotasShowPDF({ data }: { data: NotasShowData }) {
   return (
     <Document
-      title={`Notas y aprendizajes — ${data.artistaNombre} — ${data.showTitulo}`}
+      title={`Documento de retroalimentación — ${data.artistaNombre} — ${data.showTitulo}`}
       author="Mainstage Pro"
       creator="Mainstage Pro"
     >
       <PaginaGira>
         <HeroGira
-          tag="Notas y aprendizajes"
+          tag="Documento de retroalimentación"
           titulo={data.showTitulo}
           subtitulo={data.showSubtitulo ? `${data.artistaNombre} · ${data.showSubtitulo}` : data.artistaNombre}
           meta={data.giraNombre}
@@ -38,7 +38,7 @@ export function NotasShowPDF({ data }: { data: NotasShowData }) {
 
         <PieGira
           izquierda={`${data.artistaNombre} · ${data.giraNombre}`}
-          derecha={`Notas y aprendizajes · ${data.generadoEn}`}
+          derecha={`Documento de retroalimentación · ${data.generadoEn}`}
         />
 
         <Cuerpo>
