@@ -110,8 +110,10 @@ export async function generarNotasAprendizajes(giraId: string): Promise<PdfGira 
   const extrasRaw: (string | null)[] = [
     giraEvaluacion.resumenGeneral.trim() || null,
     giraEvaluacion.aciertos.trim() || null,
-    giraEvaluacion.agradecimientos.trim() || null,
   ];
+  // El agradecimiento es la voz personal de quien lo escribió, no un reporte
+  // técnico — nunca pasa por la IA, se imprime tal cual se capturó.
+  const agradecimientos = giraEvaluacion.agradecimientos.trim() || null;
 
   // Un solo lote a la IA por todo el documento: cada hallazgo, comentario y
   // texto de cierre que sea largo sale condensado; lo corto se queda igual.
@@ -123,7 +125,6 @@ export async function generarNotasAprendizajes(giraId: string): Promise<PdfGira 
   const temasGira = reconstruirTemas(temasGiraRaw, condensados, cursor);
   const resumenGeneral = condensados[cursor.i++] || extrasRaw[0];
   const aciertos = condensados[cursor.i++] || extrasRaw[1];
-  const agradecimientos = condensados[cursor.i++] || extrasRaw[2];
 
   const publicDir = path.join(process.cwd(), "public");
 
