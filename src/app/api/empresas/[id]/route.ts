@@ -34,10 +34,52 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (!empresa) return NextResponse.json({ error: "No encontrada" }, { status: 404 });
 
   // Cuentas consolidadas: se cobra/paga a la empresa, así que se agregan también
-  // las cuentas ligadas a cada contacto cliente de la empresa.
-  const { cuentasCobrar, cuentasPagar } = await getCuentasScope({ empresaId: id });
+  // las cuentas ligadas a cada contacto cliente/proveedor de la empresa y sus equivalentes.
+  const { cuentasCobrar, cuentasPagar, esRelacionMutua, compensaciones, empresaIds } = await getCuentasScope({ empresaId: id });
 
-  return NextResponse.json({ empresa: { ...empresa, cuentasCobrar, cuentasPagar } });
+  // Si existen empresas equivalentes vinculadas (ej. "Motion" y "Motion Producciones"),
+  // consolidar también sus contactos cliente y proveedor para mostrarlos en la ficha.
+  let contactosCliente = empresa.contactosCliente;
+  let contactosProveedor = empresa.contactosProveedor;
+  const otrasEmpresaIds = empresaIds.filter((eid) => eid !== id);
+  if (otrasEmpresaIds.length > 0) {
+    const [otrosClientes, otrosProveedores] = await Promise.all([
+      prisma.cliente.findMany({
+        where: { empresaId: { in: otrasEmpresaIds } },
+        select: {
+          id: true, nombre: true, telefono: true, correo: true,
+          tipoCliente: true, clasificacion: true,
+          tratos: { select: { id: true, nombreEvento: true, etapa: true, presupuestoEstimado: true, updatedAt: true }, orderBy: { updatedAt: "desc" }, take: 5 },
+          proyectos: { select: { id: true, nombre: true, fechaEvento: true, estado: true }, orderBy: { fechaEvento: "desc" }, take: 5 },
+        },
+        orderBy: { nombre: "asc" },
+      }),
+      prisma.proveedor.findMany({
+        where: { empresaId: { in: otrasEmpresaIds } },
+        select: {
+          id: true, nombre: true, telefono: true, correo: true, giro: true,
+          proyectoEquipos: { select: { proyecto: { select: { id: true, nombre: true, fechaEvento: true, estado: true } } }, take: 5 },
+        },
+        orderBy: { nombre: "asc" },
+      }),
+    ]);
+    const cliIds = new Set(contactosCliente.map((c) => c.id));
+    for (const c of otrosClientes) if (!cliIds.has(c.id)) contactosCliente.push(c);
+    const provIds = new Set(contactosProveedor.map((p) => p.id));
+    for (const p of otrosProveedores) if (!provIds.has(p.id)) contactosProveedor.push(p);
+  }
+
+  return NextResponse.json({
+    empresa: {
+      ...empresa,
+      contactosCliente,
+      contactosProveedor,
+      cuentasCobrar,
+      cuentasPagar,
+      esRelacionMutua,
+      compensaciones,
+    },
+  });
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import CompensacionModal from "./CompensacionModal";
+import { usePdfDownload } from "@/hooks/usePdfDownload";
 
 function fmt(monto: number) {
   return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 2 }).format(monto);
@@ -15,6 +16,13 @@ export default function CuentaCorrienteTab({ empresaId }: { empresaId: string })
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const { downloading, downloadPdf } = usePdfDownload();
+  const descargando = downloading !== null;
+
+  const descargarPdf = () => {
+    const fecha = new Date().toISOString().slice(0, 10);
+    downloadPdf(`/api/empresas/${empresaId}/estado-cuenta/pdf`, `EstadoCuenta-${fecha}.pdf`, "Estado de cuenta");
+  };
 
   const loadData = () => {
     setLoading(true);
@@ -61,24 +69,33 @@ export default function CuentaCorrienteTab({ empresaId }: { empresaId: string })
       )}
 
       {/* Tarjetas de Resumen */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-white">Resumen de cuenta</h2>
-        <button 
-          onClick={() => setShowModal(true)}
-          disabled={resumen.montoCompensable <= 0}
-          className="bg-[#B3985B] text-black font-semibold text-sm px-4 py-2 rounded-lg hover:bg-yellow-600 disabled:opacity-50 transition"
-        >
-          Nueva Compensación
-        </button>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <h2 className="text-xl font-bold text-white">Resumen de cuenta y rentas mutuas</h2>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={descargarPdf}
+            disabled={descargando}
+            className="border border-[#B3985B]/40 text-[#B3985B] hover:bg-[#B3985B]/10 font-semibold text-sm px-4 py-2 rounded-lg disabled:opacity-50 transition"
+          >
+            {descargando ? "Generando PDF…" : "Descargar Estado de Cuenta"}
+          </button>
+          <button 
+            onClick={() => setShowModal(true)}
+            disabled={resumen.montoCompensable <= 0}
+            className="bg-[#B3985B] text-black font-semibold text-sm px-4 py-2 rounded-lg hover:bg-yellow-600 disabled:opacity-50 transition"
+          >
+            Nueva Compensación
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="ms-card p-4">
-          <p className="text-xs text-gray-500 uppercase">A favor de Mainstage</p>
+          <p className="text-xs text-gray-500 uppercase">Saldo a favor (Por cobrar)</p>
           <p className="text-xl font-bold text-green-400 mt-1">{fmt(resumen.aFavorMainstage)}</p>
         </div>
         <div className="ms-card p-4">
-          <p className="text-xs text-gray-500 uppercase">A favor contraparte</p>
+          <p className="text-xs text-gray-500 uppercase">Saldo en contra (Rentas mutuas)</p>
           <p className="text-xl font-bold text-red-400 mt-1">{fmt(resumen.aFavorContraparte)}</p>
         </div>
         <div className="ms-card p-4 border border-[#B3985B]/30 bg-[#B3985B]/5">
@@ -86,7 +103,9 @@ export default function CuentaCorrienteTab({ empresaId }: { empresaId: string })
           <p className="text-xl font-bold text-[#B3985B] mt-1">{fmt(resumen.montoCompensable)}</p>
         </div>
         <div className="ms-card p-4">
-          <p className="text-xs text-gray-500 uppercase">Saldo Neto</p>
+          <p className="text-xs text-gray-500 uppercase">
+            Saldo Neto {resumen.saldoNeto > 0 ? "a favor" : resumen.saldoNeto < 0 ? "en contra" : "al corriente"}
+          </p>
           <p className={`text-xl font-bold mt-1 ${resumen.saldoNeto > 0 ? "text-green-500" : resumen.saldoNeto < 0 ? "text-red-500" : "text-white"}`}>
             {resumen.saldoNeto > 0 ? "+" : ""}{fmt(resumen.saldoNeto)}
           </p>
@@ -95,7 +114,7 @@ export default function CuentaCorrienteTab({ empresaId }: { empresaId: string })
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <h3 className="text-sm font-medium text-white mb-3">Pendiente por Cobrar</h3>
+          <h3 className="text-sm font-medium text-white mb-3">Pendiente por Cobrar (Rentas a cliente)</h3>
           <div className="space-y-2">
             {cxcPendientes.length === 0 ? <p className="text-sm text-gray-500">No hay montos por cobrar.</p> : null}
             {cxcPendientes.map((c: any) => (
@@ -110,9 +129,9 @@ export default function CuentaCorrienteTab({ empresaId }: { empresaId: string })
           </div>
         </div>
         <div>
-          <h3 className="text-sm font-medium text-white mb-3">Pendiente por Pagar</h3>
+          <h3 className="text-sm font-medium text-white mb-3">Rentas Mutuas / Pendiente por Pagar</h3>
           <div className="space-y-2">
-            {cxpPendientes.length === 0 ? <p className="text-sm text-gray-500">No hay montos por pagar.</p> : null}
+            {cxpPendientes.length === 0 ? <p className="text-sm text-gray-500">No hay rentas mutuas pendientes por pagar.</p> : null}
             {cxpPendientes.map((c: any) => (
               <div key={c.id} className="ms-card p-3 flex justify-between items-center">
                 <div>

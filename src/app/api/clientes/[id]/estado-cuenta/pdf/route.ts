@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import ReactPDF, { Document } from "@react-pdf/renderer";
 import { EstadoCuentaPDF } from "@/components/EstadoCuentaPDF";
-import { getCuentasScope, toEstadoCuentaLineas } from "@/lib/estado-cuenta";
+import { esEmpresaParticular, getCuentasScope, toEstadoCuentaLineas } from "@/lib/estado-cuenta";
 import React from "react";
 import fs from "fs";
 import path from "path";
@@ -24,16 +24,17 @@ export async function GET(
   if (!cliente) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
   const scope = await getCuentasScope({ clienteId: id, empresaId: cliente.empresaId });
-  const { porCobrar, porPagar } = toEstadoCuentaLineas(scope);
+  const { porCobrar, porPagar, esRelacionMutua, compensaciones } = toEstadoCuentaLineas(scope);
 
   const logoPath = path.join(process.cwd(), "public", "logo-white.png");
   const logoSrc = fs.existsSync(logoPath)
     ? `data:image/png;base64,${fs.readFileSync(logoPath).toString("base64")}`
     : null;
 
-  // Se cobra a la empresa: si el contacto pertenece a una, el estado se emite a la empresa.
-  const titular = cliente.empresa ?? cliente.nombre;
-  const subtitulo = cliente.empresa ? cliente.nombre : null;
+  // Se cobra a la empresa: si el contacto pertenece a una empresa real (no "Particular"), el estado se emite a la empresa.
+  const tieneEmpresaReal = !esEmpresaParticular(cliente.empresa);
+  const titular = tieneEmpresaReal ? (cliente.empresa as string) : cliente.nombre;
+  const subtitulo = tieneEmpresaReal ? cliente.nombre : null;
 
   const data = {
     logoSrc,
@@ -42,6 +43,8 @@ export async function GET(
     generadoEn: new Date().toISOString(),
     porCobrar,
     porPagar,
+    esRelacionMutua,
+    compensaciones,
   };
 
   const pdfStream = await ReactPDF.renderToStream(

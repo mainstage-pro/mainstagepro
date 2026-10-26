@@ -20,14 +20,14 @@ interface ContactoProveedor {
   proyectoEquipos: ProyectoEquipo[];
 }
 interface CuentaCobrar {
-  id: string; concepto: string; monto: number; montoCobrado: number; estado: string;
+  id: string; concepto: string; monto: number; montoCobrado: number; montoCompensado?: number; estado: string;
   fechaCompromiso: string;
   cotizacion: { numeroCotizacion: string } | null;
   proyecto: { numeroProyecto: string; nombre: string } | null;
   contacto: { id: string; nombre: string } | null;
 }
 interface CuentaPagar {
-  id: string; concepto: string; monto: number; montoPagado: number; estado: string;
+  id: string; concepto: string; monto: number; montoPagado: number; montoCompensado?: number; estado: string;
   fechaCompromiso: string;
   proveedor: { nombre: string } | null;
   proyecto: { numeroProyecto: string; nombre: string } | null;
@@ -37,6 +37,7 @@ interface EmpresaDetalle {
   sitioWeb: string | null; notas: string | null; rfc: string | null; datosFiscales: string | null;
   cuentaBancaria: string | null; clabe: string | null; banco: string | null; noTarjeta: string | null;
   tipo: string; activo: boolean;
+  esRelacionMutua?: boolean;
   contactosCliente: ContactoCliente[];
   contactosProveedor: ContactoProveedor[];
   cuentasCobrar: CuentaCobrar[];
@@ -116,14 +117,19 @@ export default function EmpresaDetallePage() {
   if (loading) return <div className="p-8 text-center ms-subtitle">Cargando...</div>;
   if (!empresa) return <div className="p-8 text-center ms-subtitle">Empresa no encontrada</div>;
 
-  const esCuentaActiva = (estado: string) => estado !== "LIQUIDADO" && estado !== "CANCELADO" && estado !== "ANULADO";
-  const cuentasCobrarPendientes = empresa.cuentasCobrar.filter((c) => esCuentaActiva(c.estado) && (c.monto - c.montoCobrado) > 0);
-  const cuentasPagarPendientes = empresa.cuentasPagar.filter((c) => esCuentaActiva(c.estado) && (c.monto - c.montoPagado) > 0);
+  const esCuentaActiva = (estado: string) =>
+    estado !== "LIQUIDADO" && estado !== "COMPENSADO" && estado !== "CANCELADO" && estado !== "ANULADO";
+  const saldoDeCobrar = (c: CuentaCobrar) => Math.max(0, c.monto - c.montoCobrado - Number(c.montoCompensado || 0));
+  const saldoDePagar = (c: CuentaPagar) => Math.max(0, c.monto - c.montoPagado - Number(c.montoCompensado || 0));
+
+  const cuentasCobrarPendientes = empresa.cuentasCobrar.filter((c) => esCuentaActiva(c.estado) && saldoDeCobrar(c) > 0);
+  const cuentasPagarPendientes = empresa.cuentasPagar.filter((c) => esCuentaActiva(c.estado) && saldoDePagar(c) > 0);
 
   const totalCobrar = cuentasCobrarPendientes.reduce((s, c) => s + c.monto, 0);
   const totalPagar = cuentasPagarPendientes.reduce((s, c) => s + c.monto, 0);
-  const pendienteCobrar = cuentasCobrarPendientes.reduce((s, c) => s + Math.max(0, c.monto - c.montoCobrado), 0);
-  const pendientePagar = cuentasPagarPendientes.reduce((s, c) => s + Math.max(0, c.monto - c.montoPagado), 0);
+  const pendienteCobrar = cuentasCobrarPendientes.reduce((s, c) => s + saldoDeCobrar(c), 0);
+  const pendientePagar = cuentasPagarPendientes.reduce((s, c) => s + saldoDePagar(c), 0);
+  const compensable = Math.min(pendienteCobrar, pendientePagar);
   const neto = pendienteCobrar - pendientePagar;
 
   const activeTabs: Tab[] = TABS.filter(t =>
@@ -192,27 +198,43 @@ export default function EmpresaDetallePage() {
         {/* Métricas financieras rápidas */}
         {(empresa.cuentasCobrar.length > 0 || empresa.cuentasPagar.length > 0) && (
           <div className="mt-3">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className={`grid grid-cols-1 sm:grid-cols-2 ${compensable > 0 ? "md:grid-cols-4" : "md:grid-cols-3"} gap-3`}>
               <div className="bg-green-950/20 border border-green-900/20 rounded-xl px-3 py-2">
-                <p className="text-[10px] text-green-700 uppercase tracking-wider">Nos deben</p>
+                <p className="text-[10px] text-green-600 uppercase tracking-wider">Saldo a favor (Nos deben)</p>
                 <p className="text-sm font-semibold text-green-400 mt-0.5">{fmt(pendienteCobrar)}</p>
-                <p className="text-[10px] text-[#555]">Total: {fmt(totalCobrar)}</p>
+                <p className="text-[10px] text-[#555]">
+                  {cuentasCobrarPendientes.length} por cobrar · Total: {fmt(totalCobrar)}
+                </p>
               </div>
-              {empresa.cuentasPagar.length > 0 && (
-                <div className="bg-red-950/20 border border-red-900/20 rounded-xl px-3 py-2">
-                  <p className="text-[10px] text-red-700 uppercase tracking-wider">Les debemos</p>
-                  <p className="text-sm font-semibold text-red-400 mt-0.5">{fmt(pendientePagar)}</p>
-                  <p className="text-[10px] text-[#555]">Total: {fmt(totalPagar)}</p>
+              <div className="bg-red-950/20 border border-red-900/20 rounded-xl px-3 py-2">
+                <p className="text-[10px] text-red-500 uppercase tracking-wider">Saldo en contra (Rentas mutuas)</p>
+                <p className="text-sm font-semibold text-red-400 mt-0.5">{fmt(pendientePagar)}</p>
+                <p className="text-[10px] text-[#555]">
+                  {cuentasPagarPendientes.length > 0
+                    ? `${cuentasPagarPendientes.length} por pagar · Total: ${fmt(totalPagar)}`
+                    : empresa.cuentasPagar.length > 0
+                      ? `${empresa.cuentasPagar.length} renta${empresa.cuentasPagar.length !== 1 ? "s" : ""} liquidada${empresa.cuentasPagar.length !== 1 ? "s" : ""}`
+                      : "Sin rentas mutuas pendientes"}
+                </p>
+              </div>
+              {compensable > 0 && (
+                <div className="bg-[#B3985B]/10 border border-[#B3985B]/30 rounded-xl px-3 py-2">
+                  <p className="text-[10px] text-[#B3985B] uppercase tracking-wider">Disponible compensar</p>
+                  <p className="text-sm font-semibold text-[#B3985B] mt-0.5">{fmt(compensable)}</p>
+                  <p className="text-[10px] text-[#777]">Cruce de rentas mutuas</p>
                 </div>
               )}
-              {empresa.cuentasPagar.length > 0 && (
-                <div className="bg-[#0d0d0d] border border-[#B3985B]/20 rounded-xl px-3 py-2">
-                  <p className="text-[10px] text-[#555] uppercase tracking-wider">Balance neto {neto >= 0 ? "a favor" : "en contra"}</p>
-                  <p className={`text-sm font-semibold mt-0.5 ${neto >= 0 ? "text-green-400" : "text-red-400"}`}>
-                    {neto >= 0 ? "+" : "−"}{fmt(Math.abs(neto))}
-                  </p>
-                </div>
-              )}
+              <div className="bg-[#0d0d0d] border border-[#B3985B]/20 rounded-xl px-3 py-2">
+                <p className="text-[10px] text-[#888] uppercase tracking-wider">
+                  Saldo neto {neto > 0 ? "a favor" : neto < 0 ? "en contra" : "al corriente"}
+                </p>
+                <p className={`text-sm font-semibold mt-0.5 ${neto > 0 ? "text-green-400" : neto < 0 ? "text-red-400" : "text-gray-300"}`}>
+                  {neto > 0 ? "+" : neto < 0 ? "−" : ""}{fmt(Math.abs(neto))}
+                </p>
+                <p className="text-[10px] text-[#555]">
+                  {neto > 0 ? "A favor de Mainstage" : neto < 0 ? `A favor de ${empresa.nombre}` : "Saldos en cero"}
+                </p>
+              </div>
             </div>
             <button
               onClick={descargarEstadoCuenta}
@@ -345,10 +367,10 @@ export default function EmpresaDetallePage() {
         <div className="space-y-6">
           {empresa.cuentasCobrar.length > 0 && (
             <div>
-              <h3 className="text-sm font-medium text-white mb-3">Cuentas por cobrar</h3>
+              <h3 className="text-sm font-medium text-white mb-3">Cuentas por cobrar (Rentas y servicios a cliente)</h3>
               <div className="space-y-2">
                 {empresa.cuentasCobrar.map(c => {
-                  const saldo = Math.max(0, c.monto - c.montoCobrado);
+                  const saldo = esCuentaActiva(c.estado) ? saldoDeCobrar(c) : 0;
                   const referencia = c.cotizacion?.numeroCotizacion ?? c.proyecto?.numeroProyecto ?? null;
                   return (
                     <div key={c.id} className="flex items-center justify-between ms-card px-4 py-2.5 text-sm gap-3">
@@ -361,7 +383,7 @@ export default function EmpresaDetallePage() {
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className={`text-xs font-medium ${c.estado === "LIQUIDADO" ? "text-green-400" : c.estado === "VENCIDO" ? "text-red-400" : "text-yellow-400"}`}>
+                        <span className={`text-xs font-medium ${c.estado === "LIQUIDADO" || c.estado === "COMPENSADO" ? "text-green-400" : c.estado === "VENCIDO" ? "text-red-400" : "text-yellow-400"}`}>
                           {c.estado}
                         </span>
                         <div className="text-right">
@@ -377,10 +399,10 @@ export default function EmpresaDetallePage() {
           )}
           {empresa.cuentasPagar.length > 0 && (
             <div>
-              <h3 className="text-sm font-medium text-white mb-3">Cuentas por pagar</h3>
+              <h3 className="text-sm font-medium text-white mb-3">Rentas mutuas / Cuentas por pagar (Como proveedor)</h3>
               <div className="space-y-2">
                 {empresa.cuentasPagar.map(c => {
-                  const saldo = Math.max(0, c.monto - c.montoPagado);
+                  const saldo = esCuentaActiva(c.estado) ? saldoDePagar(c) : 0;
                   const referencia = c.proyecto?.numeroProyecto ?? null;
                   return (
                     <div key={c.id} className="flex items-center justify-between ms-card px-4 py-2.5 text-sm gap-3">
@@ -393,7 +415,7 @@ export default function EmpresaDetallePage() {
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className={`text-xs font-medium ${c.estado === "LIQUIDADO" ? "text-green-400" : c.estado === "VENCIDO" ? "text-red-400" : "text-yellow-400"}`}>
+                        <span className={`text-xs font-medium ${c.estado === "LIQUIDADO" || c.estado === "COMPENSADO" ? "text-green-400" : c.estado === "VENCIDO" ? "text-red-400" : "text-yellow-400"}`}>
                           {c.estado}
                         </span>
                         <div className="text-right">

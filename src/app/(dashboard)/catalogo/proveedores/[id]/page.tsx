@@ -55,6 +55,7 @@ interface CuentaCobrarItem {
   concepto: string;
   monto: number;
   montoCobrado: number;
+  montoCompensado?: number;
   estado: string;
   fechaCompromiso: string;
   fechaCobroReal: string | null;
@@ -67,6 +68,7 @@ interface CuentaPagarItem {
   concepto: string;
   monto: number;
   montoPagado: number;
+  montoCompensado?: number;
   estado: string;
   fechaCompromiso: string;
   fechaPagoReal: string | null;
@@ -725,18 +727,25 @@ function PanelCuentasProveedor({
   const { downloading, downloadPdf } = usePdfDownload();
   const descargando = downloading !== null;
 
-  const cuentasCobrarPendientes = cuentasCobrar.filter((c) => esCuentaPendiente(c.estado) && Math.max(0, c.monto - c.montoCobrado) > 0);
-  const cuentasPagarPendientes = cuentasPagar.filter((c) => esCuentaPendiente(c.estado) && Math.max(0, c.monto - c.montoPagado) > 0);
+  const saldoDeCobrar = (c: CuentaCobrarItem) => Math.max(0, c.monto - c.montoCobrado - Number(c.montoCompensado || 0));
+  const saldoDePagar = (c: CuentaPagarItem) => Math.max(0, c.monto - c.montoPagado - Number(c.montoCompensado || 0));
+
+  const cuentasCobrarPendientes = cuentasCobrar.filter((c) => esCuentaPendiente(c.estado) && c.estado !== "COMPENSADO" && saldoDeCobrar(c) > 0);
+  const cuentasPagarPendientes = cuentasPagar.filter((c) => esCuentaPendiente(c.estado) && c.estado !== "COMPENSADO" && saldoDePagar(c) > 0);
   const cuentasCobrarLiquidadas = cuentasCobrar.filter((c) => !cuentasCobrarPendientes.includes(c));
   const cuentasPagarLiquidadas = cuentasPagar.filter((c) => !cuentasPagarPendientes.includes(c));
 
-  const totalCobrar = cuentasCobrarPendientes.reduce((s, c) => s + Math.max(0, c.monto - c.montoCobrado), 0);
-  const totalPagar = cuentasPagarPendientes.reduce((s, c) => s + Math.max(0, c.monto - c.montoPagado), 0);
+  const totalCobrar = cuentasCobrarPendientes.reduce((s, c) => s + saldoDeCobrar(c), 0);
+  const totalPagar = cuentasPagarPendientes.reduce((s, c) => s + saldoDePagar(c), 0);
   const neto = totalCobrar - totalPagar;
+  const compensable = Math.min(totalCobrar, totalPagar);
+
+  const empresaVisible =
+    empresaNombre && empresaNombre.trim().toLowerCase() !== "particular" ? empresaNombre : null;
 
   function descargar() {
     const fecha = new Date().toISOString().slice(0, 10);
-    const slug = proveedorNombre.replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30);
+    const slug = (empresaVisible ?? proveedorNombre).replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30);
     downloadPdf(
       `/api/proveedores/${proveedorId}/estado-cuenta/pdf`,
       `EstadoCuenta-${slug || proveedorId.slice(0, 8)}-${fecha}.pdf`,
@@ -752,12 +761,12 @@ function PanelCuentasProveedor({
       <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
         <div>
           <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">
-            Cuentas{empresaNombre ? ` · ${empresaNombre}` : ""}
+            Estado de Cuenta{empresaVisible ? ` · ${empresaVisible}` : ""}
           </h2>
-          <p className="text-[10px] text-gray-700 mt-0.5">
-            {empresaNombre
-              ? "Saldos consolidados de la empresa, sumando todos sus contactos y proveedores asociados"
-              : "Relación de saldos y cuentas pendientes de este proveedor"}
+          <p className="text-[10px] text-gray-500 mt-0.5">
+            {empresaVisible
+              ? "Saldos consolidados de la empresa (cuentas por cobrar, rentas mutuas por pagar y saldo neto a favor o en contra)"
+              : "Relación de cuentas por cobrar, rentas mutuas por pagar y saldo neto a favor o en contra"}
           </p>
         </div>
         <button
@@ -783,7 +792,7 @@ function PanelCuentasProveedor({
           {/* Resumen de saldos / Tarjetas */}
           <div className="grid gap-3 mb-4 grid-cols-1 sm:grid-cols-3">
             <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-4">
-              <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1.5">Nos deben</p>
+              <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Saldo a favor (Nos deben)</p>
               <p className={`text-xl font-bold ${totalCobrar > 0 ? "text-[#B3985B]" : "text-green-400"}`}>
                 {fmt(totalCobrar)}
               </p>
@@ -792,23 +801,29 @@ function PanelCuentasProveedor({
               </p>
             </div>
             <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-4">
-              <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1.5">Les debemos</p>
+              <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Saldo en contra (Rentas mutuas)</p>
               <p className={`text-xl font-bold ${totalPagar > 0 ? "text-red-400" : "text-green-400"}`}>
                 {fmt(totalPagar)}
               </p>
               <p className="text-[10px] text-gray-600 mt-1">
-                {cuentasPagarPendientes.length} concepto{cuentasPagarPendientes.length !== 1 ? "s" : ""} · por pagar
+                {cuentasPagarPendientes.length} renta{cuentasPagarPendientes.length !== 1 ? "s" : ""} / servicio{cuentasPagarPendientes.length !== 1 ? "s" : ""} · por pagar
               </p>
             </div>
-            <div className="bg-[#0d0d0d] border border-[#B3985B]/20 rounded-xl p-4">
-              <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1.5">
-                Balance neto {neto >= 0 ? "a favor" : "en contra"}
+            <div className="bg-[#0d0d0d] border border-[#B3985B]/30 rounded-xl p-4">
+              <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1.5">
+                {neto > 0 ? "Saldo neto a favor" : neto < 0 ? "Saldo neto en contra" : "Saldo neto al corriente"}
               </p>
-              <p className={`text-xl font-bold ${neto >= 0 ? "text-green-400" : "text-red-400"}`}>
-                {neto >= 0 ? "+" : "−"}{fmt(Math.abs(neto))}
+              <p className={`text-xl font-bold ${neto > 0 ? "text-green-400" : neto < 0 ? "text-red-400" : "text-gray-300"}`}>
+                {neto > 0 ? "+" : neto < 0 ? "−" : ""}{fmt(Math.abs(neto))}
               </p>
-              <p className="text-[10px] text-gray-600 mt-1">
-                {neto >= 0 ? "Nos deben más de lo que debemos" : "Debemos más de lo que nos deben"}
+              <p className="text-[10px] text-gray-500 mt-1">
+                {compensable > 0
+                  ? `Compensable en cruce: ${fmt(compensable)}`
+                  : neto > 0
+                    ? "Nos deben más de lo que debemos"
+                    : neto < 0
+                      ? "Debemos más de lo que nos deben"
+                      : "Cuentas saldadas"}
               </p>
             </div>
           </div>
@@ -819,14 +834,15 @@ function PanelCuentasProveedor({
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#B3985B]" />
-                <p className="text-xs font-medium text-gray-400">Por cobrar</p>
+                <p className="text-xs font-medium text-gray-400">Por cobrar (Rentas a cliente)</p>
               </div>
               {cuentasCobrarPendientes.length === 0 ? (
                 <p className="text-[#555] text-xs py-3">Sin cuentas pendientes por cobrar.</p>
               ) : (
                 <div className="space-y-2">
                   {cuentasCobrarPendientes.map((c) => {
-                    const saldo = Math.max(0, c.monto - c.montoCobrado);
+                    const saldo = saldoDeCobrar(c);
+                    const cubierto = c.montoCobrado + Number(c.montoCompensado || 0);
                     const ref = c.cotizacion?.numeroCotizacion ?? (c.proyecto ? `#${c.proyecto.numeroProyecto}` : null);
                     return (
                       <div key={c.id} className="p-3 rounded-lg bg-[#1a1a1a]">
@@ -843,7 +859,7 @@ function PanelCuentasProveedor({
                           </div>
                           <div className="text-right shrink-0">
                             <p className="text-[#B3985B] text-sm font-semibold">{fmt(saldo)}</p>
-                            {c.montoCobrado > 0 && saldo > 0 && (
+                            {cubierto > 0 && saldo > 0 && (
                               <p className="text-[10px] text-gray-600">de {fmt(c.monto)}</p>
                             )}
                           </div>
@@ -859,14 +875,15 @@ function PanelCuentasProveedor({
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
-                <p className="text-xs font-medium text-gray-400">Por pagar</p>
+                <p className="text-xs font-medium text-gray-400">Rentas mutuas / Por pagar (Como proveedor)</p>
               </div>
               {cuentasPagarPendientes.length === 0 ? (
                 <p className="text-[#555] text-xs py-3">Sin cuentas pendientes por pagar.</p>
               ) : (
                 <div className="space-y-2">
                   {cuentasPagarPendientes.map((c) => {
-                    const saldo = Math.max(0, c.monto - c.montoPagado);
+                    const saldo = saldoDePagar(c);
+                    const cubierto = c.montoPagado + Number(c.montoCompensado || 0);
                     const ref = c.proyecto ? `#${c.proyecto.numeroProyecto}` : null;
                     return (
                       <div key={c.id} className="p-3 rounded-lg bg-[#1a1a1a]">
@@ -883,7 +900,7 @@ function PanelCuentasProveedor({
                           </div>
                           <div className="text-right shrink-0">
                             <p className="text-red-400 text-sm font-semibold">{fmt(saldo)}</p>
-                            {c.montoPagado > 0 && saldo > 0 && (
+                            {cubierto > 0 && saldo > 0 && (
                               <p className="text-[10px] text-gray-600">de {fmt(c.monto)}</p>
                             )}
                           </div>

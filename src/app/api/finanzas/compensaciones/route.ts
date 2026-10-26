@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { Prisma } from "@prisma/client";
+import { getCuentasScope } from "@/lib/estado-cuenta";
+import { asegurarCxPDeProveedorEvento } from "@/lib/pagos-proveedor";
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -18,17 +20,46 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Faltan datos requeridos" }, { status: 400 });
     }
 
+    const scope = await getCuentasScope({ empresaId });
+    const validCxcIds = new Set(scope.cuentasCobrar.map((c) => c.id));
+    const validCxpIds = new Set(scope.cuentasPagar.map((c) => c.id));
+
     const result = await prisma.$transaction(async (tx) => {
       // 1. Validar que la empresa existe
       const empresa = await tx.empresa.findUnique({ where: { id: empresaId } });
       if (!empresa) throw new Error("Empresa no encontrada");
+
+      // Si alguna aplicación viene de una renta mutua en ProveedorEvento aún sin CxP ("pe:..."),
+      // formalizar su CuentaPagar automáticamente dentro de la transacción.
+      const aplicacionesResueltas: Array<{ cuentaCobrarId: string; cuentaPagarId: string; montoAplicado: any }> = [];
+      for (const ap of aplicaciones) {
+        if (!validCxcIds.has(ap.cuentaCobrarId)) {
+          throw new Error(`La CxC ${ap.cuentaCobrarId} no pertenece al alcance de la empresa`);
+        }
+        if (!validCxpIds.has(ap.cuentaPagarId)) {
+          throw new Error(`La CxP ${ap.cuentaPagarId} no pertenece al alcance de la empresa`);
+        }
+        let realCxpId = ap.cuentaPagarId as string;
+        if (realCxpId.startsWith("pe:")) {
+          const peId = realCxpId.slice(3);
+          const resCxp = await asegurarCxPDeProveedorEvento(tx, peId);
+          if (!resCxp.ok) throw new Error(resCxp.error);
+          realCxpId = resCxp.cuentaPagarId;
+          validCxpIds.add(realCxpId);
+        }
+        aplicacionesResueltas.push({
+          cuentaCobrarId: ap.cuentaCobrarId,
+          cuentaPagarId: realCxpId,
+          montoAplicado: ap.montoAplicado,
+        });
+      }
 
       // 2. Acumular y validar la sumatoria de las aplicaciones
       let sumaAplicada = new Prisma.Decimal(0);
       const cxcMapeo: Record<string, Prisma.Decimal> = {};
       const cxpMapeo: Record<string, Prisma.Decimal> = {};
 
-      for (const ap of aplicaciones) {
+      for (const ap of aplicacionesResueltas) {
         const monto = new Prisma.Decimal(ap.montoAplicado);
         sumaAplicada = sumaAplicada.add(monto);
         
@@ -44,7 +75,6 @@ export async function POST(req: NextRequest) {
       for (const [cxcId, montoACompensar] of Object.entries(cxcMapeo)) {
         const cxc = await tx.cuentaCobrar.findUnique({ where: { id: cxcId } });
         if (!cxc) throw new Error(`CxC no encontrada: ${cxcId}`);
-        if (cxc.empresaId !== empresaId) throw new Error(`La CxC ${cxcId} no pertenece a la empresa`);
 
         const saldoPendiente = new Prisma.Decimal(cxc.monto)
           .sub(new Prisma.Decimal(cxc.montoCobrado))
@@ -59,7 +89,6 @@ export async function POST(req: NextRequest) {
       for (const [cxpId, montoACompensar] of Object.entries(cxpMapeo)) {
         const cxp = await tx.cuentaPagar.findUnique({ where: { id: cxpId } });
         if (!cxp) throw new Error(`CxP no encontrada: ${cxpId}`);
-        if (cxp.empresaId !== empresaId) throw new Error(`La CxP ${cxpId} no pertenece a la empresa`);
 
         const saldoPendiente = new Prisma.Decimal(cxp.monto)
           .sub(new Prisma.Decimal(cxp.montoPagado))
@@ -81,7 +110,7 @@ export async function POST(req: NextRequest) {
           estado: "ACTIVA",
           fecha: fecha ? new Date(fecha) : new Date(),
           aplicaciones: {
-            create: aplicaciones.map((ap: any) => ({
+            create: aplicacionesResueltas.map((ap) => ({
               cuentaCobrarId: ap.cuentaCobrarId,
               cuentaPagarId: ap.cuentaPagarId,
               montoAplicado: ap.montoAplicado

@@ -36,12 +36,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   // ── Cuentas por cobrar / pagar con alcance de EMPRESA ────────────────────────
   // Se cobra a la empresa, no al contacto: si el cliente pertenece a una empresa,
   // se agregan las cuentas de todos sus contactos y las ligadas a la empresa.
-  const { cuentasCobrar, cuentasPagar } = await getCuentasScope({
+  const { cuentasCobrar, cuentasPagar, esRelacionMutua, compensaciones } = await getCuentasScope({
     clienteId: id,
     empresaId: cliente.empresaId,
   });
 
-  return NextResponse.json({ cliente: { ...cliente, cuentasCobrar, cuentasPagar } });
+  return NextResponse.json({ cliente: { ...cliente, cuentasCobrar, cuentasPagar, esRelacionMutua, compensaciones } });
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

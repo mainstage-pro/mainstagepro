@@ -29,12 +29,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   if (!proveedor) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
-  const { cuentasCobrar, cuentasPagar } = await getCuentasScope({
+  const { cuentasCobrar, cuentasPagar, esRelacionMutua, compensaciones } = await getCuentasScope({
     proveedorId: id,
     empresaId: proveedor.empresaId,
   });
 
-  return NextResponse.json({ proveedor: { ...proveedor, cuentasCobrar, cuentasPagar } });
+  return NextResponse.json({ proveedor: { ...proveedor, cuentasCobrar, cuentasPagar, esRelacionMutua, compensaciones } });
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {

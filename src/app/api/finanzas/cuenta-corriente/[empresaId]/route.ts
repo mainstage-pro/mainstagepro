@@ -14,16 +14,17 @@ export async function GET(
   const { empresaId } = await params;
 
   // 1 y 2. Obtener CxC y CxP consolidadas de la empresa y sus contactos/proveedores vinculados
-  const { cuentasCobrar, cuentasPagar } = await getCuentasScope({ empresaId });
+  const { cuentasCobrar, cuentasPagar, empresaIds } = await getCuentasScope({ empresaId });
+  const idsFiltro = empresaIds.length > 0 ? empresaIds : [empresaId];
 
   // 3. Obtener cortes y compensaciones históricas
   const cortes = await prisma.corteCompensacion.findMany({
-    where: { empresaId },
+    where: { empresaId: { in: idsFiltro } },
     orderBy: { fechaInicial: "desc" },
   });
 
   const compensaciones = await prisma.compensacion.findMany({
-    where: { empresaId },
+    where: { empresaId: { in: idsFiltro } },
     include: {
       aplicaciones: true,
       reversaDe: true,
