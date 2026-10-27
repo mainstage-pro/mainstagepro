@@ -27,37 +27,7 @@ import { logoBase64, nowStr, resolvePdfImage } from "@/components/pdf/PdfShared"
 import type { TemaPdf } from "@/components/pdf/giras/NotasBloques";
 import { NotasAprendizajesPDF, type NotaShow, type NotasAprendizajesData } from "@/components/pdf/giras/NotasAprendizajesPDF";
 import { NotasShowPDF, type NotasShowData } from "@/components/pdf/giras/NotasShowPDF";
-import { condensarTextosLargos } from "./resumen-ia";
 import { bufferDePdf, type PdfGira } from "./render";
-
-// Saca, en el mismo orden en que `reconstruirTemas` los vuelve a repartir, los
-// textos libres de uno o varios juegos de temas (falla/solución/propuesta de
-// cada hallazgo + el comentario del tema), más los textos sueltos del cierre
-// del documento (resumen ejecutivo, aciertos, agradecimientos).
-function extraerTextosTemas(gruposDeTemas: TemaPdf[][], extras: (string | null)[] = []): string[] {
-  const acc: string[] = [];
-  for (const temas of gruposDeTemas) {
-    for (const t of temas) {
-      for (const h of t.hallazgos) acc.push(h.falla, h.solucion, h.propuestaMejora);
-      acc.push(t.comentarios ?? "");
-    }
-  }
-  acc.push(...extras.map((e) => e ?? ""));
-  return acc;
-}
-
-function reconstruirTemas(temas: TemaPdf[], condensados: string[], cursor: { i: number }): TemaPdf[] {
-  return temas.map((t) => ({
-    ...t,
-    hallazgos: t.hallazgos.map((h) => ({
-      ...h,
-      falla: condensados[cursor.i++] || h.falla,
-      solucion: condensados[cursor.i++] || h.solucion,
-      propuestaMejora: condensados[cursor.i++] || h.propuestaMejora,
-    })),
-    comentarios: condensados[cursor.i++] || t.comentarios,
-  }));
-}
 
 function temaAPdf(id: string, titulo: string, tema: TemaEvaluacion): TemaPdf | null {
   if (!temaTieneContenido(tema)) return null;
@@ -100,31 +70,16 @@ export async function generarNotasAprendizajes(giraId: string): Promise<PdfGira 
 
   if (showsConContenido.length === 0 && !giraEvaluacionTieneContenido(giraEvaluacion)) return null;
 
-  const showsRaw = showsConContenido.map((s) => ({
+  const shows: NotaShow[] = showsConContenido.map((s) => ({
     id: s.id,
     fecha: fmtFechaLarga(s.fecha),
     lugar: [s.ciudad, s.venue?.nombre].filter(Boolean).join(" · ") || null,
     temas: temasShowAPdf(parseGiraShowEvaluacion(s.evaluacion)),
   }));
-  const temasGiraRaw = temasGiraAPdf(giraEvaluacion);
-  const extrasRaw: (string | null)[] = [
-    giraEvaluacion.resumenGeneral.trim() || null,
-    giraEvaluacion.aciertos.trim() || null,
-  ];
-  // El agradecimiento es la voz personal de quien lo escribió, no un reporte
-  // técnico — nunca pasa por la IA, se imprime tal cual se capturó.
+  const temasGira = temasGiraAPdf(giraEvaluacion);
+  const resumenGeneral = giraEvaluacion.resumenGeneral.trim() || null;
+  const aciertos = giraEvaluacion.aciertos.trim() || null;
   const agradecimientos = giraEvaluacion.agradecimientos.trim() || null;
-
-  // Un solo lote a la IA por todo el documento: cada hallazgo, comentario y
-  // texto de cierre que sea largo sale condensado; lo corto se queda igual.
-  const condensados = await condensarTextosLargos(
-    extraerTextosTemas([...showsRaw.map((s) => s.temas), temasGiraRaw], extrasRaw),
-  );
-  const cursor = { i: 0 };
-  const shows: NotaShow[] = showsRaw.map((s) => ({ ...s, temas: reconstruirTemas(s.temas, condensados, cursor) }));
-  const temasGira = reconstruirTemas(temasGiraRaw, condensados, cursor);
-  const resumenGeneral = condensados[cursor.i++] || extrasRaw[0];
-  const aciertos = condensados[cursor.i++] || extrasRaw[1];
 
   const publicDir = path.join(process.cwd(), "public");
 
@@ -164,11 +119,8 @@ export async function generarNotasShow(showId: string): Promise<PdfGira | null> 
   if (!show) return null;
 
   const evaluacion = parseGiraShowEvaluacion(show.evaluacion);
-  const temasRaw = temasShowAPdf(evaluacion);
-  if (temasRaw.length === 0) return null;
-
-  const condensados = await condensarTextosLargos(extraerTextosTemas([temasRaw]));
-  const temas = reconstruirTemas(temasRaw, condensados, { i: 0 });
+  const temas = temasShowAPdf(evaluacion);
+  if (temas.length === 0) return null;
 
   const publicDir = path.join(process.cwd(), "public");
   const subtitulo = [show.ciudad, show.venue?.nombre].filter(Boolean).join(" · ");
