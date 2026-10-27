@@ -22,6 +22,7 @@ import VersionHistorial from "@/components/VersionHistorial";
 import { Combobox } from "@/components/Combobox";
 import SelectorEquipoCascada, { agruparEquiposPorCategoria } from "@/components/SelectorEquipoCascada";
 import ChecklistEventoTab from "./ChecklistEventoTab";
+import ComentariosPanel from "@/components/ComentariosPanel";
 import { BackButton } from "@/components/BackButton";
 import { Package, AlertTriangle, Smartphone, Truck, Home, Radio, MessageCircle, FileText, Bell, User, Factory, ClipboardList, FileImage, Eye, EyeOff } from "lucide-react";
 import { ViabilidadWidget, type ViabilidadActiva, type ViabilidadHistoricoItem } from "@/components/proyectos/ViabilidadWidget";
@@ -8107,6 +8108,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               proyectoNombre={proyecto.nombre}
               usuarios={usuariosActivos}
             />
+            <div className="mt-4">
+              <ComentariosPanel entidad="PROYECTO" entidadId={proyecto.id} usuarios={usuariosActivos} />
+            </div>
           </div>
         )}
 

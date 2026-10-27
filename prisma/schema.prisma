@@ -38,6 +38,7 @@ model User {
   carpetasCreadas        TareaCarpeta[]         @relation("CarpetasCreadas")
   proyectosTareaCreados  TareaProyecto[]        @relation("ProyectosTareaCreados")
   comentariosTarea       TareaComentario[]      @relation("ComentariosTarea")
+  comentarios            Comentario[]           @relation("ComentariosAutor")
   archivosTarea          TareaArchivo[]         @relation("ArchivosTarea")
   actividades            ActividadUsuario[]     @relation("actividades")
   reembolsosSolicitados  SolicitudReembolso[]   @relation("ReembolsosSolicitados")
@@ -3307,6 +3308,22 @@ model TareaComentario {
   updatedAt DateTime @updatedAt
 
   @@map("tarea_comentarios")
+}
+
+// Comentarios genéricos con @menciones, para trato/proyecto/cotización/cliente/equipo.
+// La mención vive en el texto como markup "@[Nombre](userId)" — se parsea al crear
+// el comentario para disparar Notificacion, no hay tabla de menciones aparte.
+model Comentario {
+  id        String   @id @default(cuid())
+  entidad   String // TRATO | PROYECTO | COTIZACION | CLIENTE | EQUIPO
+  entidadId String
+  contenido String   @db.Text
+  autorId   String
+  autor     User     @relation("ComentariosAutor", fields: [autorId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@index([entidad, entidadId])
+  @@map("comentarios")
 }
 
 // ─── GASTOS OPERATIVOS (COMIDAS Y VIÁTICOS) ──────────────────────────────────

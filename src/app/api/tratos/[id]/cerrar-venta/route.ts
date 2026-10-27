@@ -126,9 +126,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   // Sincronizar esProspecto del cliente: contrató un servicio ⇒ deja de ser
   // prospecto y pasa a Clientes, sin importar si tiene otros tratos abiertos.
+  let clienteNombre: string | null = null;
   try {
-    const t = await prisma.trato.findUnique({ where: { id }, select: { clienteId: true, prospeccionId: true } });
+    const t = await prisma.trato.findUnique({
+      where: { id },
+      select: { clienteId: true, prospeccionId: true, cliente: { select: { nombre: true } } },
+    });
     if (t) {
+      clienteNombre = t.cliente?.nombre ?? null;
       if (t.prospeccionId) {
         await prisma.prospeccion.update({ where: { id: t.prospeccionId }, data: { estado: "CONVERTIDO" } });
       }
@@ -136,6 +141,28 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
   } catch (e) {
     console.error("[cerrar-venta][prospecto]", e);
+  }
+
+  // Avisar a todo el equipo administrativo que se cerró una venta.
+  try {
+    const destinatarios = await prisma.user.findMany({
+      where: { role: "ADMIN", active: true, id: { not: session.id } },
+      select: { id: true },
+    });
+    if (destinatarios.length > 0) {
+      const monto = montoFinal ? ` por ${new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(montoFinal)}` : "";
+      await prisma.notificacion.createMany({
+        data: destinatarios.map((u) => ({
+          usuarioId: u.id,
+          tipo: "SISTEMA",
+          titulo: `Venta cerrada: ${trato.nombreEvento ?? clienteNombre ?? "Evento"}`,
+          mensaje: `${session.name} cerró la venta de ${clienteNombre ?? "un cliente"}${monto}.`,
+          url: `/crm/tratos/${id}`,
+        })),
+      });
+    }
+  } catch (e) {
+    console.error("[cerrar-venta][notificacion]", e);
   }
 
   return NextResponse.json({ proyectos, count: proyectos.length });

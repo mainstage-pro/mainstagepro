@@ -14,6 +14,7 @@ import { Combobox } from "@/components/Combobox";
 import { BackButton } from "@/components/BackButton";
 import { EtapaInternaBar, EtapaInternaSelect } from "@/components/crm/EtapaInternaBar";
 import TareasTratoTab from "./TareasTratoTab";
+import ComentariosPanel from "@/components/ComentariosPanel";
 import SiguientePasoPanel from "./SiguientePasoPanel";
 import { SEGUIMIENTO_TIPOS, SEGUIMIENTO_TIPO_LABELS, getWaMensajePrimerContacto } from '@/lib/seguimientoTypes';
 import { SelectorEquiposInventario, type SeleccionEquipos } from '@/components/SelectorEquiposInventario';
@@ -2684,6 +2685,8 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           />
         </div>
       </div>
+
+      <ComentariosPanel entidad="TRATO" entidadId={trato.id} usuarios={usuarios} />
       </>)}
 
       </div> {/* end left column */}

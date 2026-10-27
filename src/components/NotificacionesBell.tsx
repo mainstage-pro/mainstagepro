@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, Camera, Megaphone, Radio, Briefcase, Banknote, PartyPopper, User, CheckCircle2 } from "lucide-react";
+import { Bell, Camera, Megaphone, Radio, Briefcase, Banknote, PartyPopper, User, CheckCircle2, AtSign } from "lucide-react";
 
 interface Notificacion {
   id: string;
@@ -44,6 +44,8 @@ function NotifIcon({ tipo, url }: { tipo: string; url: string | null }) {
     return <div className={`${base} bg-pink-900/30 text-pink-400`}><Megaphone strokeWidth={1.75} className="w-4 h-4" /></div>;
   if (tipo === "CAMPANA")
     return <div className={`${base} bg-cyan-900/30 text-cyan-400`}><Radio strokeWidth={1.75} className="w-4 h-4" /></div>;
+  if (tipo === "MENCION")
+    return <div className={`${base} bg-[#B3985B]/15 text-[#B3985B]`}><AtSign strokeWidth={1.75} className="w-4 h-4" /></div>;
   if (url?.includes("cotizacion"))
     return <div className={`${base} bg-yellow-900/30 text-yellow-400`}><Briefcase strokeWidth={1.75} className="w-4 h-4" /></div>;
   if (url?.includes("finanzas"))

@@ -12,6 +12,7 @@ import VersionHistorial from "@/components/VersionHistorial";
 import { BackButton } from "@/components/BackButton";
 import { MiniaturaLinea } from "@/components/MiniaturaLinea";
 import { CerrarVentaModal } from "@/components/crm/CerrarVentaModal";
+import ComentariosPanel from "@/components/ComentariosPanel";
 import { usePdfDownload } from "@/hooks/usePdfDownload";
 import { esMovil } from "@/lib/descargas";
 import { Handshake, Smartphone, PartyPopper, ClipboardList, SlidersHorizontal, Guitar, Building2, Camera, Sparkles, type LucideIcon } from "lucide-react";
@@ -287,6 +288,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   const [savingIdioma, setSavingIdioma] = useState(false);
   const [opciones, setOpciones] = useState<OpcionHermana[]>([]);
   const [creandoOpcion, setCreandoOpcion] = useState(false);
+  const [usuarios, setUsuarios] = useState<{ id: string; name: string }[]>([]);
   const [modalOpcion, setModalOpcion] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   // Nombre/descripción editable inline
@@ -328,6 +330,10 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
         setHoraFinInputVal(d.cotizacion?.horaFinEvento || d.cotizacion?.trato?.horaFinEvento || "");
       });
   }, [id]);
+
+  useEffect(() => {
+    fetch("/api/usuarios-activos").then((r) => r.json()).then((d) => setUsuarios(d.usuarios ?? []));
+  }, []);
 
   async function crearNuevaOpcion(modo: "completa" | "vacia") {
     setModalOpcion(false);
@@ -2030,6 +2036,8 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
               <p className="text-gray-300">{cot.observaciones}</p>
             </div>
           )}
+
+          <ComentariosPanel entidad="COTIZACION" entidadId={cot.id} usuarios={usuarios} />
 
           {/* Eliminar */}
           <div className="pt-2">

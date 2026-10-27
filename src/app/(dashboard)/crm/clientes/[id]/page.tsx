@@ -11,6 +11,7 @@ import { SkeletonPage } from "@/components/Skeleton";
 import { EmpresaCombobox } from "@/components/EmpresaCombobox";
 import { BackButton } from "@/components/BackButton";
 import TareasClienteSection from "./TareasClienteSection";
+import ComentariosPanel from "@/components/ComentariosPanel";
 import { usePdfDownload } from "@/hooks/usePdfDownload";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -1455,6 +1456,8 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
           preciosIniciales={preciosIniciales}
         />
       )}
+
+      <ComentariosPanel entidad="CLIENTE" entidadId={id} usuarios={usuarios} />
     </div>
   );
 }

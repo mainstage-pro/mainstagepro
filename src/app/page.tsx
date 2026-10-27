@@ -5,6 +5,6 @@ import { OWNER_EMAIL } from "@/lib/nav";
 export default async function Home() {
   const session = await getSession();
   if (!session) redirect("/login");
-  if (session.email === OWNER_EMAIL) redirect("/inicio");
+  if (session.email === OWNER_EMAIL) redirect("/mi-dashboard");
   redirect("/dashboard");
 }

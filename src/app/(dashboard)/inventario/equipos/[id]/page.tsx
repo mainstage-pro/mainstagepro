@@ -11,6 +11,7 @@ import { CostoMantenimientoModal, type CostoMantenimiento } from "@/components/C
 import { ESTADOS_EQUIPO as ESTADOS_UNIDAD, ESTADO_EQUIPO_LABEL, esRetornoAServicio } from "@/lib/equipo-estado";
 import { TIPO_EQUIPO_LABEL } from "@/lib/equipo-tipos";
 import { ReportarFallaModal } from "@/components/ReportarFallaModal";
+import ComentariosPanel from "@/components/ComentariosPanel";
 import { normalizarAmPm } from "@/lib/hora";
 import {
   ESTADOS_FALLA_ABIERTA,
@@ -966,12 +967,17 @@ export default function EquipoFichaPage() {
   const { id } = useParams<{ id: string }>();
   const [equipo, setEquipo] = useState<Equipo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [usuarios, setUsuarios] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
     fetch(`/api/equipos/${id}`, { cache: "no-store" })
       .then(r => r.json())
       .then(d => { setEquipo(d.equipo ?? null); setLoading(false); });
   }, [id]);
+
+  useEffect(() => {
+    fetch("/api/usuarios-activos").then(r => r.json()).then(d => setUsuarios(d.usuarios ?? []));
+  }, []);
 
   if (loading) {
     return (
@@ -1156,6 +1162,8 @@ export default function EquipoFichaPage() {
           <Link href="/inventario/equipos" className="text-[#B3985B] text-xs mt-3 inline-block hover:underline">← Volver al inventario</Link>
         </div>
       )}
+
+      <ComentariosPanel entidad="EQUIPO" entidadId={equipo.id} usuarios={usuarios} />
     </div>
   );
 }

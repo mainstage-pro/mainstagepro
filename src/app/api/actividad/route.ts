@@ -4,8 +4,11 @@ import { getSession } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   const session = await getSession();
-  if (!session || session.role !== "ADMIN") return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  const userId = req.nextUrl.searchParams.get("userId");
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  const userIdParam = req.nextUrl.searchParams.get("userId");
+  // "me" = siempre la propia actividad, sin importar el rol. No-admin no puede
+  // pedir la de otro usuario. Admin sin userId ve la de todos.
+  const userId = userIdParam === "me" ? session.id : session.role === "ADMIN" ? userIdParam : session.id;
   const take = parseInt(req.nextUrl.searchParams.get("take") ?? "50");
   const where = userId ? { userId } : {};
   try {
