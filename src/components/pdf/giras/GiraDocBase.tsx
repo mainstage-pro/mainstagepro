@@ -97,6 +97,15 @@ export const g = StyleSheet.create({
   },
   secNota: { fontSize: 8, color: C.grisMedio, marginTop: 6, lineHeight: 1.45 },
   secBody: { marginTop: 10 },
+  // Subtítulo para marcar un segundo bloque dentro de la misma Seccion (p.
+  // ej. "Temas de toda la producción" después del resumen ejecutivo), sin
+  // abrir otra Seccion que el paginador pueda separar de la primera.
+  subTitulo: {
+    fontSize: 9.5, fontFamily: "Helvetica-Bold", color: C.negro,
+    textTransform: "uppercase", letterSpacing: 1.2,
+    marginTop: 14, marginBottom: 8,
+    paddingBottom: 3, borderBottomWidth: 0.75, borderBottomColor: C.grisLinea, borderBottomStyle: "solid",
+  },
   // Caja de identificación de un show (fecha/venue + sus cifras), para
   // documentos que listan varios shows seguidos: mismo lenguaje visual que
   // `nota` (franja dorada) para que se lea "de la casa" y no como un invento

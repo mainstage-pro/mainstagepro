@@ -9,7 +9,7 @@
  */
 import React from "react";
 import { C } from "../PdfShared";
-import { CabeceraShow, Cuerpo, Document, HeroGira, Nota, PaginaGira, PieGira, Seccion, Tabla, View } from "./GiraDocBase";
+import { CabeceraShow, Cuerpo, Document, g, HeroGira, Nota, PaginaGira, PieGira, Seccion, Tabla, Text, View } from "./GiraDocBase";
 import { resumenTemas, TemaBloque, type TemaPdf } from "./NotasBloques";
 
 export interface NotaShow {
@@ -113,15 +113,15 @@ export function NotasAprendizajesPDF({ data }: { data: NotasAprendizajesData }) 
 
           <Seccion titulo="Resumen ejecutivo de la gira">
             <Nota texto={data.resumenGeneral} />
+            {data.temasGira.length > 0 && (
+              <Text style={g.subTitulo} minPresenceAhead={40}>
+                Temas de toda la producción
+              </Text>
+            )}
+            {data.temasGira.map((t) => (
+              <TemaBloque key={t.id} tema={t} />
+            ))}
           </Seccion>
-
-          {data.temasGira.length > 0 && (
-            <Seccion titulo="Temas de toda la producción">
-              {data.temasGira.map((t) => (
-                <TemaBloque key={t.id} tema={t} />
-              ))}
-            </Seccion>
-          )}
 
           <Seccion titulo="Aciertos a repetir">
             <Nota texto={data.aciertos} />
