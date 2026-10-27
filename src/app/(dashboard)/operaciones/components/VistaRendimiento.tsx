@@ -66,6 +66,9 @@ export function VistaRendimiento() {
   const [expandedSys, setExpandedSys] = useState<Set<FuenteKey>>(new Set())
   const { downloading, downloadPdf: descargarPdf } = usePdfDownload()
   const pdfGeneral = downloading !== null
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [planActivo, setPlanActivo] = useState<boolean | null>(null)
+  const [togglingPlan, setTogglingPlan] = useState(false)
 
   useEffect(() => {
     setLoading(true)
@@ -74,6 +77,41 @@ export function VistaRendimiento() {
       .then(d => { setData(d); setLoading(false) })
       .catch(() => setLoading(false))
   }, [preset])
+
+  useEffect(() => {
+    fetch('/api/me')
+      .then(r => r.json())
+      .then((meData: { role: string }) => {
+        const admin = meData.role === 'ADMIN'
+        setIsAdmin(admin)
+        if (admin) {
+          fetch('/api/plan-trabajo/estado')
+            .then(r => r.json())
+            .then((d: { activo: boolean }) => setPlanActivo(d.activo))
+            .catch(() => {})
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  async function handleTogglePlanActivo() {
+    const siguiente = !planActivo
+    const mensaje = siguiente
+      ? '¿Reactivar el Plan de Trabajo? El motor volverá a generar tareas de los compromisos activos.'
+      : '¿Pausar el Plan de Trabajo? Se detiene la generación de tareas nuevas y se cancelan las pendientes que ya existen. La recurrencia de cada compromiso NO se borra.'
+    if (!confirm(mensaje)) return
+    setTogglingPlan(true)
+    try {
+      const res = await fetch('/api/plan-trabajo/estado', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ activo: siguiente }),
+      })
+      if (res.ok) setPlanActivo(siguiente)
+    } finally {
+      setTogglingPlan(false)
+    }
+  }
 
   const downloadPdf = useCallback((tipo: 'general' | 'usuario', userId?: string) => {
     const qs = new URLSearchParams({ tipo, preset })
@@ -171,12 +209,25 @@ export function VistaRendimiento() {
               const personas = usuariosDeFuente(f.fuente)
               return (
                 <div key={f.fuente} className="rounded-xl border border-[#1e1e1e] overflow-hidden">
-                  <button onClick={() => personas.length && toggleSys(f.fuente)}
+                  <div onClick={() => personas.length && toggleSys(f.fuente)}
                     className={`w-full text-left px-4 py-3 ${isOpen ? 'bg-[#161616]' : 'bg-[#0d0d0d]'} ${personas.length ? 'cursor-pointer' : 'cursor-default'}`}>
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="text-sm text-[#ccc] truncate">{FUENTE_LABEL[f.fuente]}</span>
                         <span className={`text-[9px] px-1.5 py-0.5 rounded-full border border-[#222] ${perfClass(f.cumplimiento)}`}>{bandaLabel(f.cumplimiento)}</span>
+                        {f.fuente === 'PLAN' && isAdmin && planActivo !== null && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleTogglePlanActivo() }}
+                            disabled={togglingPlan}
+                            title={planActivo ? 'Pausar Plan de Trabajo' : 'Reactivar Plan de Trabajo'}
+                            className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[9px] shrink-0 transition-colors disabled:opacity-60 ${
+                              planActivo ? 'border-[#222] text-[#666] hover:bg-[#1a1a1a]' : 'border-red-900/40 bg-red-950/20 text-red-400 hover:bg-red-950/40'
+                            }`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${planActivo ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                            {togglingPlan ? '...' : planActivo ? 'Activo' : 'Pausado'}
+                          </button>
+                        )}
                       </div>
                       <div className="flex items-center gap-3 shrink-0">
                         {f.vencidas > 0 && <span className="text-[10px] text-red-400 tabular-nums">{f.vencidas} venc.</span>}
@@ -188,7 +239,7 @@ export function VistaRendimiento() {
                     <div className="h-1 bg-[#1a1a1a] rounded-full overflow-hidden mt-2">
                       <div className="h-full rounded-full transition-all duration-500" style={{ width: `${f.cumplimiento}%`, backgroundColor: perfBar(f.cumplimiento) }} />
                     </div>
-                  </button>
+                  </div>
                   {isOpen && personas.length > 0 && (
                     <div className="border-t border-[#1a1a1a] bg-[#080808] divide-y divide-[#111]">
                       <p className="px-4 pt-3 pb-1 text-[9px] uppercase tracking-wider text-[#555]">Por persona en este sistema</p>
