@@ -24,7 +24,7 @@ export async function GET(
   if (!cliente) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
   const scope = await getCuentasScope({ clienteId: id, empresaId: cliente.empresaId });
-  const { porCobrar, porPagar, esRelacionMutua, compensaciones } = toEstadoCuentaLineas(scope);
+  const { porCobrar, porPagar, esRelacionMutua, compensaciones, abonosCobrar, abonosPagar } = toEstadoCuentaLineas(scope);
 
   const logoPath = path.join(process.cwd(), "public", "logo-white.png");
   const logoSrc = fs.existsSync(logoPath)
@@ -45,6 +45,8 @@ export async function GET(
     porPagar,
     esRelacionMutua,
     compensaciones,
+    abonosCobrar,
+    abonosPagar,
   };
 
   const pdfStream = await ReactPDF.renderToStream(

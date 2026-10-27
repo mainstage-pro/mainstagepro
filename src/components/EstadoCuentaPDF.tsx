@@ -122,6 +122,23 @@ const ESTADO_COLOR: Record<string, string> = {
   VENCIDO:   RED,
 };
 
+export interface EstadoCuentaAbono {
+  id: string;
+  fecha: string;
+  monto: number;
+  metodoPago: string;
+  cuenta: string | null;
+  notas: string | null;
+  cuentaId: string;
+  concepto: string;
+  proyecto: string | null;
+  referencia: string | null;
+  estadoCuenta: string;
+  grupoFechaTotal?: number;
+  grupoFechaCount?: number;
+  grupoDetalle?: string;
+}
+
 export interface EstadoCuentaLinea {
   id: string;
   concepto: string;
@@ -133,6 +150,7 @@ export interface EstadoCuentaLinea {
   abonado?: number;
   compensado?: number;
   estado: string;
+  abonos?: EstadoCuentaAbono[];
 }
 
 export interface EstadoCuentaCompensacion {
@@ -152,6 +170,15 @@ export interface EstadoCuentaData {
   porPagar: EstadoCuentaLinea[];
   esRelacionMutua?: boolean;
   compensaciones?: EstadoCuentaCompensacion[];
+  abonosCobrar?: EstadoCuentaAbono[];
+  abonosPagar?: EstadoCuentaAbono[];
+}
+
+function fmtMetodoCuenta(a: EstadoCuentaAbono): string {
+  const m = a.metodoPago === "EFECTIVO" ? "Efectivo" : a.metodoPago === "TRANSFERENCIA" ? "Transferencia" : a.metodoPago;
+  if (!a.cuenta) return m;
+  if (a.cuenta.toLowerCase().includes("efectivo") && a.metodoPago === "EFECTIVO") return "Efectivo";
+  return `${m} · ${a.cuenta}`;
 }
 
 function esPendiente(l: EstadoCuentaLinea): boolean {
@@ -167,14 +194,17 @@ function Tabla({
   lineas,
   tipo,
   emptyText,
+  esHistorialLiquidado = false,
 }: {
   titulo: string;
   subtituloCount?: string;
   lineas: EstadoCuentaLinea[];
   tipo: "cobrar" | "pagar";
   emptyText?: string;
+  esHistorialLiquidado?: boolean;
 }) {
   const totalMonto = lineas.reduce((sum, l) => sum + l.monto, 0);
+  const totalAbonado = lineas.reduce((sum, l) => sum + (esPendiente(l) ? l.pagado : l.monto), 0);
   const totalSaldo = lineas.reduce((sum, l) => sum + (esPendiente(l) ? Math.max(0, l.monto - l.pagado) : 0), 0);
   return (
     <View>
@@ -189,7 +219,7 @@ function Tabla({
       ) : (
         <View style={s.table}>
           <View style={s.th}>
-            <Text style={[s.thText, s.cConcepto]}>CONCEPTO</Text>
+            <Text style={[s.thText, s.cConcepto]}>CONCEPTO / PROYECTO</Text>
             <Text style={[s.thText, s.cRef]}>REFERENCIA</Text>
             <Text style={[s.thText, s.cFecha]}>FECHA</Text>
             <Text style={[s.thText, s.cMonto]}>MONTO</Text>
@@ -204,7 +234,19 @@ function Tabla({
               <View key={l.id} style={s.tr} wrap={false}>
                 <View style={s.cConcepto}>
                   <Text style={s.tdConcepto}>{l.concepto}</Text>
-                  {l.detalle && <Text style={s.tdSub}>{l.detalle}</Text>}
+                  {l.detalle && l.detalle !== l.concepto && <Text style={s.tdSub}>{l.detalle}</Text>}
+                  {l.abonos && l.abonos.length > 0 && (
+                    <View style={{ marginTop: 3 }}>
+                      {l.abonos.map((a) => (
+                        <Text key={a.id} style={{ fontSize: 6.1, color: GREEN, marginTop: 1 }}>
+                          • Abono {fmtDate(a.fecha)} ({fmtMetodoCuenta(a)}): {fmt(a.monto)}
+                          {a.grupoFechaCount && a.grupoFechaCount > 1 && a.grupoFechaTotal
+                            ? ` — Parte de ${fmt(a.grupoFechaTotal)} dividido en ${a.grupoFechaCount} proyectos`
+                            : ""}
+                        </Text>
+                      ))}
+                    </View>
+                  )}
                 </View>
                 <View style={s.cRef}>
                   <Text style={s.tdText}>{l.referencia ?? "—"}</Text>
@@ -214,7 +256,7 @@ function Tabla({
                 </View>
                 <Text style={[s.tdText, s.cFecha]}>{fmtDate(l.fecha)}</Text>
                 <Text style={[s.tdMonto, s.cMonto]}>{fmt(l.monto)}</Text>
-                <Text style={[s.tdAbonado, s.cAbonado]}>
+                <Text style={[s.tdAbonado, s.cAbonado, cubierto > 0 ? { color: GREEN, fontFamily: "Helvetica-Bold" } : {}]}>
                   {cubierto > 0 ? fmt(cubierto) : "—"}
                 </Text>
                 <Text
@@ -231,12 +273,20 @@ function Tabla({
           })}
           <View style={s.totalRow}>
             <Text style={s.totalLabel}>
-              {tipo === "cobrar"
-                ? "TOTAL SALDO POR COBRAR (A FAVOR DE MAINSTAGE)"
-                : "TOTAL SALDO RENTAS MUTUAS POR PAGAR (EN CONTRA)"}
+              {esHistorialLiquidado
+                ? tipo === "cobrar"
+                  ? "TOTAL PROYECTOS / CUENTAS LIQUIDADAS AL 100%"
+                  : "TOTAL RENTAS MUTUAS LIQUIDADAS"
+                : tipo === "cobrar"
+                  ? "TOTAL SALDO POR COBRAR PENDIENTE (A FAVOR DE MAINSTAGE)"
+                  : "TOTAL SALDO RENTAS MUTUAS POR PAGAR (EN CONTRA)"}
             </Text>
             <Text style={s.totalValue}>
-              {totalSaldo > 0 ? fmt(totalSaldo) : `${fmt(0)} (Monto histórico: ${fmt(totalMonto)})`}
+              {esHistorialLiquidado
+                ? `${fmt(totalAbonado)} liquidado (${lineas.length} proyecto${lineas.length !== 1 ? "s" : ""})`
+                : totalSaldo > 0
+                  ? `${fmt(totalSaldo)}${totalAbonado > 0 ? `  (Abonado en estas cuentas: ${fmt(totalAbonado)} de ${fmt(totalMonto)})` : ""}`
+                  : `${fmt(0)} (Monto total: ${fmt(totalMonto)})`}
             </Text>
           </View>
         </View>
@@ -245,10 +295,75 @@ function Tabla({
   );
 }
 
+function TablaAbonos({
+  titulo,
+  abonos,
+}: {
+  titulo: string;
+  abonos: EstadoCuentaAbono[];
+}) {
+  if (!abonos || abonos.length === 0) return null;
+  const totalAbonos = abonos.reduce((s, a) => s + a.monto, 0);
+  return (
+    <View style={{ marginBottom: 18 }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 6 }}>
+        <Text style={s.sectionLabel}>{titulo}</Text>
+        <Text style={s.sectionCount}>
+          {abonos.length} abono{abonos.length !== 1 ? "s" : ""} registrado{abonos.length !== 1 ? "s" : ""} · Total {fmt(totalAbonos)}
+        </Text>
+      </View>
+      <View style={s.table}>
+        <View style={s.th}>
+          <Text style={[s.thText, { flex: 1.1, paddingRight: 4 }]}>FECHA</Text>
+          <Text style={[s.thText, { flex: 2.9, paddingRight: 6 }]}>PROYECTO / CONCEPTO APLICADO</Text>
+          <Text style={[s.thText, { flex: 1.7, paddingRight: 6 }]}>MÉTODO / CUENTA</Text>
+          <Text style={[s.thText, { flex: 1.0, paddingRight: 4 }]}>ESTADO PROY.</Text>
+          <Text style={[s.thText, { flex: 1.1, textAlign: "right" }]}>ABONO</Text>
+        </View>
+        {abonos.map((a) => (
+          <View key={a.id} style={s.tr} wrap={false}>
+            <Text style={[s.tdText, { flex: 1.1, paddingRight: 4 }]}>{fmtDate(a.fecha)}</Text>
+            <View style={{ flex: 2.9, paddingRight: 6 }}>
+              <Text style={s.tdConcepto}>{a.proyecto || a.concepto}</Text>
+              {a.grupoFechaCount && a.grupoFechaCount > 1 && a.grupoFechaTotal && (
+                <Text style={{ fontSize: 6.1, color: GOLD, marginTop: 1.5, fontFamily: "Helvetica-Bold" }}>
+                  Parte de abono de {fmt(a.grupoFechaTotal)} ({fmtMetodoCuenta(a)}) dividido en {a.grupoFechaCount} proyectos: {a.grupoDetalle}
+                </Text>
+              )}
+              {a.notas && <Text style={s.tdSub}>{a.notas}</Text>}
+            </View>
+            <Text style={[s.tdText, { flex: 1.7, paddingRight: 6 }]}>{fmtMetodoCuenta(a)}</Text>
+            <View style={{ flex: 1.0, paddingRight: 4 }}>
+              <Text style={[s.badge, { color: ESTADO_COLOR[a.estadoCuenta] ?? "#999999" }]}>
+                {a.estadoCuenta}
+              </Text>
+            </View>
+            <Text style={[s.tdSaldo, { flex: 1.1, textAlign: "right", color: GREEN }]}>{fmt(a.monto)}</Text>
+          </View>
+        ))}
+        <View style={s.totalRow}>
+          <Text style={s.totalLabel}>TOTAL ABONOS REGISTRADOS EN PROYECTOS</Text>
+          <Text style={[s.totalValue, { color: GREEN }]}>{fmt(totalAbonos)}</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 export function EstadoCuentaPDF({ data }: { data: EstadoCuentaData }) {
   const porCobrarPendientes = data.porCobrar.filter(esPendiente);
+  const porCobrarHistoricas = data.porCobrar.filter((l) => !esPendiente(l));
   const porPagarPendientes  = data.porPagar.filter(esPendiente);
   const porPagarHistoricas  = data.porPagar.filter((l) => !esPendiente(l));
+
+  const abonosCobrar =
+    data.abonosCobrar && data.abonosCobrar.length > 0
+      ? data.abonosCobrar
+      : data.porCobrar.flatMap((l) => l.abonos ?? []);
+  const abonosPagar =
+    data.abonosPagar && data.abonosPagar.length > 0
+      ? data.abonosPagar
+      : data.porPagar.flatMap((l) => l.abonos ?? []);
 
   const saldoCobrar = porCobrarPendientes.reduce((sum, l) => sum + Math.max(0, l.monto - l.pagado), 0);
   const saldoPagar  = porPagarPendientes.reduce((sum, l) => sum + Math.max(0, l.monto - l.pagado), 0);
@@ -353,13 +468,21 @@ export function EstadoCuentaPDF({ data }: { data: EstadoCuentaData }) {
             </Text>
           </View>
 
-          {/* Detalle por cobrar */}
+          {/* Detalle por cobrar pendientes */}
           <Tabla
-            titulo="CUENTAS POR COBRAR (RENTAS Y SERVICIOS AL CLIENTE)"
+            titulo="CUENTAS POR COBRAR PENDIENTES (RENTAS Y SERVICIOS AL CLIENTE)"
             lineas={porCobrarPendientes}
             tipo="cobrar"
             emptyText="Sin cuentas pendientes por cobrar."
           />
+
+          {/* Desglose de abonos recibidos */}
+          {abonosCobrar.length > 0 && (
+            <TablaAbonos
+              titulo="DESGLOSE DE ABONOS RECIBIDOS (APLICADOS A PROYECTOS)"
+              abonos={abonosCobrar}
+            />
+          )}
 
           {/* Detalle de rentas mutuas / por pagar */}
           {tieneRelacionMutua && (
@@ -377,6 +500,26 @@ export function EstadoCuentaPDF({ data }: { data: EstadoCuentaData }) {
               lineas={mostrarPagarLineas}
               tipo="pagar"
               emptyText="Sin rentas mutuas pendientes por pagar."
+              esHistorialLiquidado={porPagarPendientes.length === 0}
+            />
+          )}
+
+          {/* Historial de proyectos / cuentas por cobrar liquidadas al 100% */}
+          {porCobrarHistoricas.length > 0 && (
+            <Tabla
+              titulo="HISTORIAL DE PROYECTOS Y CUENTAS LIQUIDADAS AL 100%"
+              subtituloCount={`${porCobrarHistoricas.length} liquidada${porCobrarHistoricas.length !== 1 ? "s" : ""}`}
+              lineas={porCobrarHistoricas}
+              tipo="cobrar"
+              esHistorialLiquidado
+            />
+          )}
+
+          {/* Desglose de pagos a proveedor en rentas mutuas si existen */}
+          {abonosPagar.length > 0 && (
+            <TablaAbonos
+              titulo="HISTORIAL DE PAGOS REALIZADOS EN RENTAS MUTUAS"
+              abonos={abonosPagar}
             />
           )}
 

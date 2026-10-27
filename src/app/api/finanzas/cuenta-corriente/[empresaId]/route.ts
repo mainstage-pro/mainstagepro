@@ -14,7 +14,7 @@ export async function GET(
   const { empresaId } = await params;
 
   // 1 y 2. Obtener CxC y CxP consolidadas de la empresa y sus contactos/proveedores vinculados
-  const { cuentasCobrar, cuentasPagar, empresaIds } = await getCuentasScope({ empresaId });
+  const { cuentasCobrar, cuentasPagar, empresaIds, abonosCobrar, abonosPagar } = await getCuentasScope({ empresaId });
   const idsFiltro = empresaIds.length > 0 ? empresaIds : [empresaId];
 
   // 3. Obtener cortes y compensaciones históricas
@@ -53,6 +53,10 @@ export async function GET(
   const montoCompensable = Math.min(totalFavorMS, totalFavorContraparte);
   const saldoNeto = totalFavorMS - totalFavorContraparte;
 
+  const cxcLiquidadas = cuentasCobrar.filter(
+    (c) => c.estado === "LIQUIDADO" || c.estado === "COMPENSADO" || c.monto - c.montoCobrado - Number(c.montoCompensado || 0) <= 0
+  );
+
   return NextResponse.json({
     resumen: {
       aFavorMainstage: totalFavorMS,
@@ -62,6 +66,9 @@ export async function GET(
     },
     cxcPendientes,
     cxpPendientes,
+    cxcLiquidadas,
+    abonosCobrar,
+    abonosPagar,
     historial: {
       cortes,
       compensaciones

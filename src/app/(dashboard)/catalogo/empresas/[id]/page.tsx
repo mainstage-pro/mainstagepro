@@ -19,18 +19,36 @@ interface ContactoProveedor {
   id: string; nombre: string; telefono: string | null; correo: string | null; giro: string | null;
   proyectoEquipos: ProyectoEquipo[];
 }
+interface AbonoItem {
+  id: string;
+  fecha: string;
+  monto: number;
+  metodoPago: string;
+  cuenta: string | null;
+  notas: string | null;
+  cuentaId: string;
+  concepto: string;
+  proyecto: string | null;
+  referencia: string | null;
+  estadoCuenta: string;
+  grupoFechaTotal?: number;
+  grupoFechaCount?: number;
+  grupoDetalle?: string;
+}
 interface CuentaCobrar {
   id: string; concepto: string; monto: number; montoCobrado: number; montoCompensado?: number; estado: string;
   fechaCompromiso: string;
   cotizacion: { numeroCotizacion: string } | null;
   proyecto: { numeroProyecto: string; nombre: string } | null;
   contacto: { id: string; nombre: string } | null;
+  abonos?: AbonoItem[];
 }
 interface CuentaPagar {
   id: string; concepto: string; monto: number; montoPagado: number; montoCompensado?: number; estado: string;
   fechaCompromiso: string;
   proveedor: { nombre: string } | null;
   proyecto: { numeroProyecto: string; nombre: string } | null;
+  abonos?: AbonoItem[];
 }
 interface EmpresaDetalle {
   id: string; nombre: string; giro: string | null; telefono: string | null; correo: string | null;
@@ -371,24 +389,42 @@ export default function EmpresaDetallePage() {
               <div className="space-y-2">
                 {empresa.cuentasCobrar.map(c => {
                   const saldo = esCuentaActiva(c.estado) ? saldoDeCobrar(c) : 0;
+                  const cubierto = c.montoCobrado + Number(c.montoCompensado || 0);
                   const referencia = c.cotizacion?.numeroCotizacion ?? c.proyecto?.numeroProyecto ?? null;
                   return (
-                    <div key={c.id} className="flex items-center justify-between ms-card px-4 py-2.5 text-sm gap-3">
-                      <div className="min-w-0">
-                        <p className="text-gray-300 text-xs truncate">{c.concepto}</p>
-                        <p className="text-[10px] text-[#555] flex items-center gap-1.5 flex-wrap mt-0.5">
-                          {c.fechaCompromiso && <span>Vence {fmtDate(c.fechaCompromiso)}</span>}
-                          {referencia && <span className="text-[#B3985B]/70">· {referencia}</span>}
-                          {c.contacto && <span>· vía {c.contacto.nombre}</span>}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className={`text-xs font-medium ${c.estado === "LIQUIDADO" || c.estado === "COMPENSADO" ? "text-green-400" : c.estado === "VENCIDO" ? "text-red-400" : "text-yellow-400"}`}>
-                          {c.estado}
-                        </span>
-                        <div className="text-right">
-                          <span className="text-white font-semibold">{fmt(saldo)}</span>
-                          {saldo !== c.monto && <p className="text-[10px] text-[#555]">de {fmt(c.monto)}</p>}
+                    <div key={c.id} className="ms-card px-4 py-2.5 text-sm">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-gray-300 text-xs truncate">{c.concepto}</p>
+                          <p className="text-[10px] text-[#555] flex items-center gap-1.5 flex-wrap mt-0.5">
+                            {c.fechaCompromiso && <span>Vence {fmtDate(c.fechaCompromiso)}</span>}
+                            {referencia && <span className="text-[#B3985B]/70">· {referencia}</span>}
+                            {c.contacto && <span>· vía {c.contacto.nombre}</span>}
+                          </p>
+                          {c.abonos && c.abonos.length > 0 && (
+                            <div className="mt-1.5 space-y-0.5 border-t border-[#1e1e1e] pt-1">
+                              {c.abonos.map((a) => (
+                                <p key={a.id} className="text-[11px] text-emerald-400/90">
+                                  ✓ Abono {fmtDate(a.fecha)} ({a.metodoPago === "EFECTIVO" ? "Efectivo" : a.cuenta ? `${a.metodoPago} · ${a.cuenta}` : a.metodoPago}): <span className="font-semibold">{fmt(a.monto)}</span>
+                                  {a.grupoFechaCount && a.grupoFechaCount > 1 && a.grupoFechaTotal ? (
+                                    <span className="text-[#B3985B] ml-1">
+                                      · Parte de {fmt(a.grupoFechaTotal)} dividido en {a.grupoFechaCount} proyectos
+                                    </span>
+                                  ) : null}
+                                </p>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`text-xs font-medium ${c.estado === "LIQUIDADO" || c.estado === "COMPENSADO" ? "text-green-400" : c.estado === "VENCIDO" ? "text-red-400" : "text-yellow-400"}`}>
+                            {c.estado}
+                          </span>
+                          <div className="text-right">
+                            <span className="text-white font-semibold">{fmt(saldo)}</span>
+                            {cubierto > 0 && saldo > 0 && <p className="text-[10px] text-emerald-400/80">Abonado {fmt(cubierto)} de {fmt(c.monto)}</p>}
+                            {saldo === 0 && <p className="text-[10px] text-[#555]">Total {fmt(c.monto)}</p>}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -397,6 +433,46 @@ export default function EmpresaDetallePage() {
               </div>
             </div>
           )}
+          {(() => {
+            const todosAbonos = empresa.cuentasCobrar
+              .flatMap((c) => c.abonos ?? [])
+              .sort((a, b) => a.fecha.localeCompare(b.fecha));
+            if (todosAbonos.length === 0) return null;
+            const totalAbonos = todosAbonos.reduce((s, a) => s + a.monto, 0);
+            return (
+              <div>
+                <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                  <h3 className="text-sm font-medium text-white">
+                    Desglose de abonos recibidos ({todosAbonos.length} registro{todosAbonos.length !== 1 ? "s" : ""})
+                  </h3>
+                  <span className="text-xs font-semibold text-emerald-400">Total abonado: {fmt(totalAbonos)}</span>
+                </div>
+                <div className="space-y-1.5">
+                  {todosAbonos.map((a) => (
+                    <div key={a.id} className="ms-card px-4 py-2.5 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs text-white font-medium">{a.proyecto || a.concepto}</span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${a.estadoCuenta === "LIQUIDADO" ? "bg-green-900/30 text-green-400" : "bg-yellow-900/30 text-yellow-400"}`}>
+                            {a.estadoCuenta}
+                          </span>
+                          <span className="text-[10px] text-gray-400">
+                            · {fmtDate(a.fecha)} · {a.metodoPago === "EFECTIVO" ? "Efectivo" : a.cuenta ? `${a.metodoPago} (${a.cuenta})` : a.metodoPago}
+                          </span>
+                        </div>
+                        {a.grupoFechaCount && a.grupoFechaCount > 1 && a.grupoFechaTotal && (
+                          <p className="text-[10px] text-[#B3985B] mt-0.5">
+                            Parte de abono de {fmt(a.grupoFechaTotal)} dividido en {a.grupoFechaCount} proyectos: {a.grupoDetalle}
+                          </p>
+                        )}
+                      </div>
+                      <span className="text-xs font-semibold text-emerald-400 shrink-0">{fmt(a.monto)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
           {empresa.cuentasPagar.length > 0 && (
             <div>
               <h3 className="text-sm font-medium text-white mb-3">Rentas mutuas / Cuentas por pagar (Como proveedor)</h3>
