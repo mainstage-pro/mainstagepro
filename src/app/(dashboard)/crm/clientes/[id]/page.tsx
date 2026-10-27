@@ -785,12 +785,7 @@ function PanelCuentas({
                               <div className="mt-2 space-y-1 border-t border-[#262626] pt-1.5">
                                 {c.abonos.map((a) => (
                                   <div key={a.id} className="text-[11px] text-emerald-400/90">
-                                    ✓ Abono {fmtDate(a.fecha)} ({a.metodoPago === "EFECTIVO" ? "Efectivo" : a.cuenta ? `${a.metodoPago} · ${a.cuenta}` : a.metodoPago}): <span className="font-semibold">{fmt(a.monto)}</span>
-                                    {a.grupoFechaCount && a.grupoFechaCount > 1 && a.grupoFechaTotal ? (
-                                      <span className="text-[#B3985B] ml-1">
-                                        · Parte de abono de {fmt(a.grupoFechaTotal)} dividido en {a.grupoFechaCount} proyectos
-                                      </span>
-                                    ) : null}
+                                    ✓ Abono {fmtDate(a.fecha)} ({a.metodoPago === "EFECTIVO" ? "Efectivo" : a.metodoPago === "TRANSFERENCIA" ? "Transferencia" : a.metodoPago}): <span className="font-semibold">{fmt(a.monto)}</span>
                                   </div>
                                 ))}
                               </div>
@@ -854,12 +849,30 @@ function PanelCuentas({
             )}
           </div>
 
-          {/* Desglose de todos los abonos recibidos (incluyendo proyectos ya liquidados y pagos divididos) */}
+          {/* Desglose de todos los abonos recibidos (agrupando pagos divididos en varios proyectos) */}
           {(() => {
-            const todosAbonos = cuentasCobrar
-              .flatMap((c) => c.abonos ?? [])
-              .sort((a, b) => a.fecha.localeCompare(b.fecha));
-            if (todosAbonos.length === 0) return null;
+            const rawAbonos = cuentasCobrar.flatMap((c) => c.abonos ?? []);
+            if (rawAbonos.length === 0) return null;
+            const grupos = new Map<string, AbonoItem[]>();
+            for (const a of rawAbonos) {
+              const key = `${a.fecha.slice(0, 10)}|${a.metodoPago}`;
+              const arr = grupos.get(key) ?? [];
+              arr.push(a);
+              grupos.set(key, arr);
+            }
+            const todosAbonos: AbonoItem[] = [];
+            for (const arr of grupos.values()) {
+              if (arr.length === 1) {
+                todosAbonos.push(arr[0]);
+              } else {
+                todosAbonos.push({
+                  ...arr[0],
+                  monto: arr.reduce((s, x) => s + x.monto, 0),
+                  proyecto: arr.map((x) => x.proyecto || x.concepto).join(" · "),
+                });
+              }
+            }
+            todosAbonos.sort((a, b) => a.fecha.localeCompare(b.fecha));
             const totalAbonos = todosAbonos.reduce((s, a) => s + a.monto, 0);
             return (
               <div className="mt-5 pt-4 border-t border-[#1e1e1e]">
@@ -867,11 +880,11 @@ function PanelCuentas({
                   <div className="flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                     <p className="text-xs font-medium text-gray-300">
-                      Desglose de abonos recibidos ({todosAbonos.length} registro{todosAbonos.length !== 1 ? "s" : ""})
+                      Abonos recibidos ({todosAbonos.length})
                     </p>
                   </div>
                   <span className="text-xs font-semibold text-emerald-400">
-                    Total abonado en registros: {fmt(totalAbonos)}
+                    Total abonado: {fmt(totalAbonos)}
                   </span>
                 </div>
                 <div className="space-y-1.5">
@@ -880,18 +893,10 @@ function PanelCuentas({
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-xs text-white font-medium">{a.proyecto || a.concepto}</span>
-                          <span className={`px-1.5 py-0.5 rounded-full text-[9px] ${ESTADO_CUENTA_COLORS[a.estadoCuenta] || "bg-gray-800 text-gray-400"}`}>
-                            {a.estadoCuenta}
-                          </span>
                           <span className="text-[10px] text-gray-400">
-                            · {fmtDate(a.fecha)} · {a.metodoPago === "EFECTIVO" ? "Efectivo" : a.cuenta ? `${a.metodoPago} (${a.cuenta})` : a.metodoPago}
+                            · {fmtDate(a.fecha)} · {a.metodoPago === "EFECTIVO" ? "Efectivo" : a.metodoPago === "TRANSFERENCIA" ? "Transferencia" : a.metodoPago}
                           </span>
                         </div>
-                        {a.grupoFechaCount && a.grupoFechaCount > 1 && a.grupoFechaTotal && (
-                          <p className="text-[10px] text-[#B3985B] mt-0.5">
-                            Parte de abono de {fmt(a.grupoFechaTotal)} dividido en {a.grupoFechaCount} proyectos: {a.grupoDetalle}
-                          </p>
-                        )}
                       </div>
                       <span className="text-xs font-semibold text-emerald-400 shrink-0">{fmt(a.monto)}</span>
                     </div>
@@ -931,10 +936,7 @@ function PanelCuentas({
                                   <div className="mt-1.5 space-y-0.5">
                                     {c.abonos.map((a) => (
                                       <p key={a.id} className="text-[10px] text-emerald-400/90">
-                                        ✓ Abono {fmtDate(a.fecha)} ({a.metodoPago === "EFECTIVO" ? "Efectivo" : a.cuenta || a.metodoPago}): {fmt(a.monto)}
-                                        {a.grupoFechaCount && a.grupoFechaCount > 1 && a.grupoFechaTotal
-                                          ? ` · Parte de ${fmt(a.grupoFechaTotal)} en ${a.grupoFechaCount} proyectos`
-                                          : ""}
+                                        ✓ Abono {fmtDate(a.fecha)} ({a.metodoPago === "EFECTIVO" ? "Efectivo" : a.metodoPago === "TRANSFERENCIA" ? "Transferencia" : a.metodoPago}): {fmt(a.monto)}
                                       </p>
                                     ))}
                                   </div>

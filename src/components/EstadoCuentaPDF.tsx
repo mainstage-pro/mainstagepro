@@ -175,10 +175,11 @@ export interface EstadoCuentaData {
 }
 
 function fmtMetodoCuenta(a: EstadoCuentaAbono): string {
-  const m = a.metodoPago === "EFECTIVO" ? "Efectivo" : a.metodoPago === "TRANSFERENCIA" ? "Transferencia" : a.metodoPago;
-  if (!a.cuenta) return m;
-  if (a.cuenta.toLowerCase().includes("efectivo") && a.metodoPago === "EFECTIVO") return "Efectivo";
-  return `${m} · ${a.cuenta}`;
+  if (a.metodoPago === "EFECTIVO") return "Efectivo";
+  if (a.metodoPago === "TRANSFERENCIA") return "Transferencia";
+  if (a.metodoPago === "TARJETA") return "Tarjeta";
+  if (a.metodoPago === "CHEQUE") return "Cheque";
+  return a.metodoPago;
 }
 
 function esPendiente(l: EstadoCuentaLinea): boolean {
@@ -240,9 +241,6 @@ function Tabla({
                       {l.abonos.map((a) => (
                         <Text key={a.id} style={{ fontSize: 6.1, color: GREEN, marginTop: 1 }}>
                           • Abono {fmtDate(a.fecha)} ({fmtMetodoCuenta(a)}): {fmt(a.monto)}
-                          {a.grupoFechaCount && a.grupoFechaCount > 1 && a.grupoFechaTotal
-                            ? ` — Parte de ${fmt(a.grupoFechaTotal)} dividido en ${a.grupoFechaCount} proyectos`
-                            : ""}
                         </Text>
                       ))}
                     </View>
@@ -309,40 +307,29 @@ function TablaAbonos({
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 6 }}>
         <Text style={s.sectionLabel}>{titulo}</Text>
         <Text style={s.sectionCount}>
-          {abonos.length} abono{abonos.length !== 1 ? "s" : ""} registrado{abonos.length !== 1 ? "s" : ""} · Total {fmt(totalAbonos)}
+          {abonos.length} abono{abonos.length !== 1 ? "s" : ""} · Total {fmt(totalAbonos)}
         </Text>
       </View>
       <View style={s.table}>
         <View style={s.th}>
-          <Text style={[s.thText, { flex: 1.1, paddingRight: 4 }]}>FECHA</Text>
-          <Text style={[s.thText, { flex: 2.9, paddingRight: 6 }]}>PROYECTO / CONCEPTO APLICADO</Text>
-          <Text style={[s.thText, { flex: 1.7, paddingRight: 6 }]}>MÉTODO / CUENTA</Text>
-          <Text style={[s.thText, { flex: 1.0, paddingRight: 4 }]}>ESTADO PROY.</Text>
-          <Text style={[s.thText, { flex: 1.1, textAlign: "right" }]}>ABONO</Text>
+          <Text style={[s.thText, { flex: 1.2, paddingRight: 4 }]}>FECHA</Text>
+          <Text style={[s.thText, { flex: 3.8, paddingRight: 6 }]}>PROYECTO(S)</Text>
+          <Text style={[s.thText, { flex: 1.5, paddingRight: 6 }]}>MÉTODO DE PAGO</Text>
+          <Text style={[s.thText, { flex: 1.2, textAlign: "right" }]}>ABONO</Text>
         </View>
         {abonos.map((a) => (
           <View key={a.id} style={s.tr} wrap={false}>
-            <Text style={[s.tdText, { flex: 1.1, paddingRight: 4 }]}>{fmtDate(a.fecha)}</Text>
-            <View style={{ flex: 2.9, paddingRight: 6 }}>
+            <Text style={[s.tdText, { flex: 1.2, paddingRight: 4 }]}>{fmtDate(a.fecha)}</Text>
+            <View style={{ flex: 3.8, paddingRight: 6 }}>
               <Text style={s.tdConcepto}>{a.proyecto || a.concepto}</Text>
-              {a.grupoFechaCount && a.grupoFechaCount > 1 && a.grupoFechaTotal && (
-                <Text style={{ fontSize: 6.1, color: GOLD, marginTop: 1.5, fontFamily: "Helvetica-Bold" }}>
-                  Parte de abono de {fmt(a.grupoFechaTotal)} ({fmtMetodoCuenta(a)}) dividido en {a.grupoFechaCount} proyectos: {a.grupoDetalle}
-                </Text>
-              )}
               {a.notas && <Text style={s.tdSub}>{a.notas}</Text>}
             </View>
-            <Text style={[s.tdText, { flex: 1.7, paddingRight: 6 }]}>{fmtMetodoCuenta(a)}</Text>
-            <View style={{ flex: 1.0, paddingRight: 4 }}>
-              <Text style={[s.badge, { color: ESTADO_COLOR[a.estadoCuenta] ?? "#999999" }]}>
-                {a.estadoCuenta}
-              </Text>
-            </View>
-            <Text style={[s.tdSaldo, { flex: 1.1, textAlign: "right", color: GREEN }]}>{fmt(a.monto)}</Text>
+            <Text style={[s.tdText, { flex: 1.5, paddingRight: 6 }]}>{fmtMetodoCuenta(a)}</Text>
+            <Text style={[s.tdSaldo, { flex: 1.2, textAlign: "right", color: GREEN }]}>{fmt(a.monto)}</Text>
           </View>
         ))}
         <View style={s.totalRow}>
-          <Text style={s.totalLabel}>TOTAL ABONOS REGISTRADOS EN PROYECTOS</Text>
+          <Text style={s.totalLabel}>TOTAL ABONOS REGISTRADOS</Text>
           <Text style={[s.totalValue, { color: GREEN }]}>{fmt(totalAbonos)}</Text>
         </View>
       </View>

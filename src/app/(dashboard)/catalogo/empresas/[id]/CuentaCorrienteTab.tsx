@@ -135,12 +135,7 @@ export default function CuentaCorrienteTab({ empresaId }: { empresaId: string })
                   <div className="mt-2 pt-1.5 border-t border-[#1e1e1e] space-y-0.5">
                     {c.abonos.map((a: any) => (
                       <p key={a.id} className="text-[11px] text-emerald-400/90">
-                        ✓ Abono {fmtDate(a.fecha)} ({a.metodoPago === "EFECTIVO" ? "Efectivo" : a.cuenta ? `${a.metodoPago} · ${a.cuenta}` : a.metodoPago}): <span className="font-semibold">{fmt(a.monto)}</span>
-                        {a.grupoFechaCount && a.grupoFechaCount > 1 && a.grupoFechaTotal ? (
-                          <span className="text-[#B3985B] ml-1">
-                            · Parte de {fmt(a.grupoFechaTotal)} dividido en {a.grupoFechaCount} proyectos
-                          </span>
-                        ) : null}
+                        ✓ Abono {fmtDate(a.fecha)} ({a.metodoPago === "EFECTIVO" ? "Efectivo" : a.metodoPago === "TRANSFERENCIA" ? "Transferencia" : a.metodoPago}): <span className="font-semibold">{fmt(a.monto)}</span>
                       </p>
                     ))}
                   </div>
@@ -170,10 +165,10 @@ export default function CuentaCorrienteTab({ empresaId }: { empresaId: string })
         <div>
           <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
             <h3 className="text-sm font-medium text-white">
-              Desglose de Abonos Recibidos ({abonosCobrar.length} registro{abonosCobrar.length !== 1 ? "s" : ""})
+              Abonos Recibidos ({abonosCobrar.length})
             </h3>
             <span className="text-xs font-semibold text-emerald-400">
-              Total abonado en registros: {fmt(abonosCobrar.reduce((s: number, a: any) => s + a.monto, 0))}
+              Total abonado: {fmt(abonosCobrar.reduce((s: number, a: any) => s + a.monto, 0))}
             </span>
           </div>
           <div className="space-y-1.5">
@@ -182,18 +177,10 @@ export default function CuentaCorrienteTab({ empresaId }: { empresaId: string })
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs text-white font-medium">{a.proyecto || a.concepto}</span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${a.estadoCuenta === "LIQUIDADO" ? "bg-green-900/30 text-green-400" : "bg-yellow-900/30 text-yellow-400"}`}>
-                      {a.estadoCuenta}
-                    </span>
                     <span className="text-[10px] text-gray-400">
-                      · {fmtDate(a.fecha)} · {a.metodoPago === "EFECTIVO" ? "Efectivo" : a.cuenta ? `${a.metodoPago} (${a.cuenta})` : a.metodoPago}
+                      · {fmtDate(a.fecha)} · {a.metodoPago === "EFECTIVO" ? "Efectivo" : a.metodoPago === "TRANSFERENCIA" ? "Transferencia" : a.metodoPago}
                     </span>
                   </div>
-                  {a.grupoFechaCount && a.grupoFechaCount > 1 && a.grupoFechaTotal && (
-                    <p className="text-[10px] text-[#B3985B] mt-0.5">
-                      Parte de abono de {fmt(a.grupoFechaTotal)} dividido en {a.grupoFechaCount} proyectos: {a.grupoDetalle}
-                    </p>
-                  )}
                 </div>
                 <span className="text-xs font-semibold text-emerald-400 shrink-0">{fmt(a.monto)}</span>
               </div>
@@ -218,10 +205,7 @@ export default function CuentaCorrienteTab({ empresaId }: { empresaId: string })
                       <div className="mt-1 space-y-0.5">
                         {c.abonos.map((a: any) => (
                           <p key={a.id} className="text-[10px] text-emerald-400/90">
-                            ✓ Abono {fmtDate(a.fecha)} ({a.metodoPago === "EFECTIVO" ? "Efectivo" : a.cuenta || a.metodoPago}): {fmt(a.monto)}
-                            {a.grupoFechaCount && a.grupoFechaCount > 1 && a.grupoFechaTotal
-                              ? ` · Parte de ${fmt(a.grupoFechaTotal)} en ${a.grupoFechaCount} proyectos`
-                              : ""}
+                            ✓ Abono {fmtDate(a.fecha)} ({a.metodoPago === "EFECTIVO" ? "Efectivo" : a.metodoPago === "TRANSFERENCIA" ? "Transferencia" : a.metodoPago}): {fmt(a.monto)}
                           </p>
                         ))}
                       </div>
