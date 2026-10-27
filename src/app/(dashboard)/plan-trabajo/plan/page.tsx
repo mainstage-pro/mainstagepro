@@ -1485,6 +1485,8 @@ export default function PlanPage() {
   const [userArea, setUserArea]         = useState<string | null>(null)
   const [collapsedSubs, setCollapsedSubs] = useState<Set<string>>(new Set())
   const [lastSaved, setLastSaved]       = useState<Template | null>(null)
+  const [planActivo, setPlanActivo]     = useState<boolean | null>(null)
+  const [togglingPlan, setTogglingPlan] = useState(false)
 
   // Add subarea
   const [addingSubareaForAreaId, setAddingSubareaForAreaId] = useState<string | null>(null)
@@ -1509,6 +1511,13 @@ export default function PlanPage() {
       setUsuarios(usuData.usuarios ?? [])
       setIsAdmin(meData.role === 'ADMIN')
       setUserArea(meData.area ?? null)
+
+      if (meData.role === 'ADMIN') {
+        fetch('/api/plan-trabajo/estado')
+          .then(r => r.json())
+          .then((d: { activo: boolean }) => setPlanActivo(d.activo))
+          .catch(() => {})
+      }
 
       const areasData: AreaData[] = await Promise.all(
         soData.areas.map(async area => {
@@ -1668,6 +1677,25 @@ export default function PlanPage() {
           templates: sg.templates.filter(t => t.id !== templateId),
         })),
       })))
+    }
+  }
+
+  async function handleTogglePlanActivo() {
+    const siguiente = !planActivo
+    const mensaje = siguiente
+      ? '¿Reactivar el Plan de Trabajo? El motor volverá a generar tareas de los compromisos activos.'
+      : '¿Pausar el Plan de Trabajo? Se detiene la generación de tareas nuevas y se cancelan las pendientes que ya existen. La recurrencia de cada compromiso NO se borra.'
+    if (!confirm(mensaje)) return
+    setTogglingPlan(true)
+    try {
+      const res = await fetch('/api/plan-trabajo/estado', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ activo: siguiente }),
+      })
+      if (res.ok) setPlanActivo(siguiente)
+    } finally {
+      setTogglingPlan(false)
     }
   }
 
@@ -1948,6 +1976,30 @@ export default function PlanPage() {
                   </div>
                 )
               })()}
+
+              {/* Interruptor maestro: pausa/reactiva TODO el Plan de Trabajo sin tocar
+                  la recurrencia de cada compromiso (AppConfig plan_trabajo_activo). */}
+              {planActivo !== null && (
+                <>
+                  <div className="mx-3 my-2 h-px bg-[#111]" />
+                  <div className="px-3">
+                    <button
+                      onClick={handleTogglePlanActivo}
+                      disabled={togglingPlan}
+                      className={`w-full text-left px-2.5 py-2 rounded-lg transition-all flex items-center gap-2.5 disabled:opacity-50 ${
+                        planActivo ? 'hover:bg-[#0a0a0a]' : 'bg-[#2a1414] hover:bg-[#331818]'
+                      }`}
+                    >
+                      <div
+                        className={`w-2.5 h-2.5 rounded-full shrink-0 ${planActivo ? 'bg-emerald-500' : 'bg-red-500'}`}
+                      />
+                      <span className="text-xs font-medium truncate text-gray-300">
+                        Plan de Trabajo: {planActivo ? 'Activo' : 'Pausado'}
+                      </span>
+                    </button>
+                  </div>
+                </>
+              )}
 
             </>
           )}

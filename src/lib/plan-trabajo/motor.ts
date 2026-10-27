@@ -220,6 +220,14 @@ export async function generarTareasDelDia(fecha: Date = new Date()): Promise<{
 }> {
   let generadas = 0, subtareas = 0, omitidas = 0, errores = 0;
 
+  // Interruptor maestro (AppConfig key "plan_trabajo_activo"): si está en "false",
+  // el motor no genera nada, sin tocar la recurrencia de ninguna plantilla.
+  const config = await prisma.appConfig.findUnique({ where: { key: "plan_trabajo_activo" } });
+  if (config && config.value === "false") {
+    console.log("[motor] Plan de trabajo pausado (plan_trabajo_activo=false); no se genera nada.");
+    return { generadas, subtareas, omitidas, errores };
+  }
+
   const templates = (await prisma.pTTareaTemplate.findMany({
     where: { activa: true },
     include: { area: { select: { nombre: true, codigo: true } } },
