@@ -168,6 +168,19 @@ export function VistaRendimiento() {
             {data.periodo.label} · Solo tareas con responsable y fecha compromiso.
             {r.sinResponsable > 0 && <span className="ml-1 text-[#555]">· {r.sinResponsable} sin responsable (no medibles)</span>}
           </p>
+          {isAdmin && planActivo !== null && (
+            <button
+              onClick={handleTogglePlanActivo}
+              disabled={togglingPlan}
+              title={planActivo ? 'Pausar Plan de Trabajo' : 'Reactivar Plan de Trabajo'}
+              className={`mt-2 flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] transition-colors disabled:opacity-60 ${
+                planActivo ? 'border-[#222] text-[#666] hover:bg-[#1a1a1a]' : 'border-red-900/40 bg-red-950/20 text-red-400 hover:bg-red-950/40'
+              }`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${planActivo ? 'bg-emerald-500' : 'bg-red-500'}`} />
+              Plan de Trabajo: {togglingPlan ? '...' : planActivo ? 'Activo' : 'Pausado'}
+            </button>
+          )}
         </div>
         <button
           onClick={() => downloadPdf('general')}
@@ -209,25 +222,12 @@ export function VistaRendimiento() {
               const personas = usuariosDeFuente(f.fuente)
               return (
                 <div key={f.fuente} className="rounded-xl border border-[#1e1e1e] overflow-hidden">
-                  <div onClick={() => personas.length && toggleSys(f.fuente)}
+                  <button onClick={() => personas.length && toggleSys(f.fuente)}
                     className={`w-full text-left px-4 py-3 ${isOpen ? 'bg-[#161616]' : 'bg-[#0d0d0d]'} ${personas.length ? 'cursor-pointer' : 'cursor-default'}`}>
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="text-sm text-[#ccc] truncate">{FUENTE_LABEL[f.fuente]}</span>
                         <span className={`text-[9px] px-1.5 py-0.5 rounded-full border border-[#222] ${perfClass(f.cumplimiento)}`}>{bandaLabel(f.cumplimiento)}</span>
-                        {f.fuente === 'PLAN' && isAdmin && planActivo !== null && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleTogglePlanActivo() }}
-                            disabled={togglingPlan}
-                            title={planActivo ? 'Pausar Plan de Trabajo' : 'Reactivar Plan de Trabajo'}
-                            className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[9px] shrink-0 transition-colors disabled:opacity-60 ${
-                              planActivo ? 'border-[#222] text-[#666] hover:bg-[#1a1a1a]' : 'border-red-900/40 bg-red-950/20 text-red-400 hover:bg-red-950/40'
-                            }`}
-                          >
-                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${planActivo ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                            {togglingPlan ? '...' : planActivo ? 'Activo' : 'Pausado'}
-                          </button>
-                        )}
                       </div>
                       <div className="flex items-center gap-3 shrink-0">
                         {f.vencidas > 0 && <span className="text-[10px] text-red-400 tabular-nums">{f.vencidas} venc.</span>}
@@ -239,7 +239,7 @@ export function VistaRendimiento() {
                     <div className="h-1 bg-[#1a1a1a] rounded-full overflow-hidden mt-2">
                       <div className="h-full rounded-full transition-all duration-500" style={{ width: `${f.cumplimiento}%`, backgroundColor: perfBar(f.cumplimiento) }} />
                     </div>
-                  </div>
+                  </button>
                   {isOpen && personas.length > 0 && (
                     <div className="border-t border-[#1a1a1a] bg-[#080808] divide-y divide-[#111]">
                       <p className="px-4 pt-3 pb-1 text-[9px] uppercase tracking-wider text-[#555]">Por persona en este sistema</p>
