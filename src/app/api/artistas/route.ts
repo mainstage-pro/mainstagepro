@@ -57,7 +57,8 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
   const { nombre, genero, origen, contactoNombre, contactoTelefono, contactoEmail,
-    instagram, sitioWeb, notas, clienteId, logoUrl, tipoFormacion, integrantesNum } = body;
+    instagram, sitioWeb, notas, clienteId, logoUrl, tipoFormacion, integrantesNum,
+    enRosterGiras, rosterNivelServicio } = body;
 
   if (!nombre?.trim()) return NextResponse.json({ error: "Nombre requerido" }, { status: 400 });
 
@@ -86,6 +87,10 @@ export async function POST(req: NextRequest) {
       integrantesNum: Number.isFinite(Number(integrantesNum)) && integrantesNum !== null && integrantesNum !== ""
         ? Number(integrantesNum)
         : null,
+      enRosterGiras: Boolean(enRosterGiras),
+      rosterNivelServicio: rosterNivelServicio || null,
+      rosterEstado: enRosterGiras ? "ACTIVO" : null,
+      rosterFechaAlta: enRosterGiras ? new Date() : null,
     },
   });
 

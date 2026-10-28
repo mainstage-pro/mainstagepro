@@ -19,9 +19,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const data: Record<string, unknown> = {};
   const textFields = ["nombre", "genero", "origen", "contactoNombre", "contactoTelefono",
-    "contactoEmail", "instagram", "sitioWeb", "notas",
+    "contactoEmail", "instagram", "sitioWeb", "tiktok", "youtube", "spotify", "bio", "notas",
     // Campos de Giras: el logo encabeza riders y day sheets.
-    "clienteId", "logoUrl", "tipoFormacion"];
+    "clienteId", "logoUrl", "tipoFormacion",
+    // Roster de giras: diferencia al artista cliente de PM/dirección técnica.
+    "rosterNivelServicio", "rosterEstado", "rosterResponsableId", "rosterNotas"];
   for (const f of textFields) if (f in body) data[f] = body[f] || null;
   if ("integrantesNum" in body) {
     const n = Number(body.integrantesNum);
@@ -30,6 +32,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       : Math.trunc(n);
   }
   if ("activo" in body) data.activo = body.activo;
+  if ("enRosterGiras" in body) {
+    data.enRosterGiras = Boolean(body.enRosterGiras);
+    // Al activar el roster por primera vez, sella la fecha de alta si no la trae.
+    if (body.enRosterGiras && !body.rosterFechaAlta) data.rosterFechaAlta = new Date();
+  }
+  if ("rosterFechaAlta" in body && body.rosterFechaAlta) data.rosterFechaAlta = new Date(body.rosterFechaAlta);
 
   const artista = await prisma.artista.update({ where: { id }, data });
   return NextResponse.json({ artista });

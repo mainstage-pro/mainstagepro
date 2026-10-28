@@ -20,6 +20,8 @@ export default async function GirasArtistasPage() {
         logoUrl: true,
         tipoFormacion: true,
         integrantesNum: true,
+        enRosterGiras: true,
+        rosterNivelServicio: true,
         cliente: { select: { id: true, nombre: true, empresa: true } },
         riders: {
           where: { activo: true },
@@ -47,6 +49,8 @@ export default async function GirasArtistasPage() {
       logoUrl: a.logoUrl,
       tipoFormacion: a.tipoFormacion,
       integrantesNum: a.integrantesNum,
+      enRosterGiras: a.enRosterGiras,
+      rosterNivelServicio: a.rosterNivelServicio,
       cliente: a.cliente ? a.cliente.empresa || a.cliente.nombre : null,
       riderActivo: activo ? { nombre: activo.nombre, version: activo.version } : null,
       versiones: a.riders.length,

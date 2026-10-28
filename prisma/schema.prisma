@@ -3870,6 +3870,10 @@ model Artista {
   contactoEmail    String?
   instagram        String?
   sitioWeb         String?
+  tiktok           String?
+  youtube          String?
+  spotify          String?
+  bio              String? // una o dos líneas: encabeza propuestas y el libro de gira
   notas            String?
 
   // El artista nace del Cliente que lo contrata o lo representa
@@ -3878,6 +3882,16 @@ model Artista {
   logoUrl        String? // encabeza riders, day sheets e input lists
   tipoFormacion  String? // BANDA|SOLISTA|DJ|ENSAMBLE|COLECTIVO
   integrantesNum Int?
+
+  // Roster de giras: artistas que son clientes del servicio de production
+  // management / dirección técnica de giras (ej. AQUIHAYAQUIHAY), a diferencia
+  // de un artista que solo aparece en un rider suelto de renta o evento.
+  enRosterGiras       Boolean   @default(false)
+  rosterNivelServicio String? // ASESORIA|COORDINACION_PARCIAL|DIRECCION_INTEGRAL (mismo vocabulario que Trato.nivelInvolucramiento)
+  rosterEstado        String? // ACTIVO|PAUSADO|TERMINADO
+  rosterFechaAlta     DateTime?
+  rosterResponsableId String? // User.id del responsable interno de la cuenta (sin relación Prisma)
+  rosterNotas         String? // condiciones del roster: SLA, acuerdos especiales — distinto de `notas` general
 
   activo    Boolean  @default(true)
   createdAt DateTime @default(now())

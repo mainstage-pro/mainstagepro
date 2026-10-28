@@ -29,6 +29,7 @@ export default async function ArtistaLayout({
       tipoFormacion: true,
       integrantesNum: true,
       activo: true,
+      enRosterGiras: true,
       cliente: { select: { nombre: true, empresa: true } },
       riders: {
         where: { activo: true, esActivo: true },
@@ -64,6 +65,7 @@ export default async function ArtistaLayout({
         riderVigente={artista.riders[0] ?? null}
         personas={personas}
         giras={artista._count.giras}
+        enRosterGiras={artista.enRosterGiras}
         enlaces={enlaces}
       />
       <div className="flex-1">{children}</div>

@@ -6,14 +6,23 @@ import { useRouter } from "next/navigation";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
+import { NIVELES_INVOLUCRAMIENTO, etiquetaNivel } from "@/lib/servicios-direccion";
 import {
   ESTADO_GIRA_COLOR,
   TIPOS_FORMACION,
   TIPO_FORMACION_LABEL,
+  ROL_PERSONA_LABEL,
   esGira,
   estadoRegistroLabel,
   fmtRango,
 } from "@/lib/giras";
+
+const ROSTER_ESTADOS = ["ACTIVO", "PAUSADO", "TERMINADO"] as const;
+const ROSTER_ESTADO_LABEL: Record<string, string> = {
+  ACTIVO: "Activo",
+  PAUSADO: "Pausado",
+  TERMINADO: "Terminado",
+};
 
 interface Artista {
   id: string;
@@ -25,11 +34,28 @@ interface Artista {
   contactoEmail: string | null;
   instagram: string | null;
   sitioWeb: string | null;
+  tiktok: string | null;
+  youtube: string | null;
+  spotify: string | null;
+  bio: string | null;
   notas: string | null;
   clienteId: string | null;
   logoUrl: string | null;
   tipoFormacion: string | null;
   integrantesNum: number | null;
+  enRosterGiras: boolean;
+  rosterNivelServicio: string | null;
+  rosterEstado: string | null;
+  rosterFechaAlta: string | null;
+  rosterNotas: string | null;
+}
+
+interface Representante {
+  id: string;
+  nombre: string;
+  rol: string;
+  telefono: string | null;
+  email: string | null;
 }
 
 interface GiraFila {
@@ -45,10 +71,33 @@ interface GiraFila {
 interface Props {
   artista: Artista;
   clientes: { id: string; nombre: string; empresa: string | null }[];
+  representacion: Representante[];
   giras: GiraFila[];
 }
 
-type Formulario = Record<keyof Omit<Artista, "id" | "integrantesNum">, string> & { integrantesNum: string };
+type Formulario = {
+  nombre: string;
+  genero: string;
+  origen: string;
+  contactoNombre: string;
+  contactoTelefono: string;
+  contactoEmail: string;
+  instagram: string;
+  sitioWeb: string;
+  tiktok: string;
+  youtube: string;
+  spotify: string;
+  bio: string;
+  notas: string;
+  clienteId: string;
+  logoUrl: string;
+  tipoFormacion: string;
+  integrantesNum: string;
+  enRosterGiras: boolean;
+  rosterNivelServicio: string;
+  rosterEstado: string;
+  rosterNotas: string;
+};
 
 function aFormulario(a: Artista): Formulario {
   return {
@@ -60,15 +109,23 @@ function aFormulario(a: Artista): Formulario {
     contactoEmail: a.contactoEmail ?? "",
     instagram: a.instagram ?? "",
     sitioWeb: a.sitioWeb ?? "",
+    tiktok: a.tiktok ?? "",
+    youtube: a.youtube ?? "",
+    spotify: a.spotify ?? "",
+    bio: a.bio ?? "",
     notas: a.notas ?? "",
     clienteId: a.clienteId ?? "",
     logoUrl: a.logoUrl ?? "",
     tipoFormacion: a.tipoFormacion ?? "",
     integrantesNum: a.integrantesNum === null ? "" : String(a.integrantesNum),
+    enRosterGiras: a.enRosterGiras,
+    rosterNivelServicio: a.rosterNivelServicio ?? "",
+    rosterEstado: a.rosterEstado ?? (a.enRosterGiras ? "ACTIVO" : ""),
+    rosterNotas: a.rosterNotas ?? "",
   };
 }
 
-export default function DatosArtistaClient({ artista, clientes, giras }: Props) {
+export default function DatosArtistaClient({ artista, clientes, representacion, giras }: Props) {
   const router = useRouter();
   const toast = useToast();
   const confirm = useConfirm();
@@ -79,8 +136,16 @@ export default function DatosArtistaClient({ artista, clientes, giras }: Props) 
 
   const sucio = JSON.stringify(form) !== JSON.stringify(original);
 
-  function set<K extends keyof Formulario>(campo: K, valor: string) {
+  function set<K extends keyof Formulario>(campo: K, valor: Formulario[K]) {
     setForm((p) => ({ ...p, [campo]: valor }));
+  }
+
+  function alternarRoster(activar: boolean) {
+    setForm((p) => ({
+      ...p,
+      enRosterGiras: activar,
+      rosterEstado: activar ? p.rosterEstado || "ACTIVO" : "",
+    }));
   }
 
   async function guardar() {
@@ -132,6 +197,75 @@ export default function DatosArtistaClient({ artista, clientes, giras }: Props) 
     <div className="ms-page space-y-5">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 space-y-4">
+          <section className="ms-card p-4 space-y-4 border-[#B3985B]/30">
+            <div className="flex items-center justify-between gap-2">
+              <p className="ms-section-label">Roster de giras</p>
+              <button
+                onClick={() => alternarRoster(!form.enRosterGiras)}
+                className={form.enRosterGiras ? "ms-badge ms-badge-gold" : "ms-badge ms-badge-gray"}
+              >
+                {form.enRosterGiras ? "En el roster" : "Fuera del roster"}
+              </button>
+            </div>
+            <p className="ms-micro">
+              Márcalo cuando el artista es cliente estable de production management / dirección técnica de giras
+              (ej. AQUIHAYAQUIHAY), para diferenciarlo de un artista que solo aparece en un rider suelto de renta o
+              evento.
+            </p>
+
+            {form.enRosterGiras && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="ms-label block mb-1.5">Nivel de servicio</label>
+                  <select
+                    className="ms-input w-full"
+                    value={form.rosterNivelServicio}
+                    onChange={(e) => set("rosterNivelServicio", e.target.value)}
+                  >
+                    <option value="">Sin definir</option>
+                    {NIVELES_INVOLUCRAMIENTO.map((n) => (
+                      <option key={n.id} value={n.id}>
+                        {n.label}
+                      </option>
+                    ))}
+                  </select>
+                  {form.rosterNivelServicio && (
+                    <p className="ms-micro mt-1">{etiquetaNivel(form.rosterNivelServicio)}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="ms-label block mb-1.5">Estado de la cuenta</label>
+                  <select
+                    className="ms-input w-full"
+                    value={form.rosterEstado}
+                    onChange={(e) => set("rosterEstado", e.target.value)}
+                  >
+                    {ROSTER_ESTADOS.map((e) => (
+                      <option key={e} value={e}>
+                        {ROSTER_ESTADO_LABEL[e]}
+                      </option>
+                    ))}
+                  </select>
+                  {artista.rosterFechaAlta && (
+                    <p className="ms-micro mt-1">
+                      En el roster desde {new Date(artista.rosterFechaAlta).toLocaleDateString("es-MX")}
+                    </p>
+                  )}
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="ms-label block mb-1.5">Condiciones del roster</label>
+                  <textarea
+                    className="ms-textarea w-full"
+                    rows={2}
+                    placeholder="Acuerdos especiales, SLA, lo que distingue a esta cuenta…"
+                    value={form.rosterNotas}
+                    onChange={(e) => set("rosterNotas", e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+          </section>
+
           <section className="ms-card p-4 space-y-4">
             <p className="ms-section-label">Identidad</p>
 
@@ -204,6 +338,17 @@ export default function DatosArtistaClient({ artista, clientes, giras }: Props) 
                 placeholder="Sin cliente"
               />
             </div>
+
+            <div>
+              <label className="ms-label block mb-1.5">Bio corta</label>
+              <textarea
+                className="ms-textarea w-full"
+                rows={2}
+                placeholder="Una o dos líneas: encabeza propuestas y el libro de gira."
+                value={form.bio}
+                onChange={(e) => set("bio", e.target.value)}
+              />
+            </div>
           </section>
 
           <section className="ms-card p-4 space-y-4">
@@ -263,6 +408,33 @@ export default function DatosArtistaClient({ artista, clientes, giras }: Props) 
                   onChange={(e) => set("sitioWeb", e.target.value)}
                 />
               </div>
+              <div>
+                <label className="ms-label block mb-1.5">TikTok</label>
+                <input
+                  className="ms-input w-full"
+                  placeholder="@artista"
+                  value={form.tiktok}
+                  onChange={(e) => set("tiktok", e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="ms-label block mb-1.5">YouTube</label>
+                <input
+                  className="ms-input w-full"
+                  placeholder="https://…"
+                  value={form.youtube}
+                  onChange={(e) => set("youtube", e.target.value)}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="ms-label block mb-1.5">Spotify</label>
+                <input
+                  className="ms-input w-full"
+                  placeholder="https://open.spotify.com/artist/…"
+                  value={form.spotify}
+                  onChange={(e) => set("spotify", e.target.value)}
+                />
+              </div>
             </div>
           </section>
 
@@ -300,6 +472,33 @@ export default function DatosArtistaClient({ artista, clientes, giras }: Props) 
               onChange={(e) => set("logoUrl", e.target.value)}
             />
             <p className="ms-micro">Encabeza riders, input lists y day sheets.</p>
+          </section>
+
+          <section className="ms-card p-4 space-y-3">
+            <p className="ms-section-label">Equipo de representación</p>
+            {representacion.length === 0 ? (
+              <p className="ms-meta">
+                Sin manager, booking o tour manager capturado.{" "}
+                <Link href={`/giras/artista/${artista.id}/personas`} className="ms-link-gold">
+                  Agregar en Personas
+                </Link>
+                .
+              </p>
+            ) : (
+              <div className="divide-y divide-[#1a1a1a] -mx-4">
+                {representacion.map((r) => (
+                  <div key={r.id} className="px-4 py-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[13px] text-white truncate">{r.nombre}</p>
+                      <span className="ms-badge ms-badge-gray shrink-0">
+                        {ROL_PERSONA_LABEL[r.rol] ?? r.rol}
+                      </span>
+                    </div>
+                    <p className="ms-micro">{[r.telefono, r.email].filter(Boolean).join(" · ") || "Sin contacto"}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
 
           <section className="ms-card p-4 space-y-3">

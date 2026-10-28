@@ -17,6 +17,7 @@ interface Props {
   riderVigente: { nombre: string; version: number } | null;
   personas: number;
   giras: number;
+  enRosterGiras: boolean;
   enlaces: EnlaceSub[];
 }
 
@@ -58,7 +59,14 @@ export default function CabeceraArtista(p: Props) {
             />
           ) : null}
           <div className="min-w-0">
-            <h1 className="ms-h1 truncate">{p.nombre}</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="ms-h1 truncate">{p.nombre}</h1>
+              {p.enRosterGiras && (
+                <span className="ms-badge ms-badge-gold shrink-0" title="Cliente de production management / dirección técnica de giras">
+                  Roster de giras
+                </span>
+              )}
+            </div>
             <p className="ms-subtitle mt-0.5 truncate">{descripcion || "Sin datos generales capturados"}</p>
           </div>
         </div>

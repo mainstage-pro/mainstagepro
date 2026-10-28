@@ -7,6 +7,7 @@ import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
 import { coincide } from "@/lib/buscar";
 import { TIPOS_FORMACION, TIPO_FORMACION_LABEL } from "@/lib/giras";
+import { etiquetaNivel } from "@/lib/servicios-direccion";
 
 /// Lo que la página de catálogo arma por artista. No es el modelo completo:
 /// la ficha (/giras/artista/[id]) es la que lee todo.
@@ -18,6 +19,8 @@ export interface ArtistaFila {
   logoUrl: string | null;
   tipoFormacion: string | null;
   integrantesNum: number | null;
+  enRosterGiras: boolean;
+  rosterNivelServicio: string | null;
   cliente: string | null;
   riderActivo: { nombre: string; version: number } | null;
   versiones: number;
@@ -38,6 +41,7 @@ const VACIO = {
   integrantesNum: "",
   clienteId: "",
   logoUrl: "",
+  enRosterGiras: false,
 };
 
 export default function ArtistasCatalogoClient({ artistas, clientes }: Props) {
@@ -47,6 +51,7 @@ export default function ArtistasCatalogoClient({ artistas, clientes }: Props) {
   const [busqueda, setBusqueda] = useState("");
   const [formacion, setFormacion] = useState("");
   const [rider, setRider] = useState("");
+  const [roster, setRoster] = useState("");
   const [abierto, setAbierto] = useState(false);
   const [form, setForm] = useState(VACIO);
   const [guardando, setGuardando] = useState(false);
@@ -58,9 +63,11 @@ export default function ArtistasCatalogoClient({ artistas, clientes }: Props) {
         if (formacion && a.tipoFormacion !== formacion) return false;
         if (rider === "CON" && !a.riderActivo) return false;
         if (rider === "SIN" && a.riderActivo) return false;
+        if (roster === "ROSTER" && !a.enRosterGiras) return false;
+        if (roster === "FUERA" && a.enRosterGiras) return false;
         return coincide(busqueda, a.nombre, a.genero, a.origen, a.cliente, a.riderActivo?.nombre);
       }),
-    [artistas, busqueda, formacion, rider],
+    [artistas, busqueda, formacion, rider, roster],
   );
 
   const totales = useMemo(
@@ -69,6 +76,7 @@ export default function ArtistasCatalogoClient({ artistas, clientes }: Props) {
       conRider: visibles.filter((a) => a.riderActivo).length,
       sinRider: visibles.filter((a) => !a.riderActivo).length,
       enGira: visibles.filter((a) => a.giras > 0).length,
+      roster: visibles.filter((a) => a.enRosterGiras).length,
     }),
     [visibles],
   );
@@ -92,6 +100,7 @@ export default function ArtistasCatalogoClient({ artistas, clientes }: Props) {
           integrantesNum: form.integrantesNum === "" ? null : Number(form.integrantesNum),
           clienteId: form.clienteId || null,
           logoUrl: form.logoUrl.trim() || null,
+          enRosterGiras: form.enRosterGiras,
         }),
       });
       const d = await res.json().catch(() => ({}));
@@ -133,8 +142,8 @@ export default function ArtistasCatalogoClient({ artistas, clientes }: Props) {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <Metrica titulo="Artistas" valor={String(totales.artistas)} />
-        <Metrica titulo="Con rider vigente" valor={String(totales.conRider)} dorado />
-        <Metrica titulo="Sin rider" valor={String(totales.sinRider)} />
+        <Metrica titulo="Roster de giras" valor={String(totales.roster)} dorado />
+        <Metrica titulo="Con rider vigente" valor={String(totales.conRider)} />
         <Metrica titulo="Con shows registrados" valor={String(totales.enGira)} />
       </div>
 
@@ -145,6 +154,15 @@ export default function ArtistasCatalogoClient({ artistas, clientes }: Props) {
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
         />
+        <select
+          className={roster ? "ms-filter-select-active" : "ms-filter-select"}
+          value={roster}
+          onChange={(e) => setRoster(e.target.value)}
+        >
+          <option value="">Todos los artistas</option>
+          <option value="ROSTER">Solo roster de giras</option>
+          <option value="FUERA">Fuera del roster</option>
+        </select>
         <select
           className={formacion ? "ms-filter-select-active" : "ms-filter-select"}
           value={formacion}
@@ -212,9 +230,20 @@ export default function ArtistasCatalogoClient({ artistas, clientes }: Props) {
                         </span>
                       )}
                       <div className="min-w-0">
-                        <div className="text-white text-[13px] truncate">{a.nombre}</div>
+                        <div className="flex items-center gap-1.5">
+                          <div className="text-white text-[13px] truncate">{a.nombre}</div>
+                          {a.enRosterGiras && (
+                            <span
+                              className="ms-badge ms-badge-gold shrink-0"
+                              title="Cliente de production management / dirección técnica de giras"
+                            >
+                              Roster
+                            </span>
+                          )}
+                        </div>
                         <div className="ms-meta truncate">
                           {[a.genero, a.origen].filter(Boolean).join(" · ") || "Sin género ni origen"}
+                          {a.enRosterGiras && a.rosterNivelServicio ? ` · ${etiquetaNivel(a.rosterNivelServicio)}` : ""}
                         </div>
                       </div>
                     </div>
@@ -330,6 +359,17 @@ export default function ArtistasCatalogoClient({ artistas, clientes }: Props) {
             />
             <p className="ms-micro mt-1">Encabeza riders, input lists y day sheets.</p>
           </div>
+
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.enRosterGiras}
+              onChange={(e) => setForm((p) => ({ ...p, enRosterGiras: e.target.checked }))}
+            />
+            <span className="ms-label">
+              Es cliente del roster de giras (production management / dirección técnica)
+            </span>
+          </label>
 
           {error && <p className="text-red-400 text-xs">{error}</p>}
 
