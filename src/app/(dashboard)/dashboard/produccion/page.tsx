@@ -4,6 +4,7 @@ import Link from "next/link";
 import { AlertOctagon, AlertTriangle, Wrench } from "lucide-react";
 import DailyGreeting from "@/components/DailyGreeting";
 import TareasPendientesWidget from "@/components/TareasPendientesWidget";
+import MisTareasPendientesWidget from "@/components/MisTareasPendientesWidget";
 import { EventosWidget } from "@/components/dashboard/EventosWidget";
 import { ensureProcesoVentaColumns } from "@/lib/migraciones-lazy";
 
@@ -209,6 +210,7 @@ export default async function DashboardProduccionPage() {
         </div>
       </div>
 
+      <MisTareasPendientesWidget />
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

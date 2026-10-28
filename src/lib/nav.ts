@@ -6,7 +6,7 @@ import {
   PenTool, Megaphone, BarChart3, SlidersHorizontal, BadgeDollarSign,
   Package, TrendingUp, Settings, Speaker, BookUser, ClipboardCheck,
   ShieldCheck, ScrollText, Settings2, Building2, LayoutGrid, GraduationCap,
-  Network, Truck, Compass, Mic2, Receipt,
+  Network, Truck, Compass, Mic2, Receipt, MessageSquare,
 } from "lucide-react";
 
 // Dueño de la plataforma. Ciertos módulos (ej. "Inicio") se muestran solo a él.
@@ -53,6 +53,7 @@ export const NAV: NavSection[] = [
       { key: "inicio", label: "Inicio", href: "/inicio", icon: LayoutGrid, adminOnly: true, ownerOnly: true },
       { label: "Mi Dashboard", href: "/mi-dashboard", icon: LayoutDashboard },
       { key: "mi-actividad", label: "Mi Actividad", href: "/mi-actividad", icon: ScrollText },
+      { key: "mensajes", label: "Mensajes", href: "/mensajes", icon: MessageSquare, badge: "mensajes" },
       { key: "calendario", label: "Calendarios", href: "/calendarios/eventos", icon: CalendarDays },
       { key: "portal-capacitacion", label: "Capacitación", href: "/capacitacion", icon: GraduationCap },
       { key: "reembolsos", label: "Reembolsos", href: "/reembolsos", icon: Receipt },

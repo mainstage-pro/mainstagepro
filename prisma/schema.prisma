@@ -39,6 +39,9 @@ model User {
   proyectosTareaCreados  TareaProyecto[]        @relation("ProyectosTareaCreados")
   comentariosTarea       TareaComentario[]      @relation("ComentariosTarea")
   comentarios            Comentario[]           @relation("ComentariosAutor")
+  canalMiembros          CanalMiembro[]
+  canalLecturas          CanalLectura[]
+  mensajes               Mensaje[]              @relation("MensajesAutor")
   archivosTarea          TareaArchivo[]         @relation("ArchivosTarea")
   actividades            ActividadUsuario[]     @relation("actividades")
   reembolsosSolicitados  SolicitudReembolso[]   @relation("ReembolsosSolicitados")
@@ -3324,6 +3327,68 @@ model Comentario {
 
   @@index([entidad, entidadId])
   @@map("comentarios")
+}
+
+// ─── MENSAJERÍA INTERNA (chat) ───────────────────────────────────────────────
+// Reemplaza "usa WhatsApp" por algo propio de la plataforma: canales por área +
+// un canal general (visibilidad implícita por Session.area, sin CanalMiembro),
+// más directos/grupos (visibilidad explícita vía CanalMiembro). El mensaje
+// soporta @menciones de usuario (mismo markup que Comentario) y #referencias a
+// entidades ("#[Proyecto: Nombre](PROYECTO:id)", ver src/lib/comentarios.ts).
+model Canal {
+  id        String   @id @default(cuid())
+  tipo      String // AREA | GENERAL | DIRECTO | GRUPO
+  nombre    String? // solo GRUPO (y opcionalmente DIRECTO, sin usar)
+  area      String? // solo tipo=AREA: VENTAS | ADMINISTRACION | PRODUCCION | MARKETING | RRHH | DIRECCION
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  miembros CanalMiembro[]
+  lecturas CanalLectura[]
+  mensajes Mensaje[]
+
+  @@map("canales")
+}
+
+// Membresía explícita — solo se usa para canales DIRECTO/GRUPO. Los canales
+// AREA/GENERAL son visibles por regla (área de sesión / todos), sin filas aquí.
+model CanalMiembro {
+  id        String   @id @default(cuid())
+  canalId   String
+  canal     Canal    @relation(fields: [canalId], references: [id], onDelete: Cascade)
+  usuarioId String
+  usuario   User     @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([canalId, usuarioId])
+  @@map("canal_miembros")
+}
+
+// Marca de "leído hasta" por usuario y canal — universal para todos los tipos
+// de canal; de aquí sale el badge de no leídos.
+model CanalLectura {
+  id         String   @id @default(cuid())
+  canalId    String
+  canal      Canal    @relation(fields: [canalId], references: [id], onDelete: Cascade)
+  usuarioId  String
+  usuario    User     @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  leidoHasta DateTime @default(now())
+
+  @@unique([canalId, usuarioId])
+  @@map("canal_lecturas")
+}
+
+model Mensaje {
+  id        String   @id @default(cuid())
+  canalId   String
+  canal     Canal    @relation(fields: [canalId], references: [id], onDelete: Cascade)
+  autorId   String
+  autor     User     @relation("MensajesAutor", fields: [autorId], references: [id])
+  contenido String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([canalId, createdAt])
+  @@map("mensajes")
 }
 
 // ─── GASTOS OPERATIVOS (COMIDAS Y VIÁTICOS) ──────────────────────────────────

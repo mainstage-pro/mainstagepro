@@ -241,6 +241,9 @@ export default function Sidebar({ user, userModuleKeys }: SidebarProps) {
       fetch("/api/verificacion/count").then(r => r.ok ? r.json() : null).then(d => {
         if (d) setBadges(prev => ({ ...prev, verificacion: d.count ?? 0 }));
       }).catch(() => {});
+      fetch("/api/canales/badge").then(r => r.ok ? r.json() : null).then(d => {
+        if (d) setBadges(prev => ({ ...prev, mensajes: d.count ?? 0 }));
+      }).catch(() => {});
     };
     load();
     const iv = setInterval(load, 60_000);

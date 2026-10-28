@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { MessageSquare, Send } from "lucide-react";
 import { normalizarAmPm } from "@/lib/hora";
-import { segmentarContenido, type EntidadComentario } from "@/lib/comentarios";
+import { segmentarContenido, ENTIDAD_HREF, ENTIDAD_LABEL, type EntidadComentario } from "@/lib/comentarios";
 
 interface Usuario { id: string; name: string }
+interface ReferenciaResultado { tipo: EntidadComentario; id: string; nombre: string; sub?: string }
 
 interface Comentario {
   id: string;
@@ -26,6 +28,10 @@ function iniciales(nombre: string): string {
   return nombre.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("");
 }
 
+function escaparRegex(s: string) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 export default function ComentariosPanel({
   entidad, entidadId, usuarios,
 }: { entidad: EntidadComentario; entidadId: string; usuarios: Usuario[] }) {
@@ -34,8 +40,11 @@ export default function ComentariosPanel({
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [mencionesMap, setMencionesMap] = useState<Record<string, string>>({});
-  const [sugeridos, setSugeridos] = useState<Usuario[] | null>(null);
+  const [referenciasMap, setReferenciasMap] = useState<Record<string, { tipo: EntidadComentario; id: string }>>({});
+  const [sugUsuarios, setSugUsuarios] = useState<Usuario[] | null>(null);
+  const [sugRefs, setSugRefs] = useState<ReferenciaResultado[] | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const refsDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   async function cargar() {
     const r = await fetch(`/api/comentarios?entidad=${entidad}&entidadId=${entidadId}`);
@@ -50,22 +59,57 @@ export default function ComentariosPanel({
     setTexto(valor);
     const cursor = textareaRef.current?.selectionStart ?? valor.length;
     const antes = valor.slice(0, cursor);
-    const match = antes.match(/@([^\s@]{0,30})$/);
-    if (!match) { setSugeridos(null); return; }
-    const q = match[1].toLowerCase();
-    const candidatos = usuarios.filter((u) => u.name.toLowerCase().includes(q)).slice(0, 6);
-    setSugeridos(candidatos);
+
+    const atMatch = antes.match(/@([^\s@#]{0,30})$/);
+    const hashMatch = antes.match(/#([^\s@#]{0,30})$/);
+
+    if (atMatch) {
+      setSugRefs(null);
+      const q = atMatch[1].toLowerCase();
+      setSugUsuarios(usuarios.filter((u) => u.name.toLowerCase().includes(q)).slice(0, 6));
+      return;
+    }
+    setSugUsuarios(null);
+    if (hashMatch && hashMatch[1].length >= 2) {
+      const q = hashMatch[1];
+      if (refsDebounce.current) clearTimeout(refsDebounce.current);
+      refsDebounce.current = setTimeout(async () => {
+        try {
+          const r = await fetch(`/api/referencias/buscar?q=${encodeURIComponent(q)}`);
+          const d = await r.json();
+          setSugRefs(d.resultados ?? []);
+        } catch {}
+      }, 250);
+      return;
+    }
+    setSugRefs(null);
   }
 
   function elegirMencion(u: Usuario) {
     const cursor = textareaRef.current?.selectionStart ?? texto.length;
     const antes = texto.slice(0, cursor);
     const despues = texto.slice(cursor);
-    const nuevoAntes = antes.replace(/@([^\s@]{0,30})$/, `@${u.name} `);
+    const nuevoAntes = antes.replace(/@([^\s@#]{0,30})$/, `@${u.name} `);
     const nuevoTexto = nuevoAntes + despues;
     setTexto(nuevoTexto);
     setMencionesMap((prev) => ({ ...prev, [u.name]: u.id }));
-    setSugeridos(null);
+    setSugUsuarios(null);
+    requestAnimationFrame(() => {
+      textareaRef.current?.focus();
+      const pos = nuevoAntes.length;
+      textareaRef.current?.setSelectionRange(pos, pos);
+    });
+  }
+
+  function elegirReferencia(r: ReferenciaResultado) {
+    const label = `${ENTIDAD_LABEL[r.tipo]}: ${r.nombre}`;
+    const cursor = textareaRef.current?.selectionStart ?? texto.length;
+    const antes = texto.slice(0, cursor);
+    const despues = texto.slice(cursor);
+    const nuevoAntes = antes.replace(/#([^\s@#]{0,30})$/, `#${label} `);
+    setTexto(nuevoAntes + despues);
+    setReferenciasMap((prev) => ({ ...prev, [label]: { tipo: r.tipo, id: r.id } }));
+    setSugRefs(null);
     requestAnimationFrame(() => {
       textareaRef.current?.focus();
       const pos = nuevoAntes.length;
@@ -76,8 +120,12 @@ export default function ComentariosPanel({
   function contenidoParaGuardar(): string {
     let out = texto;
     for (const [name, id] of Object.entries(mencionesMap)) {
-      const re = new RegExp(`@${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?=\\s|$)`, "g");
+      const re = new RegExp(`@${escaparRegex(name)}(?=\\s|$)`, "g");
       out = out.replace(re, `@[${name}](${id})`);
+    }
+    for (const [label, ref] of Object.entries(referenciasMap)) {
+      const re = new RegExp(`#${escaparRegex(label)}(?=\\s|$)`, "g");
+      out = out.replace(re, `#[${label}](${ref.tipo}:${ref.id})`);
     }
     return out;
   }
@@ -95,6 +143,7 @@ export default function ComentariosPanel({
       if (r.ok) {
         setTexto("");
         setMencionesMap({});
+        setReferenciasMap({});
         await cargar();
       }
     } finally {
@@ -110,7 +159,7 @@ export default function ComentariosPanel({
         </div>
         <div>
           <h2 className="text-sm font-bold text-white tracking-tight">Comentarios</h2>
-          <p className="text-[10px] text-gray-600 mt-0.5">Usa @ para mencionar y avisarle a alguien</p>
+          <p className="text-[10px] text-gray-600 mt-0.5">Usa @ para mencionar y # para taggear proyecto/trato/cotización/cliente/equipo</p>
         </div>
       </div>
 
@@ -132,13 +181,13 @@ export default function ComentariosPanel({
                     <span className="ms-meta">{fmtFecha(c.createdAt)}</span>
                   </div>
                   <p className="text-sm text-gray-300 whitespace-pre-wrap break-words">
-                    {segmentarContenido(c.contenido).map((s, i) =>
-                      s.mencion ? (
-                        <span key={i} className="text-[#B3985B] font-medium">{s.texto}</span>
-                      ) : (
-                        <span key={i}>{s.texto}</span>
-                      ),
-                    )}
+                    {segmentarContenido(c.contenido).map((s, i) => {
+                      if (s.tipo === "mencion") return <span key={i} className="text-[#B3985B] font-medium">{s.texto}</span>;
+                      if (s.tipo === "referencia") return (
+                        <Link key={i} href={ENTIDAD_HREF[s.entidadTipo](s.entidadId)} className="text-blue-400 font-medium hover:underline">{s.texto}</Link>
+                      );
+                      return <span key={i}>{s.texto}</span>;
+                    })}
                   </p>
                 </div>
               </div>
@@ -152,17 +201,27 @@ export default function ComentariosPanel({
             value={texto}
             onChange={(e) => onChangeTexto(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey && !sugeridos) { e.preventDefault(); enviar(); }
+              if (e.key === "Enter" && !e.shiftKey && !sugUsuarios && !sugRefs) { e.preventDefault(); enviar(); }
             }}
-            placeholder="Escribe un comentario... @nombre para mencionar"
+            placeholder="Escribe un comentario... @nombre para mencionar, # para taggear proyecto/trato/cotización/cliente/equipo"
             rows={2}
             className="ms-textarea w-full resize-none"
           />
-          {sugeridos && sugeridos.length > 0 && (
+          {sugUsuarios && sugUsuarios.length > 0 && (
             <div className="absolute bottom-full mb-1 left-0 w-64 ms-dropdown z-10">
-              {sugeridos.map((u) => (
+              {sugUsuarios.map((u) => (
                 <button key={u.id} type="button" onMouseDown={(e) => { e.preventDefault(); elegirMencion(u); }} className="ms-dropdown-item w-full text-left">
                   {u.name}
+                </button>
+              ))}
+            </div>
+          )}
+          {sugRefs && sugRefs.length > 0 && (
+            <div className="absolute bottom-full mb-1 left-0 w-80 ms-dropdown z-10">
+              {sugRefs.map((r) => (
+                <button key={`${r.tipo}:${r.id}`} type="button" onMouseDown={(e) => { e.preventDefault(); elegirReferencia(r); }} className="ms-dropdown-item w-full text-left flex items-center justify-between gap-2">
+                  <span className="truncate">{r.nombre}{r.sub ? <span className="text-[#555]"> · {r.sub}</span> : null}</span>
+                  <span className="text-[9px] text-[#555] uppercase shrink-0">{ENTIDAD_LABEL[r.tipo]}</span>
                 </button>
               ))}
             </div>

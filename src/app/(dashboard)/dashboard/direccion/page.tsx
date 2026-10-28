@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import DailyGreeting from "@/components/DailyGreeting";
 import TareasPendientesWidget from "@/components/TareasPendientesWidget";
+import MisTareasPendientesWidget from "@/components/MisTareasPendientesWidget";
 import { EventosWidget } from "@/components/dashboard/EventosWidget";
 
 export const dynamic = "force-dynamic";
@@ -142,6 +143,8 @@ export default async function DashboardDireccionPage() {
           + Nueva tarea
         </Link>
       </div>
+
+      <MisTareasPendientesWidget />
 
       {/* ══════════════════════════════════════════════════════════════════════
           KPIs OPERATIVOS

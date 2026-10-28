@@ -14,7 +14,8 @@ import PlanTrabajoWidget from "@/components/PlanTrabajoWidget";
 import { NuevoTratoDropdown } from "@/components/NuevoTratoDropdown";
 import { AlertTriangle, Zap } from "lucide-react";
 import { AREA_DASHBOARD } from "@/lib/areas";
-import { computarPendientes, type AreaOp, type Pendiente } from "@/lib/pendientes";
+import MisTareasPendientesWidget from "@/components/MisTareasPendientesWidget";
+import NotificacionesInline from "@/components/NotificacionesInline";
 
 
 export const dynamic = "force-dynamic";
@@ -40,7 +41,7 @@ export default async function DashboardPage() {
   const mes       = ahora.toLocaleDateString("es-MX", { month: "long", year: "numeric" });
   const mesISO    = ahora.toISOString().slice(0, 7); // "2026-04"
 
-  const [{ pendientes }, [
+  const [
     // ── VENTAS ──────────────────────────────────
     tratosPorEtapa,
     cotizacionesMesCount,
@@ -74,9 +75,7 @@ export default async function DashboardPage() {
     cotizacionesSinRespuesta,
     // ── LEADS RECIENTES ───────────────────────────
     leadsRecientes,
-  ]] = await Promise.all([
-  computarPendientes(),
-  Promise.all([
+  ] = await Promise.all([
 
     // ── VENTAS ──────────────────────────────────
     prisma.trato.groupBy({
@@ -243,7 +242,6 @@ export default async function DashboardPage() {
       take: 10,
     }),
 
-  ]),
   ]);
 
   // ── Eventos recientes: pasados, sin cerrar, últimos 14 días (sin corte de miércoles) ──
@@ -419,9 +417,15 @@ export default async function DashboardPage() {
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════════
-          QUÉ ME TOCA — resumen del motor de pendientes
+          MIS TAREAS + NOTIFICACIONES — lo primero que se ve, accionable sin
+          salir del dashboard
       ══════════════════════════════════════════════════════════════════════ */}
-      <PendientesResumen pendientes={pendientes} />
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 items-start">
+        <div className="xl:col-span-2">
+          <MisTareasPendientesWidget />
+        </div>
+        <NotificacionesInline />
+      </div>
 
       {/* ══════════════════════════════════════════════════════════════════════
           ESTA SEMANA
@@ -994,59 +998,6 @@ function Section({ label, href, children }: {
         <Link href={href} className="text-[#B3985B] text-xs hover:underline shrink-0">Ver módulo →</Link>
       </div>
       {children}
-    </div>
-  );
-}
-
-const AREA_LABELS_PEND: Record<AreaOp, string> = {
-  VENTAS: "Ventas", ADMINISTRACION: "Administración", PRODUCCION: "Producción",
-  MARKETING: "Marketing", RRHH: "RR.HH.", GENERAL: "General",
-};
-
-function PendientesResumen({ pendientes }: { pendientes: Pendiente[] }) {
-  if (pendientes.length === 0) {
-    return (
-      <div className="flex items-center gap-2 px-4 py-3 bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl">
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-        <p className="text-gray-500 text-xs">Sin pendientes detectados por el motor operativo.</p>
-      </div>
-    );
-  }
-
-  const urgentes = pendientes.filter(p => p.severidad === "URGENTE").length;
-  const porArea: Record<string, Pendiente[]> = {};
-  for (const p of pendientes) {
-    (porArea[p.area] ??= []).push(p);
-  }
-  const top = pendientes.slice(0, 5);
-
-  return (
-    <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl overflow-hidden">
-      <div className="flex items-center gap-3 px-4 py-2.5 border-b border-[#1a1a1a]">
-        <p className="text-[11px] font-bold text-[#B3985B] uppercase tracking-widest">Qué me toca</p>
-        <span className="text-[10px] text-gray-500">{pendientes.length} en la operación</span>
-        {urgentes > 0 && (
-          <span className="inline-flex items-center gap-1 text-[10px] bg-red-900/30 text-red-400 px-2 py-0.5 rounded-full font-semibold">
-            <Zap strokeWidth={1.75} className="w-3 h-3" /> {urgentes} urgente{urgentes !== 1 ? "s" : ""}
-          </span>
-        )}
-        <div className="flex-1" />
-        {Object.entries(porArea).map(([area, lista]) => (
-          <span key={area} className="text-[10px] text-gray-600 whitespace-nowrap hidden sm:inline">
-            {AREA_LABELS_PEND[area as AreaOp] ?? area} <span className="text-gray-400 font-semibold">{lista.length}</span>
-          </span>
-        ))}
-        <Link href="/operaciones?vista=integrada" className="text-[#B3985B] text-xs hover:underline shrink-0">Ver todo →</Link>
-      </div>
-      <div className="divide-y divide-[#141414]">
-        {top.map(p => (
-          <Link key={p.id} href={p.href} className="flex items-center gap-2.5 px-4 py-2 hover:bg-[#151515] transition-colors">
-            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${p.severidad === "URGENTE" ? "bg-red-500" : p.severidad === "ALTA" ? "bg-orange-500" : "bg-[#B3985B]"}`} />
-            <p className="flex-1 text-xs text-white truncate">{p.titulo}</p>
-            <span className="text-[10px] text-gray-600 shrink-0">{AREA_LABELS_PEND[p.area] ?? p.area}</span>
-          </Link>
-        ))}
-      </div>
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import DailyGreeting from "@/components/DailyGreeting";
 import TareasPendientesWidget from "@/components/TareasPendientesWidget";
+import MisTareasPendientesWidget from "@/components/MisTareasPendientesWidget";
 import { EventosWidget } from "@/components/dashboard/EventosWidget";
 
 export const dynamic = "force-dynamic";
@@ -55,6 +56,7 @@ export default async function DashboardRRHHPage() {
         </div>
       </div>
 
+      <MisTareasPendientesWidget />
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
