@@ -51,7 +51,9 @@ export default function ArtistasCatalogoClient({ artistas, clientes }: Props) {
   const [busqueda, setBusqueda] = useState("");
   const [formacion, setFormacion] = useState("");
   const [rider, setRider] = useState("");
-  const [roster, setRoster] = useState("");
+  // Default a roster: el catálogo de Giras no debe ensuciarse con artistas
+  // sueltos que solo se capturaron en el "artista" de una cotización de evento.
+  const [roster, setRoster] = useState("ROSTER");
   const [abierto, setAbierto] = useState(false);
   const [form, setForm] = useState(VACIO);
   const [guardando, setGuardando] = useState(false);
