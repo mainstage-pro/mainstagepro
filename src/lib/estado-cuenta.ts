@@ -8,6 +8,23 @@ import type { EstadoCuentaLinea } from "@/components/EstadoCuentaPDF";
 // la empresa consolida tanto las cuentas por cobrar como las rentas mutuas /
 // cuentas por pagar de la compañía y sus contactos equivalentes.
 
+export interface AbonoResumen {
+  id: string;
+  fecha: string;
+  monto: number;
+  metodoPago: string;
+  cuenta: string | null;
+  notas: string | null;
+  cuentaId: string;
+  concepto: string;
+  proyecto: string | null;
+  referencia: string | null;
+  estadoCuenta: string;
+  grupoFechaTotal?: number;
+  grupoFechaCount?: number;
+  grupoDetalle?: string;
+}
+
 export interface CuentaCobrarDetalle {
   id: string;
   concepto: string;
@@ -21,6 +38,7 @@ export interface CuentaCobrarDetalle {
   cotizacion: { numeroCotizacion: string } | null;
   proyecto: { numeroProyecto: string; nombre: string } | null;
   contacto: { id: string; nombre: string } | null;
+  abonos?: AbonoResumen[];
 }
 
 export interface CuentaPagarDetalle {
@@ -37,6 +55,7 @@ export interface CuentaPagarDetalle {
   proveedor: { nombre: string } | null;
   proyecto: { numeroProyecto: string; nombre: string } | null;
   proveedorEventoId?: string | null;
+  abonos?: AbonoResumen[];
 }
 
 export interface CompensacionResumen {
@@ -54,6 +73,8 @@ export interface CuentasScope {
   cuentasCobrar: CuentaCobrarDetalle[];
   cuentasPagar: CuentaPagarDetalle[];
   compensaciones: CompensacionResumen[];
+  abonosCobrar: AbonoResumen[];
+  abonosPagar: AbonoResumen[];
 }
 
 // ─── Normalización y resolución de identidad cruzada (Cliente <-> Proveedor <-> Empresa) ──
@@ -286,6 +307,18 @@ export async function getCuentasScope(opts: {
           cotizacion: { select: { numeroCotizacion: true } },
           proyecto: { select: { numeroProyecto: true, nombre: true, fechaEvento: true } },
           cliente: { select: { id: true, nombre: true } },
+          abonos: {
+            select: {
+              id: true,
+              monto: true,
+              fecha: true,
+              metodoPago: true,
+              notas: true,
+              createdAt: true,
+              cuentaDestino: { select: { nombre: true } },
+            },
+            orderBy: { fecha: "asc" },
+          },
         },
         orderBy: { fechaCompromiso: "asc" },
       })
@@ -319,27 +352,94 @@ export async function getCuentasScope(opts: {
           proyectoId: true,
           proveedor: { select: { nombre: true } },
           proyecto: { select: { numeroProyecto: true, nombre: true, fechaEvento: true } },
+          abonos: {
+            select: {
+              id: true,
+              monto: true,
+              fecha: true,
+              metodoPago: true,
+              notas: true,
+              createdAt: true,
+              cuentaOrigen: { select: { nombre: true } },
+            },
+            orderBy: { fecha: "asc" },
+          },
         },
         orderBy: { fechaCompromiso: "asc" },
       })
     : [];
 
-  const cuentasPagar: CuentaPagarDetalle[] = pagarRaw.map((c) => ({
-    id: c.id,
-    concepto: c.concepto,
-    monto: c.monto,
-    montoPagado: c.montoPagado,
-    montoCompensado: Number(c.montoCompensado || 0),
-    estado: c.estado,
-    fechaCompromiso: c.fechaCompromiso.toISOString(),
-    fechaPagoReal: c.fechaPagoReal?.toISOString() ?? null,
-    fechaFiltro: (c.proyecto?.fechaEvento || c.createdAt).toISOString(),
-    tipoAcreedor: c.tipoAcreedor,
-    proveedor: c.proveedor,
-    proyecto: c.proyecto
-      ? { numeroProyecto: c.proyecto.numeroProyecto, nombre: c.proyecto.nombre }
-      : null,
-  }));
+  const resolverMetodo = (metodo: string | null | undefined, cuentaNombre: string | null | undefined): string => {
+    const cNorm = norm(cuentaNombre);
+    if (cNorm.includes("efectivo") || cNorm.includes("caja")) return "EFECTIVO";
+    return metodo || "TRANSFERENCIA";
+  };
+
+  const consolidarAbonos = (lista: AbonoResumen[]): AbonoResumen[] => {
+    const grupos = new Map<string, AbonoResumen[]>();
+    for (const a of lista) {
+      const dia = a.fecha.slice(0, 10);
+      const key = `${dia}|${a.metodoPago}`;
+      const arr = grupos.get(key) ?? [];
+      arr.push(a);
+      grupos.set(key, arr);
+    }
+    const consolidados: AbonoResumen[] = [];
+    for (const arr of grupos.values()) {
+      if (arr.length === 1) {
+        consolidados.push(arr[0]);
+      } else {
+        const total = arr.reduce((s, item) => s + item.monto, 0);
+        const proyectos = arr.map((item) => item.proyecto || item.concepto).join(" · ");
+        const todosLiquidados = arr.every((item) => item.estadoCuenta === "LIQUIDADO");
+        consolidados.push({
+          ...arr[0],
+          monto: total,
+          proyecto: proyectos,
+          concepto: proyectos,
+          estadoCuenta: todosLiquidados ? "LIQUIDADO" : "PARCIAL",
+        });
+      }
+    }
+    return consolidados.sort((a, b) => a.fecha.localeCompare(b.fecha));
+  };
+
+  const abonosPagarRaw: AbonoResumen[] = [];
+  const cuentasPagar: CuentaPagarDetalle[] = pagarRaw.map((c) => {
+    const ref = c.proyecto ? `#${c.proyecto.numeroProyecto}` : null;
+    const abonosCuenta: AbonoResumen[] = (c.abonos ?? []).map((a) => ({
+      id: a.id,
+      fecha: a.fecha.toISOString(),
+      monto: a.monto,
+      metodoPago: resolverMetodo(a.metodoPago, a.cuentaOrigen?.nombre),
+      cuenta: null,
+      notas: a.notas ?? null,
+      cuentaId: c.id,
+      concepto: c.concepto,
+      proyecto: c.proyecto?.nombre ?? null,
+      referencia: ref,
+      estadoCuenta: c.estado,
+    }));
+    abonosPagarRaw.push(...abonosCuenta);
+    return {
+      id: c.id,
+      concepto: c.concepto,
+      monto: c.monto,
+      montoPagado: c.montoPagado,
+      montoCompensado: Number(c.montoCompensado || 0),
+      estado: c.estado,
+      fechaCompromiso: c.fechaCompromiso.toISOString(),
+      fechaPagoReal: c.fechaPagoReal?.toISOString() ?? null,
+      fechaFiltro: (c.proyecto?.fechaEvento || c.createdAt).toISOString(),
+      tipoAcreedor: c.tipoAcreedor,
+      proveedor: c.proveedor,
+      proyecto: c.proyecto
+        ? { numeroProyecto: c.proyecto.numeroProyecto, nombre: c.proyecto.nombre }
+        : null,
+      abonos: abonosCuenta,
+    };
+  });
+  const abonosPagar = consolidarAbonos(abonosPagarRaw);
 
   // 3. Rentas mutuas / Subrentas en proyectos aún sin CuentaPagar formalizada (ProveedorEvento y ProyectoEquipo EXTERNO)
   if (proveedorIds.length > 0) {
@@ -430,11 +530,24 @@ export async function getCuentasScope(opts: {
     empresaIds.some((id) => empById.get(id)?.tipo === "AMBOS") ||
     cuentasPagar.length > 0;
 
-  return {
-    empresaId: primaryEmpresaId,
-    empresaIds,
-    esRelacionMutua: tieneAmbosTipos,
-    cuentasCobrar: cobrarRaw.map((c) => ({
+  const abonosCobrarRaw: AbonoResumen[] = [];
+  const cuentasCobrar: CuentaCobrarDetalle[] = cobrarRaw.map((c) => {
+    const ref = c.cotizacion?.numeroCotizacion ?? (c.proyecto ? `#${c.proyecto.numeroProyecto}` : null);
+    const abonosCuenta: AbonoResumen[] = (c.abonos ?? []).map((a) => ({
+      id: a.id,
+      fecha: a.fecha.toISOString(),
+      monto: a.monto,
+      metodoPago: resolverMetodo(a.metodoPago, a.cuentaDestino?.nombre),
+      cuenta: null,
+      notas: a.notas ?? null,
+      cuentaId: c.id,
+      concepto: c.concepto,
+      proyecto: c.proyecto?.nombre ?? null,
+      referencia: ref,
+      estadoCuenta: c.estado,
+    }));
+    abonosCobrarRaw.push(...abonosCuenta);
+    return {
       id: c.id,
       concepto: c.concepto,
       monto: c.monto,
@@ -449,7 +562,16 @@ export async function getCuentasScope(opts: {
         ? { numeroProyecto: c.proyecto.numeroProyecto, nombre: c.proyecto.nombre }
         : null,
       contacto: c.cliente,
-    })),
+      abonos: abonosCuenta,
+    };
+  });
+  const abonosCobrar = consolidarAbonos(abonosCobrarRaw);
+
+  return {
+    empresaId: primaryEmpresaId,
+    empresaIds,
+    esRelacionMutua: tieneAmbosTipos,
+    cuentasCobrar,
     cuentasPagar,
     compensaciones: compensacionesRaw.map((comp) => ({
       id: comp.id,
@@ -458,6 +580,8 @@ export async function getCuentasScope(opts: {
       estado: comp.estado,
       notas: comp.notas ?? null,
     })),
+    abonosCobrar,
+    abonosPagar,
   };
 }
 
@@ -467,6 +591,8 @@ export function toEstadoCuentaLineas(scope: CuentasScope): {
   porPagar: EstadoCuentaLinea[];
   esRelacionMutua: boolean;
   compensaciones: CompensacionResumen[];
+  abonosCobrar: AbonoResumen[];
+  abonosPagar: AbonoResumen[];
 } {
   const porCobrar: EstadoCuentaLinea[] = scope.cuentasCobrar.map((c) => {
     const compensado = Number(c.montoCompensado || 0);
@@ -481,6 +607,7 @@ export function toEstadoCuentaLineas(scope: CuentasScope): {
       abonado: c.montoCobrado,
       compensado,
       estado: c.estado,
+      abonos: c.abonos ?? [],
     };
   });
   const porPagar: EstadoCuentaLinea[] = scope.cuentasPagar.map((c) => {
@@ -496,6 +623,7 @@ export function toEstadoCuentaLineas(scope: CuentasScope): {
       abonado: c.montoPagado,
       compensado,
       estado: c.estado,
+      abonos: c.abonos ?? [],
     };
   });
   return {
@@ -503,5 +631,7 @@ export function toEstadoCuentaLineas(scope: CuentasScope): {
     porPagar,
     esRelacionMutua: scope.esRelacionMutua,
     compensaciones: scope.compensaciones,
+    abonosCobrar: scope.abonosCobrar,
+    abonosPagar: scope.abonosPagar,
   };
 }
