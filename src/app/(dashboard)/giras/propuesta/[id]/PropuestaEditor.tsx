@@ -250,7 +250,7 @@ export default function PropuestaEditor({
   // El servidor decide la plantilla; aquí solo se evita el viaje en vano.
   async function armarDesdeRegistro() {
     if (!cab.giraId && !cab.tratoId) {
-      toast.error("Liga un trato de evento o una gira primero");
+      toast.error("Liga una oportunidad de evento o una gira primero");
       return;
     }
     setGuardando(true);
@@ -399,7 +399,7 @@ export default function PropuestaEditor({
                   {(inicial.trato.diasServicio ?? 1) === 1 ? "día" : "días"} de servicio
                 </>
               ) : (
-                "Sin trato ni gira ligados"
+                "Sin oportunidad ni gira ligadas"
               )}
             </p>
           </div>
@@ -562,7 +562,7 @@ export default function PropuestaEditor({
               {/* El trato es la otra cara: una propuesta de evento no tiene gira,
                   y de aquí salen los días de servicio con los que se cuantifica. */}
               <Campo
-                label="Trato de evento"
+                label="Oportunidad de evento"
                 ayuda={
                   inicial.trato
                     ? `${inicial.trato.diasServicio ?? 1} ${(inicial.trato.diasServicio ?? 1) === 1 ? "día" : "días"} de servicio`
@@ -575,9 +575,9 @@ export default function PropuestaEditor({
                     editarCabecera("tratoId", v || null);
                     router.refresh();
                   }}
-                  placeholder="Sin trato ligado"
+                  placeholder="Sin oportunidad ligada"
                   options={[
-                    { value: "", label: "Sin trato ligado" },
+                    { value: "", label: "Sin oportunidad ligada" },
                     ...tratos.map((t) => ({ value: t.id, label: t.nombre })),
                   ]}
                 />
@@ -676,7 +676,7 @@ export default function PropuestaEditor({
                   title={
                     cab.giraId || cab.tratoId
                       ? undefined
-                      : "Liga un trato de evento o una gira para sembrar las líneas típicas"
+                      : "Liga una oportunidad de evento o una gira para sembrar las líneas típicas"
                   }
                 >
                   Armar desde el registro

@@ -484,8 +484,8 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
     // Log de auditoría post-eliminación
     const desc = tratoSnap
-      ? `Trato eliminado — Cliente: ${tratoSnap.cliente?.nombre ?? "?"}, Evento: ${tratoSnap.nombreEvento ?? "sin nombre"}, Etapa: ${tratoSnap.etapa}`
-      : `Trato eliminado (id: ${id})`;
+      ? `Oportunidad eliminada — Cliente: ${tratoSnap.cliente?.nombre ?? "?"}, Evento: ${tratoSnap.nombreEvento ?? "sin nombre"}, Etapa: ${tratoSnap.etapa}`
+      : `Oportunidad eliminada (id: ${id})`;
     await prisma.actividadUsuario.create({
       data: { userId: session.id, accion: "ELIMINAR", entidad: "trato", entidadId: id, descripcion: desc },
     }).catch(() => {});

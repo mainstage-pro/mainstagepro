@@ -115,7 +115,7 @@ export default function ContratoPage({ params }: { params: Promise<{ tratoId: st
 
   if (error || !trato) return (
     <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-      <p className="text-red-400">{error || "No se encontró el trato"}</p>
+      <p className="text-red-400">{error || "No se encontró la oportunidad"}</p>
     </div>
   );
 

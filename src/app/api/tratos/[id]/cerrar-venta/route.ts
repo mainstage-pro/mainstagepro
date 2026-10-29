@@ -34,7 +34,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       },
     },
   });
-  if (!trato) return NextResponse.json({ error: "Trato no encontrado" }, { status: 404 });
+  if (!trato) return NextResponse.json({ error: "Oportunidad no encontrada" }, { status: 404 });
 
   // Cotizaciones seleccionadas que realmente pertenecen al trato y son aprobables
   const seleccionadas = trato.cotizaciones.filter(

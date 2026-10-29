@@ -11,7 +11,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params;
 
   const trato = await prisma.trato.findUnique({ where: { id }, select: { id: true } });
-  if (!trato) return NextResponse.json({ error: "Trato no encontrado" }, { status: 404 });
+  if (!trato) return NextResponse.json({ error: "Oportunidad no encontrada" }, { status: 404 });
 
   const formData = await req.formData();
   const file = formData.get("file") as File | null;

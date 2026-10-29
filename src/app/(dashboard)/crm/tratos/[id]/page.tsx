@@ -32,7 +32,7 @@ import { MOMENTO_OPTIONS, ORIGEN_LEAD_OPTIONS } from '@/lib/constants';
 // CANALES (canalAtencion), que son otra cosa.
 import {
   SERVICIOS as ESCALERA_SERVICIOS, SERVICIO_LABELS, SERVICIO_DESCRIPCIONES,
-  CANALES as CANALES_OPERATIVOS, CANAL_LABELS, CANAL_DESCRIPCIONES,
+  CANAL_LABELS, CANAL_DESCRIPCIONES, canalDesdeServicios,
   parseServicios, serializeServicios, listoParaCotizar, resumenServicios,
   type Servicio, type CanalOperativo,
 } from '@/lib/servicios-trato';
@@ -1123,7 +1123,9 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   }
 
   // Los servicios se palomean de uno en uno: el PATCH recibe la lista completa y
-  // el espejo de `tipoServicio` lo recalcula el endpoint, no el cliente.
+  // el espejo de `tipoServicio` lo recalcula el endpoint, no el cliente. El canal
+  // no se pregunta aparte: se deriva de los servicios (canalDesdeServicios) y se
+  // manda en el mismo PATCH para que no quede desfasado.
   async function alternarServicio(servicio: Servicio) {
     if (!trato) return;
     const actuales = parseServicios(trato.servicios);
@@ -1131,16 +1133,11 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       ? actuales.filter(s => s !== servicio)
       : [...actuales, servicio];
     setSaving(true);
-    const d = await patch({ servicios: serializeServicios(siguientes) });
-    if (d) setTrato(prev => prev ? { ...prev, servicios: d.trato.servicios, tipoServicio: d.trato.tipoServicio } : prev);
-    setSaving(false);
-  }
-
-  async function seleccionarCanalOperativo(canal: CanalOperativo) {
-    if (!trato) return;
-    setSaving(true);
-    const d = await patch({ canalOperativo: trato.canalOperativo === canal ? null : canal });
-    if (d) setTrato(prev => prev ? { ...prev, canalOperativo: d.trato.canalOperativo } : prev);
+    const d = await patch({
+      servicios: serializeServicios(siguientes),
+      canalOperativo: canalDesdeServicios(siguientes),
+    });
+    if (d) setTrato(prev => prev ? { ...prev, servicios: d.trato.servicios, tipoServicio: d.trato.tipoServicio, canalOperativo: d.trato.canalOperativo } : prev);
     setSaving(false);
   }
 
@@ -1618,7 +1615,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   }
 
   if (loading) return <SkeletonPage rows={5} cols={4} />;
-  if (!trato) return <div className="text-red-400 text-sm">Trato no encontrado</div>;
+  if (!trato) return <div className="text-red-400 text-sm">Oportunidad no encontrada</div>;
 
   const profundidad = getProfundidad(trato.canalAtencion);
   const serviciosSel: string[] = trato.serviciosInteres ? JSON.parse(trato.serviciosInteres) : [];
@@ -1679,7 +1676,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             onClick={() => navegar("descubrimiento")}
             className="ml-auto text-xs text-gray-500 hover:text-[#B3985B] border border-[#2a2a2a] hover:border-[#B3985B]/40 rounded-lg px-3 py-1.5 transition-colors"
           >
-            Ver trato completo →
+            Ver oportunidad completa →
           </button>
         </div>
       )}
@@ -1747,7 +1744,9 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             </span>
             <span className="text-[10px] text-gray-600 uppercase tracking-wider shrink-0 ml-2">Se lleva en:</span>
             <span className="text-xs text-[#B3985B] font-medium">
-              {trato.canalOperativo ? CANAL_LABELS[trato.canalOperativo as CanalOperativo] : "sin definir"}
+              {canalDesdeServicios(parseServicios(trato.servicios))
+                ? CANAL_LABELS[canalDesdeServicios(parseServicios(trato.servicios)) as CanalOperativo]
+                : "sin definir"}
             </span>
             <button
               onClick={() => setEditarServicios(v => !v)}
@@ -1782,24 +1781,14 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               );
             })}
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[10px] text-gray-600 uppercase tracking-wider shrink-0 w-[72px]">Se lleva en:</span>
-            {CANALES_OPERATIVOS.map(c => (
-              <button
-                key={c}
-                onClick={() => seleccionarCanalOperativo(c)}
-                disabled={saving}
-                title={CANAL_DESCRIPCIONES[c]}
-                className={`px-3 py-1.5 text-xs rounded-lg border transition-colors disabled:opacity-40 ${
-                  trato.canalOperativo === c
-                    ? "bg-[#B3985B]/15 border-[#B3985B]/40 text-[#B3985B] font-semibold"
-                    : "bg-[#1a1a1a] border-[#2a2a2a] text-gray-500 hover:text-gray-300 hover:border-[#444]"
-                }`}
-              >
-                {CANAL_LABELS[c]}
-              </button>
-            ))}
-          </div>
+          {canalDesdeServicios(parseServicios(trato.servicios)) && (
+            <p className="text-[11px] text-gray-500">
+              Se lleva en: <span className="text-[#B3985B] font-medium">
+                {CANAL_LABELS[canalDesdeServicios(parseServicios(trato.servicios)) as CanalOperativo]}
+              </span>
+              {" · "}{CANAL_DESCRIPCIONES[canalDesdeServicios(parseServicios(trato.servicios)) as CanalOperativo]}
+            </p>
+          )}
           </div>
           )}
         </div>
@@ -2524,7 +2513,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           <div className="absolute inset-0 bg-black/70" onClick={() => setEditando(false)} />
           <div className="relative bg-[#111] border border-[#333] rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#1a1a1a]">
-              <h3 className="text-white font-semibold">Editar datos del trato</h3>
+              <h3 className="text-white font-semibold">Editar datos de la oportunidad</h3>
               <button onClick={() => setEditando(false)} className="text-gray-500 hover:text-white text-xl leading-none">×</button>
             </div>
             <div className="p-6 space-y-4">
@@ -2669,7 +2658,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               <Calendar strokeWidth={1.75} className="w-4 h-4 text-[#B3985B]" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-white tracking-tight">Tareas del trato</h2>
+              <h2 className="text-sm font-bold text-white tracking-tight">Tareas de la oportunidad</h2>
               <p className="text-[10px] text-gray-600 mt-0.5">Todas las tareas del proceso · ponles fecha para agendarlas en tu gestión operativa</p>
             </div>
           </div>
@@ -2842,10 +2831,10 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           );
         })()}
 
-        {/* Registro del trato */}
+        {/* Registro de la oportunidad */}
         <div className="ms-card px-4 py-3 flex items-center gap-2">
           <CalendarDays strokeWidth={1.75} className="w-3.5 h-3.5 shrink-0 text-gray-500" />
-          <span className="text-[10px] text-gray-600">Registro del trato:</span>
+          <span className="text-[10px] text-gray-600">Registro de la oportunidad:</span>
           <span className="text-gray-500 text-[10px] font-medium">
             {new Date(trato.createdAt).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}
           </span>
@@ -2968,26 +2957,26 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             onClick={() => setEditando(true)}
             className="w-full py-2 bg-[#1a1a1a] border border-[#2a2a2a] text-gray-300 text-sm rounded-xl hover:border-[#3a3a3a] hover:text-white transition-colors"
           >
-            <span className="inline-flex items-center justify-center gap-1.5"><PenLine strokeWidth={1.75} className="w-4 h-4" /> Editar trato</span>
+            <span className="inline-flex items-center justify-center gap-1.5"><PenLine strokeWidth={1.75} className="w-4 h-4" /> Editar oportunidad</span>
           </button>
           <button
             onClick={async () => {
               const tieneProyecto = trato.cotizaciones.some(c => c.proyecto);
               const tieneCotizaciones = trato.cotizaciones.length > 0;
               const resumen = tieneProyecto
-                ? `Se eliminarán: el trato, ${trato.cotizaciones.length} cotización(es) y el proyecto asociado con todas sus cuentas y datos. Esta acción no se puede deshacer.`
+                ? `Se eliminarán: la oportunidad, ${trato.cotizaciones.length} cotización(es) y el proyecto asociado con todas sus cuentas y datos. Esta acción no se puede deshacer.`
                 : tieneCotizaciones
-                ? `Se eliminarán: el trato y ${trato.cotizaciones.length} cotización(es) asociada(s). Esta acción no se puede deshacer.`
-                : "Se eliminará este trato. Esta acción no se puede deshacer.";
+                ? `Se eliminarán: la oportunidad y ${trato.cotizaciones.length} cotización(es) asociada(s). Esta acción no se puede deshacer.`
+                : "Se eliminará esta oportunidad. Esta acción no se puede deshacer.";
               const ok = await confirm({ message: resumen, danger: true, confirmText: 'Eliminar todo' });
               if (!ok) return;
               const res = await fetch(`/api/tratos/${trato.id}`, { method: 'DELETE' });
               if (!res.ok) {
                 const d = await res.json().catch(() => ({}));
-                toast.error(d.error ?? 'Error al eliminar el trato');
+                toast.error(d.error ?? 'Error al eliminar la oportunidad');
                 return;
               }
-              toast.success('Trato eliminado');
+              toast.success('Oportunidad eliminada');
               router.push('/crm/tratos');
             }}
             className="w-full py-2 bg-transparent border border-red-900/30 text-red-600 text-sm rounded-xl hover:bg-red-900/10 hover:text-red-400 transition-colors"
@@ -3006,7 +2995,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           className="flex items-center gap-2 text-xs text-gray-600 hover:text-gray-400 transition-colors border border-[#1e1e1e] hover:border-[#2a2a2a] rounded-lg px-3 py-2"
         >
           <span>+</span>
-          <span>Nuevo trato con {trato.cliente.nombre.split(" ")[0]}</span>
+          <span>Nueva oportunidad con {trato.cliente.nombre.split(" ")[0]}</span>
         </a>
       </div>
 

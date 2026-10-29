@@ -198,7 +198,7 @@ export default function TareasTratoTab({
       {loading ? (
         <div className="space-y-2">{[1, 2].map(i => <div key={i} className="h-14 bg-[#0d0d0d] border border-[#1a1a1a] animate-pulse rounded-2xl" />)}</div>
       ) : tareas.length === 0 ? (
-        <p className="text-center text-xs text-[#555] py-6">Sin tareas para este trato todavía.</p>
+        <p className="text-center text-xs text-[#555] py-6">Sin tareas para esta oportunidad todavía.</p>
       ) : (
         <div className="space-y-5">
           {grupos.map(grupo => {

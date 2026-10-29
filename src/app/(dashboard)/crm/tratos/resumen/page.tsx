@@ -56,7 +56,7 @@ export default async function ResumenVentasPage() {
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
-        <Kpi label="Pipeline abierto" valor={fmtMonedaCorta(r.pipeline)} nota={`${r.abiertos} tratos vivos`} tono="oro" href="/crm/tratos/lista" />
+        <Kpi label="Pipeline abierto" valor={fmtMonedaCorta(r.pipeline)} nota={`${r.abiertos} oportunidades vivas`} tono="oro" href="/crm/tratos/lista" />
         <Kpi label="Cerrado este mes" valor={fmtMonedaCorta(r.cerradasMes.monto)} nota={`${r.cerradasMes.n} ventas`} tono="verde" />
         <Kpi
           label="Acciones vencidas"

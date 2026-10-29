@@ -945,7 +945,7 @@ function CompactTratoRow({
           <button
             onClick={e => { e.stopPropagation(); onRegistrarTarea(); }}
             className="text-[10px] font-medium px-2 py-1 rounded-md border border-[#1e1e1e] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/40 hover:bg-[#B3985B]/10 transition-all whitespace-nowrap"
-            title="Registrar tarea de este trato"
+            title="Registrar tarea de esta oportunidad"
           >
             + Tarea
           </button>
@@ -1268,7 +1268,7 @@ export default function TratosPage() {
     setDeletingId(id);
     try {
       const res = await fetch(`/api/tratos/${id}`, { method: "DELETE" });
-      if (res.ok) { setTratos(prev => prev.filter(t => t.id !== id)); toast.success("Trato eliminado"); }
+      if (res.ok) { setTratos(prev => prev.filter(t => t.id !== id)); toast.success("Oportunidad eliminada"); }
       else { const d = await res.json(); toast.error(d.error ?? "Error al eliminar"); }
     } finally { setDeletingId(null); }
   }

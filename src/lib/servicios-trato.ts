@@ -220,6 +220,16 @@ export function parseCanal(raw: string | null | undefined): CanalOperativo | nul
 }
 
 /**
+ * El canal no se pregunta aparte: Production Management siempre se opera como
+ * show/gira, y renta o producción técnica sin eso siempre caen en Proyectos
+ * como evento. No hay combinación real que rompa esta correspondencia.
+ */
+export function canalDesdeServicios(servicios: Servicio[]): CanalOperativo | null {
+  if (!servicios.length) return null;
+  return servicios.includes("DIRECCION_OPERACIONES") ? "SHOW" : "EVENTO";
+}
+
+/**
  * El trato ya declaró qué vende y dónde se opera. Es la condición para cotizar:
  * cada servicio arma su cotización o su propuesta de forma distinta, así que
  * cotizar antes de decidirlo obliga a rehacer el documento.

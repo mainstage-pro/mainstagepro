@@ -55,7 +55,7 @@ export async function POST(
     where: { id: tratoId },
     select: { id: true },
   });
-  if (!trato) return NextResponse.json({ error: "Trato no encontrado" }, { status: 404 });
+  if (!trato) return NextResponse.json({ error: "Oportunidad no encontrada" }, { status: 404 });
 
   const tarea = await prisma.tarea.create({
     data: {

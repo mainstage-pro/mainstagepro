@@ -23,7 +23,7 @@ export async function POST(
     where: { id: tratoId },
     select: { id: true, clienteId: true, etapa: true },
   });
-  if (!trato) return NextResponse.json({ error: "Trato no encontrado" }, { status: 404 });
+  if (!trato) return NextResponse.json({ error: "Oportunidad no encontrada" }, { status: 404 });
 
   const body = await req.json().catch(() => ({}));
   const { nombreCotizacion } = body;
