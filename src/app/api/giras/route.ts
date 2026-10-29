@@ -116,41 +116,80 @@ export async function POST(req: NextRequest) {
     select: { id: true },
   });
 
-  const gira = await prisma.gira.create({
-    data: {
-      nombre,
-      slug: await slugDisponible(slugify(nombre)),
-      tipo,
-      artistaId,
-      clienteId: typeof body.clienteId === "string" && body.clienteId ? body.clienteId : null,
-      tratoId: typeof body.tratoId === "string" && body.tratoId ? body.tratoId : null,
-      riderId: typeof body.riderId === "string" && body.riderId ? body.riderId : riderActivo?.id ?? null,
-      estado,
-      fechaInicio: fechaShow ?? parseFechaGira(body.fechaInicio),
-      fechaFin: fechaShow ?? parseFechaGira(body.fechaFin),
-      rolMainstage: Array.isArray(body.rolMainstage) ? JSON.stringify(body.rolMainstage) : null,
-      moneda: typeof body.moneda === "string" && body.moneda ? body.moneda : "MXN",
-      notas: typeof body.notas === "string" && body.notas.trim() ? body.notas.trim() : null,
-    },
-    include: { artista: { select: { id: true, nombre: true } } },
-  });
+  // Fechas de la gira: si no las dieron a mano pero sí vienen shows, se derivan
+  // del rango real de fechas (la gira no debe quedar sin rango teniendo shows).
+  const showsEntrada = tour && Array.isArray(body.shows) ? body.shows : [];
+  const fechasShows = showsEntrada
+    .map((s: unknown) => parseFechaGira((s as { fecha?: unknown })?.fecha))
+    .filter((f: Date | null): f is Date => f !== null);
+  const fechaInicioBody = parseFechaGira(body.fechaInicio);
+  const fechaFinBody = parseFechaGira(body.fechaFin);
+  const fechaInicio = fechaShow ?? fechaInicioBody
+    ?? (fechasShows.length ? new Date(Math.min(...fechasShows.map((f: Date) => f.getTime()))) : null);
+  const fechaFin = fechaShow ?? fechaFinBody
+    ?? (fechasShows.length ? new Date(Math.max(...fechasShows.map((f: Date) => f.getTime()))) : null);
 
-  // El show suelto se queda sin fecha ni venue si nadie crea su único show: el
-  // registro y su fecha se capturan de una vez, no en dos pasos.
-  const show = fechaShow
-    ? await prisma.giraShow.create({
-        data: { giraId: gira.id, orden: 1, fecha: fechaShow, ciudad, venueId },
-        select: { id: true },
-      })
-    : null;
+  const { gira, show, showsCreados } = await prisma.$transaction(async (tx) => {
+    const gira = await tx.gira.create({
+      data: {
+        nombre,
+        slug: await slugDisponible(slugify(nombre)),
+        tipo,
+        artistaId,
+        clienteId: typeof body.clienteId === "string" && body.clienteId ? body.clienteId : null,
+        tratoId: typeof body.tratoId === "string" && body.tratoId ? body.tratoId : null,
+        riderId: typeof body.riderId === "string" && body.riderId ? body.riderId : riderActivo?.id ?? null,
+        estado,
+        fechaInicio,
+        fechaFin,
+        rolMainstage: Array.isArray(body.rolMainstage) ? JSON.stringify(body.rolMainstage) : null,
+        moneda: typeof body.moneda === "string" && body.moneda ? body.moneda : "MXN",
+        notas: typeof body.notas === "string" && body.notas.trim() ? body.notas.trim() : null,
+      },
+      include: { artista: { select: { id: true, nombre: true } } },
+    });
+
+    // El show suelto se queda sin fecha ni venue si nadie crea su único show: el
+    // registro y su fecha se capturan de una vez, no en dos pasos.
+    const show = fechaShow
+      ? await tx.giraShow.create({
+          data: { giraId: gira.id, orden: 1, fecha: fechaShow, ciudad, venueId },
+          select: { id: true },
+        })
+      : null;
+
+    // Gira con fechas repetibles capturadas en el wizard: cada fila (fecha,
+    // ciudad, venue) nace como su propio GiraShow, en la misma transacción.
+    const showsCreados: { id: string }[] = [];
+    if (tour && showsEntrada.length) {
+      let orden = 1;
+      for (const fila of showsEntrada as Array<{ fecha?: unknown; ciudad?: unknown; venueId?: unknown }>) {
+        const filaFecha = parseFechaGira(fila?.fecha);
+        if (!filaFecha) continue;
+        const filaVenueId = typeof fila?.venueId === "string" && fila.venueId ? fila.venueId : null;
+        let filaCiudad = typeof fila?.ciudad === "string" && fila.ciudad.trim() ? fila.ciudad.trim() : null;
+        if (!filaCiudad && filaVenueId) {
+          const venue = await tx.venue.findUnique({ where: { id: filaVenueId }, select: { ciudad: true } });
+          filaCiudad = filaCiudad ?? venue?.ciudad ?? null;
+        }
+        const creado = await tx.giraShow.create({
+          data: { giraId: gira.id, orden: orden++, fecha: filaFecha, ciudad: filaCiudad, venueId: filaVenueId },
+          select: { id: true },
+        });
+        showsCreados.push(creado);
+      }
+    }
+
+    return { gira, show, showsCreados };
+  });
 
   await logActividad(
     session.id,
     "CREAR",
     "Gira",
     gira.id,
-    `Creó ${tour ? "la gira" : "el show"} ${gira.nombre} (${gira.artista.nombre})`,
+    `Creó ${tour ? "la gira" : "el show"} ${gira.nombre} (${gira.artista.nombre})${showsCreados.length ? ` con ${showsCreados.length} fecha(s)` : ""}`,
   );
 
-  return NextResponse.json({ gira, show });
+  return NextResponse.json({ gira, show, showsCreados });
 }

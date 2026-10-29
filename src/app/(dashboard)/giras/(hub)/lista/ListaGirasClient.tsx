@@ -5,12 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/Modal";
 import { Combobox } from "@/components/Combobox";
+import { GiraDescubrimientoForm, type GiraFechaFila } from "@/components/giras/GiraDescubrimientoForm";
 import { useToast } from "@/components/Toast";
 import { coincide } from "@/lib/buscar";
 import {
   ESTADOS_GIRA,
   ESTADO_GIRA_COLOR,
-  TIPOS_REGISTRO,
   TIPO_REGISTRO_COLOR,
   TIPO_REGISTRO_LABEL,
   SEMAFORO_COLOR,
@@ -55,8 +55,7 @@ const VACIO = {
   fecha: "",
   ciudad: "",
   venueId: "",
-  fechaInicio: "",
-  fechaFin: "",
+  notas: "",
 };
 
 export default function ListaGirasClient({ giras, artistas, clientes, venues }: Props) {
@@ -67,6 +66,7 @@ export default function ListaGirasClient({ giras, artistas, clientes, venues }: 
   const [tipo, setTipo] = useState("");
   const [abierto, setAbierto] = useState(false);
   const [form, setForm] = useState(VACIO);
+  const [fechas, setFechas] = useState<GiraFechaFila[]>([]);
   const [nuevoArtista, setNuevoArtista] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -86,6 +86,7 @@ export default function ListaGirasClient({ giras, artistas, clientes, venues }: 
 
   function abrir(tipoNuevo: string) {
     setForm({ ...VACIO, tipo: tipoNuevo });
+    setFechas([]);
     setNuevoArtista(false);
     setError(null);
     setAbierto(true);
@@ -120,8 +121,10 @@ export default function ListaGirasClient({ giras, artistas, clientes, venues }: 
           fecha: tour ? null : form.fecha,
           ciudad: tour ? null : form.ciudad.trim() || null,
           venueId: tour ? null : form.venueId || null,
-          fechaInicio: tour ? form.fechaInicio || null : null,
-          fechaFin: tour ? form.fechaFin || null : null,
+          shows: tour
+            ? fechas.filter((f) => f.fecha).map((f) => ({ fecha: f.fecha, ciudad: f.ciudad.trim() || null, venueId: f.venueId || null }))
+            : undefined,
+          notas: form.notas.trim() || null,
         }),
       });
       const d = await res.json();
@@ -252,69 +255,30 @@ export default function ListaGirasClient({ giras, artistas, clientes, venues }: 
         maxWidth="max-w-xl"
       >
         <div className="space-y-4">
-          <div>
-            <label className="ms-label block mb-1.5">Qué vas a registrar</label>
-            <div className="flex gap-2">
-              {TIPOS_REGISTRO.map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setForm((p) => ({ ...p, tipo: t }))}
-                  className={`flex-1 px-3 py-2 rounded-lg border text-sm transition-colors ${
-                    form.tipo === t
-                      ? "border-[#B3985B] bg-[#B3985B]/10 text-white"
-                      : "border-[#1a1a1a] text-[#9ca3af] hover:text-white"
-                  }`}
-                >
-                  {TIPO_REGISTRO_LABEL[t]}
-                </button>
-              ))}
-            </div>
-            <p className="ms-micro mt-1.5">
-              {tour
-                ? "Varias fechas bajo un mismo alcance: los shows se agregan después."
-                : "Una sola fecha. Se registra con su show listo para el advance."}
-            </p>
-          </div>
-
-          <div>
-            <label className="ms-label block mb-1.5">{tour ? "Nombre de la gira" : "Nombre del show (opcional)"}</label>
-            <input
-              autoFocus
-              value={form.nombre}
-              onChange={(e) => setForm((p) => ({ ...p, nombre: e.target.value }))}
-              placeholder={tour ? "ej. aquihay aquihay — Octubre 2026" : "Se arma con artista, ciudad y fecha"}
-              className="ms-input w-full"
-            />
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="ms-label">Artista</label>
-              <button
-                type="button"
-                onClick={() => setNuevoArtista((v) => !v)}
-                className="ms-micro text-[#B3985B] hover:text-white transition-colors"
-              >
-                {nuevoArtista ? "Elegir del catálogo" : "Registrar uno nuevo"}
-              </button>
-            </div>
-            {nuevoArtista ? (
-              <input
-                value={form.artistaNombre}
-                onChange={(e) => setForm((p) => ({ ...p, artistaNombre: e.target.value }))}
-                placeholder="Nombre del artista o banda"
-                className="ms-input w-full"
-              />
-            ) : (
-              <Combobox
-                value={form.artistaId}
-                onChange={(v) => setForm((p) => ({ ...p, artistaId: v }))}
-                options={artistas.map((a) => ({ value: a.id, label: a.nombre }))}
-                placeholder="Busca el artista…"
-              />
-            )}
-          </div>
+          <GiraDescubrimientoForm
+            tipo={form.tipo === "GIRA" ? "GIRA" : "SHOW"}
+            onTipoChange={(t) => setForm((p) => ({ ...p, tipo: t }))}
+            artistas={artistas}
+            venues={venues}
+            artistaId={form.artistaId}
+            onArtistaIdChange={(v) => setForm((p) => ({ ...p, artistaId: v }))}
+            artistaNombre={form.artistaNombre}
+            onArtistaNombreChange={(v) => setForm((p) => ({ ...p, artistaNombre: v }))}
+            nuevoArtista={nuevoArtista}
+            onNuevoArtistaToggle={() => setNuevoArtista((v) => !v)}
+            nombre={form.nombre}
+            onNombreChange={(v) => setForm((p) => ({ ...p, nombre: v }))}
+            fecha={form.fecha}
+            onFechaChange={(v) => setForm((p) => ({ ...p, fecha: v }))}
+            ciudad={form.ciudad}
+            onCiudadChange={(v) => setForm((p) => ({ ...p, ciudad: v }))}
+            venueId={form.venueId}
+            onVenueIdChange={(v) => setForm((p) => ({ ...p, venueId: v }))}
+            fechas={fechas}
+            onFechasChange={setFechas}
+            notas={form.notas}
+            onNotasChange={(v) => setForm((p) => ({ ...p, notas: v }))}
+          />
 
           <div>
             <label className="ms-label block mb-1.5">Cliente que contrata (opcional)</label>
@@ -326,79 +290,19 @@ export default function ListaGirasClient({ giras, artistas, clientes, venues }: 
             />
           </div>
 
-          {!tour && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="ms-label block mb-1.5">Venue (opcional)</label>
-                <Combobox
-                  value={form.venueId}
-                  onChange={(v) => setForm((p) => ({ ...p, venueId: v }))}
-                  options={venues.map((v) => ({
-                    value: v.id,
-                    label: v.ciudad ? `${v.nombre} — ${v.ciudad}` : v.nombre,
-                  }))}
-                  placeholder="Por definir"
-                />
-              </div>
-              <div>
-                <label className="ms-label block mb-1.5">Ciudad</label>
-                <input
-                  value={form.ciudad}
-                  onChange={(e) => setForm((p) => ({ ...p, ciudad: e.target.value }))}
-                  placeholder="Se hereda del venue"
-                  className="ms-input w-full"
-                />
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {tour ? (
-              <>
-                <div>
-                  <label className="ms-label block mb-1.5">Primera fecha</label>
-                  <input
-                    type="date"
-                    value={form.fechaInicio}
-                    onChange={(e) => setForm((p) => ({ ...p, fechaInicio: e.target.value }))}
-                    className="ms-input w-full"
-                  />
-                </div>
-                <div>
-                  <label className="ms-label block mb-1.5">Última fecha</label>
-                  <input
-                    type="date"
-                    value={form.fechaFin}
-                    onChange={(e) => setForm((p) => ({ ...p, fechaFin: e.target.value }))}
-                    className="ms-input w-full"
-                  />
-                </div>
-              </>
-            ) : (
-              <div className="sm:col-span-2">
-                <label className="ms-label block mb-1.5">Fecha del show</label>
-                <input
-                  type="date"
-                  value={form.fecha}
-                  onChange={(e) => setForm((p) => ({ ...p, fecha: e.target.value }))}
-                  className="ms-input w-full"
-                />
-              </div>
-            )}
-            <div>
-              <label className="ms-label block mb-1.5">Estado</label>
-              <select
-                value={form.estado}
-                onChange={(e) => setForm((p) => ({ ...p, estado: e.target.value }))}
-                className="ms-input w-full"
-              >
-                {ESTADOS_GIRA.map((e) => (
-                  <option key={e} value={e}>
-                    {estadoRegistroLabel(e, form.tipo)}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div>
+            <label className="ms-label block mb-1.5">Estado</label>
+            <select
+              value={form.estado}
+              onChange={(e) => setForm((p) => ({ ...p, estado: e.target.value }))}
+              className="ms-input w-full"
+            >
+              {ESTADOS_GIRA.map((e) => (
+                <option key={e} value={e}>
+                  {estadoRegistroLabel(e, form.tipo)}
+                </option>
+              ))}
+            </select>
           </div>
 
           {error && <p className="text-red-400 text-xs">{error}</p>}
