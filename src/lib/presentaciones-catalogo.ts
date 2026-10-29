@@ -225,7 +225,7 @@ export const PRESENTACIONES_SERVICIOS: PresentacionItem[] = [
   {
     key: "servicio-production-management",
     label: "Production Management",
-    desc: "Una sola dirección que coordina los frentes, el stage y responde por todo el evento.",
+    desc: "Una sola dirección de producción para tu gira: advance, rider, ensayos, run of show e ingenieros por plaza.",
     href: "/presentacion/servicio/production-management",
     icon: Compass,
     audience: "Clientes potenciales",

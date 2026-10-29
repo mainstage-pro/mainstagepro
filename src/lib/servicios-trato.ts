@@ -26,7 +26,7 @@ export const SERVICIO_DESCRIPCIONES: Record<Servicio, string> = {
   RENTA: "Entregamos el equipo. El cliente lo opera.",
   PRODUCCION_TECNICA: "Nuestro equipo, operado por nuestra gente.",
   DIRECCION_OPERACIONES:
-    "Dirección de producción, operaciones de sitio, stage management, diseño y renders, coordinación de terceros.",
+    "Advance técnico, rider y documentación del show, ensayos, run of show e ingenieros de audio e iluminación por plaza.",
 };
 
 // El espejo usa los valores históricos: DIRECCION_OPERACIONES se escribe como
