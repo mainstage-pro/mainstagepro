@@ -324,7 +324,7 @@ export default function CrewPanel({
   /// El centinela del alta solo va en el formulario: en un renglón ya existente
   /// elegirlo lo dejaría sin identidad.
   const opcionesPersonaAlta: ComboboxOption[] = useMemo(
-    () => [{ value: NUEVA_PERSONA, label: "＋ Registrar nueva persona…" }, ...opcionesPersona],
+    () => [{ value: NUEVA_PERSONA, label: "＋ Registrar nueva persona…", pin: true }, ...opcionesPersona],
     [opcionesPersona],
   );
 
@@ -423,7 +423,9 @@ export default function CrewPanel({
             <label className="ms-label block mb-1">Del catálogo</label>
             <Combobox
               value={nuevo.persona}
-              onChange={(v) => setNuevo({ ...nuevo, persona: v })}
+              onChange={(v, q) =>
+                setNuevo({ ...nuevo, persona: v, nuevaNombre: v === NUEVA_PERSONA ? q : nuevo.nuevaNombre })
+              }
               options={opcionesPersonaAlta}
               placeholder="Técnico o integrante…"
               className="w-full"

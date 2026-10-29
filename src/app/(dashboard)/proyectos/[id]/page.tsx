@@ -5504,13 +5504,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                           <label className="text-xs text-gray-500 block mb-1">Técnico</label>
                           <Combobox
                             value={selTecnico}
-                            onChange={v => {
-                              if (v === "__nuevo__") { setShowNuevoTecnico(true); setSelTecnico(""); }
+                            onChange={(v, q) => {
+                              if (v === "__nuevo__") { setShowNuevoTecnico(true); setSelTecnico(""); setNuevoTecNombre(q); }
                               else { setSelTecnico(v); setShowNuevoTecnico(false); }
                             }}
                             options={[
                               { value: "", label: "— Sin asignar —" },
-                              { value: "__nuevo__", label: "＋ Nuevo técnico..." },
+                              { value: "__nuevo__", label: "＋ Nuevo técnico...", pin: true },
                               ...(() => {
                                 const selRolNombre = selRol ? roles.find(r => r.id === selRol)?.nombre : null;
                                 const coinciden = tecnicos.filter(t => !selRolNombre || t.rol?.nombre === selRolNombre);
@@ -5895,12 +5895,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                   value=""
                                   disabled={!puedeAsignar}
                                   placeholder="Buscar técnico..."
-                                  onChange={v => {
-                                    if (v === "__nuevo__") { setCrearParaSlotId(p.id); }
+                                  onChange={(v, q) => {
+                                    if (v === "__nuevo__") { setCrearParaSlotId(p.id); setNuevoTecNombre(q); }
                                     else if (v) { asignarTecnico(p.id, v); }
                                   }}
                                   options={[
-                                    { value: "__nuevo__", label: "＋ Registrar nuevo técnico" },
+                                    { value: "__nuevo__", label: "＋ Registrar nuevo técnico", pin: true },
                                     ...tecnicos.map(t => ({ value: t.id, label: `${t.nombre} · ${t.rol?.nombre ?? "Sin rol"} · ${t.nivel}` })),
                                   ]}
                                   className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1 text-white text-sm focus:outline-none disabled:opacity-40"
@@ -5943,12 +5943,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                   value={p.tecnico.id}
                                   disabled={!puedeAsignar}
                                   placeholder="Cambiar técnico..."
-                                  onChange={v => {
-                                    if (v === "__nuevo__") { setCrearParaSlotId(p.id); }
+                                  onChange={(v, q) => {
+                                    if (v === "__nuevo__") { setCrearParaSlotId(p.id); setNuevoTecNombre(q); }
                                     else if (v) { asignarTecnico(p.id, v); setAsignandoId(null); }
                                   }}
                                   options={[
-                                    { value: "__nuevo__", label: "＋ Registrar nuevo técnico" },
+                                    { value: "__nuevo__", label: "＋ Registrar nuevo técnico", pin: true },
                                     ...tecnicos.map(t => ({ value: t.id, label: `${t.nombre} · ${t.rol?.nombre ?? "Sin rol"} · ${t.nivel}` })),
                                   ]}
                                   className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1 text-white text-sm focus:outline-none disabled:opacity-40"

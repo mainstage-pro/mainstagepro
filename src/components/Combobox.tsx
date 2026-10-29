@@ -9,11 +9,17 @@ export interface ComboboxOption {
   label: string;
   // Encabezado de sección. Se pinta cuando cambia respecto a la opción anterior.
   group?: string;
+  // Sobrevive al filtro de texto: sirve para un "＋ Registrar nuevo…" que no
+  // debe desaparecer solo porque lo que se escribió no está en el catálogo.
+  pin?: boolean;
 }
 
 interface Props {
   value: string;
-  onChange: (value: string) => void;
+  // El segundo argumento es lo que el usuario tenía escrito al elegir la
+  // opción: una opción fijada (`pin`) como "＋ Registrar nuevo…" lo usa para
+  // no hacer escribir el nombre dos veces.
+  onChange: (value: string, query: string) => void;
   options: ComboboxOption[];
   // Lista mostrada en reposo (sin búsqueda). Si se omite, se usa `options`.
   // Permite mostrar un subconjunto acotado al abrir, pero buscar sobre `options` completo al escribir.
@@ -46,8 +52,9 @@ export function Combobox({
   }, [selectedLabel]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isFiltering = query !== selectedLabel;
+  const pinned = options.filter(o => o.pin);
   const filtered = isFiltering && query.trim()
-    ? options.filter(o => coincide(query, o.label))
+    ? [...pinned, ...options.filter(o => !o.pin && coincide(query, o.label))]
     : (idleOptions ?? options);
 
   function updatePosition() {
@@ -102,7 +109,8 @@ export function Combobox({
 
   function select(opt: ComboboxOption) {
     if (closeTimer.current) clearTimeout(closeTimer.current);
-    onChange(opt.value);
+    const typed = query;
+    onChange(opt.value, typed);
     setQuery(opt.label);
     setOpen(false);
   }
