@@ -378,7 +378,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   const allowed = [
     "estado", "nombre", "horaInicioEvento", "horaFinEvento", "horariosEvento", "fechaMontaje", "fechaEvento", "fechasEvento",
-    "horaInicioMontaje", "lugarEvento", "venueId", "encargadoLugar",
+    "horaInicioMontaje", "horaInicioMontaje2", "lugarEvento", "venueId", "encargadoLugar",
     "encargadoLugarContacto", "encargadoCliente", "encargadoClienteContacto",
     "descripcionGeneral", "detallesEspecificos",
     "transportes", "proveedorCatering", "contactosDireccion",
@@ -396,12 +396,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     // Escenario / entarimado
     "escenarioMedidas", "escenarioAccesos", "escenarioProveedor", "escenarioNotas",
     // Día de montaje/desmontaje opcional
-    "fechaDesmontaje",
+    "fechaDesmontaje", "fechaMontaje2",
   ];
   const relationFields = ["encargadoId"];
   // Campos con tipos especiales (boolean/number/fecha) que no deben pasar por `|| null`
-  const booleanFields = ["choferExterno", "aplicaCatering", "montajeDiaAparte", "desmontajeDiaAparte"];
-  const numberFields = ["choferCosto", "duracionMontajeHrs", "duracionDesmontajeHrs", "escenarioAlturaM"];
+  const booleanFields = ["choferExterno", "aplicaCatering", "montajeDiaAparte", "desmontajeDiaAparte", "segundaJornadaMontaje"];
+  const numberFields = ["choferCosto", "duracionMontajeHrs", "duracionDesmontajeHrs", "escenarioAlturaM", "duracionMontajeHrs2"];
   const textNullableFields = ["choferNombre", "recoleccionStatus", "recoleccionNotas", "protocoloSalida", "protocoloEntrada"];
 
   const data: Record<string, unknown> = {};
@@ -415,7 +415,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (key in body) {
       if ((key === "fechaMontaje" || key === "llamadoBodega") && body[key]) {
         data[key] = new Date(body[key]);
-      } else if (key === "fechaDesmontaje") {
+      } else if (key === "fechaDesmontaje" || key === "fechaMontaje2") {
         data[key] = body[key] ? new Date(body[key]) : null;
       } else if (key === "fechaEvento" && body[key]) {
         // Parse date-only string as UTC noon to avoid timezone shifting

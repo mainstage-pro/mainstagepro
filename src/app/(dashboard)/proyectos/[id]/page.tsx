@@ -196,6 +196,7 @@ interface Proyecto {
   fechaEvento: string; fechasEvento: string | null; horaInicioEvento: string | null; horaFinEvento: string | null; horariosEvento: string | null;
   fechaMontaje: string | null; horaInicioMontaje: string | null; duracionMontajeHrs: number | null;
   montajeDiaAparte: boolean | null; desmontajeDiaAparte: boolean | null;
+  segundaJornadaMontaje: boolean | null; fechaMontaje2: string | null; horaInicioMontaje2: string | null; duracionMontajeHrs2: number | null;
   fechaDesmontaje: string | null; duracionDesmontajeHrs: number | null;
   horaMontaje: string | null; horaInicio: string | null; horaDesmontaje: string | null;
   direccionVenue: string | null; linkMaps: string | null; indicacionesAcceso: string | null;
@@ -2169,6 +2170,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       body: JSON.stringify({ duracionMontajeHrs: horas }),
     });
     setProyecto(p => p ? { ...p, duracionMontajeHrs: horas } : p);
+  }
+
+  async function guardarTerminoMontaje2(hora: string) {
+    const horas = horasEntre(proyecto?.horaInicioMontaje2, hora);
+    await fetch(`/api/proyectos/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ duracionMontajeHrs2: horas }),
+    });
+    setProyecto(p => p ? { ...p, duracionMontajeHrs2: horas } : p);
   }
 
   // ── Guardar un campo booleano (toggle) ──
@@ -4842,6 +4852,40 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       placeholder={proyecto.horaInicioMontaje ? "ej. 2:30 PM" : "define el inicio primero"}
                     />
                   </div>
+                  {/* ── Toggle: segundo bloque de horario de montaje ── */}
+                  <label className="col-span-2 flex items-start gap-2 cursor-pointer rounded-lg border border-[#1e1e1e] bg-[#141414] p-3 mt-2">
+                    <input
+                      type="checkbox"
+                      checked={proyecto.segundaJornadaMontaje ?? false}
+                      onChange={e => guardarBool("segundaJornadaMontaje", e.target.checked)}
+                      className="accent-[#B3985B] w-3.5 h-3.5 mt-0.5"
+                    />
+                    <span className="text-xs text-gray-300">
+                      Agregar un <b>segundo bloque de horario</b> de montaje
+                      <span className="block text-[11px] text-gray-600 mt-0.5">
+                        Mismo día u otro día, sin llamado ni lugar propios — solo horario.
+                      </span>
+                    </span>
+                  </label>
+                  {proyecto.segundaJornadaMontaje && (
+                    <>
+                      <Campo label="Fecha (opcional, si es otro día)" value={proyecto.fechaMontaje2?.toString().substring(0, 10) ?? null} field="fechaMontaje2" type="date" onSave={guardarCampo} />
+                      <HourPicker label="Inicio del 2º bloque" value={proyecto.horaInicioMontaje2} field="horaInicioMontaje2" onSave={guardarCampo} />
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-gray-500 text-xs">Término del 2º bloque</label>
+                          {proyecto.duracionMontajeHrs2 != null && (
+                            <span className="text-[10px] text-gray-600">{proyecto.duracionMontajeHrs2} hrs</span>
+                          )}
+                        </div>
+                        <HoraInput
+                          value={horaMasHoras(proyecto.horaInicioMontaje2, proyecto.duracionMontajeHrs2)}
+                          onChange={guardarTerminoMontaje2}
+                          placeholder={proyecto.horaInicioMontaje2 ? "ej. 2:30 PM" : "define el inicio primero"}
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* ── Subsección 4: Logística de desmontaje ── */}
