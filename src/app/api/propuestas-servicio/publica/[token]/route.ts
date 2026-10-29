@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { isTokenExpired } from "@/lib/tokens";
+import { confirmarGiraDesdePropuesta } from "@/lib/confirmar-gira-desde-propuesta";
 
 // Portal público de la propuesta de servicios. Sin auth: el token es la llave.
 // El `select` es a mano y a propósito — costoUnitario, costoEstimado y
@@ -104,7 +105,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
 
   const propuesta = await prisma.propuestaServicio.findUnique({
     where: { aprobacionToken: token },
-    select: { id: true, estado: true },
+    select: { id: true, estado: true, tratoId: true },
   });
   if (!propuesta) return NextResponse.json({ error: "Link no válido" }, { status: 404 });
   if (propuesta.estado === "APROBADA") return NextResponse.json({ ok: true, yaAprobada: true });
@@ -112,9 +113,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     return NextResponse.json({ error: "Esta propuesta ya fue cerrada" }, { status: 400 });
   }
 
-  await prisma.propuestaServicio.update({
-    where: { id: propuesta.id },
-    data: { estado: "APROBADA", aprobacionFecha: new Date(), aprobacionNombre: nombre },
+  await prisma.$transaction(async (tx) => {
+    await tx.propuestaServicio.update({
+      where: { id: propuesta.id },
+      data: { estado: "APROBADA", aprobacionFecha: new Date(), aprobacionNombre: nombre },
+    });
+
+    await confirmarGiraDesdePropuesta(tx, propuesta.id);
+
+    if (propuesta.tratoId) {
+      await tx.trato.update({
+        where: { id: propuesta.tratoId },
+        data: { etapa: "VENTA_CERRADA", etapaCambiadaEn: new Date(), confirmadaEn: new Date() },
+      });
+    }
   });
 
   return NextResponse.json({ ok: true });

@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { logActividad } from "@/lib/actividad";
 import { ESTADOS_PROPUESTA, MODELOS_COBRO } from "@/lib/giras";
 import { recalcularPropuesta, textoOpcional, numero, booleano, fecha, soloDefinidos } from "../recalcular";
+import { confirmarGiraDesdePropuesta } from "@/lib/confirmar-gira-desde-propuesta";
 
 const INCLUDE_DETALLE = {
   cliente: { select: { id: true, nombre: true, empresa: true } },
@@ -57,7 +58,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
-  const existente = await prisma.propuestaServicio.findUnique({ where: { id }, select: { id: true, numero: true } });
+  const existente = await prisma.propuestaServicio.findUnique({
+    where: { id },
+    select: { id: true, numero: true, estado: true, tratoId: true },
+  });
   if (!existente) return NextResponse.json({ error: "No encontrada" }, { status: 404 });
 
   const body = await req.json().catch(() => ({}));
@@ -92,7 +96,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     activo: booleano(body.activo),
   });
 
-  await prisma.propuestaServicio.update({ where: { id }, data });
+  // Aprobar desde aquí (el selector de Estado) cierra el mismo círculo que el
+  // portal público: confirma los GiraShow cubiertos y la gira, y cierra el trato.
+  if (data.estado === "APROBADA" && existente.estado !== "APROBADA") {
+    await prisma.$transaction(async (tx) => {
+      await tx.propuestaServicio.update({ where: { id }, data });
+      await confirmarGiraDesdePropuesta(tx, id);
+      if (existente.tratoId) {
+        await tx.trato.update({
+          where: { id: existente.tratoId },
+          data: { etapa: "VENTA_CERRADA", etapaCambiadaEn: new Date(), confirmadaEn: new Date() },
+        });
+      }
+    });
+  } else {
+    await prisma.propuestaServicio.update({ where: { id }, data });
+  }
 
   // Descuento e IVA mueven los totales, así que siempre se resella la cabecera.
   const resumen = await recalcularPropuesta(id);
