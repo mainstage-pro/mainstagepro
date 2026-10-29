@@ -4177,7 +4177,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             </span>
             {proyecto.tipoServicio && (<>
               <span className="text-[#2f2f2f]">·</span>
-              <span className="text-gray-500">{proyecto.tipoServicio === "RENTA" ? "Renta de equipo" : proyecto.tipoServicio === "PRODUCCION_TECNICA" ? "Producción técnica" : proyecto.tipoServicio === "DIRECCION_TECNICA" ? "Dirección y operaciones" : proyecto.tipoServicio}</span>
+              <span className="text-gray-500">{proyecto.tipoServicio === "RENTA" ? "Renta de equipo" : proyecto.tipoServicio === "PRODUCCION_TECNICA" ? "Producción técnica" : proyecto.tipoServicio === "DIRECCION_TECNICA" ? "Production Management" : proyecto.tipoServicio}</span>
             </>)}
           </div>
 
@@ -4608,7 +4608,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     return <span className="px-2 py-1 rounded-md border border-[#2a2a2a] text-gray-400 text-[11px]">{TE[proyecto.tipoEvento] ?? proyecto.tipoEvento}</span>;
                   })()}
                   {proyecto.tipoServicio && (() => {
-                    const TS: Record<string, string> = { PRODUCCION_TECNICA: "Producción técnica", RENTA: "Renta de equipo", DIRECCION_TECNICA: "Dirección y operaciones" };
+                    const TS: Record<string, string> = { PRODUCCION_TECNICA: "Producción técnica", RENTA: "Renta de equipo", DIRECCION_TECNICA: "Production Management" };
                     return <span className="px-2 py-1 rounded-md border border-[#2a2a2a] text-gray-400 text-[11px]">{TS[proyecto.tipoServicio] ?? proyecto.tipoServicio}</span>;
                   })()}
                   {!esRenta && (
@@ -10120,7 +10120,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       const TIPO_SERVICIO_LABEL: Record<string, string> = {
         PRODUCCION_TECNICA: "Producción técnica",
         RENTA: "Renta de equipo",
-        DIRECCION_TECNICA: "Dirección y operaciones",
+        DIRECCION_TECNICA: "Production Management",
       };
       const tipoServicioLabel = proyecto.tipoServicio ? (TIPO_SERVICIO_LABEL[proyecto.tipoServicio] ?? proyecto.tipoServicio) : null;
 

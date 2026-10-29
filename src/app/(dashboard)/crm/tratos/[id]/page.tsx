@@ -2791,7 +2791,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             if (dbForm.tipoServicio) {
               tipoServicio = dbForm.tipoServicio === "RENTA" ? "Renta de Equipo" : 
                              dbForm.tipoServicio === "PRODUCCION_TECNICA" ? "Operación Técnica" : 
-                             dbForm.tipoServicio === "DIRECCION_TECNICA" ? "Dirección y operaciones" : dbForm.tipoServicio;
+                             dbForm.tipoServicio === "DIRECCION_TECNICA" ? "Production Management" : dbForm.tipoServicio;
             }
           } catch (e) {}
 

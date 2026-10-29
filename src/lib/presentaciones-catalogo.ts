@@ -223,10 +223,10 @@ export const PRESENTACIONES_SERVICIOS: PresentacionItem[] = [
     audience: "Clientes potenciales",
   },
   {
-    key: "servicio-direccion-y-operaciones",
-    label: "Dirección y operaciones",
+    key: "servicio-production-management",
+    label: "Production Management",
     desc: "Una sola dirección que coordina los frentes, el stage y responde por todo el evento.",
-    href: "/presentacion/servicio/direccion-y-operaciones",
+    href: "/presentacion/servicio/production-management",
     icon: Compass,
     audience: "Clientes potenciales",
   },

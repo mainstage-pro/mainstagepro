@@ -77,7 +77,7 @@ const CONTENIDO: ContenidoServicio[] = [
     detailChips: "Scouting · Rider técnico · Operación en vivo",
   },
   {
-    slug: "direccion-y-operaciones",
+    slug: "production-management",
     servicio: "DIRECCION_OPERACIONES",
     n: "03",
     tagline: "Una sola dirección que responde por todo el evento.",

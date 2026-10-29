@@ -31,11 +31,16 @@ const nextConfig: NextConfig = {
       // ── Descubrimiento público: /f (retirado) → /descubrimiento ──────────────
       // Links de formulario ya enviados por WhatsApp siguen funcionando.
       { source: "/f/:token",                 destination: "/descubrimiento/:token",     permanent: true },
-      // ── El tercer nivel de la escalera se llama Dirección y operaciones ──────
-      // La presentación ya se compartió con clientes bajo el slug viejo.
+      // ── El tercer nivel de la escalera se llama Production Management ───────
+      // La presentación ya se compartió con clientes bajo los slugs viejos.
       {
         source: "/presentacion/servicio/direccion-tecnica",
-        destination: "/presentacion/servicio/direccion-y-operaciones",
+        destination: "/presentacion/servicio/production-management",
+        permanent: true,
+      },
+      {
+        source: "/presentacion/servicio/direccion-y-operaciones",
+        destination: "/presentacion/servicio/production-management",
         permanent: true,
       },
       // ── Calendario de eventos → Calendarios (módulo con pestañas) ────────────

@@ -19,7 +19,7 @@ export type Servicio = (typeof SERVICIOS)[number];
 export const SERVICIO_LABELS: Record<Servicio, string> = {
   RENTA: "Renta de equipo",
   PRODUCCION_TECNICA: "Producción técnica",
-  DIRECCION_OPERACIONES: "Dirección y operaciones",
+  DIRECCION_OPERACIONES: "Production Management",
 };
 
 export const SERVICIO_DESCRIPCIONES: Record<Servicio, string> = {

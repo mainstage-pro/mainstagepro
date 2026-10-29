@@ -498,7 +498,7 @@ export async function POST(req: NextRequest) {
 
   // Bloqueo: tipo de servicio y tipo de evento son obligatorios antes de generar.
   if (!extra.servicio) {
-    return NextResponse.json({ error: "Falta el tipo de servicio (Renta, Producción Técnica o Dirección Técnica). Selecciónalo antes de crear." }, { status: 400 });
+    return NextResponse.json({ error: "Falta el tipo de servicio (Renta, Producción Técnica o Production Management). Selecciónalo antes de crear." }, { status: 400 });
   }
   if (!extra.tipoEvento) {
     return NextResponse.json({ error: "Falta el tipo de evento (Musical, Social, Empresarial u Otro). Selecciónalo antes de crear." }, { status: 400 });

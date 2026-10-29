@@ -392,7 +392,7 @@ export const AREAS_SEED: AreaSeed[] = [
     areaPermiso: "VENTAS",
     proposito:
       "Ayudar al promotor a que su evento salga mejor de lo que imaginó. Comercial existe para entender " +
-      "qué necesita realmente el show y proponer la producción que lo logra — vendiendo dirección técnica " +
+      "qué necesita realmente el show y proponer la producción que lo logra — vendiendo Production Management " +
       "y no fierros, y cerrando solo lo que podemos cumplir con orgullo.",
     objetivos: [
       {
@@ -424,7 +424,7 @@ export const AREAS_SEED: AreaSeed[] = [
         fechaLimite: "2027-12-31",
         tacticas: [
           "Revisar el rider con el cliente antes de cerrar, para detectar lo que le falta al show y ofrecerlo como mejora del resultado",
-          "Ofrecer la dirección técnica como línea propia en toda propuesta, no como cortesía",
+          "Ofrecer Production Management como línea propia en toda propuesta, no como cortesía",
           "Usar paquetes base por tipo y tamaño de evento para hacer visible el siguiente nivel",
           "Presentar toda propuesta con tres niveles, explicando qué gana el evento en cada uno",
         ],

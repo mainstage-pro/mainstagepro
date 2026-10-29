@@ -117,7 +117,7 @@ export default function GaleriaHubClient({
             {[
               { href: "/presentacion#eventos", icon: Sparkles, label: "Eventos que realizamos", desc: "Musicales, sociales y empresariales. La producción que merece cada tipo de evento." },
               { href: "/presentacion/inventario", icon: Package, label: "Inventario de equipo", desc: "Audio, iluminación y video profesional. Catálogo completo con precios de renta." },
-              { href: "/presentacion/servicios", icon: SlidersHorizontal, label: "Servicios", desc: "Renta, producción y dirección técnica. Cómo trabajamos y por qué elegirnos." },
+              { href: "/presentacion/servicios", icon: SlidersHorizontal, label: "Servicios", desc: "Renta, producción técnica y Production Management. Cómo trabajamos y por qué elegirnos." },
             ].map((it, i) => (
               <Reveal key={it.href} delay={i * 90}>
                 <a href={it.href}

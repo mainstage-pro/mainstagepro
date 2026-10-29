@@ -51,7 +51,7 @@ const SERVICIOS = [
   {
     key: "DIRECCION_TECNICA",
     n: "03",
-    title: "Dirección y operaciones",
+    title: "Production Management",
     tagline: "Un solo responsable de que todo llegue junto.",
     detail: "Un director de producción coordina cada frente: el rider y los cues por escena, pero también la energía, el entarimado, la estructura y las vallas, más el manejo de stage el día del evento. La cabeza que hace que todo llegue al mismo tiempo.",
     incluye: ["Coordinación del rider", "Frentes de producción y proveedores", "Manejo de stage y corridas", "Guion técnico del evento"],

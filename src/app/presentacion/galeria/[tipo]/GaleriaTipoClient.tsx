@@ -217,7 +217,7 @@ export default function GaleriaTipoClient({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
               {[
                 { href: "/presentacion/inventario", icon: Package, label: "Inventario de equipo", desc: "El equipo con el que trabajamos, con precios de renta." },
-                { href: "/presentacion/servicios", icon: SlidersHorizontal, label: "Servicios", desc: "Renta, producción y dirección técnica." },
+                { href: "/presentacion/servicios", icon: SlidersHorizontal, label: "Servicios", desc: "Renta, producción técnica y Production Management." },
               ].map((it, i) => (
                 <Reveal key={it.href} delay={i * 90}>
                   <a href={it.href} className="group flex items-center gap-4 p-6 rounded-2xl h-full transition-colors"

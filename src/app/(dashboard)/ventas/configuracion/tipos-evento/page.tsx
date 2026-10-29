@@ -331,7 +331,7 @@ function TiposServicioSection() {
     <div className="mt-12 border-t border-[#1a1a1a] pt-8">
       <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider mb-1">Tipos de servicio</h2>
       <p className="text-gray-400 text-sm mb-5">
-        Renta de equipo, producción técnica, dirección técnica y operación técnica. Cárgales fotos y genera la descripción con IA; alimentan las galerías y presentaciones de servicios.
+        Renta de equipo, producción técnica, Production Management y operación técnica. Cárgales fotos y genera la descripción con IA; alimentan las galerías y presentaciones de servicios.
       </p>
 
       <div className="ms-card p-4 mb-6 flex items-end gap-3">

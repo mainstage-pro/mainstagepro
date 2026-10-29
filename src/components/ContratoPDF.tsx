@@ -399,7 +399,7 @@ function fmtDateShort(s: string | null | undefined) {
 const TIPO_SERVICIO: Record<string, string> = {
   RENTA: "Renta de Equipo",
   PRODUCCION_TECNICA: "Producción Técnica Integral",
-  DIRECCION_TECNICA: "Dirección y operaciones",
+  DIRECCION_TECNICA: "Production Management",
   MULTISERVICIO: "Paquete Multiservicio",
 };
 const GRUPO_LINEA: Record<string, string> = {

@@ -392,7 +392,7 @@ function Slide06() {
       img: "/images/presentacion/empresariales/e-carpa-led.jpg",
     },
     {
-      id: "L3", name: "Dirección Técnica",
+      id: "L3", name: "Production Management",
       desc: "Involucramiento desde el inicio, responsabilidad total.",
       para: "Artistas y marcas con proyecto directo.",
       img: "/images/presentacion/musicales/DSC07491.jpg",
@@ -452,7 +452,7 @@ function Slide07() {
   const items = [
     { title: "Calidad humana y cultura de servicio", body: "Actitud, respeto y profesionalismo bajo presión — siempre. El cliente lo siente desde la primera llamada hasta el cierre del evento." },
     { title: "Pasión genuina por los eventos", body: "Dentro de Mainstage trabajamos personas realmente apasionadas por los shows. Eso se nota en la calidad de cada entrega." },
-    { title: "Soluciones integrales de producción", body: "Capacidad técnica y humana para resolver cualquier necesidad — desde un equipo puntual hasta una dirección técnica completa." },
+    { title: "Soluciones integrales de producción", body: "Capacidad técnica y humana para resolver cualquier necesidad — desde un equipo puntual hasta un Production Management completo." },
     { title: "Ritmo y seguimiento", body: "Procesos claros y comunicación constante que mantienen orden y personalización en cada proyecto, sin importar su escala." },
   ];
   return (
