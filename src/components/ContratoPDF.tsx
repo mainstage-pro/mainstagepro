@@ -578,7 +578,8 @@ export function ContratoPDF({ trato, cotizacion, appUrl = "", logoSrc }: Contrat
         <View style={s.partesBloque}>
           <View style={s.parteCol}>
             <Text style={s.parteLabel}>El Proveedor</Text>
-            <Text style={s.parteValor}>MAINSTAGE PRODUCCIONES</Text>
+            <Text style={s.parteValor}>ESCENARIO PRINCIPAL S.A. DE C.V.</Text>
+            <Text style={s.parteDetalle}>Nombre comercial: Mainstage Producciones</Text>
             <Text style={s.parteDetalle}>Producción técnica y renta de equipo</Text>
           </View>
           <View style={s.parteColRight}>
@@ -601,7 +602,7 @@ export function ContratoPDF({ trato, cotizacion, appUrl = "", logoSrc }: Contrat
         <SeccionTitulo num="1" titulo="Objeto y Datos del Evento" />
         <View style={s.secBody}>
           <Text style={{ ...s.clausulaTextoBlock, marginBottom: 8 }}>
-            EL PROVEEDOR prestará servicios de{" "}
+            EL PROVEEDOR, <Text style={s.clausulaBold}>ESCENARIO PRINCIPAL S.A. DE C.V.</Text> (operando comercialmente como <Text style={s.clausulaBold}>Mainstage Producciones</Text>), prestará servicios de{" "}
             <Text style={s.clausulaBold}>
               {TIPO_SERVICIO[trato.tipoServicio ?? ""] || "producción técnica y/o renta de equipo"}
             </Text>{" "}
@@ -720,7 +721,7 @@ export function ContratoPDF({ trato, cotizacion, appUrl = "", logoSrc }: Contrat
 
         {/* Footer pág 1 */}
         <View style={s.footer}>
-          <Text style={s.footerBrand}>MAINSTAGE PRODUCCIONES</Text>
+          <Text style={s.footerBrand}>ESCENARIO PRINCIPAL S.A. DE C.V. · MAINSTAGE PRODUCCIONES</Text>
           <Text style={s.footerCenter}>Producción técnica profesional · Audio · Iluminación · Video</Text>
           <Text style={s.footerRight}>Página 1</Text>
         </View>
@@ -875,10 +876,8 @@ export function ContratoPDF({ trato, cotizacion, appUrl = "", logoSrc }: Contrat
           <View style={s.firmaCol}>
             <Text style={s.firmaRol}>El Proveedor</Text>
             <View style={s.firmaLinea} />
-            <Text style={s.firmaNombre}>MAINSTAGE PRODUCCIONES</Text>
-            {trato.responsable && (
-              <Text style={s.firmaDetalle}>{trato.responsable.name}</Text>
-            )}
+            <Text style={s.firmaNombre}>ESCENARIO PRINCIPAL S.A. DE C.V.</Text>
+            <Text style={s.firmaDetalle}>Mainstage Producciones</Text>
             <View style={s.firmaFecha} />
             <Text style={s.firmaFechaLabel}>Lugar y fecha</Text>
           </View>
@@ -898,7 +897,7 @@ export function ContratoPDF({ trato, cotizacion, appUrl = "", logoSrc }: Contrat
 
         {/* Footer pág 2 */}
         <View style={s.footer}>
-          <Text style={s.footerBrand}>MAINSTAGE PRODUCCIONES</Text>
+          <Text style={s.footerBrand}>ESCENARIO PRINCIPAL S.A. DE C.V. · MAINSTAGE PRODUCCIONES</Text>
           <Text style={s.footerCenter}>Producción técnica profesional · Audio · Iluminación · Video</Text>
           <Text style={s.footerRight}>Página 2</Text>
         </View>

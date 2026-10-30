@@ -46,7 +46,8 @@ export default function CartaResponsivaSubarrendadosPage({ params }: { params: P
       .then(d => {
         const p = d.proyecto as Proyecto;
         setProyecto(p);
-        if (p.encargado?.name) setResponsable(p.encargado.name);
+        const esMau = (n?: string | null) => !!n && /mauricio|mau/i.test(n);
+        if (p.encargado?.name && !esMau(p.encargado.name)) setResponsable(p.encargado.name);
         if (p.lugarEvento)    setCiudad(extraerCiudad(p.lugarEvento));
         setLoading(false);
       });
@@ -83,6 +84,9 @@ export default function CartaResponsivaSubarrendadosPage({ params }: { params: P
   const fechaEventoStr = fmtDateLong(proyecto.fechaEvento);
   const hoy = new Date().toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
   const fechaCarta = ciudad ? `${ciudad}, ${hoy}` : hoy;
+
+  const esMau = (n?: string | null) => !!n && /mauricio|mau/i.test(n);
+  const tieneRepresentante = Boolean(responsable && !esMau(responsable));
 
   const inputCls = "w-full bg-black/50 border border-white/10 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/60 placeholder-white/20";
   const labelCls = "block text-xs text-white/30 mb-1";
@@ -192,7 +196,7 @@ export default function CartaResponsivaSubarrendadosPage({ params }: { params: P
             <div className="bg-[#0a0a0a] px-10 py-6 flex items-end justify-between border-b-2 border-[#B3985B]">
               <div>
                 <p className="text-[#B3985B] font-bold tracking-widest text-base">MAINSTAGE PRODUCCIONES</p>
-                <p className="text-white/30 text-[10px] tracking-widest mt-1">PRODUCCIÓN TÉCNICA · AUDIO · ILUMINACIÓN · VIDEO</p>
+                <p className="text-white/30 text-[10px] tracking-widest mt-1">ESCENARIO PRINCIPAL S.A. DE C.V. · AUDIO · ILUMINACIÓN · VIDEO</p>
               </div>
               <div className="text-right">
                 <p className="text-white font-bold tracking-wider text-sm">ASIGNACIÓN DE RESPONSABILIDAD</p>
@@ -210,9 +214,12 @@ export default function CartaResponsivaSubarrendadosPage({ params }: { params: P
               {destinatario && <p className="mb-6 text-white/20">Presente</p>}
 
               <p className="mb-4 text-justify text-gray-800">
-                Por medio de la presente, quien suscribe{" "}
-                <strong>{responsable || <span className="text-gray-400 italic">nombre del responsable</span>}</strong>, en representación de{" "}
-                <strong>Mainstage Producciones</strong>, manifiesta que, con motivo del evento{" "}
+                Por medio de la presente, {tieneRepresentante ? (
+                  <>quien suscribe <strong>{responsable}</strong>, en representación legal de la empresa </>
+                ) : (
+                  <>la empresa </>
+                )}
+                <strong>Escenario Principal S.A. de C.V.</strong> (operando comercialmente como <strong>Mainstage Producciones</strong>), manifiesta que, con motivo del evento{" "}
                 <strong>{proyecto.nombre}</strong> a celebrarse el día{" "}
                 <strong>{fechaEventoStr}</strong> en{" "}
                 <strong>{proyecto.lugarEvento || <span className="text-gray-400 italic">nombre del recinto</span>}</strong>
@@ -235,7 +242,7 @@ export default function CartaResponsivaSubarrendadosPage({ params }: { params: P
               </p>
               
               <p className="mb-4 text-justify text-gray-800">
-                <strong>Mainstage Producciones</strong> conserva expresamente la responsabilidad correspondiente única y exclusivamente a los servicios, actividades y equipos que realiza y opera de forma directa con su propio personal, sin asumir responsabilidad técnica, de diseño, de fabricación, de cálculo estructural, de instalación, de operación o legal sobre el equipo suministrado y ejecutado por el proveedor externo mencionado.
+                <strong>Escenario Principal S.A. de C.V. (Mainstage Producciones)</strong> conserva expresamente la responsabilidad correspondiente única y exclusivamente a los servicios, actividades y equipos que realiza y opera de forma directa con su propio personal, sin asumir responsabilidad técnica, de diseño, de fabricación, de cálculo estructural, de instalación, de operación o legal sobre el equipo suministrado y ejecutado por el proveedor externo mencionado.
               </p>
 
               <div className="border-t border-gray-200 my-6" />
@@ -244,9 +251,16 @@ export default function CartaResponsivaSubarrendadosPage({ params }: { params: P
 
               <div className="flex gap-8 mt-12">
                 <div className="border-t border-gray-300 pt-3 flex-1">
-                  <p className="font-bold text-sm">Mainstage Producciones</p>
-                  <p className="font-bold text-sm">{responsable || <span className="text-gray-400 italic">Nombre del responsable</span>}</p>
-                  <p className="text-gray-500 text-xs mt-1">{cargo}</p>
+                  <p className="font-bold text-sm">Escenario Principal S.A. de C.V.</p>
+                  <p className="text-xs text-gray-600 font-medium">Mainstage Producciones</p>
+                  {tieneRepresentante ? (
+                    <>
+                      <p className="font-bold text-sm mt-1">{responsable}</p>
+                      <p className="text-gray-500 text-xs">{cargo || "Representante Legal"}</p>
+                    </>
+                  ) : (
+                    <p className="text-gray-500 text-xs mt-1">Empresa de Producción Técnica Integral</p>
+                  )}
                 </div>
                 <div className="border-t border-gray-300 pt-3 flex-1">
                   <p className="font-bold text-sm">{nombreProveedor || <span className="text-gray-400 italic">Proveedor Externo</span>}</p>
@@ -257,7 +271,7 @@ export default function CartaResponsivaSubarrendadosPage({ params }: { params: P
             </div>
 
             <div className="bg-[#f7f5f0] border-t border-gray-200 px-10 py-3 flex justify-between items-center">
-              <p className="text-[10px] text-gray-500 tracking-wider">MAINSTAGE PRODUCCIONES</p>
+              <p className="text-[10px] text-gray-500 tracking-wider font-medium">ESCENARIO PRINCIPAL S.A. DE C.V. · MAINSTAGE PRODUCCIONES</p>
               <p className="text-[10px] text-gray-400">Documento confidencial · Uso exclusivo de las partes</p>
             </div>
           </div>

@@ -31,7 +31,7 @@ const s = StyleSheet.create({
   },
   logo:     { width: 110, height: 28, objectFit: "contain", marginBottom: 4 },
   brand:    { fontSize: 17, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2, marginBottom: 3 },
-  tagline:  { fontSize: 7,  color: "#666666", letterSpacing: 1 },
+  tagline:  { fontSize: 6.5,  color: "#888888", letterSpacing: 1 },
   headerRight: { alignItems: "flex-end" },
   docTitle: { fontSize: 13, fontFamily: "Helvetica-Bold", color: WHITE, marginBottom: 2, letterSpacing: 0.5 },
   docRef:   { fontSize: 8,  color: "#888888" },
@@ -178,7 +178,7 @@ export function NotaCobroPDF({ nota }: { nota: NotaCobroData }) {
               ? <Image src={logoSrc} style={s.logo} />
               : <Text style={s.brand}>MAINSTAGE PRO</Text>
             }
-            <Text style={s.tagline}>SOLUCIONES AUDIOVISUALES PROFESIONALES</Text>
+            <Text style={s.tagline}>ESCENARIO PRINCIPAL S.A. DE C.V. · SOLUCIONES AUDIOVISUALES</Text>
           </View>
           <View style={s.headerRight}>
             <Text style={s.docTitle}>NOTA DE COBRO</Text>
@@ -306,7 +306,7 @@ export function NotaCobroPDF({ nota }: { nota: NotaCobroData }) {
                 <View style={s.cuentasRow}>
                   <View style={s.cuentaCard}>
                     <Text style={s.cuentaTitulo}>CUENTA FISCAL</Text>
-                    <View style={s.cuentaFila}><Text style={s.cuentaLabel}>Razón Social</Text><Text style={s.cuentaValor}>Escenario Principal Producciones</Text></View>
+                    <View style={s.cuentaFila}><Text style={s.cuentaLabel}>Razón Social</Text><Text style={s.cuentaValor}>Escenario Principal S.A. de C.V.</Text></View>
                     <View style={s.cuentaFila}><Text style={s.cuentaLabel}>RFC</Text><Text style={s.cuentaValor}>EPP2502068Q8</Text></View>
                     <View style={s.cuentaFila}><Text style={s.cuentaLabel}>Banco</Text><Text style={s.cuentaValor}>Banorte</Text></View>
                     <View style={s.cuentaFila}><Text style={s.cuentaLabel}>No. Cuenta</Text><Text style={s.cuentaValor}>1313102977</Text></View>
@@ -334,7 +334,7 @@ export function NotaCobroPDF({ nota }: { nota: NotaCobroData }) {
         </View>
 
         <View style={s.footer} fixed>
-          <Text style={s.footerText}>Mainstage Pro — Nota de Cobro Interna</Text>
+          <Text style={s.footerText}>Escenario Principal S.A. de C.V. · Mainstage Pro — Nota de Cobro</Text>
           <Text style={s.footerText}>{new Date().toLocaleDateString("es-MX")}</Text>
         </View>
       </Page>

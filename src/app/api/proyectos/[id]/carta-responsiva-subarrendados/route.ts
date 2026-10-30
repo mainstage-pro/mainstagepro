@@ -35,9 +35,12 @@ export async function GET(
   if (!proyecto) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
   const url = req.nextUrl;
+  const esMau = (n?: string | null) => !!n && /mauricio|mau/i.test(n);
+  const rawResponsable   = url.searchParams.get("responsable");
+  const fallbackResponsable = proyecto.encargado?.name && !esMau(proyecto.encargado.name) ? proyecto.encargado.name : "";
+  const responsable      = rawResponsable ? (esMau(rawResponsable) ? "" : rawResponsable) : fallbackResponsable;
+  const cargo            = url.searchParams.get("cargo")            ?? (responsable ? "Director de Producción" : "Representación Legal");
   const destinatario     = url.searchParams.get("destinatario")     ?? "";
-  const responsable      = url.searchParams.get("responsable")      ?? proyecto.encargado?.name ?? "";
-  const cargo            = url.searchParams.get("cargo")            ?? "Director de Producción";
   const telefono         = url.searchParams.get("telefono")         ?? "";
   const correo           = url.searchParams.get("correo")           ?? "";
   

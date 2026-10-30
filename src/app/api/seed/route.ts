@@ -194,7 +194,7 @@ export async function POST(req: NextRequest) {
           banco: "Banorte",
           numeroCuenta: "1313102977",
           clabe: "072680013131029777",
-          titular: "Escenario Principal Producciones",
+          titular: "Escenario Principal S.A. de C.V.",
           rfc: "EPP2502068Q8",
           activa: true,
         },

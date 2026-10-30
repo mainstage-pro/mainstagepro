@@ -52,7 +52,8 @@ export default function CartaResponsivaPage({ params }: { params: Promise<{ proy
       .then(d => {
         const p = d.proyecto as Proyecto;
         setProyecto(p);
-        if (p.encargado?.name) setResponsable(p.encargado.name);
+        const esMau = (n?: string | null) => !!n && /mauricio|mau/i.test(n);
+        if (p.encargado?.name && !esMau(p.encargado.name)) setResponsable(p.encargado.name);
         if (p.lugarEvento)    setCiudad(extraerCiudad(p.lugarEvento));
         setLoading(false);
       });
@@ -90,6 +91,9 @@ export default function CartaResponsivaPage({ params }: { params: Promise<{ proy
 
   const hoy = new Date().toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
   const fechaCarta = ciudad ? `${ciudad}, ${hoy}` : hoy;
+
+  const esMau = (n?: string | null) => !!n && /mauricio|mau/i.test(n);
+  const tieneRepresentante = Boolean(responsable && !esMau(responsable));
 
   const inputCls = "w-full bg-black/50 border border-white/10 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/60 placeholder-white/20";
   const labelCls = "block text-xs text-white/30 mb-1";
@@ -142,20 +146,20 @@ export default function CartaResponsivaPage({ params }: { params: Promise<{ proy
             </div>
 
             <div>
-              <label className={labelCls}>Nombre del responsable / firmante</label>
+              <label className={labelCls}>Persona que firma (opcional — dejar vacío para la empresa)</label>
               <input
                 className={inputCls}
-                placeholder="Nombre completo"
+                placeholder="Escenario Principal S.A. de C.V. (por defecto)"
                 value={responsable}
                 onChange={e => setResponsable(e.target.value)}
               />
             </div>
 
             <div>
-              <label className={labelCls}>Cargo</label>
+              <label className={labelCls}>Cargo / Función</label>
               <input
                 className={inputCls}
-                placeholder="Ej: Director de Producción"
+                placeholder="Ej: Representante Legal / Director de Producción"
                 value={cargo}
                 onChange={e => setCargo(e.target.value)}
               />
@@ -213,7 +217,7 @@ export default function CartaResponsivaPage({ params }: { params: Promise<{ proy
             <div className="bg-[#0a0a0a] px-10 py-6 flex items-end justify-between border-b-2 border-[#B3985B]">
               <div>
                 <p className="text-[#B3985B] font-bold tracking-widest text-base">MAINSTAGE PRODUCCIONES</p>
-                <p className="text-white/30 text-[10px] tracking-widest mt-1">PRODUCCIÓN TÉCNICA · AUDIO · ILUMINACIÓN · VIDEO</p>
+                <p className="text-white/30 text-[10px] tracking-widest mt-1">ESCENARIO PRINCIPAL S.A. DE C.V. · AUDIO · ILUMINACIÓN · VIDEO</p>
               </div>
               <div className="text-right">
                 <p className="text-white font-bold tracking-wider text-sm">CARTA RESPONSIVA PROTECCIÓN CIVIL</p>
@@ -231,9 +235,12 @@ export default function CartaResponsivaPage({ params }: { params: Promise<{ proy
               <p className="mb-6 text-white/20">Presente</p>
 
               <p className="mb-4 text-justify text-gray-800">
-                Por medio de la presente, quien suscribe{" "}
-                <strong>{responsable || <span className="text-gray-400 italic">nombre del responsable</span>}</strong>, en representación de{" "}
-                <strong>Mainstage Producciones</strong>, manifiesta que, con motivo del evento{" "}
+                Por medio de la presente, {tieneRepresentante ? (
+                  <>quien suscribe <strong>{responsable}</strong>, en representación legal de la empresa </>
+                ) : (
+                  <>la empresa </>
+                )}
+                <strong>Escenario Principal S.A. de C.V.</strong> (operando comercialmente como <strong>Mainstage Producciones</strong>), manifiesta que, con motivo del evento{" "}
                 <strong>{proyecto.nombre}</strong> a celebrarse el día{" "}
                 <strong>{fechaEventoStr}</strong> en{" "}
                 <strong>{proyecto.lugarEvento || <span className="text-gray-400 italic">nombre del recinto</span>}</strong>
@@ -267,9 +274,16 @@ export default function CartaResponsivaPage({ params }: { params: Promise<{ proy
               <p className="mb-6 text-gray-800">Atentamente,</p>
 
               <div className="mt-12 border-t border-gray-300 pt-3 w-64">
-                <p className="font-bold text-sm">Mainstage Producciones</p>
-                <p className="font-bold text-sm">{responsable || <span className="text-gray-400 italic">Nombre del responsable</span>}</p>
-                <p className="text-white/20 text-xs mt-1">{cargo}</p>
+                <p className="font-bold text-sm">Escenario Principal S.A. de C.V.</p>
+                <p className="text-xs text-gray-600 font-medium">Mainstage Producciones</p>
+                {tieneRepresentante ? (
+                  <>
+                    <p className="font-bold text-sm mt-1">{responsable}</p>
+                    <p className="text-gray-500 text-xs">{cargo || "Representante Legal"}</p>
+                  </>
+                ) : (
+                  <p className="text-gray-500 text-xs mt-1">Empresa de Producción Técnica Integral</p>
+                )}
                 {telefono && <p className="text-[#B3985B] text-xs mt-1">{telefono}</p>}
                 {correo   && <p className="text-white/30 text-xs">{correo}</p>}
               </div>
@@ -277,7 +291,7 @@ export default function CartaResponsivaPage({ params }: { params: Promise<{ proy
 
             {/* Footer */}
             <div className="bg-[#f7f5f0] border-t border-gray-200 px-10 py-3 flex justify-between items-center">
-              <p className="text-[10px] text-white/30 tracking-wider">MAINSTAGE PRODUCCIONES</p>
+              <p className="text-[10px] text-gray-500 tracking-wider font-medium">ESCENARIO PRINCIPAL S.A. DE C.V. · MAINSTAGE PRODUCCIONES</p>
               <p className="text-[10px] text-gray-400">Documento confidencial · Uso exclusivo de las partes</p>
             </div>
           </div>

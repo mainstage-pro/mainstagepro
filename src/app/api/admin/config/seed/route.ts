@@ -10,7 +10,7 @@ export const CONFIG_SEED = [
 
   // ── EMPRESA Y CONTACTO ────────────────────────────────────────────────────
   { key: "empresa.nombre",            section: "empresa", label: "Nombre comercial",         type: "text",    orden: 1,  value: "Mainstage Pro",                         description: "Nombre que aparece en presentaciones, portales y PDFs" },
-  { key: "empresa.razonSocial",       section: "empresa", label: "Razón social",              type: "text",    orden: 2,  value: "Escenario Principal Producciones",       description: "Razón social fiscal para contratos y documentos legales" },
+  { key: "empresa.razonSocial",       section: "empresa", label: "Razón social",              type: "text",    orden: 2,  value: "Escenario Principal S.A. de C.V.",       description: "Razón social fiscal para contratos y documentos legales" },
   { key: "empresa.tagline",           section: "empresa", label: "Tagline principal",         type: "text",    orden: 3,  value: "AUDIO · ILUMINACIÓN · VIDEO · PRODUCCIÓN TÉCNICA", description: "Aparece en el PDF de cotización bajo el nombre" },
   { key: "empresa.taglineSecundario", section: "empresa", label: "Tagline secundario",        type: "text",    orden: 4,  value: "Creamos experiencias que generan impacto.", description: "Aparece en presentaciones y brandbook" },
   { key: "empresa.telefono",          section: "empresa", label: "Teléfono",                  type: "phone",   orden: 5,  value: "4461432565",                            description: "Solo dígitos, sin país" },
@@ -28,7 +28,7 @@ export const CONFIG_SEED = [
   { key: "reportes.ceoWhatsapp",      section: "empresa", label: "WhatsApp del CEO (reporte)", type: "phone", orden: 17, value: "524461432565",                          description: "Número que recibe el reporte semanal automático" },
 
   // ── DATOS BANCARIOS ───────────────────────────────────────────────────────
-  { key: "banco.fiscal.razonSocial",  section: "banco", label: "Razón social fiscal",        type: "text",    orden: 1,  value: "Escenario Principal Producciones",       description: "Para datos de pago en cotizaciones" },
+  { key: "banco.fiscal.razonSocial",  section: "banco", label: "Razón social fiscal",        type: "text",    orden: 1,  value: "Escenario Principal S.A. de C.V.",       description: "Para datos de pago en cotizaciones" },
   { key: "banco.fiscal.rfc",          section: "banco", label: "RFC fiscal",                 type: "text",    orden: 2,  value: "EPP2502068Q8",                           description: "" },
   { key: "banco.fiscal.banco",        section: "banco", label: "Banco fiscal",               type: "text",    orden: 3,  value: "Banorte",                               description: "" },
   { key: "banco.fiscal.cuenta",       section: "banco", label: "No. cuenta fiscal",          type: "text",    orden: 4,  value: "1313102977",                            description: "" },

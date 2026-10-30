@@ -1180,7 +1180,7 @@ export function CotizacionPDF({ cotizacion: c, logoSrc, descCategorias = {}, cat
               <Text style={s.infoValue}>{c.cliente.empresa}</Text>
             </>}
             <Text style={s.infoLabel}>{t.vendedor}</Text>
-            <Text style={s.infoValueLight}>{c.creadaPor?.name || "Mauricio Hernández"}</Text>
+            <Text style={s.infoValueLight}>{c.creadaPor?.name || "Mainstage Pro"}</Text>
           </View>
           <View style={s.infoColRight}>
             {c.nombreCotizacion && <>
@@ -1327,7 +1327,7 @@ export function CotizacionPDF({ cotizacion: c, logoSrc, descCategorias = {}, cat
         <View style={s.pagoBloque}>
           <View style={s.pagoCard}>
             <Text style={s.pagoTitulo}>{t.pagoFiscal}</Text>
-            <View style={s.pagoFila}><Text style={s.pagoLabel}>{t.razonSocial}</Text><Text style={s.pagoValor}>Escenario Principal Producciones</Text></View>
+            <View style={s.pagoFila}><Text style={s.pagoLabel}>{t.razonSocial}</Text><Text style={s.pagoValor}>Escenario Principal S.A. de C.V.</Text></View>
             <View style={s.pagoFila}><Text style={s.pagoLabel}>{t.rfc}</Text><Text style={s.pagoValor}>EPP2502068Q8</Text></View>
             <View style={s.pagoFila}><Text style={s.pagoLabel}>{t.banco}</Text><Text style={s.pagoValor}>Banorte</Text></View>
             <View style={s.pagoFila}><Text style={s.pagoLabel}>{t.noCuenta}</Text><Text style={s.pagoValor}>1313102977</Text></View>
@@ -1394,14 +1394,14 @@ export function CotizacionPDF({ cotizacion: c, logoSrc, descCategorias = {}, cat
             <View style={s.firmaEspacio} />
             {/* Línea dorada */}
             <View style={s.firmaLinea} />
-            <Text style={s.firmaNombre}>Jose Mauricio Alejandro Hernández Vázquez Mellado</Text>
-            <Text style={s.firmaCargo}>{t.firmaCargo}</Text>
+            <Text style={s.firmaNombre}>Escenario Principal S.A. de C.V.</Text>
+            <Text style={s.firmaCargo}>Mainstage Producciones</Text>
           </View>
         </View>
 
         {/* ── FOOTER ── */}
         <View style={s.footer}>
-          <Text style={s.footerBrand}>MAINSTAGE PRODUCCIONES</Text>
+          <Text style={s.footerBrand}>ESCENARIO PRINCIPAL S.A. DE C.V. · MAINSTAGE PRODUCCIONES</Text>
           <Text style={s.footerContacto}>WhatsApp: (446) 143 2565  |  mainstageqro@gmail.com</Text>
           <Text style={s.footerVigencia}>{t.vigencia(c.vigenciaDias)}</Text>
         </View>

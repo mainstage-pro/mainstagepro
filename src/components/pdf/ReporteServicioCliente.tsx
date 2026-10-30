@@ -8,9 +8,9 @@ import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/render
 import { C, base, nowStr, MAPS } from "./PdfShared";
 
 const CONTACTO_TELEFONO = "446 143 2565";
-const FIRMA_NOMBRE = "Jose Mauricio Alejandro Hernández Vázquez Mellado";
-const FIRMA_REPRESENTACION = "En representación de Escenario Principal Producciones S.A. de C.V.";
-const FIRMA_MARCA = "Mainstage Pro";
+const FIRMA_NOMBRE = "Escenario Principal S.A. de C.V.";
+const FIRMA_REPRESENTACION = "Mainstage Pro · Producción Técnica Profesional";
+const FIRMA_MARCA = "Dirección de Operaciones";
 
 const INTRO =
   "El presente reporte documenta la ejecución del servicio contratado, el cual se llevó a cabo conforme a lo " +

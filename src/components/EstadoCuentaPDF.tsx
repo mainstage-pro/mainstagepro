@@ -540,7 +540,7 @@ export function EstadoCuentaPDF({ data }: { data: EstadoCuentaData }) {
             <View style={s.cuentasRow}>
               <View style={s.cuentaCard}>
                 <Text style={s.cuentaTitulo}>CUENTA FISCAL</Text>
-                <View style={s.cuentaFila}><Text style={s.cuentaLabel}>Razón Social</Text><Text style={s.cuentaValor}>Escenario Principal Producciones</Text></View>
+                <View style={s.cuentaFila}><Text style={s.cuentaLabel}>Razón Social</Text><Text style={s.cuentaValor}>Escenario Principal S.A. de C.V.</Text></View>
                 <View style={s.cuentaFila}><Text style={s.cuentaLabel}>RFC</Text><Text style={s.cuentaValor}>EPP2502068Q8</Text></View>
                 <View style={s.cuentaFila}><Text style={s.cuentaLabel}>Banco</Text><Text style={s.cuentaValor}>Banorte</Text></View>
                 <View style={s.cuentaFila}><Text style={s.cuentaLabel}>No. Cuenta</Text><Text style={s.cuentaValor}>1313102977</Text></View>
@@ -564,7 +564,7 @@ export function EstadoCuentaPDF({ data }: { data: EstadoCuentaData }) {
         </View>
 
         <View style={s.footer} fixed>
-          <Text style={s.footerText}>Mainstage Pro — Estado de Cuenta</Text>
+          <Text style={s.footerText}>Escenario Principal S.A. de C.V. · Mainstage Pro — Estado de Cuenta</Text>
           <Text style={s.footerText}>{new Date().toLocaleDateString("es-MX")}</Text>
         </View>
       </Page>

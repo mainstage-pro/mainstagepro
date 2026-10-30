@@ -225,7 +225,7 @@ export function CartaFreelancePDF(p: CartaFreelanceProps) {
         <View style={s.header}>
           <View>
             <Text style={s.brand}>MAINSTAGE PRODUCCIONES</Text>
-            <Text style={s.tagline}>PRODUCCIÓN TÉCNICA · AUDIO · ILUMINACIÓN · VIDEO</Text>
+            <Text style={s.tagline}>ESCENARIO PRINCIPAL S.A. DE C.V. · AUDIO · ILUMINACIÓN · VIDEO</Text>
           </View>
           <View style={{ alignItems: "flex-end" }}>
             <Text style={s.docTipo}>CARTA RESPONSIVA – TÉCNICO FREELANCE</Text>
@@ -275,7 +275,7 @@ export function CartaFreelancePDF(p: CartaFreelanceProps) {
             En {p.ciudad}, a ____/____/______,{"  "}yo{" "}
             <Text style={{ fontFamily: "Helvetica-Bold" }}>{p.tecnicoNombre}</Text>
             {"  "}(INE/ID: _______________________ · Tel: {field(p.tecnicoCelular, "______________________")}),{"\n"}
-            acepto prestar servicios como freelance para Mainstage Pro y me obligo a cumplir los siguientes lineamientos:
+            acepto prestar servicios como freelance para la empresa Escenario Principal S.A. de C.V. (Mainstage Pro) y me obligo a cumplir los siguientes lineamientos:
           </Text>
 
           {/* ── Cláusulas ── */}
@@ -393,9 +393,13 @@ export function CartaFreelancePDF(p: CartaFreelanceProps) {
             </View>
             <View style={s.firmaCol}>
               <View style={s.firmaLinea} />
-              <Text style={s.firmaLabel}>Nombre y firma (Mainstage Pro)</Text>
-              <Text style={[s.firmaDetalle, { fontFamily: "Helvetica-Bold", marginTop: 2 }]}>{field(p.responsableNombre)}</Text>
-              <Text style={s.firmaDetalle}>{p.responsableCargo ?? "Director de Producción"}</Text>
+              <Text style={s.firmaLabel}>Por Escenario Principal S.A. de C.V.</Text>
+              <Text style={[s.firmaDetalle, { fontFamily: "Helvetica-Bold", marginTop: 2 }]}>
+                {p.responsableNombre && !/mauricio|mau/i.test(p.responsableNombre) ? p.responsableNombre : "Escenario Principal S.A. de C.V."}
+              </Text>
+              <Text style={s.firmaDetalle}>
+                {p.responsableNombre && !/mauricio|mau/i.test(p.responsableNombre) ? (p.responsableCargo ?? "Coordinación de Producción") : "Mainstage Producciones"}
+              </Text>
             </View>
           </View>
 
@@ -403,7 +407,7 @@ export function CartaFreelancePDF(p: CartaFreelanceProps) {
 
         {/* ── Footer ── */}
         <View style={s.footer} fixed>
-          <Text style={s.footerBrand}>MAINSTAGE PRODUCCIONES</Text>
+          <Text style={s.footerBrand}>ESCENARIO PRINCIPAL S.A. DE C.V. · MAINSTAGE PRODUCCIONES</Text>
           <Text style={s.footerNote}>Carta responsiva técnico freelance · {p.nombreEvento} · {p.numeroProyecto}</Text>
         </View>
 

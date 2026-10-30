@@ -245,7 +245,7 @@ export function ResumenGlobalPDF({ data, logoSrc }: { data: ResumenGlobalData; l
         <View style={s.pagoBloque}>
           <View style={s.pagoCard}>
             <Text style={s.pagoTitulo}>TRANSFERENCIA CUENTA FISCAL</Text>
-            <View style={s.pagoFila}><Text style={s.pagoLabel}>Razón Social</Text><Text style={s.pagoValor}>Escenario Principal Producciones</Text></View>
+            <View style={s.pagoFila}><Text style={s.pagoLabel}>Razón Social</Text><Text style={s.pagoValor}>Escenario Principal S.A. de C.V.</Text></View>
             <View style={s.pagoFila}><Text style={s.pagoLabel}>RFC</Text><Text style={s.pagoValor}>EPP2502068Q8</Text></View>
             <View style={s.pagoFila}><Text style={s.pagoLabel}>Banco</Text><Text style={s.pagoValor}>Banorte</Text></View>
             <View style={s.pagoFila}><Text style={s.pagoLabel}>No. Cuenta</Text><Text style={s.pagoValor}>1313102977</Text></View>
@@ -277,13 +277,13 @@ export function ResumenGlobalPDF({ data, logoSrc }: { data: ResumenGlobalData; l
           <View style={s.firmaCol}>
             <View style={s.firmaEspacio} />
             <View style={s.firmaLinea} />
-            <Text style={s.firmaNombre}>Jose Mauricio Alejandro Hernández Vázquez Mellado</Text>
-            <Text style={s.firmaCargo}>Director General · Mainstage Pro</Text>
+            <Text style={s.firmaNombre}>Escenario Principal S.A. de C.V.</Text>
+            <Text style={s.firmaCargo}>Mainstage Producciones</Text>
           </View>
         </View>
 
         <View style={s.footer}>
-          <Text style={s.footerBrand}>MAINSTAGE PRODUCCIONES</Text>
+          <Text style={s.footerBrand}>ESCENARIO PRINCIPAL S.A. DE C.V. · MAINSTAGE PRODUCCIONES</Text>
           <Text style={s.footerContacto}>WhatsApp: (446) 143 2565  |  mainstageqro@gmail.com</Text>
           <Text style={s.footerVigencia}>Vigencia: {vigenciaDias} días</Text>
         </View>
