@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import fs from "fs";
+import path from "path";
 import ReactPDF from "@react-pdf/renderer";
 import { CartaResponsivaSubarrendadosPDF } from "@/components/CartaResponsivaSubarrendadosPDF";
 import React from "react";
@@ -50,6 +52,13 @@ export async function GET(
 
   const ciudad = url.searchParams.get("ciudad") ?? extraerCiudad(proyecto.lugarEvento ?? "");
 
+  const lugar = url.searchParams.get("lugar") || proyecto.lugarEvento || "";
+
+  const logoPath = path.join(process.cwd(), "public", "logo-white.png");
+  const logoSrc = fs.existsSync(logoPath)
+    ? `data:image/png;base64,${fs.readFileSync(logoPath).toString("base64")}`
+    : null;
+
   const fechaEvento = fmtDateLong(new Date(proyecto.fechaEvento));
   const hoy = new Date();
   const fechaCarta = `${ciudad ? ciudad + ", " : ""}${fmtDateLong(hoy)}`;
@@ -58,7 +67,7 @@ export async function GET(
     numeroProyecto:     proyecto.numeroProyecto,
     nombreEvento:       proyecto.nombre,
     fechaEvento,
-    lugarEvento:        proyecto.lugarEvento ?? "",
+    lugarEvento:        lugar,
     ciudad,
     
     destinatario,
@@ -67,6 +76,7 @@ export async function GET(
     telefono,
     correo,
     fechaCarta,
+    logoSrc,
     
     nombreProveedor,
     representanteProveedor,

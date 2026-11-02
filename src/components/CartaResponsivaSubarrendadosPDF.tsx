@@ -1,7 +1,8 @@
 import React from "react";
 import {
-  Document, Page, Text, View, StyleSheet,
+  Document, Page, Text, View, StyleSheet, Image,
 } from "@react-pdf/renderer";
+import { RAZON_SOCIAL, NOMBRE_COMERCIAL } from "@/lib/empresa-legal";
 
 const GOLD  = "#B3985B";
 const BLACK = "#0a0a0a";
@@ -172,6 +173,8 @@ export interface CartaResponsivaSubarrendadosProps {
   nombreProveedor: string;
   representanteProveedor: string;
   descripcionEquipoSubarrendado: string;
+
+  logoSrc?: string | null;
 }
 
 export function CartaResponsivaSubarrendadosPDF(p: CartaResponsivaSubarrendadosProps) {
@@ -183,8 +186,11 @@ export function CartaResponsivaSubarrendadosPDF(p: CartaResponsivaSubarrendadosP
       <Page size="LETTER" style={s.page}>
         <View style={s.header}>
           <View>
-            <Text style={s.brand}>MAINSTAGE PRODUCCIONES</Text>
-            <Text style={s.tagline}>ESCENARIO PRINCIPAL S.A. DE C.V. · AUDIO · ILUMINACIÓN · VIDEO</Text>
+            {p.logoSrc
+              ? <Image src={p.logoSrc} style={{ width: 150, alignSelf: "flex-start", marginBottom: 6 }} />
+              : <Text style={s.brand}>MAINSTAGE PRO</Text>
+            }
+            <Text style={s.tagline}>{RAZON_SOCIAL.toUpperCase()}</Text>
           </View>
           <View style={{ alignItems: "flex-end" }}>
             <Text style={s.docTipo}>ASIGNACIÓN DE RESPONSABILIDAD</Text>
@@ -206,8 +212,8 @@ export function CartaResponsivaSubarrendadosPDF(p: CartaResponsivaSubarrendadosP
             ) : (
               <>la empresa </>
             )}
-            <Text style={{ fontFamily: "Helvetica-Bold" }}>Escenario Principal S.A. de C.V.</Text> (operando comercialmente como{" "}
-            <Text style={{ fontFamily: "Helvetica-Bold" }}>Mainstage Producciones</Text>), manifiesta que, con motivo del evento{" "}
+            <Text style={{ fontFamily: "Helvetica-Bold" }}>{RAZON_SOCIAL}</Text> (operando comercialmente como{" "}
+            <Text style={{ fontFamily: "Helvetica-Bold" }}>{NOMBRE_COMERCIAL}</Text>), manifiesta que, con motivo del evento{" "}
             <Text style={{ fontFamily: "Helvetica-Bold" }}>{p.nombreEvento}</Text> a celebrarse el día{" "}
             <Text style={{ fontFamily: "Helvetica-Bold" }}>{p.fechaEvento}</Text> en{" "}
             <Text style={{ fontFamily: "Helvetica-Bold" }}>{p.lugarEvento || "___________________________"}</Text>, ubicado en{" "}
@@ -230,7 +236,7 @@ export function CartaResponsivaSubarrendadosPDF(p: CartaResponsivaSubarrendadosP
           </Text>
 
           <Text style={s.parrafo}>
-            <Text style={{ fontFamily: "Helvetica-Bold" }}>Escenario Principal S.A. de C.V. (Mainstage Producciones)</Text> conserva expresamente la responsabilidad correspondiente única y exclusivamente a los servicios, actividades y equipos que realiza y opera de forma directa con su propio personal, sin asumir responsabilidad técnica, de diseño, de fabricación, de cálculo estructural, de instalación, de operación o legal sobre el equipo suministrado y ejecutado por el proveedor externo mencionado.
+            <Text style={{ fontFamily: "Helvetica-Bold" }}>{RAZON_SOCIAL} ({NOMBRE_COMERCIAL})</Text> conserva expresamente la responsabilidad correspondiente única y exclusivamente a los servicios, actividades y equipos que realiza y opera de forma directa con su propio personal, sin asumir responsabilidad técnica, de diseño, de fabricación, de cálculo estructural, de instalación, de operación o legal sobre el equipo suministrado y ejecutado por el proveedor externo mencionado.
           </Text>
 
           <View style={s.separator} />
@@ -240,8 +246,8 @@ export function CartaResponsivaSubarrendadosPDF(p: CartaResponsivaSubarrendadosP
           <View style={s.firmaBlock}>
             <View style={s.firmaCol}>
               <View style={s.firmaLinea} />
-              <Text style={s.firmaNombre}>Escenario Principal S.A. de C.V.</Text>
-              <Text style={s.firmaDetalle}>Mainstage Producciones</Text>
+              <Text style={s.firmaNombre}>{RAZON_SOCIAL}</Text>
+              <Text style={s.firmaDetalle}>{NOMBRE_COMERCIAL}</Text>
               {tieneRepresentante ? (
                 <>
                   <Text style={[s.firmaNombre, { marginTop: 4 }]}>{p.responsableNombre}</Text>
@@ -263,7 +269,7 @@ export function CartaResponsivaSubarrendadosPDF(p: CartaResponsivaSubarrendadosP
         </View>
 
         <View style={s.footer} fixed>
-          <Text style={s.footerBrand}>ESCENARIO PRINCIPAL S.A. DE C.V. · MAINSTAGE PRODUCCIONES</Text>
+          <Text style={s.footerBrand}>{RAZON_SOCIAL.toUpperCase()} · {NOMBRE_COMERCIAL.toUpperCase()}</Text>
           <Text style={s.footerNote}>Documento confidencial · Uso exclusivo de las partes</Text>
         </View>
       </Page>

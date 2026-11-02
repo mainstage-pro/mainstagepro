@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, use } from "react";
+import { RAZON_SOCIAL, NOMBRE_COMERCIAL } from "@/lib/empresa-legal";
 
 interface Proyecto {
   id: string;
@@ -34,6 +35,7 @@ export default function CartaResponsivaSubarrendadosPage({ params }: { params: P
   const [responsable, setResponsable]           = useState("");
   const [cargo, setCargo]                       = useState("Director de Producción");
   const [ciudad, setCiudad]                     = useState("");
+  const [lugar, setLugar]                       = useState("");
   const [telefono, setTelefono]                 = useState("");
   const [correo, setCorreo]                     = useState("");
   const [nombreProveedor, setNombreProveedor]   = useState("");
@@ -48,7 +50,10 @@ export default function CartaResponsivaSubarrendadosPage({ params }: { params: P
         setProyecto(p);
         const esMau = (n?: string | null) => !!n && /mauricio|mau/i.test(n);
         if (p.encargado?.name && !esMau(p.encargado.name)) setResponsable(p.encargado.name);
-        if (p.lugarEvento)    setCiudad(extraerCiudad(p.lugarEvento));
+        if (p.lugarEvento) {
+          setLugar(p.lugarEvento);
+          setCiudad(extraerCiudad(p.lugarEvento));
+        }
         setLoading(false);
       });
   }, [proyectoId]);
@@ -60,6 +65,7 @@ export default function CartaResponsivaSubarrendadosPage({ params }: { params: P
       responsable,
       cargo,
       ciudad,
+      lugar,
       telefono,
       correo,
       nombreProveedor,
@@ -88,6 +94,14 @@ export default function CartaResponsivaSubarrendadosPage({ params }: { params: P
   const esMau = (n?: string | null) => !!n && /mauricio|mau/i.test(n);
   const tieneRepresentante = Boolean(responsable && !esMau(responsable));
 
+  const faltantes = [
+    !lugar.trim() && "lugar",
+    !ciudad.trim() && "ciudad",
+    !nombreProveedor.trim() && "proveedor",
+    !representanteProveedor.trim() && "representante",
+    !descripcionEquipoSubarrendado.trim() && "equipo subarrendado",
+  ].filter(Boolean) as string[];
+
   const inputCls = "w-full bg-black/50 border border-white/10 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/60 placeholder-white/20";
   const labelCls = "block text-xs text-white/30 mb-1";
 
@@ -101,6 +115,12 @@ export default function CartaResponsivaSubarrendadosPage({ params }: { params: P
           <span className="text-white/10">|</span>
           <span className="text-white/40 text-sm">Responsiva Subarrendados — {proyecto.nombre}</span>
         </div>
+        <div className="flex items-center gap-3">
+          {faltantes.length > 0 && (
+            <span className="hidden sm:inline text-xs text-amber-400/80">
+              Falta: {faltantes.join(", ")}
+            </span>
+          )}
         <a
           href={buildDownloadUrl()}
           target="_blank"
@@ -109,10 +129,11 @@ export default function CartaResponsivaSubarrendadosPage({ params }: { params: P
         >
           Descargar PDF
         </a>
+        </div>
       </div>
 
-      <div className="max-w-6xl mx-auto py-8 px-4 flex gap-6">
-        <div className="w-80 shrink-0 space-y-4">
+      <div className="max-w-6xl mx-auto py-8 px-4 flex flex-col lg:flex-row gap-6">
+        <div className="w-full lg:w-80 shrink-0 space-y-4">
           <div className="bg-white/[0.025] border border-white/8 rounded-xl p-4 space-y-4">
             <p className="text-xs text-white/30 uppercase tracking-wider">Datos del documento</p>
 
@@ -123,6 +144,16 @@ export default function CartaResponsivaSubarrendadosPage({ params }: { params: P
                 placeholder="A quien corresponda"
                 value={destinatario}
                 onChange={e => setDestinatario(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className={labelCls}>Lugar / recinto del evento</label>
+              <input
+                className={inputCls}
+                placeholder="Ej: Auditorio Josefa Ortiz de Domínguez"
+                value={lugar}
+                onChange={e => setLugar(e.target.value)}
               />
             </div>
 
@@ -195,8 +226,9 @@ export default function CartaResponsivaSubarrendadosPage({ params }: { params: P
           <div className="bg-white rounded-xl overflow-hidden shadow-2xl text-[#0a0a0a] font-sans">
             <div className="bg-[#0a0a0a] px-10 py-6 flex items-end justify-between border-b-2 border-[#B3985B]">
               <div>
-                <p className="text-[#B3985B] font-bold tracking-widest text-base">MAINSTAGE PRODUCCIONES</p>
-                <p className="text-white/30 text-[10px] tracking-widest mt-1">ESCENARIO PRINCIPAL S.A. DE C.V. · AUDIO · ILUMINACIÓN · VIDEO</p>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/logo-white.png" alt={NOMBRE_COMERCIAL} className="w-40 h-auto" />
+                <p className="text-white/40 text-[10px] tracking-widest mt-2">{RAZON_SOCIAL.toUpperCase()}</p>
               </div>
               <div className="text-right">
                 <p className="text-white font-bold tracking-wider text-sm">ASIGNACIÓN DE RESPONSABILIDAD</p>
@@ -211,7 +243,7 @@ export default function CartaResponsivaSubarrendadosPage({ params }: { params: P
               <p className="font-bold mb-0.5">
                 {destinatario || <span className="text-gray-300 italic">A QUIEN CORRESPONDA:</span>}
               </p>
-              {destinatario && <p className="mb-6 text-white/20">Presente</p>}
+              {destinatario && <p className="mb-6 text-gray-700">Presente</p>}
 
               <p className="mb-4 text-justify text-gray-800">
                 Por medio de la presente, {tieneRepresentante ? (
@@ -219,10 +251,10 @@ export default function CartaResponsivaSubarrendadosPage({ params }: { params: P
                 ) : (
                   <>la empresa </>
                 )}
-                <strong>Escenario Principal S.A. de C.V.</strong> (operando comercialmente como <strong>Mainstage Producciones</strong>), manifiesta que, con motivo del evento{" "}
+                <strong>{RAZON_SOCIAL}</strong> (operando comercialmente como <strong>{NOMBRE_COMERCIAL}</strong>), manifiesta que, con motivo del evento{" "}
                 <strong>{proyecto.nombre}</strong> a celebrarse el día{" "}
                 <strong>{fechaEventoStr}</strong> en{" "}
-                <strong>{proyecto.lugarEvento || <span className="text-gray-400 italic">nombre del recinto</span>}</strong>
+                <strong>{lugar || <span className="text-gray-400 italic">nombre del recinto</span>}</strong>
                 {ciudad ? <>, ubicado en <strong>{ciudad}</strong></> : ""}, nuestra empresa fungirá como coordinador y/o integrador de servicios.
               </p>
 
@@ -242,7 +274,7 @@ export default function CartaResponsivaSubarrendadosPage({ params }: { params: P
               </p>
               
               <p className="mb-4 text-justify text-gray-800">
-                <strong>Escenario Principal S.A. de C.V. (Mainstage Producciones)</strong> conserva expresamente la responsabilidad correspondiente única y exclusivamente a los servicios, actividades y equipos que realiza y opera de forma directa con su propio personal, sin asumir responsabilidad técnica, de diseño, de fabricación, de cálculo estructural, de instalación, de operación o legal sobre el equipo suministrado y ejecutado por el proveedor externo mencionado.
+                <strong>{RAZON_SOCIAL} ({NOMBRE_COMERCIAL})</strong> conserva expresamente la responsabilidad correspondiente única y exclusivamente a los servicios, actividades y equipos que realiza y opera de forma directa con su propio personal, sin asumir responsabilidad técnica, de diseño, de fabricación, de cálculo estructural, de instalación, de operación o legal sobre el equipo suministrado y ejecutado por el proveedor externo mencionado.
               </p>
 
               <div className="border-t border-gray-200 my-6" />
@@ -251,8 +283,8 @@ export default function CartaResponsivaSubarrendadosPage({ params }: { params: P
 
               <div className="flex gap-8 mt-12">
                 <div className="border-t border-gray-300 pt-3 flex-1">
-                  <p className="font-bold text-sm">Escenario Principal S.A. de C.V.</p>
-                  <p className="text-xs text-gray-600 font-medium">Mainstage Producciones</p>
+                  <p className="font-bold text-sm">{RAZON_SOCIAL}</p>
+                  <p className="text-xs text-gray-600 font-medium">{NOMBRE_COMERCIAL}</p>
                   {tieneRepresentante ? (
                     <>
                       <p className="font-bold text-sm mt-1">{responsable}</p>
@@ -271,7 +303,7 @@ export default function CartaResponsivaSubarrendadosPage({ params }: { params: P
             </div>
 
             <div className="bg-[#f7f5f0] border-t border-gray-200 px-10 py-3 flex justify-between items-center">
-              <p className="text-[10px] text-gray-500 tracking-wider font-medium">ESCENARIO PRINCIPAL S.A. DE C.V. · MAINSTAGE PRODUCCIONES</p>
+              <p className="text-[10px] text-gray-500 tracking-wider font-medium">{RAZON_SOCIAL.toUpperCase()} · {NOMBRE_COMERCIAL.toUpperCase()}</p>
               <p className="text-[10px] text-gray-400">Documento confidencial · Uso exclusivo de las partes</p>
             </div>
           </div>

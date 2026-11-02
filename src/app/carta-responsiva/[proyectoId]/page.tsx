@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, use } from "react";
+import { RAZON_SOCIAL, NOMBRE_COMERCIAL } from "@/lib/empresa-legal";
 
 interface Proyecto {
   id: string;
@@ -42,6 +43,7 @@ export default function CartaResponsivaPage({ params }: { params: Promise<{ proy
   const [responsable, setResponsable]           = useState("");
   const [cargo, setCargo]                       = useState("Director de Producción");
   const [ciudad, setCiudad]                     = useState("");
+  const [lugar, setLugar]                       = useState("");
   const [telefono, setTelefono]                 = useState("");
   const [correo, setCorreo]                     = useState("");
   const [descripcionEquipo, setDescripcionEquipo] = useState("");
@@ -54,7 +56,10 @@ export default function CartaResponsivaPage({ params }: { params: Promise<{ proy
         setProyecto(p);
         const esMau = (n?: string | null) => !!n && /mauricio|mau/i.test(n);
         if (p.encargado?.name && !esMau(p.encargado.name)) setResponsable(p.encargado.name);
-        if (p.lugarEvento)    setCiudad(extraerCiudad(p.lugarEvento));
+        if (p.lugarEvento) {
+          setLugar(p.lugarEvento);
+          setCiudad(extraerCiudad(p.lugarEvento));
+        }
         setLoading(false);
       });
   }, [proyectoId]);
@@ -66,6 +71,7 @@ export default function CartaResponsivaPage({ params }: { params: Promise<{ proy
       responsable,
       cargo,
       ciudad,
+      lugar,
       telefono,
       correo,
       descripcionEquipo,
@@ -95,6 +101,12 @@ export default function CartaResponsivaPage({ params }: { params: Promise<{ proy
   const esMau = (n?: string | null) => !!n && /mauricio|mau/i.test(n);
   const tieneRepresentante = Boolean(responsable && !esMau(responsable));
 
+  const faltantes = [
+    !destinatario.trim() && "destinatario",
+    !lugar.trim() && "lugar",
+    !ciudad.trim() && "ciudad",
+  ].filter(Boolean) as string[];
+
   const inputCls = "w-full bg-black/50 border border-white/10 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/60 placeholder-white/20";
   const labelCls = "block text-xs text-white/30 mb-1";
 
@@ -109,6 +121,12 @@ export default function CartaResponsivaPage({ params }: { params: Promise<{ proy
           <span className="text-white/10">|</span>
           <span className="text-white/40 text-sm">Carta Responsiva Protección Civil — {proyecto.nombre}</span>
         </div>
+        <div className="flex items-center gap-3">
+          {faltantes.length > 0 && (
+            <span className="hidden sm:inline text-xs text-amber-400/80">
+              Falta: {faltantes.join(", ")}
+            </span>
+          )}
         <a
           href={buildDownloadUrl()}
           target="_blank"
@@ -117,11 +135,12 @@ export default function CartaResponsivaPage({ params }: { params: Promise<{ proy
         >
           Descargar PDF
         </a>
+        </div>
       </div>
 
-      <div className="max-w-6xl mx-auto py-8 px-4 flex gap-6">
+      <div className="max-w-6xl mx-auto py-8 px-4 flex flex-col lg:flex-row gap-6">
         {/* Panel de datos */}
-        <div className="w-80 shrink-0 space-y-4">
+        <div className="w-full lg:w-80 shrink-0 space-y-4">
           <div className="bg-white/[0.025] border border-white/8 rounded-xl p-4 space-y-4">
             <p className="text-xs text-white/30 uppercase tracking-wider">Datos del documento</p>
 
@@ -132,6 +151,16 @@ export default function CartaResponsivaPage({ params }: { params: Promise<{ proy
                 placeholder="Ej: H. Ayuntamiento de Guadalajara"
                 value={destinatario}
                 onChange={e => setDestinatario(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className={labelCls}>Lugar / recinto del evento</label>
+              <input
+                className={inputCls}
+                placeholder="Ej: Auditorio Josefa Ortiz de Domínguez"
+                value={lugar}
+                onChange={e => setLugar(e.target.value)}
               />
             </div>
 
@@ -149,7 +178,7 @@ export default function CartaResponsivaPage({ params }: { params: Promise<{ proy
               <label className={labelCls}>Persona que firma (opcional — dejar vacío para la empresa)</label>
               <input
                 className={inputCls}
-                placeholder="Escenario Principal S.A. de C.V. (por defecto)"
+                placeholder={`${RAZON_SOCIAL} (por defecto)`}
                 value={responsable}
                 onChange={e => setResponsable(e.target.value)}
               />
@@ -204,7 +233,6 @@ export default function CartaResponsivaPage({ params }: { params: Promise<{ proy
               <p><span className="text-white/20">Proyecto</span> · {proyecto.numeroProyecto}</p>
               <p><span className="text-white/20">Evento</span> · {proyecto.nombre}</p>
               <p><span className="text-white/20">Fecha evento</span> · {fechaEventoStr}</p>
-              {proyecto.lugarEvento && <p><span className="text-white/20">Lugar</span> · {proyecto.lugarEvento}</p>}
               <p><span className="text-white/20">Servicio</span> · {descripcionServicio}</p>
             </div>
           </div>
@@ -216,8 +244,9 @@ export default function CartaResponsivaPage({ params }: { params: Promise<{ proy
             {/* Header negro */}
             <div className="bg-[#0a0a0a] px-10 py-6 flex items-end justify-between border-b-2 border-[#B3985B]">
               <div>
-                <p className="text-[#B3985B] font-bold tracking-widest text-base">MAINSTAGE PRODUCCIONES</p>
-                <p className="text-white/30 text-[10px] tracking-widest mt-1">ESCENARIO PRINCIPAL S.A. DE C.V. · AUDIO · ILUMINACIÓN · VIDEO</p>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/logo-white.png" alt={NOMBRE_COMERCIAL} className="w-40 h-auto" />
+                <p className="text-white/40 text-[10px] tracking-widest mt-2">{RAZON_SOCIAL.toUpperCase()}</p>
               </div>
               <div className="text-right">
                 <p className="text-white font-bold tracking-wider text-sm">CARTA RESPONSIVA PROTECCIÓN CIVIL</p>
@@ -232,7 +261,7 @@ export default function CartaResponsivaPage({ params }: { params: Promise<{ proy
               <p className="font-bold mb-0.5">
                 {destinatario || <span className="text-gray-300 italic">Nombre de la institución / dependencia</span>}
               </p>
-              <p className="mb-6 text-white/20">Presente</p>
+              <p className="mb-6 text-gray-700">Presente</p>
 
               <p className="mb-4 text-justify text-gray-800">
                 Por medio de la presente, {tieneRepresentante ? (
@@ -240,10 +269,10 @@ export default function CartaResponsivaPage({ params }: { params: Promise<{ proy
                 ) : (
                   <>la empresa </>
                 )}
-                <strong>Escenario Principal S.A. de C.V.</strong> (operando comercialmente como <strong>Mainstage Producciones</strong>), manifiesta que, con motivo del evento{" "}
+                <strong>{RAZON_SOCIAL}</strong> (operando comercialmente como <strong>{NOMBRE_COMERCIAL}</strong>), manifiesta que, con motivo del evento{" "}
                 <strong>{proyecto.nombre}</strong> a celebrarse el día{" "}
                 <strong>{fechaEventoStr}</strong> en{" "}
-                <strong>{proyecto.lugarEvento || <span className="text-gray-400 italic">nombre del recinto</span>}</strong>
+                <strong>{lugar || <span className="text-gray-400 italic">nombre del recinto</span>}</strong>
                 {ciudad ? <>, ubicado en <strong>{ciudad}</strong></> : ""}, nuestra empresa realizará las actividades
                 correspondientes a {descripcionServicio}.
               </p>
@@ -274,8 +303,8 @@ export default function CartaResponsivaPage({ params }: { params: Promise<{ proy
               <p className="mb-6 text-gray-800">Atentamente,</p>
 
               <div className="mt-12 border-t border-gray-300 pt-3 w-64">
-                <p className="font-bold text-sm">Escenario Principal S.A. de C.V.</p>
-                <p className="text-xs text-gray-600 font-medium">Mainstage Producciones</p>
+                <p className="font-bold text-sm">{RAZON_SOCIAL}</p>
+                <p className="text-xs text-gray-600 font-medium">{NOMBRE_COMERCIAL}</p>
                 {tieneRepresentante ? (
                   <>
                     <p className="font-bold text-sm mt-1">{responsable}</p>
@@ -285,13 +314,13 @@ export default function CartaResponsivaPage({ params }: { params: Promise<{ proy
                   <p className="text-gray-500 text-xs mt-1">Empresa de Producción Técnica Integral</p>
                 )}
                 {telefono && <p className="text-[#B3985B] text-xs mt-1">{telefono}</p>}
-                {correo   && <p className="text-white/30 text-xs">{correo}</p>}
+                {correo   && <p className="text-gray-500 text-xs">{correo}</p>}
               </div>
             </div>
 
             {/* Footer */}
             <div className="bg-[#f7f5f0] border-t border-gray-200 px-10 py-3 flex justify-between items-center">
-              <p className="text-[10px] text-gray-500 tracking-wider font-medium">ESCENARIO PRINCIPAL S.A. DE C.V. · MAINSTAGE PRODUCCIONES</p>
+              <p className="text-[10px] text-gray-500 tracking-wider font-medium">{RAZON_SOCIAL.toUpperCase()} · {NOMBRE_COMERCIAL.toUpperCase()}</p>
               <p className="text-[10px] text-gray-400">Documento confidencial · Uso exclusivo de las partes</p>
             </div>
           </div>

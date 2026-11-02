@@ -2,6 +2,7 @@ import React from "react";
 import {
   Document, Page, Text, View, StyleSheet, Image,
 } from "@react-pdf/renderer";
+import { RAZON_SOCIAL, NOMBRE_COMERCIAL } from "@/lib/empresa-legal";
 
 const GOLD  = "#B3985B";
 const BLACK = "#0a0a0a";
@@ -178,6 +179,8 @@ export interface CartaResponsivaProps {
 
   // Fecha de la carta
   fechaCarta: string;        // "Guadalajara, 13 de abril de 2026"
+
+  logoSrc?: string | null;   // data URI de public/logo-white.png
 }
 
 export function CartaResponsivaPDF(p: CartaResponsivaProps) {
@@ -190,8 +193,11 @@ export function CartaResponsivaPDF(p: CartaResponsivaProps) {
         {/* Header */}
         <View style={s.header}>
           <View>
-            <Text style={s.brand}>MAINSTAGE PRODUCCIONES</Text>
-            <Text style={s.tagline}>ESCENARIO PRINCIPAL S.A. DE C.V. · AUDIO · ILUMINACIÓN · VIDEO</Text>
+            {p.logoSrc
+              ? <Image src={p.logoSrc} style={{ width: 150, alignSelf: "flex-start", marginBottom: 6 }} />
+              : <Text style={s.brand}>MAINSTAGE PRO</Text>
+            }
+            <Text style={s.tagline}>{RAZON_SOCIAL.toUpperCase()}</Text>
           </View>
           <View style={{ alignItems: "flex-end" }}>
             <Text style={s.docTipo}>CARTA RESPONSIVA</Text>
@@ -217,8 +223,8 @@ export function CartaResponsivaPDF(p: CartaResponsivaProps) {
             ) : (
               <>la empresa </>
             )}
-            <Text style={{ fontFamily: "Helvetica-Bold" }}>Escenario Principal S.A. de C.V.</Text> (operando comercialmente como{" "}
-            <Text style={{ fontFamily: "Helvetica-Bold" }}>Mainstage Producciones</Text>), manifiesta que, con motivo del evento{" "}
+            <Text style={{ fontFamily: "Helvetica-Bold" }}>{RAZON_SOCIAL}</Text> (operando comercialmente como{" "}
+            <Text style={{ fontFamily: "Helvetica-Bold" }}>{NOMBRE_COMERCIAL}</Text>), manifiesta que, con motivo del evento{" "}
             <Text style={{ fontFamily: "Helvetica-Bold" }}>{p.nombreEvento}</Text> a celebrarse el día{" "}
             <Text style={{ fontFamily: "Helvetica-Bold" }}>{p.fechaEvento}</Text> en{" "}
             <Text style={{ fontFamily: "Helvetica-Bold" }}>{p.lugarEvento || "___________________________"}</Text>, ubicado en{" "}
@@ -256,8 +262,8 @@ export function CartaResponsivaPDF(p: CartaResponsivaProps) {
           <View style={s.firmaBlock}>
             <View style={s.firmaCol}>
               <View style={s.firmaLinea} />
-              <Text style={s.firmaNombre}>Escenario Principal S.A. de C.V.</Text>
-              <Text style={s.firmaDetalle}>Mainstage Producciones</Text>
+              <Text style={s.firmaNombre}>{RAZON_SOCIAL}</Text>
+              <Text style={s.firmaDetalle}>{NOMBRE_COMERCIAL}</Text>
               {tieneRepresentante ? (
                 <>
                   <Text style={[s.firmaNombre, { marginTop: 4 }]}>{p.responsableNombre}</Text>
@@ -274,7 +280,7 @@ export function CartaResponsivaPDF(p: CartaResponsivaProps) {
 
         {/* Footer */}
         <View style={s.footer} fixed>
-          <Text style={s.footerBrand}>ESCENARIO PRINCIPAL S.A. DE C.V. · MAINSTAGE PRODUCCIONES</Text>
+          <Text style={s.footerBrand}>{RAZON_SOCIAL.toUpperCase()} · {NOMBRE_COMERCIAL.toUpperCase()}</Text>
           <Text style={s.footerNote}>Documento confidencial · Uso exclusivo de las partes</Text>
         </View>
       </Page>

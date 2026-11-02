@@ -129,17 +129,14 @@ export default function DocumentosClienteModal({ trato }: { trato: TratoLite }) 
     {
       key: "responsiva",
       label: "Carta responsiva",
-      desc: proyecto ? "Responsiva para el recinto / sede" : "Disponible al crear el proyecto",
+      desc: proyecto ? "Llena destinatario y firmante antes de descargar" : "Disponible al crear el proyecto",
       icon: Shield,
       enabled: !!proyecto,
       hint: proyecto ? undefined : "Requiere proyecto",
-      onClick: () =>
-        proyecto &&
-        downloadPdf(
-          `/api/proyectos/${proyecto.id}/carta-responsiva`,
-          `Carta-responsiva-${proyecto.numeroProyecto}.pdf`,
-          "Carta responsiva"
-        ),
+      // Abre el formulario: la carta lleva datos que solo se capturan ahí.
+      onClick: () => {
+        if (proyecto) window.location.href = `/carta-responsiva/${proyecto.id}`;
+      },
     },
     {
       key: "nota",
