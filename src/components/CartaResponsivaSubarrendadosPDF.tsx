@@ -161,6 +161,7 @@ export interface CartaResponsivaSubarrendadosProps {
   nombreEvento: string;
   fechaEvento: string;
   lugarEvento: string;
+  organizador: string;       // quien organiza el evento
   ciudad: string;
   
   destinatario: string;
@@ -214,7 +215,8 @@ export function CartaResponsivaSubarrendadosPDF(p: CartaResponsivaSubarrendadosP
             )}
             <Text style={{ fontFamily: "Helvetica-Bold" }}>{RAZON_SOCIAL}</Text> (operando comercialmente como{" "}
             <Text style={{ fontFamily: "Helvetica-Bold" }}>{NOMBRE_COMERCIAL}</Text>), manifiesta que, con motivo del evento{" "}
-            <Text style={{ fontFamily: "Helvetica-Bold" }}>{p.nombreEvento}</Text> a celebrarse el día{" "}
+            <Text style={{ fontFamily: "Helvetica-Bold" }}>{p.nombreEvento}</Text>, organizado por{" "}
+            <Text style={{ fontFamily: "Helvetica-Bold" }}>{p.organizador || "___________________________"}</Text>, a celebrarse el día{" "}
             <Text style={{ fontFamily: "Helvetica-Bold" }}>{p.fechaEvento}</Text> en{" "}
             <Text style={{ fontFamily: "Helvetica-Bold" }}>{p.lugarEvento || "___________________________"}</Text>, ubicado en{" "}
             <Text style={{ fontFamily: "Helvetica-Bold" }}>{p.ciudad || "___________________________"}</Text>, nuestra empresa fungirá como coordinador y/o integrador de servicios.

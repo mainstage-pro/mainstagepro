@@ -32,6 +32,7 @@ export async function GET(
     include: {
       trato: { select: { tipoServicio: true } },
       encargado: { select: { name: true } },
+      cliente: { select: { nombre: true, empresa: true } },
     },
   });
 
@@ -53,6 +54,7 @@ export async function GET(
   const descripcionServicio = TIPO_SERVICIO_DESC[tipoServ] ?? "producción técnica integral";
 
   const lugar = url.searchParams.get("lugar") || proyecto.lugarEvento || "";
+  const organizador = url.searchParams.get("organizador") || proyecto.cliente?.empresa || proyecto.cliente?.nombre || "";
 
   const logoPath = path.join(process.cwd(), "public", "logo-white.png");
   const logoSrc = fs.existsSync(logoPath)
@@ -68,6 +70,7 @@ export async function GET(
     nombreEvento:       proyecto.nombre,
     fechaEvento,
     lugarEvento:        lugar,
+    organizador,
     ciudad,
     descripcionServicio,
     descripcionEquipo,

@@ -10,6 +10,7 @@ interface Proyecto {
   fechaEvento: string;
   lugarEvento: string | null;
   encargado: { name: string } | null;
+  cliente: { nombre: string; empresa: string | null } | null;
   trato: { tipoServicio: string | null } | null;
 }
 
@@ -44,6 +45,7 @@ export default function CartaResponsivaPage({ params }: { params: Promise<{ proy
   const [cargo, setCargo]                       = useState("Director de Producción");
   const [ciudad, setCiudad]                     = useState("");
   const [lugar, setLugar]                       = useState("");
+  const [organizador, setOrganizador]           = useState("");
   const [telefono, setTelefono]                 = useState("");
   const [correo, setCorreo]                     = useState("");
   const [descripcionEquipo, setDescripcionEquipo] = useState("");
@@ -60,6 +62,8 @@ export default function CartaResponsivaPage({ params }: { params: Promise<{ proy
           setLugar(p.lugarEvento);
           setCiudad(extraerCiudad(p.lugarEvento));
         }
+        const org = p.cliente?.empresa || p.cliente?.nombre;
+        if (org) setOrganizador(org);
         setLoading(false);
       });
   }, [proyectoId]);
@@ -72,6 +76,7 @@ export default function CartaResponsivaPage({ params }: { params: Promise<{ proy
       cargo,
       ciudad,
       lugar,
+      organizador,
       telefono,
       correo,
       descripcionEquipo,
@@ -103,6 +108,7 @@ export default function CartaResponsivaPage({ params }: { params: Promise<{ proy
 
   const faltantes = [
     !destinatario.trim() && "destinatario",
+    !organizador.trim() && "organizador",
     !lugar.trim() && "lugar",
     !ciudad.trim() && "ciudad",
   ].filter(Boolean) as string[];
@@ -151,6 +157,16 @@ export default function CartaResponsivaPage({ params }: { params: Promise<{ proy
                 placeholder="Ej: H. Ayuntamiento de Guadalajara"
                 value={destinatario}
                 onChange={e => setDestinatario(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className={labelCls}>Quién organiza el evento</label>
+              <input
+                className={inputCls}
+                placeholder="Ej: Grupo Empresarial XYZ / Familia Pérez"
+                value={organizador}
+                onChange={e => setOrganizador(e.target.value)}
               />
             </div>
 
@@ -270,7 +286,8 @@ export default function CartaResponsivaPage({ params }: { params: Promise<{ proy
                   <>la empresa </>
                 )}
                 <strong>{RAZON_SOCIAL}</strong> (operando comercialmente como <strong>{NOMBRE_COMERCIAL}</strong>), manifiesta que, con motivo del evento{" "}
-                <strong>{proyecto.nombre}</strong> a celebrarse el día{" "}
+                <strong>{proyecto.nombre}</strong>, organizado por{" "}
+                <strong>{organizador || <span className="text-gray-400 italic">quién organiza</span>}</strong>, a celebrarse el día{" "}
                 <strong>{fechaEventoStr}</strong> en{" "}
                 <strong>{lugar || <span className="text-gray-400 italic">nombre del recinto</span>}</strong>
                 {ciudad ? <>, ubicado en <strong>{ciudad}</strong></> : ""}, nuestra empresa realizará las actividades

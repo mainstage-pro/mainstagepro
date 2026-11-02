@@ -10,6 +10,7 @@ interface Proyecto {
   fechaEvento: string;
   lugarEvento: string | null;
   encargado: { name: string } | null;
+  cliente: { nombre: string; empresa: string | null } | null;
 }
 
 function fmtDateLong(s: string) {
@@ -36,6 +37,7 @@ export default function CartaResponsivaSubarrendadosPage({ params }: { params: P
   const [cargo, setCargo]                       = useState("Director de Producción");
   const [ciudad, setCiudad]                     = useState("");
   const [lugar, setLugar]                       = useState("");
+  const [organizador, setOrganizador]           = useState("");
   const [telefono, setTelefono]                 = useState("");
   const [correo, setCorreo]                     = useState("");
   const [nombreProveedor, setNombreProveedor]   = useState("");
@@ -54,6 +56,8 @@ export default function CartaResponsivaSubarrendadosPage({ params }: { params: P
           setLugar(p.lugarEvento);
           setCiudad(extraerCiudad(p.lugarEvento));
         }
+        const org = p.cliente?.empresa || p.cliente?.nombre;
+        if (org) setOrganizador(org);
         setLoading(false);
       });
   }, [proyectoId]);
@@ -66,6 +70,7 @@ export default function CartaResponsivaSubarrendadosPage({ params }: { params: P
       cargo,
       ciudad,
       lugar,
+      organizador,
       telefono,
       correo,
       nombreProveedor,
@@ -95,6 +100,7 @@ export default function CartaResponsivaSubarrendadosPage({ params }: { params: P
   const tieneRepresentante = Boolean(responsable && !esMau(responsable));
 
   const faltantes = [
+    !organizador.trim() && "organizador",
     !lugar.trim() && "lugar",
     !ciudad.trim() && "ciudad",
     !nombreProveedor.trim() && "proveedor",
@@ -144,6 +150,16 @@ export default function CartaResponsivaSubarrendadosPage({ params }: { params: P
                 placeholder="A quien corresponda"
                 value={destinatario}
                 onChange={e => setDestinatario(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className={labelCls}>Quién organiza el evento</label>
+              <input
+                className={inputCls}
+                placeholder="Ej: Grupo Empresarial XYZ / Familia Pérez"
+                value={organizador}
+                onChange={e => setOrganizador(e.target.value)}
               />
             </div>
 
@@ -252,7 +268,8 @@ export default function CartaResponsivaSubarrendadosPage({ params }: { params: P
                   <>la empresa </>
                 )}
                 <strong>{RAZON_SOCIAL}</strong> (operando comercialmente como <strong>{NOMBRE_COMERCIAL}</strong>), manifiesta que, con motivo del evento{" "}
-                <strong>{proyecto.nombre}</strong> a celebrarse el día{" "}
+                <strong>{proyecto.nombre}</strong>, organizado por{" "}
+                <strong>{organizador || <span className="text-gray-400 italic">quién organiza</span>}</strong>, a celebrarse el día{" "}
                 <strong>{fechaEventoStr}</strong> en{" "}
                 <strong>{lugar || <span className="text-gray-400 italic">nombre del recinto</span>}</strong>
                 {ciudad ? <>, ubicado en <strong>{ciudad}</strong></> : ""}, nuestra empresa fungirá como coordinador y/o integrador de servicios.

@@ -166,6 +166,7 @@ export interface CartaResponsivaProps {
   nombreEvento: string;
   fechaEvento: string;       // "15 de abril de 2026"
   lugarEvento: string;
+  organizador: string;       // quien organiza el evento
   ciudad: string;
   descripcionServicio: string; // "producción técnica integral (audio, iluminación y video)"
   descripcionEquipo: string;   // texto libre del equipo a instalar
@@ -225,7 +226,8 @@ export function CartaResponsivaPDF(p: CartaResponsivaProps) {
             )}
             <Text style={{ fontFamily: "Helvetica-Bold" }}>{RAZON_SOCIAL}</Text> (operando comercialmente como{" "}
             <Text style={{ fontFamily: "Helvetica-Bold" }}>{NOMBRE_COMERCIAL}</Text>), manifiesta que, con motivo del evento{" "}
-            <Text style={{ fontFamily: "Helvetica-Bold" }}>{p.nombreEvento}</Text> a celebrarse el día{" "}
+            <Text style={{ fontFamily: "Helvetica-Bold" }}>{p.nombreEvento}</Text>, organizado por{" "}
+            <Text style={{ fontFamily: "Helvetica-Bold" }}>{p.organizador || "___________________________"}</Text>, a celebrarse el día{" "}
             <Text style={{ fontFamily: "Helvetica-Bold" }}>{p.fechaEvento}</Text> en{" "}
             <Text style={{ fontFamily: "Helvetica-Bold" }}>{p.lugarEvento || "___________________________"}</Text>, ubicado en{" "}
             <Text style={{ fontFamily: "Helvetica-Bold" }}>{p.ciudad || "___________________________"}</Text>, nuestra empresa realizará las actividades correspondientes a{" "}
