@@ -91,7 +91,7 @@ function PdfHeader({ mesLabel, tipo }: { mesLabel: string; tipo: string }) {
   return (
     <>
       <View style={s.header}>
-        <View><Text style={s.brand}>MAINSTAGE</Text><Text style={s.tagline}>ADMINISTRACIÓN · ESCENARIO PRINCIPAL S.A. DE C.V.</Text></View>
+        <View><Text style={s.brand}>MAINSTAGE</Text><Text style={s.tagline}>ADMINISTRACIÓN · ESCENARIO PRINCIPAL PRODUCCIONES, S.A. DE C.V.</Text></View>
         <View style={s.headerRight}>
           <Text style={s.headerTitle}>Reporte Administrativo</Text>
           <Text style={s.headerSub}>{tipo}</Text>

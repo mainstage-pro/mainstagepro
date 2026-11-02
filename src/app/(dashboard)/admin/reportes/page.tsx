@@ -1430,7 +1430,7 @@ export default function ReportesAdminPage() {
     { key: "rentabilidad", label: "Rentabilidad por evento", icon: TrendingUp },
   ];
 
-  const razonSocial = balanceData?.estructura.razonSocial ?? "Escenario Principal S.A. de C.V.";
+  const razonSocial = balanceData?.estructura.razonSocial ?? "Escenario Principal Producciones, S.A. de C.V.";
 
   return (
     <>
@@ -1443,7 +1443,7 @@ export default function ReportesAdminPage() {
           <div>
             <p className="text-[#B3985B] text-[10px] font-semibold uppercase tracking-widest mb-1">Administración</p>
             <h1 className="ms-h1">Reportes de Administración</h1>
-            <p className="text-gray-500 text-sm mt-0.5">Escenario Principal S.A. de C.V. · Consolidado ejecutivo</p>
+            <p className="text-gray-500 text-sm mt-0.5">Escenario Principal Producciones, S.A. de C.V. · Consolidado ejecutivo</p>
           </div>
           {tab !== "rentabilidad" && (
           <div className="flex items-center gap-3">

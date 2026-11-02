@@ -72,7 +72,7 @@ export default function SociosConstitutivosPage() {
         <div>
           <h1 className="ms-h1">Socios Constitutivos</h1>
           <p className="ms-subtitle mt-0.5">
-            {constitutivos.length} socios · Escenario Principal S.A. de C.V.
+            {constitutivos.length} socios · Escenario Principal Producciones, S.A. de C.V.
           </p>
         </div>
       </div>
@@ -194,7 +194,7 @@ export default function SociosConstitutivosPage() {
       {/* Nota informativa al pie */}
       <div className="mt-8 p-4 bg-[#0a0a0a] border border-[#1a1a1a] rounded-xl">
         <p className="text-xs text-[#555]">
-          Este módulo muestra únicamente los socios del acta constitutiva de Escenario Principal S.A. de C.V.
+          Este módulo muestra únicamente los socios del acta constitutiva de Escenario Principal Producciones, S.A. de C.V.
         </p>
       </div>
     </div>

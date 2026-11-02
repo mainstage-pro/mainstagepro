@@ -8,7 +8,7 @@ import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/render
 import { C, base, nowStr, MAPS } from "./PdfShared";
 
 const CONTACTO_TELEFONO = "446 143 2565";
-const FIRMA_NOMBRE = "Escenario Principal S.A. de C.V.";
+const FIRMA_NOMBRE = "Escenario Principal Producciones, S.A. de C.V.";
 const FIRMA_REPRESENTACION = "Mainstage Pro · Producción Técnica Profesional";
 const FIRMA_MARCA = "Dirección de Operaciones";
 

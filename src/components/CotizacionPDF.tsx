@@ -568,14 +568,14 @@ const TXT = {
     infoImportante: "INFORMACIÓN IMPORTANTE",
     firmaCargo: "Director General · Mainstage Pro",
     vigencia: (d: number) => `Vigencia: ${d} días`,
-    confidencial: "Cotización confidencial y exclusiva para el destinatario. Prohibida su difusión sin autorización de Mainstage Producciones.",
+    confidencial: "Cotización confidencial y exclusiva para el destinatario. Prohibida su difusión sin autorización de Mainstage Pro.",
     terminos: (a: number, aM: string, l: number, lM: string, vig: number, vigFecha: string) => [
       `Se solicita un anticipo del ${a}% (${aM}) para reservar la fecha.`,
       `El saldo restante (${lM}) se debe liquidar como máximo 1 día antes del evento.`,
       `Esta cotización tiene una vigencia de ${vig} días (vence el ${vigFecha}).`,
       "El pago puede realizarse por transferencia o efectivo (coordinar entrega vía WhatsApp con el vendedor).",
       "En caso de no requerir factura y pago en efectivo, podemos aplicar el descuento del IVA.",
-      "Cotización confidencial y exclusiva para el destinatario. Prohibida su difusión sin autorización de Mainstage Producciones.",
+      "Cotización confidencial y exclusiva para el destinatario. Prohibida su difusión sin autorización de Mainstage Pro.",
       "Cualquier duda, cambio o sugerencia hacerla por medio de WhatsApp: (446) 143 2565.",
     ],
     tipoEventoMap: { MUSICAL: "MUSICAL", SOCIAL: "SOCIAL", EMPRESARIAL: "EMPRESARIAL", OTRO: "OTRO" } as Record<string, string>,
@@ -1144,7 +1144,7 @@ export function CotizacionPDF({ cotizacion: c, logoSrc, descCategorias = {}, cat
   return (
     <Document
       title={`${idioma === "en" ? "Quote" : "Cotización"} ${c.numeroCotizacion} — ${c.nombreEvento || c.cliente.nombre}`}
-      author="Mainstage Producciones"
+      author="Mainstage Pro"
       subject={idioma === "en" ? "Service Proposal" : "Propuesta de Servicios"}
     >
       <Page size="LETTER" style={s.page}>
@@ -1154,7 +1154,7 @@ export function CotizacionPDF({ cotizacion: c, logoSrc, descCategorias = {}, cat
           <View style={s.headerLeft}>
             {logoSrc
               ? <Image src={logoSrc} style={{ width: 150, alignSelf: "flex-start" }} />
-              : <Text style={s.brand}>MAINSTAGE PRODUCCIONES</Text>
+              : <Text style={s.brand}>MAINSTAGE PRO</Text>
             }
             <Text style={s.tagline}>{t.tagline}</Text>
           </View>
@@ -1327,7 +1327,7 @@ export function CotizacionPDF({ cotizacion: c, logoSrc, descCategorias = {}, cat
         <View style={s.pagoBloque}>
           <View style={s.pagoCard}>
             <Text style={s.pagoTitulo}>{t.pagoFiscal}</Text>
-            <View style={s.pagoFila}><Text style={s.pagoLabel}>{t.razonSocial}</Text><Text style={s.pagoValor}>Escenario Principal S.A. de C.V.</Text></View>
+            <View style={s.pagoFila}><Text style={s.pagoLabel}>{t.razonSocial}</Text><Text style={s.pagoValor}>Escenario Principal Producciones, S.A. de C.V.</Text></View>
             <View style={s.pagoFila}><Text style={s.pagoLabel}>{t.rfc}</Text><Text style={s.pagoValor}>EPP2502068Q8</Text></View>
             <View style={s.pagoFila}><Text style={s.pagoLabel}>{t.banco}</Text><Text style={s.pagoValor}>Banorte</Text></View>
             <View style={s.pagoFila}><Text style={s.pagoLabel}>{t.noCuenta}</Text><Text style={s.pagoValor}>1313102977</Text></View>
@@ -1394,14 +1394,14 @@ export function CotizacionPDF({ cotizacion: c, logoSrc, descCategorias = {}, cat
             <View style={s.firmaEspacio} />
             {/* Línea dorada */}
             <View style={s.firmaLinea} />
-            <Text style={s.firmaNombre}>Escenario Principal S.A. de C.V.</Text>
-            <Text style={s.firmaCargo}>Mainstage Producciones</Text>
+            <Text style={s.firmaNombre}>Escenario Principal Producciones, S.A. de C.V.</Text>
+            <Text style={s.firmaCargo}>Mainstage Pro</Text>
           </View>
         </View>
 
         {/* ── FOOTER ── */}
         <View style={s.footer}>
-          <Text style={s.footerBrand}>ESCENARIO PRINCIPAL S.A. DE C.V. · MAINSTAGE PRODUCCIONES</Text>
+          <Text style={s.footerBrand}>ESCENARIO PRINCIPAL PRODUCCIONES, S.A. DE C.V. · MAINSTAGE PRO</Text>
           <Text style={s.footerContacto}>WhatsApp: (446) 143 2565  |  mainstageqro@gmail.com</Text>
           <Text style={s.footerVigencia}>{t.vigencia(c.vigenciaDias)}</Text>
         </View>

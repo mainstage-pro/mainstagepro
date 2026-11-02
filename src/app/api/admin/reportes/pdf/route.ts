@@ -88,7 +88,7 @@ export async function GET(req: NextRequest) {
         patrimonioNeto,
         flujoMes,
         salud,
-        razonSocial: "Escenario Principal S.A. de C.V.",
+        razonSocial: "Escenario Principal Producciones, S.A. de C.V.",
         socios: sociosDB.map(s => ({ nombre: s.nombre, pctParticipacion: s.pctParticipacion })),
         activos: activosMapeados,
         pasivos: pasivosDB.map(p => ({ nombre: p.nombre, categoria: p.categoria, montoTotal: p.montoTotal, montoPagado: p.montoPagado })),

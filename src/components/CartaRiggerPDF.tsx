@@ -122,8 +122,8 @@ export function CartaRiggerPDF(p: CartaFreelanceProps) {
         {/* ── Header ── */}
         <View style={s.header}>
           <View>
-            <Text style={s.brand}>MAINSTAGE PRODUCCIONES</Text>
-            <Text style={s.tagline}>ESCENARIO PRINCIPAL S.A. DE C.V. · AUDIO · ILUMINACIÓN · VIDEO</Text>
+            <Text style={s.brand}>MAINSTAGE PRO</Text>
+            <Text style={s.tagline}>ESCENARIO PRINCIPAL PRODUCCIONES, S.A. DE C.V. · AUDIO · ILUMINACIÓN · VIDEO</Text>
           </View>
           <View style={{ alignItems: "flex-end" }}>
             <Text style={s.docTipo}>RESPONSIVA DE RIGGING Y TRABAJO EN ALTURAS</Text>
@@ -163,7 +163,7 @@ export function CartaRiggerPDF(p: CartaFreelanceProps) {
             En {p.ciudad}, a ____/____/______,{"  "}yo{" "}
             <Text style={{ fontFamily: "Helvetica-Bold" }}>{p.tecnicoNombre}</Text>
             {"  "}(INE/ID: _______________________ · Tel: {field(p.tecnicoCelular, "______________________")}),{"\n"}
-            acepto prestar mis servicios especializados de RIGGING para la empresa Escenario Principal S.A. de C.V. (Mainstage Pro). Debido al alto riesgo inherente al trabajo en alturas y elevación de cargas, me obligo a cumplir estrictamente los siguientes lineamientos:
+            acepto prestar mis servicios especializados de RIGGING para la empresa Escenario Principal Producciones, S.A. de C.V. (Mainstage Pro). Debido al alto riesgo inherente al trabajo en alturas y elevación de cargas, me obligo a cumplir estrictamente los siguientes lineamientos:
           </Text>
 
           {/* ── Cláusulas Exclusivas para Rigging ── */}
@@ -226,7 +226,7 @@ export function CartaRiggerPDF(p: CartaFreelanceProps) {
           <View style={s.clausula}>
             <Text>
               <Text style={s.clausulaNum}>9) Responsabilidad Civil: </Text>
-              <Text style={s.clausulaTexto}>Asumo responsabilidad total sobre accidentes, colapsos o lesiones a terceros ocasionados por mi negligencia directa, mala práctica, o por omitir deliberadamente estas normativas de seguridad, deslindando a Escenario Principal S.A. de C.V. y a Mainstage Producciones en casos de negligencia comprobada de mi parte.</Text>
+              <Text style={s.clausulaTexto}>Asumo responsabilidad total sobre accidentes, colapsos o lesiones a terceros ocasionados por mi negligencia directa, mala práctica, o por omitir deliberadamente estas normativas de seguridad, deslindando a Escenario Principal Producciones, S.A. de C.V. y a Mainstage Pro en casos de negligencia comprobada de mi parte.</Text>
             </Text>
           </View>
 
@@ -250,12 +250,12 @@ export function CartaRiggerPDF(p: CartaFreelanceProps) {
             </View>
             <View style={s.firmaCol}>
               <View style={s.firmaLinea} />
-              <Text style={s.firmaLabel}>Por Escenario Principal S.A. de C.V.</Text>
+              <Text style={s.firmaLabel}>Por Escenario Principal Producciones, S.A. de C.V.</Text>
               <Text style={[s.firmaDetalle, { fontFamily: "Helvetica-Bold", marginTop: 2 }]}>
-                {p.responsableNombre && !/mauricio|mau/i.test(p.responsableNombre) ? p.responsableNombre : "Escenario Principal S.A. de C.V."}
+                {p.responsableNombre && !/mauricio|mau/i.test(p.responsableNombre) ? p.responsableNombre : "Escenario Principal Producciones, S.A. de C.V."}
               </Text>
               <Text style={s.firmaDetalle}>
-                {p.responsableNombre && !/mauricio|mau/i.test(p.responsableNombre) ? (p.responsableCargo ?? "Coordinador de Rigging") : "Mainstage Producciones"}
+                {p.responsableNombre && !/mauricio|mau/i.test(p.responsableNombre) ? (p.responsableCargo ?? "Coordinador de Rigging") : "Mainstage Pro"}
               </Text>
             </View>
           </View>
@@ -264,7 +264,7 @@ export function CartaRiggerPDF(p: CartaFreelanceProps) {
 
         {/* ── Footer ── */}
         <View style={s.footer} fixed>
-          <Text style={s.footerBrand}>ESCENARIO PRINCIPAL S.A. DE C.V. · MAINSTAGE PRODUCCIONES</Text>
+          <Text style={s.footerBrand}>ESCENARIO PRINCIPAL PRODUCCIONES, S.A. DE C.V. · MAINSTAGE PRO</Text>
           <Text style={s.footerNote}>Responsiva Rigging y Trabajo en Alturas · {p.nombreEvento} · {p.numeroProyecto}</Text>
         </View>
 

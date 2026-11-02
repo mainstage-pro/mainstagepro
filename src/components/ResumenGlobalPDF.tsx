@@ -123,19 +123,19 @@ export function ResumenGlobalPDF({ data, logoSrc }: { data: ResumenGlobalData; l
     `Esta cotización tiene una vigencia de ${vigenciaDias} días (vence el ${fmtDate(vigenciaDate)}).`,
     "El pago puede realizarse por transferencia o efectivo (coordinar entrega vía WhatsApp con el vendedor).",
     "En caso de no requerir factura y pago en efectivo, podemos aplicar el descuento del IVA.",
-    "Cotización confidencial y exclusiva para el destinatario. Prohibida su difusión sin autorización de Mainstage Producciones.",
+    "Cotización confidencial y exclusiva para el destinatario. Prohibida su difusión sin autorización de Mainstage Pro.",
     "Cualquier duda, cambio o sugerencia hacerla por medio de WhatsApp: (446) 143 2565.",
   ];
 
   return (
-    <Document title={`Resumen Global — ${proyectoLabel}`} author="Mainstage Producciones" subject="Propuesta Global del Proyecto">
+    <Document title={`Resumen Global — ${proyectoLabel}`} author="Mainstage Pro" subject="Propuesta Global del Proyecto">
       <Page size="LETTER" style={s.page}>
 
         <View style={s.header}>
           <View style={s.headerLeft}>
             {logoSrc
               ? <Image src={logoSrc} style={{ width: 150, alignSelf: "flex-start" }} />
-              : <Text style={s.brand}>MAINSTAGE PRODUCCIONES</Text>}
+              : <Text style={s.brand}>MAINSTAGE PRO</Text>}
             <Text style={s.tagline}>AUDIO · ILUMINACIÓN · VIDEO · PRODUCCIÓN TÉCNICA</Text>
           </View>
           <View style={s.headerRight}>
@@ -245,7 +245,7 @@ export function ResumenGlobalPDF({ data, logoSrc }: { data: ResumenGlobalData; l
         <View style={s.pagoBloque}>
           <View style={s.pagoCard}>
             <Text style={s.pagoTitulo}>TRANSFERENCIA CUENTA FISCAL</Text>
-            <View style={s.pagoFila}><Text style={s.pagoLabel}>Razón Social</Text><Text style={s.pagoValor}>Escenario Principal S.A. de C.V.</Text></View>
+            <View style={s.pagoFila}><Text style={s.pagoLabel}>Razón Social</Text><Text style={s.pagoValor}>Escenario Principal Producciones, S.A. de C.V.</Text></View>
             <View style={s.pagoFila}><Text style={s.pagoLabel}>RFC</Text><Text style={s.pagoValor}>EPP2502068Q8</Text></View>
             <View style={s.pagoFila}><Text style={s.pagoLabel}>Banco</Text><Text style={s.pagoValor}>Banorte</Text></View>
             <View style={s.pagoFila}><Text style={s.pagoLabel}>No. Cuenta</Text><Text style={s.pagoValor}>1313102977</Text></View>
@@ -277,18 +277,18 @@ export function ResumenGlobalPDF({ data, logoSrc }: { data: ResumenGlobalData; l
           <View style={s.firmaCol}>
             <View style={s.firmaEspacio} />
             <View style={s.firmaLinea} />
-            <Text style={s.firmaNombre}>Escenario Principal S.A. de C.V.</Text>
-            <Text style={s.firmaCargo}>Mainstage Producciones</Text>
+            <Text style={s.firmaNombre}>Escenario Principal Producciones, S.A. de C.V.</Text>
+            <Text style={s.firmaCargo}>Mainstage Pro</Text>
           </View>
         </View>
 
         <View style={s.footer}>
-          <Text style={s.footerBrand}>ESCENARIO PRINCIPAL S.A. DE C.V. · MAINSTAGE PRODUCCIONES</Text>
+          <Text style={s.footerBrand}>ESCENARIO PRINCIPAL PRODUCCIONES, S.A. DE C.V. · MAINSTAGE PRO</Text>
           <Text style={s.footerContacto}>WhatsApp: (446) 143 2565  |  mainstageqro@gmail.com</Text>
           <Text style={s.footerVigencia}>Vigencia: {vigenciaDias} días</Text>
         </View>
         <Text style={s.confidencial}>
-          Cotización confidencial y exclusiva para el destinatario. Prohibida su difusión sin autorización de Mainstage Producciones.
+          Cotización confidencial y exclusiva para el destinatario. Prohibida su difusión sin autorización de Mainstage Pro.
         </Text>
 
       </Page>

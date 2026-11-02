@@ -178,7 +178,7 @@ export function NotaCobroPDF({ nota }: { nota: NotaCobroData }) {
               ? <Image src={logoSrc} style={s.logo} />
               : <Text style={s.brand}>MAINSTAGE PRO</Text>
             }
-            <Text style={s.tagline}>ESCENARIO PRINCIPAL S.A. DE C.V. · SOLUCIONES AUDIOVISUALES</Text>
+            <Text style={s.tagline}>ESCENARIO PRINCIPAL PRODUCCIONES, S.A. DE C.V. · SOLUCIONES AUDIOVISUALES</Text>
           </View>
           <View style={s.headerRight}>
             <Text style={s.docTitle}>NOTA DE COBRO</Text>
@@ -306,7 +306,7 @@ export function NotaCobroPDF({ nota }: { nota: NotaCobroData }) {
                 <View style={s.cuentasRow}>
                   <View style={s.cuentaCard}>
                     <Text style={s.cuentaTitulo}>CUENTA FISCAL</Text>
-                    <View style={s.cuentaFila}><Text style={s.cuentaLabel}>Razón Social</Text><Text style={s.cuentaValor}>Escenario Principal S.A. de C.V.</Text></View>
+                    <View style={s.cuentaFila}><Text style={s.cuentaLabel}>Razón Social</Text><Text style={s.cuentaValor}>Escenario Principal Producciones, S.A. de C.V.</Text></View>
                     <View style={s.cuentaFila}><Text style={s.cuentaLabel}>RFC</Text><Text style={s.cuentaValor}>EPP2502068Q8</Text></View>
                     <View style={s.cuentaFila}><Text style={s.cuentaLabel}>Banco</Text><Text style={s.cuentaValor}>Banorte</Text></View>
                     <View style={s.cuentaFila}><Text style={s.cuentaLabel}>No. Cuenta</Text><Text style={s.cuentaValor}>1313102977</Text></View>
@@ -334,7 +334,7 @@ export function NotaCobroPDF({ nota }: { nota: NotaCobroData }) {
         </View>
 
         <View style={s.footer} fixed>
-          <Text style={s.footerText}>Escenario Principal S.A. de C.V. · Mainstage Pro — Nota de Cobro</Text>
+          <Text style={s.footerText}>Escenario Principal Producciones, S.A. de C.V. · Mainstage Pro — Nota de Cobro</Text>
           <Text style={s.footerText}>{new Date().toLocaleDateString("es-MX")}</Text>
         </View>
       </Page>

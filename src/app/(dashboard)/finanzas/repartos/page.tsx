@@ -207,7 +207,7 @@ export default function RepartosPage() {
 
       {/* Banner estructura societaria */}
       <div className="bg-[#0e0e0e] border border-[#B3985B]/20 rounded-2xl p-4">
-        <p className="text-[#B3985B] text-xs font-semibold mb-1">Estructura societaria — Escenario Principal S.A. de C.V.</p>
+        <p className="text-[#B3985B] text-xs font-semibold mb-1">Estructura societaria — Escenario Principal Producciones, S.A. de C.V.</p>
         <div className="flex gap-4 flex-wrap">
           {socios.filter(s => s.pctParticipacion).map(s => (
             <div key={s.id} className="flex items-center gap-2">

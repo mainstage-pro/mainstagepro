@@ -150,7 +150,7 @@ export async function GET(req: NextRequest) {
       flujoNeto: flujoNetoMes,
     },
     estructura: {
-      razonSocial: socios[0]?.razonSocial || "Escenario Principal S.A. de C.V.",
+      razonSocial: socios[0]?.razonSocial || "Escenario Principal Producciones, S.A. de C.V.",
       socios,
     },
   });
