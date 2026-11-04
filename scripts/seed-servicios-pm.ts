@@ -614,6 +614,10 @@ const SERVICIOS: ServicioSemilla[] = [
 // arriba); estos son las excepciones reales: se venden en los dos lados.
 const NIVEL_AMBOS = new Set(["COORD_PROVEEDORES"]);
 
+// Todo el catálogo nace de Mainstage Live (PM/advance/gira); estos tres son
+// entregables de diseño que vende Mainstage Creative, no Live.
+const UNIDAD_CREATIVE = new Set(["RENDER_PRODUCCION", "DISENO_CONCEPTO", "PLANO_MONTAJE"]);
+
 // El icono hace de miniatura en el catálogo (un servicio no tiene foto). Vive en un
 // mapa aparte y no en cada semilla para no repetir 19 veces un dato de presentación;
 // si Mauricio lo cambia desde la pantalla, una resiembra no se lo pisa.
@@ -663,8 +667,8 @@ async function main() {
       `INSERT INTO servicios_pm
          (id, clave, nombre, categoria, descripcion, entregables, incluye, "noIncluye",
           "unidadDefault", "tipoLinea", "precioSugerido", "costoSugerido", activo, orden,
-          icono, "nivelServicio", "createdAt", "updatedAt")
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,true,$13,$14,$15,now(),now())
+          icono, "nivelServicio", "unidad", "createdAt", "updatedAt")
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,true,$13,$14,$15,$16,now(),now())
        ON CONFLICT (clave) DO UPDATE SET
          nombre          = EXCLUDED.nombre,
          categoria       = EXCLUDED.categoria,
@@ -681,14 +685,18 @@ async function main() {
         s.noIncluye, s.unidadDefault, s.tipoLinea, s.precioSugerido, s.costoSugerido, s.orden,
         ICONOS[s.clave] ?? "Briefcase",
         NIVEL_AMBOS.has(s.clave) ? "AMBOS" : s.orden < 200 ? "GIRA" : "EVENTO",
+        UNIDAD_CREATIVE.has(s.clave) ? "CREATIVE" : "LIVE",
       ],
     );
 
-    // El DO UPDATE no toca `nivelServicio` (Mauricio lo cambia desde la pantalla
-    // y una resiembra no debe pisárselo), pero las excepciones de arriba sí son
-    // decisión de código: se corrigen en las filas que ya existían.
+    // El DO UPDATE no toca `nivelServicio` ni `unidad` (Mauricio los cambia desde
+    // la pantalla y una resiembra no debe pisárselos), pero las excepciones de
+    // arriba sí son decisión de código: se corrigen en las filas que ya existían.
     if (NIVEL_AMBOS.has(s.clave)) {
       await sql.query(`UPDATE servicios_pm SET "nivelServicio" = 'AMBOS' WHERE clave = $1`, [s.clave]);
+    }
+    if (UNIDAD_CREATIVE.has(s.clave)) {
+      await sql.query(`UPDATE servicios_pm SET "unidad" = 'CREATIVE' WHERE clave = $1`, [s.clave]);
     }
 
     if (yaEstaban.has(s.clave)) {

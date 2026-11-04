@@ -6,7 +6,7 @@ import {
   PenTool, Megaphone, BarChart3, SlidersHorizontal, BadgeDollarSign,
   Package, TrendingUp, Settings, Speaker, BookUser, ClipboardCheck,
   ShieldCheck, ScrollText, Settings2, Building2, LayoutGrid, GraduationCap,
-  Network, Truck, Compass, Mic2, Receipt, MessageSquare,
+  Network, Truck, Compass, Mic2, Receipt, MessageSquare, Palette,
 } from "lucide-react";
 
 // Dueño de la plataforma. Ciertos módulos (ej. "Inicio") se muestran solo a él.
@@ -98,6 +98,7 @@ export const NAV: NavSection[] = [
           { key: "giras-servicios", accessKey: "giras", label: "Servicios", href: "/giras/servicios" },
         ],
       },
+      { key: "creative", accessKey: "creative", label: "Mainstage Creative", href: "/creative", icon: Palette },
       { key: "proyectos-empresa", accessKey: "proyectos", label: "Proyectos de empresa", href: "/proyectos-de-empresa", icon: Building2 },
       { key: "solicitudes-proveedor", accessKey: "proyectos", label: "Solicitudes a proveedores", href: "/proyectos/solicitudes-proveedor", icon: Truck },
     ],
@@ -467,7 +468,7 @@ export const AREA_MODULE_PRESETS: Record<string, string[]> = {
   ],
   PRODUCCION: [
     "plan-trabajo", "operaciones", "calendario", "vision-semanal", "reporte-area-mensual", "cultura",
-    "proyectos", "giras", "produccion-tablero", "inventario", "inv-maestro", "catalogo", "bd-proveedores", "bd-tecnicos",
+    "proyectos", "giras", "creative", "produccion-tablero", "inventario", "inv-maestro", "catalogo", "bd-proveedores", "bd-tecnicos",
     "tareas-produccion",
   ],
   RRHH: [

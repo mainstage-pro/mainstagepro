@@ -193,6 +193,7 @@ model Cliente {
   artistas              Artista[]
   giras                 Gira[]
   propuestasServicio    PropuestaServicio[]
+  proyectosCreativos    ProyectoCreativo[]
 
   @@map("clientes")
 }
@@ -391,6 +392,7 @@ model Trato {
   tareas                 Tarea[]                 @relation("TareasDeTrato")
   giras                  Gira[]
   propuestasServicio     PropuestaServicio[]
+  proyectosCreativos     ProyectoCreativo[]
 
   @@map("tratos")
 }
@@ -3907,6 +3909,7 @@ model Artista {
   riders     ArtistaRider[]
   giras      Gira[]
   propuestas PropuestaServicio[]
+  proyectosCreativos ProyectoCreativo[]
 
   @@index([nombre])
   @@map("artistas")
@@ -6398,6 +6401,7 @@ model Gira {
   propuestas PropuestaServicio[]
   checklist  GiraChecklistItem[]
   tareas     Tarea[]             @relation("TareasDeGira")
+  proyectosCreativos ProyectoCreativo[]
 
   @@index([artistaId])
   @@map("giras")
@@ -7002,6 +7006,9 @@ model ServicioPM {
   /// Dónde se vende. Una gira cobra por show y plaza; un evento por día y global.
   nivelServicio String @default("AMBOS") // GIRA|EVENTO|AMBOS
 
+  /// Qué unidad de negocio lo vende: Live (PM/advance/gira) o Creative (diseño/render/plot).
+  unidad String @default("LIVE") // LIVE|CREATIVE
+
   unidadDefault  String @default("SHOW") // SHOW|DIA|PERSONA_DIA|PLAZA|GIRA|PIEZA|MES|HORA|GLOBAL
   tipoLinea      String @default("HONORARIO")
   precioSugerido Float?
@@ -7015,6 +7022,45 @@ model ServicioPM {
   lineas PropuestaServicioLinea[]
 
   @@map("servicios_pm")
+}
+
+/// Entidad raíz de Mainstage Creative (dirección creativa, diseño de iluminación/
+/// escenario, renders 3D, plots técnicos). Sin relación directa a Proyecto (Pro):
+/// solo cuelga de las entidades de origen compartidas (Cliente/Artista/Trato/Gira),
+/// igual que Gira no cuelga de Proyecto salvo por el join angosto GiraShow.proyectoId.
+model ProyectoCreativo {
+  id     String @id @default(cuid())
+  numero String @unique
+
+  nombre String
+
+  clienteId String?
+  cliente   Cliente? @relation(fields: [clienteId], references: [id])
+
+  artistaId String?
+  artista   Artista? @relation(fields: [artistaId], references: [id])
+
+  tratoId String?
+  trato   Trato? @relation(fields: [tratoId], references: [id])
+
+  giraId String?
+  gira   Gira? @relation(fields: [giraId], references: [id])
+
+  estado String @default("BRIEF") // BRIEF|EN_PROCESO|REVISION|ENTREGADO|CANCELADO
+
+  briefing String?
+  notas    String?
+
+  fechaSolicitud DateTime  @default(now())
+  fechaEntrega   DateTime?
+
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  propuestas PropuestaServicio[]
+
+  @@map("proyectos_creativos")
 }
 
 /// Propuesta de servicios de production management. Hermana de Cotizacion, no la reemplaza:
@@ -7035,6 +7081,9 @@ model PropuestaServicio {
 
   tratoId String?
   trato   Trato?  @relation(fields: [tratoId], references: [id])
+
+  proyectoCreativoId String?
+  proyectoCreativo   ProyectoCreativo? @relation(fields: [proyectoCreativoId], references: [id])
 
   creadaPorId String?
 
@@ -7057,6 +7106,7 @@ model PropuestaServicio {
   subtotalEquipo        Float   @default(0)
   subtotalLogistica     Float   @default(0)
   subtotalReembolsables Float   @default(0)
+  subtotalDiseno        Float   @default(0)
   descuentoMonto        Float   @default(0)
   descuentoRazon        String?
   subtotal              Float   @default(0)
