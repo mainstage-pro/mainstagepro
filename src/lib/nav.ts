@@ -6,7 +6,7 @@ import {
   PenTool, Megaphone, BarChart3, SlidersHorizontal, BadgeDollarSign,
   Package, TrendingUp, Settings, Speaker, BookUser, ClipboardCheck,
   ShieldCheck, ScrollText, Settings2, Building2, LayoutGrid, GraduationCap,
-  Network, Truck, Compass, Mic2, Receipt, MessageSquare, Palette, Boxes,
+  Network, Truck, Compass, Mic2, Receipt, MessageSquare, Palette,
 } from "lucide-react";
 
 // Dueño de la plataforma. Ciertos módulos (ej. "Inicio") se muestran solo a él.
@@ -78,17 +78,6 @@ export const NAV: NavSection[] = [
     key: "seccion-unidades",
     section: "Unidades de negocio",
     items: [
-      {
-        key: "unidad-pro",
-        label: "Mainstage Pro",
-        icon: Boxes,
-        children: [
-          { key: "up-resumen", accessKey: "proyectos", label: "Resumen", href: "/proyectos/resumen" },
-          { key: "up-ventas", accessKey: "crm-tratos", label: "Ventas", href: "/crm/tratos/lista" },
-          { key: "up-cotizaciones", accessKey: "crm-tratos", label: "Cotizaciones", href: "/cotizaciones" },
-          { key: "up-inventario", accessKey: "inventario", label: "Inventario de equipos", href: "/inventario/maestro" },
-        ],
-      },
       {
         key: "giras",
         label: "Mainstage Live",

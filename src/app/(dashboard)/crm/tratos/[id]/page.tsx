@@ -32,9 +32,9 @@ import { MOMENTO_OPTIONS, ORIGEN_LEAD_OPTIONS } from '@/lib/constants';
 // CANALES (canalAtencion), que son otra cosa.
 import {
   SERVICIOS as ESCALERA_SERVICIOS, SERVICIO_LABELS, SERVICIO_DESCRIPCIONES,
-  CANAL_LABELS, CANAL_DESCRIPCIONES, canalDesdeServicios,
+  canalDesdeServicios,
   parseServicios, serializeServicios, listoParaCotizar, resumenServicios,
-  type Servicio, type CanalOperativo,
+  type Servicio,
 } from '@/lib/servicios-trato';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
@@ -785,7 +785,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   // Paso activo del wizard de descubrimiento (persisted in localStorage)
   const [pasoActivo, setPasoActivo] = useState(1);
   const [creandoCotizacion, setCreandoCotizacion] = useState(false);
-  const [creandoPropuesta, setCreandoPropuesta] = useState(false);
   const [eliminandoCotizacion, setEliminandoCotizacion] = useState<string | null>(null);
 
   // ── Estado de navegación interna (Fase 1) ──────────────────────────────────
@@ -1166,31 +1165,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     }
   }
 
-  // Lo que se cobra con honorario no cabe en la cotización de equipo: abre (o
-  // reusa) la propuesta de servicios del trato. Reusa en lugar de duplicar
-  // porque un trato tiene una sola propuesta de dirección y operaciones.
-  async function abrirPropuestaServicio() {
-    if (!trato) return;
-    setCreandoPropuesta(true);
-    try {
-      const existentes = await fetch(`/api/propuestas-servicio?tratoId=${trato.id}`).then(r => r.json());
-      const ya = existentes?.propuestas?.[0];
-      if (ya) {
-        router.push(`/giras/propuesta/${ya.id}`);
-        return;
-      }
-      const res = await fetch("/api/propuestas-servicio", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tratoId: trato.id }),
-      });
-      const d = await res.json();
-      if (res.ok) router.push(`/giras/propuesta/${d.propuesta.id}`);
-      else toast.error(d.error ?? "Error al crear la propuesta");
-    } finally {
-      setCreandoPropuesta(false);
-    }
-  }
 
   async function eliminarCotizacion(cotId: string, numCot: string) {
     if (!confirm(`¿Eliminar ${numCot}? Esta acción no se puede deshacer.`)) return;
@@ -1669,7 +1643,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             <p className="text-white font-semibold text-sm truncate">{trato.cliente.nombre}</p>
             <p className="text-[11px] text-gray-500 mt-0.5">
               {resumenServicios(trato.servicios) ?? "sin servicios definidos"}
-              {trato.canalOperativo && ` · ${CANAL_LABELS[trato.canalOperativo as CanalOperativo] ?? trato.canalOperativo}`}
             </p>
           </div>
           <button
@@ -1742,12 +1715,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             <span className="text-xs text-[#B3985B] font-medium">
               {resumenServicios(trato.servicios) ?? "sin definir"}
             </span>
-            <span className="text-[10px] text-gray-600 uppercase tracking-wider shrink-0 ml-2">Se lleva en:</span>
-            <span className="text-xs text-[#B3985B] font-medium">
-              {canalDesdeServicios(parseServicios(trato.servicios))
-                ? CANAL_LABELS[canalDesdeServicios(parseServicios(trato.servicios)) as CanalOperativo]
-                : "sin definir"}
-            </span>
             <button
               onClick={() => setEditarServicios(v => !v)}
               className="text-[11px] text-gray-600 hover:text-[#B3985B] underline transition-colors ml-1"
@@ -1781,14 +1748,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               );
             })}
           </div>
-          {canalDesdeServicios(parseServicios(trato.servicios)) && (
-            <p className="text-[11px] text-gray-500">
-              Se lleva en: <span className="text-[#B3985B] font-medium">
-                {CANAL_LABELS[canalDesdeServicios(parseServicios(trato.servicios)) as CanalOperativo]}
-              </span>
-              {" · "}{CANAL_DESCRIPCIONES[canalDesdeServicios(parseServicios(trato.servicios)) as CanalOperativo]}
-            </p>
-          )}
           </div>
           )}
         </div>
@@ -1821,16 +1780,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           >
             {creandoCotizacion ? "Creando..." : "+ Nueva cotización"}
           </button>
-          {parseServicios(trato.servicios).includes("DIRECCION_OPERACIONES") && (
-            <button
-              onClick={abrirPropuestaServicio}
-              disabled={creandoPropuesta}
-              title="Honorarios de dirección, operaciones, stage y diseño"
-              className="px-3 py-1.5 text-xs font-semibold text-[#B3985B] border border-[#B3985B]/30 rounded-lg hover:bg-[#B3985B]/10 transition-colors disabled:opacity-40"
-            >
-              {creandoPropuesta ? "Abriendo..." : "Propuesta de servicio →"}
-            </button>
-          )}
           <Link
             href={`/crm/tratos/nuevo?clienteId=${trato.cliente.id}`}
             className="px-3 py-1.5 text-xs text-gray-500 hover:text-white border border-[#2a2a2a] hover:border-[#444] rounded-lg transition-colors"

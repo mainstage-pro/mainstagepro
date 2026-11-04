@@ -163,8 +163,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   } else if ("tipoServicio" in body) {
     // El autoguardado del descubrimiento manda `tipoServicio` en cada pasada. Si
     // ya es el espejo de la combinación guardada, no se toca: sembrar desde el
-    // espejo borraría los niveles inferiores (RENTA + DIRECCION_OPERACIONES
-    // espeja a DIRECCION_TECNICA y volvería a un solo servicio).
+    // espejo siempre deja un solo servicio (el espejo solo guarda el nivel más
+    // alto), y eso borraría los niveles inferiores ya capturados.
     const actual = await prisma.trato.findUnique({ where: { id }, select: { servicios: true } });
     const guardados = parseServicios(actual?.servicios);
     if (espejoTipoServicio(guardados) !== body.tipoServicio) {

@@ -3,15 +3,15 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-import { Telescope, Search, ClipboardList, CheckCircle2, AlertTriangle, Smartphone, CalendarClock, Package, Settings, PartyPopper, Music, type LucideIcon } from "lucide-react";
+import { Telescope, Search, ClipboardList, CheckCircle2, AlertTriangle, Smartphone, CalendarClock, Package, Settings, type LucideIcon } from "lucide-react";
 
 import { Combobox } from "@/components/Combobox";
 import { ORIGEN_LEAD_OPTIONS, MOMENTO_OPTIONS } from "@/lib/constants";
 import { coincide } from "@/lib/buscar";
 import {
   SERVICIOS, SERVICIO_LABELS, SERVICIO_DESCRIPCIONES,
-  CANALES, CANAL_LABELS, CANAL_DESCRIPCIONES,
-  serializeServicios, type Servicio, type CanalOperativo,
+  canalDesdeServicios,
+  serializeServicios, type Servicio,
 } from "@/lib/servicios-trato";
 
 type CotejoEstado = "LIGADO" | "DUPLICADO_POSIBLE" | "NUEVO" | null;
@@ -70,12 +70,6 @@ const ETAPAS_CARDS = [
 const SERVICIO_ICONOS: Record<Servicio, LucideIcon> = {
   RENTA: Package,
   PRODUCCION_TECNICA: Settings,
-  DIRECCION_OPERACIONES: ClipboardList,
-};
-
-const CANAL_ICONOS: Record<CanalOperativo, LucideIcon> = {
-  EVENTO: PartyPopper,
-  SHOW: Music,
 };
 
 const ORIGEN_VENTA_OPTIONS = [
@@ -106,7 +100,10 @@ export default function NuevoContactoPage() {
   // camino siguiente: el descubrimiento pregunta otras cosas y el trato aterriza
   // en Proyectos o en Shows. Preguntarlo después obliga a recapturar.
   const [servicios, setServicios] = useState<Servicio[]>([]);
-  const [canal, setCanal] = useState<CanalOperativo | null>(null);
+  // No se pregunta aparte: Pro solo vende renta y producción técnica, y eso
+  // siempre cae en Proyectos como evento (ver canalDesdeServicios). Se sigue
+  // enviando en el payload porque Trato.canalOperativo lo sigue leyendo.
+  const canal = canalDesdeServicios(servicios);
   const [etapa, setEtapa] = useState<string>("DESCUBRIMIENTO");
   const [momento, setMomento] = useState<string>("COTIZANDO");
   const [cotejoEstado, setCotejoEstado] = useState<CotejoEstado>(null);
@@ -118,21 +115,6 @@ export default function NuevoContactoPage() {
   const [tipoLead, setTipoLead] = useState("INBOUND");
   const [origenVenta, setOrigenVenta] = useState("CLIENTE_PROPIO");
   const [vendedorId, setVendedorId] = useState("");
-
-  // Canal SHOW reusa el alta de Shows y giras: el trato y el registro nacen
-  // ligados por tratoId (ver /api/giras), no se duplica la captura de fecha.
-  const [artistas, setArtistas] = useState<{ id: string; nombre: string }[]>([]);
-  const [venues, setVenues] = useState<{ id: string; nombre: string; ciudad: string | null }[]>([]);
-  const [giraTipo, setGiraTipo] = useState<"SHOW" | "GIRA">("SHOW");
-  const [giraNombre, setGiraNombre] = useState("");
-  const [giraArtistaId, setGiraArtistaId] = useState("");
-  const [giraArtistaNombre, setGiraArtistaNombre] = useState("");
-  const [nuevoArtistaGira, setNuevoArtistaGira] = useState(false);
-  const [giraVenueId, setGiraVenueId] = useState("");
-  const [giraCiudad, setGiraCiudad] = useState("");
-  const [giraFecha, setGiraFecha] = useState("");
-  const [giraFechaInicio, setGiraFechaInicio] = useState("");
-  const [giraFechaFin, setGiraFechaFin] = useState("");
 
   const [clienteNuevo, setClienteNuevo] = useState({
     nombre: "", empresa: "", tipoCliente: "POR_DESCUBRIR", telefono: "", correo: "",
@@ -148,8 +130,6 @@ export default function NuevoContactoPage() {
   useEffect(() => {
     fetch("/api/clientes").then(r => r.json()).then(d => setClientes(d.clientes || []));
     fetch("/api/usuarios-activos").then(r => r.json()).then(d => setUsuarios(d.usuarios || []));
-    fetch("/api/artistas").then(r => r.json()).then(d => setArtistas(d.artistas || []));
-    fetch("/api/venues").then(r => r.json()).then(d => setVenues(d.venues || []));
   }, []);
 
   // La carga inicial limita a 200 clientes (orden alfabético), así que quien
@@ -247,15 +227,9 @@ export default function NuevoContactoPage() {
     if (modoCliente === "existente" && !clienteId) { setError("Selecciona un cliente existente"); return false; }
     if (modoCliente === "nuevo" && !clienteNuevo.nombre.trim()) { setError("El nombre del cliente es requerido"); return false; }
     if (!servicios.length) { setError("Elige al menos un servicio que vamos a vender"); return false; }
-    if (!canal) { setError("Elige si el trato se lleva como evento o como show/gira"); return false; }
     if (!origenLead) { setError("Selecciona de dónde viene el contacto"); return false; }
     if (etapa === "VENTA_CERRADA" && !nombreEvento.trim()) { setError("Ingresa el nombre del evento a apartar"); return false; }
     if (apartando && !fechaEvento) { setError("Selecciona la fecha del evento para apartarla en el calendario"); return false; }
-    if (canal === "SHOW") {
-      if (!giraArtistaId && !giraArtistaNombre.trim()) { setError("Elige el artista de la gira/show, o regístralo aquí mismo"); return false; }
-      if (giraTipo === "GIRA" && !giraNombre.trim()) { setError("Ponle nombre a la gira"); return false; }
-      if (giraTipo === "SHOW" && !giraFecha) { setError("Captura la fecha del show (si aún no la tienes, elige Gira)"); return false; }
-    }
     setError(""); return true;
   }
 
@@ -310,53 +284,14 @@ export default function NuevoContactoPage() {
       });
       if (!res.ok) {
         const d = await res.json();
-        setError(d.error || "Error al crear el trato");
+        setError(d.error || "Error al crear la oportunidad");
         setLoading(false);
         return;
       }
       const { trato } = await res.json();
 
-      // Canal SHOW: el trato nace ligado a su gira/show (mismo origen, un solo
-      // alta). Si esto falla, el trato ya existe — no se pierde, se avisa para
-      // crear el registro a mano desde Shows y giras y ligarlo con tratoId.
-      if (canal === "SHOW") {
-        try {
-          const resGira = await fetch("/api/giras", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              tipo: giraTipo,
-              nombre: giraNombre.trim(),
-              artistaId: nuevoArtistaGira ? null : giraArtistaId || null,
-              artistaNombre: nuevoArtistaGira ? giraArtistaNombre.trim() : null,
-              clienteId: trato.clienteId || null,
-              tratoId: trato.id,
-              estado: "PLANEACION",
-              fecha: giraTipo === "SHOW" ? giraFecha : null,
-              ciudad: giraTipo === "SHOW" ? giraCiudad.trim() || null : null,
-              venueId: giraTipo === "SHOW" ? giraVenueId || null : null,
-              fechaInicio: giraTipo === "GIRA" ? giraFechaInicio || null : null,
-              fechaFin: giraTipo === "GIRA" ? giraFechaFin || null : null,
-            }),
-          });
-          if (!resGira.ok) {
-            const dGira = await resGira.json();
-            setError(`El trato se creó, pero no se pudo crear la gira/show (${dGira.error || "error"}). Créala desde Shows y giras y ligala a este trato.`);
-            router.push(`/crm/tratos/${trato.id}`);
-            return;
-          }
-          const { gira, show } = await resGira.json();
-          router.push(giraTipo === "GIRA" ? `/giras/${gira.id}/shows` : `/giras/${gira.id}/show/${show.id}`);
-          return;
-        } catch {
-          setError("El trato se creó, pero no se pudo crear la gira/show por un error de conexión. Créala desde Shows y giras y ligala a este trato.");
-          router.push(`/crm/tratos/${trato.id}`);
-          return;
-        }
-      }
-
       // Aterriza en el descubrimiento en modo foco: la captura del evento sin el
-      // resto de la página del trato encima. De ahí se sale con "Ver trato completo".
+      // resto de la página de la oportunidad encima. De ahí se sale con "Ver oportunidad completa".
       router.push(`/crm/tratos/${trato.id}?panel=descubrimiento&foco=1`);
     } catch {
       setError("Error de conexión");
@@ -379,7 +314,7 @@ export default function NuevoContactoPage() {
         >
           ← Atrás
         </button>
-        <h1 className="ms-h1">{paso === 1 ? "Qué vendemos" : "De quién es el trato"}</h1>
+        <h1 className="ms-h1">{paso === 1 ? "Qué vendemos" : "De quién es la oportunidad"}</h1>
         <p className="text-gray-600 text-xs mt-1">
           {paso === 1
             ? "Paso 1 de 2 · El servicio y el canal deciden todo el camino siguiente."
@@ -433,37 +368,6 @@ export default function NuevoContactoPage() {
           </div>
         </div>
 
-        <div className="ms-card p-5">
-          <h2 className="text-xs font-semibold text-[#B3985B] mb-1 uppercase tracking-wider">Se lleva en</h2>
-          <p className="text-[11px] text-gray-600 mb-4">
-            De esto depende el resto del proceso: no se pregunta ni se opera igual un evento que una gira.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {CANALES.map(c => {
-              const Icono = CANAL_ICONOS[c];
-              const isActive = canal === c;
-              return (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setCanal(c)}
-                  className={`text-left p-4 rounded-xl border transition-all ${
-                    isActive ? "border-[#B3985B] bg-[#B3985B]/10" : "border-[#222] bg-[#111] hover:border-[#444]"
-                  }`}
-                >
-                  <div className="mb-2">
-                    <Icono strokeWidth={1.75} className={`w-6 h-6 ${isActive ? "text-[#B3985B]" : "text-gray-500"}`} />
-                  </div>
-                  <p className={`text-sm font-semibold mb-1 ${isActive ? "text-[#B3985B]" : "text-white"}`}>
-                    {CANAL_LABELS[c]}
-                  </p>
-                  <p className="text-xs text-gray-500 leading-relaxed">{CANAL_DESCRIPCIONES[c]}</p>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
         <div className="flex gap-3 justify-between pb-6">
           <button
             onClick={() => router.back()}
@@ -473,8 +377,8 @@ export default function NuevoContactoPage() {
           </button>
           <button
             onClick={() => { setError(""); setPaso(2); }}
-            disabled={!servicios.length || !canal}
-            title={!servicios.length || !canal ? "Elige el servicio y el canal para continuar" : undefined}
+            disabled={!servicios.length}
+            title={!servicios.length ? "Elige al menos un servicio para continuar" : undefined}
             className="px-6 py-2.5 rounded-xl text-sm font-semibold bg-[#B3985B] text-black transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Continuar →
@@ -489,8 +393,6 @@ export default function NuevoContactoPage() {
           <span className="text-xs text-[#B3985B] font-medium">
             {servicios.map(s => SERVICIO_LABELS[s]).join(" · ")}
           </span>
-          <span className="text-[10px] text-gray-600 uppercase tracking-wider shrink-0 ml-2">Se lleva en:</span>
-          <span className="text-xs text-[#B3985B] font-medium">{canal ? CANAL_LABELS[canal] : ""}</span>
           <button
             onClick={() => { setPaso(1); setError(""); }}
             className="text-[11px] text-gray-600 hover:text-[#B3985B] underline transition-colors ml-1"
@@ -628,144 +530,6 @@ export default function NuevoContactoPage() {
             </div>
           )}
         </div>
-
-        {/* ── Sección: Gira o show (solo canal SHOW) ── */}
-        {canal === "SHOW" && (
-          <div className="ms-card p-5">
-            <h2 className="text-xs font-semibold text-[#B3985B] mb-1 uppercase tracking-wider">Gira o show</h2>
-            <p className="text-[11px] text-gray-600 mb-4">
-              Se lleva en Shows y giras: el registro nace ligado a este trato desde el origen.
-            </p>
-
-            <div className="mb-4">
-              <label className="text-xs text-gray-500 mb-1 block">Qué vas a registrar</label>
-              <div className="flex gap-2">
-                {(["SHOW", "GIRA"] as const).map(t => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setGiraTipo(t)}
-                    className={`flex-1 px-3 py-2 rounded-lg border text-sm transition-colors ${
-                      giraTipo === t ? "border-[#B3985B] bg-[#B3985B]/10 text-white" : "border-[#333] text-gray-400 hover:text-white"
-                    }`}
-                  >
-                    {t === "SHOW" ? "Show" : "Gira"}
-                  </button>
-                ))}
-              </div>
-              <p className="text-[11px] text-gray-600 mt-1.5">
-                {giraTipo === "GIRA"
-                  ? "Varias fechas bajo un mismo alcance: los shows se agregan después."
-                  : "Una sola fecha. Si todavía no la tienes, elige Gira."}
-              </p>
-            </div>
-
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-xs text-gray-500 block">Artista</label>
-                <button
-                  type="button"
-                  onClick={() => setNuevoArtistaGira(v => !v)}
-                  className="text-[11px] text-[#B3985B] hover:text-white transition-colors"
-                >
-                  {nuevoArtistaGira ? "Elegir del catálogo" : "Registrar uno nuevo"}
-                </button>
-              </div>
-              {nuevoArtistaGira ? (
-                <input
-                  value={giraArtistaNombre}
-                  onChange={e => setGiraArtistaNombre(e.target.value)}
-                  placeholder="Nombre del artista o banda"
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                />
-              ) : (
-                <Combobox
-                  value={giraArtistaId}
-                  onChange={v => setGiraArtistaId(v)}
-                  options={artistas.map(a => ({ value: a.id, label: a.nombre }))}
-                  placeholder="Busca el artista…"
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                />
-              )}
-            </div>
-
-            {giraTipo === "GIRA" ? (
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Nombre de la gira *</label>
-                  <input
-                    value={giraNombre}
-                    onChange={e => setGiraNombre(e.target.value)}
-                    placeholder="ej. aquihay aquihay — Octubre 2026"
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Primera fecha (opcional)</label>
-                    <input
-                      type="date"
-                      value={giraFechaInicio}
-                      onChange={e => setGiraFechaInicio(e.target.value)}
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Última fecha (opcional)</label>
-                    <input
-                      type="date"
-                      value={giraFechaFin}
-                      onChange={e => setGiraFechaFin(e.target.value)}
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                    />
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Nombre del show (opcional)</label>
-                  <input
-                    value={giraNombre}
-                    onChange={e => setGiraNombre(e.target.value)}
-                    placeholder="Se arma con artista, ciudad y fecha"
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Venue (opcional)</label>
-                    <Combobox
-                      value={giraVenueId}
-                      onChange={v => setGiraVenueId(v)}
-                      options={venues.map(v => ({ value: v.id, label: v.ciudad ? `${v.nombre} — ${v.ciudad}` : v.nombre }))}
-                      placeholder="Por definir"
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Ciudad</label>
-                    <input
-                      value={giraCiudad}
-                      onChange={e => setGiraCiudad(e.target.value)}
-                      placeholder="Se hereda del venue"
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Fecha del show *</label>
-                  <input
-                    type="date"
-                    value={giraFecha}
-                    onChange={e => setGiraFecha(e.target.value)}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        )}
 
         {/* ── Sección: Momento de contratación ── */}
         <div className="ms-card p-5">
@@ -996,7 +760,7 @@ export default function NuevoContactoPage() {
               color: "black",
             }}
           >
-            {loading ? "Creando..." : `Crear trato en ${etapaSeleccionada?.label ?? "..."} →`}
+            {loading ? "Creando..." : `Crear oportunidad en ${etapaSeleccionada?.label ?? "..."} →`}
           </button>
         </div>
         </>)}

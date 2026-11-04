@@ -13,28 +13,24 @@
 
 import { RENTA_MODALIDAD_ENTREGA, RENTA_NIVEL_SERVICIO } from "./form-labels";
 
-export const SERVICIOS = ["RENTA", "PRODUCCION_TECNICA", "DIRECCION_OPERACIONES"] as const;
+// "Production Management" (DIRECCION_OPERACIONES) salió de la escalera de Pro:
+// ahora es Mainstage Live, con Gira como su propia raíz — no un escalón de Trato.
+export const SERVICIOS = ["RENTA", "PRODUCCION_TECNICA"] as const;
 export type Servicio = (typeof SERVICIOS)[number];
 
 export const SERVICIO_LABELS: Record<Servicio, string> = {
   RENTA: "Renta de equipo",
   PRODUCCION_TECNICA: "Producción técnica",
-  DIRECCION_OPERACIONES: "Production Management",
 };
 
 export const SERVICIO_DESCRIPCIONES: Record<Servicio, string> = {
   RENTA: "Entregamos el equipo. El cliente lo opera.",
   PRODUCCION_TECNICA: "Nuestro equipo, operado por nuestra gente.",
-  DIRECCION_OPERACIONES:
-    "Advance técnico, rider y documentación del show, ensayos, run of show e ingenieros de audio e iluminación por plaza.",
 };
 
-// El espejo usa los valores históricos: DIRECCION_OPERACIONES se escribe como
-// DIRECCION_TECNICA porque así lo leen el discovery, los PDFs y la presentación.
 const ESPEJO: Record<Servicio, string> = {
   RENTA: "RENTA",
   PRODUCCION_TECNICA: "PRODUCCION_TECNICA",
-  DIRECCION_OPERACIONES: "DIRECCION_TECNICA",
 };
 
 // ── Canal operativo ──────────────────────────────────────────────────────────
@@ -220,13 +216,12 @@ export function parseCanal(raw: string | null | undefined): CanalOperativo | nul
 }
 
 /**
- * El canal no se pregunta aparte: Production Management siempre se opera como
- * show/gira, y renta o producción técnica sin eso siempre caen en Proyectos
- * como evento. No hay combinación real que rompa esta correspondencia.
+ * El canal no se pregunta aparte: Pro solo vende renta y producción técnica, y
+ * eso siempre cae en Proyectos como evento. "Show o gira" era el canal de
+ * Production Management, que ahora es Mainstage Live y nace de Gira, no de Trato.
  */
 export function canalDesdeServicios(servicios: Servicio[]): CanalOperativo | null {
-  if (!servicios.length) return null;
-  return servicios.includes("DIRECCION_OPERACIONES") ? "SHOW" : "EVENTO";
+  return servicios.length ? "EVENTO" : null;
 }
 
 /**
