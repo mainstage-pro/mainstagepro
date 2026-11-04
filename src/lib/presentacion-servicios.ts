@@ -76,34 +76,6 @@ const CONTENIDO: ContenidoServicio[] = [
     ],
     detailChips: "Scouting · Rider técnico · Operación en vivo",
   },
-  {
-    slug: "production-management",
-    servicio: "DIRECCION_OPERACIONES",
-    n: "03",
-    tagline: "Una sola dirección de producción que responde por cada show, en cada plaza.",
-    hero: "/images/presentacion/musicales/Musicales-055.jpg",
-    resumen:
-      "Dirigimos el show en gira de punta a punta: el advance técnico plaza por plaza, el rider que cualquier venue sabe leer, los ensayos y el run of show el día del evento, con los ingenieros de audio e iluminación que el show necesita. Una sola cabeza que responde por que todo llegue, cuadre y suene igual en cada fecha.",
-    para: "Ideal para artistas y managers que salen de gira y necesitan una sola dirección de producción que diseñe el show, lo coteje contra cada venue y responda por él noche tras noche.",
-    incluye: [
-      "Advance técnico plaza por plaza, cotejado contra el rider",
-      "Diseño y actualización del rider técnico, con input/output list y stage plot",
-      "Ensayos, residencias y preproducción del show",
-      "Run of show: soundcheck cronometrado y llamado de cues en vivo",
-      "Coordinación con la producción local de cada venue",
-      "Ingeniero de sala / FOH e ingeniero de monitores",
-      "Diseño de iluminación y operador en cada plaza",
-      "Renders de producción del escenario y el stage",
-      "Documentación y logística de crew para toda la gira",
-    ],
-    entregables: [
-      { title: "El show, documentado una vez", body: "Rider técnico maestro, input/output list y stage plot que viajan contigo y que cualquier venue sabe leer, sin reexplicar nada en cada plaza." },
-      { title: "El advance, plaza por plaza", body: "Cotejamos tu rider contra lo que cada venue realmente tiene antes de que el equipo llegue, y dejamos resuelto lo que falta con la producción local." },
-      { title: "Los técnicos del show", body: "FOH, monitores e iluminación —diseño y operación— con la misma dirección detrás en cada fecha, para que el show suene y se vea igual de principio a fin." },
-      { title: "El show, corrido en tiempo", body: "Run of show que cronometra el soundcheck y llama los cues en vivo, para que cada cambio entre bloques pase exactamente cuando debe." },
-    ],
-    detailChips: "Advance · Rider · Run of show · Ingenieros",
-  },
 ];
 
 export const SERVICIOS_DETALLE: ServicioDetalle[] = CONTENIDO.map((c) => ({
