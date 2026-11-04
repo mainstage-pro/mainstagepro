@@ -1014,6 +1014,15 @@ export const NIVEL_SERVICIO_LABEL: Record<string, string> = {
   AMBOS: "Ambos",
 };
 
+/// Qué unidad de negocio vende el servicio: Mainstage Live (PM/advance/gira) o
+/// Mainstage Creative (diseño/render/plot). Filtra el mismo catálogo, no lo duplica.
+export const UNIDADES_SERVICIO = ["LIVE", "CREATIVE"] as const;
+
+export const UNIDAD_SERVICIO_LABEL: Record<string, string> = {
+  LIVE: "Mainstage Live",
+  CREATIVE: "Mainstage Creative",
+};
+
 /// A qué subtotal de la propuesta suma cada tipo de línea.
 export const GRUPO_SUBTOTAL: Record<string, "honorarios" | "equipo" | "logistica" | "reembolsables"> = {
   HONORARIO: "honorarios",
