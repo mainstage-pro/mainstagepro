@@ -56,7 +56,7 @@ export default function ProyectoCreativoPage() {
   async function eliminar() {
     if (!confirm("¿Eliminar este proyecto creativo?")) return;
     await fetch(`/api/proyectos-creativos/${id}`, { method: "DELETE" });
-    router.push("/creative");
+    router.push("/creative/proyectos");
   }
 
   if (loading) return <div className="ms-page-form"><p className="text-[#444] text-sm">Cargando...</p></div>;
@@ -66,7 +66,7 @@ export default function ProyectoCreativoPage() {
     <div className="ms-page-form space-y-5">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <Link href="/creative" className="ms-micro text-[#555] hover:text-[#888] transition-colors">← Proyectos creativos</Link>
+          <Link href="/creative/proyectos" className="ms-micro text-[#555] hover:text-[#888] transition-colors">← Proyectos creativos</Link>
           <p className="text-[#B3985B] text-xs uppercase tracking-widest font-semibold mt-1 mb-1">{proyecto.numero}</p>
           <input value={proyecto.nombre} onChange={e => setProyecto({ ...proyecto, nombre: e.target.value })}
             onBlur={e => guardar({ nombre: e.target.value })}
@@ -143,11 +143,11 @@ export default function ProyectoCreativoPage() {
         <div className="ms-card p-4 space-y-2">
           <p className="ms-section-label">Propuestas de honorarios</p>
           {proyecto.propuestas.map(p => (
-            <div key={p.id} className="flex items-center justify-between text-sm">
+            <Link key={p.id} href={`/giras/propuesta/${p.id}`} className="flex items-center justify-between text-sm hover:text-white">
               <span className="text-white">{p.numero}</span>
               <span className="text-[#777]">{p.estado}</span>
               <span className="text-[#B3985B]">${p.granTotal.toLocaleString("es-MX")}</span>
-            </div>
+            </Link>
           ))}
         </div>
       )}

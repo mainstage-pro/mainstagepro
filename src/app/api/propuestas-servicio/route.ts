@@ -13,6 +13,7 @@ export async function GET(req: NextRequest) {
   const estado = sp.get("estado");
   const giraId = sp.get("giraId");
   const tratoId = sp.get("tratoId");
+  const proyectoCreativoId = sp.get("proyectoCreativoId");
 
   const propuestas = await prisma.propuestaServicio.findMany({
     where: {
@@ -20,6 +21,7 @@ export async function GET(req: NextRequest) {
       ...(estado ? { estado } : {}),
       ...(giraId ? { giraId } : {}),
       ...(tratoId ? { tratoId } : {}),
+      ...(proyectoCreativoId ? { proyectoCreativoId } : {}),
     },
     select: {
       id: true,
@@ -37,6 +39,7 @@ export async function GET(req: NextRequest) {
       cliente: { select: { id: true, nombre: true, empresa: true } },
       artista: { select: { id: true, nombre: true } },
       gira: { select: { id: true, nombre: true } },
+      proyectoCreativo: { select: { id: true, nombre: true } },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -52,10 +55,12 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const numero = await siguienteNumero();
 
-  // Al nacer desde una gira o desde un trato, la propuesta hereda su cliente,
-  // artista y moneda: volver a capturarlos sería pedir dos veces el mismo dato.
+  // Al nacer desde una gira, un trato o un proyecto creativo, la propuesta
+  // hereda su cliente, artista y moneda: volver a capturarlos sería pedir
+  // dos veces el mismo dato.
   const giraId = textoOpcional(body.giraId) ?? null;
   const tratoIdPedido = textoOpcional(body.tratoId) ?? null;
+  const proyectoCreativoId = textoOpcional(body.proyectoCreativoId) ?? null;
   let heredado: { clienteId: string | null; artistaId: string | null; tratoId: string | null; moneda?: string } | null =
     null;
   let tituloHeredado: string | null = null;
@@ -71,6 +76,19 @@ export async function POST(req: NextRequest) {
         tratoId: gira.tratoId,
         moneda: gira.moneda,
       };
+    }
+  } else if (proyectoCreativoId) {
+    const proyecto = await prisma.proyectoCreativo.findUnique({
+      where: { id: proyectoCreativoId },
+      select: { clienteId: true, artistaId: true, tratoId: true, nombre: true },
+    });
+    if (proyecto) {
+      heredado = {
+        clienteId: proyecto.clienteId,
+        artistaId: proyecto.artistaId,
+        tratoId: proyecto.tratoId,
+      };
+      tituloHeredado = proyecto.nombre;
     }
   } else if (tratoIdPedido) {
     const trato = await prisma.trato.findUnique({
@@ -89,15 +107,18 @@ export async function POST(req: NextRequest) {
       creadaPorId: session.id,
       titulo: textoOpcional(body.titulo) ?? tituloHeredado,
       giraId,
+      proyectoCreativoId,
       clienteId: textoOpcional(body.clienteId) ?? heredado?.clienteId ?? null,
       artistaId: textoOpcional(body.artistaId) ?? heredado?.artistaId ?? null,
       tratoId: textoOpcional(body.tratoId) ?? heredado?.tratoId ?? null,
       moneda: (textoOpcional(body.moneda) ?? heredado?.moneda ?? "MXN") as string,
       ...soloDefinidos({
-        // Una propuesta nacida de un trato de evento se cobra por evento; el
-        // default del modelo (`POR_SHOW`) solo tiene sentido en gira.
+        // Una propuesta nacida de un trato de evento o de un proyecto creativo
+        // se cobra por evento; el default del modelo (`POR_SHOW`) solo tiene
+        // sentido en gira.
         modeloCobro:
-          textoOpcional(body.modeloCobro) ?? (!giraId && tratoIdPedido ? "POR_EVENTO" : undefined),
+          textoOpcional(body.modeloCobro) ??
+          (!giraId && (tratoIdPedido || proyectoCreativoId) ? "POR_EVENTO" : undefined),
         vigenciaHasta: fecha(body.vigenciaHasta),
         aplicaIva: booleano(body.aplicaIva),
         alcance: textoOpcional(body.alcance),

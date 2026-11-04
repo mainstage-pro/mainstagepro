@@ -15,6 +15,8 @@ import {
   TIPO_LINEA_PROPUESTA_LABEL,
   UNIDADES_COBRO,
   UNIDAD_COBRO_LABEL,
+  UNIDADES_SERVICIO,
+  UNIDAD_SERVICIO_LABEL,
   fmtMoneda,
 } from "@/lib/giras";
 
@@ -26,6 +28,7 @@ export interface ServicioFila {
   subcategoria: string | null;
   icono: string;
   nivelServicio: string;
+  unidad: string;
   descripcion: string | null;
   entregables: string | null;
   incluye: string | null;
@@ -41,6 +44,8 @@ export interface ServicioFila {
 
 interface Props {
   servicios: ServicioFila[];
+  /** Fija el filtro de unidad de negocio y oculta el selector (vista de Creative/Live). */
+  unidadFija?: "LIVE" | "CREATIVE";
 }
 
 const SIN_CATEGORIA = "SIN_CATEGORIA";
@@ -51,12 +56,13 @@ function metodoDeCobro(s: ServicioFila): string {
   return s.precioSugerido != null ? `${fmtMoneda(s.precioSugerido)} ${unidad}` : `Sin precio · ${unidad}`;
 }
 
-export default function ServiciosClient({ servicios }: Props) {
+export default function ServiciosClient({ servicios, unidadFija }: Props) {
   const router = useRouter();
   const toast = useToast();
   const [busqueda, setBusqueda] = useState("");
   const [categoria, setCategoria] = useState("");
   const [nivel, setNivel] = useState("");
+  const [unidad, setUnidad] = useState(unidadFija ?? "");
   const [verInactivos, setVerInactivos] = useState(false);
   const [vista, setVista] = useState<"tarjetas" | "tabla">("tarjetas");
   const [ficha, setFicha] = useState<ServicioFila | null>(null);
@@ -70,9 +76,10 @@ export default function ServiciosClient({ servicios }: Props) {
           (verInactivos || s.activo) &&
           (!categoria || (s.categoria ?? SIN_CATEGORIA) === categoria) &&
           (!nivel || s.nivelServicio === nivel || s.nivelServicio === "AMBOS") &&
+          (!unidad || s.unidad === unidad) &&
           coincide(busqueda, s.clave, s.nombre, s.descripcion, s.entregables, s.subcategoria),
       ),
-    [servicios, busqueda, categoria, nivel, verInactivos],
+    [servicios, busqueda, categoria, nivel, unidad, verInactivos],
   );
 
   const grupos = useMemo(() => {
@@ -169,6 +176,17 @@ export default function ServiciosClient({ servicios }: Props) {
           ))}
           <option value={SIN_CATEGORIA}>Sin categoría</option>
         </select>
+        {!unidadFija && (
+          <select
+            className={unidad ? "ms-filter-select-active" : "ms-filter-select"}
+            value={unidad}
+            onChange={(e) => setUnidad(e.target.value)}
+          >
+            <option value="">Todas las unidades</option>
+            <option value="LIVE">{UNIDAD_SERVICIO_LABEL.LIVE}</option>
+            <option value="CREATIVE">{UNIDAD_SERVICIO_LABEL.CREATIVE}</option>
+          </select>
+        )}
         <button
           className={verInactivos ? "ms-filter-select-active" : "ms-filter-select"}
           onClick={() => setVerInactivos((v) => !v)}
@@ -208,10 +226,11 @@ export default function ServiciosClient({ servicios }: Props) {
                 </div>
               ) : (
                 <div className="ms-table-wrapper overflow-x-auto">
-                  <table className="w-full min-w-[820px]">
+                  <table className="w-full min-w-[920px]">
                     <thead className="ms-thead">
                       <tr>
                         <th className="ms-th text-left">Servicio</th>
+                        <th className="ms-th text-left">Unidad</th>
                         <th className="ms-th text-left">Se vende en</th>
                         <th className="ms-th text-left">Tipo de línea</th>
                         <th className="ms-th text-left">Se cobra</th>
@@ -236,6 +255,9 @@ export default function ServiciosClient({ servicios }: Props) {
                                   <div className="ms-micro font-mono text-[#6b7280]">{s.clave}</div>
                                 </div>
                               </div>
+                            </td>
+                            <td className="ms-td text-[#9ca3af] text-[13px]">
+                              {UNIDAD_SERVICIO_LABEL[s.unidad] ?? s.unidad}
                             </td>
                             <td className="ms-td text-[#9ca3af] text-[13px]">
                               {NIVEL_SERVICIO_LABEL[s.nivelServicio] ?? s.nivelServicio}
@@ -276,6 +298,7 @@ export default function ServiciosClient({ servicios }: Props) {
       {(creando || editando) && (
         <ModalServicio
           servicio={editando}
+          unidadFija={unidadFija}
           onCerrar={() => {
             setCreando(false);
             setEditando(null);
@@ -327,6 +350,9 @@ function TarjetaServicio({ servicio, onAbrir }: { servicio: ServicioFila; onAbri
       </div>
 
       <div className="flex items-center gap-1.5 flex-wrap mt-3">
+        <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#B3985B]/10 text-[#B3985B]">
+          {UNIDAD_SERVICIO_LABEL[servicio.unidad] ?? servicio.unidad}
+        </span>
         <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#1a1a1a] text-[#9ca3af]">
           {NIVEL_SERVICIO_LABEL[servicio.nivelServicio] ?? servicio.nivelServicio}
         </span>
@@ -378,7 +404,8 @@ function FichaServicio({
         </div>
 
         <div className="p-5 space-y-4 max-h-[65vh] overflow-y-auto">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <Dato titulo="Unidad de negocio" valor={UNIDAD_SERVICIO_LABEL[servicio.unidad] ?? servicio.unidad} />
             <Dato titulo="Se vende en" valor={NIVEL_SERVICIO_LABEL[servicio.nivelServicio] ?? servicio.nivelServicio} />
             <Dato titulo="Tipo de línea" valor={TIPO_LINEA_PROPUESTA_LABEL[servicio.tipoLinea] ?? servicio.tipoLinea} />
             <Dato
@@ -464,11 +491,13 @@ function claveDesdeNombre(nombre: string): string {
 
 function ModalServicio({
   servicio,
+  unidadFija,
   onCerrar,
   onGuardado,
   onError,
 }: {
   servicio: ServicioFila | null;
+  unidadFija?: "LIVE" | "CREATIVE";
   onCerrar: () => void;
   onGuardado: (mensaje: string) => void;
   onError: (mensaje: string) => void;
@@ -480,6 +509,7 @@ function ModalServicio({
   const [subcategoria, setSubcategoria] = useState(servicio?.subcategoria ?? "");
   const [icono, setIcono] = useState(servicio?.icono ?? "Briefcase");
   const [nivelServicio, setNivelServicio] = useState(servicio?.nivelServicio ?? "AMBOS");
+  const [unidad, setUnidad] = useState(servicio?.unidad ?? unidadFija ?? "LIVE");
   const [tipoLinea, setTipoLinea] = useState(servicio?.tipoLinea ?? "HONORARIO");
   const [unidadDefault, setUnidadDefault] = useState(servicio?.unidadDefault ?? "SHOW");
   const [precioSugerido, setPrecioSugerido] = useState(servicio?.precioSugerido?.toString() ?? "");
@@ -508,6 +538,7 @@ function ModalServicio({
       subcategoria: subcategoria.trim() || null,
       icono,
       nivelServicio,
+      unidad,
       tipoLinea,
       unidadDefault,
       precioSugerido: precioSugerido.trim() === "" ? null : Number(precioSugerido),
@@ -600,7 +631,21 @@ function ModalServicio({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div>
+              <label className="ms-label">Unidad de negocio</label>
+              <select
+                className="ms-input mt-1"
+                value={unidad}
+                onChange={(e) => setUnidad(e.target.value)}
+              >
+                {UNIDADES_SERVICIO.map((u) => (
+                  <option key={u} value={u}>
+                    {UNIDAD_SERVICIO_LABEL[u]}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div>
               <label className="ms-label">Se vende en</label>
               <select

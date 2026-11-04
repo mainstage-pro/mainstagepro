@@ -19,6 +19,7 @@ export default async function ServiciosPMPage() {
         subcategoria: s.subcategoria,
         icono: s.icono,
         nivelServicio: s.nivelServicio,
+        unidad: s.unidad,
         descripcion: s.descripcion,
         entregables: s.entregables,
         incluye: s.incluye,

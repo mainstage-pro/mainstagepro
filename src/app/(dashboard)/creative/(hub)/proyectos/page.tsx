@@ -121,7 +121,7 @@ function fechaCorta(iso: string | null) {
   return new Date(iso).toLocaleDateString("es-MX", { day: "numeric", month: "short" });
 }
 
-export default function CreativePage() {
+export default function CreativeProyectosPage() {
   const [proyectos, setProyectos] = useState<Proyecto[]>([]);
   const [clientes, setClientes] = useState<Opcion[]>([]);
   const [artistas, setArtistas] = useState<Opcion[]>([]);

@@ -6,7 +6,7 @@ import {
   PenTool, Megaphone, BarChart3, SlidersHorizontal, BadgeDollarSign,
   Package, TrendingUp, Settings, Speaker, BookUser, ClipboardCheck,
   ShieldCheck, ScrollText, Settings2, Building2, LayoutGrid, GraduationCap,
-  Network, Truck, Compass, Mic2, Receipt, MessageSquare, Palette,
+  Network, Truck, Compass, Mic2, Receipt, MessageSquare, Palette, Boxes,
 } from "lucide-react";
 
 // Dueño de la plataforma. Ciertos módulos (ej. "Inicio") se muestran solo a él.
@@ -70,6 +70,53 @@ export const NAV: NavSection[] = [
     ],
   },
 
+  // ── UNIDADES DE NEGOCIO ─────────────────────────────────────────────────────
+  // Mainstage opera tres unidades dentro de la misma plataforma. "Mainstage Pro"
+  // es un atajo hacia módulos que ya existen (no duplica nada); Live y Creative
+  // son los módulos reales de esas unidades, reubicados aquí desde "Proyectos".
+  {
+    key: "seccion-unidades",
+    section: "Unidades de negocio",
+    items: [
+      {
+        key: "unidad-pro",
+        label: "Mainstage Pro",
+        icon: Boxes,
+        children: [
+          { key: "up-resumen", accessKey: "proyectos", label: "Resumen", href: "/proyectos/resumen" },
+          { key: "up-ventas", accessKey: "crm-tratos", label: "Ventas", href: "/crm/tratos/lista" },
+          { key: "up-cotizaciones", accessKey: "crm-tratos", label: "Cotizaciones", href: "/cotizaciones" },
+          { key: "up-inventario", accessKey: "inventario", label: "Inventario de equipos", href: "/inventario/maestro" },
+        ],
+      },
+      {
+        key: "giras",
+        label: "Mainstage Live",
+        href: "/giras",
+        icon: Mic2,
+        children: [
+          { key: "giras-resumen", accessKey: "giras", label: "Resumen", href: "/giras/resumen" },
+          { key: "giras-lista", accessKey: "giras", label: "Shows y giras", href: "/giras/lista" },
+          { key: "giras-artistas", accessKey: "giras", label: "Artistas", href: "/giras/artistas" },
+          { key: "giras-propuestas", accessKey: "giras", label: "Propuestas", href: "/giras/propuestas" },
+          { key: "giras-servicios", accessKey: "giras", label: "Servicios", href: "/giras/servicios" },
+        ],
+      },
+      {
+        key: "creative",
+        accessKey: "creative",
+        label: "Mainstage Creative",
+        href: "/creative",
+        icon: Palette,
+        children: [
+          { key: "creative-proyectos", accessKey: "creative", label: "Proyectos", href: "/creative/proyectos" },
+          { key: "creative-propuestas", accessKey: "creative", label: "Propuestas", href: "/creative/propuestas" },
+          { key: "creative-servicios", accessKey: "creative", label: "Servicios", href: "/creative/servicios" },
+        ],
+      },
+    ],
+  },
+
   // ── PROYECTOS ──────────────────────────────────────────────────────────────
   {
     key: "seccion-proyectos",
@@ -85,20 +132,6 @@ export const NAV: NavSection[] = [
           { key: "proyectos-lista", accessKey: "proyectos", label: "Proyectos", href: "/proyectos/lista" },
         ],
       },
-      {
-        key: "giras",
-        label: "Shows de artistas",
-        href: "/giras",
-        icon: Mic2,
-        children: [
-          { key: "giras-resumen", accessKey: "giras", label: "Resumen", href: "/giras/resumen" },
-          { key: "giras-lista", accessKey: "giras", label: "Shows y giras", href: "/giras/lista" },
-          { key: "giras-artistas", accessKey: "giras", label: "Artistas", href: "/giras/artistas" },
-          { key: "giras-propuestas", accessKey: "giras", label: "Propuestas", href: "/giras/propuestas" },
-          { key: "giras-servicios", accessKey: "giras", label: "Servicios", href: "/giras/servicios" },
-        ],
-      },
-      { key: "creative", accessKey: "creative", label: "Mainstage Creative", href: "/creative", icon: Palette },
       { key: "proyectos-empresa", accessKey: "proyectos", label: "Proyectos de empresa", href: "/proyectos-de-empresa", icon: Building2 },
       { key: "solicitudes-proveedor", accessKey: "proyectos", label: "Solicitudes a proveedores", href: "/proyectos/solicitudes-proveedor", icon: Truck },
     ],
@@ -363,10 +396,10 @@ const MODULE_META: Record<string, { label?: string; desc?: string }> = {
   "mkt-contenido":       { desc: "Estrategia y calendario de contenido" },
   "mkt-publicidad":      { desc: "Campañas y pauta" },
   "mkt-config":          { label: "Configuración de marketing", desc: "Configuración de marketing" },
-  "crm-tratos":          { label: "Ventas", desc: "Pipeline de ventas y tratos" },
+  "crm-tratos":          { label: "Ventas", desc: "Pipeline de ventas y oportunidades" },
   "crm-base-de-datos":   { label: "Clientes", desc: "Base de datos de clientes (CRM)" },
   "comercial-productos": { desc: "Productos y paquetes comerciales" },
-  "ventas-seguimientos": { desc: "Seguimientos de tratos" },
+  "ventas-seguimientos": { desc: "Seguimientos de oportunidades" },
   "ventas-reporte":      { desc: "Métricas y reportes de ventas" },
   "produccion-tablero":  { label: "Estado de equipos", desc: "Tablero de estado de equipos (en taller / fuera / disponible)" },
   inventario:            { label: "Bodega", desc: "Disponibilidad, recolecciones, mantenimiento, checklist y vehículos" },
