@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { BotonDescarga } from "@/components/BotonDescarga";
 import Link from "next/link";
 import { Combobox } from "@/components/Combobox";
-import { FileText } from "lucide-react";
+import { FileText, ArrowDownAZ, Calendar, MessageSquare, X } from "lucide-react";
 import DatosBancariosAcreedor from "@/components/finanzas/DatosBancariosAcreedor";
 import type { DatosBancarios } from "@/lib/datos-bancarios";
 
@@ -148,9 +148,19 @@ const METODOS = [
 
 
 
-import { MessageSquare, X } from "lucide-react";
-
-function EditablePersonalRow({ pp, proyectoId, roles, tecnicos, pendingEdits, onEdit, onDelete, isDeleting }: { 
+function EditablePersonalRow({ 
+  pp, 
+  proyectoId, 
+  roles, 
+  tecnicos, 
+  pendingEdits, 
+  onEdit, 
+  onDelete, 
+  isDeleting,
+  showEventoInsteadOfTecnico,
+  proyectoNombre,
+  proyectoCliente,
+}: { 
   pp: PersonalSlot; 
   proyectoId: string;
   roles: { id: string; nombre: string }[]; 
@@ -159,6 +169,9 @@ function EditablePersonalRow({ pp, proyectoId, roles, tecnicos, pendingEdits, on
   onEdit: (id: string, changes: Partial<PersonalSlot>, originalRow?: PersonalSlot) => void;
   onDelete?: (personalId: string, proyectoId: string, label: string) => void;
   isDeleting?: boolean;
+  showEventoInsteadOfTecnico?: boolean;
+  proyectoNombre?: string;
+  proyectoCliente?: string;
 }) {
   const [editingRol, setEditingRol] = useState(false);
   const [editingTecnico, setEditingTecnico] = useState(false);
@@ -240,30 +253,46 @@ function EditablePersonalRow({ pp, proyectoId, roles, tecnicos, pendingEdits, on
 
   return (
     <div className={`grid grid-cols-[1fr_1fr_90px_100px_72px_32px] gap-2 px-4 py-2 border-b border-[#0d0d0d] last:border-0 items-center transition-colors ${hasPending ? 'bg-[#B3985B]/5' : 'hover:bg-[#111]'}`}>
-      {/* Técnico Editable */}
-      <div 
-        className="-mx-1 px-1 py-0.5 rounded cursor-pointer hover:bg-[#222]"
-        onClick={() => { if (!editingTecnico) setEditingTecnico(true); }}
-      >
-        {editingTecnico ? (
-          <select 
-            autoFocus
-            value={merged.tecnicoId || ""}
-            onChange={handleTecnicoChange}
-            onBlur={() => setEditingTecnico(false)}
-            className="w-full bg-[#1a1a1a] border border-[#333] text-white text-xs rounded px-1 py-0.5 focus:outline-none focus:border-[#B3985B]"
+      {/* Columna 1: Técnico Editable O Evento */}
+      {showEventoInsteadOfTecnico ? (
+        <div className="min-w-0">
+          <Link
+            href={`/proyectos/${proyectoId}`}
+            className="text-white hover:text-[#B3985B] text-xs font-semibold truncate block transition-colors"
           >
-            <option value="">Sin asignar</option>
-            {tecnicos.map(t => (
-              <option key={t.id} value={t.id}>{t.nombre}</option>
-            ))}
-          </select>
-        ) : (
-          <p className={`text-sm truncate ${merged.tecnicoId ? "text-white" : "text-yellow-500 italic"}`}>
-            {displayTecnico}
-          </p>
-        )}
-      </div>
+            {proyectoNombre || "Ver proyecto"}
+          </Link>
+          {proyectoCliente && (
+            <span className="text-[10px] text-gray-500 truncate block">
+              {proyectoCliente}
+            </span>
+          )}
+        </div>
+      ) : (
+        <div 
+          className="-mx-1 px-1 py-0.5 rounded cursor-pointer hover:bg-[#222]"
+          onClick={() => { if (!editingTecnico) setEditingTecnico(true); }}
+        >
+          {editingTecnico ? (
+            <select 
+              autoFocus
+              value={merged.tecnicoId || ""}
+              onChange={handleTecnicoChange}
+              onBlur={() => setEditingTecnico(false)}
+              className="w-full bg-[#1a1a1a] border border-[#333] text-white text-xs rounded px-1 py-0.5 focus:outline-none focus:border-[#B3985B]"
+            >
+              <option value="">Sin asignar</option>
+              {tecnicos.map(t => (
+                <option key={t.id} value={t.id}>{t.nombre}</option>
+              ))}
+            </select>
+          ) : (
+            <p className={`text-sm truncate ${merged.tecnicoId ? "text-white" : "text-yellow-500 italic"}`}>
+              {displayTecnico}
+            </p>
+          )}
+        </div>
+      )}
       
       {/* Rol Editable */}
       <div 
@@ -431,6 +460,10 @@ export default function PagosPersonalPage() {
 
   const [data, setData] = useState<CicloData | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Ordenamiento: por evento o por nombre A-Z del staff
+  const [modoOrden, setModoOrden] = useState<"evento" | "staff">("evento");
+  const [ordenEventos, setOrdenEventos] = useState<"fecha" | "nombre">("fecha");
 
   // Estado para agregar extra / rol a un proyecto desde pagos-personal
   const [addingExtraProyectoId, setAddingExtraProyectoId] = useState<string | null>(null);
@@ -768,6 +801,101 @@ export default function PagosPersonalPage() {
   const totalPagado = data?.nomina.filter((r) => r.todosPagados).reduce((s, r) => s + r.total, 0) ?? 0;
   const proyectosEnCiclo = data?.proyectos ?? [];
 
+  const proyectosOrdenados = useMemo(() => {
+    if (!data) return [];
+    const list = [...data.proyectos];
+    if (ordenEventos === "nombre") {
+      list.sort((a, b) => a.nombre.localeCompare(b.nombre));
+    } else {
+      list.sort((a, b) => (a.fechaEvento || "").localeCompare(b.fechaEvento || ""));
+    }
+    return list;
+  }, [data, ordenEventos]);
+
+  interface StaffSlotItem {
+    slot: PersonalSlot;
+    proyectoId: string;
+    proyectoNombre: string;
+    proyectoCliente: string;
+    fechaEvento: string;
+  }
+
+  interface StaffGroupItem {
+    tecnicoId: string | null;
+    tecnicoNombre: string;
+    datosBancarios: DatosBancarios | null;
+    nominaRow?: NominaRow;
+    total: number;
+    todosPagados: boolean;
+    slots: StaffSlotItem[];
+  }
+
+  const staffGroups = useMemo<StaffGroupItem[]>(() => {
+    if (!data) return [];
+
+    const map = new Map<string, StaffGroupItem>();
+
+    for (const p of data.proyectos) {
+      for (const pp of p.personal) {
+        const key = pp.tecnicoId || "__sin_asignar__";
+        if (!map.has(key)) {
+          const nomRow = pp.tecnicoId ? data.nomina.find(n => n.tecnicoId === pp.tecnicoId) : undefined;
+          map.set(key, {
+            tecnicoId: pp.tecnicoId,
+            tecnicoNombre: pp.tecnicoNombre || (pp.tecnicoId ? "Técnico" : "Sin asignar"),
+            datosBancarios: nomRow?.datosBancarios ?? null,
+            nominaRow: nomRow,
+            total: 0,
+            todosPagados: false,
+            slots: [],
+          });
+        }
+        map.get(key)!.slots.push({
+          slot: pp,
+          proyectoId: p.id,
+          proyectoNombre: p.nombre,
+          proyectoCliente: p.cliente,
+          fechaEvento: p.fechaEvento,
+        });
+      }
+    }
+
+    // Asegurar que si un técnico está en la nómina semanal también tenga su grupo
+    for (const n of data.nomina) {
+      if (!map.has(n.tecnicoId)) {
+        map.set(n.tecnicoId, {
+          tecnicoId: n.tecnicoId,
+          tecnicoNombre: n.tecnicoNombre,
+          datosBancarios: n.datosBancarios,
+          nominaRow: n,
+          total: n.total,
+          todosPagados: n.todosPagados,
+          slots: [],
+        });
+      }
+    }
+
+    for (const group of map.values()) {
+      if (group.nominaRow) {
+        group.total = group.nominaRow.total;
+        group.todosPagados = group.nominaRow.todosPagados;
+      } else {
+        group.total = group.slots.reduce((s, x) => s + (x.slot.tarifaAcordada ?? 0), 0);
+        group.todosPagados = group.slots.length > 0 && group.slots.every(x => x.slot.estadoPago === "PAGADO");
+      }
+    }
+
+    const items = Array.from(map.values());
+
+    items.sort((a, b) => {
+      if (!a.tecnicoId) return 1;
+      if (!b.tecnicoId) return -1;
+      return a.tecnicoNombre.localeCompare(b.tecnicoNombre);
+    });
+
+    return items;
+  }, [data]);
+
   const cuentaOpts = [
     { value: "", label: "— Sin cuenta —" },
     ...(data?.cuentas ?? []).map(c => ({ value: c.id, label: c.nombre + (c.banco ? ` · ${c.banco}` : "") })),
@@ -789,7 +917,35 @@ export default function PagosPersonalPage() {
           <h1 className="ms-h1">Pagos a Personal</h1>
           <p className="ms-subtitle mt-0.5">Ciclo semanal · miércoles de pago</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Botón de ordenar por evento / nombre A-Z del staff */}
+          <div className="flex items-center gap-1 bg-[#141414] border border-[#2a2a2a] rounded-lg p-1">
+            <button
+              type="button"
+              onClick={() => setModoOrden("evento")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                modoOrden === "evento"
+                  ? "bg-[#B3985B] text-black font-semibold shadow-sm"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              <span>Por evento</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setModoOrden("staff")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                modoOrden === "staff"
+                  ? "bg-[#B3985B] text-black font-semibold shadow-sm"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              <ArrowDownAZ className="w-3.5 h-3.5" />
+              <span>Nombre A-Z staff</span>
+            </button>
+          </div>
+
           <BotonDescarga
             url={`/api/pagos-personal/pdf?ciclo=${ciclo}`}
             filename={`Pagos-personal-${ciclo}.pdf`}
@@ -874,11 +1030,39 @@ export default function PagosPersonalPage() {
       {!loading && data && data.proyectos.length > 0 && (
         <div className="grid grid-cols-1 xl:grid-cols-[1fr_420px] gap-6 items-start">
 
-          {/* ── Left: Per-project breakdown ── */}
+          {/* ── Left: Main breakdown ── */}
           <div className="space-y-4">
-            <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Desglose por proyecto</h2>
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">
+                {modoOrden === "evento" ? "Desglose por proyecto" : "Desglose por personal (Nombre A-Z)"}
+              </h2>
+              {modoOrden === "evento" ? (
+                <div className="flex items-center gap-1 bg-[#141414] border border-[#222] rounded-lg p-0.5 text-[11px]">
+                  <span className="text-gray-500 px-2 font-medium">Ordenar eventos:</span>
+                  <button
+                    type="button"
+                    onClick={() => setOrdenEventos("fecha")}
+                    className={`px-2 py-0.5 rounded transition-colors ${ordenEventos === "fecha" ? "bg-[#222] text-white font-medium" : "text-gray-400 hover:text-gray-200"}`}
+                  >
+                    Por fecha
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOrdenEventos("nombre")}
+                    className={`px-2 py-0.5 rounded transition-colors ${ordenEventos === "nombre" ? "bg-[#222] text-white font-medium" : "text-gray-400 hover:text-gray-200"}`}
+                  >
+                    A-Z
+                  </button>
+                </div>
+              ) : (
+                <span className="text-xs text-gray-500">
+                  {staffGroups.length} persona{staffGroups.length !== 1 ? "s" : ""} asignada{staffGroups.length !== 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
 
-            {proyectosEnCiclo.map((p) => {
+            {modoOrden === "evento" ? (
+              proyectosOrdenados.map((p) => {
               const totalPersonal = p.personal.reduce((s, pp) => s + (pp.tarifaAcordada ?? 0), 0);
               const sinAsignar = p.personal.filter((pp) => !pp.tecnicoId).length;
               const sinTarifa = p.personal.filter((pp) => pp.tecnicoId && pp.tarifaAcordada == null).length;
@@ -919,8 +1103,16 @@ export default function PagosPersonalPage() {
                         ))}
                       </div>
 
-                      {Array.from(grupos.entries()).map(([key, slots]) => {
+                      {Array.from(grupos.entries()).map(([key, rawSlots]) => {
                         const [tipo, fecha] = key.split("|");
+                        // Ordenar staff dentro de cada bloque de la A a la Z
+                        const slots = [...rawSlots].sort((a, b) => {
+                          const aName = a.tecnicoNombre || "";
+                          const bName = b.tecnicoNombre || "";
+                          if (!aName && bName) return 1;
+                          if (aName && !bName) return -1;
+                          return aName.localeCompare(bName);
+                        });
                         return (
                           <div key={key}>
                             <div className="px-4 py-1.5 bg-[#0d0d0d] flex items-center gap-2 cursor-pointer hover:bg-[#1a1a1a] transition-colors relative group" onClick={() => {
@@ -1250,133 +1442,290 @@ export default function PagosPersonalPage() {
                   )}
                 </div>
               );
-            })}
-          </div>
-
-          {/* ── Right: Nómina semanal ── */}
-          <div className="ms-table-wrapper sticky top-6">
-            <div className="px-5 py-3 bg-[#1a1a1a] border-b border-[#222]">
-              <p className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Nómina de la semana</p>
-              <p className="text-xs text-gray-600 mt-0.5">
-                {data.nomina.length} técnico{data.nomina.length !== 1 ? "s" : ""}
-                {" · "}miércoles {fmtDate(ciclo, { weekday: undefined, day: "numeric", month: "long", year: "numeric" })}
-              </p>
-            </div>
-
-            {data.nomina.length === 0 ? (
-              <p className="text-gray-600 text-sm text-center py-8">Sin técnicos asignados en este ciclo</p>
-            ) : (
-              <div>
-                {data.nomina.map((row) => (
-                  <div key={row.tecnicoId} className={`border-b border-[#0d0d0d] last:border-0 ${row.todosPagados ? "opacity-60" : ""}`}>
-                    <div className="px-5 py-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-white text-sm font-medium">{row.tecnicoNombre}</p>
-                        <div className="flex items-center gap-3">
-                          <BotonDescarga
-                            url={`/api/pagos-personal/recibo?ciclo=${ciclo}&tecnico=${row.tecnicoId}`}
-                            filename={`Recibo-${row.tecnicoNombre.replace(/\s+/g, "-")}-${ciclo}.pdf`}
-                            titulo={`Recibo ${row.tecnicoNombre}`}
-                            className="text-[#B3985B] hover:text-white transition-colors flex items-center justify-center p-1 rounded-md hover:bg-[#B3985B]/20"
-                          >
-                            <FileText className="w-4 h-4" />
-                          </BotonDescarga>
-                          <p className={`text-base font-bold ${row.todosPagados ? "text-green-400" : "text-[#B3985B]"}`}>
-                            {fmt(row.total)}
-                          </p>
-                        </div>
+            })
+          ) : (
+            /* ── Vista por Staff (Nombre A-Z) ── */
+            staffGroups.map((g) => {
+              return (
+                <div key={g.tecnicoId || "sin-asignar"} className="ms-table-wrapper">
+                  <div className="px-5 py-3 bg-[#1a1a1a] flex items-center justify-between gap-3 flex-wrap border-b border-[#222]">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className={`text-base font-semibold ${g.tecnicoId ? "text-white" : "text-yellow-500 italic"}`}>
+                          {g.tecnicoNombre}
+                        </p>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                          g.todosPagados
+                            ? "bg-green-900/30 text-green-400"
+                            : g.slots.some(s => s.slot.estadoPago === "PARCIAL")
+                            ? "bg-blue-900/30 text-blue-400"
+                            : "bg-yellow-900/20 text-yellow-500"
+                        }`}>
+                          {g.todosPagados ? "✓ Pagado" : g.slots.some(s => s.slot.estadoPago === "PARCIAL") ? "Parcial" : "Pendiente"}
+                        </span>
                       </div>
+                      <p className="text-gray-500 text-xs mt-0.5">
+                        {g.slots.length} puesto{g.slots.length !== 1 ? "s" : ""} en {new Set(g.slots.map(s => s.proyectoId)).size} evento{new Set(g.slots.map(s => s.proyectoId)).size !== 1 ? "s" : ""}
+                      </p>
+                    </div>
 
-                      <div className="space-y-0.5 mb-3">
-                        {row.pagos.map((pago) => (
-                          <div key={pago.proyectoId} className="flex items-center justify-between">
-                            <p className="text-xs text-gray-500 truncate max-w-[200px]">{pago.proyectoNombre}</p>
-                            <div className="flex items-center gap-2">
-                              <p className="text-xs text-gray-300">
-                                {fmt(pago.monto)}
-                                {pago.estadoPago === "PARCIAL" && pago.totalTarifa && (
-                                  <span className="text-[10px] text-gray-500 ml-1">
-                                    (resta {fmt(pago.monto)})
-                                  </span>
-                                )}
-                              </p>
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                                pago.estadoPago === "PAGADO"
-                                  ? "bg-green-900/30 text-green-400"
-                                  : pago.estadoPago === "PARCIAL"
-                                  ? "bg-blue-900/30 text-blue-400"
-                                  : "bg-yellow-900/20 text-yellow-500"
-                              }`}>
-                                {pago.estadoPago === "PAGADO" ? "✓" : pago.estadoPago === "PARCIAL" ? "Parc." : "Pend."}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      <DatosBancariosAcreedor
-                        datos={row.datosBancarios}
-                        nombre={row.tecnicoNombre}
-                        fichaHref="/catalogo/tecnicos"
-                        className="mb-3"
-                      />
-
-                      {!row.todosPagados ? (
-                        <div className="space-y-2">
+                    <div className="flex items-center gap-3">
+                      {g.tecnicoId && (
+                        <BotonDescarga
+                          url={`/api/pagos-personal/recibo?ciclo=${ciclo}&tecnico=${g.tecnicoId}`}
+                          filename={`Recibo-${g.tecnicoNombre.replace(/\s+/g, "-")}-${ciclo}.pdf`}
+                          titulo={`Recibo ${g.tecnicoNombre}`}
+                          className="text-[#B3985B] hover:text-white transition-colors flex items-center justify-center p-1.5 rounded-md hover:bg-[#B3985B]/20"
+                        >
+                          <FileText className="w-4 h-4" />
+                        </BotonDescarga>
+                      )}
+                      <p className={`text-lg font-bold ${g.todosPagados ? "text-green-400" : "text-[#B3985B]"}`}>
+                        {fmt(g.total)}
+                      </p>
+                      {g.nominaRow && !g.todosPagados && (
+                        <button
+                          onClick={() => abrirModalPago([g.nominaRow!])}
+                          className="px-3 py-1.5 rounded-lg bg-[#B3985B] hover:bg-[#c9a96a] text-black text-xs font-semibold transition-colors"
+                        >
+                          Registrar pago
+                        </button>
+                      )}
+                      {g.nominaRow && !g.todosPagados && (
+                        cxpCreadas[g.tecnicoId!] != null ? (
+                          <span className="text-[11px] text-green-400">✓ CxP generada</span>
+                        ) : (
                           <button
-                            onClick={() => abrirModalPago([row])}
-                            className="w-full py-1.5 rounded-lg bg-[#B3985B] hover:bg-[#c9a96a] text-black text-xs font-semibold transition-colors"
+                            onClick={() => generarCxP(g.nominaRow!)}
+                            disabled={generandoCxP === g.tecnicoId}
+                            className="px-2.5 py-1.5 rounded-lg border border-[#333] hover:border-[#B3985B]/40 text-gray-400 hover:text-[#B3985B] text-xs transition-colors disabled:opacity-40"
+                            title="Generar nota por pagar en Finanzas"
                           >
-                            Registrar pago · {fmt(row.total)}
+                            {generandoCxP === g.tecnicoId ? "..." : "+ CxP"}
                           </button>
-                          {cxpCreadas[row.tecnicoId] != null ? (
-                            <div className="flex items-center justify-center gap-1.5 py-1 text-xs text-green-400">
-                              <span>✓</span>
-                              <span>{cxpCreadas[row.tecnicoId]} CxP generada{cxpCreadas[row.tecnicoId] !== 1 ? "s" : ""} en Finanzas</span>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => generarCxP(row)}
-                              disabled={generandoCxP === row.tecnicoId}
-                              className="w-full py-1.5 rounded-lg border border-[#333] hover:border-[#B3985B]/40 text-gray-500 hover:text-[#B3985B] text-xs transition-colors disabled:opacity-40 inline-flex items-center justify-center gap-1.5"
-                            >
-                              {generandoCxP === row.tecnicoId ? "Generando..." : <><FileText strokeWidth={1.75} className="w-3.5 h-3.5" /> Generar nota por pagar (CxP)</>}
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center gap-1.5 py-1.5 text-xs text-green-500">
-                          <span>✓</span>
-                          <span>Pagado</span>
-                        </div>
+                        )
                       )}
                     </div>
                   </div>
-                ))}
 
-                <div className="px-5 py-3 bg-[#0d0d0d] border-t border-[#222]">
-                  <div className="flex justify-between text-xs text-gray-400 mb-1">
-                    <span>Pendiente de pago</span>
-                    <span className="text-yellow-400 font-semibold">{fmt(totalPendiente)}</span>
-                  </div>
-                  {totalPagado > 0 && (
-                    <div className="flex justify-between text-xs text-gray-600">
-                      <span>Ya pagado</span>
-                      <span className="text-green-500">{fmt(totalPagado)}</span>
+                  {g.datosBancarios && (
+                    <div className="px-5 py-2 bg-[#121212] border-b border-[#1c1c1c]">
+                      <DatosBancariosAcreedor
+                        datos={g.datosBancarios}
+                        nombre={g.tecnicoNombre}
+                        fichaHref="/catalogo/tecnicos"
+                      />
                     </div>
                   )}
-                  {totalPendiente > 0 && (
-                    <button
-                      onClick={() => abrirModalPago(data.nomina.filter((r) => !r.todosPagados))}
-                      className="w-full mt-3 py-2 rounded-lg border border-[#B3985B]/40 hover:bg-[#B3985B]/10 text-[#B3985B] text-xs font-medium transition-colors"
-                    >
-                      Registrar pago a todos · {fmt(totalPendiente)}
-                    </button>
+
+                  <div className="grid grid-cols-[1fr_1fr_90px_100px_72px_32px] gap-2 px-4 py-1.5 border-b border-[#0d0d0d]">
+                    {["Evento", "Rol", "Tipo · Fecha", "Tarifa", "Estado", ""].map((h, i) => (
+                      <p key={i} className="text-[10px] text-gray-600 uppercase tracking-wider font-semibold">{h}</p>
+                    ))}
+                  </div>
+
+                  {g.slots.length === 0 ? (
+                    <p className="text-gray-600 text-xs text-center py-4">Sin puestos registrados en proyectos de esta semana</p>
+                  ) : (
+                    g.slots.map(({ slot, proyectoId, proyectoNombre, proyectoCliente }) => (
+                      <EditablePersonalRow
+                        key={slot.id}
+                        pp={slot}
+                        proyectoId={proyectoId}
+                        roles={data.roles}
+                        tecnicos={data.tecnicos}
+                        pendingEdits={pendingEdits[slot.id] || {}}
+                        onEdit={handleEdit}
+                        onDelete={handleDeletePersonal}
+                        isDeleting={deletingId === slot.id}
+                        showEventoInsteadOfTecnico={true}
+                        proyectoNombre={proyectoNombre}
+                        proyectoCliente={proyectoCliente}
+                      />
+                    ))
                   )}
                 </div>
-              </div>
-            )}
+              );
+            })
+          )}
           </div>
+
+          {/* ── Right Column ── */}
+          {modoOrden === "evento" ? (
+            /* ── Nómina semanal ── */
+            <div className="ms-table-wrapper sticky top-6">
+              <div className="px-5 py-3 bg-[#1a1a1a] border-b border-[#222]">
+                <p className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Nómina de la semana</p>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  {data.nomina.length} técnico{data.nomina.length !== 1 ? "s" : ""}
+                  {" · "}miércoles {fmtDate(ciclo, { weekday: undefined, day: "numeric", month: "long", year: "numeric" })}
+                </p>
+              </div>
+
+              {data.nomina.length === 0 ? (
+                <p className="text-gray-600 text-sm text-center py-8">Sin técnicos asignados en este ciclo</p>
+              ) : (
+                <div>
+                  {data.nomina.map((row) => (
+                    <div key={row.tecnicoId} className={`border-b border-[#0d0d0d] last:border-0 ${row.todosPagados ? "opacity-60" : ""}`}>
+                      <div className="px-5 py-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-white text-sm font-medium">{row.tecnicoNombre}</p>
+                          <div className="flex items-center gap-3">
+                            <BotonDescarga
+                              url={`/api/pagos-personal/recibo?ciclo=${ciclo}&tecnico=${row.tecnicoId}`}
+                              filename={`Recibo-${row.tecnicoNombre.replace(/\s+/g, "-")}-${ciclo}.pdf`}
+                              titulo={`Recibo ${row.tecnicoNombre}`}
+                              className="text-[#B3985B] hover:text-white transition-colors flex items-center justify-center p-1 rounded-md hover:bg-[#B3985B]/20"
+                            >
+                              <FileText className="w-4 h-4" />
+                            </BotonDescarga>
+                            <p className={`text-base font-bold ${row.todosPagados ? "text-green-400" : "text-[#B3985B]"}`}>
+                              {fmt(row.total)}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-0.5 mb-3">
+                          {row.pagos.map((pago) => (
+                            <div key={pago.proyectoId} className="flex items-center justify-between">
+                              <p className="text-xs text-gray-500 truncate max-w-[200px]">{pago.proyectoNombre}</p>
+                              <div className="flex items-center gap-2">
+                                <p className="text-xs text-gray-300">
+                                  {fmt(pago.monto)}
+                                  {pago.estadoPago === "PARCIAL" && pago.totalTarifa && (
+                                    <span className="text-[10px] text-gray-500 ml-1">
+                                      (resta {fmt(pago.monto)})
+                                    </span>
+                                  )}
+                                </p>
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                                  pago.estadoPago === "PAGADO"
+                                    ? "bg-green-900/30 text-green-400"
+                                    : pago.estadoPago === "PARCIAL"
+                                    ? "bg-blue-900/30 text-blue-400"
+                                    : "bg-yellow-900/20 text-yellow-500"
+                                }`}>
+                                  {pago.estadoPago === "PAGADO" ? "✓" : pago.estadoPago === "PARCIAL" ? "Parc." : "Pend."}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <DatosBancariosAcreedor
+                          datos={row.datosBancarios}
+                          nombre={row.tecnicoNombre}
+                          fichaHref="/catalogo/tecnicos"
+                          className="mb-3"
+                        />
+
+                        {!row.todosPagados ? (
+                          <div className="space-y-2">
+                            <button
+                              onClick={() => abrirModalPago([row])}
+                              className="w-full py-1.5 rounded-lg bg-[#B3985B] hover:bg-[#c9a96a] text-black text-xs font-semibold transition-colors"
+                            >
+                              Registrar pago · {fmt(row.total)}
+                            </button>
+                            {cxpCreadas[row.tecnicoId] != null ? (
+                              <div className="flex items-center justify-center gap-1.5 py-1 text-xs text-green-400">
+                                <span>✓</span>
+                                <span>{cxpCreadas[row.tecnicoId]} CxP generada{cxpCreadas[row.tecnicoId] !== 1 ? "s" : ""} en Finanzas</span>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => generarCxP(row)}
+                                disabled={generandoCxP === row.tecnicoId}
+                                className="w-full py-1.5 rounded-lg border border-[#333] hover:border-[#B3985B]/40 text-gray-500 hover:text-[#B3985B] text-xs transition-colors disabled:opacity-40 inline-flex items-center justify-center gap-1.5"
+                              >
+                                {generandoCxP === row.tecnicoId ? "Generando..." : <><FileText strokeWidth={1.75} className="w-3.5 h-3.5" /> Generar nota por pagar (CxP)</>}
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center gap-1.5 py-1.5 text-xs text-green-500">
+                            <span>✓</span>
+                            <span>Pagado</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+
+                  <div className="px-5 py-3 bg-[#0d0d0d] border-t border-[#222]">
+                    <div className="flex justify-between text-xs text-gray-400 mb-1">
+                      <span>Pendiente de pago</span>
+                      <span className="text-yellow-400 font-semibold">{fmt(totalPendiente)}</span>
+                    </div>
+                    {totalPagado > 0 && (
+                      <div className="flex justify-between text-xs text-gray-600">
+                        <span>Ya pagado</span>
+                        <span className="text-green-500">{fmt(totalPagado)}</span>
+                      </div>
+                    )}
+                    {totalPendiente > 0 && (
+                      <button
+                        onClick={() => abrirModalPago(data.nomina.filter((r) => !r.todosPagados))}
+                        className="w-full mt-3 py-2 rounded-lg border border-[#B3985B]/40 hover:bg-[#B3985B]/10 text-[#B3985B] text-xs font-medium transition-colors"
+                      >
+                        Registrar pago a todos · {fmt(totalPendiente)}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* ── Resumen de eventos (cuando modoOrden === "staff") ── */
+            <div className="ms-table-wrapper sticky top-6">
+              <div className="px-5 py-3 bg-[#1a1a1a] border-b border-[#222]">
+                <p className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Resumen de eventos</p>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  {proyectosEnCiclo.length} evento{proyectosEnCiclo.length !== 1 ? "s" : ""}
+                  {" · "}{fmtDate(data.desde, { weekday: undefined })} – {fmtDate(data.hasta, { weekday: undefined })}
+                </p>
+              </div>
+
+              {proyectosEnCiclo.length === 0 ? (
+                <p className="text-gray-600 text-sm text-center py-8">Sin eventos en este ciclo</p>
+              ) : (
+                <div>
+                  {proyectosEnCiclo.map((p) => {
+                    const totalPersonal = p.personal.reduce((s, pp) => s + (pp.tarifaAcordada ?? 0), 0);
+                    const sinAsignar = p.personal.filter((pp) => !pp.tecnicoId).length;
+                    return (
+                      <div key={p.id} className="px-5 py-3 border-b border-[#0d0d0d] last:border-0 hover:bg-[#141414] transition-colors">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <Link href={`/proyectos/${p.id}`} className="text-white text-sm font-medium hover:text-[#B3985B] transition-colors truncate block">
+                              {p.nombre}
+                            </Link>
+                            <p className="text-xs text-gray-500 truncate">{p.cliente} · {fmtDate(p.fechaEvento)}</p>
+                          </div>
+                          <p className="text-sm font-bold text-[#B3985B] shrink-0">{fmt(totalPersonal)}</p>
+                        </div>
+                        <div className="mt-2 flex items-center justify-between text-[11px] text-gray-500">
+                          <span>{p.personal.length} puesto(s)</span>
+                          {sinAsignar > 0 && <span className="text-yellow-500">{sinAsignar} sin asignar</span>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {totalPendiente > 0 && (
+                    <div className="p-4 border-t border-[#222] bg-[#0d0d0d]">
+                      <button
+                        onClick={() => abrirModalPago(data.nomina.filter((r) => !r.todosPagados))}
+                        className="w-full py-2 rounded-lg border border-[#B3985B]/40 hover:bg-[#B3985B]/10 text-[#B3985B] text-xs font-medium transition-colors"
+                      >
+                        Registrar pago a todos · {fmt(totalPendiente)}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
         </div>
       )}

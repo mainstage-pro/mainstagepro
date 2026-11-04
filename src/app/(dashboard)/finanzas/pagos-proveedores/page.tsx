@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import Link from "next/link";
-import { FileText, MessageSquare, X } from "lucide-react";
+import { FileText, MessageSquare, X, ArrowDownAZ, Calendar } from "lucide-react";
 import ModalRegistrarPago, {
   type GrupoPago,
   type PagoCapturado,
@@ -145,6 +145,10 @@ export default function PagosProveedoresPage() {
   const [pagoTarget, setPagoTarget] = useState<Acreedor[] | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [formalizando, setFormalizando] = useState<string | null>(null);
+
+  // Ordenamiento: por evento o por nombre A-Z del proveedor
+  const [modoOrden, setModoOrden] = useState<"evento" | "proveedor">("evento");
+  const [ordenEventos, setOrdenEventos] = useState<"fecha" | "nombre">("fecha");
 
   // Estado para agregar proveedor / gasto a un proyecto
   const [addingGastoProyectoId, setAddingGastoProyectoId] = useState<string | null>(null);
@@ -317,6 +321,99 @@ export default function PagosProveedoresPage() {
   const totalPorFormalizar = cartera.reduce((s, a) => s + a.porFormalizar, 0);
   const totalPagado = Math.round((totalGasto - totalPorPagar - totalPorFormalizar) * 100) / 100;
 
+  const proyectosOrdenados = useMemo(() => {
+    const list = [...(data?.proyectos ?? [])];
+    if (ordenEventos === "nombre") {
+      list.sort((a, b) => a.nombre.localeCompare(b.nombre));
+    } else {
+      list.sort((a, b) => (a.fechaEvento || "").localeCompare(b.fechaEvento || ""));
+    }
+    return list;
+  }, [data, ordenEventos]);
+
+  interface ProveedorGastoItem {
+    gasto: Gasto;
+    proyectoId: string;
+    proyectoNombre: string;
+    proyectoCliente: string;
+    fechaEvento: string;
+  }
+
+  interface ProveedorGroupItem {
+    key: string;
+    nombre: string;
+    tipoAcreedor: string;
+    acreedorId: string | null;
+    datosBancarios: DatosBancarios | null;
+    acreedor?: Acreedor;
+    porPagar: number;
+    porFormalizar: number;
+    todoPagado: boolean;
+    gastos: ProveedorGastoItem[];
+  }
+
+  const proveedorGroups = useMemo<ProveedorGroupItem[]>(() => {
+    if (!data) return [];
+
+    const map = new Map<string, ProveedorGroupItem>();
+
+    for (const p of data.proyectos) {
+      for (const g of p.gastos) {
+        const key = g.acreedorKey || "__sin_proveedor__";
+        if (!map.has(key)) {
+          const acreedor = data.cartera.find((c) => c.key === key);
+          map.set(key, {
+            key,
+            nombre: g.acreedorNombre || (acreedor ? acreedor.nombre : "Sin proveedor"),
+            tipoAcreedor: g.tipoAcreedor || (acreedor ? acreedor.tipoAcreedor : "OTRO"),
+            acreedorId: g.acreedorId || (acreedor ? acreedor.acreedorId : null),
+            datosBancarios: acreedor?.datosBancarios ?? null,
+            acreedor,
+            porPagar: acreedor ? acreedor.porPagar : 0,
+            porFormalizar: acreedor ? acreedor.porFormalizar : 0,
+            todoPagado: acreedor ? acreedor.todoPagado : false,
+            gastos: [],
+          });
+        }
+        map.get(key)!.gastos.push({
+          gasto: g,
+          proyectoId: p.id,
+          proyectoNombre: p.nombre,
+          proyectoCliente: p.cliente,
+          fechaEvento: p.fechaEvento,
+        });
+      }
+    }
+
+    // Asegurar que si un acreedor está en la cartera semanal también tenga su grupo
+    for (const a of data.cartera) {
+      if (!map.has(a.key)) {
+        map.set(a.key, {
+          key: a.key,
+          nombre: a.nombre,
+          tipoAcreedor: a.tipoAcreedor,
+          acreedorId: a.acreedorId,
+          datosBancarios: a.datosBancarios,
+          acreedor: a,
+          porPagar: a.porPagar,
+          porFormalizar: a.porFormalizar,
+          todoPagado: a.todoPagado,
+          gastos: [],
+        });
+      }
+    }
+
+    const items = Array.from(map.values());
+
+    items.sort((a, b) => {
+      if (a.key === "__sin_proveedor__") return 1;
+      if (b.key === "__sin_proveedor__") return -1;
+      return a.nombre.localeCompare(b.nombre);
+    });
+
+    return items;
+  }, [data]);
+
   return (
     <div className="p-4 md:p-6 max-w-[1600px] mx-auto space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -324,28 +421,58 @@ export default function PagosProveedoresPage() {
           <h1 className="ms-h1">Pagos a Proveedores</h1>
           <p className="ms-subtitle mt-0.5">Rentas, imprevistos y gastos del evento · ciclo semanal</p>
         </div>
-        <div className="flex items-center gap-2 ms-card px-3 py-2">
-          <button
-            onClick={() => setCiclo(correrCiclo(ciclo, -7))}
-            className="text-gray-400 hover:text-white px-1 transition-colors"
-          >
-            ‹
-          </button>
-          <div className="text-center">
-            <p className="text-xs text-gray-500">Ciclo de pago</p>
-            <input
-              type="date"
-              value={ciclo}
-              onChange={(e) => setCiclo(e.target.value)}
-              className="bg-transparent text-white text-sm font-semibold focus:outline-none text-center"
-            />
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Botón de ordenar por evento / nombre A-Z del proveedor */}
+          <div className="flex items-center gap-1 bg-[#141414] border border-[#2a2a2a] rounded-lg p-1">
+            <button
+              type="button"
+              onClick={() => setModoOrden("evento")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                modoOrden === "evento"
+                  ? "bg-[#B3985B] text-black font-semibold shadow-sm"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              <span>Por evento</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setModoOrden("proveedor")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                modoOrden === "proveedor"
+                  ? "bg-[#B3985B] text-black font-semibold shadow-sm"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              <ArrowDownAZ className="w-3.5 h-3.5" />
+              <span>Nombre A-Z proveedor</span>
+            </button>
           </div>
-          <button
-            onClick={() => setCiclo(correrCiclo(ciclo, 7))}
-            className="text-gray-400 hover:text-white px-1 transition-colors"
-          >
-            ›
-          </button>
+
+          <div className="flex items-center gap-2 ms-card px-3 py-2">
+            <button
+              onClick={() => setCiclo(correrCiclo(ciclo, -7))}
+              className="text-gray-400 hover:text-white px-1 transition-colors"
+            >
+              ‹
+            </button>
+            <div className="text-center">
+              <p className="text-xs text-gray-500">Ciclo de pago</p>
+              <input
+                type="date"
+                value={ciclo}
+                onChange={(e) => setCiclo(e.target.value)}
+                className="bg-transparent text-white text-sm font-semibold focus:outline-none text-center"
+              />
+            </div>
+            <button
+              onClick={() => setCiclo(correrCiclo(ciclo, 7))}
+              className="text-gray-400 hover:text-white px-1 transition-colors"
+            >
+              ›
+            </button>
+          </div>
         </div>
       </div>
 
@@ -401,9 +528,37 @@ export default function PagosProveedoresPage() {
       {!loading && data && proyectos.length > 0 && (
         <div className="grid grid-cols-1 xl:grid-cols-[1fr_420px] gap-6 items-start">
           <div className="space-y-4">
-            <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Desglose por proyecto</h2>
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">
+                {modoOrden === "evento" ? "Desglose por proyecto" : "Desglose por proveedor (Nombre A-Z)"}
+              </h2>
+              {modoOrden === "evento" ? (
+                <div className="flex items-center gap-1 bg-[#141414] border border-[#222] rounded-lg p-0.5 text-[11px]">
+                  <span className="text-gray-500 px-2 font-medium">Ordenar eventos:</span>
+                  <button
+                    type="button"
+                    onClick={() => setOrdenEventos("fecha")}
+                    className={`px-2 py-0.5 rounded transition-colors ${ordenEventos === "fecha" ? "bg-[#222] text-white font-medium" : "text-gray-400 hover:text-gray-200"}`}
+                  >
+                    Por fecha
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOrdenEventos("nombre")}
+                    className={`px-2 py-0.5 rounded transition-colors ${ordenEventos === "nombre" ? "bg-[#222] text-white font-medium" : "text-gray-400 hover:text-gray-200"}`}
+                  >
+                    A-Z
+                  </button>
+                </div>
+              ) : (
+                <span className="text-xs text-gray-500">
+                  {proveedorGroups.length} proveedor{proveedorGroups.length !== 1 ? "es" : ""} registrado{proveedorGroups.length !== 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
 
-            {proyectos.map((p) => {
+            {modoOrden === "evento" ? (
+              proyectosOrdenados.map((p) => {
               const total = p.gastos.reduce((s, g) => s + g.monto, 0);
               const sinFormalizar = p.gastos.filter((g) => g.estado === "SIN_CXP" && g.monto > 0).length;
               const sinMonto = p.gastos.filter((g) => g.monto <= 0).length;
@@ -454,7 +609,15 @@ export default function PagosProveedoresPage() {
                       </div>
 
                       {origenes.map((origen) => {
-                        const filas = porOrigen.get(origen)!;
+                        const rawFilas = porOrigen.get(origen)!;
+                        // Ordenar renglones de la A a la Z por nombre del proveedor
+                        const filas = [...rawFilas].sort((a, b) => {
+                          const aName = a.acreedorNombre || "";
+                          const bName = b.acreedorNombre || "";
+                          if (!aName && bName) return 1;
+                          if (aName && !bName) return -1;
+                          return aName.localeCompare(bName);
+                        });
                         return (
                           <div key={origen}>
                             <div className="px-4 py-1 bg-[#0d0d0d] flex items-center gap-2">
@@ -651,145 +814,303 @@ export default function PagosProveedoresPage() {
                   )}
                 </div>
               );
-            })}
-          </div>
-
-          <div className="ms-table-wrapper sticky top-6">
-            <div className="px-5 py-3 bg-[#1a1a1a] border-b border-[#222]">
-              <p className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Cartera de la semana</p>
-              <p className="text-xs text-gray-600 mt-0.5">
-                {cartera.length} acreedor{cartera.length !== 1 ? "es" : ""}
-                {" · "}miércoles{" "}
-                {fmtDate(ciclo, { weekday: undefined, day: "numeric", month: "long", year: "numeric" })}
-              </p>
-            </div>
-
-            {cartera.length === 0 ? (
-              <p className="text-gray-600 text-sm text-center py-8">Sin acreedores en este ciclo</p>
-            ) : (
-              <div>
-                {cartera.map((a) => (
-                  <div
-                    key={a.key}
-                    className={`border-b border-[#0d0d0d] last:border-0 ${a.todoPagado ? "opacity-60" : ""}`}
-                  >
-                    <div className="px-5 py-3">
-                      <div className="flex items-center justify-between mb-2 gap-2">
-                        <div className="min-w-0">
-                          <p className="text-white text-sm font-medium truncate">{a.nombre}</p>
-                          <p className="text-[10px] text-gray-600">
-                            {TIPO_ACREEDOR_LABEL[a.tipoAcreedor] ?? a.tipoAcreedor}
-                          </p>
-                        </div>
-                        <p className={`text-base font-bold shrink-0 ${a.todoPagado ? "text-green-400" : "text-[#B3985B]"}`}>
-                          {fmt(a.porPagar + a.porFormalizar)}
+            })
+          ) : (
+            /* ── Vista por Proveedor (Nombre A-Z) ── */
+            proveedorGroups.map((g) => {
+              return (
+                <div key={g.key} className="ms-table-wrapper">
+                  <div className="px-5 py-3 bg-[#1a1a1a] flex items-center justify-between gap-3 flex-wrap border-b border-[#222]">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className={`text-base font-semibold truncate ${g.key === "__sin_proveedor__" ? "text-yellow-500 italic" : "text-white"}`}>
+                          {g.nombre}
                         </p>
+                        <span className="text-[10px] text-gray-500 px-1.5 py-0.5 rounded bg-[#222]">
+                          {TIPO_ACREEDOR_LABEL[g.tipoAcreedor] ?? g.tipoAcreedor}
+                        </span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                          g.todoPagado
+                            ? "bg-green-900/30 text-green-400"
+                            : g.porPagar > 0
+                            ? "bg-yellow-900/20 text-yellow-500"
+                            : "bg-orange-900/20 text-orange-400"
+                        }`}>
+                          {g.todoPagado ? "✓ Pagado" : g.porPagar > 0 ? "Por pagar" : "Sin formalizar"}
+                        </span>
                       </div>
+                      <p className="text-gray-500 text-xs mt-0.5">
+                        {g.gastos.length} gasto{g.gastos.length !== 1 ? "s" : ""} en {new Set(g.gastos.map(x => x.proyectoId)).size} evento{new Set(g.gastos.map(x => x.proyectoId)).size !== 1 ? "s" : ""}
+                      </p>
+                    </div>
 
-                      <div className="space-y-0.5 mb-3">
-                        {a.deudas.map((d) => (
-                          <div key={d.cuentaPagarId} className="flex items-center justify-between gap-2">
-                            <p className="text-xs text-gray-500 truncate">{d.proyectoNombre}</p>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <p className="text-xs text-gray-300">{fmt(d.estado === "PAGADO" ? d.monto : d.saldo)}</p>
-                              <span
-                                className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                                  d.estado === "PAGADO"
-                                    ? "bg-green-900/30 text-green-400"
-                                    : "bg-yellow-900/20 text-yellow-500"
-                                }`}
-                              >
-                                {d.estado === "PAGADO" ? "✓" : d.estado === "PARCIAL" ? "Parc." : "Pend."}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                        {a.sinCxP.map((s) => (
-                          <div key={s.proveedorEventoId} className="flex items-center justify-between gap-2">
-                            <p className="text-xs text-gray-500 truncate">{s.proyectoNombre}</p>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <p className="text-xs text-gray-300">{fmt(s.monto)}</p>
-                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-900/20 text-orange-400">
-                                Sin CxP
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      <DatosBancariosAcreedor
-                        datos={a.datosBancarios}
-                        nombre={a.nombre}
-                        fichaHref={fichaAcreedorHref(a.tipoAcreedor, a.acreedorId)}
-                        className="mb-3"
-                      />
-
-                      {a.todoPagado ? (
-                        <div className="flex items-center justify-center gap-1.5 py-1.5 text-xs text-green-500">
-                          <span>✓</span>
-                          <span>Pagado</span>
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {a.porPagar > 0 && (
-                            <button
-                              onClick={() => abrirModalPago([a])}
-                              className="w-full py-1.5 rounded-lg bg-[#B3985B] hover:bg-[#c9a96a] text-black text-xs font-semibold transition-colors"
-                            >
-                              Registrar pago · {fmt(a.porPagar)}
-                            </button>
-                          )}
-                          {a.porFormalizar > 0 && (
-                            <button
-                              onClick={() => formalizar(a)}
-                              disabled={formalizando === a.key}
-                              className="w-full py-1.5 rounded-lg border border-[#333] hover:border-[#B3985B]/40 text-gray-500 hover:text-[#B3985B] text-xs transition-colors disabled:opacity-40 inline-flex items-center justify-center gap-1.5"
-                            >
-                              {formalizando === a.key ? (
-                                "Generando..."
-                              ) : (
-                                <>
-                                  <FileText strokeWidth={1.75} className="w-3.5 h-3.5" /> Generar nota por pagar ·{" "}
-                                  {fmt(a.porFormalizar)}
-                                </>
-                              )}
-                            </button>
-                          )}
-                        </div>
+                    <div className="flex items-center gap-3">
+                      <p className={`text-lg font-bold ${g.todoPagado ? "text-green-400" : "text-[#B3985B]"}`}>
+                        {fmt(g.porPagar + g.porFormalizar)}
+                      </p>
+                      {g.acreedor && g.porPagar > 0 && (
+                        <button
+                          onClick={() => abrirModalPago([g.acreedor!])}
+                          className="px-3 py-1.5 rounded-lg bg-[#B3985B] hover:bg-[#c9a96a] text-black text-xs font-semibold transition-colors"
+                        >
+                          Registrar pago · {fmt(g.porPagar)}
+                        </button>
+                      )}
+                      {g.acreedor && g.porFormalizar > 0 && (
+                        <button
+                          onClick={() => formalizar(g.acreedor!)}
+                          disabled={formalizando === g.acreedor.key}
+                          className="px-2.5 py-1.5 rounded-lg border border-[#333] hover:border-[#B3985B]/40 text-gray-400 hover:text-[#B3985B] text-xs transition-colors disabled:opacity-40 inline-flex items-center gap-1.5"
+                        >
+                          {formalizando === g.acreedor.key ? "..." : <><FileText strokeWidth={1.75} className="w-3.5 h-3.5" /> Formalizar · {fmt(g.porFormalizar)}</>}
+                        </button>
                       )}
                     </div>
                   </div>
-                ))}
 
-                <div className="px-5 py-3 bg-[#0d0d0d] border-t border-[#222]">
-                  <div className="flex justify-between text-xs text-gray-400 mb-1">
-                    <span>Pendiente de pago</span>
-                    <span className="text-yellow-400 font-semibold">{fmt(totalPorPagar)}</span>
+                  {g.datosBancarios && (
+                    <div className="px-5 py-2 bg-[#121212] border-b border-[#1c1c1c]">
+                      <DatosBancariosAcreedor
+                        datos={g.datosBancarios}
+                        nombre={g.nombre}
+                        fichaHref={fichaAcreedorHref(g.tipoAcreedor, g.acreedorId)}
+                      />
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-[1fr_1fr_90px_100px_72px_32px] gap-2 px-4 py-1.5 border-b border-[#0d0d0d]">
+                    {["Evento", "Concepto", "Origen", "Monto", "Estado", ""].map((h, i) => (
+                      <p key={i} className="text-[10px] text-gray-600 uppercase tracking-wider font-semibold">
+                        {h}
+                      </p>
+                    ))}
                   </div>
-                  {totalPorFormalizar > 0 && (
-                    <div className="flex justify-between text-xs text-gray-600">
-                      <span>Sin formalizar</span>
-                      <span className="text-orange-400">{fmt(totalPorFormalizar)}</span>
-                    </div>
-                  )}
-                  {totalPagado > 0 && (
-                    <div className="flex justify-between text-xs text-gray-600">
-                      <span>Ya pagado</span>
-                      <span className="text-green-500">{fmt(totalPagado)}</span>
-                    </div>
-                  )}
-                  {totalPorPagar > 0 && (
-                    <button
-                      onClick={() => abrirModalPago(cartera.filter((a) => a.porPagar > 0))}
-                      className="w-full mt-3 py-2 rounded-lg border border-[#B3985B]/40 hover:bg-[#B3985B]/10 text-[#B3985B] text-xs font-medium transition-colors"
-                    >
-                      Registrar pago a todos · {fmt(totalPorPagar)}
-                    </button>
+
+                  {g.gastos.length === 0 ? (
+                    <p className="text-gray-600 text-xs text-center py-4">Sin gastos registrados en este ciclo</p>
+                  ) : (
+                    g.gastos.map(({ gasto, proyectoId, proyectoNombre, proyectoCliente }) => (
+                      <EditableGastoRow
+                        key={gasto.id}
+                        gasto={gasto}
+                        proveedores={data?.proveedores ?? []}
+                        proyectoId={proyectoId}
+                        onUpdate={load}
+                        onDelete={handleDeleteGasto}
+                        isDeleting={deletingGastoId === gasto.id}
+                        showEventoInsteadOfAcreedor={true}
+                        proyectoNombre={proyectoNombre}
+                        proyectoCliente={proyectoCliente}
+                      />
+                    ))
                   )}
                 </div>
-              </div>
-            )}
+              );
+            })
+          )}
           </div>
+
+          {/* ── Right Column ── */}
+          {modoOrden === "evento" ? (
+            /* ── Cartera de la semana ── */
+            <div className="ms-table-wrapper sticky top-6">
+              <div className="px-5 py-3 bg-[#1a1a1a] border-b border-[#222]">
+                <p className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Cartera de la semana</p>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  {cartera.length} acreedor{cartera.length !== 1 ? "es" : ""}
+                  {" · "}miércoles{" "}
+                  {fmtDate(ciclo, { weekday: undefined, day: "numeric", month: "long", year: "numeric" })}
+                </p>
+              </div>
+
+              {cartera.length === 0 ? (
+                <p className="text-gray-600 text-sm text-center py-8">Sin acreedores en este ciclo</p>
+              ) : (
+                <div>
+                  {cartera.map((a) => (
+                    <div
+                      key={a.key}
+                      className={`border-b border-[#0d0d0d] last:border-0 ${a.todoPagado ? "opacity-60" : ""}`}
+                    >
+                      <div className="px-5 py-3">
+                        <div className="flex items-center justify-between mb-2 gap-2">
+                          <div className="min-w-0">
+                            <p className="text-white text-sm font-medium truncate">{a.nombre}</p>
+                            <p className="text-[10px] text-gray-600">
+                              {TIPO_ACREEDOR_LABEL[a.tipoAcreedor] ?? a.tipoAcreedor}
+                            </p>
+                          </div>
+                          <p className={`text-base font-bold shrink-0 ${a.todoPagado ? "text-green-400" : "text-[#B3985B]"}`}>
+                            {fmt(a.porPagar + a.porFormalizar)}
+                          </p>
+                        </div>
+
+                        <div className="space-y-0.5 mb-3">
+                          {a.deudas.map((d) => (
+                            <div key={d.cuentaPagarId} className="flex items-center justify-between gap-2">
+                              <p className="text-xs text-gray-500 truncate">{d.proyectoNombre}</p>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <p className="text-xs text-gray-300">{fmt(d.estado === "PAGADO" ? d.monto : d.saldo)}</p>
+                                <span
+                                  className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                                    d.estado === "PAGADO"
+                                      ? "bg-green-900/30 text-green-400"
+                                      : "bg-yellow-900/20 text-yellow-500"
+                                  }`}
+                                >
+                                  {d.estado === "PAGADO" ? "✓" : d.estado === "PARCIAL" ? "Parc." : "Pend."}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                          {a.sinCxP.map((s) => (
+                            <div key={s.proveedorEventoId} className="flex items-center justify-between gap-2">
+                              <p className="text-xs text-gray-500 truncate">{s.proyectoNombre}</p>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <p className="text-xs text-gray-300">{fmt(s.monto)}</p>
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-900/20 text-orange-400">
+                                  Sin CxP
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <DatosBancariosAcreedor
+                          datos={a.datosBancarios}
+                          nombre={a.nombre}
+                          fichaHref={fichaAcreedorHref(a.tipoAcreedor, a.acreedorId)}
+                          className="mb-3"
+                        />
+
+                        {a.todoPagado ? (
+                          <div className="flex items-center justify-center gap-1.5 py-1.5 text-xs text-green-500">
+                            <span>✓</span>
+                            <span>Pagado</span>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {a.porPagar > 0 && (
+                              <button
+                                onClick={() => abrirModalPago([a])}
+                                className="w-full py-1.5 rounded-lg bg-[#B3985B] hover:bg-[#c9a96a] text-black text-xs font-semibold transition-colors"
+                              >
+                                Registrar pago · {fmt(a.porPagar)}
+                              </button>
+                            )}
+                            {a.porFormalizar > 0 && (
+                              <button
+                                onClick={() => formalizar(a)}
+                                disabled={formalizando === a.key}
+                                className="w-full py-1.5 rounded-lg border border-[#333] hover:border-[#B3985B]/40 text-gray-500 hover:text-[#B3985B] text-xs transition-colors disabled:opacity-40 inline-flex items-center justify-center gap-1.5"
+                              >
+                                {formalizando === a.key ? (
+                                  "Generando..."
+                                ) : (
+                                  <>
+                                    <FileText strokeWidth={1.75} className="w-3.5 h-3.5" /> Generar nota por pagar ·{" "}
+                                    {fmt(a.porFormalizar)}
+                                  </>
+                                )}
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+
+                  <div className="px-5 py-3 bg-[#0d0d0d] border-t border-[#222]">
+                    <div className="flex justify-between text-xs text-gray-400 mb-1">
+                      <span>Pendiente de pago</span>
+                      <span className="text-yellow-400 font-semibold">{fmt(totalPorPagar)}</span>
+                    </div>
+                    {totalPorFormalizar > 0 && (
+                      <div className="flex justify-between text-xs text-gray-600">
+                        <span>Sin formalizar</span>
+                        <span className="text-orange-400">{fmt(totalPorFormalizar)}</span>
+                      </div>
+                    )}
+                    {totalPagado > 0 && (
+                      <div className="flex justify-between text-xs text-gray-600">
+                        <span>Ya pagado</span>
+                        <span className="text-green-500">{fmt(totalPagado)}</span>
+                      </div>
+                    )}
+                    {totalPorPagar > 0 && (
+                      <button
+                        onClick={() => abrirModalPago(cartera.filter((a) => a.porPagar > 0))}
+                        className="w-full mt-3 py-2 rounded-lg border border-[#B3985B]/40 hover:bg-[#B3985B]/10 text-[#B3985B] text-xs font-medium transition-colors"
+                      >
+                        Registrar pago a todos · {fmt(totalPorPagar)}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* ── Resumen de eventos (cuando modoOrden === "proveedor") ── */
+            <div className="ms-table-wrapper sticky top-6">
+              <div className="px-5 py-3 bg-[#1a1a1a] border-b border-[#222]">
+                <p className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Resumen de eventos</p>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  {proyectos.length} evento{proyectos.length !== 1 ? "s" : ""}
+                  {" · "}
+                  {fmtDate(data.desde, { weekday: undefined })} – {fmtDate(data.hasta, { weekday: undefined })}
+                </p>
+              </div>
+
+              {proyectos.length === 0 ? (
+                <p className="text-gray-600 text-sm text-center py-8">Sin eventos en este ciclo</p>
+              ) : (
+                <div>
+                  {proyectos.map((p) => {
+                    const total = p.gastos.reduce((s, g) => s + g.monto, 0);
+                    const sinFormalizar = p.gastos.filter((g) => g.estado === "SIN_CXP" && g.monto > 0).length;
+                    return (
+                      <div
+                        key={p.id}
+                        className="px-5 py-3 border-b border-[#0d0d0d] last:border-0 hover:bg-[#141414] transition-colors"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <Link
+                              href={`/proyectos/${p.id}`}
+                              className="text-white text-sm font-medium hover:text-[#B3985B] transition-colors truncate block"
+                            >
+                              {p.nombre}
+                            </Link>
+                            <p className="text-xs text-gray-500 truncate">
+                              {p.cliente} · {fmtDate(p.fechaEvento)}
+                            </p>
+                          </div>
+                          <p className="text-sm font-bold text-[#B3985B] shrink-0">{fmt(total)}</p>
+                        </div>
+                        <div className="mt-2 flex items-center justify-between text-[11px] text-gray-500">
+                          <span>{p.gastos.length} gasto(s)</span>
+                          {sinFormalizar > 0 && (
+                            <span className="text-orange-400">{sinFormalizar} sin formalizar</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {totalPorPagar > 0 && (
+                    <div className="p-4 border-t border-[#222] bg-[#0d0d0d]">
+                      <button
+                        onClick={() => abrirModalPago(cartera.filter((a) => a.porPagar > 0))}
+                        className="w-full py-2 rounded-lg border border-[#B3985B]/40 hover:bg-[#B3985B]/10 text-[#B3985B] text-xs font-medium transition-colors"
+                      >
+                        Registrar pago a todos · {fmt(totalPorPagar)}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -816,6 +1137,9 @@ function EditableGastoRow({
   onUpdate,
   onDelete,
   isDeleting,
+  showEventoInsteadOfAcreedor,
+  proyectoNombre,
+  proyectoCliente,
 }: {
   gasto: Gasto;
   proveedores: { id: string; nombre: string; empresa: string | null }[];
@@ -823,6 +1147,9 @@ function EditableGastoRow({
   onUpdate: () => void;
   onDelete?: (gasto: Gasto, proyectoId: string) => void;
   isDeleting?: boolean;
+  showEventoInsteadOfAcreedor?: boolean;
+  proyectoNombre?: string;
+  proyectoCliente?: string;
 }) {
   const [editingAcreedor, setEditingAcreedor] = useState(false);
   const [editingConcepto, setEditingConcepto] = useState(false);
@@ -974,37 +1301,53 @@ function EditableGastoRow({
 
   return (
     <div className="grid grid-cols-[1fr_1fr_90px_100px_72px_32px] gap-2 px-4 py-2 border-b border-[#0d0d0d] last:border-0 items-center hover:bg-[#111] transition-colors">
-      {/* 1. Proveedor / Acreedor Editable */}
-      <div 
-        className={`min-w-0 -mx-1 px-1 py-0.5 rounded ${gasto.estado !== "PAGADO" ? "cursor-pointer hover:bg-[#222]" : ""}`}
-        onClick={() => { if (!editingAcreedor && gasto.estado !== "PAGADO") setEditingAcreedor(true); }}
-      >
-        {editingAcreedor ? (
-          <select
-            autoFocus
-            value={acreedorVal}
-            onChange={(e) => {
-              setAcreedorVal(e.target.value);
-              saveAcreedor(e.target.value);
-            }}
-            onBlur={() => setEditingAcreedor(false)}
-            disabled={saving}
-            className="w-full bg-[#1a1a1a] border border-[#333] text-white text-xs rounded px-1 py-0.5 focus:outline-none focus:border-[#B3985B]"
+      {/* 1. Proveedor / Acreedor Editable O Evento */}
+      {showEventoInsteadOfAcreedor ? (
+        <div className="min-w-0">
+          <Link
+            href={`/proyectos/${proyectoId}`}
+            className="text-white hover:text-[#B3985B] text-xs font-semibold truncate block transition-colors"
           >
-            <option value="">Sin proveedor</option>
-            {proveedores.map(p => (
-              <option key={p.id} value={p.id}>{p.empresa || p.nombre}</option>
-            ))}
-          </select>
-        ) : (
-          <>
-            <p className="text-sm text-white truncate">{gasto.acreedorNombre || "Sin proveedor"}</p>
-            <p className="text-[10px] text-gray-600">
-              {TIPO_ACREEDOR_LABEL[gasto.tipoAcreedor] ?? gasto.tipoAcreedor}
-            </p>
-          </>
-        )}
-      </div>
+            {proyectoNombre || "Ver proyecto"}
+          </Link>
+          {proyectoCliente && (
+            <span className="text-[10px] text-gray-500 truncate block">
+              {proyectoCliente}
+            </span>
+          )}
+        </div>
+      ) : (
+        <div 
+          className={`min-w-0 -mx-1 px-1 py-0.5 rounded ${gasto.estado !== "PAGADO" ? "cursor-pointer hover:bg-[#222]" : ""}`}
+          onClick={() => { if (!editingAcreedor && gasto.estado !== "PAGADO") setEditingAcreedor(true); }}
+        >
+          {editingAcreedor ? (
+            <select
+              autoFocus
+              value={acreedorVal}
+              onChange={(e) => {
+                setAcreedorVal(e.target.value);
+                saveAcreedor(e.target.value);
+              }}
+              onBlur={() => setEditingAcreedor(false)}
+              disabled={saving}
+              className="w-full bg-[#1a1a1a] border border-[#333] text-white text-xs rounded px-1 py-0.5 focus:outline-none focus:border-[#B3985B]"
+            >
+              <option value="">Sin proveedor</option>
+              {proveedores.map(p => (
+                <option key={p.id} value={p.id}>{p.empresa || p.nombre}</option>
+              ))}
+            </select>
+          ) : (
+            <>
+              <p className="text-sm text-white truncate">{gasto.acreedorNombre || "Sin proveedor"}</p>
+              <p className="text-[10px] text-gray-600">
+                {TIPO_ACREEDOR_LABEL[gasto.tipoAcreedor] ?? gasto.tipoAcreedor}
+              </p>
+            </>
+          )}
+        </div>
+      )}
 
       {/* 2. Concepto / Servicio Editable */}
       <div 
