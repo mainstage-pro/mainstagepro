@@ -6290,7 +6290,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           <PanelProveedores
             proyectoId={id}
             sinPrecios={!proyecto._canViewFinances}
-            frentes={parseServicios(proyecto.trato?.servicios).includes("DIRECCION_OPERACIONES")}
+            // "Frentes de producción" era de Production Management (DIRECCION_OPERACIONES),
+            // ahora Mainstage Live: se desactiva en Pro sin borrar lo ya capturado.
+            frentes={false}
             dias={diasDelEvento}
             evento={{
               numeroProyecto: proyecto.numeroProyecto,
