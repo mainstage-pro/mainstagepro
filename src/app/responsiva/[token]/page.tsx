@@ -17,13 +17,20 @@ export default function ResponsivaPage(props: { params: Promise<{ token: string 
   const [enviando, setEnviando] = useState(false);
   const [success, setSuccess] = useState(false);
   const [nombreEditado, setNombreEditado] = useState("");
+  const [comentarios, setComentarios] = useState("");
 
   useEffect(() => {
     if (data?.tecnicos && tecnicoId) {
       const t = data.tecnicos.find((x: any) => x.id === tecnicoId);
       if (t) setNombreEditado(t.nombre);
+      const r = data.responsivas?.find((x: any) => x.tecnicoId === tecnicoId);
+      if (r?.datosCapturados?.comentarios) {
+        setComentarios(r.datosCapturados.comentarios);
+      } else {
+        setComentarios("");
+      }
     }
-  }, [tecnicoId, data?.tecnicos]);
+  }, [tecnicoId, data]);
 
   const { toast } = useToast();
   const router = useRouter();
@@ -62,7 +69,8 @@ export default function ResponsivaPage(props: { params: Promise<{ token: string 
         datosCapturados: {
           nombre: nombreEditado,
           telefono: tecnicoSeleccionado.telefono,
-          roles: tecnicoSeleccionado.roles
+          roles: tecnicoSeleccionado.roles,
+          comentarios: comentarios.trim() || undefined
         }
       };
       const res = await fetch(`/api/public/responsiva/${params.token}`, {
@@ -97,7 +105,7 @@ export default function ResponsivaPage(props: { params: Promise<{ token: string 
         <div className="text-center mb-8 pt-6">
           <h1 className="text-[#B3985B] font-bold text-lg tracking-widest uppercase mb-1">Mainstage Pro</h1>
           <p className="text-gray-300 font-medium">{proyecto.nombre}</p>
-          <p className="text-gray-500 text-xs mt-1">{proyecto.lugar} · {proyecto.fechaEvento?.substring(0,10)}</p>
+          <p className="text-gray-500 text-xs mt-1">{proyecto.estadoLugar || proyecto.lugar} · {proyecto.fechaEvento?.substring(0,10)}</p>
         </div>
 
         {!tecnicoId ? (
@@ -158,26 +166,39 @@ export default function ResponsivaPage(props: { params: Promise<{ token: string 
   </div>
 
   <p className="pt-2">
-    En <strong>{proyecto.lugar || "______________"}</strong>, a <strong>{new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}</strong>
+    En <strong>{proyecto.estadoLugar || "Querétaro"}</strong>, a <strong>{new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}</strong>
   </p>
 
   <p className="text-justify">
-    Yo <strong>{nombreEditado}</strong> (Cel: {tecnicoSeleccionado.telefono || "______________"}), acepto prestar mis servicios especializados de RIGGING para Mainstage Pro en el evento <strong>{proyecto.nombre}</strong>. Debido al alto riesgo inherente al trabajo en alturas y elevación de cargas, me obligo a cumplir estrictamente los siguientes lineamientos:
+    Yo <strong>{nombreEditado}</strong> (Teléfono celular: {tecnicoSeleccionado.telefono || "______________"}), acepto prestar mis servicios especializados de montaje y trabajo en alturas (Rigging) para Mainstage Pro en el evento <strong>{proyecto.nombre}</strong>. Debido al alto riesgo inherente al trabajo en alturas y elevación de cargas suspendidas, me obligo a cumplir estrictamente con los siguientes lineamientos de seguridad:
   </p>
 
   <ol className="list-decimal pl-5 space-y-2.5 text-justify">
-    <li><strong>Capacidad y Certificación:</strong> Declaro contar con la experiencia, capacitación técnica y capacidad física necesarias para realizar cálculos de carga segura, instalación de puntos de anclaje, manejo de polipastos/motores y trabajo en alturas. Asumo la responsabilidad técnica de las maniobras a mi cargo.</li>
-    <li><strong>Uso de EPP:</strong> Es obligatorio el uso en todo momento de casco de seguridad (con barboquejo), arnés de cuerpo entero, líneas de vida (Y-lanyard), botas de seguridad y guantes. Está estrictamente prohibido iniciar trabajos en altura sin el EPP correctamente colocado.</li>
-    <li><strong>Aseguramiento de Herramientas:</strong> Todas las herramientas manuales, radios y accesorios deben estar sujetos obligatoriamente con cintas o líneas de seguridad (tool lanyards).</li>
-    <li><strong>Inspección Previa de Equipo:</strong> Me comprometo a inspeccionar visual y operativamente todos los motores, eslingas, grilletes, steels y estructuras antes de su izaje.</li>
-    <li><strong>Stop Work Authority (SWA):</strong> Tengo el derecho y la obligación de detener cualquier maniobra de elevación si detecto que los puntos de anclaje no son seguros, si hay sobrecarga, vientos fuertes, o condiciones que comprometan la seguridad estructural.</li>
-    <li><strong>Cargas y Puntos del Recinto:</strong> Me apegaré estrictamente a los límites de carga establecidos por la ingeniería del recinto y el plot aprobado. Queda estrictamente prohibido improvisar puntos de anclaje.</li>
-    <li><strong>Zona Cero y Elevación:</strong> Durante el izaje o descenso de estructuras, coordinaré el despeje total del área inferior ("zona cero"). Ningún técnico debe permanecer debajo de una estructura en movimiento.</li>
-    <li><strong>Estado Físico y Cero Tolerancia:</strong> Declaro presentarme a laborar descansado. Está estrictamente prohibido laborar bajo la influencia de alcohol, drogas, o medicamentos que alteren el sistema nervioso.</li>
-    <li><strong>Responsabilidad Civil:</strong> Asumo responsabilidad total sobre accidentes, colapsos o lesiones a terceros ocasionados por mi negligencia directa, mala práctica, o por omitir deliberadamente estas normativas de seguridad.</li>
+    <li><strong>Capacidad y certificación técnica:</strong> Declaro contar con la experiencia comprobable, capacitación técnica y capacidad física necesarias para realizar cálculos de carga segura, instalación de puntos de anclaje, operación de polipastos o motores y maniobras en alturas. Asumo la responsabilidad técnica de las maniobras a mi cargo.</li>
+    <li><strong>Uso obligatorio de Equipo de Protección Personal (EPP):</strong> Es obligatorio el uso continuo de casco de seguridad con barboquejo, arnés de cuerpo entero debidamente certificado, líneas de vida dobles con amortiguador de impacto, calzado de seguridad con casquillo y guantes de protección. Queda estrictamente prohibido realizar cualquier labor en altura sin portar el equipo completo e inspeccionado.</li>
+    <li><strong>Aseguramiento y sujeción de herramientas:</strong> Todas las herramientas manuales, radios de comunicación y accesorios deberán estar permanentemente sujetos mediante cintas o líneas de seguridad anticaídas para prevenir el riesgo de impacto al personal en tierra.</li>
+    <li><strong>Inspección previa de herrajes y estructuras:</strong> Me comprometo a revisar física y visualmente todos los motores de elevación, eslingas de carga, grilletes, cables de acero de seguridad y tramos de estructura (truss) antes de cualquier maniobra de izaje. Cualquier elemento que presente deformación, daño estructural o desgaste no será utilizado y se reportará de inmediato.</li>
+    <li><strong>Autoridad para detención de trabajo (Stop Work Authority):</strong> Cuento con el derecho y la obligación ineludible de suspender inmediatamente cualquier maniobra de carga o elevación si identifico que los puntos de anclaje no son seguros, si existe sobrepeso, si la velocidad del viento supera los límites tolerables o si cualquier condición ambiental o del recinto compromete la integridad estructural.</li>
+    <li><strong>Respeto a límites de carga del recinto:</strong> Me apegaré rigurosamente a las capacidades de carga y especificaciones técnicas autorizadas por la ingeniería del recinto o sede y el plano de rigging aprobado. Queda estrictamente prohibida cualquier improvisación de anclajes en vigas o estructuras no autorizadas.</li>
+    <li><strong>Despeje de zona de maniobra (zona cero):</strong> Durante cualquier maniobra de elevación o descenso de estructuras o cargas suspendidas, coordinaré el despeje total del área inferior. Ninguna persona podrá permanecer o transitar debajo de cargas en movimiento.</li>
+    <li><strong>Condición física y cero tolerancia:</strong> Me presentaré a laborar descansado y en óptimas condiciones de salud. Está estrictamente prohibido desempeñar labores bajo la influencia de alcohol, sustancias psicotrópicas o medicamentos que alteren los reflejos o la concentración. El incumplimiento causará la baja inmediata del evento.</li>
+    <li><strong>Responsabilidad técnica y civil:</strong> Asumo responsabilidad total sobre accidentes, colapsos o lesiones causados por negligencia directa comprobada, mala práctica o por omitir deliberadamente estas normativas de seguridad técnica.</li>
   </ol>
 
-  <p className="font-bold text-center mt-6 uppercase text-[11px] border-y border-gray-200 py-3">
+  <div className="mt-6 pt-4 border-t border-gray-200">
+    <label className="block text-xs font-semibold text-gray-800 uppercase tracking-wide mb-1.5">
+      Comentarios u observaciones del freelance <span className="text-gray-400 font-normal lowercase">(opcional)</span>
+    </label>
+    <textarea
+      rows={3}
+      value={comentarios}
+      onChange={(e) => setComentarios(e.target.value)}
+      placeholder="Escribe aquí cualquier comentario, observación sobre el equipo asignado, estado de entrega o requerimiento especial..."
+      className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-xs sm:text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#B3985B] focus:bg-white resize-none transition-colors"
+    />
+  </div>
+
+  <p className="font-bold text-center mt-6 uppercase text-[11px] border-y border-gray-200 py-3 text-gray-900">
     Declaro que leí, entiendo la responsabilidad técnica, y acepto el contenido de esta carta responsiva.
   </p>
 
@@ -187,14 +208,17 @@ export default function ResponsivaPage(props: { params: Promise<{ token: string 
       <SignaturePad onEnd={setFirma} theme="light" />
     </div>
     
-    <div className="mt-4 text-center space-y-1">
+    <div className="mt-4 text-center">
       <input 
         type="text" 
         value={nombreEditado} 
         onChange={e => setNombreEditado(e.target.value)}
-        className="font-bold text-center w-full border-b border-gray-300 focus:border-[#B3985B] focus:outline-none pb-1 bg-transparent"
+        className="font-bold text-base text-gray-900 text-center w-full border-b border-gray-400 focus:border-[#B3985B] focus:outline-none pb-1 bg-transparent"
         placeholder="Escribe tu nombre completo"
       />
+      <p className="text-[11px] text-gray-500 uppercase tracking-wider font-medium mt-1">
+        Nombre completo
+      </p>
     </div>
   </div>
 
@@ -221,29 +245,42 @@ export default function ResponsivaPage(props: { params: Promise<{ token: string 
   </div>
 
   <p className="pt-2">
-    En <strong>{proyecto.lugar || "______________"}</strong>, a <strong>{new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}</strong>
+    En <strong>{proyecto.estadoLugar || "Querétaro"}</strong>, a <strong>{new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}</strong>
   </p>
 
   <p className="text-justify">
-    Yo <strong>{nombreEditado}</strong> (Cel: {tecnicoSeleccionado.telefono || "______________"}), acepto prestar servicios como freelance para Mainstage Pro en el evento <strong>{proyecto.nombre}</strong> y me obligo a cumplir los siguientes lineamientos:
+    Yo <strong>{nombreEditado}</strong> (Teléfono celular: {tecnicoSeleccionado.telefono || "______________"}), acepto prestar mis servicios como personal técnico freelance para Mainstage Pro en el evento <strong>{proyecto.nombre}</strong> y me obligo a cumplir con los siguientes lineamientos de operación, seguridad y profesionalismo:
   </p>
 
   <ol className="list-decimal pl-5 space-y-2.5 text-justify">
-    <li><strong>Alcance y rol:</strong> Cumpliré con las responsabilidades técnicas del puesto asignado.</li>
-    <li><strong>Horarios y permanencia:</strong> Cumpliré puntualmente los horarios establecidos para bodega, carga, traslado, montaje, show y desmontaje. Permaneceré disponible en mi área durante toda la jornada y avisaré cualquier salida al responsable.</li>
-    <li><strong>Conducta y ética:</strong> Respeto total a cliente, venue, proveedores y equipo. Queda prohibido: agresiones, acoso, discriminación, conflictos y consumo de alcohol o sustancias durante el servicio.</li>
-    <li><strong>Presentación:</strong> Ropa negra o uniforme cuando se solicite; higiene personal y lenguaje profesional en todo momento.</li>
-    <li><strong>Seguridad (EHS):</strong> Seguridad primero: usaré EPP cuando aplique y realizaré únicamente maniobras dentro de mi capacidad y certificación. Si identifico un riesgo, detengo la operación y reporto de inmediato.</li>
-    <li><strong>Comunicación:</strong> Usaré los canales oficiales del evento. Ante duda o error potencial, consulto antes de ejecutar. Reporto avances y envío evidencia cuando se solicite.</li>
-    <li><strong>Orden, limpieza e higiene:</strong> Mantendré las áreas técnicas funcionales, limpias e higiénicas: sin basura, líquidos ni obstáculos. Cableado ordenado e identificable.</li>
-    <li><strong>Uso y cuidado del equipo:</strong> Uso correcto del equipo asignado, sin préstamos ni uso personal. Orden por zonas y resguardo adecuado al finalizar.</li>
-    <li><strong>Daños, pérdidas y faltantes:</strong> Reportaré de inmediato cualquier daño, falla o extravío. Acepto responsabilidad por negligencia, mal uso o falta de reporte oportuno.</li>
-    <li><strong>Incidencias y reporte:</strong> Las incidencias técnicas, operativas o de seguridad se reportan en el momento y al cierre del evento.</li>
-    <li><strong>Operación estándar:</strong> Carga segura; plan de zona; descarga ordenada; seguridad antes que estética; pruebas completas; desmontaje calmado; cables por tipo; regreso y orden final en bodega.</li>
-    <li><strong>Confidencialidad e imagen:</strong> No divulgaré información interna ni publicaré fotos o videos del backstage sin autorización expresa de Mainstage Pro.</li>
+    <li><strong>Alcance y funciones técnicas:</strong> Cumpliré cabalmente con las responsabilidades, actividades y funciones técnicas inherentes a mi puesto asignado durante todas las etapas de la producción.</li>
+    <li><strong>Horarios y permanencia:</strong> Cumpliré con puntualidad los horarios establecidos para salida de bodega, carga, traslado, montaje, pruebas previas, operación del evento y desmontaje. Permaneceré presente y disponible en mi área de trabajo durante toda la jornada y notificaré cualquier ausencia o desplazamiento temporal al encargado de producción.</li>
+    <li><strong>Conducta y ética profesional:</strong> Mantendré un trato de absoluto respeto hacia el cliente, el personal del recinto o sede, proveedores, compañeros de equipo y asistentes. Queda estrictamente prohibido cualquier tipo de agresión física o verbal, acoso, discriminación, incitación a conflictos, así como el consumo o posesión de bebidas alcohólicas o sustancias ilícitas durante el servicio.</li>
+    <li><strong>Presentación personal y código de vestimenta:</strong> Me presentaré con vestimenta limpia en color negro (o el uniforme que la empresa proporcione o solicite), cuidando la higiene personal y manteniendo un lenguaje adecuado y profesional en todo momento.</li>
+    <li><strong>Seguridad laboral y prevención de riesgos:</strong> La seguridad del personal y de los asistentes es la máxima prioridad. Utilizaré mi Equipo de Protección Personal completo en las etapas de montaje, desmontaje y cuando las condiciones del evento lo requieran. Realizaré únicamente maniobras dentro de mi capacidad técnica, certificación y experiencia. Si detecto cualquier riesgo o condición insegura, detendré la actividad de inmediato y lo comunicaré al responsable.</li>
+    <li><strong>Comunicación efectiva:</strong> Mantendré comunicación constante a través de los canales oficiales establecidos para el evento (grupos de mensajería o frecuencias de radio asignadas). Ante cualquier duda técnica o contingencia, consultaré con el encargado antes de proceder. Notificaré los avances de mis tareas y enviaré evidencia técnica cuando me sea requerida.</li>
+    <li><strong>Orden, limpieza y cableado técnico:</strong> Mantendré las áreas técnicas de trabajo, escenario y operación limpias, ordenadas y libres de obstáculos, líquidos o basura. La distribución y tendido de cableado se realizará de forma peinada, segura y debidamente protegida con pasacables o cinta según aplique, facilitando la circulación y permitiendo resolver fallas con rapidez.</li>
+    <li><strong>Uso, cuidado y resguardo del equipo:</strong> Cuidaré y utilizaré de manera responsable las herramientas y equipos puestos a mi disposición, destinándolos exclusivamente a la operación del evento, sin prestar equipo a personas ajenas ni utilizarlo para fines personales. Al finalizar la jornada, colaboraré en su empaque, clasificación y resguardo en los estuches correspondientes.</li>
+    <li><strong>Reporte de daños, pérdidas o faltantes:</strong> Notificaré inmediatamente al coordinador cualquier avería, falla previa, daño o extravío de equipo o herramienta. Asumo la responsabilidad correspondiente por daños ocasionados debido a negligencia comprobada, mal uso o falta de reporte oportuno.</li>
+    <li><strong>Gestión y reporte de incidencias:</strong> Cualquier incidente técnico, operativo o de seguridad personal deberá informarse en el momento exacto en que ocurra y quedará registrado al cierre del servicio.</li>
+    <li><strong>Procedimientos estándar de operación técnica:</strong> Seguiré los estándares operativos de carga segura en transporte, descarga ordenada, prioridad de la seguridad estructural antes de la estética, pruebas previas integrales, desmontaje cuidadoso sin prisas que comprometan al personal o al equipo, y entrega verificada en bodega.</li>
+    <li><strong>Confidencialidad e imagen corporativa:</strong> Guardaré estricta confidencialidad respecto a la información interna del evento, los asistentes y el cliente. No compartiré información sensible ni publicaré fotos o videos de montajes o backstage en redes sociales personales sin previa autorización expresa de Mainstage Pro.</li>
   </ol>
 
-  <p className="font-bold text-center mt-6 uppercase text-[11px] border-y border-gray-200 py-3">
+  <div className="mt-6 pt-4 border-t border-gray-200">
+    <label className="block text-xs font-semibold text-gray-800 uppercase tracking-wide mb-1.5">
+      Comentarios u observaciones del freelance <span className="text-gray-400 font-normal lowercase">(opcional)</span>
+    </label>
+    <textarea
+      rows={3}
+      value={comentarios}
+      onChange={(e) => setComentarios(e.target.value)}
+      placeholder="Escribe aquí cualquier comentario, observación técnica sobre el equipo o nota relevante sobre el servicio..."
+      className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-xs sm:text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#B3985B] focus:bg-white resize-none transition-colors"
+    />
+  </div>
+
+  <p className="font-bold text-center mt-6 uppercase text-[11px] border-y border-gray-200 py-3 text-gray-900">
     Declaro que leí, entiendo y acepto el contenido de esta carta responsiva.
   </p>
 
@@ -253,14 +290,17 @@ export default function ResponsivaPage(props: { params: Promise<{ token: string 
       <SignaturePad onEnd={setFirma} theme="light" />
     </div>
     
-    <div className="mt-4 text-center space-y-1">
+    <div className="mt-4 text-center">
       <input 
         type="text" 
         value={nombreEditado} 
         onChange={e => setNombreEditado(e.target.value)}
-        className="font-bold text-center w-full border-b border-gray-300 focus:border-[#B3985B] focus:outline-none pb-1 bg-transparent"
+        className="font-bold text-base text-gray-900 text-center w-full border-b border-gray-400 focus:border-[#B3985B] focus:outline-none pb-1 bg-transparent"
         placeholder="Escribe tu nombre completo"
       />
+      <p className="text-[11px] text-gray-500 uppercase tracking-wider font-medium mt-1">
+        Nombre completo
+      </p>
     </div>
   </div>
 

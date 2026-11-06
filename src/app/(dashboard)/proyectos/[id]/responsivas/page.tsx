@@ -64,45 +64,63 @@ export default function ResponsivasAdminPage(props: { params: Promise<{ id: stri
               <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Tipo</th>
               <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Fecha envío</th>
               <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Estado</th>
+              <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Comentarios del Freelance</th>
               <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Firma</th>
               <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider text-right">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#1a1a1a]">
-            {responsivas.map(r => (
-              <tr key={r.id} className="hover:bg-[#111] transition-colors">
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-white font-medium">{r.tecnico?.nombre}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{r.tipoResponsiva === 'RIGGER' ? 'Rigger' : 'General'}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{new Date(r.enviadoEn).toLocaleDateString('es-MX')}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  {r.status === 'VALIDADA' && <span className="text-green-500">✓ Validada</span>}
-                  {r.status === 'RECIBIDA' && <span className="text-yellow-500">● Por revisar</span>}
-                  {r.status === 'REQUIERE_CORRECCION' && <span className="text-red-500">⚠ Corrección solicitada</span>}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {r.firmaUrl && (
-                    <img src={r.firmaUrl} alt="Firma" className="h-8 rounded bg-white" />
-                  )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right space-x-2">
-                  {r.status === 'RECIBIDA' && (
-                    <>
-                      <button onClick={() => updateStatus(r.id, 'VALIDADA')} className="text-xs bg-green-900/30 text-green-500 hover:bg-green-900/50 border border-green-800/50 px-3 py-1.5 rounded-lg transition-colors">
-                        Aprobar
-                      </button>
-                      <button onClick={() => {
-                        const m = prompt("Motivo de corrección (ej. Falta completar nombre):");
-                        if (m) updateStatus(r.id, 'REQUIERE_CORRECCION', m);
-                      }} className="text-xs bg-red-900/30 text-red-500 hover:bg-red-900/50 border border-red-800/50 px-3 py-1.5 rounded-lg transition-colors">
-                        Solicitar corrección
-                      </button>
-                    </>
-                  )}
-                </td>
-              </tr>
-            ))}
+            {responsivas.map(r => {
+              const comentarios = (r.datosCapturados as any)?.comentarios;
+              return (
+                <tr key={r.id} className="hover:bg-[#111] transition-colors">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-white font-medium">
+                    {r.tecnico?.nombre}
+                    {(r.datosCapturados as any)?.telefono && (
+                      <p className="text-xs text-gray-500 font-normal">{(r.datosCapturados as any).telefono}</p>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{r.tipoResponsiva === 'RIGGER' ? 'Rigger' : 'General'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{new Date(r.enviadoEn).toLocaleDateString('es-MX')}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    {r.status === 'VALIDADA' && <span className="text-green-500 font-medium">✓ Validada</span>}
+                    {r.status === 'RECIBIDA' && <span className="text-yellow-500 font-medium">● Por revisar</span>}
+                    {r.status === 'REQUIERE_CORRECCION' && <span className="text-red-500 font-medium">⚠ Corrección solicitada</span>}
+                  </td>
+                  <td className="px-6 py-4 text-sm max-w-xs">
+                    {comentarios ? (
+                      <div className="bg-[#161616] border border-[#262626] rounded-lg p-2.5 text-xs text-gray-300 whitespace-pre-wrap leading-relaxed">
+                        {comentarios}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-600 italic">Sin comentarios</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {r.firmaUrl && (
+                      <img src={r.firmaUrl} alt="Firma" className="h-8 rounded bg-white p-0.5" />
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right space-x-2">
+                    {r.status === 'RECIBIDA' && (
+                      <>
+                        <button onClick={() => updateStatus(r.id, 'VALIDADA')} className="text-xs bg-green-900/30 text-green-500 hover:bg-green-900/50 border border-green-800/50 px-3 py-1.5 rounded-lg transition-colors font-medium">
+                          Aprobar
+                        </button>
+                        <button onClick={() => {
+                          const m = prompt("Motivo de corrección (ej. Falta completar nombre):");
+                          if (m) updateStatus(r.id, 'REQUIERE_CORRECCION', m);
+                        }} className="text-xs bg-red-900/30 text-red-500 hover:bg-red-900/50 border border-red-800/50 px-3 py-1.5 rounded-lg transition-colors">
+                          Solicitar corrección
+                        </button>
+                      </>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
             {responsivas.length === 0 && (
-              <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-500 text-sm">No hay responsivas registradas aún.</td></tr>
+              <tr><td colSpan={7} className="px-6 py-8 text-center text-gray-500 text-sm">No hay responsivas registradas aún.</td></tr>
             )}
           </tbody>
         </table>

@@ -211,6 +211,7 @@ export interface CartaFreelanceProps {
   jornada?: string | null;
   responsabilidad?: string | null;
   firmaTecnicoUrl?: string | null;
+  comentarios?: string | null;
 }
 
 // ─── Componente principal ─────────────────────────────────────────────────────
@@ -274,8 +275,8 @@ export function CartaFreelancePDF(p: CartaFreelanceProps) {
           <Text style={s.introText}>
             En {p.ciudad}, a ____/____/______,{"  "}yo{" "}
             <Text style={{ fontFamily: "Helvetica-Bold" }}>{p.tecnicoNombre}</Text>
-            {"  "}(INE/ID: _______________________ · Tel: {field(p.tecnicoCelular, "______________________")}),{"\n"}
-            acepto prestar servicios como freelance para la empresa Escenario Principal Producciones, S.A. de C.V. (Mainstage Pro) y me obligo a cumplir los siguientes lineamientos:
+            {"  "}(INE/ID: _______________________ · Teléfono celular: {field(p.tecnicoCelular, "______________________")}),{"\n"}
+            acepto prestar mis servicios como personal técnico freelance para la empresa Escenario Principal Producciones, S.A. de C.V. (Mainstage Pro) y me obligo a cumplir cabalmente los siguientes lineamientos:
           </Text>
 
           {/* ── Cláusulas ── */}
@@ -283,7 +284,7 @@ export function CartaFreelancePDF(p: CartaFreelanceProps) {
           {/* 1. Rol personalizado — con borde dorado */}
           <View style={s.clausulaDestacada}>
             <Text style={s.clausula}>
-              <Text style={s.clausulaNum}>1) Alcance y rol ({p.rolNombre}): </Text>
+              <Text style={s.clausulaNum}>1) Alcance y funciones técnicas ({p.rolNombre}): </Text>
               <Text style={s.clausulaTexto}>{clausula1}</Text>
               {p.responsabilidad ? (
                 <Text style={s.clausulaTexto}>
@@ -297,81 +298,91 @@ export function CartaFreelancePDF(p: CartaFreelanceProps) {
             <Text>
               <Text style={s.clausulaNum}>2) Horarios y permanencia: </Text>
               <Text style={s.clausulaTexto}>
-                Cumpliré puntualmente los horarios establecidos para bodega, carga, traslado, montaje, show y desmontaje. Permaneceré disponible en mi área durante toda la jornada
-                {p.jornada ? ` (jornada ${p.jornada === "CORTA" ? "0–8 hrs" : p.jornada === "MEDIA" ? "8–12 hrs" : "12+ hrs"})` : ""} y avisaré cualquier salida al responsable.
+                Cumpliré con estricta puntualidad los horarios establecidos para salida de bodega, carga, traslado, montaje, pruebas previas, operación y desmontaje. Permaneceré disponible en mi área de trabajo durante toda la jornada
+                {p.jornada ? ` (jornada ${p.jornada === "CORTA" ? "0–8 horas" : p.jornada === "MEDIA" ? "8–12 horas" : "12+ horas"})` : ""} y avisaré cualquier salida o desplazamiento al responsable de producción.
               </Text>
             </Text>
           </View>
 
           <View style={s.clausula}>
             <Text>
-              <Text style={s.clausulaNum}>3) Conducta y ética: </Text>
-              <Text style={s.clausulaTexto}>Respeto total a cliente, venue, proveedores y equipo. Queda prohibido: agresiones, acoso, discriminación, conflictos y consumo de alcohol o sustancias durante el servicio.</Text>
+              <Text style={s.clausulaNum}>3) Conducta y ética profesional: </Text>
+              <Text style={s.clausulaTexto}>Respeto absoluto al cliente, al recinto sede, proveedores, compañeros de trabajo y asistentes. Queda estrictamente prohibido: agresiones, acoso, discriminación, conflictos y el consumo de bebidas alcohólicas o sustancias ilícitas durante el servicio.</Text>
             </Text>
           </View>
 
           <View style={s.clausula}>
             <Text>
-              <Text style={s.clausulaNum}>4) Presentación: </Text>
-              <Text style={s.clausulaTexto}>Ropa negra o uniforme cuando se solicite; higiene personal y lenguaje profesional en todo momento.</Text>
+              <Text style={s.clausulaNum}>4) Presentación personal: </Text>
+              <Text style={s.clausulaTexto}>Vestimenta completa en color negro o uniforme asignado cuando se solicite; higiene personal y lenguaje profesional y respetuoso en todo momento.</Text>
             </Text>
           </View>
 
           <View style={s.clausula}>
             <Text>
-              <Text style={s.clausulaNum}>5) Seguridad (EHS): </Text>
-              <Text style={s.clausulaTexto}>Seguridad primero: usaré EPP cuando aplique y realizaré únicamente maniobras dentro de mi capacidad y certificación. Si identifico un riesgo, detengo la operación y reporto de inmediato.</Text>
+              <Text style={s.clausulaNum}>5) Seguridad laboral y prevención de riesgos: </Text>
+              <Text style={s.clausulaTexto}>La seguridad es la máxima prioridad: utilizaré Equipo de Protección Personal (EPP) completo cuando aplique y realizaré únicamente maniobras dentro de mi capacidad técnica y certificación. Si identifico un riesgo, detengo la operación y reporto de inmediato.</Text>
             </Text>
           </View>
 
           <View style={s.clausula}>
             <Text>
-              <Text style={s.clausulaNum}>6) Comunicación: </Text>
-              <Text style={s.clausulaTexto}>Usaré los canales oficiales del evento (WhatsApp u otro indicado). Ante duda o error potencial, consulto antes de ejecutar. Reporto avances y envío evidencia cuando se solicite.</Text>
+              <Text style={s.clausulaNum}>6) Comunicación efectiva: </Text>
+              <Text style={s.clausulaTexto}>Usaré los canales oficiales asignados para el evento. Ante duda o contingencia técnica, consultaré antes de proceder. Notificaré avances y enviaré evidencia técnica cuando se solicite.</Text>
             </Text>
           </View>
 
           <View style={s.clausula}>
             <Text>
-              <Text style={s.clausulaNum}>7) Orden, limpieza e higiene (áreas técnicas): </Text>
-              <Text style={s.clausulaTexto}>Mantendré las áreas técnicas funcionales, limpias e higiénicas: sin basura, líquidos ni obstáculos. Cableado ordenado e identificable para detectar fallas rápido, acceder con seguridad y mantener pasillos libres.</Text>
+              <Text style={s.clausulaNum}>7) Orden, limpieza e higiene en áreas técnicas: </Text>
+              <Text style={s.clausulaTexto}>Mantendré las áreas técnicas funcionales, limpias y libres de basura o líquidos. Todo tendido de cables deberá realizarse de forma ordenada, peinada y protegida para circular con seguridad y resolver fallas con rapidez.</Text>
             </Text>
           </View>
 
           <View style={s.clausula}>
             <Text>
-              <Text style={s.clausulaNum}>8) Uso y cuidado del equipo: </Text>
-              <Text style={s.clausulaTexto}>Uso correcto del equipo asignado, sin préstamos ni uso personal. Orden por zonas (audio/iluminación/video/cables) y resguardo adecuado al finalizar.</Text>
+              <Text style={s.clausulaNum}>8) Uso, cuidado y resguardo del equipo: </Text>
+              <Text style={s.clausulaTexto}>Uso correcto y cuidadoso del equipo asignado, sin préstamos a personas ajenas ni uso personal. Organización por zonas y resguardo adecuado en estuches al finalizar la jornada.</Text>
             </Text>
           </View>
 
           <View style={s.clausula}>
             <Text>
-              <Text style={s.clausulaNum}>9) Daños, pérdidas y faltantes: </Text>
-              <Text style={s.clausulaTexto}>Reportaré de inmediato cualquier daño, falla o extravío. Acepto responsabilidad por negligencia, mal uso o falta de reporte oportuno (reparación/reposición o descuento acordado). No aplica a desgaste normal por uso correcto.</Text>
+              <Text style={s.clausulaNum}>9) Reporte de daños, pérdidas y faltantes: </Text>
+              <Text style={s.clausulaTexto}>Reportaré de inmediato cualquier daño, falla o extravío de equipo o herramienta. Asumo responsabilidad en caso de negligencia comprobada, mal uso o falta de reporte oportuno.</Text>
             </Text>
           </View>
 
           <View style={s.clausula}>
             <Text>
-              <Text style={s.clausulaNum}>10) Incidencias y reporte: </Text>
-              <Text style={s.clausulaTexto}>Las incidencias técnicas, operativas o de seguridad se reportan en el momento y al cierre del evento con resumen breve y evidencia cuando aplique.</Text>
+              <Text style={s.clausulaNum}>10) Gestión de incidencias: </Text>
+              <Text style={s.clausulaTexto}>Las incidencias técnicas, operativas o de seguridad se reportan en el momento exacto en que ocurran y al cierre del evento con resumen breve y evidencia.</Text>
             </Text>
           </View>
 
           <View style={s.clausula}>
             <Text>
-              <Text style={s.clausulaNum}>11) Operación estándar (montaje–show–desmontaje): </Text>
-              <Text style={s.clausulaTexto}>Carga segura; plan de zona; descarga ordenada; revisión inicial; seguridad antes que estética; pruebas completas; monitoreo constante; desmontaje calmado; cables por tipo; regreso y orden final en bodega.</Text>
+              <Text style={s.clausulaNum}>11) Estándar de operación técnica: </Text>
+              <Text style={s.clausulaTexto}>Carga y sujeción segura en transporte; descarga ordenada; seguridad estructural antes que estética; pruebas completas previas al show; desmontaje ordenado sin prisas; cables clasificados por tipo; entrega y orden final en bodega.</Text>
             </Text>
           </View>
 
           <View style={s.clausula}>
             <Text>
-              <Text style={s.clausulaNum}>12) Confidencialidad e imagen: </Text>
-              <Text style={s.clausulaTexto}>No divulgaré información interna ni publicaré fotos o videos del backstage o del evento sin autorización expresa de Mainstage Pro.</Text>
+              <Text style={s.clausulaNum}>12) Confidencialidad e imagen corporativa: </Text>
+              <Text style={s.clausulaTexto}>No divulgaré información interna ni publicaré fotografías o videos de áreas técnicas o backstage sin la autorización expresa de Mainstage Pro.</Text>
             </Text>
           </View>
+
+          {/* ── Comentarios opcionales del freelance ── */}
+          {p.comentarios ? (
+            <View style={{ marginTop: 6, marginBottom: 6, padding: 6, backgroundColor: CREAM, borderRadius: 3, borderWidth: 1, borderColor: "#e0ddd8" }}>
+              <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: LIGHT, textTransform: "uppercase", marginBottom: 2 }}>
+                Comentarios u observaciones del freelance:
+              </Text>
+              <Text style={{ fontSize: 7.5, color: BLACK }}>{p.comentarios}</Text>
+            </View>
+          ) : null}
 
           {/* ── Declaración ── */}
           <View style={s.declaracion}>
@@ -384,8 +395,8 @@ export function CartaFreelancePDF(p: CartaFreelanceProps) {
               <View style={[s.firmaLinea, p.firmaTecnicoUrl ? { paddingBottom: 0 } : {}]}>
                 {p.firmaTecnicoUrl && <Image src={p.firmaTecnicoUrl} style={{ width: 100, height: 40, alignSelf: 'center', marginBottom: -5 }} />}
               </View>
-              <Text style={s.firmaLabel}>Nombre y firma del Freelance</Text>
-              <Text style={[s.firmaDetalle, { fontFamily: "Helvetica-Bold", marginTop: 2 }]}>{p.tecnicoNombre}</Text>
+              <Text style={[s.firmaDetalle, { fontFamily: "Helvetica-Bold", marginTop: 2, fontSize: 8.5 }]}>{p.tecnicoNombre}</Text>
+              <Text style={[s.firmaLabel, { fontSize: 7, color: LIGHT, marginTop: 1, textTransform: "uppercase" }]}>Nombre completo del técnico freelance</Text>
               <Text style={s.firmaDetalle}>{p.rolNombre}</Text>
               <View style={s.firmaFechaRow}>
                 <Text style={s.firmaFechaLabel}>Fecha: {p.firmaTecnicoUrl ? new Date().toLocaleDateString('es-MX') : "____/____/______"}</Text>
@@ -393,10 +404,10 @@ export function CartaFreelancePDF(p: CartaFreelanceProps) {
             </View>
             <View style={s.firmaCol}>
               <View style={s.firmaLinea} />
-              <Text style={s.firmaLabel}>Por Escenario Principal Producciones, S.A. de C.V.</Text>
-              <Text style={[s.firmaDetalle, { fontFamily: "Helvetica-Bold", marginTop: 2 }]}>
+              <Text style={[s.firmaDetalle, { fontFamily: "Helvetica-Bold", marginTop: 2, fontSize: 8.5 }]}>
                 {p.responsableNombre && !/mauricio|mau/i.test(p.responsableNombre) ? p.responsableNombre : "Escenario Principal Producciones, S.A. de C.V."}
               </Text>
+              <Text style={[s.firmaLabel, { fontSize: 7, color: LIGHT, marginTop: 1, textTransform: "uppercase" }]}>Por Escenario Principal Producciones, S.A. de C.V.</Text>
               <Text style={s.firmaDetalle}>
                 {p.responsableNombre && !/mauricio|mau/i.test(p.responsableNombre) ? (p.responsableCargo ?? "Coordinación de Producción") : "Mainstage Pro"}
               </Text>

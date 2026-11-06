@@ -162,73 +162,83 @@ export function CartaRiggerPDF(p: CartaFreelanceProps) {
           <Text style={s.introText}>
             En {p.ciudad}, a ____/____/______,{"  "}yo{" "}
             <Text style={{ fontFamily: "Helvetica-Bold" }}>{p.tecnicoNombre}</Text>
-            {"  "}(INE/ID: _______________________ · Tel: {field(p.tecnicoCelular, "______________________")}),{"\n"}
-            acepto prestar mis servicios especializados de RIGGING para la empresa Escenario Principal Producciones, S.A. de C.V. (Mainstage Pro). Debido al alto riesgo inherente al trabajo en alturas y elevación de cargas, me obligo a cumplir estrictamente los siguientes lineamientos:
+            {"  "}(INE/ID: _______________________ · Teléfono celular: {field(p.tecnicoCelular, "______________________")}),{"\n"}
+            acepto prestar mis servicios especializados de montaje y trabajo en alturas (Rigging) para la empresa Escenario Principal Producciones, S.A. de C.V. (Mainstage Pro). Debido al alto riesgo inherente al trabajo en alturas y elevación de cargas, me obligo a cumplir estrictamente los siguientes lineamientos de seguridad:
           </Text>
 
           {/* ── Cláusulas Exclusivas para Rigging ── */}
           <View style={s.clausulaDestacada}>
             <Text style={s.clausula}>
               <Text style={s.clausulaNum}>1) Capacidad y Certificación: </Text>
-              <Text style={s.clausulaTexto}>Declaro contar con la experiencia, capacitación técnica y capacidad física necesarias para realizar cálculos de carga segura (SWL/WLL), instalación de puntos de anclaje, manejo de polipastos/motores y trabajo en alturas. Asumo la responsabilidad técnica de las maniobras a mi cargo.</Text>
+              <Text style={s.clausulaTexto}>Declaro contar con la experiencia comprobable, capacitación técnica y capacidad física necesarias para realizar cálculos de carga segura, instalación de puntos de anclaje, manejo de polipastos/motores y trabajo en alturas. Asumo la responsabilidad técnica de las maniobras a mi cargo.</Text>
             </Text>
           </View>
 
           <View style={s.clausula}>
             <Text>
-              <Text style={s.clausulaNum}>2) Uso de Equipo de Protección Personal (EPP): </Text>
-              <Text style={s.clausulaTexto}>Es obligatorio el uso en todo momento de casco de seguridad (con barboquejo), arnés de cuerpo entero, líneas de vida (Y-lanyard), botas de seguridad y guantes. Está estrictamente prohibido iniciar trabajos en altura sin el EPP correctamente colocado.</Text>
+              <Text style={s.clausulaNum}>2) Uso obligatorio de Equipo de Protección Personal (EPP): </Text>
+              <Text style={s.clausulaTexto}>Es obligatorio el uso continuo de casco de seguridad con barboquejo, arnés de cuerpo entero debidamente certificado, líneas de vida dobles con amortiguador de impacto, calzado de seguridad con casquillo y guantes de protección. Queda estrictamente prohibido iniciar trabajos en altura sin portar el equipo completo e inspeccionado.</Text>
             </Text>
           </View>
 
           <View style={s.clausula}>
             <Text>
-              <Text style={s.clausulaNum}>3) Aseguramiento de Herramientas: </Text>
-              <Text style={s.clausulaTexto}>Todas las herramientas manuales, radios y accesorios deben estar sujetos obligatoriamente con cintas o líneas de seguridad (tool lanyards) para prevenir la caída de objetos que puedan poner en riesgo la vida del personal en piso.</Text>
+              <Text style={s.clausulaNum}>3) Aseguramiento y sujeción de herramientas: </Text>
+              <Text style={s.clausulaTexto}>Todas las herramientas manuales, radios de comunicación y accesorios deberán estar permanentemente asegurados mediante cintas o líneas de seguridad anticaídas para prevenir el riesgo de impacto al personal en tierra.</Text>
             </Text>
           </View>
 
           <View style={s.clausula}>
             <Text>
-              <Text style={s.clausulaNum}>4) Inspección Previa de Equipo: </Text>
-              <Text style={s.clausulaTexto}>Me comprometo a inspeccionar visual y operativamente todos los motores, eslingas (slings), grilletes (shackles), steels y estructuras (truss) antes de su izaje. Cualquier equipo que presente desgaste, daño estructural o carezca de identificación de carga deberá ser reportado y descartado inmediatamente.</Text>
+              <Text style={s.clausulaNum}>4) Inspección previa de herrajes y estructuras: </Text>
+              <Text style={s.clausulaTexto}>Me comprometo a inspeccionar visual y operativamente todos los motores de elevación, eslingas de carga, grilletes, cables de acero de seguridad y tramos de estructura (truss) antes de su izaje. Cualquier elemento que presente deformación o daño será reportado y descartado inmediatamente.</Text>
             </Text>
           </View>
 
           <View style={s.clausula}>
             <Text>
-              <Text style={s.clausulaNum}>5) Stop Work Authority (SWA) - Derecho a Detener la Maniobra: </Text>
-              <Text style={s.clausulaTexto}>Tengo el derecho y la obligación de detener cualquier maniobra de elevación si detecto que los puntos de anclaje no son seguros, si hay sobrecarga, si existen vientos por encima de los límites permitidos, o si las condiciones climáticas o del recinto comprometen la seguridad estructural.</Text>
+              <Text style={s.clausulaNum}>5) Autoridad para detención de trabajo (Stop Work Authority): </Text>
+              <Text style={s.clausulaTexto}>Tengo el derecho y la obligación ineludible de detener cualquier maniobra de elevación o montaje si detecto que los puntos de anclaje no son seguros, si hay sobrecarga, si la velocidad del viento supera los límites tolerables o si las condiciones ambientales o del recinto comprometen la seguridad estructural.</Text>
             </Text>
           </View>
 
           <View style={s.clausula}>
             <Text>
-              <Text style={s.clausulaNum}>6) Cargas y Puntos del Recinto: </Text>
-              <Text style={s.clausulaTexto}>Me apegaré estrictamente a los límites de carga establecidos por la ingeniería del recinto (venue) y el plot aprobado. Queda estrictamente prohibido improvisar puntos de anclaje (bridles o dead hangs) en vigas o estructuras no autorizadas.</Text>
+              <Text style={s.clausulaNum}>6) Respeto a límites de carga del recinto: </Text>
+              <Text style={s.clausulaTexto}>Me apegaré estrictamente a los límites de carga establecidos por la ingeniería del recinto o sede y el plano de rigging autorizado. Queda estrictamente prohibido improvisar puntos de anclaje en vigas o estructuras no autorizadas.</Text>
             </Text>
           </View>
 
           <View style={s.clausula}>
             <Text>
-              <Text style={s.clausulaNum}>7) Zona Cero y Elevación: </Text>
-              <Text style={s.clausulaTexto}>Durante el izaje (vuelo) o descenso de estructuras, coordinaré el despeje total del área inferior ("zona cero"). Ningún técnico u otra persona debe permanecer debajo de una estructura en movimiento.</Text>
+              <Text style={s.clausulaNum}>7) Despeje de zona de maniobra (zona cero): </Text>
+              <Text style={s.clausulaTexto}>Durante el izaje o descenso de estructuras o cargas suspendidas, coordinaré el despeje total del área inferior. Ninguna persona podrá permanecer o transitar debajo de una estructura en movimiento.</Text>
             </Text>
           </View>
 
           <View style={s.clausula}>
             <Text>
-              <Text style={s.clausulaNum}>8) Estado Físico y Cero Tolerancia: </Text>
-              <Text style={s.clausulaTexto}>Declaro presentarme a laborar descansado, sin fatiga extrema y en pleno uso de mis facultades. Está estrictamente prohibido laborar bajo la influencia de alcohol, drogas, o cualquier medicamento que altere el sistema nervioso. El incumplimiento causará baja inmediata del evento.</Text>
+              <Text style={s.clausulaNum}>8) Condición física y cero tolerancia: </Text>
+              <Text style={s.clausulaTexto}>Declaro presentarme a laborar descansado y en óptimas condiciones de salud. Está estrictamente prohibido laborar bajo la influencia de alcohol, drogas o medicamentos que alteren los reflejos o la concentración. El incumplimiento causará la baja inmediata del evento.</Text>
             </Text>
           </View>
 
           <View style={s.clausula}>
             <Text>
-              <Text style={s.clausulaNum}>9) Responsabilidad Civil: </Text>
-              <Text style={s.clausulaTexto}>Asumo responsabilidad total sobre accidentes, colapsos o lesiones a terceros ocasionados por mi negligencia directa, mala práctica, o por omitir deliberadamente estas normativas de seguridad, deslindando a Escenario Principal Producciones, S.A. de C.V. y a Mainstage Pro en casos de negligencia comprobada de mi parte.</Text>
+              <Text style={s.clausulaNum}>9) Responsabilidad técnica y civil: </Text>
+              <Text style={s.clausulaTexto}>Asumo responsabilidad total sobre accidentes, colapsos o lesiones a terceros ocasionados por mi negligencia directa comprobada, mala práctica o por omitir deliberadamente estas normativas de seguridad técnica.</Text>
             </Text>
           </View>
+
+          {/* ── Comentarios opcionales del freelance ── */}
+          {p.comentarios ? (
+            <View style={{ marginTop: 6, marginBottom: 6, padding: 6, backgroundColor: CREAM, borderRadius: 3, borderWidth: 1, borderColor: "#e0ddd8" }}>
+              <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: LIGHT, textTransform: "uppercase", marginBottom: 2 }}>
+                Comentarios u observaciones del freelance:
+              </Text>
+              <Text style={{ fontSize: 7.5, color: BLACK }}>{p.comentarios}</Text>
+            </View>
+          ) : null}
 
           {/* ── Declaración ── */}
           <View style={s.declaracion}>
@@ -241,8 +251,8 @@ export function CartaRiggerPDF(p: CartaFreelanceProps) {
               <View style={[s.firmaLinea, p.firmaTecnicoUrl ? { paddingBottom: 0 } : {}]}>
                 {p.firmaTecnicoUrl && <Image src={p.firmaTecnicoUrl} style={{ width: 100, height: 40, alignSelf: 'center', marginBottom: -5 }} />}
               </View>
-              <Text style={s.firmaLabel}>Nombre y firma del Rigger</Text>
-              <Text style={[s.firmaDetalle, { fontFamily: "Helvetica-Bold", marginTop: 2 }]}>{p.tecnicoNombre}</Text>
+              <Text style={[s.firmaDetalle, { fontFamily: "Helvetica-Bold", marginTop: 2, fontSize: 8.5 }]}>{p.tecnicoNombre}</Text>
+              <Text style={[s.firmaLabel, { fontSize: 7, color: LIGHT, marginTop: 1, textTransform: "uppercase" }]}>Nombre completo del técnico rigger</Text>
               <Text style={s.firmaDetalle}>{p.rolNombre}</Text>
               <View style={s.firmaFechaRow}>
                 <Text style={s.firmaFechaLabel}>Fecha: {p.firmaTecnicoUrl ? new Date().toLocaleDateString('es-MX') : "____/____/______"}</Text>
@@ -250,10 +260,10 @@ export function CartaRiggerPDF(p: CartaFreelanceProps) {
             </View>
             <View style={s.firmaCol}>
               <View style={s.firmaLinea} />
-              <Text style={s.firmaLabel}>Por Escenario Principal Producciones, S.A. de C.V.</Text>
-              <Text style={[s.firmaDetalle, { fontFamily: "Helvetica-Bold", marginTop: 2 }]}>
+              <Text style={[s.firmaDetalle, { fontFamily: "Helvetica-Bold", marginTop: 2, fontSize: 8.5 }]}>
                 {p.responsableNombre && !/mauricio|mau/i.test(p.responsableNombre) ? p.responsableNombre : "Escenario Principal Producciones, S.A. de C.V."}
               </Text>
+              <Text style={[s.firmaLabel, { fontSize: 7, color: LIGHT, marginTop: 1, textTransform: "uppercase" }]}>Por Escenario Principal Producciones, S.A. de C.V.</Text>
               <Text style={s.firmaDetalle}>
                 {p.responsableNombre && !/mauricio|mau/i.test(p.responsableNombre) ? (p.responsableCargo ?? "Coordinador de Rigging") : "Mainstage Pro"}
               </Text>

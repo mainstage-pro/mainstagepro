@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { resolverEstadoEvento } from "@/lib/venues";
 
 export async function GET(req: NextRequest, context: any) {
   try {
@@ -16,12 +17,29 @@ export async function GET(req: NextRequest, context: any) {
             rolTecnico: true
           }
         },
-        venue: { select: { nombre: true } },
-        lugarEvento: true
+        venue: { select: { id: true, nombre: true, ciudad: true, estado: true, direccion: true } },
+        lugarEvento: true,
+        direccionVenue: true
       }
     });
 
     if (!proyecto) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    // Intento de vincular venue por nombre si no estaba ligado explícitamente
+    let venue = proyecto.venue;
+    if (!venue && proyecto.lugarEvento) {
+      venue = await prisma.venue.findFirst({
+        where: { nombre: { equals: proyecto.lugarEvento.trim(), mode: "insensitive" } },
+        select: { id: true, nombre: true, ciudad: true, estado: true, direccion: true }
+      });
+    }
+
+    const estadoLugar = resolverEstadoEvento({
+      estado: venue?.estado,
+      ciudad: venue?.ciudad,
+      lugar: proyecto.lugarEvento || venue?.nombre,
+      direccion: proyecto.direccionVenue || venue?.direccion
+    });
 
     // Extract unique technicians and their roles
     const tecnicosMap = new Map();
@@ -49,7 +67,7 @@ export async function GET(req: NextRequest, context: any) {
     // Fetch existing responsivas
     const responsivas = await prisma.responsivaTecnico.findMany({
       where: { proyectoId: proyecto.id },
-      select: { tecnicoId: true, status: true, motivoCorreccion: true }
+      select: { tecnicoId: true, status: true, motivoCorreccion: true, datosCapturados: true }
     });
 
     return NextResponse.json({
@@ -57,8 +75,9 @@ export async function GET(req: NextRequest, context: any) {
         id: proyecto.id,
         nombre: proyecto.nombre,
         fechaEvento: proyecto.fechaEvento,
-        clienteNombre: proyecto.cliente.empresa || proyecto.cliente.nombre,
-        lugar: proyecto.venue?.nombre || proyecto.lugarEvento
+        clienteNombre: proyecto.cliente?.empresa || proyecto.cliente?.nombre,
+        lugar: venue?.nombre || proyecto.lugarEvento,
+        estadoLugar
       },
       tecnicos,
       responsivas

@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import ReactPDF from "@react-pdf/renderer";
 import { CartaFreelancePDF, PuestoCategoria } from "@/components/CartaFreelancePDF";
 import { CartaRiggerPDF } from "@/components/CartaRiggerPDF";
+import { resolverEstadoEvento } from "@/lib/venues";
 import React from "react";
 
 // Mapeo de nombre de rol → categoría de puesto para checkboxes y clausula 1
@@ -47,7 +48,7 @@ export async function GET(
   const pp = await prisma.proyectoPersonal.findUnique({
     where: { id: personalId },
     include: {
-      tecnico:   { select: { nombre: true, celular: true } },
+      tecnico:   { select: { id: true, nombre: true, celular: true } },
       rolTecnico: { select: { nombre: true } },
       proyecto: {
         select: {
@@ -56,6 +57,8 @@ export async function GET(
           nombre: true,
           fechaEvento: true,
           lugarEvento: true,
+          direccionVenue: true,
+          venue: { select: { id: true, nombre: true, ciudad: true, estado: true, direccion: true } },
           encargado: { select: { name: true } },
         },
       },
@@ -69,23 +72,51 @@ export async function GET(
   const proy = pp.proyecto;
   const rolNombre = pp.rolTecnico?.nombre ?? "Técnico";
   const categoria = detectarCategoria(rolNombre);
-  const ciudad = extraerCiudad(proy.lugarEvento);
+
+  let venue = proy.venue;
+  if (!venue && proy.lugarEvento) {
+    venue = await prisma.venue.findFirst({
+      where: { nombre: { equals: proy.lugarEvento.trim(), mode: "insensitive" } },
+      select: { id: true, nombre: true, ciudad: true, estado: true, direccion: true }
+    });
+  }
+
+  const estadoLugar = resolverEstadoEvento({
+    estado: venue?.estado,
+    ciudad: venue?.ciudad,
+    lugar: proy.lugarEvento || venue?.nombre,
+    direccion: proy.direccionVenue || venue?.direccion
+  });
+
+  // Buscar si ya existe responsiva firmada por el técnico
+  const responsivaExistente = pp.tecnicoId ? await prisma.responsivaTecnico.findUnique({
+    where: {
+      proyectoId_tecnicoId: {
+        proyectoId: id,
+        tecnicoId: pp.tecnicoId
+      }
+    }
+  }) : null;
+
+  const datosCapturados = responsivaExistente?.datosCapturados as any;
 
   const props = {
-    tecnicoNombre:     pp.tecnico?.nombre ?? "Técnico Freelance",
-    tecnicoCelular:    pp.tecnico?.celular ?? null,
+    tecnicoNombre:     datosCapturados?.nombre ?? pp.tecnico?.nombre ?? "Técnico Freelance",
+    tecnicoCelular:    datosCapturados?.telefono ?? pp.tecnico?.celular ?? null,
     rolNombre,
     categoria,
     numeroProyecto:    proy.numeroProyecto,
     nombreEvento:      proy.nombre,
     fechaEvento:       fmtDateLong(new Date(proy.fechaEvento)),
     lugarEvento:       proy.lugarEvento,
-    ciudad,
+    ciudad:            estadoLugar,
     responsableNombre: (proy.encargado?.name && !/mauricio|mau/i.test(proy.encargado.name)) ? proy.encargado.name : "",
     responsableCargo:  req.nextUrl.searchParams.get("cargo") ?? "Coordinador de Producción",
     participacion:     pp.participacion,
     jornada:           pp.jornada,
     responsabilidad:   pp.responsabilidad,
+    firmaTecnicoUrl:   responsivaExistente?.firmaUrl ?? null,
+    comentarios:       datosCapturados?.comentarios ?? null,
   };
 
   const PDFComponent = categoria === "RIGGING" ? CartaRiggerPDF : CartaFreelancePDF;
