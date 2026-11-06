@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { isTokenExpired } from "@/lib/tokens";
 import { confirmarGiraDesdePropuesta } from "@/lib/confirmar-gira-desde-propuesta";
+import { confirmarProyectoCreativoDesdePropuesta } from "@/lib/confirmar-proyecto-creativo-desde-propuesta";
 
 // Portal público de la propuesta de servicios. Sin auth: el token es la llave.
 // El `select` es a mano y a propósito — costoUnitario, costoEstimado y
@@ -121,6 +122,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     });
 
     await confirmarGiraDesdePropuesta(tx, propuesta.id);
+    await confirmarProyectoCreativoDesdePropuesta(tx, propuesta.id);
 
     if (propuesta.tratoId) {
       await tx.trato.update({

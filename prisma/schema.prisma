@@ -7058,6 +7058,13 @@ model ProyectoCreativo {
   briefing String?
   notas    String?
 
+  // Contador simple de rondas de cambios (tabulador de render, §3.4 punto 2
+  // de docs/grupo-mainstage-fase4-esquema-comercial.md): cuántas incluye el
+  // trato y cuántas ya se usaron, para saber cuándo cobrar el cambio extra
+  // (catálogo CAMBIO_ADICIONAL_RENDER_A/AA/AAA). No es un Kanban, solo un contador.
+  revisionesIncluidas Int @default(2)
+  revisionesUsadas    Int @default(0)
+
   fechaSolicitud DateTime  @default(now())
   fechaEntrega   DateTime?
 

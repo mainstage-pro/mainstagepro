@@ -5,6 +5,7 @@ import { logActividad } from "@/lib/actividad";
 import { ESTADOS_PROPUESTA, MODELOS_COBRO } from "@/lib/giras";
 import { recalcularPropuesta, textoOpcional, numero, booleano, fecha, soloDefinidos } from "../recalcular";
 import { confirmarGiraDesdePropuesta } from "@/lib/confirmar-gira-desde-propuesta";
+import { confirmarProyectoCreativoDesdePropuesta } from "@/lib/confirmar-proyecto-creativo-desde-propuesta";
 
 const INCLUDE_DETALLE = {
   cliente: { select: { id: true, nombre: true, empresa: true } },
@@ -114,6 +115,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     await prisma.$transaction(async (tx) => {
       await tx.propuestaServicio.update({ where: { id }, data });
       await confirmarGiraDesdePropuesta(tx, id);
+      await confirmarProyectoCreativoDesdePropuesta(tx, id);
       if (existente.tratoId) {
         await tx.trato.update({
           where: { id: existente.tratoId },

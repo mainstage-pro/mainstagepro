@@ -637,12 +637,22 @@ Ya existe el modelo y el PDF. Lo que falta:
 2. **Creative: se mantienen los 4 estados actuales** (`BRIEF → EN_PROCESO →
    REVISION → ENTREGADO`), sin construir un tablero nuevo por ronda de
    revisión (sería sobre-ingeniería para "cliente pide cambios → se ajusta →
-   se reenvía"). Dos ajustes mínimos, pendientes de construir:
+   se reenvía"). Dos ajustes mínimos — ✅ hechos 2026-11-06:
    - Avanzar `BRIEF → EN_PROCESO` automáticamente al aprobarse la propuesta
-     (cierra el hueco real de §4.5).
+     (cierra el hueco real de §4.5): `confirmarProyectoCreativoDesdePropuesta`
+     (`src/lib/confirmar-proyecto-creativo-desde-propuesta.ts`), espejo de
+     `confirmarGiraDesdePropuesta`, enganchado en los dos canales de
+     aprobación (`/api/propuestas-servicio/[id]` y
+     `/api/propuestas-servicio/publica/[token]`). Idempotente: solo toca
+     proyectos en `BRIEF`, nunca retrocede ni resucita uno ya cerrado.
    - Contador simple "revisiones usadas / incluidas" visible en el proyecto,
      para que el vendedor sepa cuándo ya toca cobrar el cambio extra (tabla
-     de §3.4 punto 2) — no un Kanban, solo un contador.
+     de §3.4 punto 2) — no un Kanban, solo un contador. Dos columnas nuevas
+     en `ProyectoCreativo` (`revisionesIncluidas` default 2,
+     `revisionesUsadas` default 0, DDL
+     `scripts/_apply-contador-revisiones-proyecto-creativo.ts`), con
+     botones +/− y aviso visual en `/creative/[id]` cuando se pasa del
+     incluido.
 3. **El brief conceptual NO necesita un paso formal nuevo.** El campo
    `briefing` libre que ya existe en `ProyectoCreativo` es suficiente, porque
    el diseño conceptual ya no es un producto que se capture aparte — va
@@ -695,7 +705,7 @@ Esto es solo una sugerencia de secuencia, no un compromiso de fechas:
      sesión).
    - ~~Decidir si se necesita más estructura de ejecución~~ ✅ hecho
      2026-11-06 (§4.6) — se quedan los 4 estados, con avance automático al
-     aprobar + contador de revisiones como únicos pendientes de construir.
+     aprobar + contador de revisiones ✅ también construidos 2026-11-06.
 4. Verificación cruzada: una oportunidad de prueba de cada unidad, de punta a
    punta (descubrimiento → trato → propuesta → PDF → aprobación → ejecución)
    — sigue pendiente.

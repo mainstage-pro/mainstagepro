@@ -11,6 +11,8 @@ type Proyecto = {
   estado: string;
   briefing: string | null;
   notas: string | null;
+  revisionesIncluidas: number;
+  revisionesUsadas: number;
   fechaSolicitud: string;
   fechaEntrega: string | null;
   cliente: { id: string; nombre: string; empresa: string | null } | null;
@@ -42,7 +44,7 @@ export default function ProyectoCreativoPage() {
     });
   }, [id]);
 
-  async function guardar(campos: Partial<Record<string, string | null>>) {
+  async function guardar(campos: Partial<Record<string, string | number | null>>) {
     if (!proyecto) return;
     setSaving(true);
     setProyecto({ ...proyecto, ...campos } as Proyecto);
@@ -51,6 +53,12 @@ export default function ProyectoCreativoPage() {
       body: JSON.stringify(campos),
     });
     setSaving(false);
+  }
+
+  function ajustarRevisionesUsadas(delta: number) {
+    if (!proyecto) return;
+    const siguiente = Math.max(0, proyecto.revisionesUsadas + delta);
+    guardar({ revisionesUsadas: siguiente });
   }
 
   async function eliminar() {
@@ -121,6 +129,32 @@ export default function ProyectoCreativoPage() {
               className={inputCls} />
           </div>
         </div>
+      </div>
+
+      <div className="ms-card p-4 space-y-2">
+        <p className="ms-section-label">Revisiones</p>
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-2">
+            <button onClick={() => ajustarRevisionesUsadas(-1)} disabled={proyecto.revisionesUsadas <= 0}
+              className="w-7 h-7 rounded-lg bg-[#111] border border-[#1a1a1a] text-[#888] hover:text-white disabled:opacity-30 transition-colors">−</button>
+            <span className={`text-sm font-medium ${proyecto.revisionesUsadas > proyecto.revisionesIncluidas ? "text-[#e8a020]" : "text-white"}`}>
+              {proyecto.revisionesUsadas} / {proyecto.revisionesIncluidas} usadas
+            </span>
+            <button onClick={() => ajustarRevisionesUsadas(1)}
+              className="w-7 h-7 rounded-lg bg-[#111] border border-[#1a1a1a] text-[#888] hover:text-white transition-colors">+</button>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-[10.5px] text-[#555]">Incluidas en el trato</label>
+            <input type="number" min={0} defaultValue={proyecto.revisionesIncluidas}
+              onBlur={e => guardar({ revisionesIncluidas: Math.max(0, parseInt(e.target.value, 10) || 0) })}
+              className="w-16 bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-2 py-1 text-[12.5px] text-white focus:outline-none focus:border-[#B3985B]/50" />
+          </div>
+        </div>
+        {proyecto.revisionesUsadas > proyecto.revisionesIncluidas && (
+          <p className="text-[11px] text-[#e8a020]">
+            Ya se pasó de las incluidas — toca cobrar cambio extra (catálogo CAMBIO_ADICIONAL_RENDER).
+          </p>
+        )}
       </div>
 
       <div className="ms-card p-4 space-y-2">

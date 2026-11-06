@@ -19,6 +19,12 @@ function fecha(v: unknown): Date | null | undefined {
   return isNaN(d.getTime()) ? undefined : d;
 }
 
+function enteroOpcional(v: unknown): number | undefined {
+  if (v === undefined || v === null || v === "") return undefined;
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? Math.max(0, Math.round(n)) : undefined;
+}
+
 function soloDefinidos<T extends Record<string, unknown>>(obj: T): Partial<T> {
   const out: Partial<T> = {};
   for (const [k, v] of Object.entries(obj)) {
@@ -70,6 +76,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       artistaId: textoOpcional(body.artistaId),
       tratoId: textoOpcional(body.tratoId),
       giraId: textoOpcional(body.giraId),
+      revisionesIncluidas: enteroOpcional(body.revisionesIncluidas),
+      revisionesUsadas: enteroOpcional(body.revisionesUsadas),
     }),
     select: { id: true, numero: true },
   });
