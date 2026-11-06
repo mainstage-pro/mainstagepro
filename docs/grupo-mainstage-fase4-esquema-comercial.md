@@ -660,6 +660,97 @@ Ya existe el modelo y el PDF. Lo que falta:
    el diseño conceptual ya no es un producto que se capture aparte — va
    empaquetado dentro del render (§3.4 punto 4).
 
+### 4.7 Fase 4 del plan de cierre (admin + comercial + ejecución) — ✅ IMPLEMENTADO EN PRODUCCIÓN (2026-11-06)
+
+Siguiente ronda tras §4.6, con plan propio (7 fases) ejecutada de un jalón.
+Decisiones vinculantes de esa ronda: CxC por aprobación = una sola fila por
+el TOTAL (igual que Pro, sin split anticipo/liquidación); entregables de
+Creative = versionado simple; portal público = copy/identidad por unidad sin
+galería nueva; sin página de "presentación" separada de la de aprobación.
+
+1. **Gap financiero cerrado — CxC real al aprobar una propuesta.** Antes,
+   aprobar una `PropuestaServicio` de Live o Creative solo tocaba estados
+   (`confirmarGiraDesdePropuesta`/`confirmarProyectoCreativoDesdePropuesta`);
+   cero efecto financiero, todo lo vendido por esas dos unidades era
+   invisible en `/finanzas/cobros-pagos`. Ahora:
+   - `CuentaCobrar.propuestaServicioId` (DDL
+     `scripts/_apply-cxc-propuesta-servicio.ts`) + relación inversa en
+     `PropuestaServicio`.
+   - `src/lib/cuenta-cobrar-desde-propuesta.ts`
+     (`crearCxCDesdePropuesta`): espejo del paso 5 de `crear-proyecto.ts`
+     (Pro). Idempotente (`findFirst` por `propuestaServicioId` antes de
+     crear). `clienteId` resuelto en cascada
+     (propuesta → gira → proyectoCreativo); `tipoPago: "TOTAL"`;
+     `fechaCompromiso` = fecha del último `GiraShow` para Live, `fechaEntrega
+     ?? hoy+15d` para Creative.
+   - Enganchado en los dos canales de aprobación, mismo patrón que los dos
+     `confirmar*` ya enganchados ahí: `/api/propuestas-servicio/[id]`
+     (PATCH) y `/api/propuestas-servicio/publica/[token]` (POST).
+   - `src/lib/unidad-negocio.ts` (`unidadDeCuentaCobrar`): deriva
+     `PRO`/`LIVE`/`CREATIVE` de una `CuentaCobrar` sin guardar nada nuevo
+     (mismo criterio que `unidadPropuesta` en `propuesta/[id]/page.tsx`).
+   - `/finanzas/cobros-pagos`: Live/Creative no tienen `Proyecto` (de Pro),
+     así que una CxC nacida de propuesta sintetiza un "proyecto" de
+     despliegue (`conProyectoEfectivo`, ids `gira_*`/`creative_*`) para
+     agrupar y mostrarse igual que el resto en vez de caer en el cubo "sin
+     proyecto"; el link del grupo (`hrefProyectoGrupo`) resuelve a
+     `/giras/[id]` o `/creative/[id]` según el prefijo.
+2. **Checklist operativo de Creative.** `Tarea.proyectoCreativoId` (DDL
+   `scripts/_apply-tarea-proyecto-creativo.ts`) + relación
+   `"TareasDeProyectoCreativo"` en `ProyectoCreativo.tareas`. Endpoint
+   `src/app/api/proyectos-creativos/[id]/tareas/` (clon del patrón de Pro).
+   UI: `src/app/(dashboard)/creative/[id]/ListaTareasCreativo.tsx`
+   (`useTareasCreativo` + componente), montado en `creative/[id]/page.tsx`
+   como "Checklist operativo", reusando `NuevaTareaModal` sin tocarlo — el
+   único alta de tarea sigue siendo la ventana completa, no un input suelto.
+3. **Reporte por unidad.** `/api/admin/reportes/balance` acepta
+   `?unidad=PRO|LIVE|CREATIVE` opcional, filtrando solo el renglón de CxC
+   pendiente (vía `unidadDeCuentaCobrar`) — el resto del balance (posición
+   bancaria, activos fijos, nómina) no tiene un concepto de "unidad" que
+   tenga sentido financiero, así que no se tocó. Sin `unidad`, el reporte es
+   byte-a-byte igual que antes (sigue usando `aggregate()`).
+4. **Contexto de Creative en el portal público + identidad de marca.**
+   `SELECT_PUBLICO` en `/api/propuestas-servicio/publica/[token]` ahora trae
+   `proyectoCreativo: { nombre, fechaEntrega, fixtureCountEstimado }`.
+   `/aprobacion/propuesta/[token]/page.tsx` muestra un bloque "Entregable"
+   (nombre/fecha de entrega/fixtures) cuando hay `proyectoCreativo` y no hay
+   `gira`, y monta `src/components/propuesta/HeroUnidadPropuesta.tsx` (copy
+   de venta propio por unidad, sin infraestructura de imágenes nueva) antes
+   del resumen de líneas. `PropuestaServicioPDF.tsx` no se tocó — ya era
+   suficiente.
+5. **Dashboard de resumen de Creative.** `/creative/resumen`
+   (`src/app/(dashboard)/creative/(hub)/resumen/page.tsx`), clon del patrón
+   de `giras/(hub)/resumen` (`Kpi`/`Panel`/`Fila` de
+   `@/components/resumen/ui`): KPIs de proyectos activos, próxima entrega,
+   brief sin propuesta y urgentes sin resolver; paneles de próximas
+   entregas, sin brief capturado, revisiones agotadas y brief sin propuesta.
+   Entrada "Resumen" agregada como primer hijo tanto en el árbol `NAV`
+   (nodo `creative`) como en `NAV_CREATIVE` (`src/lib/nav.ts`).
+6. **Entregables versionados (render/plot/documentación técnica).** Modelo
+   nuevo `CreativeEntregable` (tabla `creative_entregables`, DDL
+   `scripts/_apply-creative-entregables.ts`, `CREATE TABLE IF NOT EXISTS` —
+   mismo patrón que `proyectos_creativos`). Versionado simple: la versión se
+   calcula en el servidor (`max(version donde tipo=X) + 1`) y nunca
+   sobreescribe — sin comentarios ni aprobación por versión, por decisión ya
+   tomada. API `src/app/api/proyectos-creativos/[id]/entregables/` (GET
+   lista, POST registra metadata de un archivo ya subido a Vercel Blob). UI
+   `src/app/(dashboard)/creative/[id]/EntregablesCreativoTab.tsx`: subida por
+   tipo, última versión destacada, historial anterior colapsable. Montado en
+   `creative/[id]/page.tsx` como "Entregables".
+7. **Live — ejecución sin bloqueo verificada.** Por la decisión de §4.6
+   (sin tablero/checklist/entregables nuevos para Live), se auditaron a
+   fondo las rutas de ejecución (`giras/[id]/{crew,logistica,documentos,
+   advance,setlist,tareas}`, `show/[showId]/{advance,setlist,tareas}` y sus
+   endpoints) buscando algún guard implícito sobre `GiraShow.proyectoId`
+   (nullable, de Pro). No se encontró ninguno: las únicas referencias a
+   `show.proyecto` son decorativas y ya null-safe
+   (`giras/[id]/show/[showId]/page.tsx`, `ShowResumenClient.tsx` —
+   `show.proyecto ? <Link> : <mensaje informativo>`). Una propuesta de Live
+   sin cotización de equipo asociada no bloquea ninguna de esas pantallas.
+
+Verificación de punta a punta por unidad (descubrimiento → propuesta → PDF →
+portal → aprobación → CxC → ejecución) — ver punto 4 de §5, ya resuelto.
+
 ---
 
 ## 5. Orden sugerido de construcción (para cuando pasemos a código)
@@ -730,7 +821,10 @@ Esto es solo una sugerencia de secuencia, no un compromiso de fechas:
      aprobar + contador de revisiones ✅ también construidos 2026-11-06.
 4. Verificación cruzada: una oportunidad de prueba de cada unidad, de punta a
    punta (descubrimiento → trato → propuesta → PDF → aprobación → ejecución)
-   — sigue pendiente.
+   — ✅ hecha 2026-11-06, como parte del cierre al 100% de §4.7: CxC real,
+   checklist operativo, reporte por unidad, portal con contexto/marca,
+   dashboard de resumen y entregables versionados para Creative; Live
+   verificado sin bloqueos de ejecución.
 
 ---
 

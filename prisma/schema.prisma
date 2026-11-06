@@ -1907,6 +1907,8 @@ model CuentaCobrar {
   serieRecurrenteId String?
   serieRecurrente   SerieRecurrente? @relation(fields: [serieRecurrenteId], references: [id])
   numeroPeriodo     Int?
+  propuestaServicioId String?
+  propuestaServicio   PropuestaServicio? @relation(fields: [propuestaServicioId], references: [id])
 
   concepto        String
   tipoPago        String          @default("TOTAL") // TOTAL | ANTICIPO | LIQUIDACION | OTRO
@@ -3186,8 +3188,11 @@ model Tarea {
   gira                     Gira?                @relation("TareasDeGira", fields: [giraId], references: [id], onDelete: SetNull)
   giraShowId               String?
   giraShow                 GiraShow?            @relation("TareasDeShow", fields: [giraShowId], references: [id], onDelete: SetNull)
+  // ── Proyecto creativo (Mainstage Creative) ───────────────────────────────
+  proyectoCreativoId       String?
+  proyectoCreativo         ProyectoCreativo?    @relation("TareasDeProyectoCreativo", fields: [proyectoCreativoId], references: [id], onDelete: SetNull)
   // ── Capa aditiva: hub de ejecución ────────────────────────────────────────
-  tipoOrigen               String               @default("TAREA") // TAREA | PLAN | PROYECTO | EVENTO | TRATO | CLIENTE | GIRA
+  tipoOrigen               String               @default("TAREA") // TAREA | PLAN | PROYECTO | EVENTO | TRATO | CLIENTE | GIRA | PROYECTO_CREATIVO
   requiereEvidencia        Boolean              @default(false)
   tipoEvidencia            String? // FOTO | ARCHIVO | ENLACE_MODULO | NOTA
   evidenciaNota            String?              @db.Text
@@ -7080,9 +7085,31 @@ model ProyectoCreativo {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  propuestas PropuestaServicio[]
+  propuestas  PropuestaServicio[]
+  tareas      Tarea[]              @relation("TareasDeProyectoCreativo")
+  entregables CreativeEntregable[]
 
   @@map("proyectos_creativos")
+}
+
+/// Entregable versionado de un ProyectoCreativo (render/plot/documentación
+/// técnica): versionado simple (lista de versiones por tipo, sin comentarios
+/// ni aprobación por versión — decisión de Fase 5 del plan). Nunca se
+/// sobreescribe una versión anterior, solo se agrega la siguiente.
+model CreativeEntregable {
+  id                 String           @id @default(cuid())
+  proyectoCreativoId String
+  proyectoCreativo   ProyectoCreativo @relation(fields: [proyectoCreativoId], references: [id], onDelete: Cascade)
+  tipo               String // RENDER | DOCUMENTACION_TECNICA | PLOT | OTRO
+  version            Int              @default(1)
+  nombre             String
+  url                String
+  notas              String?
+  subidoPor          String?
+  createdAt          DateTime         @default(now())
+
+  @@index([proyectoCreativoId])
+  @@map("creative_entregables")
 }
 
 /// Propuesta de servicios de production management. Hermana de Cotizacion, no la reemplaza:
@@ -7152,7 +7179,8 @@ model PropuestaServicio {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  lineas PropuestaServicioLinea[]
+  lineas         PropuestaServicioLinea[]
+  cuentasCobrar  CuentaCobrar[]
 
   @@map("propuestas_servicio")
 }

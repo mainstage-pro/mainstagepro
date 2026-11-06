@@ -98,6 +98,7 @@ export const NAV: NavSection[] = [
         href: "/creative",
         icon: Palette,
         children: [
+          { key: "creative-resumen", accessKey: "creative", label: "Resumen", href: "/creative/resumen" },
           { key: "creative-proyectos", accessKey: "creative", label: "Proyectos", href: "/creative/proyectos" },
           { key: "creative-propuestas", accessKey: "creative", label: "Propuestas", href: "/creative/propuestas" },
           { key: "creative-servicios", accessKey: "creative", label: "Servicios", href: "/creative/servicios" },
@@ -370,6 +371,7 @@ export const NAV_CREATIVE: NavSection[] = [
     key: "creative-comercial",
     section: "Comercial",
     items: [
+      { key: "creative-resumen", accessKey: "creative", label: "Resumen", href: "/creative/resumen", icon: LayoutDashboard },
       { key: "creative-proyectos", accessKey: "creative", label: "Proyectos", href: "/creative/proyectos", icon: FolderKanban },
       { key: "creative-propuestas", accessKey: "creative", label: "Propuestas", href: "/creative/propuestas", icon: Presentation },
     ],

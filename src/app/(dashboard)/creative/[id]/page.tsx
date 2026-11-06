@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { nivelRenderSugerido } from "@/lib/propuesta-servicio";
+import ListaTareasCreativo, { useTareasCreativo, type Usuario } from "./ListaTareasCreativo";
+import EntregablesCreativoTab from "./EntregablesCreativoTab";
 
 type Proyecto = {
   id: string;
@@ -39,6 +41,8 @@ export default function ProyectoCreativoPage() {
   const [proyecto, setProyecto] = useState<Proyecto | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const { tareas, upsert, quitar, alternar, eliminar: eliminarTarea } = useTareasCreativo(id);
 
   useEffect(() => {
     fetch(`/api/proyectos-creativos/${id}`).then(r => r.json()).then(d => {
@@ -46,6 +50,12 @@ export default function ProyectoCreativoPage() {
       setLoading(false);
     });
   }, [id]);
+
+  useEffect(() => {
+    fetch("/api/usuarios-activos").then(r => r.json()).then(d => {
+      setUsuarios((d.usuarios ?? []).map((u: { id: string; name: string }) => ({ id: u.id, name: u.name })));
+    });
+  }, []);
 
   async function guardar(campos: Partial<Record<string, string | number | boolean | null>>) {
     if (!proyecto) return;
@@ -184,6 +194,25 @@ export default function ProyectoCreativoPage() {
             Ya se pasó de las incluidas — toca cobrar cambio extra (catálogo CAMBIO_ADICIONAL_RENDER).
           </p>
         )}
+      </div>
+
+      <div className="space-y-2">
+        <p className="ms-section-label">Entregables</p>
+        <EntregablesCreativoTab proyectoCreativoId={proyecto.id} />
+      </div>
+
+      <div className="space-y-2">
+        <p className="ms-section-label">Checklist operativo</p>
+        <ListaTareasCreativo
+          proyectoCreativoId={proyecto.id}
+          proyectoCreativoNombre={proyecto.nombre}
+          usuarios={usuarios}
+          tareas={tareas}
+          upsert={upsert}
+          quitar={quitar}
+          alternar={alternar}
+          eliminar={eliminarTarea}
+        />
       </div>
 
       <div className="ms-card p-4 space-y-2">

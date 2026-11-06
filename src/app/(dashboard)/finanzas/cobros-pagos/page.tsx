@@ -78,6 +78,38 @@ interface CxCItem {
   abonos: AbonoItem[];
   serieRecurrenteId?: string | null;
   numeroPeriodo?: number | null;
+  // Live/Creative: la CxC nace de una PropuestaServicio aprobada, no de un Proyecto.
+  propuestaServicio?: {
+    id: string;
+    numero: string;
+    gira: { id: string; nombre: string } | null;
+    proyectoCreativo: { id: string; nombre: string } | null;
+  } | null;
+}
+
+// Live/Creative no tienen Proyecto (de Pro): si la CxC viene de una propuesta,
+// se sintetiza un "proyecto" de despliegue con la gira/proyecto creativo de
+// origen, para que agrupe y se muestre igual que el resto en vez de caer en
+// el cubo "sin proyecto" (ver unidadDeCuentaCobrar en src/lib/unidad-negocio.ts).
+function conProyectoEfectivo<T extends { proyecto: { id: string; nombre: string; numeroProyecto: string; fechaEvento: string | null } | null; propuestaServicio?: { gira: { id: string; nombre: string } | null; proyectoCreativo: { id: string; nombre: string } | null } | null }>(item: T): T {
+  if (item.proyecto || !item.propuestaServicio) return item;
+  const { gira, proyectoCreativo } = item.propuestaServicio;
+  if (gira) {
+    return { ...item, proyecto: { id: `gira_${gira.id}`, nombre: gira.nombre, numeroProyecto: "Live", fechaEvento: null } };
+  }
+  if (proyectoCreativo) {
+    return { ...item, proyecto: { id: `creative_${proyectoCreativo.id}`, nombre: proyectoCreativo.nombre, numeroProyecto: "Creative", fechaEvento: null } };
+  }
+  return item;
+}
+
+// El id "proyecto" de un grupo puede ser el sintético de conProyectoEfectivo
+// (prefijo gira_/creative_) — en ese caso el link va a la gira o al proyecto
+// creativo real, no a /proyectos (que no existe para Live/Creative).
+function hrefProyectoGrupo(proyectoId: string): string {
+  if (proyectoId.startsWith("gira_")) return `/giras/${proyectoId.slice(5)}`;
+  if (proyectoId.startsWith("creative_")) return `/creative/${proyectoId.slice(9)}`;
+  return `/proyectos/${proyectoId}`;
 }
 
 interface CxPItem {
@@ -560,7 +592,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
         fetch("/api/cuentas-pagar", { cache: "no-store" }).then(r => r.json()).catch(() => []),
         fetch("/api/movimientos?directos=true", { cache: "no-store" }).then(r => r.json()).catch(() => ({ movimientos: [] })),
       ]);
-      setCxc(Array.isArray(rc) ? rc : []);
+      setCxc(Array.isArray(rc) ? rc.map(conProyectoEfectivo) : []);
       setCxp(Array.isArray(rp) ? rp : []);
       setMovDirectos(rm.movimientos ?? []);
     } finally {
@@ -1328,7 +1360,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
               ) : grupo.proyectoId ? (
                 <div className="flex items-center justify-between gap-2 mb-2 px-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Link href={`/proyectos/${grupo.proyectoId}`} className="text-xs font-semibold text-[#B3985B] hover:underline">
+                    <Link href={hrefProyectoGrupo(grupo.proyectoId)} className="text-xs font-semibold text-[#B3985B] hover:underline">
                       {grupo.numeroProyecto} · {grupo.proyectoNombre}
                     </Link>
                     {grupo.fechaEvento && (
@@ -1458,7 +1490,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
               {/* Acciones */}
               <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-[#1a1a1a]">
                 {c.estado === "CANCELADO" ? (
-                  <p className="text-xs text-gray-600 italic">Cancelado — trato marcado como Venta Perdida</p>
+                  <p className="text-xs text-gray-600 italic">Cancelado — oportunidad marcada como Venta Perdida</p>
                 ) : (
                   <>
                     {c.estado === "LIQUIDADO" && (

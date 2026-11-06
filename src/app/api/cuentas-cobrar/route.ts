@@ -123,6 +123,16 @@ export async function GET(req: NextRequest) {
       cotizacion: { select: { id: true, numeroCotizacion: true } },
       cuentaDestino: { select: { id: true, nombre: true, banco: true } },
       abonos: { orderBy: { fecha: "asc" }, select: { id: true, monto: true, fecha: true, metodoPago: true, notas: true } },
+      // Live/Creative no tienen Proyecto (de Pro): su "proyecto" visible en este
+      // módulo se deriva de la propuesta que generó la CxC (ver unidad-negocio.ts).
+      propuestaServicio: {
+        select: {
+          id: true,
+          numero: true,
+          gira: { select: { id: true, nombre: true } },
+          proyectoCreativo: { select: { id: true, nombre: true } },
+        },
+      },
     },
     orderBy: [
       { proyecto: { fechaEvento: "asc" } },

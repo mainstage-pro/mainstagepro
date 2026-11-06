@@ -10,6 +10,7 @@ import {
   UNIDAD_COBRO_LABEL,
   type GastoResponsabilidad,
 } from "@/lib/giras";
+import HeroUnidadPropuesta from "@/components/propuesta/HeroUnidadPropuesta";
 
 const FUENTE = '-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif';
 
@@ -60,6 +61,11 @@ interface Propuesta {
     fechaInicio: string | null;
     fechaFin: string | null;
     shows: { id: string; fecha: string; ciudad: string | null; venue: { nombre: string } | null }[];
+  } | null;
+  proyectoCreativo: {
+    nombre: string;
+    fechaEntrega: string | null;
+    fixtureCountEstimado: number | null;
   } | null;
   lineas: Linea[];
 }
@@ -135,6 +141,7 @@ export default function AprobacionPropuestaPage({ params }: { params: Promise<{ 
     );
   }
 
+  const unidad: "LIVE" | "CREATIVE" | null = propuesta.gira ? "LIVE" : propuesta.proyectoCreativo ? "CREATIVE" : null;
   const moneda = propuesta.moneda || "MXN";
   // Vacío o nunca tocado = los 4 renglones de referencia, ya "incluidos" por
   // default — el cliente nunca ve un bloque de gastos en blanco.
@@ -171,11 +178,36 @@ export default function AprobacionPropuestaPage({ params }: { params: Promise<{ 
             {propuesta.titulo ?? "Production management"}
           </h1>
           <p className="mt-3 text-sm text-white/40">
-            {[propuesta.cliente?.empresa || propuesta.cliente?.nombre, propuesta.artista?.nombre, propuesta.gira?.nombre]
+            {[
+              propuesta.cliente?.empresa || propuesta.cliente?.nombre,
+              propuesta.artista?.nombre,
+              propuesta.gira?.nombre,
+              propuesta.proyectoCreativo?.nombre,
+            ]
               .filter(Boolean)
               .join(" · ")}
           </p>
         </header>
+
+        {unidad && <HeroUnidadPropuesta unidad={unidad} />}
+
+        {propuesta.proyectoCreativo && !propuesta.gira && (
+          <Seccion titulo="Entregable">
+            <div className="space-y-2 text-sm">
+              <Renglon etiqueta="Proyecto" valor={propuesta.proyectoCreativo.nombre} />
+              {propuesta.proyectoCreativo.fechaEntrega && (
+                <Renglon etiqueta="Fecha de entrega" valor={fmtFecha(propuesta.proyectoCreativo.fechaEntrega)} />
+              )}
+              {typeof propuesta.proyectoCreativo.fixtureCountEstimado === "number" &&
+                propuesta.proyectoCreativo.fixtureCountEstimado > 0 && (
+                  <Renglon
+                    etiqueta="Fixtures estimados"
+                    valor={String(propuesta.proyectoCreativo.fixtureCountEstimado)}
+                  />
+                )}
+            </div>
+          </Seccion>
+        )}
 
         {propuesta.gira && propuesta.gira.shows.length > 0 && (
           <Seccion titulo="Fechas que cubre">

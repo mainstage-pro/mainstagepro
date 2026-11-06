@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { unidadDeCuentaCobrar, type UnidadNegocio } from "@/lib/unidad-negocio";
 
-// GET /api/admin/reportes/balance?mes=2026-06
-// Construye el Balance General del período
+const UNIDADES: UnidadNegocio[] = ["PRO", "LIVE", "CREATIVE"];
+
+// GET /api/admin/reportes/balance?mes=2026-06&unidad=LIVE
+// Construye el Balance General del período. `unidad` es opcional (PRO|LIVE|
+// CREATIVE); sin ella, el balance es el de siempre (todas las unidades).
 export async function GET(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  const unidadParam = req.nextUrl.searchParams.get("unidad");
+  const unidad = unidadParam && UNIDADES.includes(unidadParam as UnidadNegocio) ? (unidadParam as UnidadNegocio) : null;
 
   const mes = req.nextUrl.searchParams.get("mes") || new Date().toISOString().slice(0, 7);
   const [year, month] = mes.split("-").map(Number);
@@ -36,12 +43,30 @@ export async function GET(req: NextRequest) {
   }
   const totalEfectivo = cuentasPosicion.reduce((s, c) => s + c.posicion, 0);
 
-  // Cuentas por cobrar (CxC acumuladas pendientes)
-  const cxc = await prisma.cuentaCobrar.aggregate({
-    where: { estado: { in: ["PENDIENTE", "PARCIAL"] } },
-    _sum: { monto: true, montoCobrado: true },
-  });
-  const cxcTotal = (cxc._sum.monto ?? 0) - (cxc._sum.montoCobrado ?? 0);
+  // Cuentas por cobrar (CxC acumuladas pendientes). Sin `unidad`, se agrega
+  // en BD (rápido, como siempre); con `unidad`, se trae la lista y se corta
+  // por unidadDeCuentaCobrar() — se deriva, no se guarda.
+  let cxcTotal: number;
+  if (unidad) {
+    const cxcLista = await prisma.cuentaCobrar.findMany({
+      where: { estado: { in: ["PENDIENTE", "PARCIAL"] } },
+      select: {
+        monto: true,
+        montoCobrado: true,
+        proyectoId: true,
+        propuestaServicio: { select: { giraId: true, proyectoCreativoId: true } },
+      },
+    });
+    cxcTotal = cxcLista
+      .filter(c => unidadDeCuentaCobrar(c) === unidad)
+      .reduce((s, c) => s + (c.monto - c.montoCobrado), 0);
+  } else {
+    const cxc = await prisma.cuentaCobrar.aggregate({
+      where: { estado: { in: ["PENDIENTE", "PARCIAL"] } },
+      _sum: { monto: true, montoCobrado: true },
+    });
+    cxcTotal = (cxc._sum.monto ?? 0) - (cxc._sum.montoCobrado ?? 0);
+  }
 
   // Activos por categoría de Mainstage (HERVAM — solo OFICINA/INTANGIBLE/OTRO)
   // EQUIPO/VEHICULO/INMUEBLE son de Mauricio, administrados por Mainstage → NO van al balance
@@ -126,6 +151,7 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     periodo: mes,
+    unidad, // null = todas las unidades (default); si no null, cuentasPorCobrar.total ya viene cortado
     activos: {
       efectivoYBancos: { total: totalEfectivo, cuentas: cuentasPosicion },
       cuentasPorCobrar: { total: cxcTotal },
