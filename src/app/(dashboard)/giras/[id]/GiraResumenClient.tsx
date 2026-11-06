@@ -10,6 +10,10 @@ import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { useAutoguardado } from "@/hooks/useAutoguardado";
 import {
+  ALCANCE_GEOGRAFICO_GIRA,
+  ALCANCE_GEOGRAFICO_GIRA_LABEL,
+  COMPLEJIDAD_GIRA,
+  COMPLEJIDAD_GIRA_LABEL,
   ESTADOS_GIRA,
   ESTADO_SHOW_COLOR,
   ESTADO_SHOW_LABEL,
@@ -60,6 +64,8 @@ export interface GiraDetalle {
   rolMainstage: string | null;
   moneda: string;
   notas: string | null;
+  complejidad: string | null;
+  alcanceGeografico: string | null;
   rider: {
     id: string;
     nombre: string;
@@ -134,6 +140,8 @@ interface Form {
   contactoPrincipalId: string;
   rolMainstage: string[];
   notas: string;
+  complejidad: string;
+  alcanceGeografico: string;
 }
 
 function parseRoles(json: string | null): string[] {
@@ -182,6 +190,8 @@ export default function GiraResumenClient({
     contactoPrincipalId: gira.contactoPrincipalId ?? "",
     rolMainstage: parseRoles(gira.rolMainstage),
     notas: gira.notas ?? "",
+    complejidad: gira.complejidad ?? "",
+    alcanceGeografico: gira.alcanceGeografico ?? "",
   });
   const [edicion, setEdicion] = useState(false);
 
@@ -200,6 +210,8 @@ export default function GiraResumenClient({
       contactoPrincipalId: f.contactoPrincipalId || null,
       rolMainstage: f.rolMainstage,
       notas: f.notas,
+      complejidad: f.complejidad || null,
+      alcanceGeografico: f.alcanceGeografico || null,
     }),
     [],
   );
@@ -443,6 +455,39 @@ export default function GiraResumenClient({
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="ms-label block mb-1.5">Complejidad</label>
+                  <select
+                    value={form.complejidad}
+                    onChange={(e) => set({ complejidad: e.target.value })}
+                    className="ms-input w-full"
+                  >
+                    <option value="">Por definir</option>
+                    {COMPLEJIDAD_GIRA.map((c) => (
+                      <option key={c} value={c}>
+                        {COMPLEJIDAD_GIRA_LABEL[c]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="ms-label block mb-1.5">Alcance geográfico</label>
+                  <select
+                    value={form.alcanceGeografico}
+                    onChange={(e) => set({ alcanceGeografico: e.target.value })}
+                    className="ms-input w-full"
+                  >
+                    <option value="">Por definir</option>
+                    {ALCANCE_GEOGRAFICO_GIRA.map((a) => (
+                      <option key={a} value={a}>
+                        {ALCANCE_GEOGRAFICO_GIRA_LABEL[a]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               <div>
                 <label className="ms-label block mb-1.5">
                   {tour ? "Lo que asume Mainstage en esta gira" : "Lo que asume Mainstage en este show"}
@@ -561,6 +606,21 @@ export default function GiraResumenClient({
                   {descuadre}
                 </p>
               )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Dato
+                  label="Complejidad"
+                  valor={form.complejidad ? COMPLEJIDAD_GIRA_LABEL[form.complejidad] ?? form.complejidad : null}
+                />
+                <Dato
+                  label="Alcance geográfico"
+                  valor={
+                    form.alcanceGeografico
+                      ? ALCANCE_GEOGRAFICO_GIRA_LABEL[form.alcanceGeografico] ?? form.alcanceGeografico
+                      : null
+                  }
+                />
+              </div>
 
               <div>
                 <p className="ms-micro mb-1.5">

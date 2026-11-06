@@ -6368,6 +6368,13 @@ model Gira {
   rolMainstage String? // JSON: claves de ServicioPM que asumimos en esta gira
   moneda       String  @default("MXN")
 
+  /// Clasificación comercial capturada en el descubrimiento (ver
+  /// src/lib/giras.ts: COMPLEJIDAD_GIRA / ALCANCE_GEOGRAFICO_GIRA). No alimenta
+  /// ninguna lógica operativa todavía — es contexto para cotizar y para
+  /// reportes futuros de Live.
+  complejidad        String? // SHOW_CHICO|SHOW_MEDIANO|FESTIVAL|GIRA_CORTA|GIRA_LARGA
+  alcanceGeografico  String? // LOCAL|NACIONAL|INTERNACIONAL
+
   /// Esta gira parcha una interfaz antes de la consola y el pre-patch se captura
   /// en «Invitados y canales». Apagado por default: la mayoría no la ocupa y una
   /// lista vacía en cada fecha sería ruido.

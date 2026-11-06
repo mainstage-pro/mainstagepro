@@ -43,6 +43,7 @@ interface Props {
   artistas: { id: string; nombre: string }[];
   clientes: { id: string; nombre: string; empresa: string | null }[];
   venues: { id: string; nombre: string; ciudad: string | null }[];
+  servicios: { clave: string; nombre: string; categoria: string | null }[];
 }
 
 const VACIO = {
@@ -56,9 +57,11 @@ const VACIO = {
   ciudad: "",
   venueId: "",
   notas: "",
+  complejidad: "",
+  alcanceGeografico: "",
 };
 
-export default function ListaGirasClient({ giras, artistas, clientes, venues }: Props) {
+export default function ListaGirasClient({ giras, artistas, clientes, venues, servicios }: Props) {
   const router = useRouter();
   const toast = useToast();
   const [busqueda, setBusqueda] = useState("");
@@ -68,6 +71,7 @@ export default function ListaGirasClient({ giras, artistas, clientes, venues }: 
   const [form, setForm] = useState(VACIO);
   const [fechas, setFechas] = useState<GiraFechaFila[]>([]);
   const [nuevoArtista, setNuevoArtista] = useState(false);
+  const [rolMainstage, setRolMainstage] = useState<string[]>([]);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -88,8 +92,13 @@ export default function ListaGirasClient({ giras, artistas, clientes, venues }: 
     setForm({ ...VACIO, tipo: tipoNuevo });
     setFechas([]);
     setNuevoArtista(false);
+    setRolMainstage([]);
     setError(null);
     setAbierto(true);
+  }
+
+  function toggleServicio(clave: string) {
+    setRolMainstage((p) => (p.includes(clave) ? p.filter((c) => c !== clave) : [...p, clave]));
   }
 
   async function crear() {
@@ -125,6 +134,9 @@ export default function ListaGirasClient({ giras, artistas, clientes, venues }: 
             ? fechas.filter((f) => f.fecha).map((f) => ({ fecha: f.fecha, ciudad: f.ciudad.trim() || null, venueId: f.venueId || null }))
             : undefined,
           notas: form.notas.trim() || null,
+          complejidad: form.complejidad || null,
+          alcanceGeografico: form.alcanceGeografico || null,
+          rolMainstage,
         }),
       });
       const d = await res.json();
@@ -278,6 +290,13 @@ export default function ListaGirasClient({ giras, artistas, clientes, venues }: 
             onFechasChange={setFechas}
             notas={form.notas}
             onNotasChange={(v) => setForm((p) => ({ ...p, notas: v }))}
+            complejidad={form.complejidad}
+            onComplejidadChange={(v) => setForm((p) => ({ ...p, complejidad: v }))}
+            alcanceGeografico={form.alcanceGeografico}
+            onAlcanceGeograficoChange={(v) => setForm((p) => ({ ...p, alcanceGeografico: v }))}
+            servicios={servicios}
+            rolMainstage={rolMainstage}
+            onToggleServicio={toggleServicio}
           />
 
           <div>

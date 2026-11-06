@@ -87,7 +87,7 @@ export default async function GiraResumenPage({ params }: { params: Promise<{ id
       orderBy: [{ esContactoClave: "desc" }, { orden: "asc" }, { nombre: "asc" }],
     }),
     prisma.servicioPM.findMany({
-      where: { activo: true },
+      where: { activo: true, unidad: "LIVE" },
       select: { clave: true, nombre: true, categoria: true },
       orderBy: [{ orden: "asc" }, { nombre: "asc" }],
     }),
@@ -183,6 +183,8 @@ export default async function GiraResumenPage({ params }: { params: Promise<{ id
     rolMainstage: gira.rolMainstage,
     moneda: gira.moneda,
     notas: gira.notas,
+    complejidad: gira.complejidad,
+    alcanceGeografico: gira.alcanceGeografico,
     rider: gira.rider
       ? {
           id: gira.rider.id,

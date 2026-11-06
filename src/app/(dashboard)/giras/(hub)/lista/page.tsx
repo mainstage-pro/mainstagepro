@@ -10,7 +10,7 @@ export default async function GirasListaPage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const [giras, artistas, clientes, venues] = await Promise.all([
+  const [giras, artistas, clientes, venues, servicios] = await Promise.all([
     prisma.gira.findMany({
       where: { activo: true },
       select: {
@@ -42,6 +42,11 @@ export default async function GirasListaPage() {
       select: { id: true, nombre: true, ciudad: true },
       orderBy: { nombre: "asc" },
     }),
+    prisma.servicioPM.findMany({
+      where: { activo: true, unidad: "LIVE" },
+      select: { clave: true, nombre: true, categoria: true },
+      orderBy: [{ orden: "asc" }, { nombre: "asc" }],
+    }),
   ]);
 
   const filas: GiraFila[] = giras.map((g) => {
@@ -68,5 +73,5 @@ export default async function GirasListaPage() {
     };
   });
 
-  return <ListaGirasClient giras={filas} artistas={artistas} clientes={clientes} venues={venues} />;
+  return <ListaGirasClient giras={filas} artistas={artistas} clientes={clientes} venues={venues} servicios={servicios} />;
 }

@@ -407,6 +407,27 @@ export const ESTADO_GIRA_COLOR: Record<string, string> = {
   CANCELADA: "text-red-300 bg-red-500/10 border-red-500/30",
 };
 
+/// Clasificación comercial capturada en el descubrimiento de la gira/show
+/// (ver Gira.complejidad, Gira.alcanceGeografico). No alimenta operación —
+/// es contexto para cotizar y para reportes de Live.
+export const COMPLEJIDAD_GIRA = ["SHOW_CHICO", "SHOW_MEDIANO", "FESTIVAL", "GIRA_CORTA", "GIRA_LARGA"] as const;
+
+export const COMPLEJIDAD_GIRA_LABEL: Record<string, string> = {
+  SHOW_CHICO: "Show chico",
+  SHOW_MEDIANO: "Show mediano",
+  FESTIVAL: "Festival",
+  GIRA_CORTA: "Gira corta",
+  GIRA_LARGA: "Gira larga",
+};
+
+export const ALCANCE_GEOGRAFICO_GIRA = ["LOCAL", "NACIONAL", "INTERNACIONAL"] as const;
+
+export const ALCANCE_GEOGRAFICO_GIRA_LABEL: Record<string, string> = {
+  LOCAL: "Local",
+  NACIONAL: "Nacional",
+  INTERNACIONAL: "Internacional",
+};
+
 export const ESTADOS_SHOW = ["POR_CONFIRMAR", "CONFIRMADO", "EJECUTADO", "CANCELADO"] as const;
 
 export const ESTADO_SHOW_LABEL: Record<string, string> = {

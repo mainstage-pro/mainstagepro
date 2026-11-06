@@ -145,6 +145,8 @@ export async function POST(req: NextRequest) {
         rolMainstage: Array.isArray(body.rolMainstage) ? JSON.stringify(body.rolMainstage) : null,
         moneda: typeof body.moneda === "string" && body.moneda ? body.moneda : "MXN",
         notas: typeof body.notas === "string" && body.notas.trim() ? body.notas.trim() : null,
+        complejidad: typeof body.complejidad === "string" && body.complejidad ? body.complejidad : null,
+        alcanceGeografico: typeof body.alcanceGeografico === "string" && body.alcanceGeografico ? body.alcanceGeografico : null,
       },
       include: { artista: { select: { id: true, nombre: true } } },
     });

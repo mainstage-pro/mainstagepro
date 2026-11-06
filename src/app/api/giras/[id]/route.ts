@@ -102,6 +102,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // fecha, y volver a prenderlo los encuentra como estaban.
   if (typeof body.conPrePatch === "boolean") data.conPrePatch = body.conPrePatch;
   if ("notas" in body) data.notas = typeof body.notas === "string" && body.notas.trim() ? body.notas.trim() : null;
+  if ("complejidad" in body) data.complejidad = typeof body.complejidad === "string" && body.complejidad ? body.complejidad : null;
+  if ("alcanceGeografico" in body) {
+    data.alcanceGeografico = typeof body.alcanceGeografico === "string" && body.alcanceGeografico ? body.alcanceGeografico : null;
+  }
   if (typeof body.activo === "boolean") data.activo = body.activo;
 
   if (Object.keys(data).length === 0) return NextResponse.json({ error: "Nada por actualizar" }, { status: 400 });

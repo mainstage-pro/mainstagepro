@@ -2,6 +2,12 @@
 
 import { Plus, Trash2 } from "lucide-react";
 import { Combobox } from "@/components/Combobox";
+import {
+  COMPLEJIDAD_GIRA,
+  COMPLEJIDAD_GIRA_LABEL,
+  ALCANCE_GEOGRAFICO_GIRA,
+  ALCANCE_GEOGRAFICO_GIRA_LABEL,
+} from "@/lib/giras";
 
 export interface GiraFechaFila {
   fecha: string;
@@ -41,6 +47,14 @@ interface Props {
   onFechasChange: (fechas: GiraFechaFila[]) => void;
   notas: string;
   onNotasChange: (v: string) => void;
+  // Clasificación comercial + servicios de interés (descubrimiento de Live)
+  complejidad: string;
+  onComplejidadChange: (v: string) => void;
+  alcanceGeografico: string;
+  onAlcanceGeograficoChange: (v: string) => void;
+  servicios: { clave: string; nombre: string; categoria: string | null }[];
+  rolMainstage: string[];
+  onToggleServicio: (clave: string) => void;
 }
 
 /**
@@ -56,6 +70,9 @@ export function GiraDescubrimientoForm({
   fecha, onFechaChange, ciudad, onCiudadChange, venueId, onVenueIdChange,
   fechas, onFechasChange,
   notas, onNotasChange,
+  complejidad, onComplejidadChange,
+  alcanceGeografico, onAlcanceGeograficoChange,
+  servicios, rolMainstage, onToggleServicio,
 }: Props) {
   const venueOptions = venues.map(v => ({ value: v.id, label: v.ciudad ? `${v.nombre} — ${v.ciudad}` : v.nombre }));
 
@@ -208,6 +225,67 @@ export function GiraDescubrimientoForm({
           </div>
         </>
       )}
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="ms-label block mb-1.5">Complejidad (opcional)</label>
+          <select
+            value={complejidad}
+            onChange={(e) => onComplejidadChange(e.target.value)}
+            className="ms-input w-full"
+          >
+            <option value="">Por definir</option>
+            {COMPLEJIDAD_GIRA.map((c) => (
+              <option key={c} value={c}>
+                {COMPLEJIDAD_GIRA_LABEL[c]}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="ms-label block mb-1.5">Alcance geográfico (opcional)</label>
+          <select
+            value={alcanceGeografico}
+            onChange={(e) => onAlcanceGeograficoChange(e.target.value)}
+            className="ms-input w-full"
+          >
+            <option value="">Por definir</option>
+            {ALCANCE_GEOGRAFICO_GIRA.map((a) => (
+              <option key={a} value={a}>
+                {ALCANCE_GEOGRAFICO_GIRA_LABEL[a]}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label className="ms-label block mb-1.5">Servicios que busca el cliente (opcional)</label>
+        {servicios.length === 0 ? (
+          <p className="ms-micro">Todavía no hay catálogo de servicios de Live.</p>
+        ) : (
+          <div className="flex flex-wrap gap-1.5">
+            {servicios.map((s) => {
+              const activo = rolMainstage.includes(s.clave);
+              return (
+                <button
+                  key={s.clave}
+                  type="button"
+                  onClick={() => onToggleServicio(s.clave)}
+                  className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
+                    activo
+                      ? "bg-[#B3985B]/15 text-[#B3985B] border-[#B3985B]/40"
+                      : "bg-white/5 text-[#9ca3af] border-white/10 hover:text-white"
+                  }`}
+                >
+                  {s.nombre}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        <p className="ms-micro mt-1.5">Se puede ajustar después desde la ficha. No bloquea la creación.</p>
+      </div>
 
       <div>
         <label className="ms-label block mb-1.5">Información relevante (opcional)</label>

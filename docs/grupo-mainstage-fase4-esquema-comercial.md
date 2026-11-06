@@ -532,7 +532,29 @@ Esto es solo una sugerencia de secuencia, no un compromiso de fechas:
 2. **Live primero** (como pediste), en paralelo evaluando Creative:
    - ~~Reestructurar catálogo `ServicioPM` de Live~~ ✅ hecho 2026-11-06 (ver
      sección 2.3).
-   - Descubrimiento propio de Live (formulario nuevo, ligado a `Trato`).
+   - ~~Descubrimiento propio de Live~~ ✅ hecho 2026-11-06 — **no se construyó
+     ligado a `Trato`**: al revisar el modelo real se confirmó que `Gira` (no
+     `Trato`) es la entidad raíz de Live en producción (`Gira.tratoId` existe
+     pero casi nunca se usa; las giras nacen directo). El descubrimiento se
+     extendió sobre lo que ya existía en vez de inventar un flujo paralelo:
+     - `GiraDescubrimientoForm` (el formulario que ya alimentaba el alta
+       rápida de "Nueva gira"/"Nuevo show" desde `/giras/lista`) ahora también
+       captura: **complejidad** (show chico/mediano/festival/gira corta/gira
+       larga) y **alcance geográfico** (local/nacional/internacional) — dos
+       campos nuevos y nullable en `Gira` (`complejidad`,
+       `alcanceGeografico`, DDL aditivo vía
+       `scripts/_apply-complejidad-alcance-gira.ts`) — y un checklist de
+       **servicios que busca el cliente** (PM/TM/SM + add-ons del catálogo
+       `ServicioPM` filtrado a `unidad=LIVE`), que alimenta el mismo
+       `Gira.rolMainstage` que ya usaba la ficha de la gira. Nada bloquea la
+       creación: todo es opcional y ajustable después.
+     - La ficha de la gira (`GiraResumenClient`, modo edición) gana los
+       mismos dos selects de complejidad/alcance junto al bloque existente
+       "Lo que asume Mainstage"; el modo lectura los muestra como dato.
+     - De paso se corrigió un bug menor encontrado al tocar este código: la
+       consulta de servicios para el selector de `rolMainstage` en
+       `/giras/[id]` no filtraba `unidad`, así que en teoría podía ofrecer
+       servicios de Creative dentro de una gira — ahora filtra `unidad: "LIVE"`.
    - UI de propuesta de Live con el nuevo bloque PM + add-ons + checkboxes
      de responsabilidad de gastos.
 3. **Creative:**
