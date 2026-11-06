@@ -983,6 +983,8 @@ export const TIPO_LINEA_PROPUESTA_LABEL: Record<string, string> = {
 
 export const CATEGORIAS_SERVICIO = [
   "PRODUCTION_MANAGEMENT",
+  "TOUR_MANAGEMENT",
+  "STAGE_MANAGEMENT",
   "AUDIO",
   "ILUMINACION",
   "VIDEO",
@@ -994,6 +996,8 @@ export const CATEGORIAS_SERVICIO = [
 
 export const CATEGORIA_SERVICIO_LABEL: Record<string, string> = {
   PRODUCTION_MANAGEMENT: "Production management",
+  TOUR_MANAGEMENT: "Tour management",
+  STAGE_MANAGEMENT: "Stage management",
   AUDIO: "Audio",
   ILUMINACION: "Iluminación",
   VIDEO: "Video",

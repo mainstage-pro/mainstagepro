@@ -30,27 +30,34 @@ interface ServicioSemilla {
 const SERVICIOS: ServicioSemilla[] = [
   {
     clave: "PM_GIRA",
-    nombre: "Production management de gira",
+    nombre: "Production Management",
     categoria: "PRODUCTION_MANAGEMENT",
     descripcion:
-      "Dirección de producción de la gira completa: un solo responsable para que el artista no tenga que hablar con diez personas distintas. Se centraliza el advance de todas las plazas, el itinerario, el crew, la logística y la supervisión en sitio.",
+      "Dirección de producción de la gira completa: un solo responsable para que el artista no tenga que hablar con diez personas distintas. Centraliza el advance de cada plaza, la coordinación de proveedores locales, la logística de crew y artistas, la documentación técnica y la preproducción cuando aplica — todo bajo un solo servicio con un solo alcance, no líneas sueltas que se cotizan por separado.",
     entregables: [
       "Itinerario maestro de la gira con fechas, plazas y horarios",
       "Day sheet por fecha, distribuido al artista y al crew",
+      "Rider ajustado y contra-rider conciliado por plaza",
       "Directorio de contactos de casa, promotores y proveedores",
+      "Rider maestro, input/output list y stage plot de la gira",
       "Reporte de cierre por plaza con pendientes y aprendizajes",
     ].join("\n"),
     incluye: [
       "Interlocución única con promotores, venues y proveedores",
-      "Advance técnico y logístico de cada plaza",
-      "Armado y coordinación del crew asignado a la gira",
+      "Advance técnico por plaza: rider contra ficha técnica, negociación de faltantes",
+      "Coordinación de proveedores locales cuando la casa no cubre todo el rider",
+      "Logística de crew y artistas: vuelos, hotel, rooming list y traslados",
+      "Documentación técnica de la gira: rider maestro, input/output list, stage plot",
+      "Preproducción, ensayo o residencia cuando el proyecto lo requiere",
+      "Horas de advance en oficina dentro de lo razonable (el excedente se cobra aparte)",
       "Supervisión en sitio del montaje, soundcheck y show",
       "Control de avance y alertas de riesgo antes de cada fecha",
     ].join("\n"),
     noIncluye: [
       "Renta de equipo técnico (se cotiza aparte o se contrata con la casa)",
-      "Vuelos, hotel, traslados y per diem del crew de Mainstage",
-      "Honorarios del crew de giras que no sea de Mainstage",
+      "Tour Management (control de presupuesto y representación) y Stage Management del día del show — se cotizan como servicios independientes, combinables con este",
+      "Vuelos, hotel, traslados y per diem del crew de Mainstage (a costo o por cuenta del cliente)",
+      "Honorarios del crew de gira que no sea de Mainstage",
       "Permisos, derechos de autor y seguros del evento",
     ].join("\n"),
     unidadDefault: "GIRA",
@@ -59,6 +66,44 @@ const SERVICIOS: ServicioSemilla[] = [
     costoSugerido: null,
     orden: 10,
   },
+  {
+    clave: "TOUR_MANAGEMENT_GIRA",
+    nombre: "Tour Management",
+    categoria: "TOUR_MANAGEMENT",
+    descripcion:
+      "Responsable del negocio de la gira, no solo de la técnica: controla el presupuesto completo (ingresos, egresos y settlement por fecha), representa al management/artista frente a promotores y decide el ruteo y la logística de alto nivel. Servicio independiente — se vende solo o junto con Production Management y/o Stage Management.",
+    entregables: [
+      "Budget maestro de la gira con ingresos, egresos y margen por fecha",
+      "Settlement firmado por fecha con el promotor",
+      "Bitácora de caja de gira y distribución de per diem",
+      "Reporte de cierre de gira con el resultado financiero real",
+    ].join("\n"),
+    incluye: [
+      "Armado y control del presupuesto completo de la gira",
+      "Representación directa frente a promotores en cada plaza",
+      "Settlement con el promotor al cierre de cada show",
+      "Distribución de per diem y manejo de la caja de gira",
+      "Supervisión general del crew, no solo del frente técnico",
+      "Decisiones de ruteo y logística de alto nivel durante la gira",
+    ].join("\n"),
+    noIncluye: [
+      "Advance técnico, documentación de rider y coordinación de proveedores (es Production Management)",
+      "Stage management del día del show (es un servicio aparte, combinable)",
+      "El capital de la gira: el tour manager controla la caja, no la pone",
+      "Contabilidad fiscal y facturación del artista",
+    ].join("\n"),
+    unidadDefault: "GIRA",
+    tipoLinea: "HONORARIO",
+    precioSugerido: null,
+    costoSugerido: null,
+    orden: 11,
+  },
+  // Nota: "Stage Management" como servicio de gira NO nace aquí. Mauricio ya lo
+  // había dado de alta directo desde /giras/servicios como `RUN_OF_SHOW` (clave
+  // de código `RUN_OF_SHOW`, 2026-10-29) antes de que esta semilla lo supiera.
+  // Lo correcto fue recategorizar esa fila existente (ver
+  // scripts/_apply-recategorizar-run-of-show-stage-management.ts), no crear un
+  // segundo servicio que compitiera con el mismo alcance.
   {
     clave: "AUDIO_BANDA",
     nombre: "Responsable de audio del artista",
@@ -623,6 +668,7 @@ const UNIDAD_CREATIVE = new Set(["RENDER_PRODUCCION", "DISENO_CONCEPTO", "PLANO_
 // si Mauricio lo cambia desde la pantalla, una resiembra no se lo pisa.
 const ICONOS: Record<string, string> = {
   PM_GIRA: "Route",
+  TOUR_MANAGEMENT_GIRA: "Megaphone",
   AUDIO_BANDA: "Speaker",
   ADVANCE_PLAZA: "ClipboardCheck",
   ILUMINACION_SHOW: "Lightbulb",
