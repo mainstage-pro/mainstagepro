@@ -91,10 +91,12 @@ export async function guardarCierreDiario(generadoPor: string) {
     posicion: c.posicion,
     cobradoHoy: c.cobradoHoy,
     pagadoHoy: c.pagadoHoy,
-    cxcVencidaTotal: c.cxcVencida.total,
-    cxcVencidaN: c.cxcVencida.n,
-    cxpVencidaTotal: c.cxpVencida.total,
-    cxpVencidaN: c.cxpVencida.n,
+    // Nombre histórico de columna ("vencida"); el origen ya es el bucket de
+    // "servicio ejecutado y aún sin cobrar/pagar" (ver finanzas.ts).
+    cxcVencidaTotal: c.cxcPasado.total,
+    cxcVencidaN: c.cxcPasado.n,
+    cxpVencidaTotal: c.cxpPasado.total,
+    cxpVencidaN: c.cxpPasado.n,
     pasivosExternosTotal: c.pasivosExternosTotal,
     gastosRecurrentesPendientesTotal: c.gastosRecurrentesPendientesTotal,
     nominaPendienteTotal: c.nominaPendienteTotal,
@@ -114,4 +116,18 @@ export async function historialCierres(limite = 20) {
     orderBy: { fecha: "desc" },
     take: limite,
   });
+}
+
+/** Cierres guardados dentro de un rango de fechas — alimenta la vista de calendario. */
+export async function cierresEnRango(desde: Date, hasta: Date) {
+  return prisma.cierreFinancieroDiario.findMany({
+    where: { fecha: { gte: desde, lte: hasta } },
+    select: { fecha: true, diaSemana: true, posicion: true },
+    orderBy: { fecha: "asc" },
+  });
+}
+
+/** Un cierre guardado por fecha exacta — alimenta la página de detalle del calendario. */
+export async function cierrePorFecha(fecha: Date) {
+  return prisma.cierreFinancieroDiario.findUnique({ where: { fecha } });
 }

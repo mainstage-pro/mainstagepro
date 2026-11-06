@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getTipoMovimientoMap, naturalezaDe } from "@/lib/tipos-movimiento";
+import { diasEvento } from "@/lib/fechas-evento";
 import { diasEntre, fmtDiaAnio, fmtMes, inicioDeMes, num, sumarDias, ventana } from "./base";
 
 /**
@@ -55,6 +56,13 @@ type Documento = {
   saldo: number;
   /** Positivo = vencida hace N días; negativo = vence en N días. */
   dias: number;
+  /**
+   * El servicio (evento del proyecto) ya ocurrió. Esto NO es lo mismo que
+   * "vencida": una cuenta reprogramada (fechaCompromiso movida al futuro)
+   * sigue `ejecutado=true` si el evento ya pasó — ahí está el riesgo real,
+   * no en la fecha de compromiso que alguien movió.
+   */
+  ejecutado: boolean;
 };
 
 export async function resumenFinanzas() {
@@ -74,7 +82,7 @@ export async function resumenFinanzas() {
         fechaCompromiso: true,
         estado: true,
         cliente: { select: { nombre: true, empresa: true } },
-        proyecto: { select: { numeroProyecto: true, fechaEvento: true } },
+        proyecto: { select: { numeroProyecto: true, fechaEvento: true, fechasEvento: true } },
       },
       orderBy: { fechaCompromiso: "asc" },
     }),
@@ -91,7 +99,7 @@ export async function resumenFinanzas() {
         tipoAcreedor: true,
         proveedor: { select: { nombre: true } },
         tecnico: { select: { nombre: true } },
-        proyecto: { select: { numeroProyecto: true, fechaEvento: true } },
+        proyecto: { select: { numeroProyecto: true, fechaEvento: true, fechasEvento: true } },
       },
       orderBy: { fechaCompromiso: "asc" },
     }),
@@ -105,9 +113,21 @@ export async function resumenFinanzas() {
   const dia = (f: Date) => new Date(f.toISOString().slice(0, 10));
   const anio = hoy.getUTCFullYear();
   const fmtF = (f: Date | null | undefined) => (f ? fmtDiaAnio(dia(f), anio) : null);
+  const hoyStr = hoy.toISOString().slice(0, 10);
+
+  // El servicio ya ocurrió si el último día del evento ya pasó. Si el documento
+  // no está ligado a un proyecto (sueltos, recurrentes, nómina), no hay "evento"
+  // que ejecutar: se usa la fecha de compromiso como siempre.
+  const yaEjecutado = (proyecto: { fechaEvento: Date; fechasEvento: string | null } | null | undefined, dias: number) => {
+    if (!proyecto) return dias > 0;
+    const diasDelEvento = diasEvento(proyecto.fechaEvento, proyecto.fechasEvento);
+    const ultimoDia = diasDelEvento[diasDelEvento.length - 1];
+    return !!ultimoDia && ultimoDia <= hoyStr;
+  };
 
   const cxc = cxcAbiertas.map(c => {
     const saldo = num(c.monto) - num(c.montoCobrado) - num(c.montoCompensado);
+    const dias = diasEntre(dia(c.fechaCompromiso), hoy); // positivo = vencida
     return {
       id: c.id,
       concepto: c.concepto,
@@ -116,12 +136,14 @@ export async function resumenFinanzas() {
       proyectoFecha: fmtF(c.proyecto?.fechaEvento),
       fecha: fmtF(c.fechaCompromiso)!,
       saldo,
-      dias: diasEntre(dia(c.fechaCompromiso), hoy), // positivo = vencida
+      dias,
+      ejecutado: yaEjecutado(c.proyecto, dias),
     };
   }).filter(c => c.saldo > 0.5);
 
   const cxp = cxpAbiertas.map(c => {
     const saldo = num(c.monto) - num(c.montoPagado) - num(c.montoCompensado);
+    const dias = diasEntre(dia(c.fechaCompromiso), hoy);
     return {
       id: c.id,
       concepto: c.concepto,
@@ -130,14 +152,18 @@ export async function resumenFinanzas() {
       proyectoFecha: fmtF(c.proyecto?.fechaEvento),
       fecha: fmtF(c.fechaCompromiso)!,
       saldo,
-      dias: diasEntre(dia(c.fechaCompromiso), hoy),
+      dias,
+      ejecutado: yaEjecutado(c.proyecto, dias),
     };
   }).filter(c => c.saldo > 0.5);
 
-  const cxcVencida = cxc.filter(c => c.dias > 0);
-  const cxpVencida = cxp.filter(c => c.dias > 0);
-  const cxpPorVencer = cxp.filter(c => c.dias <= 0 && -c.dias <= 15);
-  const cxcPorCobrar15 = cxc.filter(c => c.dias <= 0 && -c.dias <= 15);
+  // "Pasado" = servicio ya ejecutado y aún sin cobrar/pagar del todo — el riesgo
+  // real, incluya o no una reprogramación de fecha. "Próximo" = el servicio
+  // todavía no se presta (anticipos de eventos futuros): no es urgente.
+  const cxcPasado = cxc.filter(c => c.ejecutado);
+  const cxpPasado = cxp.filter(c => c.ejecutado);
+  const cxcProximo = cxc.filter(c => !c.ejecutado);
+  const cxpProximo = cxp.filter(c => !c.ejecutado);
 
   const suma = (xs: { saldo: number }[]) => xs.reduce((s, x) => s + x.saldo, 0);
 
@@ -189,10 +215,12 @@ export async function resumenFinanzas() {
     porPagar,
     // Lo que realmente queda si todo se cobra y todo se paga.
     posicion: totalBancos + porCobrar - porPagar,
-    cxcVencida: { total: suma(cxcVencida), n: cxcVencida.length, grupos: agrupar(cxcVencida) },
-    cxpVencida: { total: suma(cxpVencida), n: cxpVencida.length, grupos: agrupar(cxpVencida) },
-    cxpPorVencer: { total: suma(cxpPorVencer), n: cxpPorVencer.length, grupos: agrupar(cxpPorVencer) },
-    cxcPorCobrar15: { total: suma(cxcPorCobrar15), n: cxcPorCobrar15.length, grupos: agrupar(cxcPorCobrar15) },
+    // Servicio ya ejecutado, aún pendiente de cobrar/pagar — lo urgente.
+    cxcPasado: { total: suma(cxcPasado), n: cxcPasado.length, grupos: agrupar(cxcPasado) },
+    cxpPasado: { total: suma(cxpPasado), n: cxpPasado.length, grupos: agrupar(cxpPasado) },
+    // Servicio aún no ejecutado (anticipos de eventos futuros) — no es urgente.
+    cxcProximo: { total: suma(cxcProximo), n: cxcProximo.length, grupos: agrupar(cxcProximo) },
+    cxpProximo: { total: suma(cxpProximo), n: cxpProximo.length, grupos: agrupar(cxpProximo) },
     meses,
   };
 }

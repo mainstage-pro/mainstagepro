@@ -100,7 +100,7 @@ function PanelAgrupado({
   vacio,
   cuentas,
   hoy,
-  vencido = false,
+  pasado = false,
 }: {
   titulo: string;
   bucket: Bucket;
@@ -108,7 +108,8 @@ function PanelAgrupado({
   vacio: string;
   cuentas: { value: string; label: string }[];
   hoy: string;
-  vencido?: boolean;
+  /** Servicio ya ejecutado y aún sin cobrar/pagar — lo urgente, sin importar si se reprogramó. */
+  pasado?: boolean;
 }) {
   return (
     <Panel
@@ -121,7 +122,7 @@ function PanelAgrupado({
         <Vacio texto={vacio} />
       ) : (
         bucket.grupos.map(g => {
-          const tonoGrupo: Tono = vencido ? (g.diasMax >= 30 ? "rojo" : "ambar") : destino === "cobrar" ? "azul" : "neutro";
+          const tonoGrupo: Tono = pasado ? (g.diasMax >= 30 ? "rojo" : "ambar") : destino === "cobrar" ? "azul" : "neutro";
           return (
             <Grupo
               key={g.quien}
@@ -130,23 +131,29 @@ function PanelAgrupado({
               valor={fmtMoneda(g.total)}
               tono={tonoGrupo}
             >
-              {g.docs.map(d => (
-                <FilaOperable
-                  key={d.id}
-                  href={`/finanzas/cobros-pagos?tab=${destino}&id=${d.id}`}
-                  tono={tonoGrupo}
-                  titulo={d.concepto}
-                  meta={
-                    [d.proyecto, d.proyectoFecha && `evento ${d.proyectoFecha}`]
-                      .filter(Boolean)
-                      .join(" · ") || undefined
-                  }
-                  badge={vencido ? <Badge tono={d.dias >= 30 ? "rojo" : "ambar"}>{d.dias}d</Badge> : undefined}
-                  valor={fmtMoneda(d.saldo)}
-                  valorNota={vencido ? d.fecha : `${d.fecha} · ${relativo(-d.dias)}`}
-                  acciones={accionesDoc(d.id, d.saldo, destino, cuentas, hoy)}
-                />
-              ))}
+              {g.docs.map(d => {
+                // "Vencida" (dias>0) = pasó la fecha de compromiso. "Reprogramada" (dias<=0
+                // pero en el bucket "pasado") = el evento ya ocurrió aunque alguien movió el
+                // compromiso al futuro — igual de urgente, por eso entra en el mismo bucket.
+                const etiqueta = pasado ? (d.dias > 0 ? `${d.dias}d` : "reprog.") : undefined;
+                return (
+                  <FilaOperable
+                    key={d.id}
+                    href={`/finanzas/cobros-pagos?tab=${destino}&id=${d.id}`}
+                    tono={tonoGrupo}
+                    titulo={d.concepto}
+                    meta={
+                      [d.proyecto, d.proyectoFecha && `evento ${d.proyectoFecha}`]
+                        .filter(Boolean)
+                        .join(" · ") || undefined
+                    }
+                    badge={etiqueta ? <Badge tono={d.dias >= 30 ? "rojo" : "ambar"}>{etiqueta}</Badge> : undefined}
+                    valor={fmtMoneda(d.saldo)}
+                    valorNota={pasado ? d.fecha : `${d.fecha} · ${relativo(-d.dias)}`}
+                    acciones={accionesDoc(d.id, d.saldo, destino, cuentas, hoy)}
+                  />
+                );
+              })}
             </Grupo>
           );
         })
@@ -226,39 +233,39 @@ export default async function ResumenFinanzasPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
         <PanelAgrupado
-          titulo="Cobranza vencida"
-          bucket={r.cxcVencida}
+          titulo="Por cobrar — servicio ya ejecutado"
+          bucket={r.cxcPasado}
           destino="cobrar"
-          vacio="Nada vencido por cobrar"
+          vacio="Nada pendiente de cobro con servicio ya prestado"
           cuentas={opcionesCuenta}
           hoy={hoy}
-          vencido
+          pasado
         />
 
         <PanelAgrupado
-          titulo="Pagos vencidos"
-          bucket={r.cxpVencida}
+          titulo="Por pagar — servicio ya ejecutado"
+          bucket={r.cxpPasado}
           destino="pagar"
-          vacio="Nada vencido por pagar"
+          vacio="Nada pendiente de pago con servicio ya recibido"
           cuentas={opcionesCuenta}
           hoy={hoy}
-          vencido
+          pasado
         />
 
         <PanelAgrupado
-          titulo="Por cobrar — próximos 15 días"
-          bucket={r.cxcPorCobrar15}
+          titulo="Por cobrar — servicio aún no ejecutado"
+          bucket={r.cxcProximo}
           destino="cobrar"
-          vacio="Sin cobros programados"
+          vacio="Sin anticipos pendientes"
           cuentas={opcionesCuenta}
           hoy={hoy}
         />
 
         <PanelAgrupado
-          titulo="Por pagar — próximos 15 días"
-          bucket={r.cxpPorVencer}
+          titulo="Por pagar — servicio aún no ejecutado"
+          bucket={r.cxpProximo}
           destino="pagar"
-          vacio="Sin pagos programados"
+          vacio="Sin pagos anticipados pendientes"
           cuentas={opcionesCuenta}
           hoy={hoy}
         />
