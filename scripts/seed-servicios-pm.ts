@@ -398,6 +398,81 @@ const SERVICIOS: ServicioSemilla[] = [
     costoSugerido: null,
     orden: 120,
   },
+  {
+    clave: "PATCH_DESARROLLO",
+    nombre: "Desarrollo y entrega de patch",
+    categoria: "DOCUMENTACION",
+    descripcion:
+      "Patch list completo de la gira: qué va en cada canal, cómo se etiqueta y cómo se entrega a la casa de cada plaza. Nace del render/documentación técnica de Mainstage Creative cuando existe, pero se vende y se entrega como parte de Live porque es quien lo usa en piso. Obligatorio en toda gira con render Nivel A o superior (docs/grupo-mainstage-fase4-esquema-comercial.md §3).",
+    entregables: [
+      "Patch list de audio e iluminación por canal, con etiquetas",
+      "Versión impresa/PDF lista para repartir en cada plaza",
+    ].join("\n"),
+    incluye: [
+      "Definición de numeración y etiquetado de canales",
+      "Conciliación del patch contra el rider y el plot de iluminación",
+      "Entrega a la casa de cada plaza junto con el advance",
+    ].join("\n"),
+    noIncluye: [
+      "El render o plot de iluminación en sí (es de Mainstage Creative)",
+      "Programación de consola o show file",
+    ].join("\n"),
+    unidadDefault: "GIRA",
+    tipoLinea: "HONORARIO",
+    precioSugerido: 1000,
+    costoSugerido: null,
+    orden: 130,
+  },
+  {
+    clave: "PREDICTIVO_AUDIO",
+    nombre: "Predictivo de audio y dispersión",
+    categoria: "AUDIO",
+    descripcion:
+      "Simulación de cobertura y dispersión del sistema de audio sobre el venue real, para anticipar puntos ciegos o saturación antes de cargar el sistema. Add-on por plaza.",
+    entregables: [
+      "Mapa de cobertura y dispersión del sistema propuesto",
+      "Recomendación de posiciones de array/torres según el predictivo",
+    ].join("\n"),
+    incluye: [
+      "Modelado del venue para el predictivo",
+      "Simulación de cobertura con el sistema propuesto",
+      "Ajuste de posiciones según el resultado",
+    ].join("\n"),
+    noIncluye: [
+      "La renta del sistema de audio en sí",
+      "Medición en sitio post-instalación (es afinación, no predictivo)",
+    ].join("\n"),
+    unidadDefault: "PLAZA",
+    tipoLinea: "HONORARIO",
+    precioSugerido: 1500,
+    costoSugerido: null,
+    orden: 140,
+  },
+  {
+    clave: "DESARROLLO_SMPTE",
+    nombre: "Desarrollo de SMPTE / show control",
+    categoria: "DOCUMENTACION",
+    descripcion:
+      "Timecode y show control de la gira: sincroniza luces, visuales y/o pistas para que el show corra igual plaza tras plaza sin depender de que alguien dé el cue a mano.",
+    entregables: [
+      "Timeline de SMPTE por canción o segmento del show",
+      "Documentación de la cadena de sincronía (fuente, distribución, receptores)",
+    ].join("\n"),
+    incluye: [
+      "Definición de la cadena de timecode punta a punta",
+      "Programación de los cues sincronizados",
+      "Prueba de sincronía antes de la primera fecha",
+    ].join("\n"),
+    noIncluye: [
+      "El equipo de generación/distribución de timecode (se cotiza aparte)",
+      "Operación en vivo del show (es de quien opera cada disciplina)",
+    ].join("\n"),
+    unidadDefault: "GIRA",
+    tipoLinea: "HONORARIO",
+    precioSugerido: 2000,
+    costoSugerido: null,
+    orden: 150,
+  },
 
   // ── Lado evento: Dirección y operaciones ───────────────────────────────────
   // Los de arriba cobran una gira; estos cobran un evento de un solo sitio. Son
@@ -653,15 +728,308 @@ const SERVICIOS: ServicioSemilla[] = [
     costoSugerido: null,
     orden: 280,
   },
+
+  // ── Render de producción Creative — reestructurado 2026-11-06 (ver
+  // docs/grupo-mainstage-fase4-esquema-comercial.md §3) ──────────────────────
+  // RENDER_PRODUCCION y DISENO_CONCEPTO se desactivan por
+  // scripts/_apply-restructurar-catalogo-creative-render.ts: el diseño
+  // conceptual y la documentación técnica ya no se venden sueltos, van
+  // empaquetados dentro de estos 3 niveles por cantidad de fixtures (tabulador
+  // de Carlos Luna, escalado a precio de venta). Split con Carlos Luna 70/30
+  // (Mainstage/Carlos) vive en costoSugerido = 30% de precioSugerido.
+  {
+    clave: "RENDER_NIVEL_A",
+    nombre: "Render de producción — Nivel A",
+    categoria: "DISENO",
+    descripcion:
+      "Render completo del montaje para rigs de 1 a 30 fixtures: modelado en Capture, documentación técnica (plot, patch, fixture schedule) y diseño conceptual integrados en un solo entregable. Empieza al día siguiente de aprobada la cotización, 1 día hábil de trabajo, entrega al segundo día.",
+    entregables: [
+      "Render en alta resolución de la vista acordada, con leyenda de fixtures",
+      "Documentación técnica: plot, patch list y fixture schedule",
+      "Layout con medidas para el equipo de montaje",
+    ].join("\n"),
+    incluye: [
+      "Modelado del escenario y el rig sobre el sitio real en Capture",
+      "Documentación técnica completa (plot, patch, fixture schedule)",
+      "Diseño conceptual integrado, sin cobrarse aparte",
+      "3 cambios incluidos sobre la vista entregada",
+      "1 día hábil de trabajo, entrega al segundo día",
+    ].join("\n"),
+    noIncluye: [
+      "Modelado de venue o escenografía especial (se cotiza aparte)",
+      "Elementos adicionales de otras categorías: audio, LED, stage, rigging, estructuras",
+      "Cambios a partir del 4° (se cotizan aparte)",
+    ].join("\n"),
+    unidadDefault: "PIEZA",
+    tipoLinea: "HONORARIO",
+    precioSugerido: 2000,
+    costoSugerido: 600,
+    orden: 300,
+  },
+  {
+    clave: "RENDER_NIVEL_AA",
+    nombre: "Render de producción — Nivel AA",
+    categoria: "DISENO",
+    descripcion:
+      "Render completo del montaje para rigs de 31 a 60 fixtures: modelado en Capture, documentación técnica (plot, patch, fixture schedule) y diseño conceptual integrados en un solo entregable. Empieza al día siguiente de aprobada la cotización, 2 días hábiles de trabajo, entrega al tercer día.",
+    entregables: [
+      "Render en alta resolución de la vista acordada, con leyenda de fixtures",
+      "Documentación técnica: plot, patch list y fixture schedule",
+      "Layout con medidas para el equipo de montaje",
+    ].join("\n"),
+    incluye: [
+      "Modelado del escenario y el rig sobre el sitio real en Capture",
+      "Documentación técnica completa (plot, patch, fixture schedule)",
+      "Diseño conceptual integrado, sin cobrarse aparte",
+      "3 cambios incluidos sobre la vista entregada",
+      "2 días hábiles de trabajo, entrega al tercer día",
+    ].join("\n"),
+    noIncluye: [
+      "Modelado de venue o escenografía especial (se cotiza aparte)",
+      "Elementos adicionales de otras categorías: audio, LED, stage, rigging, estructuras",
+      "Cambios a partir del 4° (se cotizan aparte)",
+    ].join("\n"),
+    unidadDefault: "PIEZA",
+    tipoLinea: "HONORARIO",
+    precioSugerido: 4000,
+    costoSugerido: 1200,
+    orden: 301,
+  },
+  {
+    clave: "RENDER_NIVEL_AAA",
+    nombre: "Render de producción — Nivel AAA",
+    categoria: "DISENO",
+    descripcion:
+      "Render completo del montaje para rigs de 61 fixtures o más: modelado en Capture, documentación técnica (plot, patch, fixture schedule) y diseño conceptual integrados en un solo entregable. Empieza al día siguiente de aprobada la cotización, 3 días hábiles de trabajo, entrega al cuarto día.",
+    entregables: [
+      "Render en alta resolución de la vista acordada, con leyenda de fixtures",
+      "Documentación técnica: plot, patch list y fixture schedule",
+      "Layout con medidas para el equipo de montaje",
+    ].join("\n"),
+    incluye: [
+      "Modelado del escenario y el rig sobre el sitio real en Capture",
+      "Documentación técnica completa (plot, patch, fixture schedule)",
+      "Diseño conceptual integrado, sin cobrarse aparte",
+      "3 cambios incluidos sobre la vista entregada",
+      "3 días hábiles de trabajo, entrega al cuarto día",
+    ].join("\n"),
+    noIncluye: [
+      "Modelado de venue o escenografía especial (se cotiza aparte)",
+      "Elementos adicionales de otras categorías: audio, LED, stage, rigging, estructuras",
+      "Cambios a partir del 4° (se cotizan aparte)",
+    ].join("\n"),
+    unidadDefault: "PIEZA",
+    tipoLinea: "HONORARIO",
+    precioSugerido: 6000,
+    costoSugerido: 1800,
+    orden: 302,
+  },
+  {
+    clave: "RENDER_AUDIO",
+    nombre: "Render de sistema de audio",
+    categoria: "DISENO",
+    descripcion:
+      "Modelado del sistema de audio (arrays/torres) dentro del render de producción. Se suma a cualquiera de los 3 niveles.",
+    entregables: ["Vista del render con el sistema de audio modelado"].join("\n"),
+    incluye: ["Modelado de arrays, torres y posiciones de audio sobre el render ya aprobado"].join("\n"),
+    noIncluye: ["El render base (se cotiza por nivel)", "La renta del sistema de audio en sí"].join("\n"),
+    unidadDefault: "PIEZA",
+    tipoLinea: "HONORARIO",
+    precioSugerido: 600,
+    costoSugerido: 180,
+    orden: 303,
+  },
+  {
+    clave: "RENDER_PANTALLA_LED",
+    nombre: "Render de pantalla LED",
+    categoria: "DISENO",
+    descripcion: "Modelado de pantalla(s) LED dentro del render de producción. Se suma a cualquiera de los 3 niveles.",
+    entregables: ["Vista del render con la(s) pantalla(s) modelada(s)"].join("\n"),
+    incluye: ["Modelado de pantalla LED con medidas y posición sobre el render ya aprobado"].join("\n"),
+    noIncluye: ["El render base (se cotiza por nivel)", "La renta de la pantalla en sí"].join("\n"),
+    unidadDefault: "PIEZA",
+    tipoLinea: "HONORARIO",
+    precioSugerido: 500,
+    costoSugerido: 150,
+    orden: 304,
+  },
+  {
+    clave: "RENDER_STAGE",
+    nombre: "Render de stage / entarimado",
+    categoria: "DISENO",
+    descripcion: "Modelado del stage o entarimado dentro del render de producción. Se suma a cualquiera de los 3 niveles.",
+    entregables: ["Vista del render con el stage/entarimado modelado"].join("\n"),
+    incluye: ["Modelado del stage o entarimado con medidas sobre el render ya aprobado"].join("\n"),
+    noIncluye: ["El render base (se cotiza por nivel)", "La renta del stage/entarimado en sí"].join("\n"),
+    unidadDefault: "PIEZA",
+    tipoLinea: "HONORARIO",
+    precioSugerido: 400,
+    costoSugerido: 120,
+    orden: 305,
+  },
+  {
+    clave: "RENDER_RIGGING",
+    nombre: "Render de rigging y puntos de colgado",
+    categoria: "DISENO",
+    descripcion:
+      "Modelado de rigging y puntos de colgado dentro del render de producción. Se suma a cualquiera de los 3 niveles.",
+    entregables: ["Vista del render con rigging y puntos de colgado modelados"].join("\n"),
+    incluye: ["Modelado de motores, trusses colgados y puntos de carga sobre el render ya aprobado"].join("\n"),
+    noIncluye: ["El render base (se cotiza por nivel)", "El cálculo estructural firmado por perito"].join("\n"),
+    unidadDefault: "PIEZA",
+    tipoLinea: "HONORARIO",
+    precioSugerido: 500,
+    costoSugerido: 150,
+    orden: 306,
+  },
+  {
+    clave: "RENDER_ESTRUCTURAS",
+    nombre: "Render de estructuras adicionales",
+    categoria: "DISENO",
+    descripcion:
+      "Modelado de estructuras adicionales (trusses especiales, torres, etc.) dentro del render de producción. Se suma a cualquiera de los 3 niveles.",
+    entregables: ["Vista del render con las estructuras adicionales modeladas"].join("\n"),
+    incluye: ["Modelado de trusses especiales, torres u otras estructuras sobre el render ya aprobado"].join("\n"),
+    noIncluye: ["El render base (se cotiza por nivel)", "La renta de la estructura en sí"].join("\n"),
+    unidadDefault: "PIEZA",
+    tipoLinea: "HONORARIO",
+    precioSugerido: 600,
+    costoSugerido: 180,
+    orden: 307,
+  },
+  {
+    clave: "MODELADO_VENUE_SENCILLO",
+    nombre: "Modelado de venue o escenografía especial — sencillo",
+    categoria: "DISENO",
+    descripcion:
+      "Cuando el venue o la escenografía no existen todavía en la base de Capture y hay que modelarlos desde cero. Se cobra una sola vez por venue: si se reutiliza en otro render, no se vuelve a cobrar.",
+    entregables: ["Modelo del venue/escenografía incorporado a la base de Capture"].join("\n"),
+    incluye: ["Levantamiento y modelado del venue o escenografía a partir de planos o fotos"].join("\n"),
+    noIncluye: ["El render en sí (se cotiza por nivel)", "Visita física al venue"].join("\n"),
+    unidadDefault: "PIEZA",
+    tipoLinea: "HONORARIO",
+    precioSugerido: 500,
+    costoSugerido: 150,
+    orden: 308,
+  },
+  {
+    clave: "MODELADO_VENUE_COMPLEJO",
+    nombre: "Modelado de venue o escenografía especial — complejo",
+    categoria: "DISENO",
+    descripcion:
+      "Igual que el modelado sencillo, para venues o escenografías con geometría compleja (varios niveles, formas no estándar). Se cobra una sola vez por venue.",
+    entregables: ["Modelo del venue/escenografía incorporado a la base de Capture"].join("\n"),
+    incluye: ["Levantamiento y modelado detallado de venue o escenografía con geometría compleja"].join("\n"),
+    noIncluye: ["El render en sí (se cotiza por nivel)", "Visita física al venue"].join("\n"),
+    unidadDefault: "PIEZA",
+    tipoLinea: "HONORARIO",
+    precioSugerido: 1000,
+    costoSugerido: 300,
+    orden: 309,
+  },
+  {
+    clave: "URGENCIA_RENDER",
+    nombre: "Urgencia — entrega al día siguiente",
+    categoria: "DISENO",
+    descripcion:
+      "Entrega acelerada, disponible solo en Nivel A y sujeta a disponibilidad del equipo: se trabaja y entrega al día siguiente de la solicitud en vez del SLA estándar.",
+    entregables: ["Render entregado al día siguiente de la solicitud"].join("\n"),
+    incluye: ["Prioridad de trabajo sobre la cola normal, sujeta a disponibilidad"].join("\n"),
+    noIncluye: ["Disponibilidad garantizada (se confirma antes de cotizar)", "Aplica solo a Nivel A"].join("\n"),
+    unidadDefault: "PIEZA",
+    tipoLinea: "HONORARIO",
+    precioSugerido: 600,
+    costoSugerido: 180,
+    orden: 310,
+  },
+  {
+    clave: "CAMBIO_ADICIONAL_RENDER_A",
+    nombre: "Cambio adicional de render — Nivel A (4° en adelante)",
+    categoria: "DISENO",
+    descripcion: "Cambio sobre un render Nivel A a partir del 4° (los primeros 3 van incluidos).",
+    entregables: ["Vista actualizada con el cambio solicitado"].join("\n"),
+    incluye: ["Un ajuste puntual sobre el render ya entregado"].join("\n"),
+    noIncluye: ["Cambios 1 a 3 (van incluidos en el precio base)"].join("\n"),
+    unidadDefault: "PIEZA",
+    tipoLinea: "HONORARIO",
+    precioSugerido: 150,
+    costoSugerido: 45,
+    orden: 311,
+  },
+  {
+    clave: "CAMBIO_ADICIONAL_RENDER_AA",
+    nombre: "Cambio adicional de render — Nivel AA (4° en adelante)",
+    categoria: "DISENO",
+    descripcion: "Cambio sobre un render Nivel AA a partir del 4° (los primeros 3 van incluidos).",
+    entregables: ["Vista actualizada con el cambio solicitado"].join("\n"),
+    incluye: ["Un ajuste puntual sobre el render ya entregado"].join("\n"),
+    noIncluye: ["Cambios 1 a 3 (van incluidos en el precio base)"].join("\n"),
+    unidadDefault: "PIEZA",
+    tipoLinea: "HONORARIO",
+    precioSugerido: 250,
+    costoSugerido: 75,
+    orden: 312,
+  },
+  {
+    clave: "CAMBIO_ADICIONAL_RENDER_AAA",
+    nombre: "Cambio adicional de render — Nivel AAA (4° en adelante)",
+    categoria: "DISENO",
+    descripcion: "Cambio sobre un render Nivel AAA a partir del 4° (los primeros 3 van incluidos).",
+    entregables: ["Vista actualizada con el cambio solicitado"].join("\n"),
+    incluye: ["Un ajuste puntual sobre el render ya entregado"].join("\n"),
+    noIncluye: ["Cambios 1 a 3 (van incluidos en el precio base)"].join("\n"),
+    unidadDefault: "PIEZA",
+    tipoLinea: "HONORARIO",
+    precioSugerido: 350,
+    costoSugerido: 105,
+    orden: 313,
+  },
+  {
+    clave: "DEMO_OPERACION_ILUMINACION",
+    nombre: "Demo de operación de iluminación",
+    categoria: "DISENO",
+    descripcion:
+      "Extra premium: demostración de la operación real del diseño de iluminación propuesto (programación y corrida en vivo o grabada de un segmento representativo), para que el cliente vea el diseño en movimiento antes del show real.",
+    entregables: ["Video o sesión en vivo de la operación del diseño propuesto"].join("\n"),
+    incluye: ["Programación de un segmento representativo del show", "Corrida de la demo (en vivo o grabada)"].join("\n"),
+    noIncluye: ["El render o la documentación técnica (se cotizan por nivel)", "Operación del show real"].join("\n"),
+    unidadDefault: "PIEZA",
+    tipoLinea: "HONORARIO",
+    precioSugerido: 1500,
+    costoSugerido: 450,
+    orden: 314,
+  },
 ];
 
 // Un servicio nace con el nivel que dicta su orden (gira abajo de 200, evento
 // arriba); estos son las excepciones reales: se venden en los dos lados.
 const NIVEL_AMBOS = new Set(["COORD_PROVEEDORES"]);
 
-// Todo el catálogo nace de Mainstage Live (PM/advance/gira); estos tres son
-// entregables de diseño que vende Mainstage Creative, no Live.
-const UNIDAD_CREATIVE = new Set(["RENDER_PRODUCCION", "DISENO_CONCEPTO", "PLANO_MONTAJE"]);
+// Todo el catálogo nace de Mainstage Live (PM/advance/gira); estos son
+// entregables de diseño que vende Mainstage Creative, no Live. RENDER_PRODUCCION
+// y DISENO_CONCEPTO siguen aquí por historial pero están desactivados (ver
+// scripts/_apply-restructurar-catalogo-creative-render.ts) — los 3 niveles y
+// sus add-ons/extras los reemplazan (docs/grupo-mainstage-fase4-esquema-comercial.md §3).
+const UNIDAD_CREATIVE = new Set([
+  "RENDER_PRODUCCION",
+  "DISENO_CONCEPTO",
+  "PLANO_MONTAJE",
+  "RENDER_NIVEL_A",
+  "RENDER_NIVEL_AA",
+  "RENDER_NIVEL_AAA",
+  "RENDER_AUDIO",
+  "RENDER_PANTALLA_LED",
+  "RENDER_STAGE",
+  "RENDER_RIGGING",
+  "RENDER_ESTRUCTURAS",
+  "MODELADO_VENUE_SENCILLO",
+  "MODELADO_VENUE_COMPLEJO",
+  "URGENCIA_RENDER",
+  "CAMBIO_ADICIONAL_RENDER_A",
+  "CAMBIO_ADICIONAL_RENDER_AA",
+  "CAMBIO_ADICIONAL_RENDER_AAA",
+  "DEMO_OPERACION_ILUMINACION",
+]);
 
 // El icono hace de miniatura en el catálogo (un servicio no tiene foto). Vive en un
 // mapa aparte y no en cada semilla para no repetir 19 veces un dato de presentación;
@@ -689,6 +1057,24 @@ const ICONOS: Record<string, string> = {
   PLANO_MONTAJE: "Ruler",
   LOGISTICA_EVENTO: "Truck",
   CONTROL_PRESUPUESTO: "DollarSign",
+  PATCH_DESARROLLO: "Cable",
+  PREDICTIVO_AUDIO: "Radar",
+  DESARROLLO_SMPTE: "Timer",
+  RENDER_NIVEL_A: "Box",
+  RENDER_NIVEL_AA: "Boxes",
+  RENDER_NIVEL_AAA: "Layers",
+  RENDER_AUDIO: "Speaker",
+  RENDER_PANTALLA_LED: "MonitorPlay",
+  RENDER_STAGE: "Square",
+  RENDER_RIGGING: "Link",
+  RENDER_ESTRUCTURAS: "Building2",
+  MODELADO_VENUE_SENCILLO: "Map",
+  MODELADO_VENUE_COMPLEJO: "MapPinned",
+  URGENCIA_RENDER: "Zap",
+  CAMBIO_ADICIONAL_RENDER_A: "RefreshCw",
+  CAMBIO_ADICIONAL_RENDER_AA: "RefreshCw",
+  CAMBIO_ADICIONAL_RENDER_AAA: "RefreshCw",
+  DEMO_OPERACION_ILUMINACION: "PlayCircle",
 };
 
 // Driver HTTP y no Prisma: el puerto 5432 de Neon no se alcanza desde local.

@@ -261,25 +261,47 @@ Se aplicó vía `scripts/seed-servicios-pm.ts` +
    tu punto de "qué corre por cuenta de quién" no es realmente un eje de
    PRECIO sino un eje de **ALCANCE/CONDICIONES** — ver 2.6.
 
-### 2.5 Preguntas abiertas para cerrar el esquema de Live
+### 2.5 Esquema de precio — ✅ DECIDIDO (2026-11-06)
 
-1. ~~¿Confirmas la reestructura del catálogo?~~ **✅ Respondida:** PM, TM y
-   SM son tres servicios independientes y combinables, cada uno con su
-   propio checklist. Pendiente solo confirmar/ajustar el contenido de los
-   checklists borrador de TM y SM (sección 2.3).
-2. Para la complejidad (show/festival/gira corta/gira larga): ¿quieres que
-   sea una **tarifa base distinta** por tipo (ej. $X show chico, $Y festival)
-   o un **multiplicador** sobre una tarifa única de PM (ej. festival = PM ×
-   1.5)?
-3. Para geografía: ¿el ajuste es solo en viáticos/per diem (el PM base no
-   cambia), o también cambia el honorario de PM por ser internacional (más
-   complejidad de aduana/visas/idioma)?
-4. Retainer: ¿aplicaría por artista (ej. "llevamos la gira completa de este
-   artista todo el año por $X/mes") o por proyecto específico de duración
-   acotada? ¿Ya tienes algún caso real en mente para calibrar el número?
-5. ¿El PM "por show" de hoy ya tiene un número de referencia (lo que cobras
-   actualmente) que debamos usar como ancla para calibrar el resto de la
-   escalera?
+1. ~~¿Confirmas la reestructura del catálogo?~~ **✅** PM, TM y SM son tres
+   servicios independientes y combinables, cada uno con su propio checklist.
+2. **Complejidad: multiplicador** sobre una tarifa única de PM, no tarifas
+   base separadas por tipo (criterio Claude, delegado por Mauricio: un solo
+   número ancla es más fácil de sostener/ajustar que mantener 5 tarifas
+   independientes, y el mismo multiplicador se puede aplicar a TM/SM si algún
+   día se cobran con la misma lógica). Tabla de referencia (no automatizada
+   en código — guía para que el vendedor fije `precioUnitario` al armar la
+   propuesta):
+
+   | Complejidad (`Gira.complejidad`) | Multiplicador | Precio PM por show |
+   |---|---|---|
+   | Show chico | ×0.85 | $3,400 |
+   | Show mediano (ancla) | ×1.00 | $4,000 |
+   | Festival | ×1.40 | $5,600 |
+   | Gira corta (2-5 fechas) | ×0.95/show | $3,800/show |
+   | Gira larga (6+ fechas) | ×0.80/show | $3,200/show |
+
+3. **Geografía: solo ajusta viáticos/per diem** (bloque de responsabilidad de
+   gastos, §2.6) — el honorario de PM/TM/SM NO cambia por ser internacional.
+   `Gira.alcanceGeografico` se queda como dato informativo/logístico (anticipa
+   aduanas/visas), no como multiplicador de precio.
+4. **Retainer: por artista**, no por proyecto (Mauricio: "por artista y por
+   proyecto, no lo sé aún, tú defínelo" → se eligió por artista porque un
+   retainer por proyecto ya es básicamente cotizar shows sueltos de esa gira;
+   el valor real del retainer es la relación continua con el artista).
+   Fórmula de partida:
+   - Retainer mensual = $4,000 × shows incluidos/mes × 0.80 (20% descuento de
+     volumen). Ejemplo con 4 shows/mes: **$12,800/mes**.
+   - Shows que excedan el paquete mensual: tarifa marginal normal (ancla ×
+     complejidad, sin descuento adicional).
+   - Mínimo de permanencia: 3 meses.
+   - TM/SM se pueden incluir en el mismo retainer como líneas propias, mismo
+     criterio de descuento.
+   - **Pendiente real:** calibrar con el primer caso real que aparezca — la
+     fórmula es punto de partida, no número grabado en piedra.
+5. **Ancla confirmada por Mauricio: $4,000 MXN por show.**
+6. Responsabilidad de gastos: ya resuelto en §2.6 (4 líneas, implementado en
+   producción).
 
 ### 2.6 Condiciones de la cotización: quién paga qué
 
@@ -402,21 +424,122 @@ tus números reales de Carlos Luna**, yo no tengo el precio base:
   fórmula rígida, igual que Pro ya permite ajustar líneas de cotización a
   mano)
 
-### 3.4 Preguntas abiertas para cerrar el esquema de Creative
+### 3.4 Esquema de precio — ✅ DECIDIDO (2026-11-06)
 
-1. ¿Cuál es el número real que te dio Carlos Luna (precio por fixture o por
-   tramo)? Lo necesito para llenar la Capa 1 con datos reales, no
-   placeholders.
-2. ¿Cuántas rondas de revisión quieres incluir por default antes de cobrar
-   extra?
-3. ¿La documentación técnica/plots es siempre opcional (el cliente puede
-   pedir solo el render estético), o para ciertos tipos de proyecto
-   (ejecución real en vivo) siempre debe ir incluida?
-4. ¿Creative también vende diseño conceptual sin render (solo brief +
-   dirección creativa, sin pasar por Capture), o todo proyecto de Creative
-   termina en al menos un render?
-5. ¿Manejamos tiers de turnaround (estándar/rush) desde ya, o lo dejamos para
-   después y cerramos primero la tarifa base?
+Mauricio mandó el tabulador real de Carlos Luna (PDF "Tabulador de Renders"):
+precio por fixture count (Bajo 1-30 = $300, Medio 31-60 = $600, Alto 61+ =
+$1,000), modelado de venue sencillo/complejo (+$200/+$400), urgencia <48h
+(+$250), 3er cambio en adelante ($100 c/u), 2 cambios incluidos. Carlos
+aprendió con Mauricio, la licencia de Capture y el equipo son de Mauricio —
+ese tabulador es precio a costo, no precio de venta. Decisión: **subir el
+precio a lo que vale el entregable y pagarle a Carlos por % de lo cobrado**
+(pidió algo cercano a 70% Mainstage / 30% Carlos, rango ~$2,000 A / $4,000 AA
+/ $6,000 AAA, sin complicar la cotización. Resuelto con criterio Claude:
+
+**1. Carlos Luna — tabulador final + split 70/30:** escalado limpio 1×/2×/3×
+sobre $2,000 (igual proporción que el tabulador original: Medio = 2× Bajo,
+Alto ≈ 3× Bajo). El split vive en el campo `costoSugerido` que YA existe en
+`ServicioPM` (sin tocar schema): precio al cliente = `precioSugerido`, lo que
+percibe Carlos = `costoSugerido`, margen de Mainstage = la diferencia.
+
+| Nivel | Fixtures | Precio cliente | Mainstage (70%) | Carlos Luna (30%) |
+|---|---|---|---|---|
+| A | 1-30 | $2,000 | $1,400 | $600 |
+| AA | 31-60 | $4,000 | $2,800 | $1,200 |
+| AAA | 61+ | $6,000 | $4,200 | $1,800 |
+
+**2. Revisiones: 3 incluidas por default** (Mauricio: "sí deben ir por
+default, incluimos 3 cambios y el 4° tiene costo adicional, esto lo
+definiremos por nivel/tamaño del evento"). El costo del 4° en adelante escala
+con el nivel: A = $150, AA = $250, AAA = $350 (más fixtures = más tiempo por
+cambio), split 70/30 igual que el resto.
+
+**3. Documentación técnica: siempre obligatoria** en el entregable final
+(Mauricio, tal cual) — ya viene empaquetada en el precio base de cada nivel,
+no se cobra ni se excluye aparte.
+
+**4. Diseño conceptual: va de la mano de la documentación técnica** (Mauricio,
+tal cual) — no se vende como producto aparte. Esto implica retirar del
+catálogo el modelo anterior de 2 líneas sueltas ("Render de producción" +
+"Diseño y concepto del evento") y reemplazarlo por los 3 niveles de arriba,
+cada uno con render + documentación técnica + diseño conceptual integrados.
+
+**5. Niveles de urgencia = SLA estándar por nivel** (Mauricio fue explícito
+con el calendario; se interpretó que nivel de urgencia y nivel de complejidad
+A/AA/AAA son el mismo eje, no dos sistemas paralelos):
+
+| Nivel | Inicio de trabajo | Días hábiles de trabajo | Entrega |
+|---|---|---|---|
+| A | día siguiente a aprobación | 1 día | día 2 |
+| AA | día siguiente a aprobación | 2 días | día 3 |
+| AAA | día siguiente a aprobación | 3 días | día 4 |
+
+Rush opcional, **solo disponible en Nivel A**, sujeto a disponibilidad:
+entrega al día siguiente de la solicitud, fee fijo +$600 (split 70/30: Carlos
+$180 / Mainstage $420).
+
+**6. Variables adicionales que pidió sumar Mauricio:**
+
+- **Elementos adicionales por categoría** (más allá del conteo de fixtures de
+  iluminación) — flat fee, independiente del nivel, se suman a cualquiera de
+  los 3 niveles:
+
+  | Elemento | Precio cliente | Mainstage (70%) | Carlos (30%) |
+  |---|---|---|---|
+  | Sistema de audio (arrays/torres) | $600 | $420 | $180 |
+  | Pantalla LED | $500 | $350 | $150 |
+  | Stage / entarimado | $400 | $280 | $120 |
+  | Rigging y puntos de colgado | $500 | $350 | $150 |
+  | Estructuras adicionales (trusses, torres) | $600 | $420 | $180 |
+
+- **Extras** (trabajo base adicional que no está en la base de Capture, no
+  son "más fixtures" sino más modelado desde cero):
+
+  | Extra | Precio cliente | Mainstage | Carlos |
+  |---|---|---|---|
+  | Modelado de venue/escenografía — sencillo (una vez por venue, reutilizable) | $500 | $350 | $150 |
+  | Modelado de venue/escenografía — complejo | $1,000 | $700 | $300 |
+  | Urgencia (solo Nivel A) | $600 | $420 | $180 |
+  | Cambio adicional (4° en adelante) | ver tabla del punto 2 | — | — |
+
+- **Extra premium:**
+
+  | Extra premium | Precio cliente | Mainstage | Carlos |
+  |---|---|---|---|
+  | Demo de operación de iluminación | $1,500 | $1,050 | $450 |
+
+- **Cruce con Mainstage Live** (Mauricio: "esto lo agregaría estrictamente a
+  algún servicio de Mainstage Live" — nacen del trabajo de Creative pero se
+  venden/entregan como Live porque es quien los usa en piso):
+
+  | Servicio (catálogo LIVE) | Precio sugerido | Regla |
+  |---|---|---|
+  | Desarrollo y entrega de patch | $1,000/gira | Obligatorio en toda propuesta con render Nivel A o superior |
+  | Predictivo de audio y dispersión | $1,500/plaza | Add-on opcional |
+  | Desarrollo de SMPTE / show control | $2,000/gira | Add-on opcional |
+
+### ✅ IMPLEMENTADO EN PRODUCCIÓN (2026-11-06)
+
+Aplicado vía `scripts/seed-servicios-pm.ts` (18 servicios nuevos) +
+`scripts/_apply-restructurar-catalogo-creative-render.ts` (desactiva
+`RENDER_PRODUCCION` y `DISENO_CONCEPTO`, sin borrar — preserva historial de
+`PropuestaServicioLinea`). Sin cambios de schema: el split 70/30 vive en el
+campo `costoSugerido` que ya existía.
+
+- Catálogo `unidad=CREATIVE` activo resultante: `RENDER_NIVEL_A/AA/AAA`
+  (categoría DISENO), `RENDER_AUDIO`, `RENDER_PANTALLA_LED`, `RENDER_STAGE`,
+  `RENDER_RIGGING`, `RENDER_ESTRUCTURAS` (elementos adicionales),
+  `MODELADO_VENUE_SENCILLO/COMPLEJO`, `URGENCIA_RENDER`,
+  `CAMBIO_ADICIONAL_RENDER_A/AA/AAA`, `DEMO_OPERACION_ILUMINACION` (extra
+  premium), más `PLANO_MONTAJE` que sigue vivo sin tocarse (layout de sitio,
+  entregable distinto a la documentación de iluminación).
+- Catálogo `unidad=LIVE` ganó `PATCH_DESARROLLO`, `PREDICTIVO_AUDIO`,
+  `DESARROLLO_SMPTE`.
+- `npm run build` verde. No hizo falta tocar `src/lib/giras.ts`: todas las
+  categorías usadas (DISENO, AUDIO, VIDEO, EQUIPO, DOCUMENTACION) ya
+  existían, así que el selector de propuesta (`ModalCatalogo` en
+  `PropuestaEditor.tsx`) agrupa los add-ons nuevos automáticamente sin
+  cambios de código.
 
 ---
 
@@ -505,22 +628,25 @@ Ya existe el modelo y el PDF. Lo que falta:
   checklist/tareas de ejecución (como el checklist de Pro), o basta con los
   4 estados actuales?
 
-### 4.6 Preguntas abiertas de proceso
+### 4.6 Proceso — ✅ DECIDIDO (criterio Claude, 2026-11-06; Mauricio: "no lo sé, tú defínelo")
 
-1. ¿Confirmas que para Live NO hace falta una entidad "Proyecto" nueva — que
-   la ejecución vive en `Gira`/`GiraShow` como ya está? ¿O sí quieres un
-   tablero de ejecución más estructurado tipo el de Pro (checklist,
-   bitácora) encima de lo que ya hay?
-2. Para Creative: ¿qué necesitas ver/trackear en la ejecución de un render
-   aprobado — por ejemplo, un tablero con estado por revisión (ej. "render
-   v1 enviado", "cliente pidió cambios", "v2 en proceso", "aprobado final")?
-   ¿O el estado actual (BRIEF/EN_PROCESO/REVISION/ENTREGADO) ya es
-   suficiente y solo falta que avance solo al aprobar la propuesta?
-3. Mencionas que la herramienta principal de Creative es Capture, pero que
-   debería haber desarrollo conceptual/creativo antes (brief). ¿Ese brief
-   debe ser un paso formal y visible en la plataforma (como el Descubrimiento
-   de Pro) o basta con el campo `briefing` libre que ya existe en
-   `ProyectoCreativo`?
+1. **Live: NO se construye un "Proyecto" nuevo ni un tablero adicional.**
+   `Gira`/`GiraShow` ya tiene suficiente profundidad operativa (crew,
+   logística, documentos, advance) — agregar un tablero encima sería
+   duplicar lo que ya existe sin un vacío real que lo justifique.
+2. **Creative: se mantienen los 4 estados actuales** (`BRIEF → EN_PROCESO →
+   REVISION → ENTREGADO`), sin construir un tablero nuevo por ronda de
+   revisión (sería sobre-ingeniería para "cliente pide cambios → se ajusta →
+   se reenvía"). Dos ajustes mínimos, pendientes de construir:
+   - Avanzar `BRIEF → EN_PROCESO` automáticamente al aprobarse la propuesta
+     (cierra el hueco real de §4.5).
+   - Contador simple "revisiones usadas / incluidas" visible en el proyecto,
+     para que el vendedor sepa cuándo ya toca cobrar el cambio extra (tabla
+     de §3.4 punto 2) — no un Kanban, solo un contador.
+3. **El brief conceptual NO necesita un paso formal nuevo.** El campo
+   `briefing` libre que ya existe en `ProyectoCreativo` es suficiente, porque
+   el diseño conceptual ya no es un producto que se capture aparte — va
+   empaquetado dentro del render (§3.4 punto 4).
 
 ---
 
@@ -555,47 +681,58 @@ Esto es solo una sugerencia de secuencia, no un compromiso de fechas:
        consulta de servicios para el selector de `rolMainstage` en
        `/giras/[id]` no filtraba `unidad`, así que en teoría podía ofrecer
        servicios de Creative dentro de una gira — ahora filtra `unidad: "LIVE"`.
-   - UI de propuesta de Live con el nuevo bloque PM + add-ons + checkboxes
-     de responsabilidad de gastos.
+   - ~~UI de propuesta de Live con el nuevo bloque PM + add-ons + checkboxes
+     de responsabilidad de gastos~~ ✅ hecho 2026-11-06.
 3. **Creative:**
-   - Definir la tarifa real (capa 1 con tu número de Carlos Luna).
-   - Campos de propuesta para fixture count / documentación técnica /
-     revisiones.
-   - Descubrimiento propio de Creative.
-   - Decidir si se necesita más estructura de ejecución o basta con los 4
-     estados actuales.
+   - ~~Definir la tarifa real (capa 1 con tu número de Carlos Luna)~~ ✅ hecho
+     2026-11-06 (§3.4) — catálogo reestructurado y sembrado en producción.
+   - **Pendiente:** campos de propuesta para fixture count / nivel A-AA-AAA /
+     revisiones usadas — hoy el vendedor elige a mano el renglón
+     `RENDER_NIVEL_A/AA/AAA` del catálogo (igual que cualquier otro servicio),
+     no hay un calculador automático por conteo de fixtures. Es el siguiente
+     paso de UI si se quiere automatizar.
+   - **Pendiente:** descubrimiento propio de Creative (no se construyó esta
+     sesión).
+   - ~~Decidir si se necesita más estructura de ejecución~~ ✅ hecho
+     2026-11-06 (§4.6) — se quedan los 4 estados, con avance automático al
+     aprobar + contador de revisiones como únicos pendientes de construir.
 4. Verificación cruzada: una oportunidad de prueba de cada unidad, de punta a
-   punta (descubrimiento → trato → propuesta → PDF → aprobación → ejecución).
+   punta (descubrimiento → trato → propuesta → PDF → aprobación → ejecución)
+   — sigue pendiente.
 
 ---
 
-## 6. Todas las preguntas abiertas, juntas (para responder de un jalón)
+## 6. Todas las preguntas, juntas — ✅ TODAS RESUELTAS (2026-11-06)
 
-**Live:**
-1. ✅ Respondida — PM/TM/SM independientes y combinables. Falta solo
-   confirmar/ajustar los checklists borrador de TM y SM (sección 2.3).
-2. Complejidad (show/festival/gira corta/larga): ¿tarifa base distinta o
-   multiplicador?
-3. Geografía: ¿solo ajusta viáticos o también el honorario base?
-4. Retainer: ¿por artista o por proyecto? ¿tienes un caso real para calibrar?
-5. ¿Cuál es tu tarifa actual por show, para usarla de ancla?
-6. Responsabilidad de gastos: ¿4 líneas (transporte/hospedaje/viáticos
-   comida/viáticos generales) o más granular?
+**Live** (detalle en §2.5):
+1. ✅ PM/TM/SM independientes y combinables.
+2. ✅ Multiplicador sobre tarifa única (no tarifas base separadas).
+3. ✅ Geografía solo ajusta viáticos; el honorario base no cambia.
+4. ✅ Retainer por artista; fórmula de partida $4,000 × shows/mes × 0.80,
+   pendiente calibrar con primer caso real.
+5. ✅ Ancla: $4,000 MXN por show.
+6. ✅ Responsabilidad de gastos: 4 líneas, ya implementado en producción.
 
-**Creative:**
-7. ¿Cuál es el número real de Carlos Luna (precio por fixture/tramo)?
-8. ¿Cuántas revisiones incluidas por default?
-9. ¿Documentación técnica siempre opcional o obligatoria según el proyecto?
-10. ¿Creative vende diseño conceptual sin render como producto aparte?
-11. ¿Entra ya el eje de turnaround (rush fee) o se deja para después?
+**Creative** (detalle en §3.4, implementado en producción):
+7. ✅ Tabulador real de Carlos Luna recibido y escalado a precio de venta con
+   split 70/30 ($2,000/$4,000/$6,000 por nivel A/AA/AAA).
+8. ✅ 3 revisiones incluidas por default; 4ª en adelante con costo escalado
+   por nivel.
+9. ✅ Documentación técnica siempre obligatoria, empaquetada en el precio.
+10. ✅ Diseño conceptual NO se vende aparte — va con la documentación técnica.
+11. ✅ Turnaround entra ya: SLA estándar por nivel (A/AA/AAA) + rush opcional
+    solo en Nivel A.
 
-**Proceso (ambas):**
-12. Live: ¿la ejecución se queda en Gira/GiraShow como está, o quieres un
-    tablero tipo Proyecto de Pro encima?
-13. Creative: ¿necesitas un tablero de estado por ronda de revisión, o basta
-    con los 4 estados actuales + que avancen solos al aprobar?
-14. Creative: ¿el brief conceptual debe ser un paso formal visible (como
-    Descubrimiento de Pro) o el campo libre actual es suficiente?
+**Proceso (ambas, detalle en §4.6):**
+12. ✅ Live se queda en Gira/GiraShow, sin tablero nuevo.
+13. ✅ Creative se queda con los 4 estados + avance automático al aprobar +
+    contador de revisiones (pendiente de construir, no bloqueante).
+14. ✅ El campo `briefing` libre actual es suficiente, sin paso formal nuevo.
+
+**Lo único que sigue pendiente de construir** (no de decidir): descubrimiento
+propio de Creative, el avance automático de estado + contador de revisiones
+de `ProyectoCreativo`, y la verificación cruzada de punta a punta de ambas
+unidades (ver §5, puntos 3-4).
 
 ---
 
