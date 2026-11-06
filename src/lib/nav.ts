@@ -331,7 +331,53 @@ export const NAV: NavSection[] = [
     items: [
       { key: "admin-usuarios", label: "Usuarios y accesos", href: "/admin/usuarios", icon: ShieldCheck },
       { key: "admin-actividad", label: "Log de actividad", href: "/admin/actividad", icon: ScrollText },
+      { key: "servicios-grupo", label: "Catálogo de servicios del Grupo", href: "/admin/servicios-grupo", adminOnly: true, icon: BadgeDollarSign },
       { key: "configuracion", label: "Configuración global", href: "/admin/configuracion", adminOnly: true, icon: Settings2 },
+    ],
+  },
+];
+
+// ── Árboles de navegación por unidad de negocio ──────────────────────────────
+// El Sidebar elige uno de estos tres según la cookie `unidad-activa`. `NAV`
+// arriba sigue siendo la fuente completa para permisos/accesos directos
+// (deriveModulePermissions, getModulosAcceso) — no la toques al agregar algo
+// aquí, solo agrega el módulo real también en `NAV` si debe otorgar permisos.
+export const NAV_PRO: NavSection[] = NAV.filter((s) => s.key !== "seccion-unidades");
+
+export const NAV_LIVE: NavSection[] = [
+  {
+    key: "live-comercial",
+    section: "Comercial",
+    items: [
+      { key: "giras-resumen", accessKey: "giras", label: "Resumen", href: "/giras/resumen", icon: LayoutDashboard },
+      { key: "giras-lista", accessKey: "giras", label: "Shows y giras", href: "/giras/lista", icon: Mic2 },
+      { key: "giras-artistas", accessKey: "giras", label: "Artistas", href: "/giras/artistas", icon: Users },
+      { key: "giras-propuestas", accessKey: "giras", label: "Propuestas", href: "/giras/propuestas", icon: Presentation },
+    ],
+  },
+  {
+    key: "live-servicios",
+    section: "Servicios",
+    items: [
+      { key: "giras-servicios", accessKey: "giras", label: "Servicios", href: "/giras/servicios", icon: BadgeDollarSign },
+    ],
+  },
+];
+
+export const NAV_CREATIVE: NavSection[] = [
+  {
+    key: "creative-comercial",
+    section: "Comercial",
+    items: [
+      { key: "creative-proyectos", accessKey: "creative", label: "Proyectos", href: "/creative/proyectos", icon: FolderKanban },
+      { key: "creative-propuestas", accessKey: "creative", label: "Propuestas", href: "/creative/propuestas", icon: Presentation },
+    ],
+  },
+  {
+    key: "creative-servicios",
+    section: "Servicios",
+    items: [
+      { key: "creative-servicios", accessKey: "creative", label: "Servicios", href: "/creative/servicios", icon: BadgeDollarSign },
     ],
   },
 ];

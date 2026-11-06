@@ -859,7 +859,6 @@ function CompactTratoRow({
             <option value="" className="bg-[#111] text-[#555]">—</option>
             <option value="PRODUCCION_TECNICA" className="bg-[#111] text-white">Producción</option>
             <option value="RENTA" className="bg-[#111] text-white">Renta</option>
-            <option value="DIRECCION_TECNICA" className="bg-[#111] text-white">Dirección</option>
           </select>
         </div>
 

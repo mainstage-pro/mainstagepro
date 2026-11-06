@@ -7,7 +7,7 @@ import { MESES, type CalendarioDef, type Entrada } from "@/lib/calendarios";
 const inputCls = "w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#B3985B] focus:outline-none";
 const labelCls = "block text-[11px] uppercase tracking-wider text-gray-500 mb-1";
 
-const SERVICIOS = ["RENTA", "PRODUCCION_TECNICA", "DIRECCION_TECNICA", "MULTISERVICIO"];
+const SERVICIOS = ["RENTA", "PRODUCCION_TECNICA", "MULTISERVICIO"];
 const SERVICIO_LABEL: Record<string, string> = {
   RENTA: "Renta", PRODUCCION_TECNICA: "Producción técnica",
   DIRECCION_TECNICA: "Production Management", MULTISERVICIO: "Multiservicio",

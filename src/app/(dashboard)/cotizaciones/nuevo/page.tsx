@@ -2165,7 +2165,7 @@ function CotizadorForm() {
             {/* Trato vinculado (opcional) */}
             <div>
               <label className="block text-xs text-gray-400 mb-1.5">
-                Trato vinculado <span className="text-gray-600">(opcional)</span>
+                Oportunidad vinculada <span className="text-gray-600">(opcional)</span>
               </label>
               <select
                 value={manualTratoId}
@@ -2173,7 +2173,7 @@ function CotizadorForm() {
                 disabled={!manualClienteId}
                 className="w-full bg-[#0d0d0d] border border-[#262626] rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#B3985B]/60 disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                <option value="">— Sin trato vinculado —</option>
+                <option value="">— Sin oportunidad vinculada —</option>
                 {manualTratos.map(t => (
                   <option key={t.id} value={t.id}>
                     {t.tipoEvento ?? 'Evento'}{t.nombreEvento ? ` — ${t.nombreEvento}` : ''}
@@ -2267,7 +2267,7 @@ function CotizadorForm() {
                 <Combobox
                   value={evento.tipoServicio}
                   onChange={v => setEvento(p => ({ ...p, tipoServicio: v }))}
-                  options={[{ value: "", label: "— Selecciona —" }, { value: "RENTA", label: "Renta de Equipo" }, { value: "PRODUCCION_TECNICA", label: "Producción Técnica" }, { value: "DIRECCION_TECNICA", label: "Production Management" }]}
+                  options={[{ value: "", label: "— Selecciona —" }, { value: "RENTA", label: "Renta de Equipo" }, { value: "PRODUCCION_TECNICA", label: "Producción Técnica" }]}
                   className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
                 />
               </div>

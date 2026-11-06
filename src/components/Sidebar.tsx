@@ -8,7 +8,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useMemo } from "react";
 import BusquedaGlobal, { type ModuloBuscable } from "@/components/BusquedaGlobal";
 import NotificacionesBell from "@/components/NotificacionesBell";
-import { NAV, OWNER_EMAIL, type NavItem } from "@/lib/nav";
+import { NAV_PRO, NAV_LIVE, NAV_CREATIVE, OWNER_EMAIL, type NavItem } from "@/lib/nav";
 import { AREA_DASHBOARD } from "@/lib/areas";
 import { useNavConfig } from "@/components/nav/NavConfigProvider";
 import { EditInput, useSingleDoubleClick } from "@/components/nav/editable";
@@ -40,7 +40,14 @@ interface User {
 interface SidebarProps {
   user: User;
   userModuleKeys: string[] | null; // null = admin (all access)
+  unidad?: "PRO" | "LIVE" | "CREATIVE";
 }
+
+const UNIDAD_MARCA: Record<"PRO" | "LIVE" | "CREATIVE", { nombre: string; sub: string }> = {
+  PRO: { nombre: "Mainstage Pro", sub: "Sistema Operativo" },
+  LIVE: { nombre: "Mainstage Live", sub: "Giras y shows" },
+  CREATIVE: { nombre: "Mainstage Creative", sub: "Diseño y producción creativa" },
+};
 
 function resolveLabel(key: string | undefined, defaultLabel: string, labels: Record<string, string>): string {
   if (key && labels[key]) return labels[key];
@@ -189,12 +196,14 @@ function AdminNavItem({
   );
 }
 
-export default function Sidebar({ user, userModuleKeys }: SidebarProps) {
+export default function Sidebar({ user, userModuleKeys, unidad = "PRO" }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const isAdmin = user.role === "ADMIN";
   const isOwner = user.email === OWNER_EMAIL;
   const storageKey = `sidebar-state-${user.id}`;
+  const navTree = unidad === "LIVE" ? NAV_LIVE : unidad === "CREATIVE" ? NAV_CREATIVE : NAV_PRO;
+  const marca = UNIDAD_MARCA[unidad];
   const [badges, setBadges] = useState<Record<string, number>>({});
 
   const { labels, order, saveLabel, saveOrder } = useNavConfig();
@@ -396,7 +405,7 @@ export default function Sidebar({ user, userModuleKeys }: SidebarProps) {
       out.push(e);
     };
 
-    for (const section of NAV) {
+    for (const section of navTree) {
       const sectionLabel = resolveLabel(section.key, section.section, labels);
       for (const item of section.items) {
         if (item.ownerOnly && !isOwner) continue;
@@ -423,12 +432,12 @@ export default function Sidebar({ user, userModuleKeys }: SidebarProps) {
       }
     }
     return out;
-  }, [labels, isAdmin, isOwner, userModuleKeys, dashboardHref]);
+  }, [labels, isAdmin, isOwner, userModuleKeys, dashboardHref, navTree]);
 
   const navContent = (
     <>
       <nav className="flex-1 px-3 py-2 overflow-y-auto">
-        {NAV.map((section) => {
+        {navTree.map((section) => {
           const sectionLabel = resolveLabel(section.key, section.section, labels);
           const visibleItems = section.items.filter(item => {
             if (item.ownerOnly && !isOwner) return false;
@@ -512,6 +521,12 @@ export default function Sidebar({ user, userModuleKeys }: SidebarProps) {
             </p>
           </div>
         </div>
+        <Link
+          href="/grupo"
+          className="block w-full text-left text-[#555] hover:text-[#B3985B] text-xs px-1 py-1 transition-colors"
+        >
+          Cambiar de unidad
+        </Link>
         <button
           onClick={handleLogout}
           className="w-full text-left text-[#555] hover:text-red-400 text-xs px-1 py-1 transition-colors"
@@ -530,8 +545,8 @@ export default function Sidebar({ user, userModuleKeys }: SidebarProps) {
           <Link href={homeHref} className="flex items-center gap-2 hover:opacity-80 transition-opacity mb-3">
             <Image src="/logo-icon.png" alt="Mainstage Pro" width={28} height={28} className="shrink-0" />
             <div>
-              <p className="text-white text-sm font-semibold leading-tight">Mainstage Pro</p>
-              <p className="text-[#555] text-[10px]">Sistema Operativo</p>
+              <p className="text-white text-sm font-semibold leading-tight">{marca.nombre}</p>
+              <p className="text-[#555] text-[10px]">{marca.sub}</p>
             </div>
           </Link>
           <div className="flex items-center gap-2 mt-3">
@@ -609,8 +624,8 @@ export default function Sidebar({ user, userModuleKeys }: SidebarProps) {
           <Link href={homeHref} onClick={() => setMobileOpen(false)} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <Image src="/logo-icon.png" alt="Mainstage Pro" width={28} height={28} className="shrink-0" />
             <div>
-              <p className="text-white text-sm font-semibold leading-tight">Mainstage Pro</p>
-              <p className="text-[#555] text-[10px]">Sistema Operativo</p>
+              <p className="text-white text-sm font-semibold leading-tight">{marca.nombre}</p>
+              <p className="text-[#555] text-[10px]">{marca.sub}</p>
             </div>
           </Link>
           <button

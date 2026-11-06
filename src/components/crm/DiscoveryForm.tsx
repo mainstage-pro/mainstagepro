@@ -2,7 +2,6 @@ import { useState, useRef, useCallback, useEffect, useMemo, type ReactNode } fro
 import { ClipboardList, Settings, Truck, Handshake, Music, Wine, Building2, Calendar, Package, Sliders, Image as ImageIcon, Folder, FileText, PenLine, BarChart3, Paperclip, Lightbulb, Phone, List, Zap, Sparkles, PartyPopper, Clock, type LucideIcon } from "lucide-react";
 import TimePicker from "@/components/ui/TimePicker";
 import VenuePicker from "@/components/ui/VenuePicker";
-import ArtistaPicker from "@/components/ui/ArtistaPicker";
 import { SelectorEquiposInventario, type SeleccionEquipos, type PaquetePublico, type ProductoPublico } from '@/components/SelectorEquiposInventario';
 import { Combobox } from "@/components/Combobox";
 import Link from "next/link";
@@ -13,8 +12,6 @@ import { parseFechasEvento } from "@/lib/fechas-evento";
 import { preguntasVisibles } from "@/lib/descubrimiento";
 import { parseCoberturas, coberturaMatch, SUBTIPOS_EVENTO } from "@/lib/constants";
 import { parseServicios, resumenServicios, CANAL_LABELS, type CanalOperativo } from "@/lib/servicios-trato";
-import { iconoServicio } from "@/lib/servicio-iconos";
-import { migrarServiciosInteres, nivelDesdeServiciosInteres, NIVELES_INVOLUCRAMIENTO } from "@/lib/servicios-direccion";
 
 const PASOS_DISCOVERY: Array<{ id: number; label: string; icon: LucideIcon }> = [
   { id: 1, label: "Info Básica", icon: ClipboardList },
@@ -756,30 +753,6 @@ export default function DiscoveryForm({
     return m;
   }, [catCategorias]);
 
-  // ── Catálogo de servicios de Dirección y operaciones ─────────────────────────
-  // El alcance que se palomea aquí es el que cobra la propuesta, así que sale del
-  // catálogo (/giras/servicios) y no de una lista en código: un servicio nuevo
-  // aparece solo. Proyección pública para que el formulario por token lo vea igual.
-  const [catServicios, setCatServicios] = useState<
-    { clave: string; nombre: string; descripcion: string | null; icono: string | null; nivelServicio: string | null }[]
-  >([]);
-  useEffect(() => {
-    let cancel = false;
-    fetch("/api/servicios-pm?publico=1")
-      .then(r => (r.ok ? r.json() : null))
-      .then(d => { if (!cancel && Array.isArray(d?.servicios)) setCatServicios(d.servicios); })
-      .catch(() => {});
-    return () => { cancel = true; };
-  }, []);
-
-  // Un trato de SHOW cobra los servicios de gira; uno de EVENTO los de un solo
-  // sitio. Los AMBOS siempre pasan. Sin canal declarado se muestra el lado evento,
-  // que es el caso de los tratos viejos.
-  const serviciosDisponibles = useMemo(() => {
-    const canal = trato?.canalOperativo === "SHOW" ? "GIRA" : "EVENTO";
-    return catServicios.filter(s => s.nivelServicio === canal || s.nivelServicio === "AMBOS");
-  }, [catServicios, trato?.canalOperativo]);
-
   // Cliente state
 
 
@@ -791,9 +764,6 @@ export default function DiscoveryForm({
     fechaEventoEstimada: "",
     lugarEstimado: "",
     venueId: null as string | null,
-    artistaId: null as string | null,
-    artistaNombre: "",
-    esGira: false,
     asistentesEstimados: "",
     diasServicio: "",
     // Días adicionales del evento (además del día 1 = fechaEventoEstimada). "YYYY-MM-DD"[]
@@ -802,9 +772,6 @@ export default function DiscoveryForm({
     tipoServicio: "",
     ideasReferencias: "",
     notas: "",
-    // Claves de `ServicioPM` — el mismo vocabulario del catálogo y de la propuesta.
-    serviciosInteres: [] as string[],
-    nivelInvolucramiento: "",
     equiposInteres: "",
     // Descubrimiento por nicho (catálogo comercial): nicho elegido, respuestas del
     // descubrimiento guiado (preguntaId→valor) y adicionales sugeridos encendidos.
@@ -955,14 +922,6 @@ export default function DiscoveryForm({
     if (isRenta && trato.ideasReferencias) {
       try { renta = JSON.parse(trato.ideasReferencias); } catch { renta = {}; }
     }
-    let servicios: string[] = [];
-    if (trato.serviciosInteres) {
-      try { const s = JSON.parse(trato.serviciosInteres); if (Array.isArray(s)) servicios = s; } catch { /* noop */ }
-    }
-    // Los tratos viejos traen códigos `DT_*`: se traducen a claves del catálogo al
-    // abrir y el nivel se saca del mismo array si la columna aún viene vacía.
-    const nivelHeredado = trato.nivelInvolucramiento || nivelDesdeServiciosInteres(servicios);
-    servicios = migrarServiciosInteres(servicios);
     // Respaldo local: si el servidor no trae equipos pero el navegador guardó un
     // borrador de este trato, lo recuperamos para que no se pierda la selección.
     let equiposRestore = trato.equiposInteres || "";
@@ -982,9 +941,6 @@ export default function DiscoveryForm({
       fechaEventoEstimada: trato.fechaEventoEstimada ? String(trato.fechaEventoEstimada).split("T")[0] : "",
       lugarEstimado: trato.lugarEstimado === "Por definir" ? "por-definir" : (trato.lugarEstimado || ""),
       venueId: trato.venueId ?? null,
-      artistaId: trato.artistaId ?? null,
-      artistaNombre: trato.artista?.nombre ?? "",
-      esGira: !!trato.esGira,
       asistentesEstimados: trato.asistentesEstimados != null ? String(trato.asistentesEstimados) : "",
       diasServicio: trato.diasServicio != null ? String(trato.diasServicio) : "",
       // Días adicionales = todas las fechas guardadas menos el día 1 (fechaEventoEstimada)
@@ -995,8 +951,6 @@ export default function DiscoveryForm({
       presupuestoEstimado: trato.presupuestoEstimado != null ? String(trato.presupuestoEstimado) : "",
       tipoServicio: trato.tipoServicio || "",
       notas: trato.notas || "",
-      serviciosInteres: servicios,
-      nivelInvolucramiento: nivelHeredado,
       equiposInteres: equiposRestore,
       nichoSlug: trato.nichoSlug || "",
       respuestasDescubrimiento: (() => {
@@ -1044,16 +998,6 @@ export default function DiscoveryForm({
     }
   }, [trato]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const toggleServicio = (idService: string) => {
-    setDiscForm(p => {
-      const isSel = p.serviciosInteres.includes(idService);
-      const n = isSel ? p.serviciosInteres.filter(s => s !== idService) : [...p.serviciosInteres, idService];
-      return { ...p, serviciosInteres: n };
-    });
-  };
-
-  
-
   // Construye el payload de guardado a partir del formulario. Incluye TODOS los
   // campos del descubrimiento para que el auto-guardado sea equivalente al
   // guardado manual (antes omitía subtipo y contacto decisor).
@@ -1088,8 +1032,6 @@ export default function DiscoveryForm({
       contactoDecisorNombre: form.contactoDecisorNombre || null,
       contactoDecisorCargo: form.contactoDecisorCargo || null,
       preferenciaContacto: form.preferenciaContacto || null,
-      serviciosInteres: JSON.stringify(form.serviciosInteres),
-      nivelInvolucramiento: form.nivelInvolucramiento || null,
       equiposInteres: form.equiposInteres || null,
       nichoSlug: form.nichoSlug || null,
       respuestasDescubrimiento: Object.keys(form.respuestasDescubrimiento).length ? JSON.stringify(form.respuestasDescubrimiento) : null,
@@ -1213,9 +1155,6 @@ export default function DiscoveryForm({
       fechasEvento,
       lugarEstimado: discForm.lugarEstimado === "por-definir" ? "Por definir" : (discForm.lugarEstimado || null),
       venueId: discForm.lugarEstimado === "por-definir" ? null : (discForm.venueId ?? null),
-      // El artista y la gira solo tienen sentido en evento musical: si cambian de tipo, se limpian.
-      artistaId: discForm.tipoEvento === "MUSICAL" ? (discForm.artistaId ?? null) : null,
-      esGira: discForm.tipoEvento === "MUSICAL" ? discForm.esGira : false,
       asistentesEstimados: discForm.asistentesEstimados ? parseInt(discForm.asistentesEstimados) : null,
       diasServicio: diasDerivados ?? (discForm.diasServicio ? parseInt(discForm.diasServicio) : null),
       presupuestoEstimado: discForm.presupuestoEstimado ? parseFloat(discForm.presupuestoEstimado) : null,
@@ -1233,8 +1172,6 @@ export default function DiscoveryForm({
       horaTerminoMontaje:   discForm.horaTerminoMontaje || null,
       contactoVenueNombre:  discForm.contactoVenueNombre || null,
       contactoVenueTelefono:discForm.contactoVenueTelefono || null,
-      serviciosInteres: JSON.stringify(discForm.serviciosInteres),
-      nivelInvolucramiento: discForm.nivelInvolucramiento || null,
       equiposInteres: discForm.equiposInteres || null,
       nichoSlug: discForm.nichoSlug || null,
       respuestasDescubrimiento: Object.keys(discForm.respuestasDescubrimiento).length ? JSON.stringify(discForm.respuestasDescubrimiento) : null,
@@ -1365,8 +1302,8 @@ export default function DiscoveryForm({
   const pasosVisibles = (!clientMode && rutaDirecta) ? PASOS_DISCOVERY.slice(0, 1) : PASOS_DISCOVERY;
 
   // ── Fase 3: el sub-stepper 2A/2B/2C solo aplica al vendedor en servicios que
-  // arman propuesta (no Dirección Técnica). En modo cliente el flujo es único. ──
-  const subStepper = !clientMode && !!discForm.tipoEvento && discForm.tipoServicio !== "DIRECCION_TECNICA";
+  // arman propuesta. En modo cliente el flujo es único. ──
+  const subStepper = !clientMode && !!discForm.tipoEvento;
   const modoLabel = modoCotizacion === "equipos" ? "Por equipo" : modoCotizacion === "productos" ? "Por producto" : modoCotizacion === "paquetes" ? "Por paquete" : "";
   const subLabel = subPaso === "2a" ? "Estrategia" : subPaso === "2b" ? "Selección" : "Adicionales";
   const avanzar = () => {
@@ -1486,7 +1423,7 @@ export default function DiscoveryForm({
                       { te: "EMPRESARIAL", icon: Building2, label: "Empresarial", desc: "Congresos, lanzamientos, expos." },
                       { te: "OTRO", icon: Calendar, label: "Otro", desc: "Algún otro tipo de evento." }
                     ] as const).map(t => (
-                      <button key={t.te} type="button" onClick={() => setDiscForm(p => ({ ...p, tipoEvento: t.te, subtipoEvento: "", serviciosInteres: [] }))}
+                      <button key={t.te} type="button" onClick={() => setDiscForm(p => ({ ...p, tipoEvento: t.te, subtipoEvento: "" }))}
                         className={`text-left p-3 rounded-xl border transition-all ${discForm.tipoEvento === t.te ? "border-[#B3985B] bg-[#B3985B]/10" : "border-[#222] bg-[#111] hover:border-[#444]"}`}>
                         <div className="mb-1"><t.icon strokeWidth={1.75} className={`w-5 h-5 ${discForm.tipoEvento === t.te ? "text-[#B3985B]" : "text-gray-500"}`} /></div>
                         <p className={`text-sm font-semibold mb-0.5 ${discForm.tipoEvento === t.te ? "text-[#B3985B]" : "text-white"}`}>{t.label}</p>
@@ -1548,29 +1485,6 @@ export default function DiscoveryForm({
                     )}
                   </div>
                 )}
-
-                {/* Artista y gira — solo evento musical */}
-                {!clientMode && discForm.tipoEvento === "MUSICAL" && (
-                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
-                    <ArtistaPicker
-                      label="Artista"
-                      artistaId={discForm.artistaId}
-                      nombre={discForm.artistaNombre}
-                      onChange={(artistaId, artista) => setDiscForm(p => ({
-                        ...p, artistaId, artistaNombre: artista?.nombre ?? "",
-                      }))}
-                    />
-                    <button type="button" onClick={() => setDiscForm(p => ({ ...p, esGira: !p.esGira }))}
-                      className={`text-left px-3 py-2 rounded-lg border transition-colors ${discForm.esGira ? "border-[#B3985B] bg-[#B3985B]/10" : "border-[#333] bg-[#111] hover:border-[#444]"}`}>
-                      <p className={`text-sm font-semibold ${discForm.esGira ? "text-[#B3985B]" : "text-white"}`}>
-                        {discForm.esGira ? "✓ Es una gira" : "Es una gira"}
-                      </p>
-                      <p className="text-[10px] text-gray-500 leading-tight">
-                        Cada cotización del trato es un show, no una opción que compite.
-                      </p>
-                    </button>
-                  </div>
-                )}
               </div>
 
             {/* Step 1 continuation: base fields */}
@@ -1597,11 +1511,10 @@ export default function DiscoveryForm({
                   </div>
                 ) : (<>
                 <label className="text-xs text-gray-400 block mb-2">Tipo de servicio</label>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {([
                     { value: "RENTA", label: "Renta de equipo", icon: Package, desc: "Solo equipo sin operación técnica compleja." },
                     { value: "PRODUCCION_TECNICA", label: "Producción Técnica", icon: Settings, desc: "Equipo, montaje y operación técnica." },
-                    { value: "DIRECCION_TECNICA", label: "Production Management", icon: ClipboardList, desc: "Desarrollo conceptual, producción técnica y gestión completa de producción." }
                   ] as const).map(ts => (
                     <button key={ts.value} type="button" onClick={() => setDiscForm(p => ({ ...p, tipoServicio: ts.value }))}
                       className={`text-left p-4 rounded-xl border transition-all ${discForm.tipoServicio === ts.value ? "border-[#B3985B] bg-[#B3985B]/10" : "border-[#222] bg-[#111] hover:border-[#444]"}`}>
@@ -1763,7 +1676,7 @@ export default function DiscoveryForm({
             {/* Ruta del trato: descubrimiento completo vs. directo a cotización (solo vendedor) */}
             {!clientMode && (
               <div className="border border-[#2a2a2a] bg-[#111] rounded-xl p-4 space-y-2">
-                <p className="text-[11px] text-gray-500 uppercase tracking-wider font-semibold">Ruta del trato</p>
+                <p className="text-[11px] text-gray-500 uppercase tracking-wider font-semibold">Ruta de la oportunidad</p>
                 <div className="grid grid-cols-2 gap-2">
                   <button type="button" onClick={() => setRutaTrato("full")}
                     className={`rounded-lg border p-3 text-left text-sm font-semibold transition-colors ${!rutaDirecta ? "border-[#B3985B] bg-[#B3985B]/10 text-[#B3985B]" : "border-[#2a2a2a] text-white hover:border-[#555]"}`}>
@@ -2016,100 +1929,6 @@ export default function DiscoveryForm({
                 </div>
 
               </div>
-            ) : discForm.tipoServicio === "DIRECCION_TECNICA" ? (
-              /* ── DIRECCIÓN TÉCNICA: Alcance del servicio ── */
-              <div className="space-y-5">
-                <div>
-                  <p className="text-xs text-[#B3985B] uppercase tracking-wider font-semibold mb-4">Alcance del servicio</p>
-
-                  {/* Servicios del catálogo: lo palomeado aquí es lo que cobra la propuesta */}
-                  <div className="mb-4">
-                    <label className="text-xs text-gray-400 block mb-2">¿Qué servicios abarca este proyecto? <span className="text-gray-600">(selecciona los que apliquen)</span></label>
-                    {serviciosDisponibles.length === 0 ? (
-                      <p className="text-[11px] text-gray-600">Cargando el catálogo de servicios…</p>
-                    ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {serviciosDisponibles.map(s => {
-                          const Icono = iconoServicio(s.icono);
-                          const sel = discForm.serviciosInteres.includes(s.clave);
-                          return (
-                            <button key={s.clave} onClick={() => toggleServicio(s.clave)}
-                              className={`flex items-start gap-2.5 px-3 py-2.5 rounded-xl border text-left transition-colors ${
-                                sel ? "border-[#B3985B] bg-[#B3985B]/10" : "border-[#2a2a2a] hover:border-[#555]"
-                              }`}>
-                              <Icono strokeWidth={1.75} className={`w-4 h-4 mt-0.5 shrink-0 ${sel ? "text-[#B3985B]" : "text-gray-500"}`} />
-                              <div className="min-w-0">
-                                <p className={`text-xs font-medium ${sel ? "text-[#B3985B]" : "text-white"}`}>{s.nombre}</p>
-                                {sel && s.descripcion && (
-                                  <p className="text-[10px] text-gray-500 mt-0.5 leading-relaxed line-clamp-3">{s.descripcion}</p>
-                                )}
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                    {discForm.serviciosInteres.length > 0 && !clientMode && (
-                      <p className="text-[11px] text-gray-600 mt-2">
-                        {discForm.serviciosInteres.length} servicio{discForm.serviciosInteres.length === 1 ? "" : "s"} · así entran a la propuesta.
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Nivel de involucramiento — es un nivel, no un servicio: columna propia */}
-                  <div className="mb-4">
-                    <label className="text-xs text-gray-400 block mb-2">Nivel de involucramiento esperado</label>
-                    <div className="grid grid-cols-1 gap-2">
-                      {NIVELES_INVOLUCRAMIENTO.map(niv => (
-                        <button key={niv.id}
-                          onClick={() => setDiscForm(p => ({ ...p, nivelInvolucramiento: niv.id }))}
-                          className={`flex items-start gap-3 px-4 py-3 rounded-xl border text-left transition-colors ${
-                            discForm.nivelInvolucramiento === niv.id
-                              ? "border-[#B3985B] bg-[#B3985B]/10"
-                              : "border-[#2a2a2a] hover:border-[#444]"
-                          }`}>
-                          <div className={`mt-0.5 w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 ${discForm.nivelInvolucramiento === niv.id ? "border-[#B3985B] bg-[#B3985B]" : "border-[#555]"}`} />
-                          <div>
-                            <p className={`text-sm font-medium ${discForm.nivelInvolucramiento === niv.id ? "text-[#B3985B]" : "text-white"}`}>{niv.label}</p>
-                            <p className="text-[11px] text-gray-500 mt-0.5">{niv.desc}</p>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Presupuesto global del evento */}
-                  <div className="mb-4">
-                    <label className="text-xs text-gray-400 block mb-1">Presupuesto global del evento {!clientMode && <span className="text-gray-600">(si el cliente lo comparte)</span>}</label>
-                    <input
-                      type="text"
-                      value={discForm.presupuestoEstimado}
-                      onChange={e => setDiscForm(p => ({ ...p, presupuestoEstimado: e.target.value }))}
-                      placeholder="Ej: $300,000 MXN total del evento"
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                    />
-                  </div>
-
-                  {/* Asistentes y detalle del proyecto se capturan en el paso 1 */}
-                </div>
-
-                {/* CTA Hacer propuesta — en paso 2 para DT (último paso) — solo vendedor */}
-                {!clientMode && !trato.descubrimientoCompleto && (
-                  <div className="border border-[#B3985B]/30 bg-[#B3985B]/5 rounded-xl p-4 flex items-center justify-between gap-4">
-                    <div>
-                      <p className="text-white text-sm font-semibold">¿Ya tienes todo lo que necesitas?</p>
-                      <p className="text-gray-500 text-xs mt-0.5">Es hora de preparar la propuesta de Production Management</p>
-                    </div>
-                    <Link
-                      href={`/cotizaciones/nuevo?tratoId=${trato.id}&clienteId=${trato.cliente.id}`}
-                      onClick={() => { if (!trato.descubrimientoCompleto) guardarDescubrimiento(true); }}
-                      className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-5 py-2 rounded-lg transition-colors shrink-0"
-                    >
-                      Hacer propuesta →
-                    </Link>
-                  </div>
-                )}
-              </div>
             ) : (
               <div className="space-y-4">
                 {/* ── Selector de equipos del inventario ─────────────────── */}
@@ -2140,23 +1959,6 @@ export default function DiscoveryForm({
                 </div>
               </div>
             ))}
-
-            {/* ── Notas Técnicas / Equipos Adicionales (Manual) ───────────────────────
-                En producción técnica y renta el campo lo maneja el selector (tras las
-                categorías); aquí solo para Dirección Técnica. */}
-            {discForm.tipoServicio === "DIRECCION_TECNICA" && (
-            <div className="pt-2">
-              <label className="text-xs text-[#B3985B] uppercase tracking-wider font-semibold block mb-2">Notas Técnicas y Equipo Adicional (Manual)</label>
-              <p className="text-[11px] text-gray-500 mb-2">Detalla marcas, modelos específicos, o lista cualquier equipo que no hayas encontrado en las categorías.</p>
-              <textarea
-                value={discForm.notasEquipos || ""}
-                onChange={e => setDiscForm(p => ({ ...p, notasEquipos: e.target.value }))}
-                rows={4}
-                placeholder="Ej: Necesitamos 4 micrófonos Shure ULXD, consola Digico SD12, o detalles adicionales técnicos..."
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none"
-              />
-            </div>
-            )}
 
               {/* El número de asistentes se captura en el paso 1 */}
 

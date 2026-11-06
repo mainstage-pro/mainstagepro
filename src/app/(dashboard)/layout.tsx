@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AREA_MODULE_PRESETS } from "@/lib/nav";
@@ -17,6 +18,11 @@ export default async function DashboardLayout({
 }) {
   const session = await getSession();
   if (!session) redirect("/login");
+
+  const cookieStore = await cookies();
+  const unidadCookie = cookieStore.get("unidad-activa")?.value;
+  const unidad: "PRO" | "LIVE" | "CREATIVE" =
+    unidadCookie === "LIVE" || unidadCookie === "CREATIVE" ? unidadCookie : "PRO";
 
   // Fetch config and user module access — non-admins always have restricted access
   let labels: Record<string, string> = {};
@@ -66,6 +72,7 @@ export default async function DashboardLayout({
           <Sidebar
             user={session}
             userModuleKeys={userModuleKeys}
+            unidad={unidad}
           />
           <main className="flex-1 overflow-y-auto overflow-x-hidden pt-14 md:pt-0 min-w-0">
             {children}

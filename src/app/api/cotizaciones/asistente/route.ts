@@ -19,7 +19,7 @@ interface ItemPedido {
 }
 interface Extraccion {
   clienteNombre: string | null;
-  servicio: "RENTA" | "PRODUCCION_TECNICA" | "DIRECCION_TECNICA" | null;
+  servicio: "RENTA" | "PRODUCCION_TECNICA" | null;
   tipoEvento: "MUSICAL" | "SOCIAL" | "EMPRESARIAL" | "OTRO" | null;
   nombreEvento: string | null;
   fechaEvento: string | null; // YYYY-MM-DD
@@ -35,7 +35,7 @@ const SYSTEM = `Eres un asistente que interpreta pedidos de cotización para una
 Recibes una frase libre y devuelves ÚNICAMENTE un objeto JSON (sin markdown, sin explicación) con esta forma:
 {
   "clienteNombre": string|null,
-  "servicio": "RENTA"|"PRODUCCION_TECNICA"|"DIRECCION_TECNICA"|null,
+  "servicio": "RENTA"|"PRODUCCION_TECNICA"|null,
   "tipoEvento": "MUSICAL"|"SOCIAL"|"EMPRESARIAL"|"OTRO"|null,
   "nombreEvento": string|null,
   "fechaEvento": "YYYY-MM-DD"|null,
