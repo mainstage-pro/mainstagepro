@@ -14,8 +14,6 @@ import PlanTrabajoWidget from "@/components/PlanTrabajoWidget";
 import { NuevoTratoDropdown } from "@/components/NuevoTratoDropdown";
 import { AlertTriangle, Zap } from "lucide-react";
 import { AREA_DASHBOARD } from "@/lib/areas";
-import MisTareasPendientesWidget from "@/components/MisTareasPendientesWidget";
-import NotificacionesInline from "@/components/NotificacionesInline";
 
 
 export const dynamic = "force-dynamic";
@@ -417,18 +415,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════════
-          MIS TAREAS + NOTIFICACIONES — lo primero que se ve, accionable sin
-          salir del dashboard
-      ══════════════════════════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 items-start">
-        <div className="xl:col-span-2">
-          <MisTareasPendientesWidget />
-        </div>
-        <NotificacionesInline />
-      </div>
-
-      {/* ══════════════════════════════════════════════════════════════════════
-          ESTA SEMANA
+          ESTA SEMANA — lo primero que se ve: el tablero de eventos próximos
       ══════════════════════════════════════════════════════════════════════ */}
       {(proyectosEstaSemana.length > 0 || eventosRecientes.length > 0 || tratosAprobadosEstaSemana.length > 0 || cxcVence7dias.length > 0 || cxpVence7dias.length > 0) && (
         <div className="space-y-3">
@@ -565,6 +552,13 @@ export default async function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          GESTIÓN DE TAREAS POR ÁREA
+      ══════════════════════════════════════════════════════════════════════ */}
+      <Section label="GESTIÓN DE TAREAS" href="/operaciones">
+        <TareasHoyWidget />
+      </Section>
 
       {/* ══════════════════════════════════════════════════════════════════════
           ADMINISTRACIÓN
@@ -737,7 +731,7 @@ export default async function DashboardPage() {
       <Section label="VENTAS" href="/crm/tratos">
         {/* KPIs */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          <KpiCard label="Pipeline activo" value={totalPipeline} sub="tratos en curso" animate={{ amount: totalPipeline }} href="/crm/tratos" />
+          <KpiCard label="Pipeline activo" value={totalPipeline} sub="oportunidades en curso" animate={{ amount: totalPipeline }} href="/crm/tratos" />
           <KpiCard label="Valor del pipeline" value={valorPipeline > 0 ? formatCurrency(valorPipeline) : "Sin datos"}
             sub="presupuesto estimado" subColor="text-[#B3985B]"
             animate={valorPipeline > 0 ? { amount: valorPipeline, prefix: "$", decimals: 0 } : undefined} href="/crm/tratos" />
@@ -930,7 +924,7 @@ export default async function DashboardPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {tratosEnRevision > 0 && (
               <Link href="/ventas/seguimientos" className="bg-[#111] border border-orange-900/40 rounded-xl p-4 hover:border-orange-800/60 transition-colors">
-                <p className="text-[10px] text-orange-400/70 uppercase tracking-wider font-semibold mb-2">Tratos en revisión</p>
+                <p className="text-[10px] text-orange-400/70 uppercase tracking-wider font-semibold mb-2">Oportunidades en revisión</p>
                 <p className="text-2xl font-bold text-orange-400">{tratosEnRevision}</p>
                 <p className="text-xs text-[#555] mt-1">requieren decisión</p>
               </Link>
@@ -939,7 +933,7 @@ export default async function DashboardPage() {
               <Link href="/ventas/seguimientos" className="bg-[#111] border border-red-900/40 rounded-xl p-4 hover:border-red-800/60 transition-colors">
                 <p className="text-[10px] text-red-400/70 uppercase tracking-wider font-semibold mb-2">Sin seguimiento +7 días</p>
                 <p className="text-2xl font-bold text-red-400">{tratosSinMovimiento}</p>
-                <p className="text-xs text-[#555] mt-1">tratos sin contacto</p>
+                <p className="text-xs text-[#555] mt-1">oportunidades sin contacto</p>
               </Link>
             )}
             {tareasAbandonadas > 0 && (
@@ -951,14 +945,14 @@ export default async function DashboardPage() {
             )}
             {tratosEnfriados > 0 && (
               <Link href="/crm/tratos?filtro=enfriados" className="bg-[#111] border border-yellow-900/30 rounded-xl p-4 hover:border-yellow-800/50 transition-colors">
-                <p className="text-[10px] text-yellow-500/60 uppercase tracking-wider font-semibold mb-2">Tratos +15 días sin cerrar</p>
+                <p className="text-[10px] text-yellow-500/60 uppercase tracking-wider font-semibold mb-2">Oportunidades +15 días sin cerrar</p>
                 <p className="text-2xl font-bold text-yellow-400">{tratosEnfriados}</p>
                 <p className="text-xs text-[#555] mt-1">en pipeline activo</p>
               </Link>
             )}
             {tratosCriticos > 0 && (
               <Link href="/crm/tratos" className="bg-[#111] border border-red-900/40 rounded-xl p-4 hover:border-red-800/60 transition-colors">
-                <p className="text-[10px] text-red-500/70 uppercase tracking-wider font-semibold mb-2">Tratos críticos</p>
+                <p className="text-[10px] text-red-500/70 uppercase tracking-wider font-semibold mb-2">Oportunidades críticas</p>
                 <p className="text-2xl font-bold text-red-300">{tratosCriticos}</p>
                 <p className="text-xs text-[#555] mt-1">+21d con evento próximo</p>
               </Link>
@@ -966,13 +960,6 @@ export default async function DashboardPage() {
           </div>
         </div>
       )}
-
-      {/* ══════════════════════════════════════════════════════════════════════
-          GESTIÓN DE TAREAS POR ÁREA
-      ══════════════════════════════════════════════════════════════════════ */}
-      <Section label="GESTIÓN DE TAREAS" href="/operaciones">
-        <TareasHoyWidget />
-      </Section>
 
       {/* ══════════════════════════════════════════════════════════════════════
           PLAN DE TRABAJO
