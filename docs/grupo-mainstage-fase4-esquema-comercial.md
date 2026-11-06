@@ -648,7 +648,9 @@ Ya existe el modelo y el PDF. Lo que falta:
    - Contador simple "revisiones usadas / incluidas" visible en el proyecto,
      para que el vendedor sepa cuándo ya toca cobrar el cambio extra (tabla
      de §3.4 punto 2) — no un Kanban, solo un contador. Dos columnas nuevas
-     en `ProyectoCreativo` (`revisionesIncluidas` default 2,
+     en `ProyectoCreativo` (`revisionesIncluidas` default 3 — coincide con "los
+     primeros 3 van incluidos" ya escrito en el catálogo
+     `CAMBIO_ADICIONAL_RENDER_A/AA/AAA`,
      `revisionesUsadas` default 0, DDL
      `scripts/_apply-contador-revisiones-proyecto-creativo.ts`), con
      botones +/− y aviso visual en `/creative/[id]` cuando se pasa del
@@ -696,13 +698,33 @@ Esto es solo una sugerencia de secuencia, no un compromiso de fechas:
 3. **Creative:**
    - ~~Definir la tarifa real (capa 1 con tu número de Carlos Luna)~~ ✅ hecho
      2026-11-06 (§3.4) — catálogo reestructurado y sembrado en producción.
-   - **Pendiente:** campos de propuesta para fixture count / nivel A-AA-AAA /
-     revisiones usadas — hoy el vendedor elige a mano el renglón
-     `RENDER_NIVEL_A/AA/AAA` del catálogo (igual que cualquier otro servicio),
-     no hay un calculador automático por conteo de fixtures. Es el siguiente
-     paso de UI si se quiere automatizar.
-   - **Pendiente:** descubrimiento propio de Creative (no se construyó esta
-     sesión).
+   - ~~Campos de propuesta para fixture count / nivel A-AA-AAA~~ ✅ hecho
+     2026-11-06: `nivelRenderSugerido()` (`src/lib/propuesta-servicio.ts`),
+     calculador puro con los mismos umbrales del tabulador sembrado
+     (≤30/31-60/61+ fixtures → A/AA/AAA) — "si el tabulador cambia, este
+     helper se actualiza junto con la siembra, nunca por separado". Vive en
+     el modal de catálogo de `PropuestaEditor.tsx` (`ModalCatalogo`), visible
+     solo si `unidadPropuesta === "CREATIVE"` y el catálogo trae niveles de
+     render: el vendedor captura/ajusta el conteo de fixtures (precargado con
+     el estimado del proyecto si existe) y un botón "Usar Nivel X sugerido"
+     llama al mismo flujo de selección (`elegir()`) que el catálogo manual —
+     no reemplaza la elección manual, solo la agiliza.
+   - ~~Descubrimiento propio de Creative~~ ✅ hecho 2026-11-06, mismo criterio
+     que el de Live (extender lo que ya existe, no un flujo paralelo): dos
+     columnas nuevas y nullable/con default en `ProyectoCreativo`
+     (`fixtureCountEstimado` Int?, `urgente` Boolean @default(false), DDL
+     `scripts/_apply-descubrimiento-creativo.ts`) — lo mínimo que alimenta el
+     calculador de nivel (fixture count) y el cruce con el catálogo
+     (`urgente` → `URGENCIA_RENDER`, que solo aplica a Nivel A). Se descartó
+     capturar "tipo de entregable esperado" (render/documentación/concepto):
+     tras el reempaquetado de §3.4 ya no cambia precio ni flujo, así que
+     sería dato muerto — el `briefing` libre ya cubre ese contexto
+     cualitativo. Captura en alta (`ModalNuevo` en
+     `creative/(hub)/proyectos/page.tsx`) y edición (`creative/[id]/page.tsx`,
+     con la sugerencia de nivel visible junto al campo); `fixtureCountEstimado`
+     viaja de ahí a `PropuestaEditor` vía `giras/propuesta/[id]/page.tsx`
+     (`include: { proyectoCreativo: { select: { fixtureCountEstimado: true,
+     urgente: true } } }`) para precargar la calculadora.
    - ~~Decidir si se necesita más estructura de ejecución~~ ✅ hecho
      2026-11-06 (§4.6) — se quedan los 4 estados, con avance automático al
      aprobar + contador de revisiones ✅ también construidos 2026-11-06.

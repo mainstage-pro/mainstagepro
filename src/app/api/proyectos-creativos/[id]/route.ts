@@ -78,6 +78,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       giraId: textoOpcional(body.giraId),
       revisionesIncluidas: enteroOpcional(body.revisionesIncluidas),
       revisionesUsadas: enteroOpcional(body.revisionesUsadas),
+      fixtureCountEstimado: body.fixtureCountEstimado === null ? null : enteroOpcional(body.fixtureCountEstimado),
+      urgente: typeof body.urgente === "boolean" ? body.urgente : undefined,
     }),
     select: { id: true, numero: true },
   });

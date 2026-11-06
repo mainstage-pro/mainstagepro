@@ -39,6 +39,7 @@ export default async function PropuestaPage({ params }: { params: Promise<{ id: 
           cliente: { select: { nombre: true } },
         },
       },
+      proyectoCreativo: { select: { fixtureCountEstimado: true, urgente: true } },
       lineas: {
         include: { servicio: { select: { id: true, clave: true, nombre: true } } },
         orderBy: [{ orden: "asc" }, { createdAt: "asc" }],
@@ -169,6 +170,8 @@ export default async function PropuestaPage({ params }: { params: Promise<{ id: 
       artistas={artistas}
       giras={giras}
       tratos={tratos.map((t) => ({ id: t.id, nombre: t.nombreEvento || t.cliente.nombre }))}
+      unidadPropuesta={unidadPropuesta}
+      fixtureCountEstimado={propuesta.proyectoCreativo?.fixtureCountEstimado ?? null}
     />
   );
 }

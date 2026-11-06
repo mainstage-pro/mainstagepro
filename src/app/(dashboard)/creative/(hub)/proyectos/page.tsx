@@ -37,6 +37,9 @@ function ModalNuevo({ clientes, artistas, onSave, onClose }: {
   const [clienteId, setClienteId] = useState("");
   const [artistaId, setArtistaId] = useState("");
   const [briefing, setBriefing] = useState("");
+  const [fechaEntrega, setFechaEntrega] = useState("");
+  const [fixtureCountEstimado, setFixtureCountEstimado] = useState("");
+  const [urgente, setUrgente] = useState(false);
   const [saving, setSaving] = useState(false);
 
   async function handleSave() {
@@ -50,13 +53,17 @@ function ModalNuevo({ clientes, artistas, onSave, onClose }: {
           clienteId: clienteId || null,
           artistaId: artistaId || null,
           briefing: briefing.trim() || null,
+          fechaEntrega: fechaEntrega || null,
+          fixtureCountEstimado: fixtureCountEstimado || null,
+          urgente,
         }),
       });
       if (!res.ok) { setSaving(false); return; }
       const { proyecto } = await res.json();
       onSave({
         id: proyecto.id, numero: proyecto.numero, nombre: nombre.trim(), estado: "BRIEF",
-        fechaEntrega: null, createdAt: new Date().toISOString(),
+        fechaEntrega: fechaEntrega ? new Date(`${fechaEntrega}T12:00:00.000Z`).toISOString() : null,
+        createdAt: new Date().toISOString(),
         cliente: clientes.find(c => c.id === clienteId) ?? null,
         artista: artistas.find(a => a.id === artistaId) ?? null,
         gira: null, trato: null,
@@ -100,6 +107,25 @@ function ModalNuevo({ clientes, artistas, onSave, onClose }: {
             placeholder="¿Qué se necesita diseñar/renderizar/documentar?"
             className={`${inputCls} resize-none`} />
         </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className={labelCls}>Fecha de entrega <span className="text-[#333] normal-case">(opcional)</span></label>
+            <input type="date" value={fechaEntrega} onChange={e => setFechaEntrega(e.target.value)} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>Fixtures estimados <span className="text-[#333] normal-case">(opcional)</span></label>
+            <input type="number" min={0} value={fixtureCountEstimado}
+              onChange={e => setFixtureCountEstimado(e.target.value)}
+              placeholder="Ej. 42" className={inputCls} />
+          </div>
+        </div>
+
+        <label className="flex items-center gap-2 text-[11px] text-[#999] cursor-pointer">
+          <input type="checkbox" checked={urgente} onChange={e => setUrgente(e.target.checked)}
+            className="accent-[#B3985B]" />
+          Entrega urgente (el cliente ya avisó que necesita acelerarla)
+        </label>
 
         <div className="flex items-center justify-between pt-1">
           <p className="text-[10.5px] text-[#444]">{nombre.trim() ? "Listo para crear." : "El nombre es requerido."}</p>

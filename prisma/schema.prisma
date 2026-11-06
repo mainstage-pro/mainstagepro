@@ -7062,8 +7062,16 @@ model ProyectoCreativo {
   // de docs/grupo-mainstage-fase4-esquema-comercial.md): cuántas incluye el
   // trato y cuántas ya se usaron, para saber cuándo cobrar el cambio extra
   // (catálogo CAMBIO_ADICIONAL_RENDER_A/AA/AAA). No es un Kanban, solo un contador.
-  revisionesIncluidas Int @default(2)
+  revisionesIncluidas Int @default(3)
   revisionesUsadas    Int @default(0)
+
+  // Descubrimiento propio de Creative (§4.3/§5 de
+  // docs/grupo-mainstage-fase4-esquema-comercial.md): lo mínimo que alimenta
+  // el calculador de nivel A/AA/AAA al armar la propuesta. No se capturan
+  // campos (tipo de entregable, dirección creativa definida o no) que ya no
+  // cambian el precio tras el reempaquetado de §3.4 — eso vive en `briefing`.
+  fixtureCountEstimado Int?
+  urgente              Boolean @default(false)
 
   fechaSolicitud DateTime  @default(now())
   fechaEntrega   DateTime?

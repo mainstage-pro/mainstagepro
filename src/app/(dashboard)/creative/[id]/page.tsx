@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { nivelRenderSugerido } from "@/lib/propuesta-servicio";
 
 type Proyecto = {
   id: string;
@@ -15,6 +16,8 @@ type Proyecto = {
   revisionesUsadas: number;
   fechaSolicitud: string;
   fechaEntrega: string | null;
+  fixtureCountEstimado: number | null;
+  urgente: boolean;
   cliente: { id: string; nombre: string; empresa: string | null } | null;
   artista: { id: string; nombre: string } | null;
   gira: { id: string; nombre: string } | null;
@@ -44,7 +47,7 @@ export default function ProyectoCreativoPage() {
     });
   }, [id]);
 
-  async function guardar(campos: Partial<Record<string, string | number | null>>) {
+  async function guardar(campos: Partial<Record<string, string | number | boolean | null>>) {
     if (!proyecto) return;
     setSaving(true);
     setProyecto({ ...proyecto, ...campos } as Proyecto);
@@ -129,6 +132,32 @@ export default function ProyectoCreativoPage() {
               className={inputCls} />
           </div>
         </div>
+      </div>
+
+      <div className="ms-card p-4 space-y-2">
+        <p className="ms-section-label">Descubrimiento</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelCls}>Fixtures estimados</label>
+            <input type="number" min={0} defaultValue={proyecto.fixtureCountEstimado ?? ""}
+              placeholder="Ej. 42"
+              onBlur={e => guardar({ fixtureCountEstimado: e.target.value ? Math.max(0, parseInt(e.target.value, 10) || 0) : null })}
+              className={inputCls} />
+          </div>
+          <div className="flex items-end pb-1.5">
+            <label className="flex items-center gap-2 text-[11px] text-[#999] cursor-pointer">
+              <input type="checkbox" checked={proyecto.urgente}
+                onChange={e => guardar({ urgente: e.target.checked })}
+                className="accent-[#B3985B]" />
+              Entrega urgente (URGENCIA_RENDER, solo Nivel A)
+            </label>
+          </div>
+        </div>
+        {typeof proyecto.fixtureCountEstimado === "number" && proyecto.fixtureCountEstimado > 0 && (
+          <p className="text-[11px] text-[#B3985B]">
+            Nivel sugerido: {nivelRenderSugerido(proyecto.fixtureCountEstimado).etiqueta} ({nivelRenderSugerido(proyecto.fixtureCountEstimado).rango})
+          </p>
+        )}
       </div>
 
       <div className="ms-card p-4 space-y-2">

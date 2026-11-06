@@ -221,6 +221,23 @@ export function cantidadSugerida(unidad: string, conteo: ConteoGira): number {
   }
 }
 
+/// Calculador de nivel de render por conteo de fixtures (Creative, §3.4/§5 de
+/// docs/grupo-mainstage-fase4-esquema-comercial.md): los umbrales son los
+/// mismos del tabulador sembrado en scripts/seed-servicios-pm.ts
+/// (RENDER_NIVEL_A/AA/AAA) — si el tabulador cambia, este helper se actualiza
+/// junto con la siembra, nunca por separado.
+export interface NivelRenderSugerido {
+  clave: "RENDER_NIVEL_A" | "RENDER_NIVEL_AA" | "RENDER_NIVEL_AAA";
+  etiqueta: "A" | "AA" | "AAA";
+  rango: string;
+}
+
+export function nivelRenderSugerido(fixtureCount: number): NivelRenderSugerido {
+  if (fixtureCount <= 30) return { clave: "RENDER_NIVEL_A", etiqueta: "A", rango: "1–30 fixtures" };
+  if (fixtureCount <= 60) return { clave: "RENDER_NIVEL_AA", etiqueta: "AA", rango: "31–60 fixtures" };
+  return { clave: "RENDER_NIVEL_AAA", etiqueta: "AAA", rango: "61+ fixtures" };
+}
+
 // ── Utilidades internas ──────────────────────────────────────────────────────
 
 function num(v: number | null | undefined): number {

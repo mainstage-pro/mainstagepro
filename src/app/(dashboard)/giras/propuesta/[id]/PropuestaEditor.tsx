@@ -27,7 +27,7 @@ import {
   fmtMoneda,
   type GastoResponsabilidad,
 } from "@/lib/giras";
-import { calcularResumenPropuesta, contarGira } from "@/lib/propuesta-servicio";
+import { calcularResumenPropuesta, contarGira, nivelRenderSugerido } from "@/lib/propuesta-servicio";
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -116,6 +116,12 @@ interface Props {
   artistas: { id: string; nombre: string }[];
   giras: { id: string; nombre: string; _count: { shows: number } }[];
   tratos: { id: string; nombre: string }[];
+  /// LIVE o CREATIVE: ya decide qué catálogo (`servicios`) llegó filtrado desde
+  /// el server; aquí solo sirve para condicionar la calculadora de fixtures.
+  unidadPropuesta?: "LIVE" | "CREATIVE";
+  /// Estimado capturado en el descubrimiento de ProyectoCreativo (si la
+  /// propuesta nace de uno); precarga la calculadora de nivel A/AA/AAA.
+  fixtureCountEstimado?: number | null;
 }
 
 type CabeceraEditable = Pick<
@@ -152,6 +158,8 @@ export default function PropuestaEditor({
   artistas,
   giras,
   tratos,
+  unidadPropuesta,
+  fixtureCountEstimado,
 }: Props) {
   const router = useRouter();
   const toast = useToast();
@@ -888,6 +896,8 @@ export default function PropuestaEditor({
         <ModalCatalogo
           servicios={servicios}
           conteo={conteo}
+          unidadPropuesta={unidadPropuesta}
+          fixtureCountEstimado={fixtureCountEstimado}
           onCerrar={() => setCatalogoAbierto(false)}
           onAgregar={async (body) => {
             await agregarLinea(body);
@@ -1167,11 +1177,15 @@ function Chip({
 function ModalCatalogo({
   servicios,
   conteo,
+  unidadPropuesta,
+  fixtureCountEstimado,
   onCerrar,
   onAgregar,
 }: {
   servicios: ServicioUI[];
   conteo: { shows: number; venues: number; ciudades: number };
+  unidadPropuesta?: "LIVE" | "CREATIVE";
+  fixtureCountEstimado?: number | null;
   onCerrar: () => void;
   onAgregar: (body: Record<string, unknown>) => Promise<void>;
 }) {
@@ -1182,6 +1196,7 @@ function ModalCatalogo({
   const [unidad, setUnidad] = useState("SHOW");
   const [tipo, setTipo] = useState("HONORARIO");
   const [guardando, setGuardando] = useState(false);
+  const [fixtures, setFixtures] = useState<number>(fixtureCountEstimado ?? 0);
 
   // Production/Tour/Stage management son independientes y combinables entre
   // sí (§2.3 del esquema comercial de Live) — cada uno se agrega como su
@@ -1200,6 +1215,13 @@ function ModalCatalogo({
     categoria: cat,
     items: addons.filter((s) => (s.categoria ?? "OTRO") === cat),
   }));
+
+  // Calculadora de nivel de render (Creative, §3.4/§5 del esquema comercial):
+  // solo se muestra cuando la propuesta es de Creative y el catálogo trae
+  // niveles de render — no tiene sentido en Live.
+  const sugerido = fixtures > 0 ? nivelRenderSugerido(fixtures) : null;
+  const servicioSugerido = sugerido ? servicios.find((s) => s.clave === sugerido.clave) ?? null : null;
+  const mostrarCalculadora = unidadPropuesta === "CREATIVE" && servicios.some((s) => s.clave.startsWith("RENDER_NIVEL_"));
 
   function elegir(s: ServicioUI) {
     setSeleccionado(s);
@@ -1249,6 +1271,35 @@ function ModalCatalogo({
 
         <div className="p-5 grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div className="space-y-5 max-h-[46vh] overflow-y-auto pr-1">
+            {mostrarCalculadora && (
+              <div className="rounded-lg border border-[#B3985B]/30 bg-[#B3985B]/5 p-3 space-y-2">
+                <p className="ms-micro uppercase tracking-wider text-[#B3985B]">Calculadora de nivel por fixtures</p>
+                <div className="flex items-end gap-2">
+                  <div className="flex-1">
+                    <label className="ms-label">Fixtures del rig</label>
+                    <CampoNumero valor={fixtures} onCommit={setFixtures} className="ms-input" />
+                  </div>
+                  {sugerido && (
+                    <p className="text-[12px] text-[#9ca3af] pb-2">
+                      Nivel <span className="text-white font-medium">{sugerido.etiqueta}</span> · {sugerido.rango}
+                    </p>
+                  )}
+                </div>
+                {servicioSugerido ? (
+                  <button
+                    className="ms-btn-ghost text-xs"
+                    onClick={() => elegir(servicioSugerido)}
+                  >
+                    Usar Nivel {sugerido?.etiqueta} sugerido
+                  </button>
+                ) : sugerido ? (
+                  <p className="ms-micro text-[#e8a020]">
+                    El catálogo no tiene {sugerido.clave} activo — siembra o activa ese servicio.
+                  </p>
+                ) : null}
+              </div>
+            )}
+
             {servicios.length === 0 && (
               <p className="text-sm text-[#6b7280]">
                 El catálogo está vacío. Siembra los servicios con el script <code>seed-servicios-pm.ts</code>.

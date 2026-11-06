@@ -9,6 +9,18 @@ function textoOpcional(v: unknown): string | null {
   return t === "" ? null : t;
 }
 
+function enteroOpcional(v: unknown): number | null {
+  if (v === undefined || v === null || v === "") return null;
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? Math.max(0, Math.round(n)) : null;
+}
+
+function fecha(v: unknown): Date | null {
+  if (typeof v !== "string" || !v) return null;
+  const d = new Date(v.length === 10 ? `${v}T12:00:00.000Z` : v);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 async function siguienteNumero(): Promise<string> {
   const ultimo = await prisma.proyectoCreativo.findFirst({
     where: { numero: { startsWith: "PC-" } },
@@ -69,6 +81,9 @@ export async function POST(req: NextRequest) {
       tratoId: textoOpcional(body.tratoId),
       giraId: textoOpcional(body.giraId),
       briefing: textoOpcional(body.briefing),
+      fechaEntrega: fecha(body.fechaEntrega),
+      fixtureCountEstimado: enteroOpcional(body.fixtureCountEstimado),
+      urgente: body.urgente === true,
     },
     select: { id: true, numero: true },
   });
