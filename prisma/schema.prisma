@@ -7383,3 +7383,39 @@ model ResponsivaTecnico {
   @@unique([proyectoId, tecnicoId])
   @@map("responsivas_tecnico")
 }
+
+// ── CIERRE FINANCIERO DIARIO ───────────────────────────────────────────────────
+// Snapshot L/M/V del estado de caja. No se recalcula hacia atrás: es la foto
+// de ese día, para poder comparar contra lo que se sabe hoy y detectar
+// registro tardío o faltante (el problema real es disciplina de captura, no
+// el dato en sí).
+
+model CierreFinancieroDiario {
+  id        String   @id @default(cuid())
+  fecha     DateTime @unique @db.Date
+  diaSemana String // LUNES | MIERCOLES | VIERNES | ...
+
+  totalBancos Float
+  porCobrar   Float
+  porPagar    Float
+  posicion    Float // totalBancos + porCobrar - porPagar
+
+  cobradoHoy Float @default(0)
+  pagadoHoy  Float @default(0)
+
+  cxcVencidaTotal Float @default(0)
+  cxcVencidaN     Int   @default(0)
+  cxpVencidaTotal Float @default(0)
+  cxpVencidaN     Int   @default(0)
+
+  pasivosExternosTotal             Float @default(0)
+  gastosRecurrentesPendientesTotal Float @default(0)
+  nominaPendienteTotal             Float @default(0)
+
+  detalle     String // JSON con el desglose completo (para auditoría)
+  generadoPor String // "CRON" o id de usuario que lo disparó a mano
+
+  createdAt DateTime @default(now())
+
+  @@map("cierres_financieros_diarios")
+}

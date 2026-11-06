@@ -184,6 +184,7 @@ export const NAV: NavSection[] = [
         icon: Wallet,
         children: [
           { key: "finanzas-cobros", label: "Cobros y pagos", href: "/finanzas/cobros-pagos" },
+          { key: "finanzas-cierre-diario", label: "Cierre diario", href: "/finanzas/cierre-diario", adminOnly: true },
           { key: "finanzas-gastos-recurrentes", label: "Gastos recurrentes", href: "/finanzas/gastos-recurrentes" },
           { key: "finanzas-flujo", label: "Flujo de cuentas", href: "/finanzas/flujo-cuentas" },
           { key: "finanzas-pagos-personal", label: "Pagos a personal", href: "/finanzas/pagos-personal" },
