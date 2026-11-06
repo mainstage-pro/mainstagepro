@@ -1028,6 +1028,39 @@ export const CATEGORIA_SERVICIO_LABEL: Record<string, string> = {
   EQUIPO: "Equipo",
 };
 
+/// Los tres servicios de Live que llevan checklist de alcance propio (ver
+/// docs/grupo-mainstage-fase4-esquema-comercial.md §2.3): independientes y
+/// combinables entre sí, a diferencia de los add-ons (Audio/Iluminación/
+/// Video/Equipo) que solo se suman a uno de estos tres.
+export const CATEGORIAS_SERVICIO_PRINCIPAL = ["PRODUCTION_MANAGEMENT", "TOUR_MANAGEMENT", "STAGE_MANAGEMENT"] as const;
+
+/// Quién corre con un gasto repetible de la gira: lo absorbe Mainstage dentro
+/// de su precio, lo paga el promotor local, o lo paga el management del
+/// artista. Es una condición contractual de la propuesta, no un precio
+/// (ver §2.6 del documento de esquema comercial).
+export const RESPONSABLES_GASTO = ["INCLUIDO", "PROMOTOR", "MANAGEMENT"] as const;
+
+export const RESPONSABLE_GASTO_LABEL: Record<string, string> = {
+  INCLUIDO: "Incluido en nuestro precio",
+  PROMOTOR: "Corre por cuenta del promotor",
+  MANAGEMENT: "Corre por cuenta del management del artista",
+};
+
+export interface GastoResponsabilidad {
+  concepto: string;
+  responsable: string;
+}
+
+/// Las 4 líneas con las que nace el bloque si la propuesta todavía no tiene
+/// nada capturado. El concepto es texto libre editable: si en la práctica hace
+/// falta separar transporte aéreo de terrestre, se ajusta sin fricción.
+export const GASTOS_RESPONSABILIDAD_DEFAULT: GastoResponsabilidad[] = [
+  { concepto: "Transporte", responsable: "INCLUIDO" },
+  { concepto: "Hospedaje", responsable: "INCLUIDO" },
+  { concepto: "Viáticos — comida", responsable: "INCLUIDO" },
+  { concepto: "Viáticos — gastos generales", responsable: "INCLUIDO" },
+];
+
 /// Dónde se vende el servicio. Una gira cobra por show y por plaza; un evento por
 /// día y global. Es el filtro con el que se lee el catálogo, no una restricción:
 /// un servicio de gira se puede meter a una propuesta de evento si aplica.

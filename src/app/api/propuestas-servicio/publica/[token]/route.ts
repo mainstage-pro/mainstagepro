@@ -19,6 +19,7 @@ const SELECT_PUBLICO = {
   exclusiones: true,
   supuestos: true,
   condicionesPago: true,
+  responsabilidadGastos: true,
   aplicaIva: true,
   subtotalHonorarios: true,
   subtotalEquipo: true,

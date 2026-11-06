@@ -14,12 +14,15 @@ import path from "path";
 import { prisma } from "@/lib/prisma";
 import {
   ESTADO_PROPUESTA_LABEL,
+  GASTOS_RESPONSABILIDAD_DEFAULT,
   GRUPO_SUBTOTAL,
   MODELO_COBRO_LABEL,
+  RESPONSABLE_GASTO_LABEL,
   TIPO_LINEA_PROPUESTA_LABEL,
   UNIDAD_COBRO_LABEL,
   fmtFechaCorta,
   fmtFechaLarga,
+  type GastoResponsabilidad,
 } from "@/lib/giras";
 import { contarGira } from "@/lib/propuesta-servicio";
 import { logoBase64, nowStr, resolvePdfImage } from "@/components/pdf/PdfShared";
@@ -102,6 +105,22 @@ export async function generarPropuestaServicio(id: string): Promise<PdfPropuesta
       : null,
   }));
 
+  // Vacío o nunca tocado = los 4 renglones de referencia (§2.6); el PDF nunca
+  // se queda sin decir quién paga qué, ni cuando el vendedor no editó nada.
+  let gastosGuardados: GastoResponsabilidad[] = GASTOS_RESPONSABILIDAD_DEFAULT;
+  if (propuesta.responsabilidadGastos) {
+    try {
+      const parsed = JSON.parse(propuesta.responsabilidadGastos);
+      if (Array.isArray(parsed) && parsed.length) gastosGuardados = parsed;
+    } catch {
+      // JSON corrupto no debe tronar la generación del PDF.
+    }
+  }
+  const gastos = gastosGuardados.map((g) => ({
+    concepto: g.concepto,
+    responsableLabel: RESPONSABLE_GASTO_LABEL[g.responsable] ?? g.responsable,
+  }));
+
   const data: PropuestaServicioData = {
     numero: propuesta.numero,
     version: propuesta.version,
@@ -117,6 +136,7 @@ export async function generarPropuestaServicio(id: string): Promise<PdfPropuesta
     exclusiones: propuesta.exclusiones,
     supuestos: propuesta.supuestos,
     condicionesPago: propuesta.condicionesPago,
+    gastos,
     aplicaIva: propuesta.aplicaIva,
     totales: {
       honorarios: propuesta.subtotalHonorarios,

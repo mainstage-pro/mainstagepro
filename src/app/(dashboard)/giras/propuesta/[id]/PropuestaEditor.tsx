@@ -8,18 +8,24 @@ import { Combobox } from "@/components/Combobox";
 import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
 import {
+  CATEGORIA_SERVICIO_LABEL,
+  CATEGORIAS_SERVICIO_PRINCIPAL,
   ESTADOS_PROPUESTA,
   ESTADO_PROPUESTA_COLOR,
   ESTADO_PROPUESTA_LABEL,
+  GASTOS_RESPONSABILIDAD_DEFAULT,
   GRUPO_SUBTOTAL,
   MODELOS_COBRO,
   MODELO_COBRO_LABEL,
+  RESPONSABLES_GASTO,
+  RESPONSABLE_GASTO_LABEL,
   TIPOS_LINEA_PROPUESTA,
   TIPO_LINEA_PROPUESTA_LABEL,
   UNIDADES_COBRO,
   UNIDAD_COBRO_LABEL,
   fmtFechaCorta,
   fmtMoneda,
+  type GastoResponsabilidad,
 } from "@/lib/giras";
 import { calcularResumenPropuesta, contarGira } from "@/lib/propuesta-servicio";
 
@@ -68,6 +74,7 @@ interface PropuestaUI {
   supuestos: string | null;
   condicionesPago: string | null;
   notasInternas: string | null;
+  responsabilidadGastos: GastoResponsabilidad[];
   aplicaIva: boolean;
   descuentoMonto: number;
   descuentoRazon: string | null;
@@ -92,6 +99,7 @@ interface ServicioUI {
   nombre: string;
   categoria: string | null;
   descripcion: string | null;
+  incluye: string | null;
   unidadDefault: string;
   tipoLinea: string;
   precioSugerido: number | null;
@@ -122,6 +130,7 @@ type CabeceraEditable = Pick<
   | "supuestos"
   | "condicionesPago"
   | "notasInternas"
+  | "responsabilidadGastos"
   | "aplicaIva"
   | "descuentoMonto"
   | "descuentoRazon"
@@ -159,6 +168,10 @@ export default function PropuestaEditor({
     supuestos: inicial.supuestos,
     condicionesPago: inicial.condicionesPago,
     notasInternas: inicial.notasInternas,
+    responsabilidadGastos:
+      inicial.responsabilidadGastos && inicial.responsabilidadGastos.length
+        ? inicial.responsabilidadGastos
+        : GASTOS_RESPONSABILIDAD_DEFAULT,
     aplicaIva: inicial.aplicaIva,
     descuentoMonto: inicial.descuentoMonto,
     descuentoRazon: inicial.descuentoRazon,
@@ -204,6 +217,24 @@ export default function PropuestaEditor({
   function editarCabecera<K extends keyof CabeceraEditable>(campo: K, valor: CabeceraEditable[K], guardar = true) {
     setCab((prev) => ({ ...prev, [campo]: valor }));
     if (guardar) void patchCabecera({ [campo]: valor } as Partial<CabeceraEditable>);
+  }
+
+  // El bloque de gastos viaja completo en cada edición — no hay endpoint por
+  // renglón porque el concepto es texto libre, no una fila con id propio.
+  function actualizarGastos(nuevo: GastoResponsabilidad[]) {
+    editarCabecera("responsabilidadGastos", nuevo);
+  }
+  function cambiarGastoConcepto(idx: number, concepto: string) {
+    actualizarGastos(cab.responsabilidadGastos.map((g, i) => (i === idx ? { ...g, concepto } : g)));
+  }
+  function cambiarGastoResponsable(idx: number, responsable: string) {
+    actualizarGastos(cab.responsabilidadGastos.map((g, i) => (i === idx ? { ...g, responsable } : g)));
+  }
+  function agregarGasto() {
+    actualizarGastos([...cab.responsabilidadGastos, { concepto: "Nuevo concepto", responsable: "INCLUIDO" }]);
+  }
+  function eliminarGasto(idx: number) {
+    actualizarGastos(cab.responsabilidadGastos.filter((_, i) => i !== idx));
   }
 
   async function patchLinea(id: string, data: Partial<LineaUI>) {
@@ -658,6 +689,52 @@ export default function PropuestaEditor({
             />
           </section>
 
+          {/* Responsabilidad de gastos */}
+          <section className="ms-card p-5 space-y-4">
+            <div>
+              <h2 className="ms-section-label">Responsabilidad de gastos</h2>
+              <p className="ms-meta mt-1">
+                Quién corre con cada gasto repetible. El cliente lo ve como una tabla aparte, sin ambigüedad —
+                tanto en el PDF como en el link de aprobación.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              {cab.responsabilidadGastos.map((g, idx) => (
+                <div key={idx} className="flex flex-col gap-2 sm:flex-row sm:items-center ms-card-deep p-2.5">
+                  <CampoTexto
+                    valor={g.concepto}
+                    onCommit={(v) => v.trim() && cambiarGastoConcepto(idx, v.trim())}
+                    className="ms-input-inline flex-1 text-[13px] text-white"
+                  />
+                  <select
+                    className="ms-input-inline sm:w-64 text-[12px]"
+                    value={g.responsable}
+                    onChange={(e) => cambiarGastoResponsable(idx, e.target.value)}
+                  >
+                    {RESPONSABLES_GASTO.map((r) => (
+                      <option key={r} value={r}>
+                        {RESPONSABLE_GASTO_LABEL[r]}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    className="text-[#555] hover:text-red-400 transition-colors shrink-0 self-end sm:self-auto"
+                    title="Quitar renglón"
+                    onClick={() => eliminarGasto(idx)}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button className="ms-btn-ghost" onClick={agregarGasto}>
+              Agregar concepto
+            </button>
+          </section>
+
           {/* Líneas */}
           <section className="ms-card p-5 space-y-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -1106,6 +1183,24 @@ function ModalCatalogo({
   const [tipo, setTipo] = useState("HONORARIO");
   const [guardando, setGuardando] = useState(false);
 
+  // Production/Tour/Stage management son independientes y combinables entre
+  // sí (§2.3 del esquema comercial de Live) — cada uno se agrega como su
+  // propia línea, con su propio checklist de alcance. Todo lo demás
+  // (Audio/Iluminación/Video/Equipo…) es add-on: se suma a uno de los tres.
+  const principales = CATEGORIAS_SERVICIO_PRINCIPAL.map((cat) => ({
+    categoria: cat,
+    items: servicios.filter((s) => s.categoria === cat),
+  })).filter((g) => g.items.length > 0);
+
+  const addons = servicios.filter(
+    (s) => !(CATEGORIAS_SERVICIO_PRINCIPAL as readonly string[]).includes(s.categoria ?? ""),
+  );
+  const categoriasAddon = Array.from(new Set(addons.map((s) => s.categoria ?? "OTRO")));
+  const addonsPorCategoria = categoriasAddon.map((cat) => ({
+    categoria: cat,
+    items: addons.filter((s) => (s.categoria ?? "OTRO") === cat),
+  }));
+
   function elegir(s: ServicioUI) {
     setSeleccionado(s);
     setUnidad(s.unidadDefault);
@@ -1153,29 +1248,44 @@ function ModalCatalogo({
         </div>
 
         <div className="p-5 grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="space-y-1 max-h-[46vh] overflow-y-auto pr-1">
+          <div className="space-y-5 max-h-[46vh] overflow-y-auto pr-1">
             {servicios.length === 0 && (
               <p className="text-sm text-[#6b7280]">
                 El catálogo está vacío. Siembra los servicios con el script <code>seed-servicios-pm.ts</code>.
               </p>
             )}
-            {servicios.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => elegir(s)}
-                className={`w-full text-left px-3 py-2 rounded-lg border transition-colors ${
-                  seleccionado?.id === s.id
-                    ? "border-[#B3985B]/50 bg-[#B3985B]/10"
-                    : "border-[#1e1e1e] hover:border-[#2a2a2a]"
-                }`}
-              >
-                <div className="text-[13px] text-white">{s.nombre}</div>
-                <div className="ms-micro">
-                  {UNIDAD_COBRO_LABEL[s.unidadDefault] ?? s.unidadDefault}
-                  {s.precioSugerido !== null && ` · ${fmtMoneda(s.precioSugerido)}`}
-                </div>
-              </button>
-            ))}
+
+            {principales.length > 0 && (
+              <div className="space-y-3">
+                <p className="ms-micro uppercase tracking-wider text-[#B3985B]">
+                  Servicios principales · independientes y combinables
+                </p>
+                {principales.map((grupo) => (
+                  <div key={grupo.categoria} className="space-y-1.5">
+                    <p className="ms-micro">{CATEGORIA_SERVICIO_LABEL[grupo.categoria] ?? grupo.categoria}</p>
+                    {grupo.items.map((s) => (
+                      <TarjetaServicio key={s.id} servicio={s} activo={seleccionado?.id === s.id} onClick={() => elegir(s)} />
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {addonsPorCategoria.length > 0 && (
+              <div className="space-y-3">
+                <p className="ms-micro uppercase tracking-wider text-[#6b7280]">
+                  Add-ons · se suman a uno de los anteriores
+                </p>
+                {addonsPorCategoria.map((grupo) => (
+                  <div key={grupo.categoria} className="space-y-1.5">
+                    <p className="ms-micro">{CATEGORIA_SERVICIO_LABEL[grupo.categoria] ?? grupo.categoria}</p>
+                    {grupo.items.map((s) => (
+                      <TarjetaServicio key={s.id} servicio={s} activo={seleccionado?.id === s.id} onClick={() => elegir(s)} />
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>
@@ -1188,6 +1298,7 @@ function ModalCatalogo({
                   {seleccionado.descripcion && (
                     <p className="ms-meta mt-1 leading-relaxed">{seleccionado.descripcion}</p>
                   )}
+                  <ChecklistIncluye incluye={seleccionado.incluye} />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Campo label="Tipo de línea">
@@ -1236,6 +1347,52 @@ function ModalCatalogo({
         </div>
       </div>
     </div>
+  );
+}
+
+/// Tarjeta de un servicio dentro del catálogo del modal: nombre, precio
+/// sugerido y, si tiene, un vistazo de su checklist de alcance — así se elige
+/// sin tener que seleccionarlo primero para saber qué incluye.
+function TarjetaServicio({
+  servicio,
+  activo,
+  onClick,
+}: {
+  servicio: ServicioUI;
+  activo: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full text-left px-3 py-2 rounded-lg border transition-colors ${
+        activo ? "border-[#B3985B]/50 bg-[#B3985B]/10" : "border-[#1e1e1e] hover:border-[#2a2a2a]"
+      }`}
+    >
+      <div className="text-[13px] text-white">{servicio.nombre}</div>
+      <div className="ms-micro">
+        {UNIDAD_COBRO_LABEL[servicio.unidadDefault] ?? servicio.unidadDefault}
+        {servicio.precioSugerido !== null && ` · ${fmtMoneda(servicio.precioSugerido)}`}
+      </div>
+      {activo && <ChecklistIncluye incluye={servicio.incluye} compacto />}
+    </button>
+  );
+}
+
+/// El checklist de "qué incluye" es texto libre separado por renglones (mismo
+/// patrón que entregables/noIncluye) — aquí se parte y se pinta como lista.
+function ChecklistIncluye({ incluye, compacto = false }: { incluye: string | null; compacto?: boolean }) {
+  const puntos = (incluye ?? "").split("\n").map((l) => l.trim()).filter(Boolean);
+  if (puntos.length === 0) return null;
+  return (
+    <ul className={`mt-2 space-y-0.5 ${compacto ? "ms-micro" : "text-[12px] text-[#9ca3af]"}`}>
+      {puntos.map((p, i) => (
+        <li key={i} className="flex items-start gap-1.5">
+          <span className="text-[#B3985B]">·</span>
+          <span>{p}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 

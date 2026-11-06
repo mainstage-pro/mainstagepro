@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getConfig } from "@/lib/config";
+import { GASTOS_RESPONSABILIDAD_DEFAULT, type GastoResponsabilidad } from "@/lib/giras";
 import PropuestaEditor from "./PropuestaEditor";
 
 export const dynamic = "force-dynamic";
@@ -47,18 +48,23 @@ export default async function PropuestaPage({ params }: { params: Promise<{ id: 
 
   if (!propuesta || !propuesta.activo) notFound();
 
+  // Una propuesta de Creative no debe ofrecer el catálogo de Live (PM/TM/SM)
+  // en su selector de servicios, y viceversa — cada unidad vende lo suyo.
+  const unidadPropuesta = propuesta.proyectoCreativoId ? "CREATIVE" : "LIVE";
+
   // El link que se le copia al cliente usa el dominio público configurado, el
   // mismo que arma el endpoint de envío: no el dominio desde el que se trabaja.
   const [appUrl, servicios, equipos, roles, clientes, artistas, giras, tratos] = await Promise.all([
     getConfig("empresa.appUrl", process.env.NEXTAUTH_URL ?? "https://mainstagepro.vercel.app"),
     prisma.servicioPM.findMany({
-      where: { activo: true },
+      where: { activo: true, unidad: unidadPropuesta },
       select: {
         id: true,
         clave: true,
         nombre: true,
         categoria: true,
         descripcion: true,
+        incluye: true,
         unidadDefault: true,
         tipoLinea: true,
         precioSugerido: true,
@@ -93,6 +99,19 @@ export default async function PropuestaPage({ params }: { params: Promise<{ id: 
     }),
   ]);
 
+  // Vacío o nunca tocado = los 4 renglones de referencia del esquema comercial
+  // de Live (§2.6), ya "incluidos" por default; cualquier edición del usuario
+  // reemplaza el bloque completo (ver route.ts PATCH).
+  let gastos: GastoResponsabilidad[] = GASTOS_RESPONSABILIDAD_DEFAULT;
+  if (propuesta.responsabilidadGastos) {
+    try {
+      const parsed = JSON.parse(propuesta.responsabilidadGastos);
+      if (Array.isArray(parsed) && parsed.length) gastos = parsed;
+    } catch {
+      // JSON corrupto no debe tronar la página; se queda con el default.
+    }
+  }
+
   return (
     <PropuestaEditor
       inicial={{
@@ -100,6 +119,7 @@ export default async function PropuestaPage({ params }: { params: Promise<{ id: 
         vigenciaHasta: propuesta.vigenciaHasta?.toISOString().slice(0, 10) ?? "",
         aprobacionFecha: propuesta.aprobacionFecha?.toISOString() ?? null,
         enviadaEn: propuesta.enviadaEn?.toISOString() ?? null,
+        responsabilidadGastos: gastos,
         gira: propuesta.gira
           ? {
               id: propuesta.gira.id,

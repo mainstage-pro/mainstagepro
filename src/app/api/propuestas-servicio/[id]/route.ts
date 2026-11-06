@@ -75,6 +75,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Modelo de cobro inválido" }, { status: 400 });
   }
 
+  // Condición contractual de "quién paga qué" (ver §2.6 del esquema comercial
+  // de Live): se guarda tal cual el array que manda la UI, texto libre por
+  // línea. Vacío o ausente limpia el bloque, no lo deja a medias.
+  let responsabilidadGastos: string | null | undefined;
+  if ("responsabilidadGastos" in body) {
+    responsabilidadGastos =
+      Array.isArray(body.responsabilidadGastos) && body.responsabilidadGastos.length
+        ? JSON.stringify(body.responsabilidadGastos)
+        : null;
+  }
+
   const data = soloDefinidos({
     titulo: textoOpcional(body.titulo),
     estado: estado ?? undefined,
@@ -90,6 +101,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     supuestos: textoOpcional(body.supuestos),
     condicionesPago: textoOpcional(body.condicionesPago),
     notasInternas: textoOpcional(body.notasInternas),
+    responsabilidadGastos,
     aplicaIva: booleano(body.aplicaIva),
     descuentoMonto: numero(body.descuentoMonto),
     descuentoRazon: textoOpcional(body.descuentoRazon),

@@ -138,6 +138,7 @@ export interface PropuestaServicioData {
   exclusiones: string | null;
   supuestos: string | null;
   condicionesPago: string | null;
+  gastos: { concepto: string; responsableLabel: string }[];
   aplicaIva: boolean;
   totales: {
     honorarios: number;
@@ -329,6 +330,22 @@ export function PropuestaServicioPDF({ data }: { data: PropuestaServicioData }) 
               </View>
             </View>
           </Seccion>
+
+          {data.gastos.length > 0 ? (
+            <Seccion titulo="Alcance de gastos" nota="Quién corre con cada gasto repetible, sin ambigüedad.">
+              <Tabla
+                columnas={[
+                  { label: "Concepto", flex: 2 },
+                  { label: "Responsable", flex: 2.5 },
+                ]}
+                renglones={data.gastos.map((g, i) => ({
+                  tipo: "fila" as const,
+                  clave: `gasto-${i}`,
+                  celdas: [{ texto: g.concepto, fuerte: true }, { texto: g.responsableLabel }],
+                }))}
+              />
+            </Seccion>
+          ) : null}
 
           {data.condicionesPago?.trim() ? (
             <Seccion titulo="Condiciones de pago">

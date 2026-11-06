@@ -2,10 +2,13 @@
 
 import { use, useEffect, useState } from "react";
 import {
+  GASTOS_RESPONSABILIDAD_DEFAULT,
   GRUPO_SUBTOTAL,
   MODELO_COBRO_LABEL,
+  RESPONSABLE_GASTO_LABEL,
   TIPO_LINEA_PROPUESTA_LABEL,
   UNIDAD_COBRO_LABEL,
+  type GastoResponsabilidad,
 } from "@/lib/giras";
 
 const FUENTE = '-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif';
@@ -37,6 +40,7 @@ interface Propuesta {
   exclusiones: string | null;
   supuestos: string | null;
   condicionesPago: string | null;
+  responsabilidadGastos: string | null;
   aplicaIva: boolean;
   subtotalHonorarios: number;
   subtotalEquipo: number;
@@ -132,6 +136,17 @@ export default function AprobacionPropuestaPage({ params }: { params: Promise<{ 
   }
 
   const moneda = propuesta.moneda || "MXN";
+  // Vacío o nunca tocado = los 4 renglones de referencia, ya "incluidos" por
+  // default — el cliente nunca ve un bloque de gastos en blanco.
+  let gastos: GastoResponsabilidad[] = GASTOS_RESPONSABILIDAD_DEFAULT;
+  if (propuesta.responsabilidadGastos) {
+    try {
+      const parsed = JSON.parse(propuesta.responsabilidadGastos);
+      if (Array.isArray(parsed) && parsed.length) gastos = parsed;
+    } catch {
+      // JSON corrupto no debe tronar el portal del cliente.
+    }
+  }
 
   return (
     <div className="min-h-screen bg-black text-white" style={{ fontFamily: FUENTE }}>
@@ -255,6 +270,22 @@ export default function AprobacionPropuestaPage({ params }: { params: Promise<{ 
             </p>
           </div>
         </Seccion>
+
+        {gastos.length > 0 && (
+          <Seccion titulo="Alcance de gastos">
+            <p className="text-sm text-white/40 -mt-2 mb-4">Quién corre con cada gasto repetible, sin ambigüedad.</p>
+            <div className="space-y-2">
+              {gastos.map((g, i) => (
+                <div key={i} className="flex justify-between gap-4 text-sm border-b border-white/5 pb-2">
+                  <span className="text-white/80">{g.concepto}</span>
+                  <span className="text-white/40 text-right">
+                    {RESPONSABLE_GASTO_LABEL[g.responsable] ?? g.responsable}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </Seccion>
+        )}
 
         {propuesta.condicionesPago && <SeccionTexto titulo="Condiciones de pago" texto={propuesta.condicionesPago} />}
         {propuesta.supuestos && <SeccionTexto titulo="Supuestos" texto={propuesta.supuestos} />}

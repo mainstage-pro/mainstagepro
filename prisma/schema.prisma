@@ -7107,6 +7107,13 @@ model PropuestaServicio {
   condicionesPago String?
   notasInternas   String?
 
+  /// Quién corre con cada gasto repetible (transporte, hospedaje, viáticos
+  /// comida, viáticos generales): incluido en el precio / por cuenta del
+  /// promotor / por cuenta del management del artista. JSON stringificado
+  /// (GastoResponsabilidad[] en src/lib/giras.ts) porque el concepto nace
+  /// como texto libre por línea, no como enum cerrado.
+  responsabilidadGastos String?
+
   aplicaIva Boolean @default(true)
 
   subtotalHonorarios    Float   @default(0)
