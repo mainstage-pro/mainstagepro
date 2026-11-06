@@ -43,10 +43,10 @@ interface SidebarProps {
   unidad?: "PRO" | "LIVE" | "CREATIVE";
 }
 
-const UNIDAD_MARCA: Record<"PRO" | "LIVE" | "CREATIVE", { nombre: string; sub: string }> = {
-  PRO: { nombre: "Mainstage Pro", sub: "Sistema Operativo" },
-  LIVE: { nombre: "Mainstage Live", sub: "Giras y shows" },
-  CREATIVE: { nombre: "Mainstage Creative", sub: "Diseño y producción creativa" },
+const UNIDAD_MARCA: Record<"PRO" | "LIVE" | "CREATIVE", { nombre: string; sub: string; logo: string }> = {
+  PRO: { nombre: "Mainstage Pro", sub: "Sistema Operativo", logo: "/logo-icon.png" },
+  LIVE: { nombre: "Mainstage Live", sub: "Giras y shows", logo: "/logo-live.png" },
+  CREATIVE: { nombre: "Mainstage Creative", sub: "Diseño y producción creativa", logo: "/logo-creative.png" },
 };
 
 function resolveLabel(key: string | undefined, defaultLabel: string, labels: Record<string, string>): string {
@@ -543,7 +543,7 @@ export default function Sidebar({ user, userModuleKeys, unidad = "PRO" }: Sideba
       <aside className="hidden md:flex w-64 bg-[#0d0d0d] border-r border-[#1a1a1a] flex-col h-full shrink-0">
         <div className="px-4 py-4 border-b border-[#1a1a1a]">
           <Link href={homeHref} className="flex items-center gap-2 hover:opacity-80 transition-opacity mb-3">
-            <Image src="/logo-icon.png" alt="Mainstage Pro" width={28} height={28} className="shrink-0" />
+            <Image src={marca.logo} alt={marca.nombre} width={28} height={28} className="shrink-0 rounded-full" />
             <div>
               <p className="text-white text-sm font-semibold leading-tight">{marca.nombre}</p>
               <p className="text-[#555] text-[10px]">{marca.sub}</p>
@@ -590,9 +590,10 @@ export default function Sidebar({ user, userModuleKeys, unidad = "PRO" }: Sideba
           <span className="w-5 h-px bg-[#888] block" />
         </button>
         <NotificacionesBell />
-        {/* RIGHT: logo + new task */}
-        <Link href={homeHref} className="flex-1 flex min-w-0 justify-end">
-          <Image src="/logo-white.png" alt="Mainstage Pro" width={88} height={22} className="object-contain hover:opacity-80 transition-opacity shrink-0" />
+        {/* RIGHT: logo + unit name + new task */}
+        <Link href={homeHref} className="flex-1 flex items-center gap-1.5 min-w-0 justify-end hover:opacity-80 transition-opacity">
+          <span className="text-white text-xs font-semibold truncate">{marca.nombre}</span>
+          <Image src={marca.logo} alt={marca.nombre} width={22} height={22} className="object-contain shrink-0 rounded-full" />
         </Link>
         <button
           onClick={() => window.dispatchEvent(new CustomEvent("open-full-task"))}
@@ -622,7 +623,7 @@ export default function Sidebar({ user, userModuleKeys, unidad = "PRO" }: Sideba
       >
         <div className="px-4 py-4 border-b border-[#1a1a1a] flex items-center justify-between">
           <Link href={homeHref} onClick={() => setMobileOpen(false)} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <Image src="/logo-icon.png" alt="Mainstage Pro" width={28} height={28} className="shrink-0" />
+            <Image src={marca.logo} alt={marca.nombre} width={28} height={28} className="shrink-0 rounded-full" />
             <div>
               <p className="text-white text-sm font-semibold leading-tight">{marca.nombre}</p>
               <p className="text-[#555] text-[10px]">{marca.sub}</p>
