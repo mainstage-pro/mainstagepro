@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ClipboardList, Repeat, Calendar, Building2,
-  ChevronLeft, X, FileText, Camera, Paperclip, Check, Handshake, Link2, Contact, Music, Trash2,
+  ChevronLeft, X, FileText, Camera, Paperclip, Check, Handshake, Link2, Contact, Music, Palette, Trash2,
 } from "lucide-react";
 import DatePicker from "@/components/ui/DatePicker";
 import RecurrenciaInput from "./RecurrenciaInput";
@@ -11,18 +11,20 @@ import { Combobox } from "@/components/Combobox";
 import { enqueueRequest } from "@/lib/offline-queue";
 
 // ── Tipos de registro (los sistemas del hub unificado) ──────────────────────────
-type TipoKey = "TAREA" | "PLAN" | "EVENTO" | "PROYECTO" | "TRATO" | "CLIENTE" | "GIRA";
+type TipoKey = "TAREA" | "PLAN" | "EVENTO" | "PROYECTO" | "TRATO" | "CLIENTE" | "GIRA" | "PROYECTO_CREATIVO";
 
 const TIPOS: { key: TipoKey; titulo: string; desc: string; Icon: typeof ClipboardList; color: string }[] = [
   { key: "TAREA",    titulo: "Tarea",                          desc: "Una tarea puntual del día a día",        Icon: ClipboardList, color: "#9ca3af" },
   { key: "PLAN",     titulo: "Compromiso de plan de trabajo",  desc: "Una responsabilidad recurrente",          Icon: Repeat,        color: "#34d399" },
   { key: "EVENTO",   titulo: "Tarea de proyecto de evento",    desc: "Ligada a un evento específico",           Icon: Calendar,      color: "#60a5fa" },
   { key: "PROYECTO", titulo: "Tarea de proyecto de empresa",   desc: "Iniciativa interna de la empresa",        Icon: Building2,     color: "#818cf8" },
-  { key: "TRATO",    titulo: "Tarea de trato de ventas",       desc: "Ligada a un trato/prospecto",             Icon: Handshake,     color: "#B3985B" },
+  { key: "TRATO",    titulo: "Tarea de oportunidad de ventas", desc: "Ligada a una oportunidad/prospecto",      Icon: Handshake,     color: "#B3985B" },
   // CLIENTE es contextual (se abre desde la ventana del cliente); se oculta del selector genérico.
   { key: "CLIENTE",  titulo: "Tarea del cliente",              desc: "Atención específica: cumpleaños, aniversarios, fechas especiales", Icon: Contact, color: "#f472b6" },
   // GIRA también es contextual: se abre desde los pendientes de una gira o de un show.
   { key: "GIRA",     titulo: "Pendiente de gira",              desc: "Advance de una gira o de una fecha", Icon: Music, color: "#c084fc" },
+  // PROYECTO_CREATIVO también es contextual: se abre desde el checklist del proyecto creativo.
+  { key: "PROYECTO_CREATIVO", titulo: "Tarea de proyecto creativo", desc: "Checklist operativo de un proyecto de Creative", Icon: Palette, color: "#f59e0b" },
 ];
 
 // ── Métodos de comprobación (evidencia de cumplimiento) ─────────────────────────
@@ -87,6 +89,9 @@ interface Props {
   giraNombre?: string | null;
   giraShowIdInicial?: string | null;
   giraShowLabel?: string | null;
+  // Fija el proyecto creativo y bloquea el selector (al crear desde su checklist).
+  proyectoCreativoIdInicial?: string | null;
+  proyectoCreativoNombre?: string | null;
   // Fija el proyecto de empresa y bloquea el selector (al crear desde su detalle).
   proyectoInternoIdInicial?: string | null;
   proyectoInternoNombre?: string | null;
@@ -106,6 +111,7 @@ export default function NuevaTareaModal({
   tratoIdInicial = null, tratoNombre = null,
   clienteIdInicial = null, clienteNombre = null,
   giraIdInicial = null, giraNombre = null, giraShowIdInicial = null, giraShowLabel = null,
+  proyectoCreativoIdInicial = null, proyectoCreativoNombre = null,
   proyectoInternoIdInicial = null, proyectoInternoNombre = null, faseInicialId = null,
   tareaIdEdicion = null, onCreated, onDeleted,
 }: Props) {
@@ -132,6 +138,7 @@ export default function NuevaTareaModal({
   const [clienteId, setClienteId] = useState<string | null>(null);
   const [giraId, setGiraId]       = useState<string | null>(null);
   const [giraShowId, setGiraShowId] = useState<string | null>(null);
+  const [proyectoCreativoId, setProyectoCreativoId] = useState<string | null>(null);
   const [faseId, setFaseId]       = useState<string | null>(null);
   const [error, setError]         = useState<string | null>(null);
   const [saving, setSaving]       = useState(false);
@@ -171,11 +178,12 @@ export default function NuevaTareaModal({
       setTratoId(tratoIdInicial ?? null);
       setClienteId(clienteIdInicial ?? null);
       setGiraId(giraIdInicial ?? null); setGiraShowId(giraShowIdInicial ?? null);
+      setProyectoCreativoId(proyectoCreativoIdInicial ?? null);
       setError(null); setSaving(false); setConfirmaBorrar(false);
       setLineasLote(null); setCreadasLote(0);
       setAdjuntos([]); setArchivosExistentes([]); setAddingUrl(false); setUrlManual(""); setNombreManual("");
     }
-  }, [open, tipoInicial, tituloInicial, defaultArea, defaultAsignadoId, fechaInicial, proyectoTareaId, seccionId, proyectoEventoIdInicial, tratoIdInicial, clienteIdInicial, giraIdInicial, giraShowIdInicial, proyectoInternoIdInicial, faseInicialId]);
+  }, [open, tipoInicial, tituloInicial, defaultArea, defaultAsignadoId, fechaInicial, proyectoTareaId, seccionId, proyectoEventoIdInicial, tratoIdInicial, clienteIdInicial, giraIdInicial, giraShowIdInicial, proyectoCreativoIdInicial, proyectoInternoIdInicial, faseInicialId]);
 
   // Modo edición: carga la tarea y precarga los campos (corre después del reset).
   useEffect(() => {
@@ -186,7 +194,7 @@ export default function NuevaTareaModal({
       .then(d => {
         const t = d.tarea;
         if (!t) return;
-        setTipo((t.tratoId ? "TRATO" : t.clienteId ? "CLIENTE" : t.giraId ? "GIRA" : (t.tipoOrigen as TipoKey)) ?? "EVENTO");
+        setTipo((t.tratoId ? "TRATO" : t.clienteId ? "CLIENTE" : t.giraId ? "GIRA" : t.proyectoCreativoId ? "PROYECTO_CREATIVO" : (t.tipoOrigen as TipoKey)) ?? "EVENTO");
         setTitulo(t.titulo ?? "");
         setDescripcion(t.descripcion ?? "");
         setPrioridad(t.prioridad ?? "MEDIA");
@@ -205,6 +213,7 @@ export default function NuevaTareaModal({
         setClienteId(t.clienteId ?? clienteIdInicial ?? null);
         setGiraId(t.giraId ?? giraIdInicial ?? null);
         setGiraShowId(t.giraShowId ?? giraShowIdInicial ?? null);
+        setProyectoCreativoId(t.proyectoCreativoId ?? proyectoCreativoIdInicial ?? null);
         setProyectoEventoId(t.proyectoEventoId ?? null);
         setProyectoInternoId(t.proyectoInternoId ?? proyectoInternoIdInicial ?? null);
         setFaseId(t.faseInternaId ?? null);
@@ -336,9 +345,10 @@ export default function NuevaTareaModal({
     if (tipo === "PLAN" && !recurrencia) { setError("Un compromiso de plan de trabajo debe ser recurrente."); return; }
     if (tipo === "EVENTO" && !proyectoEventoId) { setError("Selecciona el evento correspondiente."); return; }
     if (tipo === "PROYECTO" && !proyectoInternoId) { setError("Selecciona el proyecto de empresa."); return; }
-    if (tipo === "TRATO" && !tratoId) { setError("Selecciona el trato correspondiente."); return; }
+    if (tipo === "TRATO" && !tratoId) { setError("Selecciona la oportunidad correspondiente."); return; }
     if (tipo === "CLIENTE" && !clienteId) { setError("Falta el cliente de la tarea."); return; }
     if (tipo === "GIRA" && !giraId) { setError("Falta la gira del pendiente."); return; }
+    if (tipo === "PROYECTO_CREATIVO" && !proyectoCreativoId) { setError("Falta el proyecto creativo de la tarea."); return; }
     if (tipo === "CLIENTE" && !recurrencia && !fecha) { setError("Define una recurrencia o una fecha para la tarea del cliente."); return; }
 
     setSaving(true);
@@ -398,6 +408,7 @@ export default function NuevaTareaModal({
       clienteId: tipo === "CLIENTE" ? clienteId : null,
       giraId: tipo === "GIRA" ? giraId : null,
       giraShowId: tipo === "GIRA" ? giraShowId : null,
+      proyectoCreativoId: tipo === "PROYECTO_CREATIVO" ? proyectoCreativoId : null,
       tipoEvidencia: comprobacion || null,
       requiereEvidencia: !!comprobacion,
       moduloDestino: moduloDestino || null,
@@ -516,7 +527,7 @@ export default function NuevaTareaModal({
         {/* ── Paso 1: selector de tipo ───────────────────────────────────── */}
         {!tipo && (
           <div className="p-3 grid grid-cols-1 gap-2">
-            {TIPOS.filter(t => t.key !== "CLIENTE" && t.key !== "GIRA").map(t => (
+            {TIPOS.filter(t => t.key !== "CLIENTE" && t.key !== "GIRA" && t.key !== "PROYECTO_CREATIVO").map(t => (
               <button key={t.key} onClick={() => setTipo(t.key)}
                 className="group flex items-center gap-3.5 px-4 py-3 rounded-xl border border-[#161616] bg-[#0d0d0d] hover:bg-[#111] hover:border-[#262626] transition-all text-left">
                 <span className="flex items-center justify-center w-10 h-10 rounded-lg shrink-0 transition-colors"
@@ -662,11 +673,11 @@ export default function NuevaTareaModal({
             )}
 
             {tipo === "TRATO" && (
-              <Campo label="Trato">
+              <Campo label="Oportunidad">
                 {tratoIdInicial ? (
                   <div className="w-full bg-[#0f0f0f] border border-[#1e1e1e] rounded-lg px-3 py-2 text-[13px] text-white/80 flex items-center gap-2">
                     <Handshake size={14} className="text-[#B3985B] shrink-0" />
-                    <span className="truncate">{tratoNombre ?? "Este trato"}</span>
+                    <span className="truncate">{tratoNombre ?? "Esta oportunidad"}</span>
                   </div>
                 ) : loadingOpts ? <Cargando /> : (
                   <Combobox
@@ -674,7 +685,7 @@ export default function NuevaTareaModal({
                     onChange={v => setTratoId(v || null)}
                     options={tratoOptions}
                     idleOptions={tratoIdleOptions.length > 0 ? tratoIdleOptions : undefined}
-                    placeholder="Busca un trato…"
+                    placeholder="Busca una oportunidad…"
                     className={comboCls}
                   />
                 )}
@@ -708,6 +719,15 @@ export default function NuevaTareaModal({
                     ? "El pendiente queda anclado a esa fecha."
                     : "Pendiente de toda la gira. Para anclarlo a una fecha, créalo desde el show."}
                 </p>
+              </Campo>
+            )}
+
+            {tipo === "PROYECTO_CREATIVO" && (
+              <Campo label="Proyecto creativo">
+                <div className="w-full bg-[#0f0f0f] border border-[#1e1e1e] rounded-lg px-3 py-2 text-[13px] text-white/80 flex items-center gap-2">
+                  <Palette size={14} className="text-[#f59e0b] shrink-0" />
+                  <span className="truncate">{proyectoCreativoNombre ?? "Este proyecto creativo"}</span>
+                </div>
               </Campo>
             )}
 

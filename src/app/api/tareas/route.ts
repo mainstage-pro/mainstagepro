@@ -71,6 +71,8 @@ const SELECT = {
   gira:          { select: { id: true, nombre: true, tipo: true, artista: { select: { nombre: true } } } },
   giraShowId: true,
   giraShow:      { select: { id: true, fecha: true, ciudad: true } },
+  proyectoCreativoId: true,
+  proyectoCreativo:   { select: { id: true, nombre: true } },
   proyectoInterno:{ select: { id: true, nombre: true, area: true } },
   seccion:       { select: { id: true, nombre: true } },
   carpeta:       { select: { id: true, nombre: true } },
@@ -131,7 +133,7 @@ export async function GET(req: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const soloDerivadasAgendadas: Record<string, any> = {
     OR: [
-      { tipoOrigen: { notIn: ["TRATO", "EVENTO", "PROYECTO", "CLIENTE", "GIRA"] } },
+      { tipoOrigen: { notIn: ["TRATO", "EVENTO", "PROYECTO", "CLIENTE", "GIRA", "PROYECTO_CREATIVO"] } },
       { AND: [{ fecha: { not: null } }, { asignadoAId: { not: null } }] },
     ],
   };
@@ -351,7 +353,7 @@ export async function POST(req: NextRequest) {
     titulo, descripcion, prioridad, area, asignadoAId, colaboradorIds, notas, etiquetas,
     iniciativaId, proyectoTareaId, seccionId, carpetaId,
     proyectoInternoId, faseInternaId, proyectoEventoId, tratoId, clienteId, esSeguimiento,
-    giraId, giraShowId,
+    giraId, giraShowId, proyectoCreativoId,
     parentId, fecha, fechaVencimiento, recurrencia, orden, juntaOrigenId,
     // Hub unificado: tipo de registro + comprobación
     tipoOrigen, tipoEvidencia, requiereEvidencia,
@@ -388,7 +390,9 @@ export async function POST(req: NextRequest) {
             ? "CLIENTE"
             : giraId
               ? "GIRA"
-              : "TAREA");
+              : proyectoCreativoId
+                ? "PROYECTO_CREATIVO"
+                : "TAREA");
 
   // La comprobación (NOTA | FOTO | ARCHIVO | ENLACE_MODULO) implica requiereEvidencia.
   const evidenciaTipo = typeof tipoEvidencia === "string" && tipoEvidencia ? tipoEvidencia : null;
@@ -426,6 +430,7 @@ export async function POST(req: NextRequest) {
       clienteId:       clienteId        || null,
       giraId:          giraId           || null,
       giraShowId:      giraShowId       || null,
+      proyectoCreativoId: proyectoCreativoId || null,
       proyectoInternoId: proyectoInternoId || null,
       faseInternaId:   faseInternaId    || null,
       esSeguimiento:   esSeguimiento === true,
