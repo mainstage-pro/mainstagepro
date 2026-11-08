@@ -1,0 +1,730 @@
+{
+  "version": 1,
+  "fecha": "2026-11-08",
+  "config": {
+    "umbrales": { "avanza": 75, "banco": 50 },
+    "rubricaManual": {
+      "max": 3,
+      "niveles": {
+        "0": "Sin respuesta o incorrecta",
+        "1": "Básica",
+        "2": "Correcta y clara",
+        "3": "Completa, con criterio y experiencia evidente"
+      }
+    }
+  },
+
+  "competenciasTransversales": {
+    "aplicaA": "Todos los puestos de producción, internos y externos",
+    "competencias": [
+      { "nombre": "Proactividad", "descripcion": "Anticipa necesidades y actúa sin esperar instrucción" },
+      { "nombre": "Aprendizaje continuo", "descripcion": "Disposición a capacitarse y actualizarse" },
+      { "nombre": "Vocación por la producción", "descripcion": "Pasión por los eventos y por su disciplina" },
+      { "nombre": "Lealtad y compromiso", "descripcion": "Compromiso con Mainstage y su visión de crecimiento" },
+      { "nombre": "Dominio tecnológico", "descripcion": "Facilidad con plataformas, sistemas y herramientas digitales" },
+      { "nombre": "Orden y organización", "descripcion": "Organización, orden y limpieza en todo momento" },
+      { "nombre": "Adaptabilidad", "descripcion": "Adopción de nuevos procesos, incluido el sistema operativo Mainstage" },
+      { "nombre": "Puntualidad y responsabilidad", "descripcion": "Cumplimiento de horarios y compromisos" },
+      { "nombre": "Integridad", "descripcion": "Honestidad y reporte oportuno de fallas, daños e incidencias" },
+      { "nombre": "Trabajo en equipo", "descripcion": "Colaboración y respeto con equipo, clientes y artistas" }
+    ],
+    "criterioExclusionGeneral": "Consumo de alcohol o sustancias durante eventos o jornadas laborales"
+  },
+
+  "puestos": [
+    {
+      "nombre": "Jefe de Producción",
+      "reemplazaA": "Coordinador de producción",
+      "area": "PRODUCCION",
+      "reportaA": "Director general",
+      "supervisa": ["Encargado de Bodega", "Crew técnico"],
+      "modalidad": "Interno, tiempo completo",
+      "unidades": ["Mainstage Pro", "Mainstage Live"],
+      "ubicacion": "Querétaro, con eventos foráneos",
+      "mision": "Responsable operativo de la ejecución de todos los eventos y proyectos de la empresa, desde la preproducción hasta el retorno del equipo a bodega, garantizando el estándar de calidad, seguridad y servicio de Mainstage sin requerir la presencia de Dirección.",
+      "responsabilidades": [
+        "Preproducción y ejecución de eventos sociales, empresariales, musicales y conciertos",
+        "Planeación y coordinación logística: transporte, entregas, recolecciones, viáticos y alimentación",
+        "Toma de decisiones operativas en sitio con base en el estándar de la empresa",
+        "Atención de imprevistos fuera de horario, incluidos fines de semana",
+        "Contratación de crew técnico y renta de equipo a proveedores del directorio de Mainstage; contrataciones fuera del directorio requieren aprobación de Dirección",
+        "Liderazgo, supervisión y evaluación del crew en cada evento",
+        "Cálculo de pagos a personal freelance",
+        "Dominio del inventario y de la capacidad operativa: qué se puede ejecutar, qué no y con qué proveedor resolverlo",
+        "Supervisión de bodega, control de entradas y salidas, e insumos",
+        "Gestión de mantenimiento preventivo y correctivo",
+        "Seguimiento de tendencias y tecnología de la industria"
+      ],
+      "perfil": {
+        "conocimientos": [
+          { "texto": "Audio e iluminación: funcionamiento de sistemas y operación básica de consolas", "nivel": "intermedio", "indispensable": true },
+          { "texto": "Video, estructuras y energía: funcionamiento de sistemas y herramientas de operación", "nivel": "basico", "indispensable": true },
+          { "texto": "Equipo de DJ", "nivel": "basico", "indispensable": false },
+          { "texto": "Interpretación de input y output lists, run of show, riders técnicos, stage, light y audio plots, renders y listados de equipo", "nivel": "avanzado", "indispensable": true },
+          { "texto": "Ciclo completo de un evento: preproducción, montaje, operación, desmontaje y retorno a bodega", "nivel": "avanzado", "indispensable": true },
+          { "texto": "Plataforma Mainstage", "nivel": "intermedio", "indispensable": true }
+        ],
+        "aptitudes": [
+          { "texto": "Diagnóstico de fallas y criterio para solicitar ajustes a cada disciplina", "nivel": "intermedio" },
+          { "texto": "Autoridad y don de mando con trato profesional; distancia jerárquica con el crew", "nivel": "avanzado" },
+          { "texto": "Aplicación de sanciones y reporte de incidencias a Dirección", "nivel": "avanzado" },
+          { "texto": "Trabajo en equipo con el personal a su cargo", "nivel": "avanzado" }
+        ],
+        "experiencia": "Experiencia en eventos como técnico u operador",
+        "deseables": [
+          "Experiencia previa como coordinador o jefe de producción",
+          "Experiencia en conciertos, giras y equipo de DJ"
+        ],
+        "requisitos": [
+          "Disponibilidad de horario, incluidos fines de semana",
+          "Residencia en Querétaro y disponibilidad para viajar",
+          "Licencia de manejo vigente"
+        ]
+      },
+      "criteriosExclusion": [
+        "Impuntualidad",
+        "Falta de respeto a colaboradores",
+        "Falta de honestidad u ocultamiento de información",
+        "Consumo de alcohol o sustancias durante el trabajo"
+      ],
+      "condiciones": "Sueldo fijo por la gestión de producción, más bono por evento según escala y responsabilidad",
+      "resultadosClave": [
+        "Eventos sin incidencias atribuibles a producción",
+        "Contrataciones dentro del directorio y del presupuesto",
+        "Equipo retornado, revisado y con mantenimiento al día",
+        "Reporte de cierre e incidencias por evento",
+        "Pagos a freelance calculados en tiempo"
+      ]
+    },
+    {
+      "nombre": "Encargado de Bodega",
+      "reemplazaA": "Auxiliar de producción",
+      "notaMigracion": "Fusionar los dos puestos 'Auxiliar de producción' en este puesto",
+      "area": "PRODUCCION",
+      "reportaA": "Jefe de Producción",
+      "modalidad": "Interno",
+      "horario": "Lunes a viernes 10:00–17:00 y sábados 7:00–12:00; actividades fuera de horario se pagan como extra",
+      "unidades": ["Mainstage Pro", "Mainstage Live"],
+      "mision": "Garantizar el control, la integridad y la disponibilidad del inventario: que cada equipo esté limpio, probado, etiquetado y registrado, salga completo a cada evento y retorne completo a bodega.",
+      "responsabilidades": [
+        "Registro de entradas y salidas en la plataforma Mainstage con sus formatos de entrega",
+        "Verificación de retorno completo del equipo después de cada evento",
+        "Etiquetado de equipo por marca y número de identificación",
+        "Orden y limpieza de bodega",
+        "Mantenimiento preventivo: limpieza, sopleteado y pruebas de funcionamiento",
+        "Reparaciones menores, incluida la soldadura de cables",
+        "Registro, separación y programación de equipo con falla; traslado a mantenimiento externo para reparaciones mayores",
+        "Preparación de equipo por evento y entrega a los responsables, verificando que lleven todo lo requerido",
+        "Entrega y recepción de equipo con clientes",
+        "Coordinación de recolecciones de equipo subarrendado y de equipo en renta",
+        "Compra y reposición de insumos",
+        "Apoyo en montaje de eventos en caso de emergencia"
+      ],
+      "perfil": {
+        "conocimientos": [
+          { "texto": "Audio: tipos de sistemas, conexiones, consolas digitales y análogas, configuraciones de montaje", "nivel": "basico", "indispensable": true },
+          { "texto": "Iluminación: tipos de luminarias y configuraciones de montaje", "nivel": "basico", "indispensable": true },
+          { "texto": "Estructuras: truss, tripiés, postes, bases y tornillería", "nivel": "basico", "indispensable": true },
+          { "texto": "Electricidad: voltajes de 110 V y 220 V", "nivel": "basico", "indispensable": true },
+          { "texto": "Compatibilidad entre equipos y diversas marcas de la industria", "nivel": "basico", "indispensable": false },
+          { "texto": "Control de inventario", "nivel": "intermedio", "indispensable": true }
+        ],
+        "aptitudes": [
+          { "texto": "Mantenimiento básico y soldadura", "nivel": "intermedio" },
+          { "texto": "Orden riguroso, precisión y cuidado del equipo", "nivel": "avanzado" }
+        ],
+        "deseables": [
+          "Experiencia como técnico de montaje",
+          "Conocimiento de diversas marcas de equipo"
+        ],
+        "requisitos": ["Licencia de manejo vigente"]
+      },
+      "criteriosExclusion": ["Desorden", "Negligencia", "Errores graves evitables"],
+      "condiciones": "Lunes a viernes 10:00–17:00 y sábados 7:00–12:00; tiempo fuera de horario se paga como extra",
+      "resultadosClave": [
+        "Inventario conciliado en la plataforma",
+        "Cargas sin faltantes",
+        "Equipo con falla registrado y programado para mantenimiento",
+        "Bodega ordenada y equipo etiquetado al 100%"
+      ]
+    }
+  ],
+
+  "perfilesTecnicos": [
+    {
+      "disciplina": "Audio",
+      "categoriaTabulador": "AUDIO",
+      "alcance": "Sistemas line array y puntuales con subwoofers, microfonía digital inalámbrica y sistemas de monitoreo in-ear.",
+      "competenciasComunes": [
+        "Gestión de RF: escaneo de frecuencias y asignación de canales en micrófonos inalámbricos e in-ears",
+        "Interpretación de input list y ejecución de patch",
+        "Flujo de señal, incluida la conexión de setups de DJ"
+      ],
+      "criteriosExclusion": [
+        "Sin experiencia comprobable en audio",
+        "No interpretar un input list ni ejecutar un patch",
+        "Operador e ingeniero: no dominar estructura de ganancia, ecualización y herramientas de consola"
+      ],
+      "niveles": [
+        {
+          "nivel": "Técnico",
+          "rolTabulador": "Técnico de Audio",
+          "proposito": "Montaje, cableado y desmontaje de sistemas de audio.",
+          "competencias": [
+            "Configuraciones de sistema puntual: tripié, top sobre subwoofer con poste y monitores de piso",
+            "Configuraciones de line array: colgado por punto, con elevador o en stack",
+            "Ubicación de refuerzos: frontfill, sidefill, outfill y delays"
+          ]
+        },
+        {
+          "nivel": "Operador",
+          "rolTabulador": "Operador de Audio",
+          "proposito": "Mezcla y operación del sistema durante el evento, en FOH y de preferencia en monitores.",
+          "competencias": [
+            "Estructura de ganancia, pads, ecualización, gates y compresión",
+            "Control y prevención de retroalimentación",
+            "Operación desde eventos de DJ y empresariales con microfonía hasta la sonorización de bandas en formato básico",
+            "Mezcla de monitoreo in-ear",
+            "Consolas digitales: Yamaha DM7 y CL5, Allen & Heath SQ5, SQ6 y dLive, Behringer X32, Midas M32",
+            "Consolas análogas estándar de la industria"
+          ]
+        },
+        {
+          "nivel": "Ingeniero",
+          "rolTabulador": "Ingeniero de Audio (FOH)",
+          "rolesRelacionados": ["Ingeniero de Monitores", "Técnico de RF"],
+          "proposito": "Diseño, configuración, calibración y responsabilidad técnica del sistema de audio.",
+          "competencias": [
+            "Software de predicción de sistemas",
+            "Alineación y calibración con micrófono de medición y software de análisis",
+            "Configuración integral del sistema: entradas, salidas, microfoneo y ruteo",
+            "Coordinación de RF",
+            "Experiencia comprobable en sistemas de distintas escalas"
+          ]
+        }
+      ]
+    },
+    {
+      "disciplina": "Iluminación",
+      "categoriaTabulador": "ILUMINACION",
+      "alcance": "Luminarias robóticas y convencionales (beam, spot, wash, strobe, blinder, barras y par LED) y efectos atmosféricos, controlados con librerías originales.",
+      "competenciasComunes": [
+        "Conocimiento de equipos estándar de la industria y sus librerías",
+        "Protocolo DMX: canales, parámetros, universos, splitters y nodos",
+        "Diagnóstico y solución de fallas de señal y de iluminación",
+        "Rigging y protocolos de seguridad en colgado"
+      ],
+      "criteriosExclusion": [
+        "No resolver fallas de señal o de iluminación",
+        "Desconocer equipos estándar de la industria y el uso de splitters",
+        "Desconocer rigging y protocolos de seguridad en colgado",
+        "Operador e ingeniero: no crear librerías"
+      ],
+      "niveles": [
+        {
+          "nivel": "Técnico",
+          "rolTabulador": "Técnico de Iluminación",
+          "proposito": "Montaje, direccionamiento, cableado y desmontaje del sistema de iluminación.",
+          "competencias": [
+            "Montaje a piso, en tótem, colgado y volado",
+            "Criterio para resolver configuraciones de montaje no convencionales",
+            "Direccionamiento DMX y cableado de datos y energía"
+          ]
+        },
+        {
+          "nivel": "Operador",
+          "rolTabulador": "Operador de Iluminación",
+          "proposito": "Operación de la iluminación durante el evento, en vivo o con show programado.",
+          "competencias": [
+            "Consolas: grandMA2 y grandMA3 (principal); Chamsys y ADJ WOLFMIX (opcional)",
+            "Patch y creación de librerías",
+            "Busking estructurado: paleta completa de presets (colores, posiciones y efectos) preparada antes del show para ejecutar cualquier cambio de forma inmediata",
+            "Operación de shows programados por timecode SMPTE"
+          ]
+        },
+        {
+          "nivel": "Ingeniero",
+          "rolTabulador": "Ingeniero de Iluminación",
+          "proposito": "Diseño, programación y responsabilidad técnica del sistema de iluminación.",
+          "competencias": [
+            "Diseño de rig y elaboración de patch list",
+            "Previsualización (referencias: Capture, Vectorworks, WYSIWYG, grandMA 3D)",
+            "Programación por timecode",
+            "Diseño de redes de iluminación: Art-Net y sACN"
+          ]
+        }
+      ]
+    },
+    {
+      "disciplina": "Video",
+      "categoriaTabulador": "VIDEO",
+      "alcance": "Pantallas LED (principalmente pitch 3.9 mm) con procesamiento Novastar y señal HDMI. En desarrollo: circuito cerrado con cámaras y switcheo en vivo.",
+      "competenciasComunes": [
+        "Procesadores Novastar",
+        "Protocolos de seguridad en pantallas: bumpers, broches y aseguramiento de gabinetes",
+        "Diagnóstico y solución de fallas de señal y de pantalla"
+      ],
+      "criteriosExclusion": [
+        "Desconocer protocolos de seguridad en pantallas",
+        "No resolver fallas técnicas",
+        "No dominar procesadores Novastar"
+      ],
+      "niveles": [
+        {
+          "nivel": "Técnico",
+          "rolTabulador": "Técnico de Video",
+          "proposito": "Montaje, cableado y desmontaje de pantallas LED.",
+          "competencias": [
+            "Montaje a piso, sobre templete con soportes traseros tipo escuadra, o colgado con polipastos y bumpers",
+            "Cableado de energía y señal conforme al procesador"
+          ]
+        },
+        {
+          "nivel": "Operador",
+          "rolTabulador": "Operador de Video",
+          "proposito": "Operación de contenido en pantalla según el tipo de evento.",
+          "competencias": [
+            "Presentaciones corporativas",
+            "Reproducción de videos y visuales en loop o secuencia",
+            "Operación de visuales para conciertos (VJ); Resolume como referencia de la industria",
+            "Deseable: switcheo en vivo y circuito cerrado de cámaras"
+          ]
+        },
+        {
+          "nivel": "Ingeniero",
+          "rolTabulador": "Ingeniero de Video",
+          "proposito": "Diseño, configuración y responsabilidad técnica del sistema de video.",
+          "competencias": [
+            "Diseño de pantallas, resoluciones y mapeo",
+            "Configuración de procesadores y media servers",
+            "Sincronización con iluminación por timecode",
+            "Diseño de sistemas de circuito cerrado y switcheo en vivo"
+          ]
+        }
+      ]
+    },
+    {
+      "disciplina": "Escenario y Rigging",
+      "categoriaTabulador": ["ESCENARIO", "RIGGING"],
+      "alcance": "Templetes modulares de 1.25 × 1.25 m, truss light de 2.5 y 3 m con bases de 90 × 70 cm, elevadores de hasta 230 kg y polipastos manuales de 1 t con 10 m de cadena.",
+      "competenciasComunes": [
+        "Uso obligatorio de equipo de protección personal y cumplimiento de protocolos de seguridad",
+        "Certificación en trabajo en alturas: deseable en todos los niveles"
+      ],
+      "criteriosExclusion": [
+        "No utilizar equipo de protección personal",
+        "Incumplir protocolos de seguridad"
+      ],
+      "niveles": [
+        {
+          "nivel": "Técnico",
+          "rolTabulador": "Técnico de Escenario",
+          "proposito": "Armado y desarmado de escenarios y estructuras.",
+          "competencias": [
+            "Armado de templetes y truss con bases",
+            "Ensamble de puentes de truss con spigots",
+            "Anclajes y amarres con eslingas y spansets",
+            "Montaje y uso de elevadores"
+          ]
+        },
+        {
+          "nivel": "Operador",
+          "rolTabulador": "Operador de Rigging",
+          "rolNuevo": true,
+          "nota": "Rol inexistente en el tabulador; crear con tarifa pendiente. Hoy existe 'Técnico de Rigging' con tarifa plana.",
+          "proposito": "Ejecución de maniobras de izaje y supervisión del montaje estructural.",
+          "competencias": [
+            "Operación de polipastos manuales y maniobras de izaje",
+            "Supervisión del uso de equipo de seguridad del crew",
+            "Deseable: operación de motores eléctricos"
+          ]
+        },
+        {
+          "nivel": "Ingeniero",
+          "rolTabulador": "Ingeniero de Rigging",
+          "rolNuevo": true,
+          "nota": "Rol inexistente en el tabulador; crear con tarifa pendiente.",
+          "proposito": "Definición técnica y responsabilidad de la seguridad estructural.",
+          "competencias": [
+            "Cálculo de cargas",
+            "Definición de puntos de colgado",
+            "Interpretación de capacidades de carga del fabricante y elaboración de planos de rigging"
+          ]
+        }
+      ]
+    },
+    {
+      "disciplina": "Electricidad",
+      "categoriaTabulador": "ELECTRICIDAD",
+      "alcance": "Plantas generadoras Predator de 9,500 y 11,500 W y plantas subarrendadas; centros de carga monofásicos, bifásicos (30 A y 63 A por fase) y trifásicos con salidas Edison 110/220 V y twist lock; distribución con multicontactos y reguladores.",
+      "competenciasComunes": [
+        "Voltajes de operación de equipos: 110 V y 220 V",
+        "Consumo en amperes por equipo",
+        "Tipos de centros de carga y configuración de fases según capacidad",
+        "Capacidad en amperes de conectores, circuitos y calibres de cable"
+      ],
+      "criteriosExclusion": [
+        "Desconocer conceptos básicos de voltaje, amperaje, fases, circuitos y calibres"
+      ],
+      "niveles": [
+        {
+          "nivel": "Técnico",
+          "rolTabulador": "Técnico de Electricidad",
+          "proposito": "Conexión y distribución eléctrica conforme al plan del evento.",
+          "competencias": [
+            "Conexión de plantas y centros de carga",
+            "Distribución a cada área sin exceder capacidades de conectores y circuitos"
+          ]
+        },
+        {
+          "nivel": "Operador",
+          "rolTabulador": "Operador de Electricidad",
+          "proposito": "Operación y monitoreo eléctrico durante el evento.",
+          "competencias": [
+            "Operación de plantas generadoras",
+            "Monitoreo de consumo, voltaje y carga por fase",
+            "Balanceo de cargas entre fases"
+          ]
+        },
+        {
+          "nivel": "Ingeniero",
+          "rolTabulador": "Ingeniero de Electricidad",
+          "proposito": "Cálculo, diseño y responsabilidad técnica del suministro eléctrico.",
+          "competencias": [
+            "Cálculo de consumo total y dimensionamiento de plantas o acometida",
+            "Validación del cálculo de consumo que genera la plataforma Mainstage a partir del inventario",
+            "Plan de distribución eléctrica por área y por fase"
+          ]
+        }
+      ]
+    }
+  ],
+
+  "formularios": [
+    {
+      "slug": "postulacion-produccion",
+      "titulo": "Postulación — Producción Mainstage",
+      "descripcion": "Gracias por tu interés en formar parte del equipo de producción de Mainstage. Responde con honestidad; tus respuestas nos ayudan a conocer tu experiencia y asignarte al rol adecuado.",
+      "puestosVinculados": ["Jefe de Producción", "Encargado de Bodega", "Crew técnico"],
+      "mensajeConfirmacion": "¡Gracias! Recibimos tu postulación. Si tu perfil avanza, te contactaremos por WhatsApp o correo.",
+      "secciones": [
+        {
+          "id": "G1", "bloque": "general", "titulo": "Datos del candidato",
+          "preguntas": [
+            { "codigo": "1.1", "texto": "Nombre completo", "tipo": "texto_corto", "obligatoria": true, "valoracion": { "tipo": "I" } },
+            { "codigo": "1.2a", "texto": "Teléfono (WhatsApp)", "tipo": "texto_corto", "obligatoria": true, "valoracion": { "tipo": "I" } },
+            { "codigo": "1.2b", "texto": "Correo electrónico", "tipo": "texto_corto", "obligatoria": true, "valoracion": { "tipo": "I" } },
+            { "codigo": "1.3", "texto": "¿Eres mayor de edad?", "tipo": "si_no", "obligatoria": true, "valoracion": { "tipo": "E", "excluyeSi": ["No"] } },
+            { "codigo": "1.4", "texto": "Ciudad de residencia", "tipo": "texto_corto", "obligatoria": true, "valoracion": { "tipo": "I" } },
+            { "codigo": "1.5", "texto": "CV, portafolio o redes donde se vea tu trabajo", "tipo": "archivo_o_liga", "obligatoria": false, "valoracion": { "tipo": "I" } },
+            { "codigo": "1.6", "texto": "¿Cómo te enteraste de la vacante o quién te recomendó?", "tipo": "texto_corto", "obligatoria": false, "valoracion": { "tipo": "I" } }
+          ]
+        },
+        {
+          "id": "G2", "bloque": "general", "titulo": "Disponibilidad y condiciones",
+          "preguntas": [
+            { "codigo": "2.1", "texto": "¿Tienes disponibilidad para trabajar fines de semana y horarios nocturnos?", "tipo": "si_no", "obligatoria": true, "valoracion": { "tipo": "E", "excluyeSi": ["No"] } },
+            { "codigo": "2.2", "texto": "¿Tienes disponibilidad para viajar a eventos fuera de la ciudad?", "tipo": "opcion_unica", "opciones": ["Sí", "No", "Ocasionalmente"], "obligatoria": true, "valoracion": { "tipo": "I" } },
+            { "codigo": "2.3", "texto": "¿Cuentas con licencia de manejo vigente?", "tipo": "si_no", "obligatoria": true, "valoracion": { "tipo": "I" } },
+            { "codigo": "2.4", "texto": "¿Qué modalidad buscas?", "tipo": "opcion_unica", "opciones": ["Tiempo completo", "Por evento (freelance)", "Ambas"], "obligatoria": true, "valoracion": { "tipo": "I" } },
+            { "codigo": "2.5", "texto": "¿Aceptas realizar una prueba antidoping como parte del proceso?", "tipo": "si_no", "obligatoria": true, "valoracion": { "tipo": "E", "excluyeSi": ["No"] } },
+            { "codigo": "2.6", "texto": "Pretensión económica (mensual o por evento)", "tipo": "texto_corto", "obligatoria": false, "valoracion": { "tipo": "I" } }
+          ]
+        },
+        {
+          "id": "G3", "bloque": "general", "titulo": "Experiencia general",
+          "preguntas": [
+            { "codigo": "3.1", "texto": "Años de experiencia en producción de eventos", "tipo": "opcion_unica", "opciones": ["Menos de 1", "1 a 2", "3 a 5", "Más de 5"], "obligatoria": true, "valoracion": { "tipo": "P", "puntos": { "Menos de 1": 0, "1 a 2": 1, "3 a 5": 2, "Más de 5": 3 } } },
+            { "codigo": "3.2", "texto": "Tipos de evento en los que has trabajado", "tipo": "opcion_multiple", "opciones": ["Sociales", "Empresariales", "Conciertos", "Festivales", "Música electrónica", "Giras"], "obligatoria": true, "valoracion": { "tipo": "P", "porOpcion": 0.5, "max": 3 } },
+            { "codigo": "3.3", "texto": "Describe los 3 eventos más relevantes en los que has trabajado: tipo, aforo y tu función", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Relevancia, escala y responsabilidad de los eventos descritos" } },
+            { "codigo": "3.4", "texto": "Empresas o proveedores con los que has trabajado", "tipo": "texto_corto", "obligatoria": false, "valoracion": { "tipo": "I" } },
+            { "codigo": "3.5", "texto": "Dos referencias laborales (nombre, empresa y teléfono)", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "I" } }
+          ]
+        },
+        {
+          "id": "G4", "bloque": "general", "titulo": "Competencias transversales",
+          "preguntas": [
+            { "codigo": "4.1", "texto": "Al guardar equipo después de un evento notas que un cable que usaste quedó dañado. ¿Qué haces?", "tipo": "opcion_unica", "opciones": ["Lo reporto, lo etiqueto y lo separo para mantenimiento", "Lo guardo, alguien lo revisará", "Lo reparo sin avisar", "Lo dejo donde está"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "Lo reporto, lo etiqueto y lo separo para mantenimiento", "puntos": 2, "competencia": "Integridad" } },
+            { "codigo": "4.2", "texto": "Tu llamado es a las 7:00 y vas a llegar tarde por un imprevisto. ¿Qué haces?", "tipo": "opcion_unica", "opciones": ["Llego en cuanto pueda", "Aviso a mi jefe en cuanto lo sé, con hora estimada de llegada", "Aviso al llegar", "Pido a un compañero que me cubra"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "Aviso a mi jefe en cuanto lo sé, con hora estimada de llegada", "puntos": 2, "competencia": "Puntualidad y responsabilidad" } },
+            { "codigo": "4.3", "texto": "Durante el montaje, un compañero te ofrece una cerveza. ¿Qué haces?", "tipo": "opcion_unica", "opciones": ["La acepto al terminar el montaje", "La rechazo: no consumo alcohol en ninguna jornada de trabajo", "Acepto solo una", "Depende del cliente"], "obligatoria": true, "valoracion": { "tipo": "E", "correcta": "La rechazo: no consumo alcohol en ninguna jornada de trabajo", "excluyeSi": "incorrecta" } },
+            { "codigo": "4.4", "texto": "La empresa implementa una nueva plataforma para registrar entregas de equipo. ¿Cuál es tu postura?", "tipo": "opcion_unica", "opciones": ["La aprendo y la uso desde el primer día", "Prefiero seguir en papel", "La uso si alguien me la explica cada vez", "Que la use otro"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "La aprendo y la uso desde el primer día", "puntos": 2, "competencia": "Adaptabilidad" } },
+            { "codigo": "4.5", "texto": "Herramientas digitales que usas con soltura", "tipo": "opcion_multiple", "opciones": ["Hojas de cálculo", "Google Drive", "Plataformas web de gestión", "Software técnico de tu disciplina", "Apps de comunicación de equipo"], "obligatoria": true, "valoracion": { "tipo": "P", "porOpcion": 0.5, "max": 2, "competencia": "Dominio tecnológico" } },
+            { "codigo": "4.6", "texto": "¿Por qué quieres trabajar en producción de eventos y en tu área?", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Vocación y pasión por la producción y su disciplina", "competencia": "Vocación por la producción" } },
+            { "codigo": "4.7", "texto": "¿Qué has aprendido o en qué te has capacitado en el último año?", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Aprendizaje continuo con ejemplos concretos", "competencia": "Aprendizaje continuo" } },
+            { "codigo": "4.8", "texto": "¿Dónde te ves profesionalmente en 3 años?", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Visión de crecimiento alineada con la producción de eventos", "competencia": "Lealtad y compromiso" } },
+            { "codigo": "4.9", "texto": "Describe cómo organizas tu equipo y herramientas al terminar un evento", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Orden, método y cuidado del equipo", "competencia": "Orden y organización" } }
+          ]
+        },
+        {
+          "id": "G5", "bloque": "general", "titulo": "Puesto de interés",
+          "preguntas": [
+            { "codigo": "5.1", "texto": "¿A qué puesto te postulas?", "tipo": "opcion_unica", "opciones": ["Jefe de Producción", "Encargado de Bodega", "Crew técnico"], "obligatoria": true, "valoracion": { "tipo": "I" } },
+            { "codigo": "5.2", "texto": "Disciplina principal", "tipo": "opcion_unica", "opciones": ["Audio", "Iluminación", "Video", "Escenario y Rigging", "Electricidad"], "obligatoria": true, "mostrarSi": { "pregunta": "5.1", "valorEn": ["Crew técnico"] }, "valoracion": { "tipo": "I" } },
+            { "codigo": "5.3", "texto": "Nivel al que aplicas", "ayuda": "Técnico: montaje y cableado. Operador: operación en show. Ingeniero: diseño y responsabilidad técnica.", "tipo": "opcion_unica", "opciones": ["Técnico", "Operador", "Ingeniero"], "obligatoria": true, "mostrarSi": { "pregunta": "5.1", "valorEn": ["Crew técnico"] }, "valoracion": { "tipo": "I" } },
+            { "codigo": "5.4", "texto": "Disciplina secundaria (opcional)", "tipo": "opcion_unica", "opciones": ["Ninguna", "Audio", "Iluminación", "Video", "Escenario y Rigging", "Electricidad"], "obligatoria": false, "mostrarSi": { "pregunta": "5.1", "valorEn": ["Crew técnico"] }, "valoracion": { "tipo": "I" } },
+            { "codigo": "5.5", "texto": "Acepto el aviso de privacidad para el tratamiento de mis datos personales", "tipo": "casilla", "obligatoria": true, "valoracion": { "tipo": "E", "excluyeSi": ["No marcada"] } }
+          ]
+        },
+
+        {
+          "id": "J", "bloque": "puesto", "titulo": "Jefe de Producción",
+          "mostrarSi": { "pregunta": "5.1", "valorEn": ["Jefe de Producción"] },
+          "preguntas": [
+            { "codigo": "J.1", "texto": "¿Resides en Querétaro o podrías hacerlo antes de iniciar?", "tipo": "si_no", "obligatoria": true, "valoracion": { "tipo": "E", "excluyeSi": ["No"] } },
+            { "codigo": "J.2", "texto": "¿Cuentas con licencia de manejo vigente?", "tipo": "si_no", "obligatoria": true, "valoracion": { "tipo": "E", "excluyeSi": ["No"] } },
+            { "codigo": "J.3", "texto": "Un domingo a las 8:00 un cliente reporta una falla en un equipo rentado. ¿Qué haces?", "tipo": "opcion_unica", "opciones": ["Lo atiendo el lunes", "Atiendo de inmediato: diagnostico, resuelvo o envío solución y reporto a Dirección", "Le pido al cliente que lo revise él", "Lo canalizo a bodega"], "obligatoria": true, "valoracion": { "tipo": "E", "correcta": "Atiendo de inmediato: diagnostico, resuelvo o envío solución y reporto a Dirección", "excluyeSi": "incorrecta" } },
+            { "codigo": "J.4", "texto": "¿Qué roles has desempeñado en eventos?", "tipo": "opcion_multiple", "opciones": ["Técnico", "Operador", "Stage manager", "Coordinador de producción", "Jefe de producción"], "obligatoria": true, "valoracion": { "tipo": "P", "porOpcion": 1, "max": 4 } },
+            { "codigo": "J.5", "texto": "Crew más grande que has coordinado", "tipo": "opcion_unica", "opciones": ["1 a 5 personas", "6 a 15 personas", "16 a 30 personas", "Más de 30 personas"], "obligatoria": true, "valoracion": { "tipo": "P", "puntos": { "1 a 5 personas": 0, "6 a 15 personas": 1, "16 a 30 personas": 2, "Más de 30 personas": 3 } } },
+            { "codigo": "J.6", "texto": "Describe el evento más complejo que has coordinado: qué salió mal y cómo lo resolviste", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Complejidad del evento, criterio y capacidad de resolución" } },
+            { "codigo": "J.7", "texto": "Un input list es:", "tipo": "opcion_unica", "opciones": ["El listado de equipo a rentar", "La lista de canales de entrada con fuente, micrófono o DI y asignación", "El orden del show", "El listado de salidas a bocinas"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "La lista de canales de entrada con fuente, micrófono o DI y asignación", "puntos": 1 } },
+            { "codigo": "J.8", "texto": "Un run of show es:", "tipo": "opcion_unica", "opciones": ["El plano del escenario", "El cronograma minuto a minuto del evento", "El rider de iluminación", "La lista de personal"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "El cronograma minuto a minuto del evento", "puntos": 1 } },
+            { "codigo": "J.9", "texto": "Un universo DMX tiene:", "tipo": "opcion_unica", "opciones": ["128 canales", "256 canales", "512 canales", "1,024 canales"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "512 canales", "puntos": 1 } },
+            { "codigo": "J.10", "texto": "En un evento empresarial con 4 micrófonos hay retroalimentación. ¿Qué indicaciones das al operador?", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Identificar frecuencia y atenuar con EQ, ajustar ganancia, reubicar micrófonos y monitores" } },
+            { "codigo": "J.11", "texto": "Un circuito de 20 A a 127 V soporta aproximadamente:", "tipo": "opcion_unica", "opciones": ["1,270 W", "2,540 W", "4,000 W", "6,350 W"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "2,540 W", "puntos": 1 } },
+            { "codigo": "J.12", "texto": "Media pantalla LED se queda sin imagen durante el evento. ¿Qué revisas y en qué orden?", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Cable de datos, receiving card, alimentación, configuración del procesador" } },
+            { "codigo": "J.13", "texto": "Documentación técnica que interpretas con soltura", "tipo": "opcion_multiple", "opciones": ["Input list", "Output list", "Run of show", "Rider técnico", "Stage plot", "Light plot", "Audio plot", "Renders"], "obligatoria": true, "valoracion": { "tipo": "P", "porOpcion": 0.5, "max": 4 } },
+            { "codigo": "J.14", "texto": "Consolas que operas a nivel básico o superior", "tipo": "opcion_multiple", "opciones": ["Audio digital", "Audio análoga", "grandMA", "Otras de iluminación", "Equipo de DJ"], "obligatoria": true, "valoracion": { "tipo": "P", "porOpcion": 0.5, "max": 2 } },
+            { "codigo": "J.15", "texto": "Llega un concierto para 800 personas y el rider pide equipo que no tenemos en inventario. Describe tu proceso", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Revisa inventario, cotiza con proveedores del directorio, valida presupuesto, escala a Dirección" } },
+            { "codigo": "J.16", "texto": "Necesitas un técnico de iluminación y el único disponible no está en el directorio de Mainstage. ¿Qué haces?", "tipo": "opcion_unica", "opciones": ["Lo contrato y aviso después", "Solicito aprobación a Dirección antes de contratarlo", "Opero yo", "Cancelo esa parte"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "Solicito aprobación a Dirección antes de contratarlo", "puntos": 2 } },
+            { "codigo": "J.17", "texto": "Un técnico llega una hora tarde al montaje. ¿Qué haces?", "tipo": "opcion_unica", "opciones": ["Lo regaño frente al equipo", "Lo dejo pasar", "Registro la incidencia, aplico la sanción del reglamento y lo reporto a Dirección", "Lo mando a su casa sin avisar"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "Registro la incidencia, aplico la sanción del reglamento y lo reporto a Dirección", "puntos": 2 } },
+            { "codigo": "J.18", "texto": "Al terminar el evento, el crew te invita a celebrar con ellos. ¿Cómo manejas la relación con tu equipo?", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Autoridad, trato profesional y distancia jerárquica" } },
+            { "codigo": "J.19", "texto": "Describe cómo planeas la logística de un evento: transporte, carga, entregas, viáticos y alimentación", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Planeación completa y anticipada de la logística" } },
+            { "codigo": "J.20", "texto": "¿Cómo calculas el pago del personal freelance de un evento?", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Uso de tabulador por rol y jornada, bonos y registro" } }
+          ]
+        },
+
+        {
+          "id": "B", "bloque": "puesto", "titulo": "Encargado de Bodega",
+          "mostrarSi": { "pregunta": "5.1", "valorEn": ["Encargado de Bodega"] },
+          "preguntas": [
+            { "codigo": "B.1", "texto": "El horario es de lunes a viernes de 10:00 a 17:00 y sábados de 7:00 a 12:00. ¿Puedes cumplirlo?", "tipo": "si_no", "obligatoria": true, "valoracion": { "tipo": "E", "excluyeSi": ["No"] } },
+            { "codigo": "B.2", "texto": "¿Cuentas con licencia de manejo vigente?", "tipo": "si_no", "obligatoria": true, "valoracion": { "tipo": "E", "excluyeSi": ["No"] } },
+            { "codigo": "B.3", "texto": "¿Has llevado control de inventario? Describe dónde, de qué y con qué herramienta", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Experiencia real en control de inventario y uso de herramientas" } },
+            { "codigo": "B.4", "texto": "¿Has trabajado como técnico de montaje en eventos?", "tipo": "si_no", "obligatoria": true, "valoracion": { "tipo": "P", "puntos": { "Sí": 1, "No": 0 } } },
+            { "codigo": "B.5", "texto": "¿Sabes soldar cables y conectores?", "tipo": "opcion_unica", "opciones": ["No", "Básico", "Con soltura"], "obligatoria": true, "valoracion": { "tipo": "P", "puntos": { "No": 0, "Básico": 1, "Con soltura": 2 } } },
+            { "codigo": "B.6", "texto": "Un conector XLR estándar de audio tiene:", "tipo": "opcion_unica", "opciones": ["2 pines", "3 pines", "4 pines", "5 pines"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "3 pines", "puntos": 1 } },
+            { "codigo": "B.7", "texto": "Un conector powerCON se usa para:", "tipo": "opcion_unica", "opciones": ["Señal de audio", "Alimentación eléctrica de equipos", "Señal DMX", "Señal de video"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "Alimentación eléctrica de equipos", "puntos": 1 } },
+            { "codigo": "B.8", "texto": "Un spigot sirve para:", "tipo": "opcion_unica", "opciones": ["Nivelar templetes", "Unir tramos de truss", "Colgar bocinas", "Fijar cables"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "Unir tramos de truss", "puntos": 1 } },
+            { "codigo": "B.9", "texto": "Una luminaria wash se distingue por:", "tipo": "opcion_unica", "opciones": ["Un haz muy cerrado", "Bañar áreas con luz amplia y difusa", "Proyectar gobos nítidos", "Destellos de alta intensidad"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "Bañar áreas con luz amplia y difusa", "puntos": 1 } },
+            { "codigo": "B.10", "texto": "¿Qué pasa si conectas un equipo de 110 V a una toma de 220 V?", "tipo": "opcion_unica", "opciones": ["Funciona igual", "Funciona más fuerte", "Puede dañarse de forma permanente", "No enciende y no pasa nada"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "Puede dañarse de forma permanente", "puntos": 1 } },
+            { "codigo": "B.11", "texto": "¿Cuál es la diferencia principal entre una consola de audio digital y una análoga?", "tipo": "texto_corto", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Procesamiento digital, escenas y DSP interno vs. señal y procesamiento análogo" } },
+            { "codigo": "B.12", "texto": "Al recibir el equipo de un evento falta una bocina. ¿Qué haces?", "tipo": "opcion_unica", "opciones": ["Espero a que aparezca", "Reporto de inmediato al Jefe de Producción y lo registro en la plataforma", "Lo anoto en una libreta", "Lo descuento al técnico"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "Reporto de inmediato al Jefe de Producción y lo registro en la plataforma", "puntos": 2 } },
+            { "codigo": "B.13", "texto": "Un equipo regresa con falla. Describe el proceso que sigues", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Registrar, etiquetar, separar, programar mantenimiento y dar seguimiento" } },
+            { "codigo": "B.14", "texto": "¿Cómo preparas y verificas una carga para un evento de fin de semana?", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Hoja de entrega, check list, prueba de equipo, verificación con el responsable" } },
+            { "codigo": "B.15", "texto": "Si entras a una bodega desordenada, ¿cómo la organizarías?", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Zonas por disciplina, etiquetado e ID, registro en sistema" } }
+          ]
+        },
+
+        {
+          "id": "A-base", "bloque": "base", "disciplina": "Audio", "titulo": "Audio — Bloque base",
+          "mostrarSi": { "todas": [ { "pregunta": "5.1", "valorEn": ["Crew técnico"] }, { "pregunta": "5.2", "valorEn": ["Audio"] } ] },
+          "preguntas": [
+            { "codigo": "A.1", "texto": "Marcas y modelos de sistemas de audio que has montado u operado", "tipo": "texto_corto", "obligatoria": true, "valoracion": { "tipo": "I" } },
+            { "codigo": "A.2", "texto": "Antes de asignar canales a micrófonos inalámbricos, el escaneo de RF sirve para:", "tipo": "opcion_unica", "opciones": ["Subir la potencia de transmisión", "Identificar frecuencias libres de interferencia", "Cargar las baterías", "Ecualizar el micrófono"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "Identificar frecuencias libres de interferencia", "puntos": 1 } },
+            { "codigo": "A.3", "texto": "¿Has escaneado RF y asignado canales en micrófonos inalámbricos o in-ears?", "tipo": "opcion_unica", "opciones": ["No", "Con supervisión", "De forma autónoma"], "obligatoria": true, "valoracion": { "tipo": "E", "excluyeSi": ["No"], "puntos": { "No": 0, "Con supervisión": 1, "De forma autónoma": 2 } } },
+            { "codigo": "A.4", "texto": "Hacer patch significa:", "tipo": "opcion_unica", "opciones": ["Reparar un cable", "Asignar cada fuente a su canal de entrada según el input list", "Ecualizar el sistema", "Guardar una escena"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "Asignar cada fuente a su canal de entrada según el input list", "puntos": 1 } },
+            { "codigo": "A.5", "texto": "El flujo de señal correcto de un setup de DJ es:", "tipo": "opcion_unica", "opciones": ["Mixer → reproductores → sistema", "Reproductores → mixer de DJ → consola o sistema", "Sistema → mixer → reproductores", "Reproductores → sistema → mixer"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "Reproductores → mixer de DJ → consola o sistema", "puntos": 1 } }
+          ]
+        },
+        {
+          "id": "A-tecnico", "bloque": "tecnico", "disciplina": "Audio", "titulo": "Audio — Técnico",
+          "mostrarSi": { "todas": [ { "pregunta": "5.1", "valorEn": ["Crew técnico"] }, { "pregunta": "5.2", "valorEn": ["Audio"] } ] },
+          "preguntas": [
+            { "codigo": "A.6", "texto": "Configuraciones que has montado", "tipo": "opcion_multiple", "opciones": ["Top en tripié", "Top sobre sub con poste", "Monitores de piso", "Line array en stack", "Line array colgado por punto", "Line array con elevador"], "obligatoria": true, "valoracion": { "tipo": "P", "porOpcion": 0.5, "max": 3 } },
+            { "codigo": "A.7", "texto": "Un frontfill sirve para:", "tipo": "opcion_unica", "opciones": ["Reforzar graves", "Cubrir las primeras filas frente al escenario", "Monitorear al artista", "Cubrir la parte trasera del venue"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "Cubrir las primeras filas frente al escenario", "puntos": 1 } },
+            { "codigo": "A.8", "texto": "Un conector speakON se usa principalmente para:", "tipo": "opcion_unica", "opciones": ["Micrófonos", "Conexión de amplificador a bocina pasiva", "Señal DMX", "Alimentación"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "Conexión de amplificador a bocina pasiva", "puntos": 1 } },
+            { "codigo": "A.9", "texto": "Terminas de montar y un top no suena. Describe cómo encuentras la falla", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Seguir el flujo de señal, revisar cableado, alimentación, amplificación y ruteo" } }
+          ]
+        },
+        {
+          "id": "A-operador", "bloque": "operador", "disciplina": "Audio", "titulo": "Audio — Operador",
+          "mostrarSi": { "todas": [ { "pregunta": "5.1", "valorEn": ["Crew técnico"] }, { "pregunta": "5.2", "valorEn": ["Audio"] }, { "pregunta": "5.3", "valorEn": ["Operador", "Ingeniero"] } ] },
+          "preguntas": [
+            { "codigo": "A.10", "texto": "Consolas que operas con soltura", "tipo": "opcion_multiple", "opciones": ["Yamaha DM7", "Yamaha CL5", "Allen & Heath SQ5/SQ6", "Allen & Heath dLive", "Behringer X32", "Midas M32", "Análogas (Yamaha MG u otras)"], "obligatoria": true, "valoracion": { "tipo": "P", "porOpcion": 0.5, "max": 3 } },
+            { "codigo": "A.11", "texto": "El objetivo de la estructura de ganancia es:", "tipo": "opcion_unica", "opciones": ["Que todo suene más fuerte", "Obtener el mejor nivel de señal sin saturar en cada etapa", "Igualar el volumen de todos los canales", "Eliminar la retroalimentación"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "Obtener el mejor nivel de señal sin saturar en cada etapa", "puntos": 1 } },
+            { "codigo": "A.12", "texto": "¿Cuándo activas el pad de un canal?", "tipo": "opcion_unica", "opciones": ["Cuando la señal es muy baja", "Cuando la señal de entrada satura el preamplificador", "Para eliminar ruido", "Para ecualizar"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "Cuando la señal de entrada satura el preamplificador", "puntos": 1 } },
+            { "codigo": "A.13", "texto": "Diferencia entre un gate y un compresor", "tipo": "texto_corto", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Gate: corta señal bajo umbral. Compresor: reduce el rango dinámico sobre umbral" } },
+            { "codigo": "A.14", "texto": "Evento empresarial con 4 micrófonos de solapa y diadema. Describe tu seteo para evitar retroalimentación", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Ganancia, EQ, filtros, posición de bocinas, ring out" } },
+            { "codigo": "A.15", "texto": "¿Has mezclado monitores o in-ears para artistas?", "tipo": "opcion_unica", "opciones": ["No", "Monitores de piso", "In-ears", "Ambos"], "obligatoria": true, "valoracion": { "tipo": "P", "puntos": { "No": 0, "Monitores de piso": 1, "In-ears": 1, "Ambos": 2 } } },
+            { "codigo": "A.16", "texto": "Formatos que has operado", "tipo": "opcion_multiple", "opciones": ["DJ", "Evento empresarial", "Banda en vivo", "Monitores", "In-ears"], "obligatoria": true, "valoracion": { "tipo": "P", "porOpcion": 0.5, "max": 2 } }
+          ]
+        },
+        {
+          "id": "A-ingeniero", "bloque": "ingeniero", "disciplina": "Audio", "titulo": "Audio — Ingeniero",
+          "mostrarSi": { "todas": [ { "pregunta": "5.1", "valorEn": ["Crew técnico"] }, { "pregunta": "5.2", "valorEn": ["Audio"] }, { "pregunta": "5.3", "valorEn": ["Ingeniero"] } ] },
+          "preguntas": [
+            { "codigo": "A.17", "texto": "Software de predicción que dominas", "tipo": "texto_corto", "obligatoria": true, "valoracion": { "tipo": "M", "max": 1, "rubrica": "Menciona al menos un software de predicción real = 1" } },
+            { "codigo": "A.18", "texto": "Describe tu proceso de calibración de un sistema: herramientas y pasos", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Micrófono de medición, software de análisis, alineación, ecualización del sistema" } },
+            { "codigo": "A.19", "texto": "Al alinear subwoofers con el sistema principal, ¿qué ajustas?", "tipo": "opcion_unica", "opciones": ["Volumen general", "Tiempo (delay) y fase en el punto de cruce", "La ganancia de los micrófonos", "El limitador"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "Tiempo (delay) y fase en el punto de cruce", "puntos": 1 } },
+            { "codigo": "A.20", "texto": "Diseña el sistema para un evento exterior de 1,500 personas: tipo de sistema, ubicación, refuerzos y ruteo", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Sistema adecuado a la escala, cobertura, refuerzos y ruteo coherentes" } },
+            { "codigo": "A.21", "texto": "¿Cómo coordinas la RF en un evento con múltiples sistemas inalámbricos e in-ears?", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Escaneo, plan de frecuencias, intermodulación, respaldo" } }
+          ]
+        },
+
+        {
+          "id": "L-base", "bloque": "base", "disciplina": "Iluminación", "titulo": "Iluminación — Bloque base",
+          "mostrarSi": { "todas": [ { "pregunta": "5.1", "valorEn": ["Crew técnico"] }, { "pregunta": "5.2", "valorEn": ["Iluminación"] } ] },
+          "preguntas": [
+            { "codigo": "L.1", "texto": "Marcas y modelos de luminarias que has montado u operado", "tipo": "texto_corto", "obligatoria": true, "valoracion": { "tipo": "I" } },
+            { "codigo": "L.2", "texto": "Un universo DMX tiene:", "tipo": "opcion_unica", "opciones": ["128 canales", "256 canales", "512 canales", "1,024 canales"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "512 canales", "puntos": 1 } },
+            { "codigo": "L.3", "texto": "Un splitter DMX sirve para:", "tipo": "opcion_unica", "opciones": ["Convertir DMX a red", "Dividir la señal en varias líneas aisladas y proteger el sistema", "Amplificar la corriente", "Grabar el show"], "obligatoria": true, "valoracion": { "tipo": "E", "correcta": "Dividir la señal en varias líneas aisladas y proteger el sistema", "excluyeSi": "incorrecta", "puntos": 1 } },
+            { "codigo": "L.4", "texto": "Un nodo se usa para:", "tipo": "opcion_unica", "opciones": ["Alimentar luminarias", "Convertir señal de red (Art-Net o sACN) a líneas DMX", "Unir truss", "Generar humo"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "Convertir señal de red (Art-Net o sACN) a líneas DMX", "puntos": 1 } },
+            { "codigo": "L.5", "texto": "Al colgar una luminaria, ¿qué es obligatorio además del clamp?", "tipo": "opcion_unica", "opciones": ["Nada más", "Cable de seguridad (safety)", "Cinta adhesiva", "Un segundo clamp"], "obligatoria": true, "valoracion": { "tipo": "E", "correcta": "Cable de seguridad (safety)", "excluyeSi": "incorrecta", "puntos": 1 } },
+            { "codigo": "L.6", "texto": "Una luminaria no responde a la consola. Describe cómo encuentras la falla", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Dirección DMX, modo, cableado, terminador, splitter o nodo, patch" } }
+          ]
+        },
+        {
+          "id": "L-tecnico", "bloque": "tecnico", "disciplina": "Iluminación", "titulo": "Iluminación — Técnico",
+          "mostrarSi": { "todas": [ { "pregunta": "5.1", "valorEn": ["Crew técnico"] }, { "pregunta": "5.2", "valorEn": ["Iluminación"] } ] },
+          "preguntas": [
+            { "codigo": "L.7", "texto": "Montajes que has realizado", "tipo": "opcion_multiple", "opciones": ["A piso", "Tótem de truss", "Colgado", "Volado"], "obligatoria": true, "valoracion": { "tipo": "P", "porOpcion": 0.5, "max": 2 } },
+            { "codigo": "L.8", "texto": "Una luminaria de 16 canales está en la dirección 1. ¿En qué dirección va la siguiente para no traslaparse?", "tipo": "opcion_unica", "opciones": ["2", "16", "17", "32"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "17", "puntos": 1 } },
+            { "codigo": "L.9", "texto": "Un terminador DMX se coloca:", "tipo": "opcion_unica", "opciones": ["Al inicio de la línea", "Al final de la línea, en la última luminaria", "En la consola", "En el nodo"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "Al final de la línea, en la última luminaria", "puntos": 1 } },
+            { "codigo": "L.10", "texto": "Describe un montaje poco convencional que hayas resuelto", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Creatividad con seguridad y criterio técnico" } }
+          ]
+        },
+        {
+          "id": "L-operador", "bloque": "operador", "disciplina": "Iluminación", "titulo": "Iluminación — Operador",
+          "mostrarSi": { "todas": [ { "pregunta": "5.1", "valorEn": ["Crew técnico"] }, { "pregunta": "5.2", "valorEn": ["Iluminación"] }, { "pregunta": "5.3", "valorEn": ["Operador", "Ingeniero"] } ] },
+          "preguntas": [
+            { "codigo": "L.11", "texto": "Consolas que operas", "tipo": "opcion_multiple", "opciones": ["grandMA2", "grandMA3", "Chamsys", "ADJ WOLFMIX", "Otra"], "obligatoria": true, "valoracion": { "tipo": "P", "puntosPorOpcion": { "grandMA2": 2, "grandMA3": 2, "Chamsys": 0.5, "ADJ WOLFMIX": 0.5, "Otra": 0.5 }, "max": 4 } },
+            { "codigo": "L.12", "texto": "Nivel en grandMA", "tipo": "lista", "opciones": ["Ninguno", "Básico", "Intermedio", "Avanzado"], "obligatoria": true, "valoracion": { "tipo": "P", "puntos": { "Ninguno": 0, "Básico": 1, "Intermedio": 2, "Avanzado": 3 } } },
+            { "codigo": "L.13", "texto": "¿Has creado librerías de luminarias? Describe el proceso", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Creación de librería: canales, parámetros, modos y pruebas", "excluyeSiCalificacion": 0 } },
+            { "codigo": "L.14", "texto": "Durante el show, Dirección pide cambiar todo a rojo. ¿Qué haces?", "tipo": "opcion_unica", "opciones": ["Lo programo en ese momento", "Lo ejecuto al instante desde un preset de color ya preparado", "Espero a terminar la canción", "Cambio luminaria por luminaria"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "Lo ejecuto al instante desde un preset de color ya preparado", "puntos": 2 } },
+            { "codigo": "L.15", "texto": "¿Cómo preparas tu programación para operar un set de música electrónica en vivo?", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Paleta de colores, posiciones, efectos y executors organizados antes del show" } },
+            { "codigo": "L.16", "texto": "¿Has operado shows sincronizados por timecode SMPTE?", "tipo": "opcion_unica", "opciones": ["No", "Sí, operando", "Sí, programando"], "obligatoria": true, "valoracion": { "tipo": "P", "puntos": { "No": 0, "Sí, operando": 1, "Sí, programando": 2 } } }
+          ]
+        },
+        {
+          "id": "L-ingeniero", "bloque": "ingeniero", "disciplina": "Iluminación", "titulo": "Iluminación — Ingeniero",
+          "mostrarSi": { "todas": [ { "pregunta": "5.1", "valorEn": ["Crew técnico"] }, { "pregunta": "5.2", "valorEn": ["Iluminación"] }, { "pregunta": "5.3", "valorEn": ["Ingeniero"] } ] },
+          "preguntas": [
+            { "codigo": "L.17", "texto": "Software de diseño y previsualización que dominas", "tipo": "opcion_multiple", "opciones": ["Capture", "Vectorworks", "WYSIWYG", "grandMA 3D", "Otro"], "obligatoria": true, "valoracion": { "tipo": "P", "porOpcion": 1, "max": 2 } },
+            { "codigo": "L.18", "texto": "40 luminarias de 30 canales cada una necesitan como mínimo:", "tipo": "opcion_unica", "opciones": ["1 universo", "2 universos", "3 universos", "4 universos"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "3 universos", "puntos": 1 } },
+            { "codigo": "L.19", "texto": "Describe tu proceso para diseñar un rig y su patch list para un concierto", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Diseño, distribución de universos, patch y documentación" } },
+            { "codigo": "L.20", "texto": "Describe un show que hayas programado por timecode: herramientas y proceso", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Fuente de timecode, sincronía, programación por cues" } },
+            { "codigo": "L.21", "texto": "Diferencia entre Art-Net y sACN y cuándo usarías cada uno", "tipo": "texto_corto", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Protocolos de DMX sobre red; diferencias de estándar, multicast y prioridad" } }
+          ]
+        },
+
+        {
+          "id": "V-base", "bloque": "base", "disciplina": "Video", "titulo": "Video — Bloque base",
+          "mostrarSi": { "todas": [ { "pregunta": "5.1", "valorEn": ["Crew técnico"] }, { "pregunta": "5.2", "valorEn": ["Video"] } ] },
+          "preguntas": [
+            { "codigo": "V.1", "texto": "Marcas y pitch de pantallas LED que has montado u operado", "tipo": "texto_corto", "obligatoria": true, "valoracion": { "tipo": "I" } },
+            { "codigo": "V.2", "texto": "¿Has trabajado con procesadores Novastar?", "tipo": "opcion_unica", "opciones": ["No", "Con supervisión", "De forma autónoma"], "obligatoria": true, "valoracion": { "tipo": "E", "excluyeSi": ["No"], "puntos": { "No": 0, "Con supervisión": 1, "De forma autónoma": 2 } } },
+            { "codigo": "V.3", "texto": "El software de configuración de Novastar se llama:", "tipo": "opcion_unica", "opciones": ["Resolume", "NovaLCT", "ProPresenter", "LEDVision"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "NovaLCT", "puntos": 1 } },
+            { "codigo": "V.4", "texto": "Antes de colgar una pantalla, ¿qué verificas?", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Broches cerrados, bumper, eslingas, polipasto y carga", "excluyeSiCalificacion": 0 } },
+            { "codigo": "V.5", "texto": "Un gabinete se queda sin imagen. ¿Qué revisas primero?", "tipo": "opcion_unica", "opciones": ["El contenido", "El cable de datos y la receiving card del gabinete", "La consola de audio", "La resolución de la computadora"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "El cable de datos y la receiving card del gabinete", "puntos": 1 } }
+          ]
+        },
+        {
+          "id": "V-tecnico", "bloque": "tecnico", "disciplina": "Video", "titulo": "Video — Técnico",
+          "mostrarSi": { "todas": [ { "pregunta": "5.1", "valorEn": ["Crew técnico"] }, { "pregunta": "5.2", "valorEn": ["Video"] } ] },
+          "preguntas": [
+            { "codigo": "V.6", "texto": "Montajes que has realizado", "tipo": "opcion_multiple", "opciones": ["A piso con escuadras", "Sobre templete", "Colgado con bumpers y polipastos"], "obligatoria": true, "valoracion": { "tipo": "P", "porOpcion": 1, "max": 3 } },
+            { "codigo": "V.7", "texto": "¿Por qué no se pueden conectar todos los gabinetes a un solo puerto del procesador?", "tipo": "opcion_unica", "opciones": ["Por el peso", "Cada puerto tiene una capacidad máxima de píxeles", "Por el voltaje", "Sí se puede"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "Cada puerto tiene una capacidad máxima de píxeles", "puntos": 1 } },
+            { "codigo": "V.8", "texto": "Describe cómo cableas energía y datos en una pantalla de 6 × 3 m", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Rutas de datos por puerto, distribución de energía por circuito, orden y seguridad" } }
+          ]
+        },
+        {
+          "id": "V-operador", "bloque": "operador", "disciplina": "Video", "titulo": "Video — Operador",
+          "mostrarSi": { "todas": [ { "pregunta": "5.1", "valorEn": ["Crew técnico"] }, { "pregunta": "5.2", "valorEn": ["Video"] }, { "pregunta": "5.3", "valorEn": ["Operador", "Ingeniero"] } ] },
+          "preguntas": [
+            { "codigo": "V.9", "texto": "Software que operas con soltura", "tipo": "opcion_multiple", "opciones": ["Resolume", "ProPresenter", "PowerPoint o Keynote", "ATEM Software Control", "vMix", "Otro"], "obligatoria": true, "valoracion": { "tipo": "P", "porOpcion": 0.5, "max": 2 } },
+            { "codigo": "V.10", "texto": "En una presentación corporativa el cliente cambia el orden de los videos 5 minutos antes. ¿Cómo lo resuelves?", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Rapidez, orden de cues, comunicación y respaldo" } },
+            { "codigo": "V.11", "texto": "¿Has operado visuales en vivo (VJ) para conciertos? Comparte liga si tienes", "tipo": "archivo_o_liga", "obligatoria": false, "valoracion": { "tipo": "M", "max": 2, "rubrica": "Experiencia comprobable en VJ = 2" } },
+            { "codigo": "V.12", "texto": "¿Has operado switcheo en vivo con cámaras?", "tipo": "si_no", "obligatoria": true, "valoracion": { "tipo": "P", "puntos": { "Sí": 1, "No": 0 } } }
+          ]
+        },
+        {
+          "id": "V-ingeniero", "bloque": "ingeniero", "disciplina": "Video", "titulo": "Video — Ingeniero",
+          "mostrarSi": { "todas": [ { "pregunta": "5.1", "valorEn": ["Crew técnico"] }, { "pregunta": "5.2", "valorEn": ["Video"] }, { "pregunta": "5.3", "valorEn": ["Ingeniero"] } ] },
+          "preguntas": [
+            { "codigo": "V.13", "texto": "Pantalla de 6 × 3 m, pitch 3.9 mm, gabinetes de 50 × 50 cm a 128 × 128 px. Su resolución es:", "tipo": "opcion_unica", "opciones": ["1920 × 1080", "1536 × 768", "1280 × 640", "3840 × 1920"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "1536 × 768", "puntos": 1 } },
+            { "codigo": "V.14", "texto": "Describe cómo haces el mapeo de una pantalla irregular o de varias superficies", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Mapeo de píxeles, configuración del procesador y del media server" } },
+            { "codigo": "V.15", "texto": "Media servers que has usado", "tipo": "texto_corto", "obligatoria": true, "valoracion": { "tipo": "M", "max": 1, "rubrica": "Menciona al menos un media server real = 1" } },
+            { "codigo": "V.16", "texto": "¿Cómo sincronizas video con iluminación por timecode?", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Fuente común de timecode, configuración de recepción y pruebas" } },
+            { "codigo": "V.17", "texto": "Diseña un circuito cerrado para un evento empresarial con 2 cámaras y proyección en pantalla", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Cámaras, señal, switcher, salida a pantalla y operación" } }
+          ]
+        },
+
+        {
+          "id": "S-base", "bloque": "base", "disciplina": "Escenario y Rigging", "titulo": "Escenario y Rigging — Bloque base",
+          "mostrarSi": { "todas": [ { "pregunta": "5.1", "valorEn": ["Crew técnico"] }, { "pregunta": "5.2", "valorEn": ["Escenario y Rigging"] } ] },
+          "preguntas": [
+            { "codigo": "S.1", "texto": "Equipo de protección personal que usas en montajes", "tipo": "opcion_multiple", "opciones": ["Casco", "Arnés", "Guantes", "Calzado de seguridad", "Chaleco"], "obligatoria": true, "valoracion": { "tipo": "E", "requiere": ["Casco", "Arnés"], "porOpcion": 0.5, "max": 2.5 } },
+            { "codigo": "S.2", "texto": "¿Cuentas con certificación en trabajo en alturas?", "tipo": "opcion_unica", "opciones": ["No", "En trámite", "Sí"], "obligatoria": true, "valoracion": { "tipo": "P", "puntos": { "No": 0, "En trámite": 1, "Sí": 2 } } },
+            { "codigo": "S.3", "texto": "Mientras se iza una estructura, ¿dónde debe estar el personal?", "tipo": "opcion_unica", "opciones": ["Debajo, para guiarla", "Fuera del área bajo la carga suspendida", "Sosteniendo la base", "Donde haga falta"], "obligatoria": true, "valoracion": { "tipo": "E", "correcta": "Fuera del área bajo la carga suspendida", "excluyeSi": "incorrecta", "puntos": 1 } }
+          ]
+        },
+        {
+          "id": "S-tecnico", "bloque": "tecnico", "disciplina": "Escenario y Rigging", "titulo": "Escenario y Rigging — Técnico",
+          "mostrarSi": { "todas": [ { "pregunta": "5.1", "valorEn": ["Crew técnico"] }, { "pregunta": "5.2", "valorEn": ["Escenario y Rigging"] } ] },
+          "preguntas": [
+            { "codigo": "S.4", "texto": "Estructuras que has armado", "tipo": "opcion_multiple", "opciones": ["Templetes modulares", "Truss con base", "Puentes de truss", "Tótems", "Elevadores"], "obligatoria": true, "valoracion": { "tipo": "P", "porOpcion": 0.5, "max": 2.5 } },
+            { "codigo": "S.5", "texto": "Un spigot se usa para:", "tipo": "opcion_unica", "opciones": ["Nivelar el templete", "Unir tramos de truss", "Colgar luminarias", "Tensar eslingas"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "Unir tramos de truss", "puntos": 1 } },
+            { "codigo": "S.6", "texto": "Un spanset o eslinga de colgado sirve para:", "tipo": "opcion_unica", "opciones": ["Amarrar cables", "Crear el punto de anclaje entre la estructura y el polipasto o punto de colgado", "Nivelar", "Proteger el piso"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "Crear el punto de anclaje entre la estructura y el polipasto o punto de colgado", "puntos": 1 } },
+            { "codigo": "S.7", "texto": "Describe paso a paso cómo armas un puente de truss sobre dos bases", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Orden de armado, uniones, nivelación y seguridad" } }
+          ]
+        },
+        {
+          "id": "S-operador", "bloque": "operador", "disciplina": "Escenario y Rigging", "titulo": "Escenario y Rigging — Operador",
+          "mostrarSi": { "todas": [ { "pregunta": "5.1", "valorEn": ["Crew técnico"] }, { "pregunta": "5.2", "valorEn": ["Escenario y Rigging"] }, { "pregunta": "5.3", "valorEn": ["Operador", "Ingeniero"] } ] },
+          "preguntas": [
+            { "codigo": "S.8", "texto": "Antes de izar con un polipasto manual de 1 t, ¿qué verificas?", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Capacidad vs. carga, cadena, gancho y seguro, anclaje, área despejada" } },
+            { "codigo": "S.9", "texto": "¿Has operado polipastos?", "tipo": "opcion_unica", "opciones": ["No", "Manuales", "Manuales y eléctricos"], "obligatoria": true, "valoracion": { "tipo": "P", "puntos": { "No": 0, "Manuales": 1, "Manuales y eléctricos": 2 } } },
+            { "codigo": "S.10", "texto": "¿Cómo supervisas que el crew use su equipo de seguridad?", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Verificación previa, supervisión continua y autoridad para detener maniobras" } }
+          ]
+        },
+        {
+          "id": "S-ingeniero", "bloque": "ingeniero", "disciplina": "Escenario y Rigging", "titulo": "Escenario y Rigging — Ingeniero",
+          "mostrarSi": { "todas": [ { "pregunta": "5.1", "valorEn": ["Crew técnico"] }, { "pregunta": "5.2", "valorEn": ["Escenario y Rigging"] }, { "pregunta": "5.3", "valorEn": ["Ingeniero"] } ] },
+          "preguntas": [
+            { "codigo": "S.11", "texto": "¿Qué datos necesitas para validar que un truss soporta una carga?", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Tabla de carga del fabricante, claro (span), tipo de carga puntual o distribuida, factor de seguridad" } },
+            { "codigo": "S.12", "texto": "Un puente de truss de 6 m llevará 4 luminarias de 25 kg y una pantalla. Describe cómo defines los puntos de colgado", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Cálculo de carga total, distribución, capacidad de polipastos y puntos" } },
+            { "codigo": "S.13", "texto": "¿Has elaborado planos de rigging? Describe la herramienta y un proyecto", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Experiencia real documentando rigging" } }
+          ]
+        },
+
+        {
+          "id": "N-base", "bloque": "base", "disciplina": "Electricidad", "titulo": "Electricidad — Bloque base",
+          "mostrarSi": { "todas": [ { "pregunta": "5.1", "valorEn": ["Crew técnico"] }, { "pregunta": "5.2", "valorEn": ["Electricidad"] } ] },
+          "preguntas": [
+            { "codigo": "N.1", "texto": "La potencia eléctrica se calcula como:", "tipo": "opcion_unica", "opciones": ["Voltios ÷ amperes", "Voltios × amperes", "Amperes ÷ voltios", "Voltios + amperes"], "obligatoria": true, "valoracion": { "tipo": "E", "correcta": "Voltios × amperes", "excluyeSi": "incorrecta", "puntos": 1 } },
+            { "codigo": "N.2", "texto": "Un equipo de 2,000 W conectado a 127 V consume aproximadamente:", "tipo": "opcion_unica", "opciones": ["7.8 A", "15.7 A", "25 A", "31.5 A"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "15.7 A", "puntos": 1 } },
+            { "codigo": "N.3", "texto": "Un cable calibre 12 AWG soporta de forma segura aproximadamente:", "tipo": "opcion_unica", "opciones": ["10 A", "20 A", "40 A", "60 A"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "20 A", "puntos": 1 } },
+            { "codigo": "N.4", "texto": "¿Qué pasa si conectas a un circuito más carga de la que soporta?", "tipo": "texto_corto", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Sobrecalentamiento, disparo de protección, riesgo de incendio y daño a equipos" } }
+          ]
+        },
+        {
+          "id": "N-tecnico", "bloque": "tecnico", "disciplina": "Electricidad", "titulo": "Electricidad — Técnico",
+          "mostrarSi": { "todas": [ { "pregunta": "5.1", "valorEn": ["Crew técnico"] }, { "pregunta": "5.2", "valorEn": ["Electricidad"] } ] },
+          "preguntas": [
+            { "codigo": "N.5", "texto": "Antes de conectar equipos a una planta o centro de carga, ¿qué verificas?", "tipo": "opcion_unica", "opciones": ["Nada, ya viene revisado", "El voltaje de salida con multímetro y la tierra", "Solo que encienda", "El color del cable"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "El voltaje de salida con multímetro y la tierra", "puntos": 1 } },
+            { "codigo": "N.6", "texto": "Conectores que has utilizado", "tipo": "opcion_multiple", "opciones": ["Edison", "Twist lock", "powerCON", "Industriales de 4 polos", "Camlock"], "obligatoria": true, "valoracion": { "tipo": "P", "porOpcion": 0.5, "max": 2 } },
+            { "codigo": "N.7", "texto": "Describe cómo distribuyes la energía de una planta a audio, iluminación y video", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Circuitos separados por área, capacidades respetadas y orden" } }
+          ]
+        },
+        {
+          "id": "N-operador", "bloque": "operador", "disciplina": "Electricidad", "titulo": "Electricidad — Operador",
+          "mostrarSi": { "todas": [ { "pregunta": "5.1", "valorEn": ["Crew técnico"] }, { "pregunta": "5.2", "valorEn": ["Electricidad"] }, { "pregunta": "5.3", "valorEn": ["Operador", "Ingeniero"] } ] },
+          "preguntas": [
+            { "codigo": "N.8", "texto": "Balancear fases significa:", "tipo": "opcion_unica", "opciones": ["Usar una sola fase para todo", "Repartir la carga de forma equilibrada entre las fases disponibles", "Subir el voltaje", "Apagar equipos"], "obligatoria": true, "valoracion": { "tipo": "P", "correcta": "Repartir la carga de forma equilibrada entre las fases disponibles", "puntos": 1 } },
+            { "codigo": "N.9", "texto": "¿Por qué no se debe operar una planta al 100% de su capacidad?", "tipo": "texto_corto", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Margen por picos de arranque, sobrecalentamiento y estabilidad" } },
+            { "codigo": "N.10", "texto": "¿Has operado plantas generadoras en eventos?", "tipo": "si_no", "obligatoria": true, "valoracion": { "tipo": "P", "puntos": { "Sí": 1, "No": 0 } } }
+          ]
+        },
+        {
+          "id": "N-ingeniero", "bloque": "ingeniero", "disciplina": "Electricidad", "titulo": "Electricidad — Ingeniero",
+          "mostrarSi": { "todas": [ { "pregunta": "5.1", "valorEn": ["Crew técnico"] }, { "pregunta": "5.2", "valorEn": ["Electricidad"] }, { "pregunta": "5.3", "valorEn": ["Ingeniero"] } ] },
+          "preguntas": [
+            { "codigo": "N.11", "texto": "Evento con audio de 6,000 W, iluminación de 4,500 W y video de 3,000 W a 127 V. Calcula la corriente total y describe cómo la distribuyes en un centro de carga de 2 fases", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Aprox. 106 A totales, cerca de 53 A por fase balanceada; requiere centro de 63 A por fase" } },
+            { "codigo": "N.12", "texto": "¿Por qué es importante la tierra física y la separación de circuitos entre audio e iluminación?", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Seguridad de personas y equipos, ruido e interferencias en audio" } },
+            { "codigo": "N.13", "texto": "¿Cómo validarías el cálculo de consumo que genera un sistema a partir del inventario del evento?", "tipo": "parrafo", "obligatoria": true, "valoracion": { "tipo": "M", "max": 3, "rubrica": "Contraste con fichas técnicas, factor de simultaneidad y medición en sitio" } }
+          ]
+        }
+      ]
+    }
+  ]
+}

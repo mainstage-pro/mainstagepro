@@ -6,4 +6,5 @@ export const organizacionTabs: ModuleNavTab[] = [
   { href: "/organizacion/puestos", label: "Puestos", accessKey: "organizacion" },
   { href: "/organizacion/politicas", label: "Políticas", accessKey: "organizacion" },
   { href: "/organizacion/candidatos", label: "Candidatos", accessKey: "rrhh-candidatos" },
+  { href: "/organizacion/formularios", label: "Formularios", accessKey: "rrhh-formularios" },
 ];

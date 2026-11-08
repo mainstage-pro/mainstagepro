@@ -2289,6 +2289,7 @@ model Puesto {
   ocupantes     PersonalInterno[] @relation("PuestoTitular")
   postulaciones Postulacion[]
   kpis          PTKPI[]           @relation("PTKPIPuesto")
+  formularios   FormularioPuesto[]
 
   @@map("puestos")
 }
@@ -7461,4 +7462,118 @@ model CierreFinancieroDiario {
   createdAt DateTime @default(now())
 
   @@map("cierres_financieros_diarios")
+}
+
+// ─── Formularios de reclutamiento (Fase 1) ───────────────────────────────────
+// Constructor tipo Google Forms para postulaciones. La valoración se guarda en
+// cada pregunta (JSON) pero el motor de cálculo es de Fase 2.
+model Formulario {
+  id                  String   @id @default(cuid())
+  slug                String   @unique
+  titulo              String
+  descripcion         String?  @db.Text
+  imagenUrl           String?  @map("imagen_url")
+  estado              String   @default("BORRADOR") // BORRADOR | PUBLICADO | CERRADO
+  aceptaRespuestas    Boolean  @default(true) @map("acepta_respuestas")
+  umbralAvanza        Int      @default(75) @map("umbral_avanza")
+  umbralBanco         Int      @default(50) @map("umbral_banco")
+  mensajeConfirmacion String?  @db.Text @map("mensaje_confirmacion")
+  creadoPorId         String?  @map("creado_por_id")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  puestos    FormularioPuesto[]
+  secciones  FormularioSeccion[]
+  respuestas FormularioRespuesta[]
+
+  @@map("formularios")
+}
+
+model FormularioPuesto {
+  id           String     @id @default(cuid())
+  formularioId String     @map("formulario_id")
+  formulario   Formulario @relation(fields: [formularioId], references: [id], onDelete: Cascade)
+  puestoId     String     @map("puesto_id")
+  puesto       Puesto     @relation(fields: [puestoId], references: [id], onDelete: Cascade)
+
+  @@unique([formularioId, puestoId])
+  @@map("formulario_puestos")
+}
+
+model FormularioSeccion {
+  id           String     @id @default(cuid())
+  formularioId String     @map("formulario_id")
+  formulario   Formulario @relation(fields: [formularioId], references: [id], onDelete: Cascade)
+  orden        Int        @default(0)
+  codigoBloque String?    @map("codigo_bloque") // id del seed, informativo
+  bloque       String?    // general | puesto | base | tecnico | operador | ingeniero — informativo
+  titulo       String
+  descripcion  String?    @db.Text
+  mostrarSi    String?    @db.Text @map("mostrar_si") // JSON
+  archivada    Boolean    @default(false)
+  createdAt    DateTime   @default(now()) @map("created_at")
+
+  preguntas FormularioPregunta[]
+
+  @@map("formulario_secciones")
+}
+
+model FormularioPregunta {
+  id          String            @id @default(cuid())
+  seccionId   String            @map("seccion_id")
+  seccion     FormularioSeccion @relation(fields: [seccionId], references: [id], onDelete: Cascade)
+  orden       Int               @default(0)
+  codigo      String?
+  texto       String            @db.Text
+  ayuda       String?           @db.Text
+  tipo        String            // texto_corto | parrafo | opcion_unica | opcion_multiple | si_no | lista | archivo_o_liga | casilla
+  obligatoria Boolean           @default(true)
+  opciones    String?           @db.Text // JSON string[]
+  mostrarSi   String?           @db.Text @map("mostrar_si") // JSON
+  valoracion  String?           @db.Text // JSON — se guarda, se usa en Fase 2
+  archivada   Boolean           @default(false)
+  createdAt   DateTime          @default(now()) @map("created_at")
+
+  respuestas RespuestaPregunta[]
+
+  @@map("formulario_preguntas")
+}
+
+model FormularioRespuesta {
+  id                   String     @id @default(cuid())
+  formularioId         String     @map("formulario_id")
+  formulario           Formulario @relation(fields: [formularioId], references: [id], onDelete: Cascade)
+  candidatoId          String?    @map("candidato_id") // lo llena Fase 2
+  enviadoAt            DateTime   @default(now()) @map("enviado_at")
+  ipHash               String?    @map("ip_hash")
+  excluido             Boolean?
+  motivoExclusion      String?    @db.Text @map("motivo_exclusion")
+  puntosObtenidos      Float?     @map("puntos_obtenidos")
+  puntosPosibles       Float?     @map("puntos_posibles")
+  porcentajePreliminar Float?     @map("porcentaje_preliminar")
+  porcentajeFinal      Float?     @map("porcentaje_final")
+  banda                String?    @map("banda")
+  desglose             String?    @db.Text // JSON
+  nivelSugerido        String?    @map("nivel_sugerido")
+
+  respuestasPreguntas RespuestaPregunta[]
+
+  @@map("formulario_respuestas")
+}
+
+model RespuestaPregunta {
+  id                 String              @id @default(cuid())
+  respuestaId        String              @map("respuesta_id")
+  respuesta          FormularioRespuesta @relation(fields: [respuestaId], references: [id], onDelete: Cascade)
+  preguntaId         String              @map("pregunta_id")
+  pregunta           FormularioPregunta  @relation(fields: [preguntaId], references: [id], onDelete: Cascade)
+  valor              String?             @db.Text // JSON
+  snapshotPregunta   String              @db.Text @map("snapshot_pregunta") // JSON {texto,tipo,opciones,valoracion}
+  puntosAuto         Float?              @map("puntos_auto")
+  calificacionManual Float?              @map("calificacion_manual")
+  calificadoPorId    String?             @map("calificado_por_id")
+  calificadoAt       DateTime?           @map("calificado_at")
+
+  @@unique([respuestaId, preguntaId])
+  @@map("respuestas_preguntas")
 }
