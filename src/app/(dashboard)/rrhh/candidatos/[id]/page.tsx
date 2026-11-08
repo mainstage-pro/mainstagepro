@@ -13,6 +13,28 @@ interface Puesto {
   tipoContrato?: string | null; modalidad?: string | null; horario?: string | null;
   prestaciones?: string | null; funciones?: string | null;
 }
+interface RespuestaPreguntaFicha {
+  id: string;
+  preguntaId: string;
+  valor: string | null;
+  calificacionManual: number | null;
+  puntosAuto: number | null;
+  pregunta: { id: string; codigo: string | null; texto: string; tipo: string; seccionId: string };
+}
+interface FormularioRespuestaFicha {
+  id: string;
+  excluido: boolean | null;
+  motivoExclusion: string | null;
+  puntosObtenidos: number | null;
+  puntosPosibles: number | null;
+  porcentajePreliminar: number | null;
+  porcentajeFinal: number | null;
+  banda: string | null;
+  desglose: string | null;
+  nivelSugerido: string | null;
+  formulario: { id: string; titulo: string; slug: string; umbralAvanza: number; umbralBanco: number };
+  respuestasPreguntas: RespuestaPreguntaFicha[];
+}
 interface Postulacion {
   id: string; etapa: string; puestoManual?: string | null; areaManual?: string | null;
   salarioPropuesto?: number | null; fechaIngresoEstimada?: string | null;
@@ -23,6 +45,12 @@ interface Postulacion {
   personalInternoId?: string | null; notasEvaluacion?: string | null;
   puntajeTotal?: number | null;
   onboardingData?: string | null;
+  origen?: string | null;
+  disciplina?: string | null;
+  nivel?: string | null;
+  pruebaPractica?: string | null;
+  tecnicoId?: string | null;
+  formularioRespuesta?: FormularioRespuestaFicha | null;
   puesto?: Puesto | null;
 }
 
@@ -40,16 +68,20 @@ interface Candidato {
   postulaciones: Postulacion[];
 }
 
-const ETAPAS = ["NUEVO","EVALUACION","PROPUESTA_ENVIADA","APROBADO","CONTRATADO","RECHAZADO"];
+const ETAPAS = ["NUEVO","EVALUACION","PRUEBA_PRACTICA","PROPUESTA_ENVIADA","APROBADO","CONTRATADO","RECHAZADO"];
 const ETAPA_LABELS: Record<string,string> = {
-  NUEVO:"Nuevo", EVALUACION:"Evaluación", PROPUESTA_ENVIADA:"Propuesta enviada",
+  NUEVO:"Nuevo", EVALUACION:"Evaluación", PRUEBA_PRACTICA:"Prueba práctica",
+  PROPUESTA_ENVIADA:"Propuesta enviada",
   APROBADO:"Aprobado", CONTRATADO:"Contratado", RECHAZADO:"Rechazado",
 };
 const ETAPA_COLORS: Record<string,string> = {
   NUEVO:"bg-gray-800 text-gray-300", EVALUACION:"bg-blue-900/40 text-blue-300",
+  PRUEBA_PRACTICA:"bg-purple-900/40 text-purple-300",
   PROPUESTA_ENVIADA:"bg-yellow-900/30 text-yellow-300", APROBADO:"bg-green-900/30 text-green-300",
   CONTRATADO:"bg-[#B3985B]/20 text-[#B3985B]", RECHAZADO:"bg-red-900/30 text-red-300",
 };
+const BANDA_LABEL: Record<string,string> = { AVANZA: "Avanza a prueba práctica", BANCO: "Banco de talento", DESCARTAR: "Descartar (sugerido)" };
+const BANDA_COLOR: Record<string,string> = { AVANZA: "text-green-400", BANCO: "text-yellow-400", DESCARTAR: "text-red-400" };
 
 function fmt(n: number) {
   return new Intl.NumberFormat("es-MX",{style:"currency",currency:"MXN",maximumFractionDigits:0}).format(n);
@@ -69,7 +101,7 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [autoSaved, setAutoSaved] = useState(false);
-  const [tab, setTab] = useState<"perfil"|"discovery"|"propuesta"|"contrato"|"onboarding">("perfil");
+  const [tab, setTab] = useState<"perfil"|"discovery"|"valoracion"|"respuestas"|"prueba"|"propuesta"|"contrato"|"onboarding">("perfil");
   const [propuestaLink, setPropuestaLink] = useState<string | null>(null);
   const [generandoLink, setGenerandoLink] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -360,12 +392,27 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-[#1a1a1a] flex-wrap">
-        {(["perfil","discovery","propuesta","contrato",...(etapa === "CONTRATADO" ? ["onboarding"] : [])] as const).map(t => (
+        {([
+          "perfil",
+          "discovery",
+          ...(post?.formularioRespuesta ? (["valoracion","respuestas"] as const) : []),
+          "prueba",
+          "propuesta",
+          "contrato",
+          ...(etapa === "CONTRATADO" ? (["onboarding"] as const) : []),
+        ] as const).map(t => (
           <button key={t} onClick={() => setTab(t as typeof tab)}
             className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
               tab === t ? "border-[#B3985B] text-[#B3985B]" : "border-transparent text-gray-500 hover:text-white"
             }`}>
-            {t === "perfil" ? "Perfil" : t === "discovery" ? "Descubrimiento" : t === "propuesta" ? "Propuesta" : t === "contrato" ? "Contrato" : "Onboarding"}
+            {t === "perfil" ? "Perfil"
+              : t === "discovery" ? "Descubrimiento"
+              : t === "valoracion" ? "Valoración"
+              : t === "respuestas" ? "Respuestas"
+              : t === "prueba" ? "Prueba práctica"
+              : t === "propuesta" ? "Propuesta"
+              : t === "contrato" ? "Contrato"
+              : "Onboarding"}
           </button>
         ))}
       </div>
@@ -502,6 +549,71 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
             </button>
           )}
         </div>
+      )}
+
+      {/* ── TAB VALORACIÓN ── */}
+      {tab === "valoracion" && post?.formularioRespuesta && (() => {
+        const fr = post.formularioRespuesta!;
+        let desglose: { bloque: string; porcentaje: number; puntosObtenidos: number; puntosPosibles: number }[] = [];
+        try { desglose = JSON.parse(fr.desglose ?? "[]"); } catch { desglose = []; }
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="ms-stat-card space-y-3">
+              <p className="text-xs text-gray-500 uppercase tracking-wider">Resumen de valoración</p>
+              {fr.excluido && (
+                <div className="text-xs text-red-400 bg-red-950/30 border border-red-900/50 rounded px-3 py-2">
+                  Excluido automáticamente: {fr.motivoExclusion ?? "—"}
+                </div>
+              )}
+              <div className="grid grid-cols-3 gap-3">
+                <div><p className="text-[11px] text-gray-500">Preliminar</p><p className="text-white font-medium">{fr.porcentajePreliminar != null ? `${fr.porcentajePreliminar}%` : "—"}</p></div>
+                <div><p className="text-[11px] text-gray-500">Final</p><p className="text-white font-medium">{fr.porcentajeFinal != null ? `${fr.porcentajeFinal}%` : "pendiente"}</p></div>
+                <div><p className="text-[11px] text-gray-500">Banda</p><p className={`font-medium text-sm ${fr.banda ? BANDA_COLOR[fr.banda] : "text-gray-600"}`}>{fr.banda ? BANDA_LABEL[fr.banda] : "pendiente"}</p></div>
+              </div>
+              <p className="text-[11px] text-gray-600">Puntaje {fr.puntosObtenidos ?? 0} / {fr.puntosPosibles ?? 0}</p>
+              {fr.nivelSugerido && (
+                <p className="text-xs text-yellow-400">Sugerencia: considerar nivel inferior ({fr.nivelSugerido}).</p>
+              )}
+              <Link href={`/rrhh/formularios/${fr.formulario.id}`} className="text-xs text-[#B3985B] hover:underline">Formulario: {fr.formulario.titulo} →</Link>
+            </div>
+            <div className="ms-stat-card space-y-3">
+              <p className="text-xs text-gray-500 uppercase tracking-wider">Desglose por bloque</p>
+              {desglose.length === 0 ? <p className="text-xs text-gray-600">Sin desglose</p> : (
+                <div className="space-y-2">
+                  {desglose.map((b) => (
+                    <div key={b.bloque}>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-gray-300 capitalize">{b.bloque}</span>
+                        <span className="text-white">{b.porcentaje}% <span className="text-gray-700">({b.puntosObtenidos}/{b.puntosPosibles})</span></span>
+                      </div>
+                      <div className="h-1.5 bg-[#1a1a1a] rounded-full mt-1"><div className="h-full bg-[#B3985B] rounded-full" style={{ width: `${Math.min(100, b.porcentaje)}%` }} /></div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── TAB RESPUESTAS ── */}
+      {tab === "respuestas" && post?.formularioRespuesta && (
+        <RespuestasCandidatoTab
+          formularioId={post.formularioRespuesta.formulario.id}
+          respuestaId={post.formularioRespuesta.id}
+          respuestasPreguntas={post.formularioRespuesta.respuestasPreguntas}
+          onRefresh={load}
+        />
+      )}
+
+      {/* ── TAB PRUEBA PRÁCTICA ── */}
+      {tab === "prueba" && post && (
+        <PruebaPracticaTab
+          candidatoId={id}
+          postulacionId={post.id}
+          valor={post.pruebaPractica ?? null}
+          onRefresh={load}
+        />
       )}
 
       {/* ── TAB PROPUESTA ── */}
@@ -660,6 +772,16 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
         </div>
       )}
 
+      {/* ── CONVERTIR A TÉCNICO (solo crew técnico, APROBADO/CONTRATADO) ── */}
+      {post && (etapa === "APROBADO" || etapa === "CONTRATADO") && esCrewTecnico(post) && (
+        <ConvertirTecnicoCTA
+          candidatoId={id}
+          postulacion={post}
+          candidatoCiudad={candidato.ciudad ?? null}
+          onDone={load}
+        />
+      )}
+
       {/* ── TAB CONTRATO ── */}
       {tab === "contrato" && (
         <div className="max-w-xl space-y-4">
@@ -799,6 +921,373 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
           </div>
         );
       })()}
+    </div>
+  );
+}
+
+/* ═════════════════════════════════════════════════════════════════
+ *  Helpers y subcomponentes (fuera del componente principal)
+ * ═════════════════════════════════════════════════════════════════ */
+
+// ¿La postulación corresponde a crew técnico? Jefe de Producción / Encargado de
+// Bodega NO (ellos van a Personal / titular del puesto, no al Directorio técnico).
+function esCrewTecnico(post: Postulacion): boolean {
+  const nombre = (post.puesto?.nombre ?? post.puestoManual ?? "").toLowerCase();
+  if (!nombre) return false;
+  if (/jefe\s+de\s+producci[oó]n/.test(nombre)) return false;
+  if (/encargado\s+de\s+bodega|jefe\s+de\s+bodega/.test(nombre)) return false;
+  // Si trae disciplina (AUDIO/ILU/VIDEO/BACKLINE) o área PRODUCCION, es crew
+  if (post.disciplina) return true;
+  const area = (post.puesto?.area ?? post.areaManual ?? "").toLowerCase();
+  if (area.includes("producci")) return true;
+  // Palabras clave de técnico
+  if (/t[eé]cnico|operador|ingeniero|monitorista|backliner|iluminaci|audio|video/.test(nombre)) return true;
+  return false;
+}
+
+/* ─── Botón + modal: Convertir candidato a Técnico ─── */
+interface RolTecnicoMin { id: string; nombre: string; disciplina: string | null }
+function ConvertirTecnicoCTA({
+  candidatoId, postulacion, candidatoCiudad, onDone,
+}: {
+  candidatoId: string;
+  postulacion: Postulacion;
+  candidatoCiudad: string | null;
+  onDone: () => Promise<void> | void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [roles, setRoles] = useState<RolTecnicoMin[]>([]);
+  const [rolTecnicoId, setRolTecnicoId] = useState<string>("");
+  const [zona, setZona] = useState<string>(candidatoCiudad ?? "");
+  const [nivel, setNivel] = useState<string>(postulacion.nivel ?? "A");
+  const [forzarNuevo, setForzarNuevo] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const toast = useToast();
+
+  useEffect(() => {
+    if (!open) return;
+    fetch("/api/roles-tecnicos", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d: { roles?: RolTecnicoMin[] }) => {
+        const lista = d.roles ?? [];
+        setRoles(lista);
+        // Preseleccionar por coincidencia disciplina (si Postulacion trae disciplina)
+        if (postulacion.disciplina) {
+          const disc = postulacion.disciplina.toUpperCase();
+          const match = lista.find((r) => (r.disciplina ?? "").toUpperCase() === disc);
+          if (match) setRolTecnicoId(match.id);
+        }
+      })
+      .catch(() => { /* */ });
+  }, [open, postulacion.disciplina]);
+
+  async function convertir() {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/rrhh/candidatos/${candidatoId}/convertir-tecnico`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          postulacionId: postulacion.id,
+          rolTecnicoId: rolTecnicoId || undefined,
+          zona: zona || undefined,
+          nivel: nivel || undefined,
+          forzarNuevo,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast.error(data.error ?? "No se pudo convertir"); return; }
+      toast.success(data.vinculado ? "Vinculado a técnico existente" : "Técnico creado en Directorio");
+      setOpen(false);
+      await onDone();
+    } finally { setSaving(false); }
+  }
+
+  if (postulacion.tecnicoId) {
+    return (
+      <div className="ms-card p-3 text-xs text-[#B3985B] flex items-center justify-between">
+        <span>Ya vinculado al Directorio técnico.</span>
+        <Link href={`/rrhh/directorio-tecnicos/${postulacion.tecnicoId}`} className="underline">Ver ficha técnico →</Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="ms-card p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+      <div>
+        <p className="text-white text-sm font-medium">Convertir a técnico del Directorio</p>
+        <p className="text-gray-500 text-xs mt-0.5">Se busca por teléfono; si existe lo vincula, si no, crea el registro.</p>
+      </div>
+      <button
+        onClick={() => setOpen(true)}
+        className="bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold text-sm px-4 py-2 rounded-lg transition-colors"
+      >
+        Convertir a técnico
+      </button>
+
+      {open && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setOpen(false)}>
+          <div className="bg-[#0d0d0d] border border-[#222] rounded-xl p-5 max-w-md w-full space-y-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <p className="text-white font-semibold">Convertir a técnico</p>
+              <button onClick={() => setOpen(false)} className="text-gray-500 hover:text-white text-sm">✕</button>
+            </div>
+
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Rol técnico</label>
+              <select
+                value={rolTecnicoId}
+                onChange={(e) => setRolTecnicoId(e.target.value)}
+                className="w-full bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2"
+              >
+                <option value="">— Elegir rol —</option>
+                {roles.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.nombre}{r.disciplina ? ` (${r.disciplina})` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Zona habitual</label>
+                <input value={zona} onChange={(e) => setZona(e.target.value)}
+                  className="w-full bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2"
+                  placeholder="Ej. CDMX" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Nivel</label>
+                <select value={nivel} onChange={(e) => setNivel(e.target.value)}
+                  className="w-full bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2">
+                  <option value="AAA">AAA</option>
+                  <option value="AA">AA</option>
+                  <option value="A">A</option>
+                </select>
+              </div>
+            </div>
+
+            <label className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer">
+              <input type="checkbox" checked={forzarNuevo} onChange={(e) => setForzarNuevo(e.target.checked)}
+                className="accent-[#B3985B]" />
+              Forzar crear nuevo (ignorar coincidencia por teléfono)
+            </label>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button onClick={() => setOpen(false)} className="text-sm text-gray-400 px-3 py-2 rounded-lg hover:text-white">Cancelar</button>
+              <button onClick={convertir} disabled={saving || !rolTecnicoId}
+                className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-4 py-2 rounded-lg">
+                {saving ? "Convirtiendo..." : "Confirmar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Tab: Respuestas (con calificación inline de M) ─── */
+function RespuestasCandidatoTab({
+  formularioId, respuestaId, respuestasPreguntas, onRefresh,
+}: {
+  formularioId: string;
+  respuestaId: string;
+  respuestasPreguntas: RespuestaPreguntaFicha[];
+  onRefresh: () => Promise<void> | void;
+}) {
+  const toast = useToast();
+  const [saving, setSaving] = useState<string | null>(null);
+
+  async function guardar(rp: RespuestaPreguntaFicha, puntos: number) {
+    setSaving(rp.id);
+    try {
+      // El endpoint acepta { calificaciones: [{ preguntaId, calificacionManual }] }
+      const res = await fetch(`/api/rrhh/formularios/${formularioId}/respuestas/${respuestaId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ calificaciones: [{ preguntaId: rp.preguntaId, calificacionManual: puntos }] }),
+      });
+      if (!res.ok) { toast.error("Error guardando calificación"); return; }
+      toast.success("Guardado");
+      await onRefresh();
+    } finally { setSaving(null); }
+  }
+
+  if (!respuestasPreguntas.length) {
+    return <div className="ms-card p-6 text-sm text-gray-500 text-center">Sin respuestas registradas</div>;
+  }
+
+  const ordenadas = [...respuestasPreguntas].sort((a, b) => {
+    const ca = a.pregunta.codigo ?? ""; const cb = b.pregunta.codigo ?? "";
+    return ca.localeCompare(cb, "es", { numeric: true });
+  });
+
+  return (
+    <div className="space-y-3">
+      {ordenadas.map((rp) => {
+        const tipo = rp.pregunta.tipo.toUpperCase();
+        const esM = tipo === "PARRAFO" || tipo === "M";
+        return (
+          <div key={rp.id} className="ms-card p-4 space-y-2">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1">
+                {rp.pregunta.codigo && <p className="text-xs text-[#B3985B] font-mono">{rp.pregunta.codigo}</p>}
+                <p className="text-white text-sm">{rp.pregunta.texto}</p>
+              </div>
+              <span className="text-xs text-gray-600 shrink-0">{tipo}</span>
+            </div>
+            <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-3 py-2">
+              <p className="text-gray-300 text-sm whitespace-pre-wrap">{rp.valor ?? <span className="text-gray-700 italic">(sin respuesta)</span>}</p>
+            </div>
+
+            {esM && (
+              <div className="flex items-center gap-2 pt-1">
+                <span className="text-xs text-gray-500">Calificación manual:</span>
+                {[0, 1, 2, 3].map((n) => (
+                  <button key={n}
+                    onClick={() => guardar(rp, n)}
+                    disabled={saving === rp.id}
+                    className={`w-8 h-8 rounded-lg border text-sm font-medium transition-colors ${
+                      rp.calificacionManual === n
+                        ? "bg-[#B3985B] border-[#B3985B] text-black"
+                        : "bg-[#0d0d0d] border-[#222] text-gray-400 hover:border-[#B3985B]/50"
+                    }`}>
+                    {n}
+                  </button>
+                ))}
+                {rp.calificacionManual === null && <span className="text-xs text-yellow-500 ml-2">● pendiente</span>}
+              </div>
+            )}
+            {!esM && rp.puntosAuto !== null && (
+              <p className="text-xs text-gray-600">Puntos: <span className="text-white">{rp.puntosAuto}</span></p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ─── Tab: Prueba práctica ─── */
+interface PruebaPracticaData {
+  fecha?: string | null;
+  evaluador?: string | null;
+  checklist?: { id: string; label: string; done: boolean }[];
+  puntaje?: number | null;
+  notas?: string | null;
+}
+function PruebaPracticaTab({
+  candidatoId, postulacionId, valor, onRefresh,
+}: {
+  candidatoId: string;
+  postulacionId: string;
+  valor: string | null;
+  onRefresh: () => Promise<void> | void;
+}) {
+  const toast = useToast();
+  const parsed = (() => { try { return valor ? JSON.parse(valor) as PruebaPracticaData : null; } catch { return null; } })();
+  const [fecha, setFecha] = useState(parsed?.fecha ?? "");
+  const [evaluador, setEvaluador] = useState(parsed?.evaluador ?? "");
+  const [puntaje, setPuntaje] = useState<string>(parsed?.puntaje != null ? String(parsed.puntaje) : "");
+  const [notas, setNotas] = useState(parsed?.notas ?? "");
+  const [checklist, setChecklist] = useState(parsed?.checklist ?? [] as { id: string; label: string; done: boolean }[]);
+  const [nuevoItem, setNuevoItem] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  function toggleItem(id: string) {
+    setChecklist((c) => c.map((i) => i.id === id ? { ...i, done: !i.done } : i));
+  }
+  function addItem() {
+    const t = nuevoItem.trim(); if (!t) return;
+    setChecklist((c) => [...c, { id: crypto.randomUUID(), label: t, done: false }]);
+    setNuevoItem("");
+  }
+  function removeItem(id: string) { setChecklist((c) => c.filter((i) => i.id !== id)); }
+
+  async function guardar() {
+    setSaving(true);
+    try {
+      const payload: PruebaPracticaData = {
+        fecha: fecha || null,
+        evaluador: evaluador || null,
+        checklist,
+        puntaje: puntaje ? Number(puntaje) : null,
+        notas: notas || null,
+      };
+      const res = await fetch(`/api/rrhh/candidatos/${candidatoId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ postulacionId, pruebaPractica: JSON.stringify(payload) }),
+      });
+      if (!res.ok) { toast.error("Error guardando prueba práctica"); return; }
+      toast.success("Guardado");
+      await onRefresh();
+    } finally { setSaving(false); }
+  }
+
+  return (
+    <div className="max-w-2xl space-y-4">
+      <div className="ms-stat-card space-y-4">
+        <p className="text-xs text-gray-500 uppercase tracking-wider">Prueba práctica</p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Fecha</label>
+            <input type="date" value={fecha ?? ""} onChange={(e) => setFecha(e.target.value)}
+              className="w-full bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Evaluador</label>
+            <input value={evaluador ?? ""} onChange={(e) => setEvaluador(e.target.value)}
+              className="w-full bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2"
+              placeholder="Nombre de quien evalúa" />
+          </div>
+        </div>
+
+        <div>
+          <label className="text-xs text-gray-500 mb-1 block">Checklist libre</label>
+          <div className="space-y-1.5">
+            {checklist.map((i) => (
+              <div key={i.id} className="flex items-center gap-2 bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-3 py-2">
+                <input type="checkbox" checked={i.done} onChange={() => toggleItem(i.id)}
+                  className="w-4 h-4 accent-[#B3985B]" />
+                <span className={`flex-1 text-sm ${i.done ? "line-through text-gray-500" : "text-white"}`}>{i.label}</span>
+                <button onClick={() => removeItem(i.id)} className="text-gray-600 hover:text-red-400 text-xs">✕</button>
+              </div>
+            ))}
+            <div className="flex gap-2">
+              <input value={nuevoItem} onChange={(e) => setNuevoItem(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addItem(); } }}
+                className="flex-1 bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2"
+                placeholder="Agregar paso o criterio…" />
+              <button onClick={addItem}
+                className="text-sm text-[#B3985B] border border-[#B3985B]/30 hover:bg-[#B3985B]/10 rounded-lg px-3">
+                Agregar
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label className="text-xs text-gray-500 mb-1 block">Puntaje general (0-10)</label>
+          <input type="number" min={0} max={10} step="0.5"
+            value={puntaje} onChange={(e) => setPuntaje(e.target.value)}
+            className="w-32 bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2" />
+        </div>
+
+        <div>
+          <label className="text-xs text-gray-500 mb-1 block">Notas de la prueba</label>
+          <textarea rows={4} value={notas ?? ""} onChange={(e) => setNotas(e.target.value)}
+            className="w-full bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 resize-none"
+            placeholder="Observaciones de la prueba práctica" />
+        </div>
+
+        <button onClick={guardar} disabled={saving}
+          className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg">
+          {saving ? "Guardando..." : "Guardar prueba práctica"}
+        </button>
+      </div>
     </div>
   );
 }

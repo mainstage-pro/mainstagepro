@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { pregPublica, parseJSON, type MostrarSi } from "@/lib/formularios";
+import { evaluarRespuesta, construirEntrada, type FilaRespuestaCruda, type FilaSeccionCruda } from "@/lib/valoracion-formulario";
 import crypto from "crypto";
 
 export async function GET(_req: NextRequest, context: { params: Promise<{ slug: string }> }) {
@@ -151,11 +152,200 @@ export async function POST(req: NextRequest, context: { params: Promise<{ slug: 
           })),
       },
     },
+    include: {
+      respuestasPreguntas: {
+        include: { pregunta: { select: { id: true, seccionId: true, mostrarSi: true } } },
+      },
+    },
   });
+
+  // Motor de valoración y persistencia de los puntajes.
+  const filasRespuesta: FilaRespuestaCruda[] = respuesta.respuestasPreguntas.map((rp) => ({
+    id: rp.id,
+    preguntaId: rp.preguntaId,
+    valor: rp.valor,
+    snapshotPregunta: rp.snapshotPregunta,
+    calificacionManual: rp.calificacionManual,
+    pregunta: rp.pregunta,
+  }));
+  const filasSeccion: FilaSeccionCruda[] = f.secciones.map((s) => ({ id: s.id, bloque: s.bloque, mostrarSi: s.mostrarSi }));
+  const entrada = construirEntrada(filasRespuesta, filasSeccion, f.umbralAvanza, f.umbralBanco);
+  const resultado = evaluarRespuesta(entrada);
+
+  // Puntos por pregunta → RespuestaPregunta.puntosAuto.
+  await Promise.all(
+    respuesta.respuestasPreguntas.map((rp) => {
+      const puntos = resultado.puntosPorPregunta[rp.preguntaId]?.obtenidos ?? 0;
+      return prisma.respuestaPregunta.update({ where: { id: rp.id }, data: { puntosAuto: puntos } });
+    }),
+  );
+
+  await prisma.formularioRespuesta.update({
+    where: { id: respuesta.id },
+    data: {
+      excluido: resultado.excluido,
+      motivoExclusion: resultado.motivoExclusion
+        ? `${resultado.motivoExclusion.codigo ?? ""} ${resultado.motivoExclusion.texto} → ${resultado.motivoExclusion.respuesta}`.trim()
+        : null,
+      puntosObtenidos: resultado.puntosObtenidos,
+      puntosPosibles: resultado.puntosPosibles,
+      porcentajePreliminar: resultado.porcentajePreliminar,
+      porcentajeFinal: resultado.porcentajeFinal,
+      banda: resultado.banda,
+      desglose: JSON.stringify(resultado.desglose),
+      nivelSugerido: resultado.nivelSugerido,
+    },
+  });
+
+  // Alta/actualización automática de candidato y postulación.
+  await altaCandidatoDesdeRespuesta(respuesta.id, f.id, respuestasEntrada, respuesta.respuestasPreguntas, resultado);
 
   return NextResponse.json({
     ok: true,
     id: respuesta.id,
     mensaje: f.mensajeConfirmacion ?? "Gracias, recibimos tu postulación.",
   });
+}
+
+// ─── Alta automática de candidato ─────────────────────────────────────────
+//
+// Heurística para derivar disciplina y nivel: buscamos preguntas con códigos
+// 5.1 (puesto), 5.2 (disciplina) y 5.3 (nivel) del formulario base, pero
+// aceptamos cualquier pregunta visible cuyo snapshot.codigo empiece con esos
+// números. Nombre/correo/teléfono/ciudad se intentan por códigos 1.1, 1.2a,
+// 1.2b, 1.4. Si no se pueden derivar, se dejan en null (política "antes null
+// que inventar datos").
+//
+// Dedup: por teléfono normalizado (solo dígitos) o correo en minúsculas. Si
+// hay match, se actualizan los datos existentes y se agrega otra postulación.
+
+interface SnapshotMini { codigo: string | null; texto: string; tipo: string }
+interface RpSnapshot {
+  preguntaId: string;
+  valor: string | null;
+  snapshotPregunta: string;
+}
+
+function leerValorPorCodigo(
+  codigos: string[],
+  respuestas: Record<string, unknown>,
+  respPreg: RpSnapshot[],
+): string | null {
+  // Primero el shortcut: respuestasEntrada se indexa por preguntaId; buscamos el
+  // snapshot que tenga ese código y traducimos id→valor.
+  for (const rp of respPreg) {
+    const snap = parseJSON<SnapshotMini>(rp.snapshotPregunta, { codigo: null, texto: "", tipo: "" });
+    if (!snap.codigo) continue;
+    if (!codigos.includes(snap.codigo)) continue;
+    const v = parseJSON<unknown>(rp.valor, null);
+    if (v == null) continue;
+    if (Array.isArray(v)) return v.map(String).join(", ");
+    if (typeof v === "boolean") return v ? "Sí" : "No";
+    return String(v);
+  }
+  // Fallback por si el cliente mandó la respuesta indexada por código.
+  for (const c of codigos) {
+    const v = respuestas[c];
+    if (v != null) return Array.isArray(v) ? v.join(", ") : String(v);
+  }
+  return null;
+}
+
+async function altaCandidatoDesdeRespuesta(
+  respuestaId: string,
+  formularioId: string,
+  respuestasEntrada: Record<string, unknown>,
+  respuestasPreguntas: RpSnapshot[],
+  resultado: ReturnType<typeof evaluarRespuesta>,
+) {
+  const nombre = leerValorPorCodigo(["1.1"], respuestasEntrada, respuestasPreguntas);
+  if (!nombre) return; // sin nombre no hay forma de crear candidato
+
+  const telefonoRaw = leerValorPorCodigo(["1.2a", "1.2"], respuestasEntrada, respuestasPreguntas);
+  const correoRaw = leerValorPorCodigo(["1.2b", "1.3b", "1.2"], respuestasEntrada, respuestasPreguntas);
+  const ciudad = leerValorPorCodigo(["1.4"], respuestasEntrada, respuestasPreguntas);
+  const puestoResp = leerValorPorCodigo(["5.1"], respuestasEntrada, respuestasPreguntas);
+  const disciplinaResp = leerValorPorCodigo(["5.2"], respuestasEntrada, respuestasPreguntas);
+  const nivelResp = leerValorPorCodigo(["5.3"], respuestasEntrada, respuestasPreguntas);
+
+  const telefonoDig = telefonoRaw ? telefonoRaw.replace(/\D/g, "") : null;
+  const correo = correoRaw ? correoRaw.trim().toLowerCase() : null;
+
+  // Dedup por teléfono o correo
+  let candidato = null as Awaited<ReturnType<typeof prisma.candidato.findFirst>> | null;
+  if (telefonoDig) {
+    candidato = await prisma.candidato.findFirst({ where: { telefono: { contains: telefonoDig } } });
+  }
+  if (!candidato && correo) {
+    candidato = await prisma.candidato.findFirst({ where: { correo: { equals: correo, mode: "insensitive" } } });
+  }
+
+  if (candidato) {
+    await prisma.candidato.update({
+      where: { id: candidato.id },
+      data: {
+        nombre: candidato.nombre || nombre,
+        correo: candidato.correo ?? correo,
+        telefono: candidato.telefono ?? telefonoRaw,
+        ciudad: candidato.ciudad ?? ciudad,
+      },
+    });
+  } else {
+    candidato = await prisma.candidato.create({
+      data: {
+        nombre,
+        correo: correo ?? null,
+        telefono: telefonoRaw ?? null,
+        ciudad: ciudad ?? null,
+      },
+    });
+  }
+
+  // Vincular respuesta ↔ candidato (campo ya existe).
+  await prisma.formularioRespuesta.update({
+    where: { id: respuestaId },
+    data: { candidatoId: candidato.id },
+  });
+
+  // Intentar ligar al Puesto operativo por nombre (Jefe de Producción / Encargado de Bodega).
+  let puestoId: string | null = null;
+  if (puestoResp) {
+    const match = await prisma.puesto.findFirst({
+      where: { nombre: { equals: puestoResp, mode: "insensitive" } },
+      select: { id: true },
+    });
+    if (match) puestoId = match.id;
+  }
+
+  // Alternativa: si el formulario tiene un puesto vinculado único, úsalo.
+  if (!puestoId) {
+    const vinculos = await prisma.formularioPuesto.findMany({ where: { formularioId }, select: { puestoId: true } });
+    if (vinculos.length === 1) puestoId = vinculos[0].puestoId;
+  }
+
+  // Crear Postulacion. Campos nuevos (origen, disciplina, nivel,
+  // formularioRespuestaId) se insertan con raw SQL si el cliente de Prisma
+  // todavía no los conoce (post-DDL se puede migrar a `prisma.postulacion.create`).
+  const etapa = resultado.excluido ? "RECHAZADO" : "NUEVO";
+  const postId = crypto.randomUUID();
+  await prisma.$executeRawUnsafe(
+    `INSERT INTO postulaciones (
+       id, candidato_id, puesto_id, puesto_manual, area_manual, etapa,
+       origen, disciplina, nivel, formulario_respuesta_id, puntaje_total,
+       notas_evaluacion, created_at, updated_at, contrato_generado
+     ) VALUES ($1,$2,$3,$4,$5,$6,'FORMULARIO',$7,$8,$9,$10,$11,now(),now(),false)`,
+    postId,
+    candidato.id,
+    puestoId,
+    puestoId ? null : puestoResp,
+    null,
+    etapa,
+    disciplinaResp,
+    nivelResp,
+    respuestaId,
+    resultado.porcentajeFinal ?? resultado.porcentajePreliminar ?? null,
+    resultado.motivoExclusion
+      ? `Excluido automático: ${resultado.motivoExclusion.texto} → ${resultado.motivoExclusion.respuesta}`
+      : null,
+  );
 }

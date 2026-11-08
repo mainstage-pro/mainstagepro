@@ -13,7 +13,19 @@ interface Postulacion {
   salarioPropuesto?: number | null; fechaIngresoEstimada?: string | null;
   propuestaFechaEnvio?: string | null; propuestaAceptada?: boolean | null;
   contratoGenerado: boolean;
+  origen?: string | null;
+  disciplina?: string | null;
+  nivel?: string | null;
+  puntajeTotal?: number | null;
   puesto?: { nombre: string; area: string } | null;
+  formularioRespuesta?: {
+    id: string;
+    banda: string | null;
+    porcentajePreliminar: number | null;
+    porcentajeFinal: number | null;
+    nivelSugerido: string | null;
+    respuestasPreguntas?: { calificacionManual: number | null; pregunta?: { tipo: string } }[];
+  } | null;
 }
 interface Candidato {
   id: string; nombre: string; correo?: string | null; telefono?: string | null;
@@ -22,14 +34,16 @@ interface Candidato {
   postulaciones: Postulacion[];
 }
 
-const ETAPAS = ["NUEVO","EVALUACION","PROPUESTA_ENVIADA","APROBADO","CONTRATADO","RECHAZADO"] as const;
+const ETAPAS = ["NUEVO","EVALUACION","PRUEBA_PRACTICA","PROPUESTA_ENVIADA","APROBADO","CONTRATADO","RECHAZADO"] as const;
 const ETAPA_LABELS: Record<string,string> = {
-  NUEVO:"Nuevo", EVALUACION:"Evaluación", PROPUESTA_ENVIADA:"Propuesta enviada",
+  NUEVO:"Nuevo", EVALUACION:"Evaluación", PRUEBA_PRACTICA:"Prueba práctica",
+  PROPUESTA_ENVIADA:"Propuesta enviada",
   APROBADO:"Aprobado", CONTRATADO:"Contratado", RECHAZADO:"Rechazado",
 };
 const ETAPA_COLORS: Record<string,string> = {
   NUEVO: "bg-gray-800 text-gray-300",
   EVALUACION: "bg-blue-900/40 text-blue-300",
+  PRUEBA_PRACTICA: "bg-purple-900/40 text-purple-300",
   PROPUESTA_ENVIADA: "bg-yellow-900/30 text-yellow-300",
   APROBADO: "bg-green-900/30 text-green-300",
   CONTRATADO: "bg-[#B3985B]/20 text-[#B3985B]",
@@ -37,8 +51,19 @@ const ETAPA_COLORS: Record<string,string> = {
 };
 const ETAPA_BORDER: Record<string,string> = {
   NUEVO: "border-gray-700", EVALUACION: "border-blue-800",
+  PRUEBA_PRACTICA: "border-purple-800",
   PROPUESTA_ENVIADA: "border-yellow-800", APROBADO: "border-green-800",
   CONTRATADO: "border-[#B3985B]/40", RECHAZADO: "border-red-900",
+};
+const BANDA_LABEL: Record<string,string> = {
+  AVANZA: "Avanza",
+  BANCO: "Banco",
+  DESCARTAR: "Descartar",
+};
+const BANDA_COLOR: Record<string,string> = {
+  AVANZA: "text-green-400",
+  BANCO: "text-yellow-400",
+  DESCARTAR: "text-red-400",
 };
 
 function fmt(n: number) {
@@ -62,6 +87,12 @@ export default function CandidatosPage() {
     puestoOpId:"", puestoManual:"", areaManual:"",
   });
   const [saving, setSaving] = useState(false);
+  // Filtros (spec 6.D)
+  const [fPuesto, setFPuesto] = useState("");
+  const [fDisciplina, setFDisciplina] = useState("");
+  const [fNivel, setFNivel] = useState("");
+  const [fBanda, setFBanda] = useState("");
+  const [fEtapa, setFEtapa] = useState("");
 
   async function load() {
     const [rc, rp] = await Promise.all([
@@ -119,6 +150,50 @@ export default function CandidatosPage() {
     return c.postulaciones[0]?.etapa ?? "NUEVO";
   }
 
+  function getBanda(p?: Postulacion): string | null {
+    return p?.formularioRespuesta?.banda ?? null;
+  }
+  function getPuntaje(p?: Postulacion): number | null {
+    const r = p?.formularioRespuesta;
+    if (!r) return p?.puntajeTotal ?? null;
+    return r.porcentajeFinal ?? r.porcentajePreliminar ?? null;
+  }
+  function getMPendientes(p?: Postulacion): number {
+    const rps = p?.formularioRespuesta?.respuestasPreguntas ?? [];
+    return rps.filter((rp) => rp.pregunta?.tipo === "parrafo" && rp.calificacionManual == null).length;
+  }
+
+  // Filtro general
+  const candidatosFiltrados = useMemo(() => {
+    return candidatos.filter(c => {
+      const p = c.postulaciones[0];
+      if (fEtapa && getEtapa(c) !== fEtapa) return false;
+      if (fPuesto && (p?.puesto?.nombre ?? p?.puestoManual ?? "") !== fPuesto) return false;
+      if (fDisciplina && (p?.disciplina ?? "") !== fDisciplina) return false;
+      if (fNivel && (p?.nivel ?? "") !== fNivel) return false;
+      if (fBanda && getBanda(p) !== fBanda) return false;
+      return true;
+    });
+  }, [candidatos, fEtapa, fPuesto, fDisciplina, fNivel, fBanda]);
+
+  const opcionesFiltro = useMemo(() => {
+    const puestos = new Set<string>();
+    const disciplinas = new Set<string>();
+    const niveles = new Set<string>();
+    for (const c of candidatos) {
+      const p = c.postulaciones[0];
+      const pn = p?.puesto?.nombre ?? p?.puestoManual;
+      if (pn) puestos.add(pn);
+      if (p?.disciplina) disciplinas.add(p.disciplina);
+      if (p?.nivel) niveles.add(p.nivel);
+    }
+    return {
+      puestos: Array.from(puestos).sort(),
+      disciplinas: Array.from(disciplinas).sort(),
+      niveles: Array.from(niveles).sort(),
+    };
+  }, [candidatos]);
+
   // Opciones del selector: puestos sin titular primero, luego por orden de área y nombre.
   const puestoOptions = useMemo(() => {
     const ordArea = (a: string) => { const i = AREA_ORDEN.indexOf(a); return i === -1 ? 99 : i; };
@@ -164,13 +239,46 @@ export default function CandidatosPage() {
         </div>
       </div>
 
+      {/* Filtros */}
+      {!loading && (
+        <div className="flex flex-wrap gap-2 items-center text-xs">
+          <select value={fPuesto} onChange={e => setFPuesto(e.target.value)} className="bg-[#0d0d0d] border border-[#222] text-gray-300 rounded px-2 py-1">
+            <option value="">Puesto · todos</option>
+            {opcionesFiltro.puestos.map(p => <option key={p} value={p}>{p}</option>)}
+          </select>
+          <select value={fDisciplina} onChange={e => setFDisciplina(e.target.value)} className="bg-[#0d0d0d] border border-[#222] text-gray-300 rounded px-2 py-1">
+            <option value="">Disciplina · todas</option>
+            {opcionesFiltro.disciplinas.map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
+          <select value={fNivel} onChange={e => setFNivel(e.target.value)} className="bg-[#0d0d0d] border border-[#222] text-gray-300 rounded px-2 py-1">
+            <option value="">Nivel · todos</option>
+            {opcionesFiltro.niveles.map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+          <select value={fBanda} onChange={e => setFBanda(e.target.value)} className="bg-[#0d0d0d] border border-[#222] text-gray-300 rounded px-2 py-1">
+            <option value="">Banda · todas</option>
+            <option value="AVANZA">Avanza</option>
+            <option value="BANCO">Banco</option>
+            <option value="DESCARTAR">Descartar</option>
+          </select>
+          <select value={fEtapa} onChange={e => setFEtapa(e.target.value)} className="bg-[#0d0d0d] border border-[#222] text-gray-300 rounded px-2 py-1">
+            <option value="">Etapa · todas</option>
+            {ETAPAS.map(e => <option key={e} value={e}>{ETAPA_LABELS[e]}</option>)}
+          </select>
+          {(fPuesto || fDisciplina || fNivel || fBanda || fEtapa) && (
+            <button onClick={() => { setFPuesto(""); setFDisciplina(""); setFNivel(""); setFBanda(""); setFEtapa(""); }}
+              className="text-gray-500 hover:text-white underline">Limpiar</button>
+          )}
+          <span className="ml-auto text-gray-500">{candidatosFiltrados.length} / {candidatos.length}</span>
+        </div>
+      )}
+
       {loading ? (
         <SkeletonCards count={6} />
       ) : view === "kanban" ? (
         /* ── Kanban ── */
         <div className="flex gap-4 overflow-x-auto pb-4">
           {kanbanEtapas.map(etapa => {
-            const cols = candidatos.filter(c => getEtapa(c) === etapa);
+            const cols = candidatosFiltrados.filter(c => getEtapa(c) === etapa);
             return (
               <div key={etapa} className="shrink-0 w-72">
                 <div className="flex items-center justify-between mb-3">
@@ -182,12 +290,26 @@ export default function CandidatosPage() {
                 <div className="space-y-2">
                   {cols.map(c => {
                     const post = c.postulaciones[0];
+                    const pts = getPuntaje(post);
+                    const banda = getBanda(post);
+                    const mPend = getMPendientes(post);
+                    const disc = [post?.disciplina, post?.nivel].filter(Boolean).join(" · ");
                     return (
                       <Link key={c.id} href={`/organizacion/candidatos/${c.id}`}
                         className={`block bg-[#111] border rounded-xl p-4 hover:border-[#333] transition-all ${ETAPA_BORDER[etapa]}`}>
                         <p className="text-white text-sm font-medium">{c.nombre}</p>
                         <p className="text-gray-500 text-xs mt-0.5">{getPuestoLabel(post)}</p>
+                        {disc && <p className="text-gray-600 text-[11px] mt-0.5">{disc}</p>}
                         {c.ciudad && <p className="text-gray-600 text-xs mt-1">{c.ciudad}</p>}
+                        {(pts != null || banda) && (
+                          <div className="mt-2 flex items-center gap-2 flex-wrap">
+                            {pts != null && <span className="text-xs text-white">{pts}%</span>}
+                            {banda && <span className={`text-[10px] ${BANDA_COLOR[banda]}`}>{BANDA_LABEL[banda]}</span>}
+                            {mPend > 0 && (
+                              <span className="text-[10px] text-yellow-400">· {mPend} por calificar</span>
+                            )}
+                          </div>
+                        )}
                         {c.salarioEsperado && (
                           <p className="text-[#B3985B] text-xs mt-1">{fmt(c.salarioEsperado)} esperado</p>
                         )}
@@ -205,10 +327,10 @@ export default function CandidatosPage() {
           <div className="shrink-0 w-56">
             <div className="flex items-center justify-between mb-3">
               <span className={`text-xs font-semibold px-2 py-1 rounded-full ${ETAPA_COLORS.RECHAZADO}`}>Rechazados</span>
-              <span className="text-gray-600 text-xs">{candidatos.filter(c => getEtapa(c) === "RECHAZADO").length}</span>
+              <span className="text-gray-600 text-xs">{candidatosFiltrados.filter(c => getEtapa(c) === "RECHAZADO").length}</span>
             </div>
             <div className="space-y-2 opacity-50">
-              {candidatos.filter(c => getEtapa(c) === "RECHAZADO").map(c => (
+              {candidatosFiltrados.filter(c => getEtapa(c) === "RECHAZADO").map(c => (
                 <Link key={c.id} href={`/organizacion/candidatos/${c.id}`}
                   className="block bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-3 hover:border-[#222] transition-all">
                   <p className="text-gray-400 text-xs font-medium">{c.nombre}</p>
@@ -229,7 +351,7 @@ export default function CandidatosPage() {
               </tr>
             </thead>
             <tbody>
-              {candidatos.map(c => {
+              {candidatosFiltrados.map(c => {
                 const post = c.postulaciones[0];
                 const etapa = getEtapa(c);
                 return (

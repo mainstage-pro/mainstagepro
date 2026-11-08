@@ -906,7 +906,7 @@ function ConfigTab({ f, update, puestos, enlacePublico }: {
               onChange={e => update(p => ({ ...p, umbralBanco: Number(e.target.value) }))} className={inputCls} />
           </div>
         </div>
-        <p className="text-[11px] text-gray-600">El cálculo del porcentaje se activa en la Fase 2 del motor de valoración.</p>
+        <p className="text-[11px] text-gray-600">El motor calcula automáticamente al recibir la respuesta y al recalificar preguntas manuales.</p>
       </div>
 
       <div className="ms-card p-5 space-y-3">
@@ -969,12 +969,34 @@ function RespuestasTab({ formularioId, secciones }: { formularioId: string; secc
 
 interface RespuestaFull {
   id: string; enviadoAt: string;
+  excluido: boolean | null;
+  motivoExclusion: string | null;
+  puntosObtenidos: number | null;
+  puntosPosibles: number | null;
+  porcentajePreliminar: number | null;
+  porcentajeFinal: number | null;
+  banda: string | null;
+  desglose: string | null;
+  nivelSugerido: string | null;
+  candidatoId: string | null;
   respuestasPreguntas: {
     id: string; preguntaId: string; valor: string | null;
     calificacionManual: number | null;
+    puntosAuto: number | null;
     pregunta: { id: string; codigo: string | null; texto: string; tipo: string };
   }[];
 }
+
+const BANDA_LABEL: Record<string, string> = {
+  AVANZA: "Avanza a prueba práctica",
+  BANCO: "Banco de talento",
+  DESCARTAR: "Descartar (sugerido)",
+};
+const BANDA_COLOR: Record<string, string> = {
+  AVANZA: "text-green-400",
+  BANCO: "text-yellow-400",
+  DESCARTAR: "text-red-400",
+};
 
 function valorLegible(v: string | null, tipo: string): string {
   if (!v) return "";
@@ -1086,13 +1108,57 @@ function IndividualVista({ respuestas, preguntas, formularioId, onRefresh }: {
       </div>
 
       <div className="ms-card p-5 space-y-2">
-        <p className="text-xs text-gray-500">Enviado</p>
-        <p className="text-sm text-white">{new Date(r.enviadoAt).toLocaleString("es-MX")}</p>
-        <div className="grid grid-cols-3 gap-4 pt-2 border-t border-[#1a1a1a] mt-3">
-          <div><p className="text-[11px] text-gray-600">Puntaje preliminar</p><p className="text-white font-medium">—</p></div>
-          <div><p className="text-[11px] text-gray-600">Puntaje final</p><p className="text-white font-medium">—</p></div>
-          <div><p className="text-[11px] text-gray-600">Banda</p><p className="text-white font-medium">pendiente</p></div>
+        <div className="flex items-start justify-between flex-wrap gap-3">
+          <div>
+            <p className="text-xs text-gray-500">Enviado</p>
+            <p className="text-sm text-white">{new Date(r.enviadoAt).toLocaleString("es-MX")}</p>
+          </div>
+          {r.candidatoId && (
+            <Link href={`/organizacion/candidatos/${r.candidatoId}`} className="text-xs text-[#B3985B] hover:underline">
+              Ver ficha del candidato →
+            </Link>
+          )}
         </div>
+        {r.excluido && (
+          <div className="mt-2 text-xs text-red-400 bg-red-950/30 border border-red-900/50 rounded px-3 py-2">
+            Excluido automáticamente: {r.motivoExclusion ?? "—"}
+          </div>
+        )}
+        <div className="grid grid-cols-3 gap-4 pt-2 border-t border-[#1a1a1a] mt-3">
+          <div>
+            <p className="text-[11px] text-gray-600">Puntaje preliminar</p>
+            <p className="text-white font-medium">{r.porcentajePreliminar != null ? `${r.porcentajePreliminar}%` : "—"}</p>
+          </div>
+          <div>
+            <p className="text-[11px] text-gray-600">Puntaje final</p>
+            <p className="text-white font-medium">{r.porcentajeFinal != null ? `${r.porcentajeFinal}%` : "pendiente"}</p>
+          </div>
+          <div>
+            <p className="text-[11px] text-gray-600">Banda</p>
+            <p className={`font-medium ${r.banda ? BANDA_COLOR[r.banda] : "text-gray-600"}`}>
+              {r.banda ? BANDA_LABEL[r.banda] : "pendiente"}
+            </p>
+          </div>
+        </div>
+        {r.nivelSugerido && (
+          <p className="text-[11px] text-yellow-400 mt-2">Sugerencia: considerar nivel inferior ({r.nivelSugerido}).</p>
+        )}
+        {r.desglose && (() => {
+          try {
+            const bl = JSON.parse(r.desglose) as { bloque: string; porcentaje: number; puntosObtenidos: number; puntosPosibles: number }[];
+            if (!bl.length) return null;
+            return (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {bl.map((b) => (
+                  <span key={b.bloque} className="text-[11px] bg-[#0d0d0d] border border-[#222] rounded px-2 py-1">
+                    <span className="text-gray-500">{b.bloque}:</span> <span className="text-white">{b.porcentaje}%</span>
+                    <span className="text-gray-700"> ({b.puntosObtenidos}/{b.puntosPosibles})</span>
+                  </span>
+                ))}
+              </div>
+            );
+          } catch { return null; }
+        })()}
       </div>
 
       <div className="space-y-3">
@@ -1145,14 +1211,17 @@ function TablaVista({ respuestas, preguntas }: { respuestas: RespuestaFull[]; pr
         <tbody>
           {respuestas.map(r => {
             const map = new Map(r.respuestasPreguntas.map(rp => [rp.preguntaId, rp.valor]));
+            const pct = r.porcentajeFinal ?? r.porcentajePreliminar;
             return (
               <tr key={r.id} className="ms-tr">
                 <td className="ms-td text-gray-400">{new Date(r.enviadoAt).toLocaleString("es-MX")}</td>
                 {preguntas.map(p => (
                   <td key={p.id} className="ms-td text-gray-400 max-w-[200px] truncate">{valorLegible(map.get(p.id) ?? null, p.tipo)}</td>
                 ))}
-                <td className="ms-td text-gray-600">—</td>
-                <td className="ms-td text-gray-600">—</td>
+                <td className="ms-td text-gray-300">{pct != null ? `${pct}%` : "—"}</td>
+                <td className={`ms-td ${r.banda ? BANDA_COLOR[r.banda] : "text-gray-600"}`}>
+                  {r.excluido ? "Excluido" : r.banda ? BANDA_LABEL[r.banda] : "—"}
+                </td>
               </tr>
             );
           })}

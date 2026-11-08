@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { logActividad } from "@/lib/actividad";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -11,7 +12,19 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     where: { id },
     include: {
       postulaciones: {
-        include: { puesto: true },
+        include: {
+          puesto: true,
+          formularioRespuesta: {
+            include: {
+              formulario: { select: { id: true, titulo: true, slug: true, umbralAvanza: true, umbralBanco: true } },
+              respuestasPreguntas: {
+                include: {
+                  pregunta: { select: { id: true, codigo: true, texto: true, tipo: true, seccionId: true } },
+                },
+              },
+            },
+          },
+        },
         orderBy: { createdAt: "desc" },
       },
     },
@@ -29,7 +42,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // Allow patching candidato fields AND/OR active postulacion fields
   const { postulacionId, etapa, salarioPropuesto, fechaIngresoEstimada,
     beneficios, observaciones, notasEvaluacion, puntajeTotal, puestoId, puestoManual, areaManual,
-    onboardingData,
+    onboardingData, pruebaPractica, tecnicoId, disciplina, nivel,
     ...candidatoFields } = body;
 
   // Update candidato fields if any
@@ -41,6 +54,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   // Update postulacion if fields provided
   if (postulacionId) {
+    const prev = etapa !== undefined
+      ? await prisma.postulacion.findUnique({ where: { id: postulacionId }, select: { etapa: true } })
+      : null;
     const postData: Record<string, unknown> = { updatedAt: new Date() };
     if (etapa !== undefined)              postData.etapa = etapa;
     if (salarioPropuesto !== undefined)   postData.salarioPropuesto = salarioPropuesto;
@@ -53,12 +69,40 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (puestoManual !== undefined)       postData.puestoManual = puestoManual;
     if (areaManual !== undefined)         postData.areaManual = areaManual;
     if (onboardingData !== undefined)     postData.onboardingData = onboardingData;
+    if (pruebaPractica !== undefined)     postData.pruebaPractica = typeof pruebaPractica === "string" ? pruebaPractica : JSON.stringify(pruebaPractica);
+    if (tecnicoId !== undefined)          postData.tecnicoId = tecnicoId || null;
+    if (disciplina !== undefined)         postData.disciplina = disciplina || null;
+    if (nivel !== undefined)              postData.nivel = nivel || null;
     await prisma.postulacion.update({ where: { id: postulacionId }, data: postData });
+
+    // Historial: cambios de etapa quedan en ActividadUsuario (patrón del repo).
+    if (etapa !== undefined && prev && prev.etapa !== etapa) {
+      await logActividad(session.id, "CANDIDATO_ETAPA", "Postulacion", postulacionId,
+        `Etapa: ${prev.etapa} → ${etapa}`,
+        { candidatoId: id, etapaAnterior: prev.etapa, etapaNueva: etapa });
+    }
   }
 
   const candidato = await prisma.candidato.findUnique({
     where: { id },
-    include: { postulaciones: { include: { puesto: true }, orderBy: { createdAt: "desc" } } },
+    include: {
+      postulaciones: {
+        include: {
+          puesto: true,
+          formularioRespuesta: {
+            include: {
+              formulario: { select: { id: true, titulo: true, slug: true, umbralAvanza: true, umbralBanco: true } },
+              respuestasPreguntas: {
+                include: {
+                  pregunta: { select: { id: true, codigo: true, texto: true, tipo: true, seccionId: true } },
+                },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      },
+    },
   });
   return NextResponse.json({ candidato });
 }

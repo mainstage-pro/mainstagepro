@@ -3509,7 +3509,16 @@ model Postulacion {
   areaManual   String? @map("area_manual")
 
   // Pipeline
-  etapa String @default("NUEVO") // NUEVO | EVALUACION | PROPUESTA_ENVIADA | APROBADO | CONTRATADO | RECHAZADO
+  etapa String @default("NUEVO") // NUEVO | EVALUACION | PRUEBA_PRACTICA | PROPUESTA_ENVIADA | APROBADO | CONTRATADO | RECHAZADO
+
+  // Alta/trazabilidad (Fase 2 reclutamiento)
+  origen                 String?              @default("MANUAL") // FORMULARIO | MANUAL
+  disciplina             String?
+  nivel                  String?
+  formularioRespuestaId  String?              @unique @map("formulario_respuesta_id")
+  formularioRespuesta    FormularioRespuesta? @relation(fields: [formularioRespuestaId], references: [id])
+  pruebaPractica         String?              @db.Text @map("prueba_practica") // JSON {fecha,evaluador,checklist,calificacion,notas}
+  tecnicoId              String?              @map("tecnico_id") // Fase 2: vínculo opcional a Tecnico del directorio
 
   // Propuesta de trabajo
   salarioPropuesto     Float?    @map("salario_propuesto")
@@ -7557,6 +7566,7 @@ model FormularioRespuesta {
   nivelSugerido        String?    @map("nivel_sugerido")
 
   respuestasPreguntas RespuestaPregunta[]
+  postulacion         Postulacion?
 
   @@map("formulario_respuestas")
 }
