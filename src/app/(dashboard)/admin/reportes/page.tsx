@@ -241,13 +241,22 @@ function MiniBarChart({ items, total, color = CHART_COLORS.primary }: { items: {
 }
 
 // ── PESTAÑA: BALANCE GENERAL ──────────────────────────────────────────────────
+const UNIDADES_BALANCE: { key: "" | "PRO" | "LIVE" | "CREATIVE"; label: string }[] = [
+  { key: "", label: "Todas" },
+  { key: "PRO", label: "Pro" },
+  { key: "LIVE", label: "Live" },
+  { key: "CREATIVE", label: "Creative" },
+];
+
 function TabBalance({ mes, onDataLoad }: { mes: string; onDataLoad?: (d: BalanceData) => void }) {
   const [data, setData] = useState<BalanceData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [unidad, setUnidad] = useState<"" | "PRO" | "LIVE" | "CREATIVE">("");
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/admin/reportes/balance?mes=${mes}`, { cache: "no-store" })
+    const qs = unidad ? `&unidad=${unidad}` : "";
+    fetch(`/api/admin/reportes/balance?mes=${mes}${qs}`, { cache: "no-store" })
       .then(r => r.json())
       .then(d => {
         setData(d);
@@ -255,7 +264,7 @@ function TabBalance({ mes, onDataLoad }: { mes: string; onDataLoad?: (d: Balance
         onDataLoad?.(d);
       })
       .catch(() => setLoading(false));
-  }, [mes, onDataLoad]);
+  }, [mes, unidad, onDataLoad]);
 
   if (loading) return (
     <div className="flex items-center justify-center py-24 gap-3">
@@ -294,6 +303,31 @@ function TabBalance({ mes, onDataLoad }: { mes: string; onDataLoad?: (d: Balance
 
   return (
     <div className="space-y-6">
+      {/* Filtro por unidad de negocio */}
+      <div className="flex flex-wrap items-center gap-3 no-print">
+        <span className="text-gray-500 text-xs font-medium">Unidad de negocio:</span>
+        <div className="flex items-center gap-1">
+          {UNIDADES_BALANCE.map(u => (
+            <button
+              key={u.key}
+              onClick={() => setUnidad(u.key)}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                unidad === u.key
+                  ? "bg-[#B3985B] text-black"
+                  : "bg-[#141414] text-gray-400 hover:text-white border border-[#1e1e1e]"
+              }`}
+            >
+              {u.label}
+            </button>
+          ))}
+        </div>
+        {unidad && (
+          <span className="text-[11px] text-gray-600">
+            * Cuentas por Cobrar (y los totales que dependen de ellas) cortadas a {UNIDADES_BALANCE.find(u => u.key === unidad)?.label}; efectivo y activos fijos siguen siendo los de todo el grupo.
+          </span>
+        )}
+      </div>
+
       {/* Estructura societaria */}
       <div className="bg-[#0e0e0e] border border-[#B3985B]/20 rounded-2xl p-4 flex flex-wrap gap-6 items-center">
         <div>
