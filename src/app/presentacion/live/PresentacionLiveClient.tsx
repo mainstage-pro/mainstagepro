@@ -12,7 +12,6 @@ import {
   CheckCircle2,
   Link2,
   Rocket,
-  Download,
   MessageCircle,
   Mic,
   Wallet,
@@ -264,7 +263,7 @@ function SlideMision() {
       rotulo="Misión"
       titulo="Que toquen como grandes, desde su primera gira."
       cuerpo={
-        "Ser la estructura de producción que un artista emergente necesita para sonar como uno grande desde la primera fecha.\n\nSomos la extensión operativa del management: resolvemos, anticipamos y ejecutamos, para que ellos se enfoquen en lo único que nadie más puede hacer — la música."
+        "Ser la estructura de producción que un artista emergente necesita para sonar como uno grande desde la primera fecha.\n\nSomos la extensión operativa del management: resolvemos, anticipamos y ejecutamos, para que ellos se enfoquen en lo único que nadie más puede hacer — el desarrollo del artista."
       }
       foto={FOTO.mision}
       icono={Crosshair}
@@ -521,9 +520,9 @@ function SlideAlianza() {
 
 function SlidePorQue() {
   const items = [
-    { icono: Workflow, t: "Entendemos tu proyecto, no solo tu rider — se nota desde la segunda fecha." },
+    { icono: Workflow, t: "Entendemos tu proyecto, no solo tu rider — se nota desde la primera fecha." },
     { icono: Rocket, t: "Crecemos con la velocidad real de tu carrera: un show, una gira corta, una gira nacional." },
-    { icono: Flame, t: "Te devolvemos el tiempo que hoy gastas en logística, para ponerlo en la música." },
+    { icono: Flame, t: "Te devolvemos el tiempo que hoy gastas en logística, para ponerlo en el desarrollo del artista." },
     { icono: ShieldCheck, t: "Cuando algo se tuerce en gira, tienes a alguien que ya lo resolvió antes." },
   ];
   return (
@@ -579,7 +578,7 @@ function SlideCierre() {
             Hablemos de tu próxima fecha, o de tu próxima gira completa.
           </p>
         </A>
-        <A delay={480} style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
+        <A delay={480} style={{ display: "flex", justifyContent: "center" }}>
           <a
             href={WA_CONTACTO}
             target="_blank"
@@ -592,18 +591,6 @@ function SlideCierre() {
           >
             <MessageCircle strokeWidth={2.2} style={{ width: 17, height: 17 }} />
             Hablar por WhatsApp
-          </a>
-          <a
-            href="/api/presentacion/live/pdf"
-            download
-            style={{
-              display: "flex", alignItems: "center", gap: 9, padding: "14px 28px", borderRadius: 999,
-              background: "transparent", color: W_A(0.7), border: `1px solid ${W_A(0.18)}`, fontWeight: 600, fontSize: "clamp(13px, 1.1vw, 15px)",
-              textDecoration: "none",
-            }}
-          >
-            <Download strokeWidth={2.2} style={{ width: 16, height: 16 }} />
-            Descargar PDF
           </a>
         </A>
         <A delay={620} style={{ display: "flex", justifyContent: "center", marginTop: 48 }}>
@@ -684,7 +671,6 @@ export default function PresentacionLiveClient() {
         @keyframes mspPulse { 0% { transform: scale(1); opacity: 0.45; } 100% { transform: scale(2.7); opacity: 0; } }
         button { font-family: inherit; }
         .nav-btn:hover { background: ${G_A(0.1)} !important; border-color: ${G_A(0.35)} !important; color: rgba(240,240,240,0.7) !important; }
-        .pdf-btn:hover { background: ${G_A(0.18)} !important; }
       `}</style>
 
       <div style={{ position: "fixed", top: 18, left: 24, zIndex: 100, opacity: slide > 0 ? 0.65 : 0, transition: "opacity 0.5s ease", display: "flex", alignItems: "center", gap: 10, pointerEvents: "none" }}>
@@ -693,19 +679,6 @@ export default function PresentacionLiveClient() {
       </div>
 
       <div style={{ position: "fixed", top: 18, right: 26, zIndex: 100, display: "flex", alignItems: "center", gap: 14 }}>
-        <a
-          href="/api/presentacion/live/pdf"
-          className="pdf-btn"
-          download
-          style={{
-            display: "flex", alignItems: "center", gap: 7, padding: "7px 14px", borderRadius: 999,
-            background: G_A(0.1), border: `1px solid ${G_A(0.35)}`, color: G,
-            fontSize: 12, fontWeight: 600, textDecoration: "none", transition: "background 0.2s",
-          }}
-        >
-          <Download strokeWidth={2.2} style={{ width: 13, height: 13 }} />
-          Descargar PDF
-        </a>
         <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
           <span style={{ color: G, fontSize: 12, fontWeight: 700, letterSpacing: "0.06em" }}>{String(slide + 1).padStart(2, "0")}</span>
           <span style={{ color: W_A(0.18), fontSize: 11 }}>/</span>
