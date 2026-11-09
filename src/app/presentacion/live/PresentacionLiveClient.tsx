@@ -13,31 +13,38 @@ import {
   Link2,
   Rocket,
   Download,
+  MessageCircle,
+  Mic,
+  Wallet,
+  FileText,
+  Workflow,
+  ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
 
-/* ── Design tokens: mismo lenguaje visual de Brandbook/Cultura, acento propio de Live ── */
-const G = "#8b5cf6";
-const G_A = (a: number) => `rgba(139,92,246,${a})`;
+/* ── Design tokens: mismo lenguaje visual de Brandbook/Cultura — dorado como acento predominante ── */
+const G = "#B3985B";
+const G_A = (a: number) => `rgba(179,152,91,${a})`;
 const W = "#F0F0F0";
 const W_A = (a: number) => `rgba(240,240,240,${a})`;
 const BG = "#080808";
 const RED = "#f87171";
 const GREEN = "#4ade80";
 const FONT = "'Inter',system-ui,-apple-system,sans-serif";
+const WA_CONTACTO = "https://wa.me/524461432565?text=" + encodeURIComponent("Hola, vi la presentación de Mainstage Live y me gustaría más información para mi gira.");
 
 const FOTO = {
   portada: "/images/presentacion/musicales/Musicales-140.jpg",
   quienesSomos: "/images/presentacion/operacion/crew-foh.jpg",
-  queNosMueve: "/images/presentacion/musicales/Musicales-126.jpg",
+  queNosMueve: "/images/presentacion/musicales/Musicales-055.jpg",
   mision: "/images/presentacion/operacion/road-cases.jpg",
   vision: "/images/presentacion/musicales/Musicales-220.jpg",
   estructura: "/images/presentacion/operacion/consola-audio.jpg",
-  paraQuien: "/images/presentacion/musicales/Musicales-083.jpg",
+  paraQuien: "/images/presentacion/musicales/Musicales-045.jpg",
   problemas: "/images/presentacion/operacion/oficio-manos.jpg",
-  soluciones: "/images/presentacion/musicales/Musicales-108.jpg",
+  soluciones: "/images/presentacion/musicales/Musicales-016.jpg",
   alianza: "/images/presentacion/musicales/Afrodise-59.jpg",
-  porQue: "/images/presentacion/musicales/Musicales-037.jpg",
+  porQue: "/images/presentacion/musicales/Musicales-154.jpg",
   cierre: "/images/presentacion/musicales/MAGIC_ROOM_260307_GUANAJUATO_078.jpg",
 };
 
@@ -193,10 +200,10 @@ function SlidePortada() {
       <PulseRings />
       <div style={{ textAlign: "center", position: "relative", zIndex: 1, padding: "0 40px" }}>
         <A delay={100} style={{ display: "flex", justifyContent: "center", marginBottom: 36 }}>
-          <Image src="/logo-live.png" alt="Mainstage Live" width={92} height={92} style={{ width: "clamp(64px, 8vw, 92px)", height: "auto", borderRadius: 20 }} priority />
+          <Image src="/logo-live.png" alt="Mainstage Live" width={132} height={132} style={{ width: "clamp(88px, 11vw, 132px)", height: "auto", borderRadius: 26 }} priority />
         </A>
         <A delay={220}>
-          <h1 style={{ fontSize: "clamp(2.6rem, 7vw, 6rem)", fontWeight: 900, letterSpacing: "-0.045em", color: W, lineHeight: 0.98, marginBottom: 28 }}>
+          <h1 style={{ fontSize: "clamp(2.6rem, 7vw, 6rem)", fontWeight: 800, letterSpacing: "-0.04em", color: W, lineHeight: 0.98, marginBottom: 28 }}>
             Mainstage <span style={{ color: G }}>Live</span>
           </h1>
         </A>
@@ -205,12 +212,12 @@ function SlidePortada() {
         </A>
         <A delay={460}>
           <p style={{ color: W_A(0.6), fontSize: "clamp(1rem, 1.8vw, 1.3rem)", maxWidth: 560, margin: "0 auto 22px", lineHeight: 1.6 }}>
-            Producción de gira para artistas que están construyendo algo real.
+            Que tu producción suene tan grande como tu música.
           </p>
         </A>
         <A delay={580}>
           <p style={{ color: G, fontSize: "clamp(11px, 1.2vw, 14px)", fontWeight: 500, letterSpacing: "0.26em", textTransform: "uppercase" }}>
-            Production Management · Tour Management · Stage Management
+            Production · Tour · Stage Management
           </p>
         </A>
         <A delay={820}>
@@ -229,7 +236,7 @@ function SlideQuienesSomos() {
       rotulo="Quiénes somos"
       titulo={"No somos una agencia de producción más.\nSomos el equipo que falta en tu equipo."}
       cuerpo={
-        "Mainstage Live nace dentro de Grupo Mainstage — el mismo grupo que ya mueve equipo técnico y diseño creativo para cientos de shows al año — con una misión específica: que un artista emergente pueda subirse a cualquier escenario, en cualquier ciudad, y que la producción nunca sea la razón por la que algo salió mal.\n\nNo llegamos como proveedor externo que se va al terminar el show. Llegamos como la parte del equipo que se encarga de que el show exista — del advance al stage call, de la primera fecha a la gira completa."
+        "Nacemos dentro de Grupo Mainstage, el mismo grupo que ya produce cientos de shows al año. Nuestra misión: que la producción nunca sea la razón por la que algo sale mal.\n\nNo somos un proveedor que se va al terminar el show. Somos la parte del equipo que lo sostiene, del advance al stage call."
       }
       foto={FOTO.quienesSomos}
       icono={Users}
@@ -243,7 +250,7 @@ function SlideQueNosMueve() {
       rotulo="Qué nos mueve"
       titulo={"Que un artista crezca,\ny que su producción crezca con él."}
       cuerpo={
-        "Hemos visto el patrón demasiadas veces: un artista explota, las fechas se multiplican, y de repente el management está apagando incendios de logística en vez de construir carrera. El show se sostiene a pesar de la producción, no gracias a ella.\n\nEso no nos parece aceptable. Creemos que la parte técnica de una carrera musical merece el mismo nivel de cuidado, visión y ambición que la música misma. Un artista no debería tener que elegir entre crecer rápido y crecer bien."
+        "Lo vemos siempre: un artista explota, las fechas se multiplican, y el management termina apagando incendios de logística en vez de construir carrera.\n\nLa parte técnica de una carrera musical merece el mismo cuidado que la música. Crecer rápido y crecer bien no deberían ser dos cosas distintas."
       }
       foto={FOTO.queNosMueve}
       icono={Flame}
@@ -257,7 +264,7 @@ function SlideMision() {
       rotulo="Misión"
       titulo="Que toquen como grandes, desde su primera gira."
       cuerpo={
-        "Ser la estructura de producción que un artista emergente necesita para tocar como uno grande, desde su primera gira.\n\nConvertirnos en la extensión operativa del management y del artista: la gente que resuelve, anticipa y ejecuta, para que ellos puedan enfocarse en lo único que nadie más puede hacer por ellos — el arte."
+        "Ser la estructura de producción que un artista emergente necesita para sonar como uno grande desde la primera fecha.\n\nSomos la extensión operativa del management: resolvemos, anticipamos y ejecutamos, para que ellos se enfoquen en lo único que nadie más puede hacer — la música."
       }
       foto={FOTO.mision}
       icono={Crosshair}
@@ -271,7 +278,7 @@ function SlideVision() {
       rotulo="Visión"
       titulo={"Crecer rápido y sonar bien\nno deberían ser opuestos."}
       cuerpo={
-        "Que ningún artista en ascenso tenga que elegir entre \"crecer rápido\" y \"sonar/verse bien en el escenario\".\n\nSer el estándar de producción para la nueva generación de talento urbano en México y, desde ahí, en cualquier escenario al que esa música los lleve."
+        "Ser el estándar de producción de la nueva generación de talento urbano en México — y acompañarla a cualquier escenario al que su música la lleve."
       }
       foto={FOTO.vision}
       icono={Telescope}
@@ -279,10 +286,13 @@ function SlideVision() {
   );
 }
 
-function ServicioCard({ nombre, desc, delay }: { nombre: string; desc: string; delay: number }) {
+function ServicioCard({ icono: Icono, nombre, desc, delay }: { icono: LucideIcon; nombre: string; desc: string; delay: number }) {
   return (
     <A delay={delay} style={{ flex: 1, minWidth: 220 }}>
       <div style={{ height: "100%", borderRadius: 16, padding: "26px 24px", background: G_A(0.05), border: `1px solid ${G_A(0.2)}` }}>
+        <div style={{ marginBottom: 16 }}>
+          <IconoMarco icono={Icono} tam={40} />
+        </div>
         <p style={{ color: G, fontWeight: 800, fontSize: "clamp(16px, 1.8vw, 21px)", letterSpacing: "-0.02em", marginBottom: 12 }}>{nombre}</p>
         <p style={{ color: W_A(0.55), fontSize: "clamp(12px, 1.05vw, 14px)", lineHeight: 1.7 }}>{desc}</p>
       </div>
@@ -304,29 +314,32 @@ function SlideEstructura() {
         </A>
         <A delay={160}>
           <p style={{ color: W_A(0.45), fontSize: "clamp(0.85rem, 1.2vw, 1.05rem)", lineHeight: 1.7, maxWidth: 680, marginBottom: 36 }}>
-            Se contratan según lo que necesites hoy — y crecen cuando tú creces. Puedes contratar uno solo, dos, o los tres juntos. Lo que no cambia es el estándar.
+            Contratas uno, dos o los tres — y crecen cuando tú creces. Lo que no cambia es el estándar.
           </p>
         </A>
         <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 22 }}>
           <ServicioCard
+            icono={FileText}
             nombre="Production Management"
-            desc="Advance técnico con el venue y proveedores locales, coordinación de todo lo que debe estar listo antes de que el artista llegue, documentación técnica y logística de crew."
+            desc="Advance técnico con el venue y proveedores locales, documentación técnica y logística de crew, resuelto antes de que el artista llegue."
             delay={260}
           />
           <ServicioCard
+            icono={Wallet}
             nombre="Tour Management"
-            desc="Control del presupuesto completo de la gira, representación frente a promotores, manejo de caja y per diem, y decisiones de logística de alto nivel."
+            desc="Presupuesto de gira, representación frente a promotores, caja y per diem, y decisiones de logística de alto nivel."
             delay={330}
           />
           <ServicioCard
+            icono={Mic}
             nombre="Stage Management"
-            desc="Stage call, coordinación del crew local de escenario, enlace con la producción del venue durante montaje/show/desmontaje y resolución de contingencias en vivo."
+            desc="Stage call, crew de escenario, enlace con el venue en montaje y show, y resolución de contingencias en vivo."
             delay={400}
           />
         </div>
         <A delay={480}>
           <p style={{ color: W_A(0.3), fontSize: 12, letterSpacing: "0.04em" }}>
-            + Add-ons que se integran a cualquiera: <span style={{ color: W_A(0.55) }}>Audio · Iluminación · Video/Visuales · Backline</span>
+            + Add-ons: <span style={{ color: W_A(0.55) }}>Audio · Iluminación · Video/Visuales · Backline</span>
           </p>
         </A>
       </div>
@@ -336,10 +349,10 @@ function SlideEstructura() {
 
 function SlideParaQuien() {
   const items = [
-    "Ya tocan más de una ciudad y las fechas empiezan a chocar entre sí en logística.",
-    "Su management es brillante en carrera y estrategia, pero no tiene por qué ser experto en advance técnico, riders o presupuestos de gira.",
-    "Cada show se siente distinto según quién les tocó esa noche en el venue — y eso ya les está costando consistencia frente a su público.",
-    "Están a punto de dar el salto a festivales, giras de varias fechas o mercados nuevos, y necesitan que la producción esté lista para ese salto antes de que llegue.",
+    "Ya tocan en más de una ciudad y las fechas chocan entre sí en logística.",
+    "Su management es brillante en carrera, pero no tiene por qué ser experto en advance, riders o presupuestos de gira.",
+    "Cada show se siente distinto según quién les tocó esa noche en el venue.",
+    "Están por dar el salto a festivales o giras largas, y necesitan la producción lista antes de que llegue.",
   ];
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", padding: "clamp(36px, 5vh, 64px) clamp(48px, 8vw, 120px)", position: "relative", overflow: "hidden" }}>
@@ -367,7 +380,7 @@ function SlideParaQuien() {
         </div>
         <A delay={620}>
           <p style={{ color: W_A(0.3), fontSize: "clamp(12px, 1.05vw, 14px)", lineHeight: 1.7, maxWidth: 760, marginTop: 28 }}>
-            No vendemos esto a quien ya tiene una producción armada de planta. Vendemos esto a quien está en el momento exacto en el que la decisión de cómo se construye su producción define qué tan lejos y qué tan rápido puede llegar.
+            El momento exacto en el que cómo se construye su producción define qué tan lejos y qué tan rápido pueden llegar.
           </p>
         </A>
       </div>
@@ -378,11 +391,11 @@ function SlideParaQuien() {
 function SlideProblemas() {
   const items = [
     "El advance se hace por WhatsApp, un día antes, con quien conteste.",
-    "Cada fecha tiene un nivel de producción distinto, según la buena voluntad del promotor local.",
-    "El management termina haciendo de tour manager improvisado, entre llamadas de negocio.",
-    "No existe documentación técnica de la gira — cada fecha se reinventa desde cero.",
-    "El dinero de la gira no tiene un control claro: per diem, presupuesto y settlement se manejan a ojo.",
-    "El salto de \"shows sueltos\" a \"gira real\" expone todo lo anterior al mismo tiempo.",
+    "Cada fecha tiene un nivel de producción distinto, según el promotor local.",
+    "El management improvisa de tour manager entre llamadas de negocio.",
+    "No hay documentación técnica — cada fecha se reinventa desde cero.",
+    "Per diem, presupuesto y settlement se manejan a ojo.",
+    "El salto a \"gira real\" expone todo esto al mismo tiempo.",
   ];
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", padding: "clamp(36px, 5vh, 64px) clamp(48px, 8vw, 120px)", position: "relative", overflow: "hidden" }}>
@@ -416,10 +429,10 @@ function SlideProblemas() {
 function SlideSoluciones() {
   const items = [
     "Un estándar que viaja con ustedes, no que depende del venue de esa noche.",
-    "Un solo punto de contacto para producción, sin importar si son 1 show o 25 fechas.",
-    "Presupuesto y caja de gira con control real: per diem, transporte, hospedaje y settlement.",
-    "Documentación técnica que se queda con ustedes, show tras show, gira tras gira.",
-    "Un servicio que crece con la gira: empiezan con uno, suman los otros cuando lo necesiten.",
+    "Un solo punto de contacto para producción, de 1 show a 25 fechas.",
+    "Caja de gira con control real: per diem, transporte, hospedaje, settlement.",
+    "Documentación técnica que se queda con ustedes, gira tras gira.",
+    "Empiezan con un servicio y suman los otros cuando lo necesiten.",
   ];
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", padding: "clamp(36px, 5vh, 64px) clamp(48px, 8vw, 120px)", position: "relative", overflow: "hidden" }}>
@@ -450,11 +463,12 @@ function SlideSoluciones() {
   );
 }
 
-function AlianzaCard({ nombre, desc, delay }: { nombre: string; desc: string; delay: number }) {
+function AlianzaCard({ logo, nombre, desc, delay }: { logo: string; nombre: string; desc: string; delay: number }) {
   return (
     <A delay={delay} style={{ flex: 1, minWidth: 260 }}>
       <div style={{ height: "100%", borderRadius: 16, padding: "28px 26px", background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.08)" }}>
-        <p style={{ color: G, fontSize: 11, fontWeight: 700, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 10 }}>+ {nombre}</p>
+        <Image src={logo} alt={nombre} width={40} height={40} style={{ width: 40, height: 40, borderRadius: 10, marginBottom: 14, objectFit: "contain" }} />
+        <p style={{ color: G, fontSize: 11, fontWeight: 700, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 10 }}>{nombre}</p>
         <p style={{ color: W_A(0.6), fontSize: "clamp(12px, 1.1vw, 14.5px)", lineHeight: 1.75 }}>{desc}</p>
       </div>
     </A>
@@ -478,24 +492,26 @@ function SlideAlianza() {
         </A>
         <A delay={240}>
           <p style={{ color: W_A(0.42), fontSize: "clamp(0.85rem, 1.2vw, 1.02rem)", lineHeight: 1.75, maxWidth: 760, marginBottom: 32 }}>
-            Mainstage Live no opera aislado — es una de tres unidades de un mismo grupo, y eso es exactamente lo que nos permite ofrecer algo que ningún tour manager independiente puede ofrecer solo.
+            Live es una de tres unidades del mismo grupo — eso nos permite ofrecer algo que ningún tour manager independiente puede ofrecer solo.
           </p>
         </A>
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 20 }}>
           <AlianzaCard
-            nombre="Mainstage Pro (renta de equipo)"
-            desc="Cuando una fecha necesita backline, audio o iluminación complementaria, tenemos acceso directo al inventario y al estándar de calidad de la operación de renta técnica más establecida del grupo."
+            logo="/logo-icon.png"
+            nombre="Mainstage Pro"
+            desc="Backline, audio e iluminación complementaria con acceso directo al inventario y estándar de la operación de renta técnica del grupo."
             delay={340}
           />
           <AlianzaCard
-            nombre="Mainstage Creative (diseño y desarrollo de shows)"
-            desc="Cuando el show necesita verse tan grande como suena — diseño de iluminación, renders, documentación técnica — Creative diseña, y Live lo ejecuta en piso, fecha tras fecha."
+            logo="/logo-creative.png"
+            nombre="Mainstage Creative"
+            desc="Diseño de iluminación, renders y documentación técnica. Creative diseña, y Live lo ejecuta en piso, fecha tras fecha."
             delay={410}
           />
         </div>
         <A delay={500}>
           <p style={{ color: W_A(0.3), fontSize: "clamp(12px, 1.05vw, 14px)", lineHeight: 1.7, maxWidth: 760 }}>
-            La producción, el diseño y el equipo técnico ya hablan el mismo idioma porque vienen de la misma casa. Cero fricción entre lo que se diseñó, el equipo que se rentó y lo que pasa la noche del show.
+            Producción, diseño y equipo técnico hablan el mismo idioma porque vienen de la misma casa. Cero fricción entre lo que se diseñó y lo que pasa la noche del show.
           </p>
         </A>
       </div>
@@ -505,10 +521,10 @@ function SlideAlianza() {
 
 function SlidePorQue() {
   const items = [
-    "Entendemos tu proyecto, no solo tu rider — y eso se nota en la segunda fecha, no en la primera.",
-    "Crecemos con la velocidad real de tu carrera: de un show, a una gira corta, a una gira nacional.",
-    "Te devolvemos el tiempo y la energía que hoy gastas resolviendo logística, para que la pongas en la música y en tu público.",
-    "Cuando algo se tuerce — porque en gira algo siempre se tuerce — tienes a alguien que ya lo ha resuelto antes, no a alguien que lo está improvisando contigo.",
+    { icono: Workflow, t: "Entendemos tu proyecto, no solo tu rider — se nota desde la segunda fecha." },
+    { icono: Rocket, t: "Crecemos con la velocidad real de tu carrera: un show, una gira corta, una gira nacional." },
+    { icono: Flame, t: "Te devolvemos el tiempo que hoy gastas en logística, para ponerlo en la música." },
+    { icono: ShieldCheck, t: "Cuando algo se tuerce en gira, tienes a alguien que ya lo resolvió antes." },
   ];
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", padding: "clamp(36px, 5vh, 64px) clamp(48px, 8vw, 120px)", position: "relative", overflow: "hidden" }}>
@@ -525,10 +541,10 @@ function SlidePorQue() {
           </h2>
         </A>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {items.map((t, i) => (
+          {items.map(({ icono: Icono, t }, i) => (
             <A key={i} delay={260 + i * 80}>
               <div style={{ display: "flex", gap: 14, alignItems: "flex-start", padding: "14px 20px", borderRadius: 12, background: G_A(0.045), border: `1px solid ${G_A(0.18)}` }}>
-                <span style={{ color: G, fontSize: 11, fontWeight: 700, marginTop: 2 }}>{String(i + 1).padStart(2, "0")}</span>
+                <Icono strokeWidth={2} style={{ width: 17, height: 17, color: G, flexShrink: 0, marginTop: 1 }} />
                 <span style={{ color: W_A(0.68), fontSize: "clamp(13px, 1.1vw, 15px)", lineHeight: 1.6 }}>{t}</span>
               </div>
             </A>
@@ -551,7 +567,7 @@ function SlideCierre() {
           <p style={{ color: W_A(0.42), fontSize: "clamp(0.95rem, 1.8vw, 1.3rem)", lineHeight: 1.7, maxWidth: 760, margin: "0 auto 40px" }}>
             La producción no debería ser lo que detiene tu crecimiento.
           </p>
-          <h1 style={{ fontSize: "clamp(2.2rem, 6vw, 5rem)", fontWeight: 900, lineHeight: 1.05, letterSpacing: "-0.04em", color: G, maxWidth: 820, margin: "0 auto 44px" }}>
+          <h1 style={{ fontSize: "clamp(2.2rem, 6vw, 5rem)", fontWeight: 800, lineHeight: 1.05, letterSpacing: "-0.04em", color: G, maxWidth: 820, margin: "0 auto 44px" }}>
             Debería ser lo que lo sostiene.
           </h1>
         </A>
@@ -559,11 +575,38 @@ function SlideCierre() {
           <div style={{ width: 80, height: 1, background: `linear-gradient(to right, transparent, ${G}, transparent)`, margin: "0 auto 26px" }} />
         </A>
         <A delay={380}>
-          <p style={{ color: W_A(0.5), fontSize: "clamp(0.9rem, 1.5vw, 1.1rem)" }}>
+          <p style={{ color: W_A(0.5), fontSize: "clamp(0.9rem, 1.5vw, 1.1rem)", marginBottom: 40 }}>
             Hablemos de tu próxima fecha, o de tu próxima gira completa.
           </p>
         </A>
-        <A delay={560} style={{ display: "flex", justifyContent: "center", marginTop: 48 }}>
+        <A delay={480} style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
+          <a
+            href={WA_CONTACTO}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: "flex", alignItems: "center", gap: 9, padding: "14px 28px", borderRadius: 999,
+              background: G, color: "#0a0a0a", fontWeight: 700, fontSize: "clamp(13px, 1.1vw, 15px)",
+              textDecoration: "none", letterSpacing: "-0.01em",
+            }}
+          >
+            <MessageCircle strokeWidth={2.2} style={{ width: 17, height: 17 }} />
+            Hablar por WhatsApp
+          </a>
+          <a
+            href="/api/presentacion/live/pdf"
+            download
+            style={{
+              display: "flex", alignItems: "center", gap: 9, padding: "14px 28px", borderRadius: 999,
+              background: "transparent", color: W_A(0.7), border: `1px solid ${W_A(0.18)}`, fontWeight: 600, fontSize: "clamp(13px, 1.1vw, 15px)",
+              textDecoration: "none",
+            }}
+          >
+            <Download strokeWidth={2.2} style={{ width: 16, height: 16 }} />
+            Descargar PDF
+          </a>
+        </A>
+        <A delay={620} style={{ display: "flex", justifyContent: "center", marginTop: 48 }}>
           <Image src="/logo-live.png" alt="Mainstage Live" width={64} height={64} style={{ width: 64, height: "auto", borderRadius: 14 }} />
         </A>
       </div>
@@ -640,8 +683,8 @@ export default function PresentacionLiveClient() {
         @keyframes mspFadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes mspPulse { 0% { transform: scale(1); opacity: 0.45; } 100% { transform: scale(2.7); opacity: 0; } }
         button { font-family: inherit; }
-        .nav-btn:hover { background: rgba(139,92,246,0.1) !important; border-color: rgba(139,92,246,0.35) !important; color: rgba(240,240,240,0.7) !important; }
-        .pdf-btn:hover { background: rgba(139,92,246,0.18) !important; }
+        .nav-btn:hover { background: ${G_A(0.1)} !important; border-color: ${G_A(0.35)} !important; color: rgba(240,240,240,0.7) !important; }
+        .pdf-btn:hover { background: ${G_A(0.18)} !important; }
       `}</style>
 
       <div style={{ position: "fixed", top: 18, left: 24, zIndex: 100, opacity: slide > 0 ? 0.65 : 0, transition: "opacity 0.5s ease", display: "flex", alignItems: "center", gap: 10, pointerEvents: "none" }}>
@@ -656,7 +699,7 @@ export default function PresentacionLiveClient() {
           download
           style={{
             display: "flex", alignItems: "center", gap: 7, padding: "7px 14px", borderRadius: 999,
-            background: "rgba(139,92,246,0.1)", border: `1px solid ${G_A(0.35)}`, color: G,
+            background: G_A(0.1), border: `1px solid ${G_A(0.35)}`, color: G,
             fontSize: 12, fontWeight: 600, textDecoration: "none", transition: "background 0.2s",
           }}
         >
