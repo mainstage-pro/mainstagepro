@@ -6,9 +6,10 @@ export interface AccessValue {
   role: string;
   area: string | null;
   moduleKeys: string[] | null; // null = admin (acceso total)
+  unidad: "PRO" | "LIVE" | "CREATIVE";
 }
 
-const AccessContext = createContext<AccessValue>({ role: "USER", area: null, moduleKeys: [] });
+const AccessContext = createContext<AccessValue>({ role: "USER", area: null, moduleKeys: [], unidad: "PRO" });
 
 export function AccessProvider({ value, children }: { value: AccessValue; children: React.ReactNode }) {
   return <AccessContext.Provider value={value}>{children}</AccessContext.Provider>;
@@ -23,5 +24,5 @@ export function useAccess() {
     if (isAdmin || v.moduleKeys === null) return true;
     return v.moduleKeys.includes(key);
   }
-  return { role: v.role, area: v.area, moduleKeys: v.moduleKeys, isAdmin, canAccess };
+  return { role: v.role, area: v.area, moduleKeys: v.moduleKeys, unidad: v.unidad, isAdmin, canAccess };
 }

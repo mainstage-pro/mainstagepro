@@ -7,6 +7,7 @@ import {
   StickyNote, CalendarClock, ClipboardCheck, X, Trash2,
 } from "lucide-react";
 import { normalizarAmPm } from "@/lib/hora";
+import { useAccess } from "@/components/AccessProvider";
 
 interface Archivo { id: string; nombre: string; url: string; tipo: string | null; tamano: number | null }
 interface TareaVerif {
@@ -36,6 +37,7 @@ interface TareaVerif {
 const AREA_LABEL: Record<string, string> = {
   DIRECCION: "Dirección", ADMINISTRACION: "Administración", MARKETING: "Marketing",
   VENTAS: "Comercial", PRODUCCION: "Producción", RRHH: "RRHH", GENERAL: "General",
+  LIVE: "Mainstage Live", CREATIVE: "Mainstage Creative",
 };
 const areaLabel = (a: string | null) => (a ? (AREA_LABEL[a] ?? a) : "Sin área");
 
@@ -55,6 +57,10 @@ function fmtFecha(iso: string | null): string {
 
 export default function VerificacionClient() {
   const toast = useToast();
+  const { unidad } = useAccess();
+  // En Live/Creative la verificación queda acotada a su propia unidad: no hay
+  // selector de área, el filtro va fijo (igual que el resto de Gestión Operativa).
+  const unidadLock = unidad !== "PRO" ? unidad : null;
   const [tareas, setTareas] = useState<TareaVerif[]>([]);
   const [areas, setAreas] = useState<string[]>([]);
   const [responsables, setResponsables] = useState<{ id: string; name: string }[]>([]);
@@ -62,7 +68,7 @@ export default function VerificacionClient() {
   const [busyId, setBusyId] = useState<string | null>(null);
 
   // Filtros
-  const [fArea, setFArea] = useState("");
+  const [fArea, setFArea] = useState(unidadLock ?? "");
   const [fResp, setFResp] = useState("");
   const [fDesde, setFDesde] = useState("");
   const [fHasta, setFHasta] = useState("");
@@ -78,7 +84,8 @@ export default function VerificacionClient() {
     setLoading(true);
     try {
       const qs = new URLSearchParams();
-      if (fArea) qs.set("area", fArea);
+      const areaFiltro = unidadLock ?? fArea;
+      if (areaFiltro) qs.set("area", areaFiltro);
       if (fResp) qs.set("responsableId", fResp);
       if (semana) qs.set("semana", "1");
       else {
@@ -94,7 +101,7 @@ export default function VerificacionClient() {
     } finally {
       setLoading(false);
     }
-  }, [fArea, fResp, fDesde, fHasta, semana]);
+  }, [fArea, fResp, fDesde, fHasta, semana, unidadLock]);
 
   useEffect(() => { cargar(); }, [cargar]);
 
@@ -151,7 +158,7 @@ export default function VerificacionClient() {
   }, {} as Record<string, TareaVerif[]>);
   const gruposKeys = Object.keys(grupos).sort();
 
-  const hasFilters = fArea || fResp || fDesde || fHasta || semana;
+  const hasFilters = (!unidadLock && fArea) || fResp || fDesde || fHasta || semana;
 
   return (
     <div className="max-w-5xl mx-auto px-3 py-5 pb-24">
@@ -177,11 +184,13 @@ export default function VerificacionClient() {
           <CalendarClock strokeWidth={1.75} className="w-3.5 h-3.5" /> Esta semana
         </button>
 
-        <select value={fArea} onChange={e => setFArea(e.target.value)}
-          className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]">
-          <option value="">Todas las áreas</option>
-          {areas.map(a => <option key={a} value={a}>{areaLabel(a)}</option>)}
-        </select>
+        {!unidadLock && (
+          <select value={fArea} onChange={e => setFArea(e.target.value)}
+            className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]">
+            <option value="">Todas las áreas</option>
+            {areas.map(a => <option key={a} value={a}>{areaLabel(a)}</option>)}
+          </select>
+        )}
 
         <select value={fResp} onChange={e => setFResp(e.target.value)}
           className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]">

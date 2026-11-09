@@ -50,6 +50,8 @@ export async function GET(req: NextRequest) {
   //    "Hoy" se toma como el día-calendario del usuario (zona México) para elegir
   //    la semana correcta; a partir de ahí todo es aritmética UTC de calendario.
   const inicioParam = req.nextUrl.searchParams.get('inicio')
+  // Unidad de negocio (LIVE/CREATIVE) que acota la vista a su propia área; PRO no manda este parámetro.
+  const area = req.nextUrl.searchParams.get('area')
   const hoyCal = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
   const lunes = lunesDeLaSemana(inicioParam && /^\d{4}-\d{2}-\d{2}$/.test(inicioParam) ? inicioParam : hoyCal)
 
@@ -86,6 +88,7 @@ export async function GET(req: NextRequest) {
       asignadoAId: { in: userIds },
       estado: { not: 'CANCELADA' },
       parentId: null,
+      ...(area ? { area } : {}),
       AND: [
         {
           OR: [
@@ -122,6 +125,7 @@ export async function GET(req: NextRequest) {
       noRealizada: true,
       evidenciasHistorial: true,
       orden: true,
+      area: true,
       asignadoAId: true,
       createdAt: true,
       proyectoTarea: { select: { nombre: true } },

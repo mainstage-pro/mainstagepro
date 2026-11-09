@@ -5,6 +5,7 @@ import {
 } from 'recharts'
 import { bandaDe, BANDA_LABEL, BANDA_HEX, BANDA_TEXT_CLASS, BANDA_ESCALA } from '@/lib/rendimiento-escala'
 import { usePdfDownload } from '@/hooks/usePdfDownload'
+import { useAccess } from '@/components/AccessProvider'
 
 // ── Types (espejo de src/lib/rendimiento) ──────────────────────────────────────
 type FuenteKey = 'NORMAL' | 'PLAN' | 'EVENTO' | 'EMPRESA' | 'TRATO'
@@ -45,7 +46,7 @@ const PRESETS: { key: Preset; label: string }[] = [
 ]
 const PRIO_COLOR: Record<string, string> = { URGENTE: '#f87171', ALTA: '#fb923c', MEDIA: '#B3985B', BAJA: '#4b5563' }
 const FUENTE_LABEL: Record<FuenteKey, string> = {
-  NORMAL: 'Tareas', PLAN: 'Plan de trabajo', EVENTO: 'Proyectos de evento', EMPRESA: 'Proyectos de empresa', TRATO: 'Tratos',
+  NORMAL: 'Tareas', PLAN: 'Plan de trabajo', EVENTO: 'Proyectos de evento', EMPRESA: 'Proyectos de empresa', TRATO: 'Oportunidades',
 }
 const FUENTE_ORDEN: FuenteKey[] = ['NORMAL', 'PLAN', 'EVENTO', 'EMPRESA', 'TRATO']
 
@@ -59,6 +60,10 @@ function fmtFecha(f: string | null): string {
 
 // ── Component ──────────────────────────────────────────────────────────────────
 export function VistaRendimiento() {
+  const { unidad } = useAccess()
+  // En Live/Creative el rendimiento se acota a las tareas de esa unidad
+  // (Tarea.area), no a las de los usuarios de PRO.
+  const unidadLock = unidad !== 'PRO' ? unidad : null
   const [data, setData] = useState<Data | null>(null)
   const [loading, setLoading] = useState(true)
   const [preset, setPreset] = useState<Preset>('semana')
@@ -72,11 +77,13 @@ export function VistaRendimiento() {
 
   useEffect(() => {
     setLoading(true)
-    fetch(`/api/operaciones/rendimiento?preset=${preset}`)
+    const qs = new URLSearchParams({ preset })
+    if (unidadLock) qs.set('area', unidadLock)
+    fetch(`/api/operaciones/rendimiento?${qs}`)
       .then(r => r.json())
       .then(d => { setData(d); setLoading(false) })
       .catch(() => setLoading(false))
-  }, [preset])
+  }, [preset, unidadLock])
 
   useEffect(() => {
     fetch('/api/me')
@@ -116,8 +123,9 @@ export function VistaRendimiento() {
   const downloadPdf = useCallback((tipo: 'general' | 'usuario', userId?: string) => {
     const qs = new URLSearchParams({ tipo, preset })
     if (userId) qs.set('userId', userId)
+    if (unidadLock) qs.set('area', unidadLock)
     descargarPdf(`/api/operaciones/rendimiento/pdf?${qs}`, `Rendimiento-${tipo}-${preset}.pdf`, 'Reporte de rendimiento')
-  }, [preset, descargarPdf])
+  }, [preset, descargarPdf, unidadLock])
 
   function toggle(id: string) {
     setExpanded(prev => {

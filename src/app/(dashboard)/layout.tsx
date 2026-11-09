@@ -66,7 +66,7 @@ export default async function DashboardLayout({
   }
 
   return (
-    <Providers access={{ role: session.role, area: (session as { area?: string }).area ?? null, moduleKeys: userModuleKeys }}>
+    <Providers access={{ role: session.role, area: (session as { area?: string }).area ?? null, moduleKeys: userModuleKeys, unidad }}>
       <NavConfigProvider initialLabels={labels} initialOrder={navOrder} initialTabsOrder={tabsOrder}>
         <div className="flex h-screen bg-[#0a0a0a] overflow-hidden w-screen max-w-[100vw]">
           <Sidebar

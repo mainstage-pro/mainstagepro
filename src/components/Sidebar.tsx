@@ -8,6 +8,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useMemo } from "react";
 import BusquedaGlobal, { type ModuloBuscable } from "@/components/BusquedaGlobal";
 import NotificacionesBell from "@/components/NotificacionesBell";
+import UnidadSwitcher from "@/components/UnidadSwitcher";
 import { NAV_PRO, NAV_LIVE, NAV_CREATIVE, OWNER_EMAIL, type NavItem } from "@/lib/nav";
 import { AREA_DASHBOARD } from "@/lib/areas";
 import { useNavConfig } from "@/components/nav/NavConfigProvider";
@@ -521,12 +522,7 @@ export default function Sidebar({ user, userModuleKeys, unidad = "PRO" }: Sideba
             </p>
           </div>
         </div>
-        <Link
-          href="/grupo"
-          className="block w-full text-left text-[#555] hover:text-[#B3985B] text-xs px-1 py-1 transition-colors"
-        >
-          Cambiar de unidad
-        </Link>
+        <UnidadSwitcher unidad={unidad} />
         <button
           onClick={handleLogout}
           className="w-full text-left text-[#555] hover:text-red-400 text-xs px-1 py-1 transition-colors"

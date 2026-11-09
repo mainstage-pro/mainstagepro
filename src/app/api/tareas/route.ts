@@ -12,6 +12,8 @@ const AREA_TO_MODULE_KEY: Record<string, string> = {
   ADMINISTRACION: "tareas-administracion",
   RRHH: "tareas-rrhh",
   DIRECCION: "tareas-direccion",
+  LIVE: "tareas-live",
+  CREATIVE: "tareas-creative",
 };
 
 // Explicit SELECT. Las columnas nuevas (proyectoEventoId, evidenciaEnviada*)

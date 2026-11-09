@@ -4,6 +4,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import TaskModal, { type TareaDetalle } from "./TaskModal";
 import { puedeEditarConfigTarea } from "@/lib/permisos-tarea";
 import NuevaTareaModal from "./NuevaTareaModal";
+import { useAccess } from "@/components/AccessProvider";
 
 interface Recurso { id: string; name?: string; nombre?: string; color?: string | null }
 
@@ -19,7 +20,7 @@ const TIPOS: { key: string; label: string; corto: string; color: string }[] = [
   { key: "PLAN",     label: "Plan de trabajo",      corto: "Plan",    color: "#a78bfa" },
   { key: "EVENTO",   label: "Proyectos de evento",  corto: "Evento",  color: "#60a5fa" },
   { key: "PROYECTO", label: "Proyectos de empresa", corto: "Empresa", color: "#818cf8" },
-  { key: "TRATO",    label: "Tratos",               corto: "Trato",   color: "#34d399" },
+  { key: "TRATO",    label: "Oportunidades",        corto: "Oportunidad", color: "#34d399" },
 ];
 const TIPO_INFO = Object.fromEntries(TIPOS.map(t => [t.key, t]));
 
@@ -87,6 +88,8 @@ function isoDia(ymd: string) {
 }
 
 export function VistaSemanaEquipo() {
+  const { unidad } = useAccess();
+  const unidadLock = unidad !== "PRO" ? unidad : null;
   const [data, setData] = useState<RespData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -124,8 +127,8 @@ export function VistaSemanaEquipo() {
     setLoading(true);
     setError(false);
     const url = semana
-      ? `/api/operaciones/equipo-semanal?inicio=${semana}`
-      : `/api/operaciones/equipo-semanal`;
+      ? `/api/operaciones/equipo-semanal?inicio=${semana}${unidadLock ? `&area=${unidadLock}` : ""}`
+      : `/api/operaciones/equipo-semanal${unidadLock ? `?area=${unidadLock}` : ""}`;
     let vivo = true;
     fetch(url)
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
@@ -307,7 +310,7 @@ export function VistaSemanaEquipo() {
     await fetch("/api/tareas", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...sub, parentId, area: "GENERAL" }),
+      body: JSON.stringify({ ...sub, parentId, area: unidadLock ?? "GENERAL" }),
     });
     abrirTarea(parentId);
   };
@@ -421,6 +424,7 @@ export function VistaSemanaEquipo() {
           onClose={() => setAgregarDia(null)}
           usuarios={usuarios as { id: string; name: string }[]}
           defaultAsignadoId={miembro.id}
+          defaultArea={unidadLock ?? undefined}
           fechaInicial={agregarDia}
           onCreated={() => { setAgregarDia(null); cargar(inicio); }}
         />

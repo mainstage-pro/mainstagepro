@@ -16,6 +16,7 @@ import { useCelebration } from "@/components/CelebrationToast";
 import type { Pendiente } from "@/lib/pendientes/tipos";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
+import { useAccess } from "@/components/AccessProvider";
 import { coincide } from "@/lib/buscar";
 import { Users, Zap, Building2, Sun, Calendar, Inbox, ClipboardList, MapPin, User, Handshake,
   Megaphone, Palette, Calculator, Target, Lightbulb, Music, Video, Wrench, Package, ShoppingCart,
@@ -137,7 +138,7 @@ const BANDEJA_AREAS: { key: string; label: string }[] = [
 function grupoOrigen(t: TareaItem): string {
   // Clasifica por el vínculo real (FK) para no depender de tipoOrigen, que a veces
   // no viene seteado. Así una tarea de trato/evento nunca cae en "Bandeja de entrada".
-  if (t.trato)           return t.trato.nombreEvento || t.trato.cliente?.nombre || "Tratos";
+  if (t.trato)           return t.trato.nombreEvento || t.trato.cliente?.nombre || "Oportunidad";
   if (t.gira)            return t.gira.nombre;
   if (t.proyectoEvento)  return t.proyectoEvento.nombre;
   if (t.proyectoInterno) return t.proyectoInterno.nombre;
@@ -162,6 +163,8 @@ function severityColor(s: string) {
 
 export default function OperacionesPage() {
   const toast = useToast();
+  const { unidad } = useAccess();
+  const unidadLock = unidad !== "PRO" ? unidad : null;
   const [carpetas, setCarpetas]                 = useState<Carpeta[]>([]);
   const [proyectosNav, setProyectosNav]         = useState<ProyectoNav[]>([]);
   const [iniciativas, setIniciativas]           = useState<Iniciativa[]>([]);
@@ -174,6 +177,7 @@ export default function OperacionesPage() {
 
   const [capturaCounts, setCapturaCounts] = useState({ captura: 0, ideas: 0, iniciativas: 0 });
   const [vista, setVista]                             = useState<VistaKey>(() => {
+    if (unidadLock) return { tipo: "area", nombre: unidadLock };
     if (typeof window === "undefined") return "bandeja";
     try { const s = localStorage.getItem("op_vista"); if (s) { const v = JSON.parse(s); if (v === "plan") return "bandeja"; return v as VistaKey; } } catch {}
     return "bandeja";
@@ -190,8 +194,10 @@ export default function OperacionesPage() {
   const searchParams = useSearchParams();
   const [selectedId, setSelectedId]             = useState<string | null>(() => searchParams.get("open"));
 
-  // Permite abrir una vista concreta desde otra ruta vía ?vista=
+  // Permite abrir una vista concreta desde otra ruta vía ?vista= — no aplica en unidades
+  // bloqueadas (Live/Creative siempre quedan fijas en su propia área).
   useEffect(() => {
+    if (unidadLock) return;
     const v = searchParams.get("vista");
     if (v && v !== "plan") setVista(v as VistaKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -337,7 +343,7 @@ export default function OperacionesPage() {
     return () => document.removeEventListener("mousedown", h);
   }, [showViewPanel]);
   useEffect(() => { try { localStorage.setItem("op_vista_opts", JSON.stringify(vistaOpts)); } catch {} }, [vistaOpts]);
-  useEffect(() => { try { localStorage.setItem("op_vista", JSON.stringify(vista)); } catch {} }, [vista]);
+  useEffect(() => { if (unidadLock) return; try { localStorage.setItem("op_vista", JSON.stringify(vista)); } catch {} }, [vista, unidadLock]);
   useEffect(() => {
     if (!showVistaPanel) return;
     function h(e: MouseEvent) { if (vistaPanelRef.current && !vistaPanelRef.current.contains(e.target as Node)) setShowVistaPanel(false); }
@@ -497,6 +503,7 @@ export default function OperacionesPage() {
     setLoadingMain(true);
     setFilterUserProy(null);
     if (vista.tipo === "area") {
+      setProyectoDetalle(null);
       fetch(`/api/tareas?vista=area&area=${vista.nombre}`)
         .then(r => r.json())
         .then(d => { setTareas(d.tareas ?? []); })
@@ -608,11 +615,12 @@ export default function OperacionesPage() {
     setTimeout(() => setAddToast(t => t ? { ...t, visible: false } : null), 1800);
     setTimeout(() => setAddToast(null), 2150);
     // Si la tarea tiene proyecto y estamos en bandeja, no la agregamos a la lista plana
-    if (typeof vista === "string" && vista !== "integrada") {
+    // (vista.tipo === "area" también es lista plana: Gestión Operativa de Live/Creative).
+    if ((typeof vista === "string" && vista !== "integrada") || (typeof vista === "object" && vista.tipo === "area")) {
       if (vista === "bandeja" && data.proyectoTareaId) return; // se fue al proyecto
       setTareas(prev => [...prev, tarea]);
     }
-    if (typeof vista !== "string" && proyectoDetalle) {
+    if (typeof vista !== "string" && vista.tipo !== "area" && proyectoDetalle) {
       if (data.seccionId) {
         setProyectoDetalle(prev => prev ? {
           ...prev, secciones: prev.secciones.map(s =>
@@ -1126,7 +1134,7 @@ export default function OperacionesPage() {
   }, [selectedIds, clearMultiSelect]);
 
   const handleExtractChild = useCallback((extracted: TareaItem) => {
-    if (typeof vista !== "string") {
+    if (typeof vista !== "string" && vista.tipo !== "area") {
       setProyectoDetalle(prev => prev ? { ...prev, tareas: [extracted, ...prev.tareas] } : null);
     } else {
       setTareas(prev => [extracted, ...prev]);
@@ -1357,6 +1365,7 @@ export default function OperacionesPage() {
   const AREA_LABELS: Record<string, string> = {
     VENTAS: "Comercial", PRODUCCION: "Producción", MARKETING: "Marketing",
     ADMINISTRACION: "Administración", RRHH: "RRHH", DIRECCION: "Dirección",
+    LIVE: "Mainstage Live", CREATIVE: "Mainstage Creative",
   };
   const vistaKey    = typeof vista === "string" ? vista : (vista.tipo === "area" ? `area-${vista.nombre}` : (vista as { tipo: "proyecto"; id: string }).id);
   const vistaLabel  =
@@ -1468,9 +1477,11 @@ export default function OperacionesPage() {
     tituloInicial?: string | null;
     defaultArea?: string | null;
   }) => {
-    setNuevaTareaCtx(ctx ?? {});
+    // En unidades bloqueadas (Live/Creative) toda tarea nueva nace con esa área,
+    // sin selector visible — salvo que el propio llamador ya la especifique.
+    setNuevaTareaCtx({ defaultArea: unidadLock, ...ctx });
     setNuevaTareaOpen(true);
-  }, []);
+  }, [unidadLock]);
 
   // Inserta en el estado una tarea recién creada desde el modal unificado.
   const handleTareaCreada = useCallback((tarea: TareaItem) => {
@@ -1478,9 +1489,9 @@ export default function OperacionesPage() {
     setAddToast({ msg, visible: true });
     setTimeout(() => setAddToast(t => t ? { ...t, visible: false } : null), 1800);
     setTimeout(() => setAddToast(null), 2150);
-    // Insertamos en listas planas (vistas string). Las vistas integrada/hoy se
-    // recargan solas al navegar; evitamos duplicar.
-    if (typeof vista === "string" && vista !== "integrada") {
+    // Insertamos en listas planas (vistas string, y el área bloqueada de Live/Creative).
+    // Las vistas integrada/hoy se recargan solas al navegar; evitamos duplicar.
+    if ((typeof vista === "string" && vista !== "integrada") || (typeof vista === "object" && vista.tipo === "area")) {
       setTareas(prev => prev.some(t => t.id === tarea.id) ? prev : [...prev, tarea]);
     }
     // Si estamos dentro de un proyecto y la tarea pertenece a él, insértala en vivo.
@@ -1541,8 +1552,10 @@ export default function OperacionesPage() {
       })()}
 
       {/* ══════════════════════════════════════════════════════════════════════
-          LEFT SIDEBAR — Todoist-style navigation
+          LEFT SIDEBAR — Todoist-style navigation (exclusivo de PRO: Live/Creative
+          quedan fijos en su propia área, sin Bandeja/Proyectos/Clientes/Giras/Carpetas)
       ══════════════════════════════════════════════════════════════════════ */}
+      {!unidadLock && (
       <aside className={`${sidebarOpen ? "w-56" : "w-0"} hidden lg:flex shrink-0 overflow-hidden transition-[width] duration-200 bg-[#060606] border-r border-[#0f0f0f] flex-col lg:sticky lg:top-0 lg:self-start lg:h-[100dvh]`}>
 
         {/* ── Nueva tarea (CTA) ──────────────────────────────────────────── */}
@@ -1702,8 +1715,9 @@ export default function OperacionesPage() {
         )}
 
       </aside>
+      )}
 
-      {showAccesoPanel && <ProyectoAccesoPanel onClose={() => setShowAccesoPanel(false)} />}
+      {!unidadLock && showAccesoPanel && <ProyectoAccesoPanel onClose={() => setShowAccesoPanel(false)} />}
 
       {/* ══════════════════════════════════════════════════════════════════════
           MAIN CONTENT
@@ -1713,7 +1727,8 @@ export default function OperacionesPage() {
         {/* ── CONTENT HEADER ─────────────────────────────────────────────── */}
         <div className="flex items-center gap-2 px-4 py-3 border-b border-[#0f0f0f] shrink-0">
 
-          {/* Sidebar toggle — desktop only */}
+          {/* Sidebar toggle — desktop only, no aplica en unidades bloqueadas (sin sidebar) */}
+          {!unidadLock && (
           <button
             onClick={toggleSidebar}
             className="hidden lg:flex w-6 h-6 items-center justify-center rounded text-[#2a2a2a] hover:text-[#777] hover:bg-[#111] transition-all shrink-0"
@@ -1723,6 +1738,7 @@ export default function OperacionesPage() {
               <line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>
             </svg>
           </button>
+          )}
 
           <h1 className="text-base font-semibold text-white tracking-tight shrink-0 min-w-0 truncate max-w-[140px] sm:max-w-none">{vistaLabel}</h1>
 
@@ -1745,8 +1761,8 @@ export default function OperacionesPage() {
             )}
           </div>
 
-          {/* Vista button + panel (all string views) */}
-          {typeof vista === "string" && (
+          {/* Vista button + panel (all string views + área bloqueada de Live/Creative) */}
+          {(typeof vista === "string" || vista.tipo === "area") && (
             <div className="ml-auto relative" ref={vistaPanelRef}>
               <button
                 onClick={() => setShowVistaPanel(v => !v)}
@@ -2282,10 +2298,10 @@ export default function OperacionesPage() {
               ))}
             </div>
 
-          ) : typeof vista === "string" ? (
+          ) : (typeof vista === "string" || vista.tipo === "area") ? (
             <div className="max-w-2xl mx-auto px-2 py-4 pb-24">
-              {/* Nueva tarea (modal 4 tipos) al tope para bandeja/proximas/hoy */}
-              {(vista === "bandeja" || vista === "proximas" || vista === "hoy") && (
+              {/* Nueva tarea (modal 4 tipos) al tope para bandeja/proximas/hoy/área bloqueada */}
+              {(vista === "bandeja" || vista === "proximas" || vista === "hoy" || (typeof vista === "object" && vista.tipo === "area")) && (
                 <div className="mb-3">
                   <button
                     onClick={() => abrirNuevaTarea()}
@@ -2302,8 +2318,8 @@ export default function OperacionesPage() {
               {tareasOrdenadas.length === 0 && !hoyGrouped ? (
                 <EmptyState
                   icon={vista === "hoy" ? <Sun strokeWidth={1.5} className="w-9 h-9" /> : vista === "proximas" ? <Calendar strokeWidth={1.5} className="w-9 h-9" /> : <Inbox strokeWidth={1.5} className="w-9 h-9" />}
-                  title={vista === "hoy" ? "Nada para hoy" : vista === "proximas" ? "Sin tareas próximas" : "Bandeja vacía"}
-                  sub={vista === "bandeja" ? "Escribe una tarea arriba y presiona Enter" : ""}
+                  title={vista === "hoy" ? "Nada para hoy" : vista === "proximas" ? "Sin tareas próximas" : typeof vista === "object" && vista.tipo === "area" ? "Sin tareas todavía" : "Bandeja vacía"}
+                  sub={vista === "bandeja" ? "Escribe una tarea arriba y presiona Enter" : typeof vista === "object" && vista.tipo === "area" ? "Crea la primera tarea con el botón de arriba" : ""}
                 />
               ) : hoyGrouped ? (
                 hoyGrouped.map(group => group.tareas.length === 0 ? null : (() => {
@@ -2828,14 +2844,15 @@ export default function OperacionesPage() {
         usuarios={usuarios}
         proyectoTareaId={nuevaTareaCtx.proyectoTareaId ?? null}
         seccionId={nuevaTareaCtx.seccionId ?? null}
-        proyectos={proyectosNav}
+        proyectos={unidadLock ? [] : proyectosNav}
         tipoInicial={nuevaTareaCtx.tipoInicial ?? null}
         tituloInicial={nuevaTareaCtx.tituloInicial ?? null}
         defaultArea={nuevaTareaCtx.defaultArea ?? null}
         onCreated={handleTareaCreada}
       />
 
-      {/* Bottom Tab Bar */}
+      {/* Bottom Tab Bar — exclusivo de PRO; Live/Creative no tienen Bandeja/Hoy/Próximas/Menú */}
+      {!unidadLock && (
       <nav
         className="lg:hidden fixed z-30 left-3 right-3 bg-[#0d0d0d] border border-[#222] rounded-2xl flex items-stretch overflow-hidden shadow-2xl"
         style={{ bottom: "calc(env(safe-area-inset-bottom) + 24px)" }}
@@ -2877,9 +2894,10 @@ export default function OperacionesPage() {
           );
         })}
       </nav>
+      )}
 
       {/* Mobile: panel de proyectos (Explorar) */}
-      {mobileProyectos && (
+      {!unidadLock && mobileProyectos && (
         <>
           <div className="fixed inset-0 z-[35] bg-black/60 lg:hidden" onClick={() => setMobileProyectos(false)} />
           <div className="lg:hidden fixed inset-x-0 z-[36] bg-[#0d0d0d] border-t border-[#1e1e1e] rounded-t-2xl max-h-[70vh] overflow-y-auto"

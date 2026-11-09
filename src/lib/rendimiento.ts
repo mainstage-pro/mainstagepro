@@ -98,7 +98,7 @@ export const FUENTE_LABEL: Record<FuenteKey, string> = {
   PLAN: 'Plan de trabajo',
   EVENTO: 'Proyectos de evento',
   EMPRESA: 'Proyectos de empresa',
-  TRATO: 'Tratos',
+  TRATO: 'Oportunidades',
 }
 
 // Orden de despliegue de las fuentes en el desglose.
@@ -204,7 +204,7 @@ type TareaRow = {
 function fuenteDe(t: TareaRow): { fuente: FuenteKey; contexto: string | null } {
   if (t.tipoOrigen === 'PLAN') return { fuente: 'PLAN', contexto: t.ptTemplate?.area?.nombre ?? 'Plan de trabajo' }
   if (t.proyectoEventoId) return { fuente: 'EVENTO', contexto: t.proyectoEvento?.nombre ?? null }
-  if (t.tratoId) return { fuente: 'TRATO', contexto: t.trato?.nombreEvento ?? 'Trato' }
+  if (t.tratoId) return { fuente: 'TRATO', contexto: t.trato?.nombreEvento ?? 'Oportunidad' }
   if (t.proyectoInternoId) return { fuente: 'EMPRESA', contexto: t.proyectoInterno?.nombre ?? null }
   return { fuente: 'NORMAL', contexto: t.proyectoTarea?.nombre ?? null }
 }
@@ -223,8 +223,12 @@ export async function computeRendimiento(opts: {
   desde: string
   hasta: string
   soloUsuarioId?: string
+  // Unidad de negocio (LIVE/CREATIVE) que acota el rendimiento a sus propias
+  // tareas (Tarea.area), no al área del usuario asignado: alguien de PRO puede
+  // tener tareas de Live si colabora cross-unidad.
+  area?: string
 }): Promise<RendimientoData> {
-  const { desde, hasta, soloUsuarioId } = opts
+  const { desde, hasta, soloUsuarioId, area } = opts
   const hoyStr = fmtDia(new Date())
 
   // Tendencia: 8 semanas terminando en la semana de `hasta`
@@ -240,6 +244,7 @@ export async function computeRendimiento(opts: {
     estado: { not: 'CANCELADA' },
     parentId: null as string | null,
     ...(soloUsuarioId ? { asignadoAId: soloUsuarioId } : {}),
+    ...(area ? { area } : {}),
   }
 
   const select = {
@@ -277,7 +282,7 @@ export async function computeRendimiento(opts: {
       select,
     }) as unknown as Promise<TareaRow[]>,
     prisma.tarea.count({
-      where: { estado: { not: 'CANCELADA' }, parentId: null, asignadoAId: null },
+      where: { estado: { not: 'CANCELADA' }, parentId: null, asignadoAId: null, ...(area ? { area } : {}) },
     }),
   ])
 

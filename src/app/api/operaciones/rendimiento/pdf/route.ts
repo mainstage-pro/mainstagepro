@@ -14,6 +14,7 @@ export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams
   const tipo = sp.get('tipo') === 'usuario' ? 'usuario' : 'general'
   const userId = sp.get('userId') || undefined
+  const area = sp.get('area') || undefined
 
   let desde = sp.get('desde') || ''
   let hasta = sp.get('hasta') || ''
@@ -26,6 +27,7 @@ export async function GET(req: NextRequest) {
   const rend = await computeRendimiento({
     desde, hasta,
     soloUsuarioId: tipo === 'usuario' ? userId : undefined,
+    area,
   })
 
   let data: RendimientoReporteData

@@ -12,6 +12,7 @@ export async function GET(req: NextRequest) {
   const desdeParam = sp.get('desde')
   const hastaParam = sp.get('hasta')
   const presetParam = sp.get('preset') as PresetPeriodo | null
+  const area = sp.get('area') || undefined
 
   let desde: string, hasta: string
   if (desdeParam && hastaParam) {
@@ -22,6 +23,6 @@ export async function GET(req: NextRequest) {
     ;({ desde, hasta } = rangoPreset(preset))
   }
 
-  const data = await computeRendimiento({ desde, hasta })
+  const data = await computeRendimiento({ desde, hasta, area })
   return NextResponse.json({ ...data, currentUserId: session.id })
 }

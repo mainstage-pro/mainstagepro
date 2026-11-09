@@ -9,7 +9,7 @@
 // La clave (código) es estable y vive en la BD por compatibilidad; el `nombre`
 // (etiqueta) es editable. Nota: "VENTAS" se muestra como "Comercial".
 
-export const AREA_CODES = ["DIRECCION", "ADMINISTRACION", "MARKETING", "VENTAS", "PRODUCCION"] as const;
+export const AREA_CODES = ["DIRECCION", "ADMINISTRACION", "MARKETING", "VENTAS", "PRODUCCION", "LIVE", "CREATIVE"] as const;
 export type AreaCode = (typeof AREA_CODES)[number];
 
 // Orden canónico para agrupar/listar áreas en la UI.
@@ -24,6 +24,8 @@ export const AREA_LABELS: Record<string, string> = {
   PRODUCCION: "Producción",
   RRHH: "RRHH",
   GENERAL: "General",
+  LIVE: "Mainstage Live",
+  CREATIVE: "Mainstage Creative",
 };
 
 // Color sólido (hex) por defecto. Alineado con Puestos operativos / Organigrama.
@@ -35,6 +37,8 @@ export const AREA_HEX: Record<string, string> = {
   PRODUCCION: "#3b82f6",
   RRHH: "#fb923c",
   GENERAL: "#6b7280",
+  LIVE: "#ec4899",
+  CREATIVE: "#14b8a6",
 };
 
 // Ruta del dashboard por área (redirección post-login / atajo del sidebar).

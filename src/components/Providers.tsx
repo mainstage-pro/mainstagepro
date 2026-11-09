@@ -8,7 +8,7 @@ import { AreasProvider } from "@/components/AreasProvider";
 
 export function Providers({ children, access }: { children: React.ReactNode; access?: AccessValue }) {
   return (
-    <AccessProvider value={access ?? { role: "USER", area: null, moduleKeys: [] }}>
+    <AccessProvider value={access ?? { role: "USER", area: null, moduleKeys: [], unidad: "PRO" }}>
       <AreasProvider>
         <ToastProvider>
           <ConfirmProvider>

@@ -351,6 +351,13 @@ export const NAV_PRO: NavSection[] = NAV.filter((s) => s.key !== "seccion-unidad
 
 export const NAV_LIVE: NavSection[] = [
   {
+    key: "live-top",
+    section: "",
+    items: [
+      { key: "gestion-operativa", accessKey: "operaciones", label: "Gestión Operativa", href: "/gestion", icon: ClipboardList },
+    ],
+  },
+  {
     key: "live-comercial",
     section: "Comercial",
     items: [
@@ -371,6 +378,13 @@ export const NAV_LIVE: NavSection[] = [
 ];
 
 export const NAV_CREATIVE: NavSection[] = [
+  {
+    key: "creative-top",
+    section: "",
+    items: [
+      { key: "gestion-operativa", accessKey: "operaciones", label: "Gestión Operativa", href: "/gestion", icon: ClipboardList },
+    ],
+  },
   {
     key: "creative-comercial",
     section: "Comercial",
@@ -469,6 +483,8 @@ const TAREAS_SECTION: PermSection = {
     { key: "tareas-administracion", label: "Tareas · Administración", desc: "Ver tareas del área de Administración" },
     { key: "tareas-rrhh",           label: "Tareas · RRHH",           desc: "Ver tareas del área de RRHH" },
     { key: "tareas-direccion",      label: "Tareas · Dirección",      desc: "Ver tareas del área de Dirección" },
+    { key: "tareas-live",           label: "Tareas · Mainstage Live",     desc: "Ver y gestionar tareas de Mainstage Live" },
+    { key: "tareas-creative",       label: "Tareas · Mainstage Creative", desc: "Ver y gestionar tareas de Mainstage Creative" },
   ],
 };
 
