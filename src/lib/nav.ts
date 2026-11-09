@@ -122,6 +122,7 @@ export const NAV: NavSection[] = [
         children: [
           { key: "proyectos-resumen", accessKey: "proyectos", label: "Resumen", href: "/proyectos/resumen" },
           { key: "proyectos-lista", accessKey: "proyectos", label: "Proyectos", href: "/proyectos/lista" },
+          { key: "proyectos-itinerario", accessKey: "proyectos", label: "Itinerario", href: "/proyectos/itinerario" },
         ],
       },
       { key: "proyectos-empresa", accessKey: "proyectos", label: "Proyectos de empresa", href: "/proyectos-de-empresa", icon: Building2 },
