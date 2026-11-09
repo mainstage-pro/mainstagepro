@@ -21,6 +21,7 @@ import {
   Tag,
   Presentation,
   Route,
+  Mic2,
   type LucideIcon,
 } from "lucide-react";
 import { PRESENTACION_CATEGORIAS } from "@/lib/presentacion-categorias";
@@ -43,6 +44,18 @@ export const PRESENTACION_GIRAS: PresentacionItem = {
   desc: "Production management para artistas en gira: advance plaza por plaza, documentos de producción y una sola dirección que responde por cada fecha.",
   href: "/presentacion/giras",
   icon: Route,
+  audience: "Artistas · Managers",
+};
+
+// Unidad de negocio Mainstage Live: production/tour/stage management para
+// artistas en gira. Vive en su propio módulo (/giras/presentaciones), no en
+// el índice general de Mainstage Pro.
+export const PRESENTACION_LIVE: PresentacionItem = {
+  key: "live",
+  label: "Mainstage Live",
+  desc: "Production Management, Tour Management y Stage Management para artistas emergentes que están construyendo algo real.",
+  href: "/presentacion/live",
+  icon: Mic2,
   audience: "Artistas · Managers",
 };
 
@@ -220,14 +233,6 @@ export const PRESENTACIONES_SERVICIOS: PresentacionItem[] = [
     desc: "Montaje, operación y respaldo técnico integral del evento, de principio a fin.",
     href: "/presentacion/servicio/produccion-tecnica",
     icon: SlidersHorizontal,
-    audience: "Clientes potenciales",
-  },
-  {
-    key: "servicio-production-management",
-    label: "Production Management",
-    desc: "Una sola dirección de producción para tu gira: advance, rider, ensayos, run of show e ingenieros por plaza.",
-    href: "/presentacion/servicio/production-management",
-    icon: Compass,
     audience: "Clientes potenciales",
   },
 ];

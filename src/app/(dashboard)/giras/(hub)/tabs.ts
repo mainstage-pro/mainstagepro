@@ -9,4 +9,5 @@ export const girasTabs: ModuleNavTab[] = [
   { href: "/giras/artistas", label: "Artistas", accessKey: "giras" },
   { href: "/giras/propuestas", label: "Propuestas", accessKey: "giras" },
   { href: "/giras/servicios", label: "Servicios", accessKey: "giras" },
+  { href: "/giras/presentaciones", label: "Presentaciones", accessKey: "giras" },
 ];

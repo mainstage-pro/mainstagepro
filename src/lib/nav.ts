@@ -89,6 +89,7 @@ export const NAV: NavSection[] = [
           { key: "giras-artistas", accessKey: "giras", label: "Artistas", href: "/giras/artistas" },
           { key: "giras-propuestas", accessKey: "giras", label: "Propuestas", href: "/giras/propuestas" },
           { key: "giras-servicios", accessKey: "giras", label: "Servicios", href: "/giras/servicios" },
+          { key: "giras-presentaciones", accessKey: "giras", label: "Presentaciones", href: "/giras/presentaciones" },
         ],
       },
       {
@@ -363,6 +364,7 @@ export const NAV_LIVE: NavSection[] = [
     section: "Servicios",
     items: [
       { key: "giras-servicios", accessKey: "giras", label: "Servicios", href: "/giras/servicios", icon: BadgeDollarSign },
+      { key: "giras-presentaciones", accessKey: "giras", label: "Presentaciones", href: "/giras/presentaciones", icon: Presentation },
     ],
   },
 ];
