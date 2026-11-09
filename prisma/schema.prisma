@@ -1554,6 +1554,10 @@ model RolTecnico {
   activo      Boolean @default(true)
   orden       Int     @default(0)
 
+  // Perfil técnico — JSON { proposito, competencias: string[], competenciasComunes: string[], criteriosExclusion: string[] } (Reclutamiento Fase 3, §7)
+  perfil          String? @db.Text
+  tarifaPendiente Boolean @default(false) @map("tarifa_pendiente")
+
   cotizacionLineas CotizacionLinea[]
   proyectoPersonal ProyectoPersonal[]
   tecnicos         Tecnico[]
@@ -2265,6 +2269,10 @@ model Puesto {
   valores                  String?         @db.Text // JSON [{ valorId, nombre, comoSeVe }]
   aptitudes                String?         @db.Text // JSON [{ nombre, nivel }]  nivel: basico|intermedio|avanzado
   conocimientos            String?         @db.Text // JSON [{ nombre, nivel, indispensable }]
+  // Criterios de exclusión — JSON string[] (Reclutamiento Fase 3, §7)
+  criteriosExclusion       String?         @map("criterios_exclusion") @db.Text
+  // Vacante abierta — controla si el puesto aparece disponible para postular (§7)
+  vacanteAbierta           Boolean         @default(false) @map("vacante_abierta")
   // Condiciones laborales — fuente para el acuerdo laboral
   prestaciones             String?         @db.Text // JSON string[] — prestaciones seleccionadas (nombres del catálogo + otros)
   prestacionesOtro         String?         @map("prestaciones_otro") @db.Text // texto libre cuando se elige "Otro" (§3.4)

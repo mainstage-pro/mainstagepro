@@ -34,6 +34,8 @@ export async function GET() {
       tarifaHoraAAA: true,
       tarifaHoraAA: true,
       tarifaHoraA: true,
+      perfil: true,
+      tarifaPendiente: true,
     },
     orderBy: [{ orden: "asc" }, { nombre: "asc" }],
   });

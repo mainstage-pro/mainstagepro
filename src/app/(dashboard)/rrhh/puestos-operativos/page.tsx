@@ -35,9 +35,11 @@ interface Puesto {
   prestaciones?: string | null; prestacionesOtro?: string | null;
   tipoContrato?: string | null; modalidad?: string | null; jornada?: string | null;
   onboardingModulos?: string | null; capacitacionAsignaciones?: string | null;
+  criteriosExclusion?: string | null; vacanteAbierta?: boolean;
   version?: number | null;
   activo: boolean;
   ocupantes?: Ocupante[]; kpis?: KpiPuesto[];
+  formularios?: { formulario: { id: string; slug: string; titulo: string; estado: string } }[];
 }
 interface PersonaLite { id: string; nombre: string; puesto: string; activo: boolean }
 interface Catalogos {
@@ -126,6 +128,10 @@ export default function PuestosOperativosPage() {
   const [onbModulos, setOnbModulos] = useState<string[]>([]);
   const [capAsignaciones, setCapAsignaciones] = useState<CapAsignacion[]>([]);
   const [categoriasCap, setCategoriasCap] = useState<{ id: string; nombre: string; slug: string; subAreas: string[] }[]>([]);
+  const [criteriosExclusionTxt, setCriteriosExclusionTxt] = useState("");
+  const [vacanteAbierta, setVacanteAbierta] = useState(false);
+  const [formularioId, setFormularioId] = useState("");
+  const [formularios, setFormularios] = useState<{ id: string; slug: string; titulo: string; estado: string }[]>([]);
   const [origen, setOrigen] = useState<OrigenIA>({});
   // Copia literal de lo que devolvió la IA: al guardar, lo que ya no coincide pasa a "IA · editado".
   const [iaSnapshot, setIaSnapshot] = useState<Partial<Record<BloqueIA, string>>>({});
@@ -178,6 +184,11 @@ export default function PuestosOperativosPage() {
       .then(r => r.json())
       .then((d: { categorias?: { id: string; nombre: string; slug: string; subAreas?: string[] }[] }) =>
         setCategoriasCap((d.categorias ?? []).map(c => ({ ...c, subAreas: c.subAreas ?? [] }))))
+      .catch(() => {});
+    fetch("/api/rrhh/formularios", { cache: "no-store" })
+      .then(r => r.json())
+      .then((d: { formularios?: { id: string; slug: string; titulo: string; estado: string }[] }) =>
+        setFormularios((d.formularios ?? []).map(f => ({ id: f.id, slug: f.slug, titulo: f.titulo, estado: f.estado }))))
       .catch(() => {});
   }, []);
 
@@ -289,6 +300,7 @@ export default function PuestosOperativosPage() {
     setKpis([kpiFijo()]); setOcupantesIds([]);
     setOnbModulos([]); setCapAsignaciones([]);
     setOrigen({}); setIaSnapshot({});
+    setCriteriosExclusionTxt(""); setVacanteAbierta(false); setFormularioId("");
   }
 
   function openNew() {
@@ -332,6 +344,9 @@ export default function PuestosOperativosPage() {
     setCapAsignaciones(asignacionesEfectivas(full.capacitacionAsignaciones, null));
     setOrigen(jparse<OrigenIA>(full.origenIA, {}));
     setIaSnapshot({});
+    setCriteriosExclusionTxt(parseArr(full.criteriosExclusion).join("\n"));
+    setVacanteAbierta(!!full.vacanteAbierta);
+    setFormularioId(full.formularios?.[0]?.formulario.id ?? "");
     setShowForm(true);
   }
 
@@ -482,6 +497,9 @@ export default function PuestosOperativosPage() {
         onboardingModulos: onbModulos,
         capacitacionAsignaciones: capFinal,
         origenIA: origenFinal(),
+        criteriosExclusion: toArr(criteriosExclusionTxt),
+        vacanteAbierta,
+        formularioId: formularioId || null,
       };
       const url = editing ? `/api/rrhh/puestos-operativos/${editing.id}` : "/api/rrhh/puestos-operativos";
       const method = editing ? "PATCH" : "POST";
@@ -1186,6 +1204,28 @@ export default function PuestosOperativosPage() {
                   </div>
                   <input {...f("prestacionesOtro")} className={`${inputCls} mt-2`} placeholder="Otro (texto libre)" />
                 </div>
+              </div>
+
+              {/* Reclutamiento */}
+              <div>
+                <p className={sectionCls}>Reclutamiento</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelCls}>Formulario de postulación vinculado</label>
+                    <select value={formularioId} onChange={e => setFormularioId(e.target.value)} className={inputCls}>
+                      <option value="">— Ninguno —</option>
+                      {formularios.map(fo => <option key={fo.id} value={fo.id}>{fo.titulo} ({fo.estado})</option>)}
+                    </select>
+                  </div>
+                  <div className="flex items-end pb-2">
+                    <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                      <input type="checkbox" checked={vacanteAbierta} onChange={e => setVacanteAbierta(e.target.checked)} className="accent-[#B3985B]" />
+                      Vacante abierta (acepta postulaciones)
+                    </label>
+                  </div>
+                </div>
+                <label className={labelCls + " mt-4"}>Criterios de exclusión (uno por línea)</label>
+                <textarea value={criteriosExclusionTxt} onChange={e => setCriteriosExclusionTxt(e.target.value)} rows={3} className={inputCls} placeholder="Ej. No tener disponibilidad de viajar" />
               </div>
 
               {/* Titulares */}

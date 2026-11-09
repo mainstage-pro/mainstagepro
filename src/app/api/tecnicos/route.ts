@@ -9,13 +9,30 @@ export async function GET() {
 
   const tecnicos = await prisma.tecnico.findMany({
     include: {
-      rol: { select: { id: true, nombre: true } },
+      rol: { select: { id: true, nombre: true, perfil: true, tarifaPendiente: true } },
       ...TECNICO_ROLES_INCLUDE,
     },
     orderBy: { nombre: "asc" },
   });
 
-  return NextResponse.json({ tecnicos: tecnicos.map(flattenTecnicoRoles) });
+  // Origen (Formulario/Manual): Postulacion.tecnicoId no tiene relación Prisma hacia
+  // Tecnico (es un vínculo suelto de Fase 2), así que se resuelve con una query aparte.
+  const postulaciones = await prisma.postulacion.findMany({
+    where: { tecnicoId: { in: tecnicos.map((t) => t.id) } },
+    select: { id: true, tecnicoId: true, origen: true, candidatoId: true },
+  });
+  const mapaOrigen = new Map(postulaciones.map((p) => [p.tecnicoId!, p]));
+
+  return NextResponse.json({
+    tecnicos: tecnicos.map((t) => {
+      const post = mapaOrigen.get(t.id);
+      return {
+        ...flattenTecnicoRoles(t),
+        origen: post?.origen ?? null,
+        postulacionCandidatoId: post?.candidatoId ?? null,
+      };
+    }),
+  });
 }
 
 export async function POST(request: NextRequest) {

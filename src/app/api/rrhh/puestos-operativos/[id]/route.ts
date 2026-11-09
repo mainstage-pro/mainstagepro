@@ -21,6 +21,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       },
       subordinados: { select: { id: true, nombre: true } },
       ocupantes: { select: { id: true, nombre: true, userId: true }, where: { activo: true } },
+      formularios: { include: { formulario: { select: { id: true, slug: true, titulo: true, estado: true } } } },
     },
   });
   if (!puesto) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
@@ -49,6 +50,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (b.valores !== undefined) data.valores = jstr(b.valores);
     if (b.aptitudes !== undefined) data.aptitudes = jstr(b.aptitudes);
     if (b.conocimientos !== undefined) data.conocimientos = jstr(b.conocimientos);
+    if (b.criteriosExclusion !== undefined) data.criteriosExclusion = arr(b.criteriosExclusion);
+    if (b.vacanteAbierta !== undefined) data.vacanteAbierta = !!b.vacanteAbierta;
     if (b.prestaciones !== undefined) data.prestaciones = arr(b.prestaciones);
     if (b.prestacionesOtro !== undefined) data.prestacionesOtro = b.prestacionesOtro || null;
     if (b.tipoContrato !== undefined) data.tipoContrato = b.tipoContrato || null;
@@ -87,6 +90,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         await prisma.puestoSubArea.createMany({
           data: nuevas.map((s) => ({ ...s, puestoId: id })),
         });
+      }
+    }
+
+    // Formulario vinculado: un puesto tiene a lo mucho un formulario ligado.
+    if (b.formularioId !== undefined) {
+      await prisma.formularioPuesto.deleteMany({ where: { puestoId: id } });
+      if (b.formularioId) {
+        await prisma.formularioPuesto.create({ data: { puestoId: id, formularioId: b.formularioId } });
       }
     }
 

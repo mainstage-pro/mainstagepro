@@ -5,6 +5,7 @@ import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Modal } from "@/components/Modal";
+import { PerfilTecnicoView } from "@/components/PerfilTecnicoView";
 import { DISCIPLINA_LABELS, DISCIPLINA_COLORS, DISCIPLINAS } from "@/lib/disciplinaColors";
 import { agruparRolesTecnicos } from "@/lib/rolesTecnicos";
 import { BONOS_PERSONAL } from "@/lib/pago-personal";
@@ -30,6 +31,8 @@ type Rol = {
   tarifaACorta: number | null;  tarifaAMedia: number | null;  tarifaALarga: number | null;
   tarifaPlanaAA: number | null; tarifaPlanaA: number | null;
   tarifaHoraAA: number | null;  tarifaHoraA: number | null;
+  perfil: string | null;
+  tarifaPendiente: boolean;
 };
 
 const TIPO_PAGO_LABELS: Record<string, string> = {
@@ -52,6 +55,7 @@ const EMPTY: Omit<Rol, "id"> = {
   tarifaACorta: null,  tarifaAMedia: null,  tarifaALarga: null,
   tarifaPlanaAA: null, tarifaPlanaA: null,
   tarifaHoraAA: null,  tarifaHoraA: null,
+  perfil: null, tarifaPendiente: false,
 };
 
 type CategoriaInv = { id: string; nombre: string; disciplina: string | null };
@@ -66,6 +70,7 @@ export default function RolesPage() {
   const [form, setForm] = useState<Omit<Rol, "id">>(EMPTY);
   const [saving, setSaving] = useState(false);
   const [autoSaved, setAutoSaved] = useState(false);
+  const [viendoPerfil, setViendoPerfil] = useState<Rol | null>(null);
   const currentEditId = useRef<string | null>(null);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -419,7 +424,7 @@ export default function RolesPage() {
               </div>
               <div className="space-y-2 p-3">
                 {rs.map(r => (
-                  <RolCard key={r.id} r={r} onEdit={startEdit} onToggle={toggleActivo} onDelete={eliminar} />
+                  <RolCard key={r.id} r={r} onEdit={startEdit} onToggle={toggleActivo} onDelete={eliminar} onVerPerfil={setViendoPerfil} />
                 ))}
               </div>
             </section>
@@ -433,11 +438,15 @@ export default function RolesPage() {
           <p className="text-[10px] text-gray-700 uppercase tracking-widest mb-2">Inactivos</p>
           <div className="space-y-2 opacity-50">
             {inactivos.map(r => (
-              <RolCard key={r.id} r={r} onEdit={startEdit} onToggle={toggleActivo} onDelete={eliminar} />
+              <RolCard key={r.id} r={r} onEdit={startEdit} onToggle={toggleActivo} onDelete={eliminar} onVerPerfil={setViendoPerfil} />
             ))}
           </div>
         </div>
       )}
+
+      <Modal open={!!viendoPerfil} onClose={() => setViendoPerfil(null)} title={`Perfil: ${viendoPerfil?.nombre ?? ""}`}>
+        <PerfilTecnicoView perfil={viendoPerfil?.perfil} tarifaPendiente={viendoPerfil?.tarifaPendiente} />
+      </Modal>
     </div>
   );
 }
@@ -505,11 +514,12 @@ function BonosCard() {
   );
 }
 
-function RolCard({ r, onEdit, onToggle, onDelete }: {
+function RolCard({ r, onEdit, onToggle, onDelete, onVerPerfil }: {
   r: Rol;
   onEdit: (r: Rol) => void;
   onToggle: (r: Rol) => void;
   onDelete: (r: Rol) => void;
+  onVerPerfil: (r: Rol) => void;
 }) {
   return (
     <div className="bg-[#111] border border-[#1a1a1a] rounded-xl px-5 py-4 flex items-center justify-between gap-4">
@@ -519,6 +529,11 @@ function RolCard({ r, onEdit, onToggle, onDelete }: {
           <span className="text-[9px] uppercase tracking-widest text-[#B3985B]/70 bg-[#B3985B]/10 px-1.5 py-0.5 rounded">
             {TIPO_PAGO_LABELS[r.tipoPago] ?? r.tipoPago}
           </span>
+          {r.tarifaPendiente && (
+            <span className="text-[9px] uppercase tracking-widest text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">
+              Tarifa pendiente
+            </span>
+          )}
         </div>
 
         {r.tipoPago === "POR_JORNADA" && (
@@ -555,6 +570,14 @@ function RolCard({ r, onEdit, onToggle, onDelete }: {
       </div>
 
       <div className="flex items-center gap-1.5 shrink-0">
+        {r.perfil && (
+          <button
+            onClick={() => onVerPerfil(r)}
+            className="text-xs text-[#B3985B] hover:text-[#c9ac6a] px-2.5 py-1.5 border border-[#B3985B]/40 rounded-lg transition-colors"
+          >
+            Ver perfil
+          </button>
+        )}
         <button
           onClick={() => onEdit(r)}
           className="text-xs text-gray-500 hover:text-white px-2.5 py-1.5 border border-[#2a2a2a] rounded-lg transition-colors"

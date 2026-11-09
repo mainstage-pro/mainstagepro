@@ -7,11 +7,12 @@ import { useEffect, useState, useRef } from "react";
 import { CopyButton } from "@/components/CopyButton";
 import { Combobox } from "@/components/Combobox";
 import { Modal } from "@/components/Modal";
+import { PerfilTecnicoView } from "@/components/PerfilTecnicoView";
 import { DISCIPLINA_COLORS, DISCIPLINA_LABELS, DISCIPLINAS } from "@/lib/disciplinaColors";
 import { coincide } from "@/lib/buscar";
 import { Sliders, Users } from "lucide-react";
 
-type Rol = { id: string; nombre: string; disciplina?: string | null };
+type Rol = { id: string; nombre: string; disciplina?: string | null; perfil?: string | null; tarifaPendiente?: boolean };
 type Tecnico = {
   id: string;
   nombre: string;
@@ -33,6 +34,8 @@ type Tecnico = {
   evaluacionPromedio: number | null;
   habilidades: string | null;
   disciplina: string[];
+  origen?: string | null;
+  postulacionCandidatoId?: string | null;
 };
 
 type RankingItem = {
@@ -62,6 +65,23 @@ function RolPill({ nombre, disciplina, size = 'sm' }: { nombre: string; discipli
     <span className={`${cls} rounded-full font-medium text-white whitespace-nowrap`} style={{ backgroundColor: color }}>
       {nombre}
     </span>
+  );
+}
+
+/** Origen del técnico (Fase 3 reclutamiento): si vino de postulación, liga a su ficha de candidato. */
+function OrigenBadge({ tecnico }: { tecnico: Tecnico }) {
+  if (!tecnico.origen) return <span className="text-gray-700">—</span>;
+  const esFormulario = tecnico.origen === "FORMULARIO";
+  const badge = (
+    <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${esFormulario ? "text-emerald-400 border-emerald-800/40 bg-emerald-900/10" : "text-gray-500 border-[#2a2a2a]"}`}>
+      {esFormulario ? "Formulario" : "Manual"}
+    </span>
+  );
+  if (!tecnico.postulacionCandidatoId) return badge;
+  return (
+    <a href={`/rrhh/candidatos/${tecnico.postulacionCandidatoId}`} target="_blank" rel="noopener noreferrer" className="hover:opacity-80" title="Ver postulación">
+      {badge}
+    </a>
   );
 }
 
@@ -114,6 +134,7 @@ export default function TecnicosPage() {
   const [detalleId, setDetalleId] = useState<string | null>(null);
   const [detalle, setDetalle] = useState<DetalleTecnico | null>(null);
   const [loadingDetalle, setLoadingDetalle] = useState(false);
+  const [viendoPerfilRol, setViendoPerfilRol] = useState<{ nombre: string; rol: Rol } | null>(null);
 
   async function load() {
     const [tRes, rRes] = await Promise.all([
@@ -571,13 +592,13 @@ export default function TecnicosPage() {
       ) : view === "card" ? (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {activos.map(t => <TecnicoCard key={t.id} tecnico={t} onEdit={startEdit} onToggle={eliminarTecnico} />)}
+            {activos.map(t => <TecnicoCard key={t.id} tecnico={t} onEdit={startEdit} onToggle={eliminarTecnico} onVerPerfil={verPerfilDe} />)}
           </div>
           {showInactivos && inactivos.length > 0 && (
             <div className="mt-6">
               <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold mb-3">Inactivos ({inactivos.length})</p>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 opacity-50">
-                {inactivos.map(t => <TecnicoCard key={t.id} tecnico={t} onEdit={startEdit} onToggle={eliminarTecnico} />)}
+                {inactivos.map(t => <TecnicoCard key={t.id} tecnico={t} onEdit={startEdit} onToggle={eliminarTecnico} onVerPerfil={verPerfilDe} />)}
               </div>
             </div>
           )}
@@ -592,6 +613,7 @@ export default function TecnicosPage() {
                 <th className="ms-th">Roles</th>
                 <th className="ms-th">Preferente</th>
                 <th className="ms-th">Zona</th>
+                <th className="ms-th">Origen</th>
                 <th className="ms-th">Contacto</th>
                 <th className="ms-th"></th>
               </tr>
@@ -668,6 +690,7 @@ export default function TecnicosPage() {
                     <PrefStar on={t.prioridad > 0} onToggle={() => togglePreferente(t.id, t.prioridad)} size={15} />
                   </td>
                   <td className="px-4 py-3 text-xs text-[#6b7280]">{t.zonaHabitual ?? "—"}</td>
+                  <td className="px-4 py-3 text-xs"><OrigenBadge tecnico={t} /></td>
                   <td className="px-4 py-3 text-xs text-[#6b7280]">
                     {t.celular ? (
                       <div className="flex items-center gap-2">
@@ -683,6 +706,9 @@ export default function TecnicosPage() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-end gap-1">
+                      {t.rol?.perfil && (
+                        <button onClick={() => verPerfilDe(t)} className="text-[#B3985B] text-xs hover:underline mr-1">Ver perfil</button>
+                      )}
                       <button onClick={() => startEdit(t)} className="text-[#B3985B] text-xs hover:underline">Editar</button>
                       <button onClick={() => eliminarTecnico(t)} className="text-red-500/70 text-xs hover:text-red-400 transition-colors">Eliminar</button>
                     </div>
@@ -709,6 +735,7 @@ export default function TecnicosPage() {
                     {t.prioridad > 0 && <PrefStar on size={13} />}
                   </td>
                   <td className="px-4 py-3 text-xs text-[#555]">{t.zonaHabitual ?? "—"}</td>
+                  <td className="px-4 py-3 text-xs"><OrigenBadge tecnico={t} /></td>
                   <td className="px-4 py-3 text-xs text-[#555]">{t.celular ?? "—"}</td>
                   <td className="px-4 py-3 text-right">
                     <button onClick={() => eliminarTecnico(t)} className="text-red-500/70 text-xs hover:text-red-400 transition-colors">Eliminar</button>
@@ -895,14 +922,23 @@ export default function TecnicosPage() {
           </div>
         </div>
       )}
+
+      <Modal open={!!viendoPerfilRol} onClose={() => setViendoPerfilRol(null)} title={`Perfil: ${viendoPerfilRol?.rol.nombre ?? ""}`}>
+        <PerfilTecnicoView perfil={viendoPerfilRol?.rol.perfil} tarifaPendiente={viendoPerfilRol?.rol.tarifaPendiente} />
+      </Modal>
     </div>
   );
+
+  function verPerfilDe(t: Tecnico) {
+    if (t.rol?.perfil) setViendoPerfilRol({ nombre: t.nombre, rol: t.rol });
+  }
 }
 
-function TecnicoCard({ tecnico: t, onEdit, onToggle }: {
+function TecnicoCard({ tecnico: t, onEdit, onToggle, onVerPerfil }: {
   tecnico: Tecnico;
   onEdit: (t: Tecnico) => void;
   onToggle: (t: Tecnico) => void;
+  onVerPerfil: (t: Tecnico) => void;
 }) {
   const initials = t.nombre.split(" ").slice(0, 2).map(n => n[0]).join("").toUpperCase();
   const primeraDisc = t.roles?.[0]?.disciplina ?? null;
@@ -1001,6 +1037,12 @@ function TecnicoCard({ tecnico: t, onEdit, onToggle }: {
 
       {/* Actions */}
       <div className="flex gap-2 pt-1 border-t border-[#1a1a1a] mt-auto">
+        {t.rol?.perfil && (
+          <button onClick={() => onVerPerfil(t)}
+            className="flex-1 text-xs text-[#B3985B] hover:text-white py-1.5 rounded-lg border border-[#B3985B]/30 hover:border-[#B3985B] transition-colors text-center">
+            Ver perfil
+          </button>
+        )}
         <button onClick={() => onEdit(t)}
           className="flex-1 text-xs text-[#B3985B] hover:text-white py-1.5 rounded-lg border border-[#B3985B]/30 hover:border-[#B3985B] transition-colors text-center">
           Editar

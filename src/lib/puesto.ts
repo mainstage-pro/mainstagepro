@@ -41,7 +41,7 @@ export const FRECUENCIAS_ESTANDAR: { value: FrecuenciaEstandar; label: string }[
 // Fuentes automáticas que ya existen en el sistema (§4).
 export const FUENTES_KPI = [
   "Estado de Resultados",
-  "CRM/Tratos",
+  "CRM/Oportunidades",
   "Reporte de Ventas",
   "Reporte de Marketing",
   "Reporte de Producción",
@@ -85,6 +85,24 @@ export const ADN_MAINSTAGE = {
     "Esperamos que cada integrante del equipo proponga, aporte y empuje el crecimiento de la empresa, " +
     "entendiendo que ese crecimiento y el profesional de cada quien son el mismo camino.",
 } as const;
+
+// Competencias transversales de Reclutamiento (§8 del spec): aplican a todos los
+// puestos de producción, internos y externos. Config como código, igual que ADN_MAINSTAGE.
+export const COMPETENCIAS_TRANSVERSALES = [
+  { nombre: "Proactividad", descripcion: "Anticipa necesidades y actúa sin esperar instrucción" },
+  { nombre: "Aprendizaje continuo", descripcion: "Disposición a capacitarse y actualizarse" },
+  { nombre: "Vocación por la producción", descripcion: "Pasión por los eventos y por su disciplina" },
+  { nombre: "Lealtad y compromiso", descripcion: "Compromiso con Mainstage y su visión de crecimiento" },
+  { nombre: "Dominio tecnológico", descripcion: "Facilidad con plataformas, sistemas y herramientas digitales" },
+  { nombre: "Orden y organización", descripcion: "Organización, orden y limpieza en todo momento" },
+  { nombre: "Adaptabilidad", descripcion: "Adopción de nuevos procesos, incluido el sistema operativo Mainstage" },
+  { nombre: "Puntualidad y responsabilidad", descripcion: "Cumplimiento de horarios y compromisos" },
+  { nombre: "Integridad", descripcion: "Honestidad y reporte oportuno de fallas, daños e incidencias" },
+  { nombre: "Trabajo en equipo", descripcion: "Colaboración y respeto con equipo, clientes y artistas" },
+] as const;
+
+export const CRITERIO_EXCLUSION_GENERAL =
+  "Consumo de alcohol o sustancias durante eventos o jornadas laborales";
 
 // ── Formas estructuradas (JSON en columnas de texto) ──
 export interface JornadaDia { dia: string; entrada: string; salida: string; ubicacion: UbicacionDia }
