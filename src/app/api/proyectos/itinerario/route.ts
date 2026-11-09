@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
-import { ventanaProyecto, jornadasDeProyecto, responsableDeProyecto, type ItinerarioEvento } from "@/lib/itinerario-operaciones";
+import {
+  ventanaProyecto,
+  checkpointsDeProyecto,
+  responsableDeProyecto,
+  type ItinerarioEvento,
+} from "@/lib/itinerario-operaciones";
 
 function parseFecha(v: string | null, fallbackDaysFromNow: number): string {
   if (v && /^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
@@ -43,6 +48,24 @@ export const SELECT_ITINERARIO = {
     where: { coordinaEnSitio: true },
     select: { coordinaEnSitio: true, tecnico: { select: { nombre: true } } },
   },
+  bloquesTiempo: {
+    where: { tipo: { in: ["SOUNDCHECK", "PROGRAMA"] as string[] } },
+    select: {
+      id: true,
+      tipo: true,
+      fase: true,
+      proveedorEventoId: true,
+      fecha: true,
+      horaInicio: true,
+      horaFin: true,
+      titulo: true,
+      detalle: true,
+      responsable: true,
+      involucrados: true,
+      orden: true,
+    },
+    orderBy: { orden: "asc" },
+  },
 } as const;
 
 export async function proyectosEnRango(inicio: string, fin: string) {
@@ -72,7 +95,7 @@ export async function proyectosEnRango(inicio: string, fin: string) {
       lugarEvento: p.lugarEvento,
       responsable: responsableDeProyecto(p),
       notasOperativas: p.notasOperativas,
-      jornadas: jornadasDeProyecto(p),
+      checkpoints: checkpointsDeProyecto(p, p.bloquesTiempo),
     });
   }
   return eventos;

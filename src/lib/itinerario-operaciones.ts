@@ -2,51 +2,128 @@
  * itinerario-operaciones.ts — Itinerario multi-evento de montaje/operación/desmontaje.
  *
  * A diferencia de cronologia-evento.ts (minuto a minuto, un proyecto), esto agrega
- * VARIOS proyectos en un rango de fechas a nivel jornada: un renglón por día en que
- * un proyecto tiene montaje, evento o desmontaje. Usa los mismos horarios resumidos
- * (horariosResumen) para no desincronizarse de la Logística general del proyecto.
+ * VARIOS proyectos en un rango de fechas. Usa los mismos horarios resumidos
+ * (horariosResumen) para no desincronizarse de la Logística general del proyecto,
+ * pero a diferencia de construirCronologia() SIEMPRE emite cada checkpoint —aunque
+ * no tenga hora capturada— para que los huecos sean visibles en el itinerario general.
  */
 import { diasEvento, horarioDeDia, fechaISOaDia } from "./fechas-evento";
-import { fmt24to12 } from "./hora";
-import { horariosResumen, type ProyectoCronologia } from "./cronologia-evento";
+import { horariosResumen, type ProyectoCronologia, type BloqueTiempo } from "./cronologia-evento";
 
-export type TipoJornada = "MONTAJE" | "EVENTO" | "DESMONTAJE";
+export type CategoriaCheckpoint = "MONTAJE" | "EVENTO" | "DESMONTAJE";
 
-export type ItinerarioJornada = {
+export type ItinerarioCheckpoint = {
   fecha: string; // YYYY-MM-DD
-  tipo: TipoJornada;
-  /** "Día 2 de 3" — solo en eventos de varios días. */
-  diaLabel: string | null;
-  horaInicio: string | null; // 12h con AM/PM
+  /** "HH:MM" 24h; null = sin capturar (pendiente). */
+  hora: string | null;
   horaFin: string | null;
+  etiqueta: string;
+  categoria: CategoriaCheckpoint;
+  /** "Día 2 de 3" — solo en checkpoints de evento de varios días. */
+  diaLabel: string | null;
   nota: string | null;
+  responsable: string | null;
+  pendiente: boolean;
+  /** Orden lógico dentro de su bloque, para cuando no hay hora que lo ordene. */
+  orden: number;
+  /** Clave de orden cronológico ya resuelta (incluye el "cruce de medianoche"). */
+  clave: number;
 };
 
-function h12(hhmm: string | null | undefined): string | null {
+function minutos(hhmm: string | null): number | null {
   if (!hhmm) return null;
-  return fmt24to12(hhmm) || null;
+  const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm.trim());
+  if (!m) return null;
+  return Number(m[1]) * 60 + Number(m[2]);
 }
 
-/** Jornadas (montaje/evento/desmontaje) de un proyecto, en orden cronológico. */
-export function jornadasDeProyecto(p: ProyectoCronologia): ItinerarioJornada[] {
+const RANGO_CATEGORIA: Record<CategoriaCheckpoint, number> = { MONTAJE: 0, EVENTO: 1_000_000, DESMONTAJE: 10_000_000 };
+/** Techo generoso para la hora/hora envuelta (máx. real ~2880); los pendientes se van siempre después. */
+const CLAVE_PENDIENTE_BASE = 3000;
+
+/**
+ * Minuto de cada hora del bloque, tal como transcurre la jornada: la primera hora
+ * capturada (en orden de aparición, no la numéricamente menor) abre el bloque; lo
+ * que caiga antes de ella es madrugada del día siguiente y se envuelve (+1440).
+ * Sin hora → Infinity (se resuelve aparte, al final del bloque). Mismo criterio que
+ * `ordenarPorReloj` en cronologia-evento.ts, aplicado aquí por bloque (montaje/día/desmontaje).
+ */
+function minutosConAncla(horas: (string | null)[]): number[] {
+  const mins = horas.map((h) => minutos(h));
+  const ancla = mins.find((m) => m != null);
+  return mins.map((m) => {
+    if (m == null) return Infinity;
+    if (ancla == null) return m;
+    return m < ancla ? m + 1440 : m;
+  });
+}
+
+/** Resuelve `clave` de cada checkpoint de un mismo bloque (muta el array in-place). */
+function asignarClaves(items: ItinerarioCheckpoint[], base: number): ItinerarioCheckpoint[] {
+  const valores = minutosConAncla(items.map((it) => it.hora));
+  items.forEach((it, i) => {
+    it.clave = base + (valores[i] === Infinity ? CLAVE_PENDIENTE_BASE + it.orden : valores[i]);
+  });
+  return items;
+}
+
+function horaValida(v: string | null | undefined): string | null {
+  return v && /^\d{1,2}:\d{2}$/.test(v.trim()) ? v.trim() : null;
+}
+
+function checkpoint(
+  fecha: string,
+  categoria: CategoriaCheckpoint,
+  etiqueta: string,
+  orden: number,
+  opts: {
+    hora?: string | null;
+    horaFin?: string | null;
+    nota?: string | null;
+    responsable?: string | null;
+    diaLabel?: string | null;
+  } = {},
+): ItinerarioCheckpoint {
+  const hora = horaValida(opts.hora);
+  return {
+    fecha,
+    hora,
+    horaFin: horaValida(opts.horaFin),
+    etiqueta,
+    categoria,
+    diaLabel: opts.diaLabel ?? null,
+    nota: opts.nota ?? null,
+    responsable: opts.responsable ?? null,
+    pendiente: !hora,
+    orden,
+    clave: 0,
+  };
+}
+
+/**
+ * Checkpoints (montaje, evento, desmontaje) de un proyecto, SIEMPRE completos:
+ * si un dato no se ha capturado en el proyecto, el checkpoint sale igual, marcado
+ * `pendiente`, para que el hueco sea visible en el itinerario general.
+ * `bloques` son las filas de ProyectoBloqueTiempo (solo SOUNDCHECK/PROGRAMA) del proyecto.
+ */
+export function checkpointsDeProyecto(p: ProyectoCronologia, bloques: BloqueTiempo[] = []): ItinerarioCheckpoint[] {
   const dias = diasEvento(p.fechaEvento, p.fechasEvento);
   const h = horariosResumen(p);
-  const jornadas: ItinerarioJornada[] = [];
+  const out: ItinerarioCheckpoint[] = [];
 
   const llamadoFecha = p.llamadoBodega ? fechaISOaDia(p.llamadoBodega) : null;
   const montajeFecha = p.fechaMontaje ? fechaISOaDia(p.fechaMontaje) : llamadoFecha;
   const montajeDiaAparte = p.montajeDiaAparte === true && !!montajeFecha && montajeFecha !== dias[0];
-  const tieneMontaje = h.llamadoBodega || h.salidaBodega || h.llegadaVenue || h.inicioMontaje || h.finMontaje;
-  if (montajeDiaAparte && tieneMontaje) {
-    jornadas.push({
-      fecha: montajeFecha!,
-      tipo: "MONTAJE",
-      diaLabel: null,
-      horaInicio: h12(h.inicioMontaje ?? h.llegadaVenue ?? h.salidaBodega ?? h.llamadoBodega),
-      horaFin: h12(h.finMontaje),
-      nota: p.lugarLlamado ?? null,
-    });
-  }
+  const fechaMontaje = montajeDiaAparte ? montajeFecha! : dias[0];
+
+  const bloqueMontaje = [
+    checkpoint(fechaMontaje, "MONTAJE", "Llamado", 0, { hora: h.llamadoBodega, nota: p.lugarLlamado }),
+    checkpoint(fechaMontaje, "MONTAJE", "Salida de bodega", 1, { hora: h.salidaBodega, nota: p.puntoSalidaBodega }),
+    checkpoint(fechaMontaje, "MONTAJE", "Llegada al venue", 2, { hora: h.llegadaVenue, nota: p.lugarEvento }),
+    checkpoint(fechaMontaje, "MONTAJE", "Inicio de montaje", 3, { hora: h.inicioMontaje }),
+    checkpoint(fechaMontaje, "MONTAJE", "Fin de montaje (aprox.)", 4, { hora: h.finMontaje }),
+  ];
+  out.push(...asignarClaves(bloqueMontaje, RANGO_CATEGORIA.MONTAJE));
 
   dias.forEach((fecha, i) => {
     const hd = horarioDeDia(fecha, i, dias, p.horariosEvento, {
@@ -55,44 +132,56 @@ export function jornadasDeProyecto(p: ProyectoCronologia): ItinerarioJornada[] {
       llamado: null,
       montaje: null,
     });
-    jornadas.push({
-      fecha,
-      tipo: "EVENTO",
-      diaLabel: dias.length > 1 ? `Día ${i + 1} de ${dias.length}` : null,
-      horaInicio: h12(hd.inicio),
-      horaFin: h12(hd.fin),
-      nota: p.lugarEvento ?? null,
-    });
+    const diaLabel = dias.length > 1 ? `Día ${i + 1} de ${dias.length}` : null;
+    const bloqueDia: ItinerarioCheckpoint[] = [
+      checkpoint(fecha, "EVENTO", "Inicio del evento", 0, { hora: hd.inicio, nota: p.lugarEvento, diaLabel }),
+    ];
+    bloques
+      .filter((b) => (b.fecha ? fechaISOaDia(b.fecha) : dias[0]) === fecha)
+      .sort((a, b) => a.orden - b.orden)
+      .forEach((b, j) => {
+        bloqueDia.push(
+          checkpoint(fecha, "EVENTO", b.titulo, j + 1, {
+            hora: b.horaInicio,
+            horaFin: b.horaFin,
+            nota: b.detalle || b.involucrados,
+            responsable: b.responsable,
+            diaLabel,
+          }),
+        );
+      });
+    bloqueDia.push(checkpoint(fecha, "EVENTO", "Fin del evento", 99, { hora: hd.fin, diaLabel }));
+    // Offset por día (10 000 c/u) para que los días no se entrecrucen entre sí.
+    out.push(...asignarClaves(bloqueDia, RANGO_CATEGORIA.EVENTO + i * 10_000));
   });
 
   const desmontajeFecha = p.fechaDesmontaje ? fechaISOaDia(p.fechaDesmontaje) : null;
   const desmontajeDiaAparte =
     p.desmontajeDiaAparte === true && !!desmontajeFecha && desmontajeFecha !== dias[dias.length - 1];
-  const tieneDesmontaje = h.inicioDesmontaje || h.finDesmontaje;
-  if (tieneDesmontaje) {
-    jornadas.push({
-      fecha: desmontajeDiaAparte ? desmontajeFecha! : dias[dias.length - 1],
-      tipo: "DESMONTAJE",
-      diaLabel: null,
-      horaInicio: h12(h.inicioDesmontaje),
-      horaFin: h12(h.finDesmontaje),
-      nota: null,
-    });
-  }
+  const fechaDesmontaje = desmontajeDiaAparte ? desmontajeFecha! : dias[dias.length - 1];
+  const bloqueDesmontaje = [
+    checkpoint(fechaDesmontaje, "DESMONTAJE", "Inicio de desmontaje", 0, { hora: h.inicioDesmontaje }),
+    checkpoint(fechaDesmontaje, "DESMONTAJE", "Fin de desmontaje (aprox.)", 1, { hora: h.finDesmontaje }),
+  ];
+  out.push(...asignarClaves(bloqueDesmontaje, RANGO_CATEGORIA.DESMONTAJE));
 
-  return jornadas;
+  return out;
 }
 
 /** Primer y último día en que el proyecto ocupa la agenda (monta, opera o desmonta). */
 export function ventanaProyecto(p: ProyectoCronologia): { inicio: string; fin: string } | null {
-  const fechas = jornadasDeProyecto(p)
-    .map((j) => j.fecha)
+  const fechas = checkpointsDeProyecto(p)
+    .map((c) => c.fecha)
     .sort();
   if (!fechas.length) return null;
   return { inicio: fechas[0], fin: fechas[fechas.length - 1] };
 }
 
-export type ResponsableFuente = { personal: { coordinaEnSitio: boolean; tecnico: { nombre: string } | null }[]; responsables: string | null; encargado: { name: string } | null };
+export type ResponsableFuente = {
+  personal: { coordinaEnSitio: boolean; tecnico: { nombre: string } | null }[];
+  responsables: string | null;
+  encargado: { name: string } | null;
+};
 
 /** Responsable en sitio → responsable de producción del proyecto → encargado administrativo. */
 export function responsableDeProyecto(p: ResponsableFuente): string | null {
@@ -118,11 +207,11 @@ export type ItinerarioEvento = {
   lugarEvento: string | null;
   responsable: string | null;
   notasOperativas: string | null;
-  jornadas: ItinerarioJornada[];
+  checkpoints: ItinerarioCheckpoint[];
 };
 
-/** Un renglón del itinerario: una jornada de un evento, ya aplanado para agrupar por fecha. */
-export type ItinerarioRenglon = ItinerarioJornada & {
+/** Un renglón del itinerario: un checkpoint de un evento, ya aplanado para agrupar por fecha. */
+export type ItinerarioRenglon = ItinerarioCheckpoint & {
   proyectoId: string;
   numeroProyecto: string;
   nombre: string;
@@ -135,8 +224,8 @@ export type ItinerarioRenglon = ItinerarioJornada & {
 /** Aplana los eventos a renglones y los deja agrupables/ordenables por fecha. */
 export function renglonesDeItinerario(eventos: ItinerarioEvento[]): ItinerarioRenglon[] {
   const renglones = eventos.flatMap((ev) =>
-    ev.jornadas.map((j) => ({
-      ...j,
+    ev.checkpoints.map((c) => ({
+      ...c,
       proyectoId: ev.proyectoId,
       numeroProyecto: ev.numeroProyecto,
       nombre: ev.nombre,
@@ -146,14 +235,81 @@ export function renglonesDeItinerario(eventos: ItinerarioEvento[]): ItinerarioRe
       notasOperativas: ev.notasOperativas,
     })),
   );
-  return renglones.sort((a, b) => a.fecha.localeCompare(b.fecha) || a.nombre.localeCompare(b.nombre));
+  return renglones.sort(
+    (a, b) => a.fecha.localeCompare(b.fecha) || a.clave - b.clave || a.nombre.localeCompare(b.nombre),
+  );
 }
 
-/** Agrupa renglones por fecha (YYYY-MM-DD), en orden. */
-export function porDia(renglones: ItinerarioRenglon[]): { fecha: string; renglones: ItinerarioRenglon[] }[] {
+/** Los checkpoints de un mismo proyecto en un día, agrupados para mostrarse como una sola tarjeta/bloque. */
+export type GrupoEvento = {
+  proyectoId: string;
+  numeroProyecto: string;
+  nombre: string;
+  estado: string;
+  clienteNombre: string;
+  responsable: string | null;
+  notasOperativas: string | null;
+  checkpoints: ItinerarioRenglon[];
+};
+
+/** Agrupa renglones (ya de un solo día) por proyecto, en orden de primera aparición. */
+export function agruparPorEvento(renglones: ItinerarioRenglon[]): GrupoEvento[] {
+  const mapa = new Map<string, GrupoEvento>();
+  const orden: string[] = [];
+  renglones.forEach((r) => {
+    if (!mapa.has(r.proyectoId)) {
+      mapa.set(r.proyectoId, {
+        proyectoId: r.proyectoId,
+        numeroProyecto: r.numeroProyecto,
+        nombre: r.nombre,
+        estado: r.estado,
+        clienteNombre: r.clienteNombre,
+        responsable: r.responsable,
+        notasOperativas: r.notasOperativas,
+        checkpoints: [],
+      });
+      orden.push(r.proyectoId);
+    }
+    mapa.get(r.proyectoId)!.checkpoints.push(r);
+  });
+  return orden.map((id) => mapa.get(id)!);
+}
+
+/** Agrupa renglones por fecha (YYYY-MM-DD), en orden, con sus eventos ya agrupados. */
+export function porDia(
+  renglones: ItinerarioRenglon[],
+): { fecha: string; renglones: ItinerarioRenglon[]; grupos: GrupoEvento[] }[] {
   const mapa = new Map<string, ItinerarioRenglon[]>();
   renglones.forEach((r) => {
     mapa.set(r.fecha, [...(mapa.get(r.fecha) ?? []), r]);
   });
-  return [...mapa.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([fecha, renglones]) => ({ fecha, renglones }));
+  return [...mapa.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([fecha, renglones]) => ({ fecha, renglones, grupos: agruparPorEvento(renglones) }));
+}
+
+/** Paleta tenue (acento + fondo) para diferenciar eventos; se recicla si hay más eventos que colores. */
+export const PALETA_EVENTOS: { accent: string; bg: string }[] = [
+  { accent: "#B3985B", bg: "#F7F0DE" }, // oro (marca)
+  { accent: "#2563EB", bg: "#E4ECFB" }, // azul
+  { accent: "#059669", bg: "#DEF2EA" }, // verde
+  { accent: "#DB2777", bg: "#FBE4ED" }, // rosa
+  { accent: "#7C3AED", bg: "#EBE3FB" }, // violeta
+  { accent: "#D97706", bg: "#FBEBD6" }, // ámbar
+  { accent: "#0891B2", bg: "#DBF1F5" }, // cian
+  { accent: "#DC2626", bg: "#FBE1E1" }, // rojo
+];
+
+/** Asigna un color estable por proyecto, en orden de primera aparición en `eventos`. */
+export function mapaColoresEventos(
+  eventos: { proyectoId: string }[],
+): Record<string, { accent: string; bg: string }> {
+  const mapa: Record<string, { accent: string; bg: string }> = {};
+  let i = 0;
+  eventos.forEach((ev) => {
+    if (mapa[ev.proyectoId]) return;
+    mapa[ev.proyectoId] = PALETA_EVENTOS[i % PALETA_EVENTOS.length];
+    i++;
+  });
+  return mapa;
 }

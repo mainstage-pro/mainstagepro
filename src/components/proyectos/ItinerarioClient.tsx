@@ -4,14 +4,15 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import { BotonDescarga } from "@/components/BotonDescarga";
-import { porDia, renglonesDeItinerario, type ItinerarioEvento, type ItinerarioRenglon } from "@/lib/itinerario-operaciones";
-
-const TIPO_LABEL: Record<string, string> = { MONTAJE: "Montaje", EVENTO: "Evento", DESMONTAJE: "Desmontaje" };
-const TIPO_CLASE: Record<string, string> = {
-  MONTAJE: "bg-sky-500/15 text-sky-300 border-sky-500/30",
-  EVENTO: "bg-[#B3985B]/15 text-[#B3985B] border-[#B3985B]/30",
-  DESMONTAJE: "bg-violet-500/15 text-violet-300 border-violet-500/30",
-};
+import { fmt24to12 } from "@/lib/hora";
+import {
+  porDia,
+  renglonesDeItinerario,
+  mapaColoresEventos,
+  type ItinerarioEvento,
+  type ItinerarioRenglon,
+  type GrupoEvento,
+} from "@/lib/itinerario-operaciones";
 
 function hoyISO() {
   return new Date().toISOString().slice(0, 10);
@@ -37,12 +38,86 @@ function fechaLarga(fecha: string) {
     month: "long",
   });
 }
+function horaDisplay(r: Pick<ItinerarioRenglon, "hora" | "horaFin" | "pendiente">) {
+  if (r.pendiente || !r.hora) return "Por definir";
+  const ini = fmt24to12(r.hora) || r.hora;
+  if (!r.horaFin) return ini;
+  const fin = fmt24to12(r.horaFin) || r.horaFin;
+  return `${ini} – ${fin}`;
+}
 
 const PRESETS: { label: string; rango: () => [string, string] }[] = [
   { label: "Próximos 7 días", rango: () => [hoyISO(), sumarDias(hoyISO(), 7)] },
   { label: "Próximos 30 días", rango: () => [hoyISO(), sumarDias(hoyISO(), 30)] },
   { label: "Este mes", rango: () => [primerDiaMes(), ultimoDiaMes()] },
 ];
+
+function TarjetaEvento({
+  grupo,
+  color,
+  nota,
+  onNotaChange,
+  onNotaGuardar,
+}: {
+  grupo: GrupoEvento;
+  color: { accent: string; bg: string };
+  nota: string;
+  onNotaChange: (v: string) => void;
+  onNotaGuardar: (v: string) => void;
+}) {
+  return (
+    <div className="rounded-xl border overflow-hidden" style={{ borderColor: `${color.accent}40` }}>
+      <div
+        className="px-4 py-2.5 flex items-center justify-between gap-3 flex-wrap"
+        style={{ backgroundColor: `${color.accent}1a` }}
+      >
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color.accent }} />
+          <Link
+            href={`/proyectos/${grupo.proyectoId}`}
+            className="text-sm font-semibold text-white hover:text-[#B3985B] transition-colors truncate"
+          >
+            {grupo.nombre}
+          </Link>
+          <span className="text-xs text-gray-500 truncate">
+            {grupo.clienteNombre} · {grupo.numeroProyecto}
+          </span>
+        </div>
+        <span className="text-xs text-gray-400 shrink-0">
+          {grupo.responsable ?? <span className="text-gray-600">Sin responsable asignado</span>}
+        </span>
+      </div>
+
+      <div className="divide-y divide-[#2a2a2a]">
+        {grupo.checkpoints.map((c, i) => (
+          <div key={`${c.etiqueta}-${i}`} className="px-4 py-2 flex items-center gap-3 text-xs">
+            <span
+              className={`w-28 shrink-0 ${c.pendiente ? "text-gray-600 italic" : "text-gray-200 font-medium"}`}
+            >
+              {horaDisplay(c)}
+            </span>
+            <span className="flex-1 min-w-0 text-gray-300">
+              {c.etiqueta}
+              {c.diaLabel ? <span className="text-gray-600"> · {c.diaLabel}</span> : null}
+            </span>
+            {c.nota ? <span className="text-gray-500 truncate max-w-[40%]">{c.nota}</span> : null}
+          </div>
+        ))}
+      </div>
+
+      <div className="px-4 py-2.5 bg-[#161616]">
+        <textarea
+          value={nota}
+          onChange={(e) => onNotaChange(e.target.value)}
+          onBlur={(e) => onNotaGuardar(e.target.value)}
+          placeholder="Notas operativas de este evento…"
+          rows={1}
+          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-gray-200 placeholder:text-gray-600 resize-none focus:resize-y focus:outline-none focus:border-[#B3985B]/40"
+        />
+      </div>
+    </div>
+  );
+}
 
 export default function ItinerarioClient() {
   const { success, error } = useToast();
@@ -73,6 +148,7 @@ export default function ItinerarioClient() {
   }, [cargar]);
 
   const dias = useMemo(() => porDia(renglonesDeItinerario(eventos)), [eventos]);
+  const colores = useMemo(() => mapaColoresEventos(eventos), [eventos]);
 
   async function guardarNota(proyectoId: string, valor: string) {
     try {
@@ -94,7 +170,7 @@ export default function ItinerarioClient() {
         <div>
           <h1 className="ms-h1">Itinerario de operaciones</h1>
           <p className="text-gray-500 text-sm">
-            Montaje, evento y desmontaje de todos los proyectos en el período, con responsable y notas.
+            Llamado, montaje, horarios del evento y desmontaje de todos los proyectos en el período.
           </p>
         </div>
         <BotonDescarga
@@ -146,58 +222,25 @@ export default function ItinerarioClient() {
           Sin operaciones agendadas en este período.
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-5">
           {dias.map((d) => (
             <div key={d.fecha} className="ms-card p-4">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-semibold text-white capitalize">{fechaLarga(d.fecha)}</h2>
                 <span className="text-xs text-gray-500">
-                  {d.renglones.length} jornada{d.renglones.length === 1 ? "" : "s"}
+                  {d.grupos.length} evento{d.grupos.length === 1 ? "" : "s"}
                 </span>
               </div>
-              <div className="space-y-2">
-                {d.renglones.map((r: ItinerarioRenglon, i: number) => (
-                  <div
-                    key={`${r.proyectoId}-${r.tipo}-${i}`}
-                    className="ms-card-inset p-3 flex flex-col sm:flex-row sm:items-start gap-3"
-                  >
-                    <span
-                      className={`shrink-0 self-start text-[10px] font-semibold px-2 py-1 rounded-md border ${TIPO_CLASE[r.tipo]}`}
-                    >
-                      {TIPO_LABEL[r.tipo]}
-                    </span>
-
-                    <div className="flex-1 min-w-0">
-                      <Link
-                        href={`/proyectos/${r.proyectoId}`}
-                        className="text-sm font-medium text-white hover:text-[#B3985B] transition-colors"
-                      >
-                        {r.nombre}
-                        {r.diaLabel ? <span className="text-gray-500"> · {r.diaLabel}</span> : null}
-                      </Link>
-                      <div className="text-xs text-gray-500">
-                        {r.clienteNombre} · {r.numeroProyecto}
-                      </div>
-                    </div>
-
-                    <div className="sm:w-32 shrink-0 text-xs text-gray-300">
-                      {r.horaInicio ?? "Por definir"}
-                      {r.horaFin ? ` – ${r.horaFin}` : ""}
-                    </div>
-
-                    <div className="sm:w-32 shrink-0 text-xs text-gray-300">
-                      {r.responsable ?? <span className="text-gray-600">Sin asignar</span>}
-                    </div>
-
-                    <textarea
-                      value={notas[r.proyectoId] ?? ""}
-                      onChange={(e) => setNotas((prev) => ({ ...prev, [r.proyectoId]: e.target.value }))}
-                      onBlur={(e) => guardarNota(r.proyectoId, e.target.value)}
-                      placeholder="Notas de esta operación…"
-                      rows={1}
-                      className="flex-1 min-w-[180px] bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-2 py-1.5 text-xs text-gray-200 placeholder:text-gray-600 resize-none focus:resize-y focus:outline-none focus:border-[#B3985B]/40"
-                    />
-                  </div>
+              <div className="space-y-3">
+                {d.grupos.map((g) => (
+                  <TarjetaEvento
+                    key={g.proyectoId}
+                    grupo={g}
+                    color={colores[g.proyectoId]}
+                    nota={notas[g.proyectoId] ?? ""}
+                    onNotaChange={(v) => setNotas((prev) => ({ ...prev, [g.proyectoId]: v }))}
+                    onNotaGuardar={(v) => guardarNota(g.proyectoId, v)}
+                  />
                 ))}
               </div>
             </div>
