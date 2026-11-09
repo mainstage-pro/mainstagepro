@@ -59,6 +59,18 @@ export const PRESENTACION_LIVE: PresentacionItem = {
   audience: "Artistas · Managers",
 };
 
+// Unidad de negocio Mainstage Creative: diseño de iluminación, renders 3D y
+// documentación técnica. Vive en su propio módulo (/creative/presentaciones),
+// no en el índice general de Mainstage Pro.
+export const PRESENTACION_CREATIVE: PresentacionItem = {
+  key: "creative",
+  label: "Mainstage Creative",
+  desc: "Diseño de iluminación, renders 3D y documentación técnica para shows que se pueden montar igual en cualquier escenario.",
+  href: "/presentacion/creative",
+  icon: Palette,
+  audience: "Artistas · Managers · Productores",
+};
+
 // Presentaciones generales: servicios y catálogo de inventario.
 export const PRESENTACIONES_GENERAL: PresentacionItem[] = [
   {

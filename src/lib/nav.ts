@@ -103,6 +103,7 @@ export const NAV: NavSection[] = [
           { key: "creative-proyectos", accessKey: "creative", label: "Proyectos", href: "/creative/proyectos" },
           { key: "creative-propuestas", accessKey: "creative", label: "Propuestas", href: "/creative/propuestas" },
           { key: "creative-servicios", accessKey: "creative", label: "Servicios", href: "/creative/servicios" },
+          { key: "creative-presentaciones", accessKey: "creative", label: "Presentaciones", href: "/creative/presentaciones" },
         ],
       },
     ],
@@ -384,6 +385,7 @@ export const NAV_CREATIVE: NavSection[] = [
     section: "Servicios",
     items: [
       { key: "creative-servicios", accessKey: "creative", label: "Servicios", href: "/creative/servicios", icon: BadgeDollarSign },
+      { key: "creative-presentaciones", accessKey: "creative", label: "Presentaciones", href: "/creative/presentaciones", icon: Presentation },
     ],
   },
 ];

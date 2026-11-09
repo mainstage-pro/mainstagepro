@@ -7,4 +7,5 @@ export const creativeTabs: ModuleNavTab[] = [
   { href: "/creative/proyectos", label: "Proyectos", accessKey: "creative" },
   { href: "/creative/propuestas", label: "Propuestas", accessKey: "creative" },
   { href: "/creative/servicios", label: "Servicios", accessKey: "creative" },
+  { href: "/creative/presentaciones", label: "Presentaciones", accessKey: "creative" },
 ];
