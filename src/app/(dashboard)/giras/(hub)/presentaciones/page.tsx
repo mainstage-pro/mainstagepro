@@ -1,3 +1,5 @@
+"use client";
+
 import PresentacionesGrupo from "@/app/(dashboard)/presentaciones/PresentacionesGrupo";
 import { PRESENTACION_LIVE } from "@/lib/presentaciones-catalogo";
 
