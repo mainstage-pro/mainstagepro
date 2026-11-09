@@ -277,7 +277,7 @@ function SlideVision() {
       rotulo="Visión"
       titulo={"Crecer rápido y sonar bien\nno deberían ser opuestos."}
       cuerpo={
-        "Ser el estándar de producción de la nueva generación de talento urbano en México — y acompañarla a cualquier escenario al que su música la lleve."
+        "Ser el estándar de producción de la nueva generación de talento emergente en México — y acompañarla a cualquier escenario al que su música la lleve."
       }
       foto={FOTO.vision}
       icono={Telescope}
@@ -364,7 +364,7 @@ function SlideParaQuien() {
         <SectionLabel delay={80}>A quién va dirigido</SectionLabel>
         <A delay={160}>
           <h2 style={{ fontSize: "clamp(1.8rem, 4vw, 3.2rem)", fontWeight: 800, letterSpacing: "-0.035em", color: W, marginBottom: 32, lineHeight: 1.1 }}>
-            Artistas urbanos emergentes, en la etapa que más se descuida.
+            Artistas emergentes, en la etapa que más se descuida.
           </h2>
         </A>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
