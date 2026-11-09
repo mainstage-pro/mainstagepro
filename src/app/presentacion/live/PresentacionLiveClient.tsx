@@ -162,10 +162,10 @@ function SlideDeclaracion({
   acento?: string;
 }) {
   return (
-    <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 clamp(40px, 8vw, 120px)", position: "relative", overflow: "hidden" }}>
+    <div style={{ height: "100%", display: "flex", padding: "0 clamp(40px, 8vw, 120px)", position: "relative", overflowY: "auto", overflowX: "hidden" }}>
       <Foto src={foto} opacity={0.08} />
       <RadialGlow intensity={0.045} color={acento} />
-      <div style={{ width: "100%", maxWidth: 940, textAlign: "center", position: "relative", zIndex: 1 }}>
+      <div style={{ width: "100%", maxWidth: 940, textAlign: "center", position: "relative", zIndex: 1, margin: "auto", padding: "32px 0" }}>
         <A delay={0} style={{ display: "flex", justifyContent: "center", marginBottom: 26 }}>
           <IconoMarco icono={icono} color={acento} />
         </A>
@@ -192,12 +192,12 @@ function SlideDeclaracion({
 
 function SlidePortada() {
   return (
-    <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+    <div style={{ height: "100%", display: "flex", position: "relative", overflowY: "auto", overflowX: "hidden" }}>
       <Foto src={FOTO.portada} opacity={0.12} />
       <GridTexture />
       <RadialGlow intensity={0.09} />
       <PulseRings />
-      <div style={{ textAlign: "center", position: "relative", zIndex: 1, padding: "0 40px" }}>
+      <div style={{ textAlign: "center", position: "relative", zIndex: 1, padding: "0 40px", margin: "auto" }}>
         <A delay={100} style={{ display: "flex", justifyContent: "center", marginBottom: 36 }}>
           <Image src="/logo-live.png" alt="Mainstage Live" width={132} height={132} style={{ width: "clamp(88px, 11vw, 132px)", height: "auto", borderRadius: 26 }} priority />
         </A>
@@ -301,10 +301,10 @@ function ServicioCard({ icono: Icono, nombre, desc, delay }: { icono: LucideIcon
 
 function SlideEstructura() {
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", padding: "clamp(36px, 5vh, 64px) clamp(48px, 8vw, 120px)", position: "relative", overflow: "hidden" }}>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", padding: "clamp(36px, 5vh, 64px) clamp(48px, 8vw, 120px)", position: "relative", overflowY: "auto", overflowX: "hidden" }}>
       <Foto src={FOTO.estructura} opacity={0.085} />
       <RadialGlow x={20} y={40} intensity={0.05} />
-      <div style={{ position: "relative", zIndex: 1 }}>
+      <div style={{ position: "relative", zIndex: 1, margin: "auto 0" }}>
         <SectionLabel delay={0}>Cómo se estructura nuestro servicio</SectionLabel>
         <A delay={80}>
           <h2 style={{ fontSize: "clamp(1.8rem, 4.2vw, 3.4rem)", fontWeight: 800, letterSpacing: "-0.035em", color: W, marginBottom: 14 }}>
@@ -354,10 +354,10 @@ function SlideParaQuien() {
     "Están por dar el salto a festivales o giras largas, y necesitan la producción lista antes de que llegue.",
   ];
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", padding: "clamp(36px, 5vh, 64px) clamp(48px, 8vw, 120px)", position: "relative", overflow: "hidden" }}>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", padding: "clamp(36px, 5vh, 64px) clamp(48px, 8vw, 120px)", position: "relative", overflowY: "auto", overflowX: "hidden" }}>
       <Foto src={FOTO.paraQuien} opacity={0.085} />
       <RadialGlow x={78} y={30} intensity={0.05} />
-      <div style={{ position: "relative", zIndex: 1, maxWidth: 1000 }}>
+      <div style={{ position: "relative", zIndex: 1, maxWidth: 1000, margin: "auto 0" }}>
         <A delay={0} style={{ marginBottom: 24 }}>
           <IconoMarco icono={Target} />
         </A>
@@ -397,10 +397,10 @@ function SlideProblemas() {
     "El salto a \"gira real\" expone todo esto al mismo tiempo.",
   ];
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", padding: "clamp(36px, 5vh, 64px) clamp(48px, 8vw, 120px)", position: "relative", overflow: "hidden" }}>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", padding: "clamp(36px, 5vh, 64px) clamp(48px, 8vw, 120px)", position: "relative", overflowY: "auto", overflowX: "hidden" }}>
       <Foto src={FOTO.problemas} opacity={0.08} />
       <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "radial-gradient(ellipse 70% 60% at 50% 50%, rgba(153,27,27,0.12) 0%, transparent 70%)" }} />
-      <div style={{ position: "relative", zIndex: 1, maxWidth: 940 }}>
+      <div style={{ position: "relative", zIndex: 1, maxWidth: 940, margin: "auto 0" }}>
         <A delay={0} style={{ marginBottom: 24 }}>
           <IconoMarco icono={AlertTriangle} color={RED} />
         </A>
@@ -434,10 +434,10 @@ function SlideSoluciones() {
     "Empiezan con un servicio y suman los otros cuando lo necesiten.",
   ];
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", padding: "clamp(36px, 5vh, 64px) clamp(48px, 8vw, 120px)", position: "relative", overflow: "hidden" }}>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", padding: "clamp(36px, 5vh, 64px) clamp(48px, 8vw, 120px)", position: "relative", overflowY: "auto", overflowX: "hidden" }}>
       <Foto src={FOTO.soluciones} opacity={0.085} />
       <RadialGlow x={25} y={60} intensity={0.05} color={GREEN} />
-      <div style={{ position: "relative", zIndex: 1, maxWidth: 940 }}>
+      <div style={{ position: "relative", zIndex: 1, maxWidth: 940, margin: "auto 0" }}>
         <A delay={0} style={{ marginBottom: 24 }}>
           <IconoMarco icono={CheckCircle2} color={GREEN} />
         </A>
@@ -476,10 +476,10 @@ function AlianzaCard({ logo, nombre, desc, delay }: { logo: string; nombre: stri
 
 function SlideAlianza() {
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", padding: "clamp(36px, 5vh, 64px) clamp(48px, 8vw, 120px)", position: "relative", overflow: "hidden" }}>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", padding: "clamp(36px, 5vh, 64px) clamp(48px, 8vw, 120px)", position: "relative", overflowY: "auto", overflowX: "hidden" }}>
       <Foto src={FOTO.alianza} opacity={0.08} />
       <RadialGlow x={80} y={70} intensity={0.045} />
-      <div style={{ position: "relative", zIndex: 1, maxWidth: 1040 }}>
+      <div style={{ position: "relative", zIndex: 1, maxWidth: 1040, margin: "auto 0" }}>
         <A delay={0} style={{ marginBottom: 24 }}>
           <IconoMarco icono={Link2} />
         </A>
@@ -526,10 +526,10 @@ function SlidePorQue() {
     { icono: ShieldCheck, t: "Cuando algo se tuerce en gira, tienes a alguien que ya lo resolvió antes." },
   ];
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", padding: "clamp(36px, 5vh, 64px) clamp(48px, 8vw, 120px)", position: "relative", overflow: "hidden" }}>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", padding: "clamp(36px, 5vh, 64px) clamp(48px, 8vw, 120px)", position: "relative", overflowY: "auto", overflowX: "hidden" }}>
       <Foto src={FOTO.porQue} opacity={0.085} />
       <RadialGlow x={30} y={35} intensity={0.05} />
-      <div style={{ position: "relative", zIndex: 1, maxWidth: 940 }}>
+      <div style={{ position: "relative", zIndex: 1, maxWidth: 940, margin: "auto 0" }}>
         <A delay={0} style={{ marginBottom: 24 }}>
           <IconoMarco icono={Rocket} />
         </A>
@@ -556,12 +556,12 @@ function SlidePorQue() {
 
 function SlideCierre() {
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", position: "relative", overflowY: "auto", overflowX: "hidden" }}>
       <Foto src={FOTO.cierre} opacity={0.11} />
       <GridTexture />
       <RadialGlow intensity={0.08} />
       <PulseRings />
-      <div style={{ textAlign: "center", position: "relative", zIndex: 1, padding: "0 40px" }}>
+      <div style={{ textAlign: "center", position: "relative", zIndex: 1, padding: "0 40px", margin: "auto" }}>
         <A delay={0}>
           <p style={{ color: W_A(0.42), fontSize: "clamp(0.95rem, 1.8vw, 1.3rem)", lineHeight: 1.7, maxWidth: 760, margin: "0 auto 40px" }}>
             La producción no debería ser lo que detiene tu crecimiento.
