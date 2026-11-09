@@ -167,7 +167,7 @@ function SlideDeclaracion({
 }) {
   return (
     <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 clamp(40px, 8vw, 120px)", position: "relative", overflow: "hidden" }}>
-      <Foto src={foto} opacity={0.055} />
+      <Foto src={foto} opacity={0.08} />
       <RadialGlow intensity={0.045} color={acento} />
       <div style={{ width: "100%", maxWidth: 940, textAlign: "center", position: "relative", zIndex: 1 }}>
         <A delay={0} style={{ display: "flex", justifyContent: "center", marginBottom: 26 }}>
@@ -197,7 +197,7 @@ function SlideDeclaracion({
 function SlidePortada() {
   return (
     <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
-      <Foto src={FOTO.portada} opacity={0.09} />
+      <Foto src={FOTO.portada} opacity={0.12} />
       <GridTexture />
       <RadialGlow intensity={0.09} />
       <PulseRings />
@@ -237,7 +237,7 @@ function SlideQuienesSomos() {
   return (
     <SlideDeclaracion
       rotulo="Quiénes somos"
-      titulo={"No vendemos una imagen bonita.\nVendemos el show que sí se puede montar."}
+      titulo={"No vendemos una imagen bonita.\nVendemos el show que se monta."}
       cuerpo={
         "Nacemos dentro de Grupo Mainstage, el mismo grupo que ya produce cientos de shows al año — y que después, con Mainstage Live, ejecuta en piso lo que aquí se diseña.\n\nNo somos un freelancer que entrega un render y desaparece. Somos el estudio de diseño que traduce la idea del show en algo que cualquier casa de producción puede montar igual, en cualquier venue."
       }
@@ -307,7 +307,7 @@ function NivelCard({ icono: Icono, nivel, rango, desc, delay }: { icono: LucideI
 function SlideEstructura() {
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", padding: "clamp(36px, 5vh, 64px) clamp(48px, 8vw, 120px)", position: "relative", overflow: "hidden" }}>
-      <Foto src={FOTO.estructura} opacity={0.06} />
+      <Foto src={FOTO.estructura} opacity={0.085} />
       <RadialGlow x={20} y={40} intensity={0.05} />
       <div style={{ position: "relative", zIndex: 1 }}>
         <SectionLabel delay={0}>Qué hacemos</SectionLabel>
@@ -363,7 +363,7 @@ function SlideProceso() {
   ];
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", padding: "clamp(36px, 5vh, 64px) clamp(48px, 8vw, 120px)", position: "relative", overflow: "hidden" }}>
-      <Foto src={FOTO.proceso} opacity={0.055} />
+      <Foto src={FOTO.proceso} opacity={0.08} />
       <RadialGlow x={75} y={55} intensity={0.05} />
       <div style={{ position: "relative", zIndex: 1, maxWidth: 940 }}>
         <A delay={0} style={{ marginBottom: 24 }}>
@@ -372,7 +372,7 @@ function SlideProceso() {
         <SectionLabel delay={80}>Cómo trabajamos</SectionLabel>
         <A delay={160}>
           <h2 style={{ fontSize: "clamp(1.8rem, 4.2vw, 3.4rem)", fontWeight: 800, letterSpacing: "-0.035em", color: W, marginBottom: 32, lineHeight: 1.1 }}>
-            De tu rider a un show que se puede montar, en días — no semanas.
+            De tu rider a un show montable, en días — no semanas.
           </h2>
         </A>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -401,7 +401,7 @@ function SlideParaQuien() {
   ];
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", padding: "clamp(36px, 5vh, 64px) clamp(48px, 8vw, 120px)", position: "relative", overflow: "hidden" }}>
-      <Foto src={FOTO.paraQuien} opacity={0.06} />
+      <Foto src={FOTO.paraQuien} opacity={0.085} />
       <RadialGlow x={78} y={30} intensity={0.05} />
       <div style={{ position: "relative", zIndex: 1, maxWidth: 1000 }}>
         <A delay={0} style={{ marginBottom: 24 }}>
@@ -410,7 +410,7 @@ function SlideParaQuien() {
         <SectionLabel delay={80}>A quién va dirigido</SectionLabel>
         <A delay={160}>
           <h2 style={{ fontSize: "clamp(1.8rem, 4vw, 3.2rem)", fontWeight: 800, letterSpacing: "-0.035em", color: W, marginBottom: 32, lineHeight: 1.1 }}>
-            Artistas y producciones que necesitan ver el show antes de poder venderlo o presupuestarlo.
+            Artistas y producciones que necesitan ver el show antes de venderlo.
           </h2>
         </A>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -439,7 +439,7 @@ function SlideProblemas() {
   ];
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", padding: "clamp(36px, 5vh, 64px) clamp(48px, 8vw, 120px)", position: "relative", overflow: "hidden" }}>
-      <Foto src={FOTO.problemas} opacity={0.055} />
+      <Foto src={FOTO.problemas} opacity={0.08} />
       <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "radial-gradient(ellipse 70% 60% at 50% 50%, rgba(153,27,27,0.12) 0%, transparent 70%)" }} />
       <div style={{ position: "relative", zIndex: 1, maxWidth: 940 }}>
         <A delay={0} style={{ marginBottom: 24 }}>
@@ -448,7 +448,7 @@ function SlideProblemas() {
         <SectionLabel delay={80} color={RED}>Los problemas que detectamos</SectionLabel>
         <A delay={160}>
           <h2 style={{ fontSize: "clamp(1.8rem, 4.2vw, 3.4rem)", fontWeight: 800, letterSpacing: "-0.035em", color: W, marginBottom: 32 }}>
-            Lo que vemos siempre, cuando el diseño se queda solo en la cabeza de alguien.
+            Lo que vemos cuando el diseño se queda solo en una cabeza.
           </h2>
         </A>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -476,7 +476,7 @@ function SlideSoluciones() {
   ];
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", padding: "clamp(36px, 5vh, 64px) clamp(48px, 8vw, 120px)", position: "relative", overflow: "hidden" }}>
-      <Foto src={FOTO.soluciones} opacity={0.06} />
+      <Foto src={FOTO.soluciones} opacity={0.085} />
       <RadialGlow x={25} y={60} intensity={0.05} color={GREEN} />
       <div style={{ position: "relative", zIndex: 1, maxWidth: 940 }}>
         <A delay={0} style={{ marginBottom: 24 }}>
@@ -485,7 +485,7 @@ function SlideSoluciones() {
         <SectionLabel delay={80} color={GREEN}>Cómo lo resolvemos</SectionLabel>
         <A delay={160}>
           <h2 style={{ fontSize: "clamp(1.8rem, 4.2vw, 3.4rem)", fontWeight: 800, letterSpacing: "-0.035em", color: W, marginBottom: 32 }}>
-            Un diseño que se puede mostrar, vender y montar — en ese orden.
+            Un diseño que se muestra, se vende y se monta.
           </h2>
         </A>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -518,7 +518,7 @@ function AlianzaCard({ logo, nombre, desc, delay }: { logo: string; nombre: stri
 function SlideAlianza() {
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", padding: "clamp(36px, 5vh, 64px) clamp(48px, 8vw, 120px)", position: "relative", overflow: "hidden" }}>
-      <Foto src={FOTO.alianza} opacity={0.055} />
+      <Foto src={FOTO.alianza} opacity={0.08} />
       <RadialGlow x={80} y={70} intensity={0.045} />
       <div style={{ position: "relative", zIndex: 1, maxWidth: 1040 }}>
         <A delay={0} style={{ marginBottom: 24 }}>
@@ -568,7 +568,7 @@ function SlidePorQue() {
   ];
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", padding: "clamp(36px, 5vh, 64px) clamp(48px, 8vw, 120px)", position: "relative", overflow: "hidden" }}>
-      <Foto src={FOTO.porQue} opacity={0.06} />
+      <Foto src={FOTO.porQue} opacity={0.085} />
       <RadialGlow x={30} y={35} intensity={0.05} />
       <div style={{ position: "relative", zIndex: 1, maxWidth: 940 }}>
         <A delay={0} style={{ marginBottom: 24 }}>
@@ -598,7 +598,7 @@ function SlidePorQue() {
 function SlideCierre() {
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
-      <Foto src={FOTO.cierre} opacity={0.08} />
+      <Foto src={FOTO.cierre} opacity={0.11} />
       <GridTexture />
       <RadialGlow intensity={0.08} />
       <PulseRings />
@@ -709,6 +709,7 @@ export default function PresentacionCreativeClient() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        h1, h2 { text-wrap: balance; }
         @keyframes mspFadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes mspPulse { 0% { transform: scale(1); opacity: 0.45; } 100% { transform: scale(2.7); opacity: 0; } }
         button { font-family: inherit; }
