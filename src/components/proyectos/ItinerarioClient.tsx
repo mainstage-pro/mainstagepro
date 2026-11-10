@@ -97,6 +97,18 @@ function FechaBloqueInput({ valor, onGuardar }: { valor: string; onGuardar: (v: 
   );
 }
 
+/** Fecha propia de un renglón (Montaje/Desmontaje); limpiarla la revierte a la fecha del bloque. */
+function FechaRenglonInput({ valor, onGuardar }: { valor: string; onGuardar: (v: string) => void }) {
+  return (
+    <input
+      type="date"
+      value={valor}
+      onChange={(e) => onGuardar(e.target.value)}
+      className="w-[7.5rem] shrink-0 bg-transparent text-gray-500 text-[11px] border border-transparent rounded px-1 py-0.5 focus:border-[#B3985B]/40 focus:bg-[#1a1a1a] focus:text-gray-300 outline-none [color-scheme:dark] hover:border-[#2a2a2a]"
+    />
+  );
+}
+
 const ETIQUETA_CATEGORIA: Partial<Record<CategoriaCheckpoint, string>> = {
   MONTAJE: "Montaje",
   DESMONTAJE: "Desmontaje",
@@ -122,6 +134,7 @@ function TarjetaEvento({
   onHoraGuardar,
   onNotaCheckpointGuardar,
   onFechaBloqueGuardar,
+  onFechaCheckpointGuardar,
 }: {
   grupo: GrupoEvento;
   color: { accent: string; bg: string };
@@ -131,6 +144,7 @@ function TarjetaEvento({
   onHoraGuardar: (campo: CampoEditableItinerario, fecha: string, valor: string) => void;
   onNotaCheckpointGuardar: (campo: CampoEditableItinerario, valor: string) => void;
   onFechaBloqueGuardar: (categoria: "MONTAJE" | "DESMONTAJE", valor: string) => void;
+  onFechaCheckpointGuardar: (campo: CampoEditableItinerario, valor: string) => void;
 }) {
   const grupos = useMemo(() => agruparPorCategoria(grupo.checkpoints), [grupo.checkpoints]);
   return (
@@ -188,6 +202,12 @@ function TarjetaEvento({
                   {c.etiqueta}
                   {c.diaLabel ? <span className="text-gray-600"> · {c.diaLabel}</span> : null}
                 </span>
+                {c.campo && g.categoria !== "EVENTO" ? (
+                  <FechaRenglonInput
+                    valor={c.fecha}
+                    onGuardar={(v) => onFechaCheckpointGuardar(c.campo!, v)}
+                  />
+                ) : null}
                 {c.campo ? (
                   <NotaInput
                     valor={c.notaEditable ?? ""}
@@ -317,6 +337,23 @@ export default function ItinerarioClient() {
     }
   }
 
+  // Fecha propia de un renglón de Montaje/Desmontaje (ej. llamado la noche antes);
+  // vacío la revierte a la fecha del bloque. Se recarga porque puede mover el renglón a otro día.
+  async function guardarFechaCheckpoint(proyectoId: string, campo: CampoEditableItinerario, valor: string) {
+    try {
+      const r = await fetch("/api/proyectos/itinerario", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ proyectoId, fechaRenglon: campo, valor }),
+      });
+      if (!r.ok) throw new Error();
+      success("Fecha guardada");
+      await cargar({ silencioso: true });
+    } catch {
+      error("No se pudo guardar la fecha");
+    }
+  }
+
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-4">
@@ -396,6 +433,7 @@ export default function ItinerarioClient() {
                     onHoraGuardar={(campo, fecha, valor) => guardarHora(g.proyectoId, campo, fecha, valor)}
                     onNotaCheckpointGuardar={(campo, valor) => guardarNotaCheckpoint(g.proyectoId, campo, valor)}
                     onFechaBloqueGuardar={(categoria, valor) => guardarFechaBloque(g.proyectoId, categoria, valor)}
+                    onFechaCheckpointGuardar={(campo, valor) => guardarFechaCheckpoint(g.proyectoId, campo, valor)}
                   />
                 ))}
               </div>

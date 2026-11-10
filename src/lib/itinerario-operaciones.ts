@@ -67,6 +67,22 @@ export function parseNotasItinerario(json: string | null | undefined): Partial<R
   }
 }
 
+/** Parsea el JSON de fechasItinerario a un mapa { [campo]: "YYYY-MM-DD" } — fecha propia de un checkpoint, si difiere del bloque. */
+export function parseFechasItinerario(json: string | null | undefined): Partial<Record<CampoEditableItinerario, string>> {
+  if (!json) return {};
+  try {
+    const obj = JSON.parse(json);
+    if (!obj || typeof obj !== "object" || Array.isArray(obj)) return {};
+    const out: Partial<Record<CampoEditableItinerario, string>> = {};
+    for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+      if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) out[k as CampoEditableItinerario] = v;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
 function minutos(hhmm: string | null): number | null {
   if (!hhmm) return null;
   const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm.trim());
@@ -151,6 +167,8 @@ export function checkpointsDeProyecto(p: ProyectoCronologia, bloques: BloqueTiem
   const dias = diasEvento(p.fechaEvento, p.fechasEvento);
   const h = horariosResumen(p);
   const notas = parseNotasItinerario(p.notasItinerario);
+  const fechas = parseFechasItinerario(p.fechasItinerario);
+  const fechaDe = (campo: CampoEditableItinerario, def: string) => fechas[campo] ?? def;
   const out: ItinerarioCheckpoint[] = [];
 
   const llamadoFecha = p.llamadoBodega ? fechaISOaDia(p.llamadoBodega) : null;
@@ -159,30 +177,30 @@ export function checkpointsDeProyecto(p: ProyectoCronologia, bloques: BloqueTiem
   const fechaMontaje = montajeDiaAparte ? montajeFecha! : dias[0];
 
   const bloqueMontaje = [
-    checkpoint(fechaMontaje, "MONTAJE", "Llamado", 0, {
+    checkpoint(fechaDe("llamado", fechaMontaje), "MONTAJE", "Llamado", 0, {
       hora: h.llamadoBodega,
       nota: p.lugarLlamado,
       notaEditable: notas.llamado,
       campo: "llamado",
     }),
-    checkpoint(fechaMontaje, "MONTAJE", "Salida de bodega", 1, {
+    checkpoint(fechaDe("salidaBodega", fechaMontaje), "MONTAJE", "Salida de bodega", 1, {
       hora: h.salidaBodega,
       nota: p.puntoSalidaBodega,
       notaEditable: notas.salidaBodega,
       campo: "salidaBodega",
     }),
-    checkpoint(fechaMontaje, "MONTAJE", "Llegada al venue", 2, {
+    checkpoint(fechaDe("llegadaVenue", fechaMontaje), "MONTAJE", "Llegada al venue", 2, {
       hora: h.llegadaVenue,
       nota: p.lugarEvento,
       notaEditable: notas.llegadaVenue,
       campo: "llegadaVenue",
     }),
-    checkpoint(fechaMontaje, "MONTAJE", "Inicio de montaje", 3, {
+    checkpoint(fechaDe("inicioMontaje", fechaMontaje), "MONTAJE", "Inicio de montaje", 3, {
       hora: h.inicioMontaje,
       notaEditable: notas.inicioMontaje,
       campo: "inicioMontaje",
     }),
-    checkpoint(fechaMontaje, "MONTAJE", "Fin de montaje (aprox.)", 4, {
+    checkpoint(fechaDe("finMontaje", fechaMontaje), "MONTAJE", "Fin de montaje (aprox.)", 4, {
       hora: h.finMontaje,
       notaEditable: notas.finMontaje,
       campo: "finMontaje",
@@ -238,12 +256,12 @@ export function checkpointsDeProyecto(p: ProyectoCronologia, bloques: BloqueTiem
     p.desmontajeDiaAparte === true && !!desmontajeFecha && desmontajeFecha !== dias[dias.length - 1];
   const fechaDesmontaje = desmontajeDiaAparte ? desmontajeFecha! : dias[dias.length - 1];
   const bloqueDesmontaje = [
-    checkpoint(fechaDesmontaje, "DESMONTAJE", "Inicio de desmontaje", 0, {
+    checkpoint(fechaDe("inicioDesmontaje", fechaDesmontaje), "DESMONTAJE", "Inicio de desmontaje", 0, {
       hora: h.inicioDesmontaje,
       notaEditable: notas.inicioDesmontaje,
       campo: "inicioDesmontaje",
     }),
-    checkpoint(fechaDesmontaje, "DESMONTAJE", "Fin de desmontaje (aprox.)", 1, {
+    checkpoint(fechaDe("finDesmontaje", fechaDesmontaje), "DESMONTAJE", "Fin de desmontaje (aprox.)", 1, {
       hora: h.finDesmontaje,
       notaEditable: notas.finDesmontaje,
       campo: "finDesmontaje",

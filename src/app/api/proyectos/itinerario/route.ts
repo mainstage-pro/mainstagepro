@@ -29,6 +29,13 @@ const CAMPOS_EDITABLES: CampoEditableItinerario[] = [
   "finDesmontaje",
 ];
 
+// Los checkpoints de Montaje/Desmontaje pueden tener su propia fecha (ej. llamado la noche
+// antes); los de Evento NO, porque esa fecha es la fecha real del evento (fechaEvento/fechasEvento),
+// autoritativa en todo el resto de la app — moverla desde aquí crearía una inconsistencia.
+const CAMPOS_FECHA_INDIVIDUAL: CampoEditableItinerario[] = CAMPOS_EDITABLES.filter(
+  (c) => c !== "inicioEvento" && c !== "finEvento",
+);
+
 function minutosDe(hhmm: string | null | undefined): number | null {
   if (!hhmm) return null;
   const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm.trim());
@@ -72,6 +79,7 @@ export const SELECT_ITINERARIO = {
   lugarLlamado: true,
   puntoSalidaBodega: true,
   notasItinerario: true,
+  fechasItinerario: true,
   cliente: { select: { nombre: true } },
   encargado: { select: { name: true } },
   personal: {
@@ -225,6 +233,34 @@ export async function PATCH(req: NextRequest) {
     await prisma.proyecto.update({
       where: { id: proyectoId },
       data: { notasItinerario: Object.keys(notas).length ? JSON.stringify(notas) : null },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  // Fecha propia de un checkpoint de Montaje/Desmontaje (ej. llamado la noche antes);
+  // vacío la revierte a la fecha del bloque (fechaMontaje/fechaDesmontaje).
+  if ("fechaRenglon" in body) {
+    const { fechaRenglon, valor } = body as { fechaRenglon?: string; valor?: string | null };
+    if (!fechaRenglon || !CAMPOS_FECHA_INDIVIDUAL.includes(fechaRenglon as CampoEditableItinerario)) {
+      return NextResponse.json({ error: "Campo no editable" }, { status: 400 });
+    }
+    const v = (valor ?? "").trim();
+    if (v && !/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+      return NextResponse.json({ error: "Fecha inválida" }, { status: 400 });
+    }
+    const p = await prisma.proyecto.findUnique({ where: { id: proyectoId }, select: { fechasItinerario: true } });
+    if (!p) return NextResponse.json({ error: "Proyecto no encontrado" }, { status: 404 });
+    let fechas: Record<string, string> = {};
+    try {
+      fechas = p.fechasItinerario ? JSON.parse(p.fechasItinerario) : {};
+    } catch {
+      fechas = {};
+    }
+    if (v) fechas[fechaRenglon] = v;
+    else delete fechas[fechaRenglon];
+    await prisma.proyecto.update({
+      where: { id: proyectoId },
+      data: { fechasItinerario: Object.keys(fechas).length ? JSON.stringify(fechas) : null },
     });
     return NextResponse.json({ ok: true });
   }

@@ -128,6 +128,8 @@ export type ProyectoCronologia = {
   lugarEvento: string | null;
   /** JSON: nota libre por checkpoint del Itinerario de operaciones, keyed por CampoEditableItinerario. */
   notasItinerario?: string | null;
+  /** JSON: fecha propia por checkpoint del Itinerario (si difiere de la fecha del bloque), keyed por CampoEditableItinerario. */
+  fechasItinerario?: string | null;
 };
 
 /** "HH:MM" (UTC, 24h canónico) desde un DateTime; null si no hay. */

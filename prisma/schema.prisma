@@ -790,6 +790,7 @@ model Proyecto {
   notasPortal              String? // Mensaje visible al cliente en su portal
   notasOperativas          String?   @db.Text // Notas libres del Itinerario de operaciones (montaje/evento/desmontaje)
   notasItinerario          String?   @db.Text // JSON: { [campo: CampoEditableItinerario]: string } — nota por checkpoint del Itinerario
+  fechasItinerario         String?   @db.Text // JSON: { [campo: CampoEditableItinerario]: "YYYY-MM-DD" } — fecha propia por checkpoint (si difiere del bloque)
   responsables             String? // JSON: { produccion, logistica, finanzas, marketing } → { userId, nombre }
   proveedoresRenta         String? // JSON: [{ id, nombre, contacto, equipos: string[] }] — proveedores de subarriendo manuales
   equiposRiderExtra        String? // JSON: [{ id, descripcion, cantidad, notas?, completado }] — equipos fuera de cotización
