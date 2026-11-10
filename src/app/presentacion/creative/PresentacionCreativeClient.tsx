@@ -133,10 +133,24 @@ function Foto({ src, opacity = 0.05 }: { src: string; opacity?: number }) {
 
 function SectionLabel({ children, delay = 0, center = false, color = G }: { children: React.ReactNode; delay?: number; center?: boolean; color?: string }) {
   return (
-    <A delay={delay}>
-      <p style={{ color, fontSize: "clamp(12px, 1.3vw, 16px)", fontWeight: 500, letterSpacing: "0.28em", textTransform: "uppercase", marginBottom: 20, textAlign: center ? "center" : "left" }}>
+    <A delay={delay} style={{ display: "flex", justifyContent: center ? "center" : "flex-start", marginBottom: 26 }}>
+      <span
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          color,
+          fontSize: "clamp(12px, 1.2vw, 14px)",
+          fontWeight: 700,
+          letterSpacing: "0.16em",
+          textTransform: "uppercase",
+          padding: "7px 16px",
+          borderRadius: 5,
+          border: `1px solid ${color}70`,
+          background: `${color}12`,
+        }}
+      >
         {children}
-      </p>
+      </span>
     </A>
   );
 }
@@ -175,7 +189,7 @@ function SlideDeclaracion({
         </A>
         <SectionLabel delay={80} center color={acento}>{rotulo}</SectionLabel>
         <A delay={180}>
-          <h1 style={{ fontSize: "clamp(2.2rem, 5vw, 4.6rem)", fontWeight: 800, lineHeight: 1.02, letterSpacing: "-0.04em", color: W, marginBottom: 32 }}>
+          <h1 style={{ fontSize: "clamp(2rem, 4.4vw, 4rem)", fontWeight: 800, lineHeight: 1.05, letterSpacing: "-0.04em", color: W, marginBottom: 32 }}>
             {titulo}
           </h1>
         </A>
@@ -239,7 +253,7 @@ function SlideQuienesSomos() {
       rotulo="Quiénes somos"
       titulo={"No vendemos una imagen bonita.\nVendemos el show que se monta."}
       cuerpo={
-        "Nacemos dentro de Grupo Mainstage, el mismo grupo que ya produce cientos de shows al año — y que después, con Mainstage Live, ejecuta en piso lo que aquí se diseña.\n\nNo somos un freelancer que entrega un render y desaparece. Somos el estudio de diseño que traduce la idea del show en algo que cualquier casa de producción puede montar igual, en cualquier venue."
+        "Nacimos dentro de Grupo Mainstage, que ya produce cientos de shows al año — y que con Mainstage Live, ejecuta en piso lo que aquí se diseña. Entregamos el render junto con el patch, el plot y el fixture schedule: todo lo que un montaje real necesita."
       }
       foto={FOTO.quienesSomos}
       icono={Eye}
@@ -251,9 +265,9 @@ function SlideQueNosMueve() {
   return (
     <SlideDeclaracion
       rotulo="Qué nos mueve"
-      titulo={"Que lo que se diseñó en pantalla\nsea lo que se ve en el escenario."}
+      titulo={"Que el render en pantalla\nsea el show real en el escenario."}
       cuerpo={
-        "Lo vemos seguido: un render espectacular que nadie puede ejecutar, porque no trae patch, ni plot, ni fixture schedule — solo una imagen bonita que se queda en eso.\n\nUn diseño que no se puede montar no es diseño, es decoración digital. Nuestro trabajo empieza donde termina la imagen: en la documentación que hace que el show exista de verdad."
+        "Vemos renders espectaculares que nadie puede montar porque no traen patch, plot ni fixture schedule. Un diseño que no se puede ejecutar no es diseño — es una imagen bonita."
       }
       foto={FOTO.queNosMueve}
       icono={Lightbulb}
@@ -267,7 +281,7 @@ function SlideMision() {
       rotulo="Misión"
       titulo="Que cualquier show se vea tan grande como se diseñó."
       cuerpo={
-        "Diseñar la identidad visual de cada show y entregarla lista para ejecutarse — con el render, el patch y los planos que necesita cualquier equipo técnico para montarlo igual, sin importar el venue."
+        "Entregamos el render, el patch y los planos de cada show, listos para montarse igual en cualquier venue."
       }
       foto={FOTO.mision}
       icono={Crosshair}
@@ -281,7 +295,7 @@ function SlideVision() {
       rotulo="Visión"
       titulo={"Ser el estándar de diseño técnico\nde la nueva generación de shows en México."}
       cuerpo={
-        "Que ningún artista tenga que elegir entre un show que se ve increíble y un show que se puede montar de verdad. Las dos cosas se diseñan juntas, o no se diseñan."
+        "Que ningún show tenga que elegir entre verse increíble y poder montarse de verdad. Las dos cosas se diseñan juntas."
       }
       foto={FOTO.vision}
       icono={Telescope}
@@ -312,13 +326,13 @@ function SlideEstructura() {
       <div style={{ position: "relative", zIndex: 1, margin: "auto 0" }}>
         <SectionLabel delay={0}>Qué hacemos</SectionLabel>
         <A delay={80}>
-          <h2 style={{ fontSize: "clamp(1.8rem, 4.2vw, 3.4rem)", fontWeight: 800, letterSpacing: "-0.035em", color: W, marginBottom: 14 }}>
+          <h2 style={{ fontSize: "clamp(1.6rem, 3.6vw, 2.9rem)", fontWeight: 800, letterSpacing: "-0.035em", color: W, marginBottom: 14 }}>
             Tres niveles. Mismo estándar. Mismo tiempo de respuesta.
           </h2>
         </A>
         <A delay={160}>
           <p style={{ color: W_A(0.45), fontSize: "clamp(0.85rem, 1.2vw, 1.05rem)", lineHeight: 1.7, maxWidth: 680, marginBottom: 36 }}>
-            El nivel lo define la complejidad del rig, no el tipo de evento. Documentación técnica y diseño conceptual van incluidos siempre, en los tres.
+            El nivel depende del rig, no del tipo de evento. Documentación técnica incluida siempre, en los tres.
           </p>
         </A>
         <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 22 }}>
@@ -333,7 +347,7 @@ function SlideEstructura() {
             icono={Layers}
             nivel="AA"
             rango="31 a 60 fixtures"
-            desc="Entrega en 2 días hábiles. El punto medio: giras cortas y producciones con más de un elemento escénico."
+            desc="Entrega en 2 días hábiles. Giras cortas y rigs con más de un elemento escénico."
             delay={330}
           />
           <NivelCard
@@ -357,7 +371,7 @@ function SlideEstructura() {
 function SlideProceso() {
   const items = [
     { t: "Brief", d: "Nos mandas el rider, las referencias y el rig que tienes en mente." },
-    { t: "Render + documentación", d: "Entregamos la imagen del show junto con patch, plot y fixture schedule — nunca uno sin el otro." },
+    { t: "Render + documentación", d: "Imagen del show, patch, plot y fixture schedule — siempre juntos, nunca por separado." },
     { t: "Revisiones", d: "3 rondas de ajustes incluidas en cualquier nivel, sin letra chica." },
     { t: "Entrega ejecutable", d: "El archivo final que cualquier casa de producción puede montar, en el venue que sea." },
   ];
@@ -371,7 +385,7 @@ function SlideProceso() {
         </A>
         <SectionLabel delay={80}>Cómo trabajamos</SectionLabel>
         <A delay={160}>
-          <h2 style={{ fontSize: "clamp(1.8rem, 4.2vw, 3.4rem)", fontWeight: 800, letterSpacing: "-0.035em", color: W, marginBottom: 32, lineHeight: 1.1 }}>
+          <h2 style={{ fontSize: "clamp(1.6rem, 3.6vw, 2.9rem)", fontWeight: 800, letterSpacing: "-0.035em", color: W, marginBottom: 32, lineHeight: 1.1 }}>
             De tu rider a un show montable, en días — no semanas.
           </h2>
         </A>
@@ -394,10 +408,10 @@ function SlideProceso() {
 
 function SlideParaQuien() {
   const items = [
-    "Van a presentar el show a un promotor o festival y necesitan mostrarlo, no solo describirlo.",
-    "Tienen el rider técnico, pero nadie ha traducido eso en algo visual y ejecutable.",
-    "Van a tocar en distintos venues y necesitan que el diseño se monte igual en todos.",
-    "Están por dar el salto de un show improvisado a uno con identidad visual propia.",
+    "Van a presentarle el show a un promotor o festival y necesitan mostrarlo, no describirlo.",
+    "Tienen el rider, pero nadie lo tradujo en algo visual y ejecutable.",
+    "Tocan en distintos venues y necesitan que el diseño se monte igual en todos.",
+    "Van a dejar el show improvisado por uno con identidad visual propia.",
   ];
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", padding: "clamp(36px, 5vh, 64px) clamp(48px, 8vw, 120px)", position: "relative", overflowY: "auto", overflowX: "hidden" }}>
@@ -409,8 +423,8 @@ function SlideParaQuien() {
         </A>
         <SectionLabel delay={80}>A quién va dirigido</SectionLabel>
         <A delay={160}>
-          <h2 style={{ fontSize: "clamp(1.8rem, 4vw, 3.2rem)", fontWeight: 800, letterSpacing: "-0.035em", color: W, marginBottom: 32, lineHeight: 1.1 }}>
-            Artistas y producciones que necesitan ver el show antes de venderlo.
+          <h2 style={{ fontSize: "clamp(1.6rem, 3.6vw, 2.8rem)", fontWeight: 800, letterSpacing: "-0.035em", color: W, marginBottom: 32, lineHeight: 1.1 }}>
+            Shows que hay que mostrar antes de poder venderlos.
           </h2>
         </A>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -432,7 +446,7 @@ function SlideProblemas() {
   const items = [
     "El diseño vive en la cabeza del LD, no en un documento que otros puedan usar.",
     "El render se ve increíble — y nadie puede montarlo con eso.",
-    "Cada venue interpreta la misma idea distinto, porque no hay un plot que seguir.",
+    "Cada venue interpreta la idea distinto porque no hay un plot que seguir.",
     "Los cambios de último minuto no quedan registrados en ninguna versión.",
     "No hay fixture schedule ni patch — se improvisa el día del montaje.",
     "Vender un show sin poder mostrarlo primero, a ciegas.",
@@ -447,7 +461,7 @@ function SlideProblemas() {
         </A>
         <SectionLabel delay={80} color={RED}>Los problemas que detectamos</SectionLabel>
         <A delay={160}>
-          <h2 style={{ fontSize: "clamp(1.8rem, 4.2vw, 3.4rem)", fontWeight: 800, letterSpacing: "-0.035em", color: W, marginBottom: 32 }}>
+          <h2 style={{ fontSize: "clamp(1.6rem, 3.6vw, 2.9rem)", fontWeight: 800, letterSpacing: "-0.035em", color: W, marginBottom: 32 }}>
             Lo que vemos cuando el diseño se queda solo en una cabeza.
           </h2>
         </A>
@@ -484,7 +498,7 @@ function SlideSoluciones() {
         </A>
         <SectionLabel delay={80} color={GREEN}>Cómo lo resolvemos</SectionLabel>
         <A delay={160}>
-          <h2 style={{ fontSize: "clamp(1.8rem, 4.2vw, 3.4rem)", fontWeight: 800, letterSpacing: "-0.035em", color: W, marginBottom: 32 }}>
+          <h2 style={{ fontSize: "clamp(1.6rem, 3.6vw, 2.9rem)", fontWeight: 800, letterSpacing: "-0.035em", color: W, marginBottom: 32 }}>
             Un diseño que se muestra, se vende y se monta.
           </h2>
         </A>
@@ -526,26 +540,26 @@ function SlideAlianza() {
         </A>
         <SectionLabel delay={80}>Por qué trabajar con nosotros</SectionLabel>
         <A delay={160}>
-          <h2 style={{ fontSize: "clamp(1.8rem, 4.2vw, 3.4rem)", fontWeight: 800, letterSpacing: "-0.035em", color: W, marginBottom: 16, lineHeight: 1.08 }}>
-            No llegamos solos. Llegamos con todo Grupo Mainstage detrás.
+          <h2 style={{ fontSize: "clamp(1.6rem, 3.6vw, 2.9rem)", fontWeight: 800, letterSpacing: "-0.035em", color: W, marginBottom: 16, lineHeight: 1.08 }}>
+            Grupo Mainstage está detrás de cada render.
           </h2>
         </A>
         <A delay={240}>
           <p style={{ color: W_A(0.42), fontSize: "clamp(0.85rem, 1.2vw, 1.02rem)", lineHeight: 1.75, maxWidth: 760, marginBottom: 32 }}>
-            Creative es una de tres unidades del mismo grupo — eso nos permite ofrecer algo que ningún estudio de render independiente puede ofrecer solo.
+            Creative es una de tres unidades de Grupo Mainstage — el render nace con el inventario real detrás.
           </p>
         </A>
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 20 }}>
           <AlianzaCard
             logo="/logo-icon.png"
             nombre="Mainstage Pro"
-            desc="Equipo técnico real detrás de cada render: lo que se diseña existe en el inventario que se renta para montarlo."
+            desc="El inventario real detrás de cada render — lo que diseñamos existe y se puede rentar."
             delay={340}
           />
           <AlianzaCard
             logo="/logo-live.png"
             nombre="Mainstage Live"
-            desc="Creative diseña, y Live lo ejecuta en piso, fecha tras fecha. Cero fricción entre lo que se diseñó y lo que pasa la noche del show."
+            desc="Creative diseña, Live lo ejecuta en piso, fecha tras fecha."
             delay={410}
           />
         </div>
@@ -561,7 +575,7 @@ function SlideAlianza() {
 
 function SlidePorQue() {
   const items = [
-    { icono: Workflow, t: "Entendemos lo que es ejecutable porque el mismo grupo produce shows en vivo todos los fines de semana." },
+    { icono: Workflow, t: "Sabemos qué es ejecutable: el mismo grupo produce shows en vivo cada fin de semana." },
     { icono: Clock, t: "SLA claro desde el día uno: 1, 2 o 3 días hábiles según el rig, sin sorpresas." },
     { icono: RefreshCw, t: "Revisiones incluidas, no un lujo que se cobra aparte a la primera corrección." },
     { icono: ShieldCheck, t: "Documentación técnica que se queda contigo, show tras show — no un archivo que se pierde." },
@@ -574,10 +588,10 @@ function SlidePorQue() {
         <A delay={0} style={{ marginBottom: 24 }}>
           <IconoMarco icono={Rocket} />
         </A>
-        <SectionLabel delay={80}>Por qué hacernos parte de tu equipo</SectionLabel>
+        <SectionLabel delay={80}>Por qué Mainstage Creative</SectionLabel>
         <A delay={160}>
-          <h2 style={{ fontSize: "clamp(1.8rem, 4.2vw, 3.4rem)", fontWeight: 800, letterSpacing: "-0.035em", color: W, marginBottom: 32, lineHeight: 1.1 }}>
-            No entregamos una imagen. Entregamos un show listo para montarse.
+          <h2 style={{ fontSize: "clamp(1.6rem, 3.6vw, 2.9rem)", fontWeight: 800, letterSpacing: "-0.035em", color: W, marginBottom: 32, lineHeight: 1.1 }}>
+            Entregamos un show montable, no solo una imagen.
           </h2>
         </A>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
