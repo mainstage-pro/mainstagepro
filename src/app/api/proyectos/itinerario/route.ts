@@ -71,6 +71,7 @@ export const SELECT_ITINERARIO = {
   llamadoBodega: true,
   lugarLlamado: true,
   puntoSalidaBodega: true,
+  notasItinerario: true,
   cliente: { select: { nombre: true } },
   encargado: { select: { name: true } },
   personal: {
@@ -201,6 +202,62 @@ export async function PATCH(req: NextRequest) {
     }
 
     await prisma.proyecto.update({ where: { id: proyectoId }, data });
+    return NextResponse.json({ ok: true });
+  }
+
+  // Nota libre por checkpoint (distinta de `notasOperativas`, que es una sola por evento).
+  if ("notaCampo" in body) {
+    const { notaCampo, valor } = body as { notaCampo?: string; valor?: string | null };
+    if (!notaCampo || !CAMPOS_EDITABLES.includes(notaCampo as CampoEditableItinerario)) {
+      return NextResponse.json({ error: "Campo no editable" }, { status: 400 });
+    }
+    const p = await prisma.proyecto.findUnique({ where: { id: proyectoId }, select: { notasItinerario: true } });
+    if (!p) return NextResponse.json({ error: "Proyecto no encontrado" }, { status: 404 });
+    let notas: Record<string, string> = {};
+    try {
+      notas = p.notasItinerario ? JSON.parse(p.notasItinerario) : {};
+    } catch {
+      notas = {};
+    }
+    const v = (valor ?? "").trim();
+    if (v) notas[notaCampo] = v;
+    else delete notas[notaCampo];
+    await prisma.proyecto.update({
+      where: { id: proyectoId },
+      data: { notasItinerario: Object.keys(notas).length ? JSON.stringify(notas) : null },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  // Fecha del bloque de Montaje/Desmontaje cuando se captura como día aparte.
+  if ("fechaCampo" in body) {
+    const { fechaCampo, valor } = body as { fechaCampo?: string; valor?: string };
+    if (fechaCampo !== "montaje" && fechaCampo !== "desmontaje") {
+      return NextResponse.json({ error: "Campo no editable" }, { status: 400 });
+    }
+    if (!valor || !/^\d{4}-\d{2}-\d{2}$/.test(valor)) {
+      return NextResponse.json({ error: "Fecha inválida" }, { status: 400 });
+    }
+    const p = await prisma.proyecto.findUnique({
+      where: { id: proyectoId },
+      select: { fechaEvento: true, fechasEvento: true },
+    });
+    if (!p) return NextResponse.json({ error: "Proyecto no encontrado" }, { status: 404 });
+    const dias = diasEvento(p.fechaEvento, p.fechasEvento);
+    const diaNatural = fechaCampo === "montaje" ? dias[0] : dias[dias.length - 1];
+    const diaAparte = valor !== diaNatural;
+    const fechaDate = diaAparte ? new Date(`${valor}T12:00:00.000Z`) : null;
+    if (fechaCampo === "montaje") {
+      await prisma.proyecto.update({
+        where: { id: proyectoId },
+        data: { fechaMontaje: fechaDate, montajeDiaAparte: diaAparte },
+      });
+    } else {
+      await prisma.proyecto.update({
+        where: { id: proyectoId },
+        data: { fechaDesmontaje: fechaDate, desmontajeDiaAparte: diaAparte },
+      });
+    }
     return NextResponse.json({ ok: true });
   }
 

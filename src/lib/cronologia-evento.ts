@@ -126,6 +126,8 @@ export type ProyectoCronologia = {
   /** Punto de salida hacia el venue; no siempre es la bodega. */
   puntoSalidaBodega?: string | null;
   lugarEvento: string | null;
+  /** JSON: nota libre por checkpoint del Itinerario de operaciones, keyed por CampoEditableItinerario. */
+  notasItinerario?: string | null;
 };
 
 /** "HH:MM" (UTC, 24h canónico) desde un DateTime; null si no hay. */
