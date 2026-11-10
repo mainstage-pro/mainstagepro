@@ -8,6 +8,7 @@ const GOLD = "#B3985B";
 // sección apuntan a anclas del home (/presentacion#...) para que funcionen desde
 // cualquier subpágina; los de módulo van a su ruta dedicada.
 const LINKS = [
+  { label: "Nosotros", href: "/presentacion/pro" },
   { label: "Servicios", href: "/presentacion#servicios" },
   { label: "Eventos", href: "/presentacion#eventos" },
   { label: "Giras", href: "/presentacion/giras" },
