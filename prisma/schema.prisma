@@ -7097,6 +7097,15 @@ model ProyectoCreativo {
   fixtureCountEstimado Int?
   urgente              Boolean @default(false)
 
+  // Brief técnico estructurado (16 puntos / 5 secciones: Proyecto, Concepto,
+  // Producción, Show, Proceso) — insumo para que el equipo de diseño sepa qué
+  // construir, no una variable de precio (eso sigue siendo fixtureCountEstimado
+  // + urgente). JSON: { [preguntaId]: valor }. `formToken` expone un link
+  // público para que el cliente lo llene, igual que `Trato.formToken`.
+  briefDetalle String?
+  formToken    String? @unique
+  formEstado   String? @default("PENDIENTE") // PENDIENTE | COMPLETADO
+
   fechaSolicitud DateTime  @default(now())
   fechaEntrega   DateTime?
 
@@ -7107,8 +7116,22 @@ model ProyectoCreativo {
   propuestas  PropuestaServicio[]
   tareas      Tarea[]              @relation("TareasDeProyectoCreativo")
   entregables CreativeEntregable[]
+  archivos    ProyectoCreativoArchivo[]
 
   @@map("proyectos_creativos")
+}
+
+model ProyectoCreativoArchivo {
+  id                 String           @id @default(cuid())
+  proyectoCreativoId String
+  proyectoCreativo   ProyectoCreativo @relation(fields: [proyectoCreativoId], references: [id], onDelete: Cascade)
+  nombre             String
+  url                String
+  tipo               String   @default("REFERENCIA") // IMAGEN | DOCUMENTO | REFERENCIA | OTRO
+  subidoPor          String?
+  createdAt          DateTime @default(now())
+
+  @@map("proyecto_creativo_archivos")
 }
 
 /// Entregable versionado de un ProyectoCreativo (render/plot/documentación

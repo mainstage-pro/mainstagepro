@@ -816,6 +816,14 @@ Esto es solo una sugerencia de secuencia, no un compromiso de fechas:
      viaja de ahí a `PropuestaEditor` vía `giras/propuesta/[id]/page.tsx`
      (`include: { proyectoCreativo: { select: { fixtureCountEstimado: true,
      urgente: true } } }`) para precargar la calculadora.
+   - **⚠ REVERTIDO 2026-11-09:** lo de arriba seguía siendo válido para lo que
+     evaluaba (variables de *precio*), pero Mauricio pidió separado un brief
+     técnico estructurado de 16 puntos/5 secciones (Proyecto, Concepto,
+     Producción, Show, Proceso) con fin distinto: no fijar el nivel A/AA/AAA,
+     sino que el equipo de diseño sepa qué construir, y que el cliente lo
+     pueda llenar por link público. `briefing` deja de ser el único lugar del
+     contexto cualitativo — ver `src/lib/brief-creativo.ts`,
+     `ProyectoCreativo.briefDetalle` y `/brief-creativo/[token]`.
    - ~~Decidir si se necesita más estructura de ejecución~~ ✅ hecho
      2026-11-06 (§4.6) — se quedan los 4 estados, con avance automático al
      aprobar + contador de revisiones ✅ también construidos 2026-11-06.
@@ -853,7 +861,8 @@ Esto es solo una sugerencia de secuencia, no un compromiso de fechas:
 12. ✅ Live se queda en Gira/GiraShow, sin tablero nuevo.
 13. ✅ Creative se queda con los 4 estados + avance automático al aprobar +
     contador de revisiones (pendiente de construir, no bloqueante).
-14. ✅ El campo `briefing` libre actual es suficiente, sin paso formal nuevo.
+14. ~~El campo `briefing` libre actual es suficiente, sin paso formal nuevo.~~
+    **⚠ REVERTIDO 2026-11-09** — ver nota en la lista de pendientes arriba.
 
 **Lo único que sigue pendiente de construir** (no de decidir): descubrimiento
 propio de Creative, el avance automático de estado + contador de revisiones

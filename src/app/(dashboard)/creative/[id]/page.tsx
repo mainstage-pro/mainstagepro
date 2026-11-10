@@ -6,6 +6,10 @@ import Link from "next/link";
 import { nivelRenderSugerido } from "@/lib/propuesta-servicio";
 import ListaTareasCreativo, { useTareasCreativo, type Usuario } from "./ListaTareasCreativo";
 import EntregablesCreativoTab from "./EntregablesCreativoTab";
+import BriefCreativoForm from "@/components/creative/BriefCreativoForm";
+import { parseBriefDetalle } from "@/lib/brief-creativo";
+import { useToast } from "@/components/Toast";
+import { Link2, Check } from "lucide-react";
 
 type Proyecto = {
   id: string;
@@ -13,6 +17,8 @@ type Proyecto = {
   nombre: string;
   estado: string;
   briefing: string | null;
+  briefDetalle: string | null;
+  formToken: string | null;
   notas: string | null;
   revisionesIncluidas: number;
   revisionesUsadas: number;
@@ -42,7 +48,9 @@ export default function ProyectoCreativoPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [copiado, setCopiado] = useState(false);
   const { tareas, upsert, quitar, alternar, eliminar: eliminarTarea } = useTareasCreativo(id);
+  const { success, error } = useToast();
 
   useEffect(() => {
     fetch(`/api/proyectos-creativos/${id}`).then(r => r.json()).then(d => {
@@ -78,6 +86,16 @@ export default function ProyectoCreativoPage() {
     if (!confirm("¿Eliminar este proyecto creativo?")) return;
     await fetch(`/api/proyectos-creativos/${id}`, { method: "DELETE" });
     router.push("/creative/proyectos");
+  }
+
+  async function copiarLinkBrief() {
+    const res = await fetch(`/api/proyectos-creativos/${id}/link-brief`, { method: "POST" });
+    const data = await res.json();
+    if (!data.url) { error("No se pudo generar el link"); return; }
+    await navigator.clipboard.writeText(data.url);
+    setCopiado(true);
+    success("Link copiado");
+    setTimeout(() => setCopiado(false), 2000);
   }
 
   if (loading) return <div className="ms-page-form"><p className="text-[#444] text-sm">Cargando...</p></div>;
@@ -215,12 +233,20 @@ export default function ProyectoCreativoPage() {
         />
       </div>
 
-      <div className="ms-card p-4 space-y-2">
-        <label className={labelCls}>Briefing</label>
-        <textarea defaultValue={proyecto.briefing ?? ""} rows={4}
-          placeholder="¿Qué se necesita diseñar/renderizar/documentar?"
-          onBlur={e => guardar({ briefing: e.target.value || null })}
-          className={`${inputCls} resize-none`} />
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <p className="ms-section-label">Brief técnico</p>
+          <button onClick={copiarLinkBrief} className="ms-btn-ghost flex items-center gap-1.5 text-xs">
+            {copiado ? <Check size={13} /> : <Link2 size={13} />}
+            {copiado ? "Copiado" : "Copiar link para el cliente"}
+          </button>
+        </div>
+        <BriefCreativoForm
+          variante="interno"
+          respuestasIniciales={parseBriefDetalle(proyecto.briefDetalle)}
+          archivosEndpoint={`/api/proyectos-creativos/${id}/archivos`}
+          onGuardar={json => guardar({ briefDetalle: json })}
+        />
       </div>
 
       <div className="ms-card p-4 space-y-2">

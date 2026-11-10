@@ -70,6 +70,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       nombre: textoOpcional(body.nombre) ?? undefined,
       estado: textoOpcional(body.estado) ?? undefined,
       briefing: textoOpcional(body.briefing),
+      briefDetalle: textoOpcional(body.briefDetalle),
       notas: textoOpcional(body.notas),
       fechaEntrega: fecha(body.fechaEntrega),
       clienteId: textoOpcional(body.clienteId),
