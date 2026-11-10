@@ -47,6 +47,19 @@ export const PRESENTACION_GIRAS: PresentacionItem = {
   audience: "Artistas · Managers",
 };
 
+// Pitch comercial de Mainstage Pro en sí (renta de equipo y producción
+// técnica para eventos musicales, sociales y empresariales). A diferencia de
+// Live/Creative no tiene hub propio, así que vive en el tab "General" del
+// módulo interno de presentaciones.
+export const PRESENTACION_PRO: PresentacionItem = {
+  key: "pro",
+  label: "Mainstage Pro",
+  desc: "Producción técnica integral — audio, iluminación y video — para eventos musicales, sociales y empresariales.",
+  href: "/presentacion/pro",
+  icon: SlidersHorizontal,
+  audience: "Clientes potenciales",
+};
+
 // Unidad de negocio Mainstage Live: production/tour/stage management para
 // artistas en gira. Vive en su propio módulo (/giras/presentaciones), no en
 // el índice general de Mainstage Pro.
@@ -116,6 +129,7 @@ export const PRESENTACION_CENTRAL: PresentacionItem = {
 // poder ajustar la vista interna sin alterar lo que ven los clientes.
 export const PRESENTACIONES_MODULO_GENERAL: PresentacionItem[] = [
   PRESENTACION_CENTRAL,
+  PRESENTACION_PRO,
   PRESENTACION_GIRAS,
   {
     key: "venta",
