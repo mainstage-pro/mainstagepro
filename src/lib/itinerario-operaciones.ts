@@ -12,6 +12,23 @@ import { horariosResumen, type ProyectoCronologia, type BloqueTiempo } from "./c
 
 export type CategoriaCheckpoint = "MONTAJE" | "EVENTO" | "DESMONTAJE";
 
+/**
+ * Campos del proyecto que un checkpoint fijo de plantilla puede editar en línea
+ * desde el itinerario — la misma escritura que hace la página del proyecto
+ * (ver PATCH /api/proyectos/itinerario). `null` = checkpoint de solo lectura
+ * (p.ej. los que vienen de un ProyectoBloqueTiempo capturado aparte).
+ */
+export type CampoEditableItinerario =
+  | "llamado"
+  | "salidaBodega"
+  | "llegadaVenue"
+  | "inicioMontaje"
+  | "finMontaje"
+  | "inicioEvento"
+  | "finEvento"
+  | "inicioDesmontaje"
+  | "finDesmontaje";
+
 export type ItinerarioCheckpoint = {
   fecha: string; // YYYY-MM-DD
   /** "HH:MM" 24h; null = sin capturar (pendiente). */
@@ -28,6 +45,8 @@ export type ItinerarioCheckpoint = {
   orden: number;
   /** Clave de orden cronológico ya resuelta (incluye el "cruce de medianoche"). */
   clave: number;
+  /** Campo del proyecto que edita este checkpoint; null = solo lectura. */
+  campo: CampoEditableItinerario | null;
 };
 
 function minutos(hhmm: string | null): number | null {
@@ -82,6 +101,7 @@ function checkpoint(
     nota?: string | null;
     responsable?: string | null;
     diaLabel?: string | null;
+    campo?: CampoEditableItinerario | null;
   } = {},
 ): ItinerarioCheckpoint {
   const hora = horaValida(opts.hora);
@@ -97,6 +117,7 @@ function checkpoint(
     pendiente: !hora,
     orden,
     clave: 0,
+    campo: opts.campo ?? null,
   };
 }
 
@@ -117,11 +138,19 @@ export function checkpointsDeProyecto(p: ProyectoCronologia, bloques: BloqueTiem
   const fechaMontaje = montajeDiaAparte ? montajeFecha! : dias[0];
 
   const bloqueMontaje = [
-    checkpoint(fechaMontaje, "MONTAJE", "Llamado", 0, { hora: h.llamadoBodega, nota: p.lugarLlamado }),
-    checkpoint(fechaMontaje, "MONTAJE", "Salida de bodega", 1, { hora: h.salidaBodega, nota: p.puntoSalidaBodega }),
-    checkpoint(fechaMontaje, "MONTAJE", "Llegada al venue", 2, { hora: h.llegadaVenue, nota: p.lugarEvento }),
-    checkpoint(fechaMontaje, "MONTAJE", "Inicio de montaje", 3, { hora: h.inicioMontaje }),
-    checkpoint(fechaMontaje, "MONTAJE", "Fin de montaje (aprox.)", 4, { hora: h.finMontaje }),
+    checkpoint(fechaMontaje, "MONTAJE", "Llamado", 0, { hora: h.llamadoBodega, nota: p.lugarLlamado, campo: "llamado" }),
+    checkpoint(fechaMontaje, "MONTAJE", "Salida de bodega", 1, {
+      hora: h.salidaBodega,
+      nota: p.puntoSalidaBodega,
+      campo: "salidaBodega",
+    }),
+    checkpoint(fechaMontaje, "MONTAJE", "Llegada al venue", 2, {
+      hora: h.llegadaVenue,
+      nota: p.lugarEvento,
+      campo: "llegadaVenue",
+    }),
+    checkpoint(fechaMontaje, "MONTAJE", "Inicio de montaje", 3, { hora: h.inicioMontaje, campo: "inicioMontaje" }),
+    checkpoint(fechaMontaje, "MONTAJE", "Fin de montaje (aprox.)", 4, { hora: h.finMontaje, campo: "finMontaje" }),
   ];
   out.push(...asignarClaves(bloqueMontaje, RANGO_CATEGORIA.MONTAJE));
 
@@ -134,7 +163,12 @@ export function checkpointsDeProyecto(p: ProyectoCronologia, bloques: BloqueTiem
     });
     const diaLabel = dias.length > 1 ? `Día ${i + 1} de ${dias.length}` : null;
     const bloqueDia: ItinerarioCheckpoint[] = [
-      checkpoint(fecha, "EVENTO", "Inicio del evento", 0, { hora: hd.inicio, nota: p.lugarEvento, diaLabel }),
+      checkpoint(fecha, "EVENTO", "Inicio del evento", 0, {
+        hora: hd.inicio,
+        nota: p.lugarEvento,
+        diaLabel,
+        campo: "inicioEvento",
+      }),
     ];
     bloques
       .filter((b) => (b.fecha ? fechaISOaDia(b.fecha) : dias[0]) === fecha)
@@ -150,7 +184,9 @@ export function checkpointsDeProyecto(p: ProyectoCronologia, bloques: BloqueTiem
           }),
         );
       });
-    bloqueDia.push(checkpoint(fecha, "EVENTO", "Fin del evento", 99, { hora: hd.fin, diaLabel }));
+    bloqueDia.push(
+      checkpoint(fecha, "EVENTO", "Fin del evento", 99, { hora: hd.fin, diaLabel, campo: "finEvento" }),
+    );
     // Offset por día (10 000 c/u) para que los días no se entrecrucen entre sí.
     out.push(...asignarClaves(bloqueDia, RANGO_CATEGORIA.EVENTO + i * 10_000));
   });
@@ -160,8 +196,14 @@ export function checkpointsDeProyecto(p: ProyectoCronologia, bloques: BloqueTiem
     p.desmontajeDiaAparte === true && !!desmontajeFecha && desmontajeFecha !== dias[dias.length - 1];
   const fechaDesmontaje = desmontajeDiaAparte ? desmontajeFecha! : dias[dias.length - 1];
   const bloqueDesmontaje = [
-    checkpoint(fechaDesmontaje, "DESMONTAJE", "Inicio de desmontaje", 0, { hora: h.inicioDesmontaje }),
-    checkpoint(fechaDesmontaje, "DESMONTAJE", "Fin de desmontaje (aprox.)", 1, { hora: h.finDesmontaje }),
+    checkpoint(fechaDesmontaje, "DESMONTAJE", "Inicio de desmontaje", 0, {
+      hora: h.inicioDesmontaje,
+      campo: "inicioDesmontaje",
+    }),
+    checkpoint(fechaDesmontaje, "DESMONTAJE", "Fin de desmontaje (aprox.)", 1, {
+      hora: h.finDesmontaje,
+      campo: "finDesmontaje",
+    }),
   ];
   out.push(...asignarClaves(bloqueDesmontaje, RANGO_CATEGORIA.DESMONTAJE));
 

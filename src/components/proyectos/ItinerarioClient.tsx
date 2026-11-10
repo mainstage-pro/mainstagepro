@@ -12,6 +12,7 @@ import {
   type ItinerarioEvento,
   type ItinerarioRenglon,
   type GrupoEvento,
+  type CampoEditableItinerario,
 } from "@/lib/itinerario-operaciones";
 
 function hoyISO() {
@@ -52,18 +53,40 @@ const PRESETS: { label: string; rango: () => [string, string] }[] = [
   { label: "Este mes", rango: () => [primerDiaMes(), ultimoDiaMes()] },
 ];
 
+/**
+ * Input de hora editable en línea; mantiene lo escrito hasta que el blur confirma el guardado.
+ * El llamador debe pasar `key={valor}` para que un valor nuevo desde el servidor (otra
+ * recarga) remonte el input en vez de pelear con lo que el usuario esté escribiendo.
+ */
+function HoraInput({ valor, onGuardar }: { valor: string | null; onGuardar: (v: string) => void }) {
+  const [v, setV] = useState(valor ?? "");
+  return (
+    <input
+      type="time"
+      value={v}
+      onChange={(e) => setV(e.target.value)}
+      onBlur={() => {
+        if (v !== (valor ?? "")) onGuardar(v);
+      }}
+      className="w-28 shrink-0 bg-transparent text-gray-200 font-medium text-xs border border-transparent rounded-md px-1.5 py-0.5 -ml-1.5 focus:border-[#B3985B]/40 focus:bg-[#1a1a1a] outline-none [color-scheme:dark] hover:border-[#2a2a2a]"
+    />
+  );
+}
+
 function TarjetaEvento({
   grupo,
   color,
   nota,
   onNotaChange,
   onNotaGuardar,
+  onHoraGuardar,
 }: {
   grupo: GrupoEvento;
   color: { accent: string; bg: string };
   nota: string;
   onNotaChange: (v: string) => void;
   onNotaGuardar: (v: string) => void;
+  onHoraGuardar: (campo: CampoEditableItinerario, fecha: string, valor: string) => void;
 }) {
   return (
     <div className="rounded-xl border overflow-hidden" style={{ borderColor: `${color.accent}40` }}>
@@ -91,11 +114,15 @@ function TarjetaEvento({
       <div className="divide-y divide-[#2a2a2a]">
         {grupo.checkpoints.map((c, i) => (
           <div key={`${c.etiqueta}-${i}`} className="px-4 py-2 flex items-center gap-3 text-xs">
-            <span
-              className={`w-28 shrink-0 ${c.pendiente ? "text-gray-600 italic" : "text-gray-200 font-medium"}`}
-            >
-              {horaDisplay(c)}
-            </span>
+            {c.campo ? (
+              <HoraInput key={c.hora ?? ""} valor={c.hora} onGuardar={(v) => onHoraGuardar(c.campo!, c.fecha, v)} />
+            ) : (
+              <span
+                className={`w-28 shrink-0 ${c.pendiente ? "text-gray-600 italic" : "text-gray-200 font-medium"}`}
+              >
+                {horaDisplay(c)}
+              </span>
+            )}
             <span className="flex-1 min-w-0 text-gray-300">
               {c.etiqueta}
               {c.diaLabel ? <span className="text-gray-600"> · {c.diaLabel}</span> : null}
@@ -127,21 +154,26 @@ export default function ItinerarioClient() {
   const [loading, setLoading] = useState(true);
   const [notas, setNotas] = useState<Record<string, string>>({});
 
-  const cargar = useCallback(() => {
-    setLoading(true);
-    fetch(`/api/proyectos/itinerario?inicio=${inicio}&fin=${fin}`)
-      .then((r) => r.json())
-      .then((d) => {
-        setEventos(d.eventos ?? []);
-        const n: Record<string, string> = {};
-        (d.eventos ?? []).forEach((ev: ItinerarioEvento) => {
-          n[ev.proyectoId] = ev.notasOperativas ?? "";
+  const cargar = useCallback(
+    (opts?: { silencioso?: boolean }) => {
+      if (!opts?.silencioso) setLoading(true);
+      return fetch(`/api/proyectos/itinerario?inicio=${inicio}&fin=${fin}`)
+        .then((r) => r.json())
+        .then((d) => {
+          setEventos(d.eventos ?? []);
+          const n: Record<string, string> = {};
+          (d.eventos ?? []).forEach((ev: ItinerarioEvento) => {
+            n[ev.proyectoId] = ev.notasOperativas ?? "";
+          });
+          setNotas(n);
+        })
+        .catch(() => error("No se pudo cargar el itinerario"))
+        .finally(() => {
+          if (!opts?.silencioso) setLoading(false);
         });
-        setNotas(n);
-      })
-      .catch(() => error("No se pudo cargar el itinerario"))
-      .finally(() => setLoading(false));
-  }, [inicio, fin, error]);
+    },
+    [inicio, fin, error],
+  );
 
   useEffect(() => {
     cargar();
@@ -161,6 +193,24 @@ export default function ItinerarioClient() {
       success("Nota guardada");
     } catch {
       error("No se pudo guardar la nota");
+    }
+  }
+
+  // Edita el checkpoint directamente en el proyecto (mismo campo que su página de detalle);
+  // se recarga en silencio porque un solo cambio puede mover la hora de otro checkpoint
+  // derivado (p.ej. "Fin de montaje" cuando se mueve "Inicio de montaje").
+  async function guardarHora(proyectoId: string, campo: CampoEditableItinerario, fecha: string, valor: string) {
+    try {
+      const r = await fetch("/api/proyectos/itinerario", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ proyectoId, campo, fecha, valor }),
+      });
+      if (!r.ok) throw new Error();
+      success("Hora guardada");
+      await cargar({ silencioso: true });
+    } catch {
+      error("No se pudo guardar la hora");
     }
   }
 
@@ -240,6 +290,7 @@ export default function ItinerarioClient() {
                     nota={notas[g.proyectoId] ?? ""}
                     onNotaChange={(v) => setNotas((prev) => ({ ...prev, [g.proyectoId]: v }))}
                     onNotaGuardar={(v) => guardarNota(g.proyectoId, v)}
+                    onHoraGuardar={(campo, fecha, valor) => guardarHora(g.proyectoId, campo, fecha, valor)}
                   />
                 ))}
               </div>

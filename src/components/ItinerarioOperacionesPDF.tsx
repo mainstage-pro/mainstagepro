@@ -29,13 +29,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     backgroundColor: LIGHT,
     borderRadius: 4,
-    borderLeftWidth: 3,
+    borderLeftWidth: 4,
     borderLeftColor: GOLD,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    marginBottom: 6,
+    paddingHorizontal: 11,
+    paddingVertical: 9,
+    marginBottom: 7,
   },
-  diaTitulo: { fontSize: 8.5, fontFamily: "Helvetica-Bold", color: BLACK, letterSpacing: 0.4 },
+  diaTitulo: { fontSize: 12, fontFamily: "Helvetica-Bold", color: BLACK, letterSpacing: 0.6 },
   diaCount: { fontSize: 7, color: GRAY },
   leyenda: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 6, paddingHorizontal: 2 },
   leyendaItem: { flexDirection: "row", alignItems: "center", gap: 3 },
@@ -44,6 +44,16 @@ const styles = StyleSheet.create({
   table: { borderRadius: 4, overflow: "hidden" },
   thead: { flexDirection: "row", backgroundColor: MID, paddingHorizontal: 10, paddingVertical: 5 },
   th: { fontSize: 6.3, fontFamily: "Helvetica-Bold", color: "#666666", letterSpacing: 0.5 },
+  eventoHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 9,
+    paddingVertical: 4.5,
+    borderLeftWidth: 3,
+  },
+  eventoNombre: { fontSize: 9, fontFamily: "Helvetica-Bold", color: BLACK },
+  eventoMeta: { fontSize: 6.3, color: "#6b6b6b" },
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -100,41 +110,45 @@ export function ItinerarioOperacionesPDF({ data }: { data: ItinerarioPDFData }) 
             <View style={styles.table}>
               <View style={styles.thead} fixed>
                 <Text style={[styles.th, { width: 78 }]}>HORA</Text>
-                <Text style={[styles.th, { flex: 1.3 }]}>ACTIVIDAD</Text>
-                <Text style={[styles.th, { flex: 1.6 }]}>EVENTO</Text>
+                <Text style={[styles.th, { flex: 1.6 }]}>ACTIVIDAD</Text>
                 <Text style={[styles.th, { flex: 1 }]}>RESPONSABLE</Text>
-                <Text style={[styles.th, { flex: 1.4 }]}>NOTAS</Text>
+                <Text style={[styles.th, { flex: 1.9 }]}>NOTAS</Text>
               </View>
               {d.renglones.map((r, i) => {
                 const mismoProyecto = proyectoAnterior === r.proyectoId;
                 proyectoAnterior = r.proyectoId;
                 const color = colores[r.proyectoId];
                 return (
-                  <View
-                    key={`${r.proyectoId}-${r.etiqueta}-${i}`}
-                    style={[styles.row, { backgroundColor: color.bg, borderLeftColor: color.accent }]}
-                    wrap={false}
-                  >
-                    <Text style={[styles.td, { width: 78 }, ...(r.pendiente ? [styles.pendiente] : [])]}>
-                      {horaDisplay(r)}
-                    </Text>
-                    <View style={{ flex: 1.3, paddingRight: 4 }}>
-                      <Text style={styles.tdStrong}>{r.etiqueta}</Text>
-                      {r.diaLabel ? <Text style={styles.tdSub}>{r.diaLabel}</Text> : null}
+                  <React.Fragment key={`${r.proyectoId}-${r.etiqueta}-${i}`}>
+                    {!mismoProyecto && (
+                      <View
+                        style={[
+                          styles.eventoHeader,
+                          { backgroundColor: color.bg, borderLeftColor: color.accent },
+                        ]}
+                        wrap={false}
+                      >
+                        <Text style={styles.eventoNombre}>{r.nombre}</Text>
+                        <Text style={styles.eventoMeta}>
+                          {r.clienteNombre} · {r.numeroProyecto}
+                        </Text>
+                      </View>
+                    )}
+                    <View
+                      style={[styles.row, { backgroundColor: color.bg, borderLeftColor: color.accent }]}
+                      wrap={false}
+                    >
+                      <Text style={[styles.td, { width: 78 }, ...(r.pendiente ? [styles.pendiente] : [])]}>
+                        {horaDisplay(r)}
+                      </Text>
+                      <View style={{ flex: 1.6, paddingRight: 4 }}>
+                        <Text style={styles.tdStrong}>{r.etiqueta}</Text>
+                        {r.diaLabel ? <Text style={styles.tdSub}>{r.diaLabel}</Text> : null}
+                      </View>
+                      <Text style={[styles.td, { flex: 1 }]}>{r.responsable ?? "—"}</Text>
+                      <Text style={[styles.td, { flex: 1.9 }]}>{r.notasOperativas || r.nota || "—"}</Text>
                     </View>
-                    <View style={{ flex: 1.6, paddingRight: 4 }}>
-                      {!mismoProyecto && (
-                        <>
-                          <Text style={styles.tdStrong}>{r.nombre}</Text>
-                          <Text style={styles.tdSub}>
-                            {r.clienteNombre} · {r.numeroProyecto}
-                          </Text>
-                        </>
-                      )}
-                    </View>
-                    <Text style={[styles.td, { flex: 1 }]}>{r.responsable ?? "—"}</Text>
-                    <Text style={[styles.td, { flex: 1.4 }]}>{r.notasOperativas || r.nota || "—"}</Text>
-                  </View>
+                  </React.Fragment>
                 );
               })}
             </View>

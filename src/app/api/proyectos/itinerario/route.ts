@@ -6,13 +6,42 @@ import {
   checkpointsDeProyecto,
   responsableDeProyecto,
   type ItinerarioEvento,
+  type CampoEditableItinerario,
 } from "@/lib/itinerario-operaciones";
+import { diasEvento, parseHorariosEvento } from "@/lib/fechas-evento";
 
 function parseFecha(v: string | null, fallbackDaysFromNow: number): string {
   if (v && /^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
   const d = new Date();
   d.setDate(d.getDate() + fallbackDaysFromNow);
   return d.toISOString().slice(0, 10);
+}
+
+const CAMPOS_EDITABLES: CampoEditableItinerario[] = [
+  "llamado",
+  "salidaBodega",
+  "llegadaVenue",
+  "inicioMontaje",
+  "finMontaje",
+  "inicioEvento",
+  "finEvento",
+  "inicioDesmontaje",
+  "finDesmontaje",
+];
+
+function minutosDe(hhmm: string | null | undefined): number | null {
+  if (!hhmm) return null;
+  const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm.trim());
+  if (!m) return null;
+  return Number(m[1]) * 60 + Number(m[2]);
+}
+
+/** Misma fórmula que usa la página del proyecto (horasEntre) para que el dato cuadre igual sin importar desde dónde se capture. */
+function horasEntre(inicio: string | null | undefined, fin: string | null | undefined): number | null {
+  const a = minutosDe(inicio);
+  const b = minutosDe(fin);
+  if (a == null || b == null) return null;
+  return Math.round((((b - a) % 1440 + 1440) % 1440) / 60 * 100) / 100;
 }
 
 /** Selección de campos que alimenta el itinerario; la comparte GET y el PDF. */
@@ -118,9 +147,64 @@ export async function PATCH(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await req.json();
-  const { proyectoId, notasOperativas } = body as { proyectoId?: string; notasOperativas?: string };
+  const { proyectoId } = body as { proyectoId?: string };
   if (!proyectoId) return NextResponse.json({ error: "Falta proyectoId" }, { status: 400 });
 
+  // Edición en línea de un checkpoint (llamado, montaje, horarios del evento, desmontaje):
+  // escribe exactamente el mismo campo del proyecto que la página de detalle, para que
+  // itinerario y proyecto queden sincronizados en ambos sentidos.
+  if ("campo" in body) {
+    const { campo, fecha, valor } = body as { campo?: string; fecha?: string; valor?: string | null };
+    if (!campo || !CAMPOS_EDITABLES.includes(campo as CampoEditableItinerario)) {
+      return NextResponse.json({ error: "Campo no editable" }, { status: 400 });
+    }
+    const v = (valor ?? "").trim();
+    const data: Record<string, unknown> = {};
+
+    if (campo === "llamado") {
+      const p = await prisma.proyecto.findUnique({ where: { id: proyectoId }, select: { llamadoBodega: true } });
+      const fechaBase = p?.llamadoBodega ? p.llamadoBodega.toISOString().slice(0, 10) : fecha;
+      if (v && !fechaBase) return NextResponse.json({ error: "Falta fecha" }, { status: 400 });
+      data.llamadoBodega = v ? new Date(`${fechaBase}T${v}:00.000Z`) : null;
+    } else if (campo === "salidaBodega") {
+      data.horaSalidaBodega = v || null;
+    } else if (campo === "llegadaVenue") {
+      data.horaMontaje = v || null;
+    } else if (campo === "inicioMontaje") {
+      data.horaInicioMontaje = v || null;
+    } else if (campo === "finMontaje") {
+      const p = await prisma.proyecto.findUnique({ where: { id: proyectoId }, select: { horaInicioMontaje: true } });
+      data.duracionMontajeHrs = v ? horasEntre(p?.horaInicioMontaje, v) : null;
+    } else if (campo === "inicioDesmontaje") {
+      data.horaDesmontaje = v || null;
+    } else if (campo === "finDesmontaje") {
+      const p = await prisma.proyecto.findUnique({ where: { id: proyectoId }, select: { horaDesmontaje: true } });
+      data.duracionDesmontajeHrs = v ? horasEntre(p?.horaDesmontaje, v) : null;
+    } else if (campo === "inicioEvento" || campo === "finEvento") {
+      if (!fecha) return NextResponse.json({ error: "Falta fecha" }, { status: 400 });
+      const p = await prisma.proyecto.findUnique({
+        where: { id: proyectoId },
+        select: { fechaEvento: true, fechasEvento: true, horariosEvento: true },
+      });
+      if (!p) return NextResponse.json({ error: "Proyecto no encontrado" }, { status: 404 });
+      const dias = diasEvento(p.fechaEvento, p.fechasEvento);
+      const indice = dias.indexOf(fecha);
+      if (indice === -1) return NextResponse.json({ error: "Fecha fuera del evento" }, { status: 400 });
+      if (indice === 0) {
+        data[campo === "inicioEvento" ? "horaInicioEvento" : "horaFinEvento"] = v || null;
+      } else {
+        const mapa = parseHorariosEvento(p.horariosEvento);
+        const prev = mapa[fecha] ?? { inicio: null, fin: null, llamado: null, montaje: null, aplicaMontaje: false };
+        mapa[fecha] = { ...prev, [campo === "inicioEvento" ? "inicio" : "fin"]: v || null };
+        data.horariosEvento = JSON.stringify(mapa);
+      }
+    }
+
+    await prisma.proyecto.update({ where: { id: proyectoId }, data });
+    return NextResponse.json({ ok: true });
+  }
+
+  const { notasOperativas } = body as { notasOperativas?: string };
   await prisma.proyecto.update({
     where: { id: proyectoId },
     data: { notasOperativas: notasOperativas?.trim() || null },
