@@ -2,12 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  ClipboardList, Palette, Settings2, Music4, Handshake,
+  ClipboardList, Palette, Settings2, Music4, Handshake, ClipboardCheck,
   Upload, X, Plus, Link as LinkIcon, ChevronLeft, ChevronRight, FileText, Trash2,
 } from "lucide-react";
 import {
   SECCIONES_BRIEF,
   serializeBriefDetalle,
+  campoVisible,
+  camposFaltantes,
+  camposFaltantesTotal,
+  razonVisible,
   type RespuestasBrief,
   type CampoBrief,
   type SeccionBrief,
@@ -30,9 +34,27 @@ function parseLinksLocal(raw: string | undefined): LinkRef[] {
   }
 }
 
-function campoVisible(campo: CampoBrief, respuestas: RespuestasBrief): boolean {
-  if (!campo.mostrarSi) return true;
-  return respuestas[campo.mostrarSi.campoId] === campo.mostrarSi.valor;
+// Texto corto de un valor para la pantalla de resumen — no reusa renderCampo
+// porque ahí necesitamos lectura, no edición.
+function valorResumenTexto(campo: CampoBrief, valor: RespuestasBrief[string]): string {
+  if (valor === undefined || valor === "") return "—";
+  switch (campo.tipo) {
+    case "chips": {
+      const ids = Array.isArray(valor) ? valor : [valor as string];
+      const labels = ids.map(id => campo.opciones?.find(o => o.id === id)?.label ?? id);
+      return labels.length ? labels.join(", ") : "—";
+    }
+    case "toggle":
+      return valor === true ? "Sí" : valor === false ? "No" : "—";
+    case "colores":
+      return Array.isArray(valor) && valor.length ? `${valor.length} color${valor.length !== 1 ? "es" : ""}` : "—";
+    case "referencias": {
+      const links = parseLinksLocal(typeof valor === "string" ? valor : undefined);
+      return links.length ? `${links.length} link${links.length !== 1 ? "s" : ""}` : "Sin links";
+    }
+    default:
+      return typeof valor === "string" ? valor : "—";
+  }
 }
 
 interface Props {
@@ -51,16 +73,31 @@ export default function BriefCreativoForm({
   const [paso, setPaso] = useState(0);
   const [archivos, setArchivos] = useState<ArchivoBrief[]>([]);
   const [subiendo, setSubiendo] = useState(false);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const primerRenderRef = useRef(true);
 
   useEffect(() => {
     fetch(archivosEndpoint).then(r => r.json()).then(d => setArchivos(d.archivos ?? [])).catch(() => {});
   }, [archivosEndpoint]);
 
+  // Autoguardado con feedback visual: se junta en un solo PATCH ~800ms después
+  // del último cambio (en vez de un guardado silencioso por campo en onBlur).
+  useEffect(() => {
+    if (primerRenderRef.current) { primerRenderRef.current = false; return; }
+    setAutoSaveStatus("saving");
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      onGuardar(serializeBriefDetalle(respuestas));
+      setAutoSaveStatus("saved");
+    }, 800);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [respuestas]);
+
   function actualizar(campoId: string, valor: string | string[] | boolean | undefined) {
-    const siguiente = { ...respuestas, [campoId]: valor };
-    setRespuestas(siguiente);
-    onGuardar(serializeBriefDetalle(siguiente));
+    setRespuestas(prev => ({ ...prev, [campoId]: valor }));
   }
 
   async function subirArchivo(file: File) {
@@ -84,24 +121,32 @@ export default function BriefCreativoForm({
 
   const esCliente = variante === "cliente";
   const dorado = "#B3985B";
+  const totalSecciones = SECCIONES_BRIEF.length;
+  const esResumen = esCliente && paso === totalSecciones;
+  const seccionActual = paso < totalSecciones ? SECCIONES_BRIEF[paso] : null;
+  const IconoActual = seccionActual ? ICONOS[seccionActual.icono] : ClipboardCheck;
 
-  const seccionActual = SECCIONES_BRIEF[paso];
-  const Icono = ICONOS[seccionActual.icono];
+  const faltantes = esResumen
+    ? camposFaltantesTotal(respuestas).map(f => f.campo)
+    : (seccionActual ? camposFaltantes(seccionActual, respuestas) : []);
 
   const cardCls = esCliente
-    ? "bg-[#111] border border-[#1e1e1e] rounded-2xl"
-    : "ms-card";
+    ? "bg-[#111] border border-[#1e1e1e] rounded-2xl overflow-hidden"
+    : "ms-card overflow-hidden";
 
   function renderCampo(campo: CampoBrief) {
     if (!campoVisible(campo, respuestas)) return null;
     const valor = respuestas[campo.id];
+    const hint = razonVisible(campo);
 
     const labelEl = (
       <div className="mb-1.5">
         <label className={esCliente ? "text-sm font-medium text-white" : "text-[10px] uppercase tracking-wider text-[#666] block"}>
           {campo.label}
+          {campo.requerido && <span className="text-[#B3985B]"> *</span>}
         </label>
         {campo.ayuda && <p className={esCliente ? "text-xs text-[#888] mt-0.5" : "ms-micro mt-0.5"}>{campo.ayuda}</p>}
+        {hint && <p className="text-[10px] text-[#B3985B]/80 mt-0.5 italic">{hint}</p>}
       </div>
     );
 
@@ -285,35 +330,119 @@ export default function BriefCreativoForm({
     }
   }
 
+  function renderResumen() {
+    return (
+      <div className="space-y-4">
+        {SECCIONES_BRIEF.map((s, i) => {
+          const Icono2 = ICONOS[s.icono];
+          const camposVisibles = s.campos.filter(c => campoVisible(c, respuestas));
+          return (
+            <div key={s.id} className="border border-[#1e1e1e] rounded-xl p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-white flex items-center gap-1.5">
+                  <Icono2 size={14} style={{ color: dorado }} /> {s.titulo}
+                </p>
+                <button type="button" onClick={() => setPaso(i)} className="text-xs text-[#B3985B] hover:underline">
+                  Editar
+                </button>
+              </div>
+              <div className="space-y-1">
+                {camposVisibles.map(c => (
+                  <div key={c.id} className="flex items-start justify-between gap-3 text-xs">
+                    <span className="text-[#777] shrink-0">{c.label}</span>
+                    <span className="text-white text-right">{valorResumenTexto(c, respuestas[c.id])}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-4">
-      {esCliente && (
-        <div className="flex items-center gap-1.5">
-          {SECCIONES_BRIEF.map((s, i) => (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => setPaso(i)}
-              className={`h-1.5 flex-1 rounded-full transition-colors ${i <= paso ? "bg-[#B3985B]" : "bg-[#222]"}`}
-              aria-label={s.titulo}
-            />
-          ))}
-        </div>
-      )}
-
-      <div className={`${cardCls} ${esCliente ? "p-5 md:p-7" : "p-4"} space-y-5`}>
-        <div className="flex items-center gap-3">
-          <div className={`shrink-0 rounded-xl flex items-center justify-center ${esCliente ? "w-10 h-10 bg-[#B3985B]/10" : "w-8 h-8 bg-[#1a1a1a]"}`}>
-            <Icono size={esCliente ? 20 : 16} style={{ color: dorado }} />
+    <div className="space-y-3">
+      <div className={cardCls}>
+        {/* Step tabs + autosave/validación — mismo patrón que el descubrimiento del CRM */}
+        <div className={`flex items-center justify-between gap-3 flex-wrap ${esCliente ? "px-5 pt-4 pb-2.5" : "px-4 pt-3 pb-2"} border-b border-[#1a1a1a]`}>
+          <div className="flex gap-1 overflow-x-auto pb-1">
+            {SECCIONES_BRIEF.map((s, i) => {
+              const Icono = ICONOS[s.icono];
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => setPaso(i)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+                    paso === i ? "bg-[#B3985B] text-black" : "bg-[#111] text-gray-500 hover:text-white border border-[#222] hover:border-[#444]"
+                  }`}
+                >
+                  <Icono strokeWidth={1.75} className="w-3.5 h-3.5" /> {s.titulo}
+                </button>
+              );
+            })}
+            {esCliente && (
+              <button
+                type="button"
+                onClick={() => setPaso(totalSecciones)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+                  esResumen ? "bg-[#B3985B] text-black" : "bg-[#111] text-gray-500 hover:text-white border border-[#222] hover:border-[#444]"
+                }`}
+              >
+                <ClipboardCheck strokeWidth={1.75} className="w-3.5 h-3.5" /> Resumen
+              </button>
+            )}
           </div>
-          <div>
-            <p className={esCliente ? "text-lg font-semibold text-white" : "ms-section-label"}>{seccionActual.titulo}</p>
-            {esCliente && <p className="text-xs text-[#888]">{seccionActual.descripcion}</p>}
+          <div className="flex items-center gap-2 shrink-0">
+            {autoSaveStatus === "saving" && <span className="text-[10px] text-gray-500">Guardando…</span>}
+            {autoSaveStatus === "saved" && <span className="text-[10px] text-emerald-500">Guardado ✓</span>}
+            {faltantes.length > 0 ? (
+              <span
+                title={`Faltan: ${faltantes.map(f => f.label).join(", ")}`}
+                className="text-[10px] px-2 py-1 rounded-full bg-amber-900/30 text-amber-300 border border-amber-800/40 whitespace-nowrap cursor-default"
+              >
+                Faltan {faltantes.length} dato{faltantes.length !== 1 ? "s" : ""}
+              </span>
+            ) : (
+              <span className="text-[10px] px-2 py-1 rounded-full bg-emerald-900/30 text-emerald-300 border border-emerald-800/40 whitespace-nowrap">
+                {esResumen ? "Brief completo" : "Sección completa"}
+              </span>
+            )}
           </div>
         </div>
 
-        <div className="space-y-4">
-          {seccionActual.campos.map(renderCampo)}
+        <div className={`${esCliente ? "p-5 md:p-7" : "p-4"} space-y-5`}>
+          {!esResumen && seccionActual && (
+            <>
+              <div className="flex items-center gap-3">
+                <div className={`shrink-0 rounded-xl flex items-center justify-center ${esCliente ? "w-10 h-10 bg-[#B3985B]/10" : "w-8 h-8 bg-[#1a1a1a]"}`}>
+                  <IconoActual size={esCliente ? 20 : 16} style={{ color: dorado }} />
+                </div>
+                <div>
+                  <p className={esCliente ? "text-lg font-semibold text-white" : "ms-section-label"}>{seccionActual.titulo}</p>
+                  {esCliente && <p className="text-xs text-[#888]">{seccionActual.descripcion}</p>}
+                </div>
+              </div>
+              <div className="space-y-4">
+                {seccionActual.campos.map(renderCampo)}
+              </div>
+            </>
+          )}
+          {esResumen && (
+            <>
+              <div className="flex items-center gap-3">
+                <div className="shrink-0 w-10 h-10 rounded-xl bg-[#B3985B]/10 flex items-center justify-center">
+                  <ClipboardCheck size={20} style={{ color: dorado }} />
+                </div>
+                <div>
+                  <p className="text-lg font-semibold text-white">Resumen</p>
+                  <p className="text-xs text-[#888]">Revisa antes de enviar — puedes editar cualquier sección.</p>
+                </div>
+              </div>
+              {renderResumen()}
+            </>
+          )}
         </div>
       </div>
 
@@ -327,17 +456,8 @@ export default function BriefCreativoForm({
           >
             <ChevronLeft size={16} /> Atrás
           </button>
-          <p className="ms-micro text-[#555]">{paso + 1} / {SECCIONES_BRIEF.length}</p>
-          {paso < SECCIONES_BRIEF.length - 1 ? (
-            <button
-              type="button"
-              onClick={() => setPaso(p => Math.min(SECCIONES_BRIEF.length - 1, p + 1))}
-              className="flex items-center gap-1 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-              style={{ backgroundColor: dorado, color: "#000" }}
-            >
-              Siguiente <ChevronRight size={16} />
-            </button>
-          ) : (
+          <p className="ms-micro text-[#555]">{esResumen ? "Resumen" : `${paso + 1} / ${totalSecciones}`}</p>
+          {esResumen ? (
             <button
               type="button"
               disabled={enviando}
@@ -347,22 +467,35 @@ export default function BriefCreativoForm({
             >
               {enviando ? "Enviando…" : "Enviar brief"}
             </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setPaso(p => Math.min(totalSecciones, p + 1))}
+              className="flex items-center gap-1 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+              style={{ backgroundColor: dorado, color: "#000" }}
+            >
+              {paso === totalSecciones - 1 ? "Ver resumen" : "Siguiente"} <ChevronRight size={16} />
+            </button>
           )}
         </div>
       ) : (
-        <div className="flex gap-1.5 flex-wrap">
-          {SECCIONES_BRIEF.map((s, i) => (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => setPaso(i)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                i === paso ? "bg-[#B3985B] text-black" : "bg-[#111] border border-[#1a1a1a] text-[#666] hover:text-white"
-              }`}
-            >
-              {s.titulo}
-            </button>
-          ))}
+        <div className="flex items-center justify-between pt-1">
+          <button
+            type="button"
+            disabled={paso === 0}
+            onClick={() => setPaso(p => Math.max(0, p - 1))}
+            className="flex items-center gap-1 text-xs text-[#666] hover:text-white disabled:opacity-30 transition-colors"
+          >
+            <ChevronLeft size={14} /> Anterior
+          </button>
+          <button
+            type="button"
+            disabled={paso === totalSecciones - 1}
+            onClick={() => setPaso(p => Math.min(totalSecciones - 1, p + 1))}
+            className="flex items-center gap-1 text-xs text-[#666] hover:text-white disabled:opacity-30 transition-colors"
+          >
+            Siguiente <ChevronRight size={14} />
+          </button>
         </div>
       )}
     </div>

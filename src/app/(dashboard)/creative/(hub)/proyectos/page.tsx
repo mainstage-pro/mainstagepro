@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Combobox } from "@/components/Combobox";
 
 type Opcion = { id: string; nombre: string; empresa?: string | null };
 
@@ -87,17 +88,29 @@ function ModalNuevo({ clientes, artistas, onSave, onClose }: {
         <div className="grid grid-cols-2 gap-2">
           <div>
             <label className={labelCls}>Cliente <span className="text-[#333] normal-case">(opcional)</span></label>
-            <select value={clienteId} onChange={e => setClienteId(e.target.value)} className={inputCls}>
-              <option value="">Sin cliente</option>
-              {clientes.map(c => <option key={c.id} value={c.id}>{c.empresa || c.nombre}</option>)}
-            </select>
+            <Combobox
+              value={clienteId}
+              onChange={v => setClienteId(v)}
+              className={inputCls}
+              placeholder="Buscar cliente…"
+              options={[
+                { value: "", label: "Sin cliente", pin: true },
+                ...clientes.map(c => ({ value: c.id, label: c.empresa || c.nombre })),
+              ]}
+            />
           </div>
           <div>
             <label className={labelCls}>Artista <span className="text-[#333] normal-case">(opcional)</span></label>
-            <select value={artistaId} onChange={e => setArtistaId(e.target.value)} className={inputCls}>
-              <option value="">Sin artista</option>
-              {artistas.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}
-            </select>
+            <Combobox
+              value={artistaId}
+              onChange={v => setArtistaId(v)}
+              className={inputCls}
+              placeholder="Buscar artista…"
+              options={[
+                { value: "", label: "Sin artista", pin: true },
+                ...artistas.map(a => ({ value: a.id, label: a.nombre })),
+              ]}
+            />
           </div>
         </div>
 

@@ -1,15 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { nivelRenderSugerido } from "@/lib/propuesta-servicio";
 import ListaTareasCreativo, { useTareasCreativo, type Usuario } from "./ListaTareasCreativo";
 import EntregablesCreativoTab from "./EntregablesCreativoTab";
 import BriefCreativoForm from "@/components/creative/BriefCreativoForm";
-import { parseBriefDetalle } from "@/lib/brief-creativo";
+import { parseBriefDetalle, briefEstaVacio, camposFaltantesTotal } from "@/lib/brief-creativo";
 import { useToast } from "@/components/Toast";
+import { Combobox } from "@/components/Combobox";
 import { Link2, Check } from "lucide-react";
+
+type OpcionOrigen = { id: string; nombre: string; empresa?: string | null };
 
 type Proyecto = {
   id: string;
@@ -44,11 +47,15 @@ const labelCls = "text-[10px] uppercase tracking-wider text-[#666] mb-1 block";
 export default function ProyectoCreativoPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const foco = searchParams.get("panel") === "brief";
   const [proyecto, setProyecto] = useState<Proyecto | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [copiado, setCopiado] = useState(false);
+  const [clientesOpciones, setClientesOpciones] = useState<OpcionOrigen[]>([]);
+  const [artistasOpciones, setArtistasOpciones] = useState<OpcionOrigen[]>([]);
   const { tareas, upsert, quitar, alternar, eliminar: eliminarTarea } = useTareasCreativo(id);
   const { success, error } = useToast();
 
@@ -63,6 +70,8 @@ export default function ProyectoCreativoPage() {
     fetch("/api/usuarios-activos").then(r => r.json()).then(d => {
       setUsuarios((d.usuarios ?? []).map((u: { id: string; name: string }) => ({ id: u.id, name: u.name })));
     });
+    fetch("/api/clientes").then(r => r.json()).then(d => setClientesOpciones(d.clientes ?? [])).catch(() => {});
+    fetch("/api/artistas").then(r => r.json()).then(d => setArtistasOpciones(d.artistas ?? [])).catch(() => {});
   }, []);
 
   async function guardar(campos: Partial<Record<string, string | number | boolean | null>>) {
@@ -74,6 +83,26 @@ export default function ProyectoCreativoPage() {
       body: JSON.stringify(campos),
     });
     setSaving(false);
+  }
+
+  async function asignarCliente(clienteId: string) {
+    if (!proyecto) return;
+    const c = clienteId ? clientesOpciones.find(x => x.id === clienteId) ?? null : null;
+    setProyecto({ ...proyecto, cliente: c ? { id: c.id, nombre: c.nombre, empresa: c.empresa ?? null } : null });
+    await fetch(`/api/proyectos-creativos/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clienteId }),
+    });
+  }
+
+  async function asignarArtista(artistaId: string) {
+    if (!proyecto) return;
+    const a = artistaId ? artistasOpciones.find(x => x.id === artistaId) ?? null : null;
+    setProyecto({ ...proyecto, artista: a ? { id: a.id, nombre: a.nombre } : null });
+    await fetch(`/api/proyectos-creativos/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ artistaId }),
+    });
   }
 
   function ajustarRevisionesUsadas(delta: number) {
@@ -100,6 +129,34 @@ export default function ProyectoCreativoPage() {
 
   if (loading) return <div className="ms-page-form"><p className="text-[#444] text-sm">Cargando...</p></div>;
   if (!proyecto) return <div className="ms-page-form"><p className="text-[#444] text-sm">No encontrado</p></div>;
+
+  // Modo foco: aterrizaje directo en el brief, sin las otras 7 cards encima
+  // (mismo patrón que ?panel=descubrimiento&foco=1 en crm/tratos/[id]).
+  if (foco) {
+    const origenFoco = proyecto.artista?.nombre || proyecto.cliente?.empresa || proyecto.cliente?.nombre;
+    return (
+      <div className="ms-page-form space-y-4">
+        <div className="ms-card p-4 flex items-center gap-3 flex-wrap">
+          <div className="min-w-0">
+            <p className="text-white font-semibold text-sm truncate">{proyecto.nombre}</p>
+            <p className="text-[11px] text-gray-500 mt-0.5">{origenFoco || "sin cliente/artista asignado"}</p>
+          </div>
+          <button
+            onClick={() => router.push(`/creative/${id}`)}
+            className="ml-auto text-xs text-gray-500 hover:text-[#B3985B] border border-[#2a2a2a] hover:border-[#B3985B]/40 rounded-lg px-3 py-1.5 transition-colors"
+          >
+            ← Volver al proyecto
+          </button>
+        </div>
+        <BriefCreativoForm
+          variante="interno"
+          respuestasIniciales={parseBriefDetalle(proyecto.briefDetalle)}
+          archivosEndpoint={`/api/proyectos-creativos/${id}/archivos`}
+          onGuardar={json => guardar({ briefDetalle: json })}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="ms-page-form space-y-5">
@@ -128,23 +185,48 @@ export default function ProyectoCreativoPage() {
 
       <div className="ms-card p-4 space-y-3">
         <p className="ms-section-label">Origen</p>
-        <div className="flex gap-2 flex-wrap text-[12.5px]">
-          {proyecto.cliente && <span className="ms-card-inset px-2.5 py-1 rounded-lg text-white">{proyecto.cliente.empresa || proyecto.cliente.nombre}</span>}
-          {proyecto.artista && <span className="ms-card-inset px-2.5 py-1 rounded-lg text-white">{proyecto.artista.nombre}</span>}
-          {proyecto.gira && (
-            <Link href={`/giras/${proyecto.gira.id}`} className="ms-card-inset px-2.5 py-1 rounded-lg text-[#B3985B] hover:text-[#c9a96a]">
-              Gira: {proyecto.gira.nombre}
-            </Link>
-          )}
-          {proyecto.trato && (
-            <Link href={`/crm/tratos/${proyecto.trato.id}`} className="ms-card-inset px-2.5 py-1 rounded-lg text-[#B3985B] hover:text-[#c9a96a]">
-              Trato: {proyecto.trato.nombreEvento || proyecto.trato.id}
-            </Link>
-          )}
-          {!proyecto.cliente && !proyecto.artista && !proyecto.gira && !proyecto.trato && (
-            <span className="text-[#444]">Sin origen capturado</span>
-          )}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelCls}>Cliente</label>
+            <Combobox
+              value={proyecto.cliente?.id ?? ""}
+              onChange={v => asignarCliente(v)}
+              className={inputCls}
+              placeholder="Buscar cliente…"
+              options={[
+                { value: "", label: "Sin cliente", pin: true },
+                ...clientesOpciones.map(c => ({ value: c.id, label: c.empresa || c.nombre })),
+              ]}
+            />
+          </div>
+          <div>
+            <label className={labelCls}>Artista</label>
+            <Combobox
+              value={proyecto.artista?.id ?? ""}
+              onChange={v => asignarArtista(v)}
+              className={inputCls}
+              placeholder="Buscar artista…"
+              options={[
+                { value: "", label: "Sin artista", pin: true },
+                ...artistasOpciones.map(a => ({ value: a.id, label: a.nombre })),
+              ]}
+            />
+          </div>
         </div>
+        {(proyecto.gira || proyecto.trato) && (
+          <div className="flex gap-2 flex-wrap text-[12.5px]">
+            {proyecto.gira && (
+              <Link href={`/giras/${proyecto.gira.id}`} className="ms-card-inset px-2.5 py-1 rounded-lg text-[#B3985B] hover:text-[#c9a96a]">
+                Gira: {proyecto.gira.nombre}
+              </Link>
+            )}
+            {proyecto.trato && (
+              <Link href={`/crm/tratos/${proyecto.trato.id}`} className="ms-card-inset px-2.5 py-1 rounded-lg text-[#B3985B] hover:text-[#c9a96a]">
+                Trato: {proyecto.trato.nombreEvento || proyecto.trato.id}
+              </Link>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="ms-card p-4 space-y-3">
@@ -241,12 +323,25 @@ export default function ProyectoCreativoPage() {
             {copiado ? "Copiado" : "Copiar link para el cliente"}
           </button>
         </div>
-        <BriefCreativoForm
-          variante="interno"
-          respuestasIniciales={parseBriefDetalle(proyecto.briefDetalle)}
-          archivosEndpoint={`/api/proyectos-creativos/${id}/archivos`}
-          onGuardar={json => guardar({ briefDetalle: json })}
-        />
+        <button
+          onClick={() => router.push(`/creative/${id}?panel=brief`)}
+          className="ms-card p-4 w-full text-left flex items-center justify-between gap-3 border border-transparent hover:border-[#B3985B]/40 transition-colors"
+        >
+          <div>
+            <p className="text-sm text-white">
+              {briefEstaVacio(proyecto.briefDetalle) ? "Brief sin capturar" : "Brief en progreso"}
+            </p>
+            {(() => {
+              const faltan = camposFaltantesTotal(parseBriefDetalle(proyecto.briefDetalle)).length;
+              return (
+                <p className={`text-[11px] mt-0.5 ${faltan > 0 ? "text-[#e8a020]" : "text-[#4ade80]"}`}>
+                  {faltan > 0 ? `Faltan ${faltan} datos` : "Brief completo"}
+                </p>
+              );
+            })()}
+          </div>
+          <span className="text-xs text-[#B3985B] shrink-0">Abrir brief →</span>
+        </button>
       </div>
 
       <div className="ms-card p-4 space-y-2">

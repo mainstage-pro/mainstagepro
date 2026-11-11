@@ -21,6 +21,7 @@ export interface CampoBrief {
   opciones?: OpcionChip[]; // para tipo "chips"
   multiple?: boolean; // chips: selección múltiple vs única
   mostrarSi?: { campoId: string; valor: string }; // condicional simple, un solo campo
+  requerido?: boolean; // alimenta el badge "Faltan N datos" — no bloquea avanzar
 }
 
 export interface SeccionBrief {
@@ -42,6 +43,7 @@ export const SECCIONES_BRIEF: SeccionBrief[] = [
         id: "formato",
         label: "¿Es un show o una gira?",
         tipo: "chips",
+        requerido: true,
         opciones: [{ id: "SHOW", label: "Show" }, { id: "GIRA", label: "Gira" }],
       },
       {
@@ -66,6 +68,7 @@ export const SECCIONES_BRIEF: SeccionBrief[] = [
         id: "fechas",
         label: "Fecha o fechas",
         tipo: "texto",
+        requerido: true,
         placeholder: "Ej. 14 de marzo, 2026",
       },
       {
@@ -73,6 +76,7 @@ export const SECCIONES_BRIEF: SeccionBrief[] = [
         label: "Venue o venues",
         ayuda: "Medidas del escenario, altura, puntos de colgado y equipo que ya tiene el venue.",
         tipo: "textarea",
+        requerido: true,
         placeholder: "Describe cada venue con el mayor detalle posible…",
       },
       {
@@ -95,6 +99,7 @@ export const SECCIONES_BRIEF: SeccionBrief[] = [
         label: "Narrativa del show",
         ayuda: "Qué historia cuenta y qué debe sentir el público.",
         tipo: "textarea",
+        requerido: true,
       },
       {
         id: "estiloConceptual",
@@ -133,6 +138,7 @@ export const SECCIONES_BRIEF: SeccionBrief[] = [
         label: "Categorías de equipo",
         tipo: "chips",
         multiple: true,
+        requerido: true,
         opciones: [
           { id: "AUDIO", label: "Audio" },
           { id: "ILUMINACION", label: "Iluminación" },
@@ -192,6 +198,7 @@ export const SECCIONES_BRIEF: SeccionBrief[] = [
         id: "presupuesto",
         label: "Presupuesto o rango",
         tipo: "texto",
+        requerido: true,
       },
       {
         id: "entregables",
@@ -225,4 +232,40 @@ export function serializeBriefDetalle(respuestas: RespuestasBrief): string | nul
 // Para saber si vale la pena mostrar "Brief sin capturar" en los paneles de resumen.
 export function briefEstaVacio(raw: string | null | undefined): boolean {
   return Object.keys(parseBriefDetalle(raw)).length === 0;
+}
+
+// Un campo condicional (`mostrarSi`) solo cuenta como "falta" o se renderiza
+// si su padre ya tiene la respuesta que lo activa.
+export function campoVisible(campo: CampoBrief, respuestas: RespuestasBrief): boolean {
+  if (!campo.mostrarSi) return true;
+  return respuestas[campo.mostrarSi.campoId] === campo.mostrarSi.valor;
+}
+
+function campoEstaVacio(valor: RespuestasBrief[string]): boolean {
+  if (valor === undefined) return true;
+  if (typeof valor === "string") return valor.trim() === "";
+  if (Array.isArray(valor)) return valor.length === 0;
+  return false; // boolean (true/false) siempre cuenta como contestado
+}
+
+// Campos requeridos y visibles que aún no tienen respuesta, dentro de una sección.
+// No bloquea avanzar — solo alimenta el badge "Faltan N datos" (mismo criterio
+// que `briefFaltantes` en crm/tratos/[id]/page.tsx).
+export function camposFaltantes(seccion: SeccionBrief, respuestas: RespuestasBrief): CampoBrief[] {
+  return seccion.campos.filter(
+    c => c.requerido && campoVisible(c, respuestas) && campoEstaVacio(respuestas[c.id]),
+  );
+}
+
+// Mismo cálculo pero sobre todas las secciones — para el resumen final.
+export function camposFaltantesTotal(respuestas: RespuestasBrief): { seccion: SeccionBrief; campo: CampoBrief }[] {
+  return SECCIONES_BRIEF.flatMap(seccion => camposFaltantes(seccion, respuestas).map(campo => ({ seccion, campo })));
+}
+
+// Texto corto para la pista bajo un campo condicional ("Aparece porque elegiste Gira").
+export function razonVisible(campo: CampoBrief): string | null {
+  if (!campo.mostrarSi) return null;
+  const padre = SECCIONES_BRIEF.flatMap(s => s.campos).find(c => c.id === campo.mostrarSi!.campoId);
+  const opcion = padre?.opciones?.find(o => o.id === campo.mostrarSi!.valor);
+  return `Aparece porque elegiste ${opcion?.label ?? campo.mostrarSi.valor}`;
 }
