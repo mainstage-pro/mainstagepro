@@ -452,6 +452,19 @@ export function renglonesDeItinerario(eventos: ItinerarioEvento[]): ItinerarioRe
   );
 }
 
+/**
+ * Minuto a minuto puro (para el PDF): ordena los renglones de UN día solo por la hora,
+ * sin importar el evento ni la fase. Usa el minuto ya resuelto dentro de `clave`
+ * (todas las bases son múltiplos de 10 000), así respeta el cruce de medianoche de
+ * cada evento; los que no tienen hora (≥ CLAVE_PENDIENTE_BASE) quedan al final.
+ */
+export function ordenarPorHora(renglones: ItinerarioRenglon[]): ItinerarioRenglon[] {
+  return renglones
+    .map((r, i) => ({ r, i, m: r.clave % 10_000 }))
+    .sort((a, b) => a.m - b.m || a.i - b.i)
+    .map((x) => x.r);
+}
+
 /** Los checkpoints de un mismo proyecto en un día, agrupados para mostrarse como una sola tarjeta/bloque. */
 export type GrupoEvento = {
   proyectoId: string;

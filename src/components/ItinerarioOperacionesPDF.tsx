@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from "@react-pdf/renderer";
 import { base, ReporteLayout, fmtFechaLarga, GOLD, BLACK, GRAY, LIGHT, MID, WHITE } from "@/components/pdf/ReporteBase";
 import {
   porDia,
+  ordenarPorHora,
   renglonesDeItinerario,
   mapaColoresEventos,
   ID_SUELTAS,
@@ -55,16 +56,6 @@ const styles = StyleSheet.create({
   table: { borderRadius: 4, overflow: "hidden" },
   thead: { flexDirection: "row", backgroundColor: MID, paddingHorizontal: 10, paddingVertical: 5 },
   th: { fontSize: 6.3, fontFamily: "Helvetica-Bold", color: "#666666", letterSpacing: 0.5 },
-  eventoHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 9,
-    paddingVertical: 4.5,
-    borderLeftWidth: 3,
-  },
-  eventoNombre: { fontSize: 9, fontFamily: "Helvetica-Bold", color: BLACK },
-  eventoMeta: { fontSize: 6.3, color: "#6b6b6b" },
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -97,7 +88,6 @@ export function ItinerarioOperacionesPDF({ data }: { data: ItinerarioPDFData }) 
       footerLabel="Mainstage Pro — Itinerario de operaciones"
     >
       {dias.map((d) => {
-        let proyectoAnterior: string | null = null;
         return (
           <View key={d.fecha} style={base.seccion}>
             <View style={styles.diaHeader}>
@@ -123,41 +113,26 @@ export function ItinerarioOperacionesPDF({ data }: { data: ItinerarioPDFData }) 
                 <Text style={[styles.th, { flex: 1 }]}>RESPONSABLE</Text>
                 <Text style={[styles.th, { flex: 1.9 }]}>NOTAS</Text>
               </View>
-              {d.renglones.map((r, i) => {
-                const mismoProyecto = proyectoAnterior === r.proyectoId;
-                proyectoAnterior = r.proyectoId;
+              {/* Minuto a minuto: solo por hora, mezclando eventos; el color y el nombre dicen de cuál es. */}
+              {ordenarPorHora(d.renglones).map((r, i) => {
                 const color = colores[r.proyectoId];
+                const evento = r.proyectoId === ID_SUELTAS ? "Actividad suelta" : r.nombre;
                 return (
-                  <React.Fragment key={`${r.proyectoId}-${r.etiqueta}-${i}`}>
-                    {!mismoProyecto && (
-                      <View
-                        style={[
-                          styles.eventoHeader,
-                          { backgroundColor: color.bg, borderLeftColor: color.accent },
-                        ]}
-                        wrap={false}
-                      >
-                        <Text style={styles.eventoNombre}>{r.nombre}</Text>
-                        <Text style={styles.eventoMeta}>
-                          {r.proyectoId === ID_SUELTAS ? "Sin proyecto" : `${r.clienteNombre} · ${r.numeroProyecto}`}
-                        </Text>
-                      </View>
-                    )}
-                    <View
-                      style={[styles.row, { backgroundColor: color.bg, borderLeftColor: color.accent }]}
-                      wrap={false}
-                    >
-                      <Text style={[styles.td, { width: 78 }, ...(r.pendiente ? [styles.pendiente] : [])]}>
-                        {horaDisplay(r)}
-                      </Text>
-                      <View style={{ flex: 1.6, paddingRight: 4 }}>
-                        <Text style={styles.tdStrong}>{r.etiqueta}</Text>
-                        {r.diaLabel ? <Text style={styles.tdSub}>{r.diaLabel}</Text> : null}
-                      </View>
-                      <Text style={[styles.td, { flex: 1 }]}>{r.responsableRenglon ?? r.responsable ?? "—"}</Text>
-                      <Text style={[styles.td, { flex: 1.9 }]}>{r.notasOperativas || r.nota || "—"}</Text>
+                  <View
+                    key={`${r.proyectoId}-${r.etiqueta}-${i}`}
+                    style={[styles.row, { backgroundColor: color.bg, borderLeftColor: color.accent }]}
+                    wrap={false}
+                  >
+                    <Text style={[styles.td, { width: 78 }, ...(r.pendiente ? [styles.pendiente] : [])]}>
+                      {horaDisplay(r)}
+                    </Text>
+                    <View style={{ flex: 1.6, paddingRight: 4 }}>
+                      <Text style={styles.tdStrong}>{r.etiqueta}</Text>
+                      <Text style={styles.tdSub}>{r.diaLabel ? `${evento} · ${r.diaLabel}` : evento}</Text>
                     </View>
-                  </React.Fragment>
+                    <Text style={[styles.td, { flex: 1 }]}>{r.responsableRenglon ?? r.responsable ?? "—"}</Text>
+                    <Text style={[styles.td, { flex: 1.9 }]}>{r.notasOperativas || r.nota || "—"}</Text>
+                  </View>
                 );
               })}
             </View>
