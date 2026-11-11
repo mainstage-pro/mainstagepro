@@ -20,6 +20,9 @@ import {
   PenTool,
   Layers,
   Gem,
+  FileText,
+  Layout,
+  ClipboardList,
   type LucideIcon,
 } from "lucide-react";
 
@@ -303,15 +306,28 @@ function SlideVision() {
   );
 }
 
-function NivelCard({ icono: Icono, nivel, rango, desc, delay }: { icono: LucideIcon; nivel: string; rango: string; desc: string; delay: number }) {
+function NivelCard({ icono: Icono, nivel, desc, delay }: { icono: LucideIcon; nivel: string; desc: string; delay: number }) {
   return (
     <A delay={delay} style={{ flex: 1, minWidth: 220 }}>
       <div style={{ height: "100%", borderRadius: 16, padding: "26px 24px", background: G_A(0.05), border: `1px solid ${G_A(0.2)}` }}>
         <div style={{ marginBottom: 16 }}>
           <IconoMarco icono={Icono} tam={40} />
         </div>
-        <p style={{ color: G, fontWeight: 800, fontSize: "clamp(16px, 1.8vw, 21px)", letterSpacing: "-0.02em", marginBottom: 4 }}>Nivel {nivel}</p>
-        <p style={{ color: W_A(0.4), fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12 }}>{rango}</p>
+        <p style={{ color: G, fontWeight: 800, fontSize: "clamp(16px, 1.8vw, 21px)", letterSpacing: "-0.02em", marginBottom: 12 }}>Nivel {nivel}</p>
+        <p style={{ color: W_A(0.55), fontSize: "clamp(12px, 1.05vw, 14px)", lineHeight: 1.7 }}>{desc}</p>
+      </div>
+    </A>
+  );
+}
+
+function ServicioCard({ icono: Icono, nombre, desc, delay }: { icono: LucideIcon; nombre: string; desc: string; delay: number }) {
+  return (
+    <A delay={delay} style={{ flex: "1 1 260px", minWidth: 240 }}>
+      <div style={{ height: "100%", borderRadius: 16, padding: "26px 24px", background: G_A(0.05), border: `1px solid ${G_A(0.2)}` }}>
+        <div style={{ marginBottom: 16 }}>
+          <IconoMarco icono={Icono} tam={40} />
+        </div>
+        <p style={{ color: G, fontWeight: 800, fontSize: "clamp(16px, 1.8vw, 21px)", letterSpacing: "-0.02em", marginBottom: 12 }}>{nombre}</p>
         <p style={{ color: W_A(0.55), fontSize: "clamp(12px, 1.05vw, 14px)", lineHeight: 1.7 }}>{desc}</p>
       </div>
     </A>
@@ -327,7 +343,49 @@ function SlideEstructura() {
         <SectionLabel delay={0}>Qué hacemos</SectionLabel>
         <A delay={80}>
           <h2 style={{ fontSize: "clamp(1.6rem, 3.6vw, 2.9rem)", fontWeight: 800, letterSpacing: "-0.035em", color: W, marginBottom: 14 }}>
-            Tres niveles. Mismo estándar. Mismo tiempo de respuesta.
+            Del concepto al plano, listo para montarse.
+          </h2>
+        </A>
+        <A delay={160}>
+          <p style={{ color: W_A(0.45), fontSize: "clamp(0.85rem, 1.2vw, 1.05rem)", lineHeight: 1.7, maxWidth: 680, marginBottom: 36 }}>
+            Un servicio, tres entregables conectados — no piezas sueltas.
+          </p>
+        </A>
+        <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+          <ServicioCard
+            icono={FileText}
+            nombre="Conceptualización"
+            desc="Partimos de tu brief: rider, referencias y la dirección creativa del show."
+            delay={260}
+          />
+          <ServicioCard
+            icono={Layout}
+            nombre="Diseño de escenario y renders"
+            desc="El render de cómo se va a ver el show, ajustado al escenario real del venue."
+            delay={330}
+          />
+          <ServicioCard
+            icono={ClipboardList}
+            nombre="Plots de producción"
+            desc="Patch, plot y fixture schedule — la documentación para montarlo igual en cualquier venue."
+            delay={400}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SlideNiveles() {
+  return (
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", padding: "clamp(36px, 5vh, 64px) clamp(48px, 8vw, 120px)", position: "relative", overflowY: "auto", overflowX: "hidden" }}>
+      <Foto src={FOTO.estructura} opacity={0.085} />
+      <RadialGlow x={78} y={40} intensity={0.05} />
+      <div style={{ position: "relative", zIndex: 1, margin: "auto 0" }}>
+        <SectionLabel delay={0}>Niveles de servicio</SectionLabel>
+        <A delay={80}>
+          <h2 style={{ fontSize: "clamp(1.6rem, 3.6vw, 2.9rem)", fontWeight: 800, letterSpacing: "-0.035em", color: W, marginBottom: 14 }}>
+            Tres niveles. Mismo estándar, mismo cuidado.
           </h2>
         </A>
         <A delay={160}>
@@ -339,22 +397,19 @@ function SlideEstructura() {
           <NivelCard
             icono={PenTool}
             nivel="A"
-            rango="Hasta 30 fixtures"
-            desc="Entrega en 1 día hábil. Ideal para shows de una fecha o rigs compactos."
+            desc="Shows de una fecha o rigs compactos. Entrega en 1 día hábil."
             delay={260}
           />
           <NivelCard
             icono={Layers}
             nivel="AA"
-            rango="31 a 60 fixtures"
-            desc="Entrega en 2 días hábiles. Giras cortas y rigs con más de un elemento escénico."
+            desc="Giras cortas y rigs con más de un elemento escénico. Entrega en 2 días hábiles."
             delay={330}
           />
           <NivelCard
             icono={Gem}
             nivel="AAA"
-            rango="61+ fixtures"
-            desc="Entrega en 3 días hábiles. Rigs grandes, festivales y shows con escenografía propia."
+            desc="Rigs grandes, festivales y shows con escenografía propia. Entrega en 3 días hábiles."
             delay={400}
           />
         </div>
@@ -666,6 +721,7 @@ export default function PresentacionCreativeClient() {
       <SlideMision key="mision" />,
       <SlideVision key="vision" />,
       <SlideEstructura key="estructura" />,
+      <SlideNiveles key="niveles" />,
       <SlideProceso key="proceso" />,
       <SlideParaQuien key="paraquien" />,
       <SlideProblemas key="problemas" />,
