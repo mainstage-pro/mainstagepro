@@ -353,8 +353,8 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
                   const h = horarioDeDia(fecha, di, diasCrono, data.horariosEvento, {
                     inicio: data.horaInicioEvento,
                     fin: data.horaFinEvento,
-                    llamado: llamadoBodegaHora,
-                    montaje: data.horaMontaje || data.horaInicioMontaje,
+                    llamado: data.montajeDiaAparte ? null : llamadoBodegaHora,
+                    montaje: data.montajeDiaAparte ? null : (data.horaMontaje || data.horaInicioMontaje),
                   });
                   const partes = [
                     h.llamado ? `Llamado ${fmtHora(h.llamado)}` : null,

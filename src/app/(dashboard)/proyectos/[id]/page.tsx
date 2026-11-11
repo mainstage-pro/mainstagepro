@@ -2142,7 +2142,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     campo: "inicio" | "fin" | "llamado" | "montaje" | "aplicaMontaje",
     value: string | boolean,
   ) {
-    if (indice === 0) {
+    // Si el montaje es un día adicional, el llamado y montaje del D1 son propios de ese día:
+    // NO tocan llamadoBodega / horaInicioMontaje (que son del día de montaje).
+    const dia1Propio = indice === 0 && proyecto?.montajeDiaAparte === true && (campo === "llamado" || campo === "montaje");
+    if (indice === 0 && !dia1Propio) {
       if (campo === "aplicaMontaje") return; // el día 1 siempre aplica montaje
       const v = String(value);
       if (campo === "inicio") return void guardarCampo("horaInicioEvento", v);
@@ -2278,8 +2281,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     return horarioDeDia(dia ?? diasDelEvento[0] ?? eventoStr, i < 0 ? 0 : i, diasDelEvento, proyecto?.horariosEvento, {
       inicio: proyecto?.horaInicioEvento,
       fin: proyecto?.horaFinEvento,
-      llamado: proyecto?.llamadoBodega ? proyecto.llamadoBodega.substring(11, 16) : null,
-      montaje: proyecto?.horaInicioMontaje,
+      // Montaje en día adicional → el llamado/montaje de la jornada de montaje no son del D1.
+      llamado: !proyecto?.montajeDiaAparte && proyecto?.llamadoBodega ? proyecto.llamadoBodega.substring(11, 16) : null,
+      montaje: proyecto?.montajeDiaAparte ? null : proyecto?.horaInicioMontaje,
     });
   }
 
@@ -4705,8 +4709,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                         const h = horarioDeDia(fecha, di, diasDelEvento, proyecto.horariosEvento, {
                           inicio: proyecto.horaInicioEvento,
                           fin: proyecto.horaFinEvento,
-                          llamado: proyecto.llamadoBodega ? proyecto.llamadoBodega.substring(11, 16) : null,
-                          montaje: proyecto.horaInicioMontaje,
+                          // Montaje en día adicional → el D1 tiene su propio llamado/montaje.
+                          llamado: !proyecto.montajeDiaAparte && proyecto.llamadoBodega ? proyecto.llamadoBodega.substring(11, 16) : null,
+                          montaje: proyecto.montajeDiaAparte ? null : proyecto.horaInicioMontaje,
                         });
                         const propio = parseHorariosEvento(proyecto.horariosEvento)[fecha];
                         const heredado = di > 0 && !(propio && (propio.inicio || propio.fin));
