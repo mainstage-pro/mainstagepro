@@ -216,7 +216,16 @@ export function checkpointsDeProyecto(p: ProyectoCronologia, bloques: BloqueTiem
       montaje: null,
     });
     const diaLabel = dias.length > 1 ? `Día ${i + 1} de ${dias.length}` : null;
-    const bloqueDia: ItinerarioCheckpoint[] = [
+    const bloqueDia: ItinerarioCheckpoint[] = [];
+    // Días 2+: su propio Llamado y, si aplica montaje ese día, su propia Hora de montaje
+    // (capturados en "Horarios por día" del proyecto) — el día 1 ya sale en el bloque MONTAJE.
+    if (i > 0 && hd.llamado) {
+      bloqueDia.push(checkpoint(fecha, "EVENTO", "Llamado", -2, { hora: hd.llamado, diaLabel }));
+    }
+    if (i > 0 && hd.aplicaMontaje && hd.montaje) {
+      bloqueDia.push(checkpoint(fecha, "EVENTO", "Hora de montaje", -1, { hora: hd.montaje, diaLabel }));
+    }
+    bloqueDia.push(
       checkpoint(fecha, "EVENTO", "Inicio del evento", 0, {
         hora: hd.inicio,
         nota: p.lugarEvento,
@@ -224,7 +233,7 @@ export function checkpointsDeProyecto(p: ProyectoCronologia, bloques: BloqueTiem
         diaLabel,
         campo: "inicioEvento",
       }),
-    ];
+    );
     bloques
       .filter((b) => (b.fecha ? fechaISOaDia(b.fecha) : dias[0]) === fecha)
       .sort((a, b) => a.orden - b.orden)
