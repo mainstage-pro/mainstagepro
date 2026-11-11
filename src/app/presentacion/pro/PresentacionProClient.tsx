@@ -592,7 +592,7 @@ function AlianzaCard({ logo, nombre, desc, delay }: { logo: string; nombre: stri
   return (
     <A delay={delay} style={{ flex: 1, minWidth: 260 }}>
       <div style={{ height: "100%", borderRadius: 16, padding: "28px 26px", background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.08)" }}>
-        <Image src={logo} alt={nombre} width={40} height={40} style={{ width: 40, height: 40, borderRadius: 10, marginBottom: 14, objectFit: "contain" }} />
+        <Image src={logo} alt={nombre} width={80} height={80} style={{ width: 80, height: 80, borderRadius: 16, marginBottom: 18, objectFit: "contain" }} />
         <p style={{ color: G, fontSize: 11, fontWeight: 700, letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 10 }}>{nombre}</p>
         <p style={{ color: W_A(0.6), fontSize: "clamp(12px, 1.1vw, 14.5px)", lineHeight: 1.75 }}>{desc}</p>
       </div>
