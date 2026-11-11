@@ -21,8 +21,17 @@ import {
   type CategoriaCheckpoint,
 } from "@/lib/itinerario-operaciones";
 
+/** Fecha local "YYYY-MM-DD" (no UTC: en la noche de México toISOString ya da el día siguiente). */
+function isoLocal(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 function hoyISO() {
-  return new Date().toISOString().slice(0, 10);
+  return isoLocal(new Date());
+}
+/** El domingo que viene; si hoy es domingo, el de la semana siguiente. */
+function proximoDomingo() {
+  const dia = new Date().getDay(); // 0 = domingo
+  return sumarDias(hoyISO(), dia === 0 ? 7 : 7 - dia);
 }
 function sumarDias(iso: string, dias: number) {
   const d = new Date(`${iso}T12:00:00.000Z`);
@@ -31,11 +40,11 @@ function sumarDias(iso: string, dias: number) {
 }
 function primerDiaMes() {
   const n = new Date();
-  return new Date(n.getFullYear(), n.getMonth(), 1).toISOString().slice(0, 10);
+  return isoLocal(new Date(n.getFullYear(), n.getMonth(), 1));
 }
 function ultimoDiaMes() {
   const n = new Date();
-  return new Date(n.getFullYear(), n.getMonth() + 1, 0).toISOString().slice(0, 10);
+  return isoLocal(new Date(n.getFullYear(), n.getMonth() + 1, 0));
 }
 function fechaLarga(fecha: string) {
   return new Date(`${fecha}T12:00:00.000Z`).toLocaleDateString("es-MX", {
@@ -54,6 +63,7 @@ function horaDisplay(r: Pick<ItinerarioRenglon, "hora" | "horaFin" | "pendiente"
 }
 
 const PRESETS: { label: string; rango: () => [string, string] }[] = [
+  { label: "Esta semana", rango: () => [hoyISO(), proximoDomingo()] },
   { label: "Próximos 7 días", rango: () => [hoyISO(), sumarDias(hoyISO(), 7)] },
   { label: "Próximos 30 días", rango: () => [hoyISO(), sumarDias(hoyISO(), 30)] },
   { label: "Este mes", rango: () => [primerDiaMes(), ultimoDiaMes()] },
@@ -372,8 +382,8 @@ type ModalActividad = { fecha: string; proyectoId?: string; integrar?: Actividad
 
 export default function ItinerarioClient() {
   const { success, error } = useToast();
-  const [inicio, setInicio] = useState(hoyISO());
-  const [fin, setFin] = useState(sumarDias(hoyISO(), 30));
+  const [inicio, setInicio] = useState("");
+  const [fin, setFin] = useState("");
   const [eventos, setEventos] = useState<ItinerarioEvento[]>([]);
   const [sueltas, setSueltas] = useState<ActividadSuelta[]>([]);
   const [modal, setModal] = useState<ModalActividad | null>(null);
@@ -402,9 +412,17 @@ export default function ItinerarioClient() {
     [inicio, fin, error],
   );
 
+  // El rango por default (hoy → domingo) se fija ya en el navegador: el servidor está en UTC
+  // y en la noche de México calcularía el día siguiente.
   useEffect(() => {
+    setInicio(hoyISO());
+    setFin(proximoDomingo());
+  }, []);
+
+  useEffect(() => {
+    if (!inicio || !fin) return;
     cargar();
-  }, [cargar]);
+  }, [cargar, inicio, fin]);
 
   const dias = useMemo(() => {
     const grupoSueltas = eventoDeSueltas(sueltas);

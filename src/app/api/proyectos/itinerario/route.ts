@@ -125,6 +125,10 @@ export async function proyectosEnRango(inicio: string, fin: string) {
   for (const p of proyectos) {
     const ventana = ventanaProyecto(p);
     if (!ventana || ventana.fin < inicio || ventana.inicio > fin) continue;
+    // Solo las actividades que caen dentro del rango pedido: un proyecto que cruza el
+    // borde (montaje el día previo, desmontaje al siguiente) no arrastra días de fuera.
+    const checkpoints = checkpointsDeProyecto(p, p.bloquesTiempo).filter((c) => c.fecha >= inicio && c.fecha <= fin);
+    if (checkpoints.length === 0) continue;
     eventos.push({
       proyectoId: p.id,
       numeroProyecto: p.numeroProyecto,
@@ -134,7 +138,7 @@ export async function proyectosEnRango(inicio: string, fin: string) {
       lugarEvento: p.lugarEvento,
       responsable: responsableDeProyecto(p),
       notasOperativas: p.notasOperativas,
-      checkpoints: checkpointsDeProyecto(p, p.bloquesTiempo),
+      checkpoints,
     });
   }
   return eventos;
