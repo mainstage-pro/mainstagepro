@@ -4802,8 +4802,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       {/* Date part */}
                       <input
                         type="date"
-                        defaultValue={proyecto.llamadoBodega ? proyecto.llamadoBodega.substring(0, 10) : ''}
-                        onBlur={e => {
+                        value={proyecto.llamadoBodega ? proyecto.llamadoBodega.substring(0, 10) : ''}
+                        onChange={e => {
                           const fechaPart = e.target.value;
                           const horaPart = proyecto.llamadoBodega
                             ? proyecto.llamadoBodega.substring(11, 16)
