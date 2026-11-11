@@ -49,7 +49,27 @@ export type ItinerarioCheckpoint = {
   clave: number;
   /** Campo del proyecto que edita este checkpoint; null = solo lectura. */
   campo: CampoEditableItinerario | null;
+  /** Renglón de la Logística general (ProyectoBloqueTiempo) del que sale; null = horario fijo. */
+  bloqueId: string | null;
+  /** Actividad suelta (ItinerarioActividad) de la que sale; null = viene de un proyecto. */
+  actividadId: string | null;
 };
+
+/** Actividad suelta del itinerario: no pertenece (todavía) a ningún proyecto. */
+export type ActividadSuelta = {
+  id: string;
+  fecha: string; // YYYY-MM-DD
+  horaInicio: string | null;
+  horaFin: string | null;
+  titulo: string;
+  nota: string | null;
+  responsable: string | null;
+};
+
+/** proyectoId del grupo de actividades sueltas (no es un proyecto real). */
+export const ID_SUELTAS = "__sueltas__";
+/** Las sueltas van al final del día, después de todos los proyectos. */
+const RANGO_SUELTAS = 100_000_000;
 
 /** Parsea el JSON de notasItinerario a un mapa { [campo]: nota }. */
 export function parseNotasItinerario(json: string | null | undefined): Partial<Record<CampoEditableItinerario, string>> {
@@ -137,6 +157,8 @@ function checkpoint(
     responsable?: string | null;
     diaLabel?: string | null;
     campo?: CampoEditableItinerario | null;
+    bloqueId?: string | null;
+    actividadId?: string | null;
   } = {},
 ): ItinerarioCheckpoint {
   const hora = horaValida(opts.hora);
@@ -154,14 +176,35 @@ function checkpoint(
     orden,
     clave: 0,
     campo: opts.campo ?? null,
+    bloqueId: opts.bloqueId ?? null,
+    actividadId: opts.actividadId ?? null,
   };
+}
+
+/** Un renglón de la Logística general del proyecto como checkpoint del itinerario. */
+function checkpointDeBloque(
+  b: BloqueTiempo,
+  fecha: string,
+  categoria: CategoriaCheckpoint,
+  orden: number,
+  diaLabel: string | null = null,
+): ItinerarioCheckpoint {
+  return checkpoint(fecha, categoria, b.titulo, orden, {
+    hora: b.horaInicio,
+    horaFin: b.horaFin,
+    nota: b.detalle || b.involucrados,
+    responsable: b.responsable,
+    diaLabel,
+    bloqueId: b.id,
+  });
 }
 
 /**
  * Checkpoints (montaje, evento, desmontaje) de un proyecto, SIEMPRE completos:
  * si un dato no se ha capturado en el proyecto, el checkpoint sale igual, marcado
  * `pendiente`, para que el hueco sea visible en el itinerario general.
- * `bloques` son las filas de ProyectoBloqueTiempo (solo SOUNDCHECK/PROGRAMA) del proyecto.
+ * `bloques` son las filas de ProyectoBloqueTiempo de la Logística general del proyecto
+ * (MONTAJE / SOUNDCHECK / PROGRAMA / DESMONTAJE); cada una cae en su sección y su día.
  */
 export function checkpointsDeProyecto(p: ProyectoCronologia, bloques: BloqueTiempo[] = []): ItinerarioCheckpoint[] {
   const dias = diasEvento(p.fechaEvento, p.fechasEvento);
@@ -175,6 +218,30 @@ export function checkpointsDeProyecto(p: ProyectoCronologia, bloques: BloqueTiem
   const montajeFecha = p.fechaMontaje ? fechaISOaDia(p.fechaMontaje) : llamadoFecha;
   const montajeDiaAparte = p.montajeDiaAparte === true && !!montajeFecha && montajeFecha !== dias[0];
   const fechaMontaje = montajeDiaAparte ? montajeFecha! : dias[0];
+
+  const desmontajeFecha = p.fechaDesmontaje ? fechaISOaDia(p.fechaDesmontaje) : null;
+  const desmontajeDiaAparte =
+    p.desmontajeDiaAparte === true && !!desmontajeFecha && desmontajeFecha !== dias[dias.length - 1];
+  const fechaDesmontaje = desmontajeDiaAparte ? desmontajeFecha! : dias[dias.length - 1];
+
+  // Renglones de la Logística general, repartidos por sección. Uno del programa que cae
+  // fuera de los días del evento se va a montaje (antes) o desmontaje (después) para que
+  // no quede invisible.
+  const ordenados = [...bloques].sort((a, b) => a.orden - b.orden);
+  const diaBloque = (b: BloqueTiempo, def: string) => (b.fecha ? fechaISOaDia(b.fecha) : def);
+  const extrasMontaje: { b: BloqueTiempo; fecha: string }[] = [];
+  const extrasDesmontaje: { b: BloqueTiempo; fecha: string }[] = [];
+  const extrasEvento: { b: BloqueTiempo; fecha: string }[] = [];
+  ordenados.forEach((b) => {
+    if (b.tipo === "MONTAJE") extrasMontaje.push({ b, fecha: diaBloque(b, fechaMontaje) });
+    else if (b.tipo === "DESMONTAJE") extrasDesmontaje.push({ b, fecha: diaBloque(b, fechaDesmontaje) });
+    else if (b.tipo === "SOUNDCHECK" || b.tipo === "PROGRAMA") {
+      const fecha = diaBloque(b, dias[0]);
+      if (dias.includes(fecha)) extrasEvento.push({ b, fecha });
+      else if (fecha < dias[0]) extrasMontaje.push({ b, fecha });
+      else extrasDesmontaje.push({ b, fecha });
+    }
+  });
 
   const bloqueMontaje = [
     checkpoint(fechaDe("llamado", fechaMontaje), "MONTAJE", "Llamado", 0, {
@@ -205,6 +272,7 @@ export function checkpointsDeProyecto(p: ProyectoCronologia, bloques: BloqueTiem
       notaEditable: notas.finMontaje,
       campo: "finMontaje",
     }),
+    ...extrasMontaje.map(({ b, fecha }, j) => checkpointDeBloque(b, fecha, "MONTAJE", 10 + j)),
   ];
   out.push(...asignarClaves(bloqueMontaje, RANGO_CATEGORIA.MONTAJE));
 
@@ -234,19 +302,10 @@ export function checkpointsDeProyecto(p: ProyectoCronologia, bloques: BloqueTiem
         campo: "inicioEvento",
       }),
     );
-    bloques
-      .filter((b) => (b.fecha ? fechaISOaDia(b.fecha) : dias[0]) === fecha)
-      .sort((a, b) => a.orden - b.orden)
-      .forEach((b, j) => {
-        bloqueDia.push(
-          checkpoint(fecha, "EVENTO", b.titulo, j + 1, {
-            hora: b.horaInicio,
-            horaFin: b.horaFin,
-            nota: b.detalle || b.involucrados,
-            responsable: b.responsable,
-            diaLabel,
-          }),
-        );
+    extrasEvento
+      .filter((x) => x.fecha === fecha)
+      .forEach(({ b }, j) => {
+        bloqueDia.push(checkpointDeBloque(b, fecha, "EVENTO", j + 1, diaLabel));
       });
     bloqueDia.push(
       checkpoint(fecha, "EVENTO", "Fin del evento", 99, {
@@ -260,10 +319,6 @@ export function checkpointsDeProyecto(p: ProyectoCronologia, bloques: BloqueTiem
     out.push(...asignarClaves(bloqueDia, RANGO_CATEGORIA.EVENTO + i * 10_000));
   });
 
-  const desmontajeFecha = p.fechaDesmontaje ? fechaISOaDia(p.fechaDesmontaje) : null;
-  const desmontajeDiaAparte =
-    p.desmontajeDiaAparte === true && !!desmontajeFecha && desmontajeFecha !== dias[dias.length - 1];
-  const fechaDesmontaje = desmontajeDiaAparte ? desmontajeFecha! : dias[dias.length - 1];
   const bloqueDesmontaje = [
     checkpoint(fechaDe("inicioDesmontaje", fechaDesmontaje), "DESMONTAJE", "Inicio de desmontaje", 0, {
       hora: h.inicioDesmontaje,
@@ -275,6 +330,7 @@ export function checkpointsDeProyecto(p: ProyectoCronologia, bloques: BloqueTiem
       notaEditable: notas.finDesmontaje,
       campo: "finDesmontaje",
     }),
+    ...extrasDesmontaje.map(({ b, fecha }, j) => checkpointDeBloque(b, fecha, "DESMONTAJE", 10 + j)),
   ];
   out.push(...asignarClaves(bloqueDesmontaje, RANGO_CATEGORIA.DESMONTAJE));
 
@@ -323,6 +379,45 @@ export type ItinerarioEvento = {
   checkpoints: ItinerarioCheckpoint[];
 };
 
+/**
+ * Las actividades sueltas como un "evento" más, para que el itinerario (pantalla y PDF)
+ * las agrupe por día con la misma maquinaria. Van al final de cada día.
+ */
+export function eventoDeSueltas(actividades: ActividadSuelta[]): ItinerarioEvento | null {
+  if (!actividades.length) return null;
+  const porFecha = new Map<string, ActividadSuelta[]>();
+  actividades.forEach((a) => porFecha.set(a.fecha, [...(porFecha.get(a.fecha) ?? []), a]));
+  const checkpoints: ItinerarioCheckpoint[] = [];
+  porFecha.forEach((lista, fecha) => {
+    const items = lista.map((a, i) =>
+      checkpoint(fecha, "EVENTO", a.titulo, i, {
+        hora: a.horaInicio,
+        horaFin: a.horaFin,
+        nota: a.nota,
+        responsable: a.responsable,
+        actividadId: a.id,
+      }),
+    );
+    // Por reloj simple (sin cruce de medianoche): no hay un llamado que ancle la jornada.
+    items.forEach((it) => {
+      const m = minutos(it.hora);
+      it.clave = RANGO_SUELTAS + (m == null ? CLAVE_PENDIENTE_BASE + it.orden : m);
+    });
+    checkpoints.push(...items);
+  });
+  return {
+    proyectoId: ID_SUELTAS,
+    numeroProyecto: "",
+    nombre: "Actividades sueltas",
+    estado: "",
+    clienteNombre: "",
+    lugarEvento: null,
+    responsable: null,
+    notasOperativas: null,
+    checkpoints,
+  };
+}
+
 /** Un renglón del itinerario: un checkpoint de un evento, ya aplanado para agrupar por fecha. */
 export type ItinerarioRenglon = ItinerarioCheckpoint & {
   proyectoId: string;
@@ -330,7 +425,10 @@ export type ItinerarioRenglon = ItinerarioCheckpoint & {
   nombre: string;
   estado: string;
   clienteNombre: string;
+  /** Responsable del evento (encabezado de la tarjeta). */
   responsable: string | null;
+  /** Responsable propio del renglón (actividad de logística o suelta), si lo trae. */
+  responsableRenglon: string | null;
   notasOperativas: string | null;
 };
 
@@ -339,6 +437,7 @@ export function renglonesDeItinerario(eventos: ItinerarioEvento[]): ItinerarioRe
   const renglones = eventos.flatMap((ev) =>
     ev.checkpoints.map((c) => ({
       ...c,
+      responsableRenglon: c.responsable,
       proyectoId: ev.proyectoId,
       numeroProyecto: ev.numeroProyecto,
       nombre: ev.nombre,
@@ -413,11 +512,14 @@ export const PALETA_EVENTOS: { accent: string; bg: string }[] = [
   { accent: "#DC2626", bg: "#FBE1E1" }, // rojo
 ];
 
+/** Color neutro de las actividades sueltas: no compite con los colores de los proyectos. */
+export const COLOR_SUELTAS = { accent: "#8A8A8A", bg: "#EFEFEF" };
+
 /** Asigna un color estable por proyecto, en orden de primera aparición en `eventos`. */
 export function mapaColoresEventos(
   eventos: { proyectoId: string }[],
 ): Record<string, { accent: string; bg: string }> {
-  const mapa: Record<string, { accent: string; bg: string }> = {};
+  const mapa: Record<string, { accent: string; bg: string }> = { [ID_SUELTAS]: COLOR_SUELTAS };
   let i = 0;
   eventos.forEach((ev) => {
     if (mapa[ev.proyectoId]) return;

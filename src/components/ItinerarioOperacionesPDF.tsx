@@ -5,6 +5,7 @@ import {
   porDia,
   renglonesDeItinerario,
   mapaColoresEventos,
+  ID_SUELTAS,
   type ItinerarioEvento,
   type ItinerarioRenglon,
 } from "@/lib/itinerario-operaciones";
@@ -20,6 +21,16 @@ function horaDisplay(r: ItinerarioRenglon): string {
   if (!r.horaFin) return ini;
   const fin = fmt24to12(r.horaFin) || r.horaFin;
   return `${ini} – ${fin}`;
+}
+
+/** "2 eventos · 1 actividad suelta" — las sueltas no cuentan como evento. */
+function conteoDia(grupos: { proyectoId: string; checkpoints: unknown[] }[]): string {
+  const eventos = grupos.filter((g) => g.proyectoId !== ID_SUELTAS).length;
+  const sueltas = grupos.find((g) => g.proyectoId === ID_SUELTAS)?.checkpoints.length ?? 0;
+  const partes: string[] = [];
+  if (eventos) partes.push(`${eventos} evento${eventos === 1 ? "" : "s"}`);
+  if (sueltas) partes.push(`${sueltas} actividad${sueltas === 1 ? "" : "es"} suelta${sueltas === 1 ? "" : "s"}`);
+  return partes.join(" · ");
 }
 
 const styles = StyleSheet.create({
@@ -91,9 +102,7 @@ export function ItinerarioOperacionesPDF({ data }: { data: ItinerarioPDFData }) 
           <View key={d.fecha} style={base.seccion}>
             <View style={styles.diaHeader}>
               <Text style={styles.diaTitulo}>{fechaLargaDia(d.fecha).toUpperCase()}</Text>
-              <Text style={styles.diaCount}>
-                {d.grupos.length} evento{d.grupos.length === 1 ? "" : "s"}
-              </Text>
+              <Text style={styles.diaCount}>{conteoDia(d.grupos)}</Text>
             </View>
 
             <View style={styles.leyenda}>
@@ -101,7 +110,7 @@ export function ItinerarioOperacionesPDF({ data }: { data: ItinerarioPDFData }) 
                 <View key={g.proyectoId} style={styles.leyendaItem}>
                   <View style={[styles.leyendaDot, { backgroundColor: colores[g.proyectoId].accent }]} />
                   <Text style={styles.leyendaTexto}>
-                    {g.nombre} · {g.clienteNombre}
+                    {g.proyectoId === ID_SUELTAS ? g.nombre : `${g.nombre} · ${g.clienteNombre}`}
                   </Text>
                 </View>
               ))}
@@ -130,7 +139,7 @@ export function ItinerarioOperacionesPDF({ data }: { data: ItinerarioPDFData }) 
                       >
                         <Text style={styles.eventoNombre}>{r.nombre}</Text>
                         <Text style={styles.eventoMeta}>
-                          {r.clienteNombre} · {r.numeroProyecto}
+                          {r.proyectoId === ID_SUELTAS ? "Sin proyecto" : `${r.clienteNombre} · ${r.numeroProyecto}`}
                         </Text>
                       </View>
                     )}
@@ -145,7 +154,7 @@ export function ItinerarioOperacionesPDF({ data }: { data: ItinerarioPDFData }) 
                         <Text style={styles.tdStrong}>{r.etiqueta}</Text>
                         {r.diaLabel ? <Text style={styles.tdSub}>{r.diaLabel}</Text> : null}
                       </View>
-                      <Text style={[styles.td, { flex: 1 }]}>{r.responsable ?? "—"}</Text>
+                      <Text style={[styles.td, { flex: 1 }]}>{r.responsableRenglon ?? r.responsable ?? "—"}</Text>
                       <Text style={[styles.td, { flex: 1.9 }]}>{r.notasOperativas || r.nota || "—"}</Text>
                     </View>
                   </React.Fragment>

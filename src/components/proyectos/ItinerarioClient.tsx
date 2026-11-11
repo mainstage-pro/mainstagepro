@@ -6,10 +6,14 @@ import { useToast } from "@/components/Toast";
 import { BotonDescarga } from "@/components/BotonDescarga";
 import { fmt24to12 } from "@/lib/hora";
 import HoraInput from "@/components/ui/HoraInput";
+import ActividadItinerarioModal from "@/components/proyectos/ActividadItinerarioModal";
 import {
   porDia,
   renglonesDeItinerario,
   mapaColoresEventos,
+  eventoDeSueltas,
+  ID_SUELTAS,
+  type ActividadSuelta,
   type ItinerarioEvento,
   type ItinerarioRenglon,
   type GrupoEvento,
@@ -59,7 +63,17 @@ const HORA_INPUT_CLASS =
   "w-28 shrink-0 bg-transparent text-gray-200 font-medium text-xs border border-transparent rounded-md px-1.5 py-0.5 -ml-1.5 focus:border-[#B3985B]/40 focus:bg-[#1a1a1a] outline-none hover:border-[#2a2a2a]";
 
 /** Nota libre de un checkpoint; se guarda al salir del campo, igual que la hora. */
-function NotaInput({ valor, placeholder, onGuardar }: { valor: string; placeholder?: string; onGuardar: (v: string) => void }) {
+function NotaInput({
+  valor,
+  placeholder,
+  className = "flex-1 text-gray-500",
+  onGuardar,
+}: {
+  valor: string;
+  placeholder?: string;
+  className?: string;
+  onGuardar: (v: string) => void;
+}) {
   const [text, setText] = useState(valor);
   const focused = useRef(false);
   useEffect(() => {
@@ -78,7 +92,7 @@ function NotaInput({ valor, placeholder, onGuardar }: { valor: string; placehold
         focused.current = false;
         if (text !== valor) onGuardar(text);
       }}
-      className="flex-1 min-w-0 bg-transparent text-gray-500 text-xs border border-transparent rounded-md px-1.5 py-0.5 focus:border-[#B3985B]/40 focus:bg-[#1a1a1a] focus:text-gray-200 outline-none hover:border-[#2a2a2a] placeholder:text-gray-600"
+      className={`min-w-0 bg-transparent text-xs border border-transparent rounded-md px-1.5 py-0.5 focus:border-[#B3985B]/40 focus:bg-[#1a1a1a] focus:text-gray-200 outline-none hover:border-[#2a2a2a] placeholder:text-gray-600 ${className}`}
     />
   );
 }
@@ -109,6 +123,16 @@ function FechaRenglonInput({ valor, onGuardar }: { valor: string; onGuardar: (v:
   );
 }
 
+/** "2 eventos · 1 actividad suelta" — las sueltas no cuentan como evento. */
+function conteoDia(grupos: GrupoEvento[]) {
+  const eventos = grupos.filter((g) => g.proyectoId !== ID_SUELTAS).length;
+  const sueltas = grupos.find((g) => g.proyectoId === ID_SUELTAS)?.checkpoints.length ?? 0;
+  const partes: string[] = [];
+  if (eventos) partes.push(`${eventos} evento${eventos === 1 ? "" : "s"}`);
+  if (sueltas) partes.push(`${sueltas} suelta${sueltas === 1 ? "" : "s"}`);
+  return partes.join(" · ");
+}
+
 const ETIQUETA_CATEGORIA: Partial<Record<CategoriaCheckpoint, string>> = {
   MONTAJE: "Montaje",
   DESMONTAJE: "Desmontaje",
@@ -135,6 +159,8 @@ function TarjetaEvento({
   onNotaCheckpointGuardar,
   onFechaBloqueGuardar,
   onFechaCheckpointGuardar,
+  onAgregar,
+  onQuitarBloque,
 }: {
   grupo: GrupoEvento;
   color: { accent: string; bg: string };
@@ -145,6 +171,8 @@ function TarjetaEvento({
   onNotaCheckpointGuardar: (campo: CampoEditableItinerario, valor: string) => void;
   onFechaBloqueGuardar: (categoria: "MONTAJE" | "DESMONTAJE", valor: string) => void;
   onFechaCheckpointGuardar: (campo: CampoEditableItinerario, valor: string) => void;
+  onAgregar: () => void;
+  onQuitarBloque: (bloqueId: string, etiqueta: string) => void;
 }) {
   const grupos = useMemo(() => agruparPorCategoria(grupo.checkpoints), [grupo.checkpoints]);
   return (
@@ -214,13 +242,35 @@ function TarjetaEvento({
                     placeholder={c.nota ?? "Nota…"}
                     onGuardar={(v) => onNotaCheckpointGuardar(c.campo!, v)}
                   />
-                ) : c.nota ? (
-                  <span className="flex-1 min-w-0 text-gray-500 truncate">{c.nota}</span>
+                ) : (
+                  <span className="flex-1 min-w-0 text-gray-500 truncate">
+                    {[c.nota, c.responsableRenglon].filter(Boolean).join(" · ")}
+                  </span>
+                )}
+                {c.bloqueId ? (
+                  <button
+                    type="button"
+                    title="Quitar de la logística del proyecto"
+                    onClick={() => onQuitarBloque(c.bloqueId!, c.etiqueta)}
+                    className="shrink-0 text-gray-600 hover:text-red-400 text-sm leading-none px-1"
+                  >
+                    ×
+                  </button>
                 ) : null}
               </div>
             ))}
           </div>
         ))}
+      </div>
+
+      <div className="px-4 py-1.5">
+        <button
+          type="button"
+          onClick={onAgregar}
+          className="text-[11px] text-gray-500 hover:text-[#B3985B] transition-colors"
+        >
+          + Actividad en este proyecto
+        </button>
       </div>
 
       <div className="px-4 py-2.5 bg-[#161616]">
@@ -237,11 +287,96 @@ function TarjetaEvento({
   );
 }
 
+/** Actividades sueltas del día: editables en línea, y se pueden integrar a un proyecto. */
+function TarjetaSueltas({
+  grupo,
+  onGuardar,
+  onQuitar,
+  onIntegrar,
+}: {
+  grupo: GrupoEvento;
+  onGuardar: (id: string, campo: keyof ActividadSuelta, valor: string) => void;
+  onQuitar: (id: string, titulo: string) => void;
+  onIntegrar: (id: string) => void;
+}) {
+  return (
+    <div className="rounded-xl border border-dashed border-[#3a3a3a] overflow-hidden">
+      <div className="px-4 py-2.5 flex items-center gap-2.5 bg-[#151515]">
+        <span className="w-2.5 h-2.5 rounded-full shrink-0 bg-gray-500" />
+        <span className="text-sm font-semibold text-gray-300">Actividades sueltas</span>
+        <span className="text-xs text-gray-600">Sin proyecto</span>
+      </div>
+      <div className="divide-y divide-[#2a2a2a]">
+        {grupo.checkpoints.map((c) => {
+          const id = c.actividadId!;
+          return (
+            <div key={id} className="px-4 py-2 flex items-center gap-3 text-xs flex-wrap sm:flex-nowrap">
+              <div className="flex items-center gap-1 shrink-0">
+                <HoraInput
+                  value={c.hora}
+                  onChange={(v) => onGuardar(id, "horaInicio", v)}
+                  size="sm"
+                  placeholder="Hora"
+                  className="w-20 bg-transparent text-gray-200 font-medium text-xs border border-transparent rounded-md px-1.5 py-0.5 -ml-1.5 focus:border-[#B3985B]/40 focus:bg-[#1a1a1a] outline-none hover:border-[#2a2a2a]"
+                />
+                <span className="text-gray-600">–</span>
+                <HoraInput
+                  value={c.horaFin}
+                  onChange={(v) => onGuardar(id, "horaFin", v)}
+                  size="sm"
+                  placeholder="Fin"
+                  className="w-20 bg-transparent text-gray-400 text-xs border border-transparent rounded-md px-1.5 py-0.5 focus:border-[#B3985B]/40 focus:bg-[#1a1a1a] outline-none hover:border-[#2a2a2a]"
+                />
+              </div>
+              <NotaInput
+                valor={c.etiqueta}
+                className="w-40 shrink-0 text-gray-200 font-medium"
+                onGuardar={(v) => onGuardar(id, "titulo", v)}
+              />
+              <NotaInput
+                valor={c.responsableRenglon ?? ""}
+                placeholder="Responsable…"
+                className="w-28 shrink-0 text-gray-400"
+                onGuardar={(v) => onGuardar(id, "responsable", v)}
+              />
+              <NotaInput
+                valor={c.nota ?? ""}
+                placeholder="Nota…"
+                className="flex-1 text-gray-500"
+                onGuardar={(v) => onGuardar(id, "nota", v)}
+              />
+              <button
+                type="button"
+                onClick={() => onIntegrar(id)}
+                className="shrink-0 px-2 py-0.5 rounded-md text-[11px] text-[#B3985B] border border-[#B3985B]/30 hover:bg-[#B3985B]/10 transition-colors"
+              >
+                Integrar a proyecto
+              </button>
+              <button
+                type="button"
+                title="Quitar actividad"
+                onClick={() => onQuitar(id, c.etiqueta)}
+                className="shrink-0 text-gray-600 hover:text-red-400 text-sm leading-none px-1"
+              >
+                ×
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+type ModalActividad = { fecha: string; proyectoId?: string; integrar?: ActividadSuelta };
+
 export default function ItinerarioClient() {
   const { success, error } = useToast();
   const [inicio, setInicio] = useState(hoyISO());
   const [fin, setFin] = useState(sumarDias(hoyISO(), 30));
   const [eventos, setEventos] = useState<ItinerarioEvento[]>([]);
+  const [sueltas, setSueltas] = useState<ActividadSuelta[]>([]);
+  const [modal, setModal] = useState<ModalActividad | null>(null);
   const [loading, setLoading] = useState(true);
   const [notas, setNotas] = useState<Record<string, string>>({});
 
@@ -252,6 +387,7 @@ export default function ItinerarioClient() {
         .then((r) => r.json())
         .then((d) => {
           setEventos(d.eventos ?? []);
+          setSueltas(d.sueltas ?? []);
           const n: Record<string, string> = {};
           (d.eventos ?? []).forEach((ev: ItinerarioEvento) => {
             n[ev.proyectoId] = ev.notasOperativas ?? "";
@@ -270,7 +406,10 @@ export default function ItinerarioClient() {
     cargar();
   }, [cargar]);
 
-  const dias = useMemo(() => porDia(renglonesDeItinerario(eventos)), [eventos]);
+  const dias = useMemo(() => {
+    const grupoSueltas = eventoDeSueltas(sueltas);
+    return porDia(renglonesDeItinerario(grupoSueltas ? [...eventos, grupoSueltas] : eventos));
+  }, [eventos, sueltas]);
   const colores = useMemo(() => mapaColoresEventos(eventos), [eventos]);
 
   async function guardarNota(proyectoId: string, valor: string) {
@@ -354,6 +493,50 @@ export default function ItinerarioClient() {
     }
   }
 
+  async function guardarSuelta(id: string, campo: keyof ActividadSuelta, valor: string) {
+    if (campo === "titulo" && !valor.trim()) {
+      error("La actividad no puede quedar vacía");
+      await cargar({ silencioso: true });
+      return;
+    }
+    try {
+      const r = await fetch(`/api/proyectos/itinerario/actividades/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [campo]: valor }),
+      });
+      if (!r.ok) throw new Error();
+      success("Guardado");
+      await cargar({ silencioso: true });
+    } catch {
+      error("No se pudo guardar");
+    }
+  }
+
+  async function quitarSuelta(id: string, titulo: string) {
+    if (!confirm(`¿Quitar "${titulo}" del itinerario?`)) return;
+    try {
+      const r = await fetch(`/api/proyectos/itinerario/actividades/${id}`, { method: "DELETE" });
+      if (!r.ok) throw new Error();
+      success("Actividad quitada");
+      await cargar({ silencioso: true });
+    } catch {
+      error("No se pudo quitar");
+    }
+  }
+
+  async function quitarBloque(bloqueId: string, etiqueta: string) {
+    if (!confirm(`¿Quitar "${etiqueta}" de la logística general del proyecto?`)) return;
+    try {
+      const r = await fetch(`/api/proyectos/itinerario/bloques/${bloqueId}`, { method: "DELETE" });
+      if (!r.ok) throw new Error();
+      success("Quitada de la logística");
+      await cargar({ silencioso: true });
+    } catch {
+      error("No se pudo quitar");
+    }
+  }
+
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-4">
@@ -363,6 +546,14 @@ export default function ItinerarioClient() {
             Llamado, montaje, horarios del evento y desmontaje de todos los proyectos en el período.
           </p>
         </div>
+        <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setModal({ fecha: inicio > hoyISO() ? inicio : hoyISO() })}
+          className="px-3 py-1.5 rounded-lg text-xs font-medium border border-[#B3985B]/40 text-[#B3985B] hover:bg-[#B3985B]/10 transition-colors whitespace-nowrap"
+        >
+          + Actividad
+        </button>
         <BotonDescarga
           url={`/api/proyectos/itinerario/pdf?inicio=${inicio}&fin=${fin}`}
           filename={`Itinerario-Operaciones-${inicio}-a-${fin}.pdf`}
@@ -371,6 +562,7 @@ export default function ItinerarioClient() {
         >
           Descargar PDF
         </BotonDescarga>
+        </div>
       </div>
 
       <div className="ms-card p-4 flex flex-wrap items-center gap-3">
@@ -409,7 +601,7 @@ export default function ItinerarioClient() {
         <div className="ms-card p-8 text-center text-sm text-gray-500">Cargando…</div>
       ) : dias.length === 0 ? (
         <div className="ms-card p-8 text-center text-sm text-gray-500">
-          Sin operaciones agendadas en este período.
+          Sin operaciones agendadas en este período. Usa “+ Actividad” para agregar una.
         </div>
       ) : (
         <div className="space-y-5">
@@ -417,12 +609,33 @@ export default function ItinerarioClient() {
             <div key={d.fecha} className="ms-card p-4">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-semibold text-white capitalize">{fechaLarga(d.fecha)}</h2>
-                <span className="text-xs text-gray-500">
-                  {d.grupos.length} evento{d.grupos.length === 1 ? "" : "s"}
-                </span>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-gray-500">
+                    {conteoDia(d.grupos)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setModal({ fecha: d.fecha })}
+                    className="text-xs text-gray-500 hover:text-[#B3985B] transition-colors"
+                  >
+                    + Actividad
+                  </button>
+                </div>
               </div>
               <div className="space-y-3">
-                {d.grupos.map((g) => (
+                {d.grupos.map((g) =>
+                  g.proyectoId === ID_SUELTAS ? (
+                    <TarjetaSueltas
+                      key={g.proyectoId}
+                      grupo={g}
+                      onGuardar={guardarSuelta}
+                      onQuitar={quitarSuelta}
+                      onIntegrar={(id) => {
+                        const a = sueltas.find((x) => x.id === id);
+                        if (a) setModal({ fecha: a.fecha, integrar: a });
+                      }}
+                    />
+                  ) : (
                   <TarjetaEvento
                     key={g.proyectoId}
                     grupo={g}
@@ -434,12 +647,30 @@ export default function ItinerarioClient() {
                     onNotaCheckpointGuardar={(campo, valor) => guardarNotaCheckpoint(g.proyectoId, campo, valor)}
                     onFechaBloqueGuardar={(categoria, valor) => guardarFechaBloque(g.proyectoId, categoria, valor)}
                     onFechaCheckpointGuardar={(campo, valor) => guardarFechaCheckpoint(g.proyectoId, campo, valor)}
+                    onAgregar={() => setModal({ fecha: d.fecha, proyectoId: g.proyectoId })}
+                    onQuitarBloque={quitarBloque}
                   />
-                ))}
+                  ),
+                )}
               </div>
             </div>
           ))}
         </div>
+      )}
+
+      {modal && (
+        <ActividadItinerarioModal
+          eventos={eventos}
+          fechaInicial={modal.fecha}
+          proyectoInicial={modal.proyectoId}
+          integrar={modal.integrar}
+          onClose={() => setModal(null)}
+          onGuardado={(msg) => {
+            setModal(null);
+            success(msg);
+            cargar({ silencioso: true });
+          }}
+        />
       )}
     </div>
   );

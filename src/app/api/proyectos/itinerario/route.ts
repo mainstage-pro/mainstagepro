@@ -9,6 +9,7 @@ import {
   type CampoEditableItinerario,
 } from "@/lib/itinerario-operaciones";
 import { diasEvento, parseHorariosEvento } from "@/lib/fechas-evento";
+import { actividadesEnRango } from "@/lib/itinerario-actividades";
 
 function parseFecha(v: string | null, fallbackDaysFromNow: number): string {
   if (v && /^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
@@ -87,7 +88,7 @@ export const SELECT_ITINERARIO = {
     select: { coordinaEnSitio: true, tecnico: { select: { nombre: true } } },
   },
   bloquesTiempo: {
-    where: { tipo: { in: ["SOUNDCHECK", "PROGRAMA"] as string[] } },
+    where: { tipo: { in: ["MONTAJE", "SOUNDCHECK", "PROGRAMA", "DESMONTAJE"] as string[] } },
     select: {
       id: true,
       tipo: true,
@@ -147,8 +148,13 @@ export async function GET(req: NextRequest) {
   const inicio = parseFecha(searchParams.get("inicio"), 0);
   const fin = parseFecha(searchParams.get("fin"), 30);
 
-  const eventos = await proyectosEnRango(inicio, fin);
-  return NextResponse.json({ inicio, fin, eventos });
+  const [eventos, sueltas] = await Promise.all([proyectosEnRango(inicio, fin), actividadesEnRango(inicio, fin).catch((e) => {
+      // Las sueltas nunca deben tumbar el itinerario de los proyectos.
+      console.error("[itinerario] actividades sueltas", e);
+      return [];
+    }),
+  ]);
+  return NextResponse.json({ inicio, fin, eventos, sueltas });
 }
 
 export async function PATCH(req: NextRequest) {

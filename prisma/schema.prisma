@@ -4661,6 +4661,27 @@ model ProyectoBloqueTiempo {
   @@map("proyecto_bloques_tiempo")
 }
 
+// Actividad suelta del itinerario de operaciones: algo que pasa ese día pero no vive
+// (todavía) en la Logística general de ningún proyecto. "Integrar a proyecto" la
+// convierte en un ProyectoBloqueTiempo y la apaga (activo=false).
+// La tabla se crea lazy en src/lib/itinerario-actividades.ts (ensureTablaActividades).
+model ItinerarioActividad {
+  id          String   @id @default(cuid())
+  fecha       String // "YYYY-MM-DD"
+  horaInicio  String? // "HH:MM" 24h
+  horaFin     String?
+  titulo      String
+  nota        String?
+  responsable String?
+  activo      Boolean  @default(true)
+  creadoPorId String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([fecha])
+  @@map("itinerario_actividades")
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // MÓDULO PLAN DE TRABAJO — Sistema Operativo Vivo
 // ═══════════════════════════════════════════════════════════════════════════════

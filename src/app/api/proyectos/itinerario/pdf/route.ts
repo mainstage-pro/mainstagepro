@@ -4,6 +4,8 @@ import ReactPDF, { Document } from "@react-pdf/renderer";
 import React from "react";
 import { ItinerarioOperacionesPDF } from "@/components/ItinerarioOperacionesPDF";
 import { proyectosEnRango } from "@/app/api/proyectos/itinerario/route";
+import { actividadesEnRango } from "@/lib/itinerario-actividades";
+import { eventoDeSueltas } from "@/lib/itinerario-operaciones";
 
 function parseFecha(v: string | null, fallbackDaysFromNow: number): string {
   if (v && /^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
@@ -20,7 +22,14 @@ export async function GET(req: NextRequest) {
   const inicio = parseFecha(searchParams.get("inicio"), 0);
   const fin = parseFecha(searchParams.get("fin"), 30);
 
-  const eventos = await proyectosEnRango(inicio, fin);
+  const [proyectos, sueltas] = await Promise.all([proyectosEnRango(inicio, fin), actividadesEnRango(inicio, fin).catch((e) => {
+      // Las sueltas nunca deben tumbar el itinerario de los proyectos.
+      console.error("[itinerario] actividades sueltas", e);
+      return [];
+    }),
+  ]);
+  const grupoSueltas = eventoDeSueltas(sueltas);
+  const eventos = grupoSueltas ? [...proyectos, grupoSueltas] : proyectos;
 
   const pdfStream = await ReactPDF.renderToStream(
     React.createElement(ItinerarioOperacionesPDF, { data: { eventos, inicio, fin } }) as React.ReactElement<
