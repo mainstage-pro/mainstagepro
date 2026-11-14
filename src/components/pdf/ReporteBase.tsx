@@ -1,5 +1,14 @@
 import React from "react";
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import path from "path";
+import { Document, Image, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { logoBase64 } from "@/components/pdf/PdfShared";
+
+// Logo blanco (el encabezado es negro). Se lee una vez por proceso.
+let logoCache: string | null | undefined;
+function logoReporte(): string | null {
+  if (logoCache === undefined) logoCache = logoBase64(path.join(process.cwd(), "public"));
+  return logoCache;
+}
 
 // ─── Paleta Mainstage Pro ─────────────────────────────────────────────────────
 export const GOLD  = "#B3985B";
@@ -31,6 +40,7 @@ export const base = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "flex-end",
   },
+  logo: { width: 119, height: 20, objectFit: "contain", marginBottom: 5 },
   brand: { fontSize: 15, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 },
   tagline: { fontSize: 6.5, color: "#777777", letterSpacing: 1, marginTop: 2 },
   headerRight: { alignItems: "flex-end" },
@@ -136,12 +146,14 @@ export function ReporteLayout({
   footerLabel: string;
   children: React.ReactNode;
 }) {
+  const logo = logoReporte();
   return (
     <Document>
       <Page size="A4" style={base.page}>
         <View style={base.header}>
           <View>
-            <Text style={base.brand}>MAINSTAGE PRO</Text>
+            {/* eslint-disable-next-line jsx-a11y/alt-text -- Image de react-pdf, no lleva alt */}
+            {logo ? <Image src={logo} style={base.logo} /> : <Text style={base.brand}>MAINSTAGE PRO</Text>}
             <Text style={base.tagline}>SOLUCIONES AUDIOVISUALES PROFESIONALES</Text>
           </View>
           <View style={base.headerRight}>
