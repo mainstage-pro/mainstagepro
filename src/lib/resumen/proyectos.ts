@@ -8,6 +8,10 @@ export interface ProyectoResumido {
   id: string;
   numero: string;
   nombre: string;
+  /** Nombre del evento en su cotización ("Evento 2", "Planta de luz") cuando no repite
+   *  el del proyecto: varios proyectos de un mismo trato suelen llamarse igual. */
+  evento: string | null;
+  cotizacion: string | null;
   cliente: string;
   estado: string;
   fechaEvento: Date;
@@ -37,6 +41,7 @@ export async function resumenProyectos() {
         fechaEvento: true,
         zona: true,
         planProduccionAprobado: true,
+        cotizacion: { select: { numeroCotizacion: true, nombreCotizacion: true, nombreEvento: true } },
         cliente: { select: { nombre: true, empresa: true } },
         encargado: { select: { name: true } },
         personal: { select: { confirmado: true } },
@@ -75,10 +80,17 @@ export async function resumenProyectos() {
     }).catch(() => null),
   ]);
 
+  const nombreEvento = (p: (typeof proximos)[number]) => {
+    const n = (p.cotizacion?.nombreCotizacion || p.cotizacion?.nombreEvento || "").trim();
+    return n && n.toLowerCase() !== p.nombre.trim().toLowerCase() ? n : null;
+  };
+
   const lista: ProyectoResumido[] = proximos.map(p => ({
     id: p.id,
     numero: p.numeroProyecto,
     nombre: p.nombre,
+    evento: nombreEvento(p),
+    cotizacion: p.cotizacion?.numeroCotizacion ?? null,
     cliente: p.cliente?.empresa || p.cliente?.nombre || "—",
     estado: p.estado,
     fechaEvento: p.fechaEvento,

@@ -314,6 +314,14 @@ export function checkpointsDeProyecto(p: ProyectoCronologia, bloques: BloqueTiem
   ];
   out.push(...asignarClaves(rodarMedianoche(bloqueMontaje, fechaFija), RANGO_CATEGORIA.MONTAJE));
 
+  // Primer momento de la jornada (normalmente el llamado). Si el evento "empieza"
+  // antes de eso el mismo día —evento del 15 que arranca a las 3:00 AM con llamado
+  // el 15 a las 9:00 PM— en realidad es la madrugada siguiente: los días del evento
+  // se recorren uno para que el itinerario no ponga la fiesta antes del llamado.
+  const momento = (c: ItinerarioCheckpoint) => `${c.fecha} ${String(minutos(c.hora) ?? 0).padStart(4, "0")}`;
+  const arranque = bloqueMontaje.filter((c) => c.hora).map(momento).sort()[0] ?? null;
+  let corrimientoEvento = 0;
+
   dias.forEach((fecha, i) => {
     const hd = horarioDeDia(fecha, i, dias, p.horariosEvento, {
       inicio: p.horaInicioEvento,
@@ -354,7 +362,13 @@ export function checkpointsDeProyecto(p: ProyectoCronologia, bloques: BloqueTiem
       }),
     );
     // Offset por día (10 000 c/u) para que los días no se entrecrucen entre sí.
-    out.push(...asignarClaves(rodarMedianoche(bloqueDia, fechaFija), RANGO_CATEGORIA.EVENTO + i * 10_000));
+    rodarMedianoche(bloqueDia, fechaFija);
+    if (i === 0 && arranque) {
+      const inicio = bloqueDia.find((c) => c.campo === "inicioEvento" && c.hora);
+      if (inicio && momento(inicio) < arranque) corrimientoEvento = 1;
+    }
+    if (corrimientoEvento) bloqueDia.forEach((c) => { if (!fechaFija(c)) c.fecha = sumarDias(c.fecha, corrimientoEvento); });
+    out.push(...asignarClaves(bloqueDia, RANGO_CATEGORIA.EVENTO + i * 10_000));
   });
 
   // El desmontaje arranca cuando termina el último día; si ese fin pasó de medianoche,

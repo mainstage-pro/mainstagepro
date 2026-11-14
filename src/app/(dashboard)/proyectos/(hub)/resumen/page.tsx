@@ -88,10 +88,10 @@ export default async function ResumenProyectosPage() {
                     key={p.id}
                     href={`/proyectos/${p.id}`}
                     tono={p.dias <= 7 ? "verde" : ESTADO_TONO[p.estado] ?? "neutro"}
-                    titulo={`${p.numero} · ${p.nombre}`}
+                    titulo={`${p.numero} · ${p.nombre}${p.evento ? ` — ${p.evento}` : ""}`}
                     meta={
                       <>
-                        {p.cliente} · {fmtDiaSemana(p.fechaEvento)}
+                        {p.cotizacion ? `${p.cotizacion} · ` : ""}{p.cliente} · {fmtDiaSemana(p.fechaEvento)}
                         {p.encargado ? ` · ${p.encargado}` : " · sin encargado"}
                         {p.zona !== "LOCAL" ? ` · ${p.zona}` : ""}
                       </>
@@ -135,7 +135,7 @@ export default async function ResumenProyectosPage() {
                   key={p.id}
                   href={`/proyectos/${p.id}`}
                   tono="rojo"
-                  titulo={p.nombre}
+                  titulo={p.evento ? `${p.nombre} — ${p.evento}` : p.nombre}
                   meta={
                     [
                       !p.planAprobado && "plan sin aprobar",
