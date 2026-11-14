@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { crearSeccionPlanParaSubarea } from "@/lib/organizacion";
+import { crearSeccionPlanParaSubarea, crearSeccionTareaParaSubarea } from "@/lib/organizacion";
 
 // POST: crea una subárea (nombre + objetivo/propósito → descripcion).
 export async function POST(req: NextRequest) {
@@ -18,5 +18,6 @@ export async function POST(req: NextRequest) {
   // Bidireccional: siembra su sección en el plan de trabajo del área para que
   // nazca "canónica" y aparezca en el plan sin pasos manuales.
   try { await crearSeccionPlanParaSubarea(subarea.id); } catch { /* no bloquear la creación */ }
+  try { await crearSeccionTareaParaSubarea(subarea.id); } catch { /* no bloquear la creación */ }
   return NextResponse.json({ subarea }, { status: 201 });
 }

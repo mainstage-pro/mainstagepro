@@ -30,7 +30,7 @@ interface Carpeta {
 }
 interface ProyectoNav {
   id: string; nombre: string; color: string | null; icono: string | null; orden: number;
-  secciones?: { id: string; nombre: string; orden: number; colapsada: boolean; tipoModulo?: string }[];
+  secciones?: { id: string; nombre: string; orden: number; colapsada: boolean; tipoModulo?: string; subArea?: { id: string; nombre: string } | null }[];
 }
 interface ProyectoDetalle {
   id: string; nombre: string; color: string | null; descripcion: string | null;
@@ -2464,14 +2464,24 @@ export default function OperacionesPage() {
                       <span className="text-[11px] font-medium select-none">
                         {noSecDropOver
                           ? selectedIds.has(draggingId) && selectedIds.size > 1
-                            ? `→ Mover ${selectedIds.size} tareas — sin sección`
-                            : "→ Quitar de sección"
-                          : "↑ Soltar aquí para quitar de sección"}
+                            ? `→ Mover ${selectedIds.size} tareas — ${tipoMod === "TAREA" ? "a Tareas en general" : "sin sección"}`
+                            : tipoMod === "TAREA" ? "→ Mover a Tareas en general" : "→ Quitar de sección"
+                          : tipoMod === "TAREA" ? "↑ Soltar aquí para mover a Tareas en general" : "↑ Soltar aquí para quitar de sección"}
                       </span>
                     </div>
                   )}
 
-                  {/* ── Tareas sin sección ── */}
+                  {/* ── Tareas sin subárea → "Tareas en general" del área ── */}
+                  {tipoMod === "TAREA" && (() => {
+                    const n = applyProyFilter(proyectoDetalle.tareas, tipoMod).length;
+                    return (
+                      <div className="flex items-center gap-2 px-3 pt-1 pb-1.5">
+                        <span className="text-[13px] font-semibold text-[#ccc]">Tareas en general</span>
+                        <span className="text-[11px] text-[#444]">{n}</span>
+                        {n === 0 && <span className="text-[11px] text-[#333]">· Las tareas sin subárea aparecen aquí</span>}
+                      </div>
+                    );
+                  })()}
                   {groupProyTareas(applyProyFilter(proyectoDetalle.tareas, tipoMod)).map(group => (
                     <div key={group.label}>
                       {group.label && (

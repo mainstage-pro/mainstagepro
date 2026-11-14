@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { areaCodeDeProyecto, vincularSeccionConSubarea, crearSeccionPlanParaSubarea } from "@/lib/organizacion";
+import { areaCodeDeProyecto, vincularSeccionConSubarea, crearSeccionPlanParaSubarea, asegurarSeccionesTareaPorSubarea } from "@/lib/organizacion";
 
 // POST: sincroniza en ambos sentidos maestro ↔ plan. (1) Deriva las secciones PLAN
 // como PTSubArea del maestro; (2) siembra la sección de plan para las subáreas
@@ -41,5 +41,8 @@ export async function POST() {
     if (await crearSeccionPlanParaSubarea(h.id)) sembradas++;
   }
 
-  return NextResponse.json({ ok: true, vinculadas, creadas, sembradas, omitidas });
+  // Y la sección equivalente en el bloque "Tareas" de cada área.
+  const sembradasTareas = await asegurarSeccionesTareaPorSubarea();
+
+  return NextResponse.json({ ok: true, vinculadas, creadas, sembradas, sembradasTareas, omitidas });
 }

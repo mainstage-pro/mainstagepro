@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { asegurarSeccionesTareaPorSubarea } from "@/lib/organizacion";
 
 export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  // Cada subárea del maestro tiene su sección en el bloque "Tareas" de su área.
+  try { await asegurarSeccionesTareaPorSubarea(); } catch { /* no bloquear la carga */ }
 
   const isAdmin = session.role === "ADMIN";
   let proyectosPermitidos: string[] | null = null;
@@ -23,7 +27,7 @@ export async function GET() {
       ...(proyectosPermitidos !== null ? { id: { in: proyectosPermitidos } } : {}),
     },
     include: {
-      secciones: { orderBy: { orden: "asc" }, select: { id: true, nombre: true, orden: true, colapsada: true, tipoModulo: true } },
+      secciones: { orderBy: { orden: "asc" }, select: { id: true, nombre: true, orden: true, colapsada: true, tipoModulo: true, subArea: { select: { id: true, nombre: true } } } },
       _count: { select: { tareas: { where: { estado: { not: "COMPLETADA" }, parentId: null } } } },
     },
     orderBy: [{ carpetaId: "asc" }, { orden: "asc" }, { nombre: "asc" }],

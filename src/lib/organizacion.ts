@@ -59,12 +59,16 @@ export async function vincularSeccionConSubarea(seccionId: string): Promise<stri
 
 /**
  * Inverso de vincularSeccionConSubarea: dada una subárea del maestro, crea (o
- * vincula) su sección en el plan de trabajo del área para que deje de ser
- * "huérfana". Busca el proyecto operativo cuyo nombre mapea al código del área.
- * Idempotente: si ya hay una sección PLAN ligada no hace nada. Devuelve el id de
- * la sección, o null si el área no tiene proyecto de plan (p. ej. transversales).
+ * vincula) su sección en el bloque indicado (PLAN = Plan de trabajo, TAREA =
+ * Tareas) del área. Busca el proyecto operativo cuyo nombre mapea al código del
+ * área. Idempotente: si ya hay una sección de ese tipo ligada no hace nada.
+ * Devuelve el id de la sección, o null si el área no tiene proyecto operativo
+ * (p. ej. transversales).
  */
-export async function crearSeccionPlanParaSubarea(subAreaId: string): Promise<string | null> {
+export async function crearSeccionParaSubarea(
+  subAreaId: string,
+  tipoModulo: "PLAN" | "TAREA",
+): Promise<string | null> {
   const sub = await prisma.pTSubArea.findUnique({
     where: { id: subAreaId },
     select: { id: true, nombre: true, descripcion: true, area: { select: { codigo: true, nombre: true } } },
@@ -72,7 +76,7 @@ export async function crearSeccionPlanParaSubarea(subAreaId: string): Promise<st
   if (!sub) return null;
 
   const yaLigada = await prisma.tareaSeccion.findFirst({
-    where: { tipoModulo: "PLAN", subAreaId: sub.id },
+    where: { tipoModulo, subAreaId: sub.id },
     select: { id: true },
   });
   if (yaLigada) return yaLigada.id;
@@ -89,9 +93,9 @@ export async function crearSeccionPlanParaSubarea(subAreaId: string): Promise<st
   );
   if (!proyecto) return null;
 
-  // Reutiliza una sección PLAN homónima sin subárea, si la hay; si no, crea una.
+  // Reutiliza una sección homónima del mismo bloque sin subárea, si la hay; si no, crea una.
   const homonima = await prisma.tareaSeccion.findFirst({
-    where: { proyectoId: proyecto.id, tipoModulo: "PLAN", subAreaId: null, nombre: { equals: sub.nombre, mode: "insensitive" } },
+    where: { proyectoId: proyecto.id, tipoModulo, subAreaId: null, nombre: { equals: sub.nombre, mode: "insensitive" } },
     select: { id: true },
   });
   if (homonima) {
@@ -108,9 +112,37 @@ export async function crearSeccionPlanParaSubarea(subAreaId: string): Promise<st
       descripcion: sub.descripcion ?? null,
       proyectoId:  proyecto.id,
       orden:       (last?.orden ?? -1) + 1,
-      tipoModulo:  "PLAN",
+      tipoModulo,
       subAreaId:   sub.id,
     },
   });
   return seccion.id;
+}
+
+/** Compat: siembra la sección de Plan de trabajo de una subárea. */
+export function crearSeccionPlanParaSubarea(subAreaId: string) {
+  return crearSeccionParaSubarea(subAreaId, "PLAN");
+}
+
+/** Siembra la sección de Tareas de una subárea. */
+export function crearSeccionTareaParaSubarea(subAreaId: string) {
+  return crearSeccionParaSubarea(subAreaId, "TAREA");
+}
+
+/**
+ * Garantiza que cada subárea del maestro tenga su sección en el bloque "Tareas"
+ * de su área. Barato cuando ya está todo sembrado (una sola consulta).
+ * Idempotente; nunca borra. Devuelve cuántas secciones se crearon/vincularon.
+ */
+export async function asegurarSeccionesTareaPorSubarea(): Promise<number> {
+  const pendientes = await prisma.pTSubArea.findMany({
+    where: { secciones: { none: { tipoModulo: "TAREA" } } },
+    select: { id: true },
+    orderBy: [{ areaId: "asc" }, { orden: "asc" }],
+  });
+  let n = 0;
+  for (const p of pendientes) {
+    if (await crearSeccionTareaParaSubarea(p.id)) n++;
+  }
+  return n;
 }

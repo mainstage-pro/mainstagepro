@@ -49,7 +49,7 @@ interface InternoOpt { id: string; nombre: string; area: string; estado: string;
 interface TratoOpt  { id: string; nombre: string; cliente: string | null; etapa: string; fechaEvento: string | null; vigente: boolean }
 
 interface Usuario { id: string; name: string }
-interface SeccionOpt { id: string; nombre: string; tipoModulo?: string | null }
+interface SeccionOpt { id: string; nombre: string; tipoModulo?: string | null; subArea?: { id: string; nombre: string } | null }
 interface ProyectoOpt { id: string; nombre: string; secciones?: SeccionOpt[] }
 interface ArchivoExistente { id: string; nombre: string; url: string; tipo: string | null; tamano: number | null }
 
@@ -200,6 +200,7 @@ export default function NuevaTareaModal({
         setPrioridad(t.prioridad ?? "MEDIA");
         setArea(t.area ?? "GENERAL");
         setProyectoSel(t.proyectoTareaId ?? t.proyectoTarea?.id ?? null);
+        setSeccionSel(t.seccionId ?? null);
         setAsignadoId(t.asignadoAId ?? t.asignadoA?.id ?? null);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setCoResponsables((t.colaboradores ?? []).map((c: any) => c.usuario.id));
@@ -248,11 +249,21 @@ export default function NuevaTareaModal({
   const internoSel = useMemo(() => internos.find(p => p.id === proyectoInternoId) ?? null, [internos, proyectoInternoId]);
 
   // Secciones del proyecto destino, filtradas por el tipo de registro (TAREA vs PLAN).
+  // Las ligadas a una subárea del maestro van primero y muestran su nombre gobernado.
   const seccionesDestino = useMemo(() => {
     const p = proyectos.find(x => x.id === proyectoSel);
     if (!p?.secciones) return [] as SeccionOpt[];
-    return p.secciones.filter(s => (s.tipoModulo ?? "TAREA") === tipo);
+    const delTipo = p.secciones.filter(s => (s.tipoModulo ?? "TAREA") === tipo);
+    return [...delTipo.filter(s => s.subArea), ...delTipo.filter(s => !s.subArea)];
   }, [proyectos, proyectoSel, tipo]);
+
+  // Sección efectiva a guardar: si el tipo cambió y la sección elegida ya no
+  // pertenece a ese bloque (Tareas vs Plan), se descarta → "Tareas en general".
+  const proyectoSelSecciones = proyectos.find(x => x.id === proyectoSel)?.secciones;
+  const seccionEfectiva =
+    seccionSel && (tipo === "TAREA" || tipo === "PLAN") && proyectoSelSecciones && !seccionesDestino.some(x => x.id === seccionSel)
+      ? null
+      : seccionSel;
 
   // Opciones para los Combobox: `options` permite buscar en todo el histórico,
   // `idleOptions` muestra en reposo solo lo vigente para no saturar el dropdown.
@@ -365,7 +376,7 @@ export default function NuevaTareaModal({
             prioridad,
             area,
             proyectoTareaId: proyectoSel || null,
-            seccionId: seccionSel || null,
+            seccionId: seccionEfectiva || null,
             asignadoAId: asignadoId || null,
             colaboradorIds: coResponsables.filter(id => id !== asignadoId),
             fecha: fecha || null,
@@ -400,7 +411,7 @@ export default function NuevaTareaModal({
       recurrencia: recurrencia || null,
       tipoOrigen: tipo,
       proyectoTareaId: proyectoSel || null,
-      seccionId: seccionSel || null,
+      seccionId: seccionEfectiva || null,
       proyectoEventoId: tipo === "EVENTO" ? proyectoEventoId : null,
       proyectoInternoId: tipo === "PROYECTO" ? proyectoInternoId : null,
       faseInternaId: tipo === "PROYECTO" ? (faseId || null) : null,
@@ -776,13 +787,24 @@ export default function NuevaTareaModal({
                   placeholder="Elige un área…"
                   className={comboCls}
                 />
-                {seccionesDestino.length > 0 && (
-                  <select value={seccionSel ?? ""} onChange={e => setSeccionSel(e.target.value || null)}
-                    className="mt-2 w-full bg-[#0f0f0f] border border-[#1e1e1e] rounded-lg px-3 py-2 text-[13px] text-white focus:outline-none focus:border-[#B3985B]/40">
-                    <option value="">— Sin sección —</option>
-                    {seccionesDestino.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-                  </select>
-                )}
+              </Campo>
+            )}
+            {(tipo === "TAREA" || tipo === "PLAN") && proyectoSel && seccionesDestino.length > 0 && (
+              <Campo label="Subárea">
+                <select value={seccionEfectiva ?? ""} onChange={e => setSeccionSel(e.target.value || null)}
+                  className="w-full bg-[#0f0f0f] border border-[#1e1e1e] rounded-lg px-3 py-2 text-[13px] text-white focus:outline-none focus:border-[#B3985B]/40">
+                  <option value="">{tipo === "TAREA" ? "— Tareas en general (sin subárea) —" : "— Sin sección —"}</option>
+                  {seccionesDestino.some(s => s.subArea) && (
+                    <optgroup label="Subáreas">
+                      {seccionesDestino.filter(s => s.subArea).map(s => <option key={s.id} value={s.id}>{s.subArea!.nombre}</option>)}
+                    </optgroup>
+                  )}
+                  {seccionesDestino.some(s => !s.subArea) && (
+                    <optgroup label="Otras secciones">
+                      {seccionesDestino.filter(s => !s.subArea).map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+                    </optgroup>
+                  )}
+                </select>
               </Campo>
             )}
 
