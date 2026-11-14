@@ -1,12 +1,18 @@
 import type { Metadata, Viewport } from "next";
-import { Space_Grotesk } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import OfflineProvider from "@/components/OfflineProvider";
 import { DescargaProvider } from "@/components/DescargaProvider";
 
-const heading = Space_Grotesk({
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
+// Space Grotesk servida desde el repo (src/app/fonts, licencia OFL). Con
+// next/font/google cada build la descargaba de Google y, si esa descarga fallaba,
+// el deploy completo se caía.
+const heading = localFont({
+  src: [
+    { path: "./fonts/space-grotesk-latin-500-normal.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/space-grotesk-latin-600-normal.woff2", weight: "600", style: "normal" },
+    { path: "./fonts/space-grotesk-latin-700-normal.woff2", weight: "700", style: "normal" },
+  ],
   variable: "--font-heading",
   display: "swap",
 });
