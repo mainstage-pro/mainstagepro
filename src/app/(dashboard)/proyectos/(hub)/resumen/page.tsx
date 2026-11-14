@@ -4,6 +4,8 @@ import { resumenProyectos } from "@/lib/resumen/proyectos";
 import { fmtDiaSemana, relativo } from "@/lib/resumen/base";
 import { BarraDistribucion, EncabezadoResumen, Fila, Kpi, Panel, Badge, Vacio, type Tono } from "@/components/resumen/ui";
 import { FilaOperable, type Accion } from "@/components/resumen/acciones";
+import { agruparPorTrato } from "@/lib/proyecto-evento";
+import type { ProyectoResumido } from "@/lib/resumen/proyectos";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +48,70 @@ function accionesProyecto(id: string, estado: string): Accion[] {
   return [];
 }
 
+/**
+ * Un renglón de la agenda. Dentro de un grupo de trato el título es el nombre del
+ * evento (lo que lo distingue de sus hermanos) y el cliente ya va en el encabezado.
+ */
+function FilaAgenda({ p, enGrupo = false }: { p: ProyectoResumido; enGrupo?: boolean }) {
+  const faltaPersonal = p.personal === 0 || p.personalConfirmado < p.personal;
+  const faltaExterno = p.equiposExternosConfirmados < p.equiposExternos;
+  const enRiesgo = p.dias <= 7 && (faltaPersonal || faltaExterno || !p.planAprobado);
+  const titulo = enGrupo
+    ? p.evento ?? p.cotizacion ?? p.nombre
+    : p.evento
+      ? <>{p.nombre} <span className="text-[#B3985B]">· {p.evento}</span></>
+      : p.nombre;
+  const meta = [
+    p.numero,
+    p.cotizacion,
+    !enGrupo && p.cliente,
+    fmtDiaSemana(p.fechaEvento),
+    p.encargado ?? "sin encargado",
+    p.zona !== "LOCAL" && p.zona,
+  ].filter(Boolean).join(" · ");
+
+  return (
+    <FilaOperable
+      href={`/proyectos/${p.id}`}
+      tono={p.dias <= 7 ? "verde" : ESTADO_TONO[p.estado] ?? "neutro"}
+      titulo={titulo}
+      meta={meta}
+      badge={
+        enRiesgo ? (
+          <Badge tono="rojo">{!p.planAprobado ? "Sin plan" : faltaPersonal ? "Personal" : "Externos"}</Badge>
+        ) : undefined
+      }
+      valor={relativo(p.dias)}
+      tonoValor={p.dias <= 7 ? "verde" : undefined}
+      valorNota={`${p.personalConfirmado}/${p.personal} pers.`}
+      acciones={accionesProyecto(p.id, p.estado)}
+    />
+  );
+}
+
+/** Varios proyectos del mismo trato: un encabezado con lo común y un renglón por evento. */
+function GrupoTrato({ items }: { items: ProyectoResumido[] }) {
+  const p0 = items[0];
+  const fechas = [...new Set(items.map(p => fmtDiaSemana(p.fechaEvento)))];
+  const rango = fechas.length === 1 ? fechas[0] : `${fechas[0]} – ${fechas[fechas.length - 1]}`;
+  return (
+    <div className="border-t border-[#1a1a1a]">
+      <div className="flex items-center gap-2 px-4 pt-2.5 pb-1">
+        <span className="text-[13px] font-semibold text-white truncate">{p0.nombre}</span>
+        <span className="ms-meta truncate">· {p0.cliente} · {rango}</span>
+        <span className="ml-auto shrink-0 text-[10px] uppercase tracking-wider text-[#B3985B] border border-[#B3985B]/30 rounded-full px-2 py-0.5">
+          {items.length} eventos
+        </span>
+      </div>
+      <div className="ml-5 border-l border-[#B3985B]/25 [&>*:first-child]:border-t-0">
+        {items.map(p => (
+          <FilaAgenda key={p.id} p={p} enGrupo />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default async function ResumenProyectosPage() {
   const session = await getSession();
   if (!session) redirect("/login");
@@ -79,37 +145,13 @@ export default async function ResumenProyectosPage() {
             <Vacio texto="No hay eventos agendados en los próximos 30 días" />
           ) : (
             <>
-              {r.lista.map(p => {
-                const faltaPersonal = p.personal === 0 || p.personalConfirmado < p.personal;
-                const faltaExterno = p.equiposExternosConfirmados < p.equiposExternos;
-                const enRiesgo = p.dias <= 7 && (faltaPersonal || faltaExterno || !p.planAprobado);
-                return (
-                  <FilaOperable
-                    key={p.id}
-                    href={`/proyectos/${p.id}`}
-                    tono={p.dias <= 7 ? "verde" : ESTADO_TONO[p.estado] ?? "neutro"}
-                    titulo={`${p.numero} · ${p.nombre}${p.evento ? ` — ${p.evento}` : ""}`}
-                    meta={
-                      <>
-                        {p.cotizacion ? `${p.cotizacion} · ` : ""}{p.cliente} · {fmtDiaSemana(p.fechaEvento)}
-                        {p.encargado ? ` · ${p.encargado}` : " · sin encargado"}
-                        {p.zona !== "LOCAL" ? ` · ${p.zona}` : ""}
-                      </>
-                    }
-                    badge={
-                      enRiesgo ? (
-                        <Badge tono="rojo">
-                          {!p.planAprobado ? "Sin plan" : faltaPersonal ? "Personal" : "Externos"}
-                        </Badge>
-                      ) : undefined
-                    }
-                    valor={relativo(p.dias)}
-                    tonoValor={p.dias <= 7 ? "verde" : undefined}
-                    valorNota={`${p.personalConfirmado}/${p.personal} pers.`}
-                    acciones={accionesProyecto(p.id, p.estado)}
-                  />
-                );
-              })}
+              {agruparPorTrato(r.lista).map(b =>
+                b.tipo === "solo" ? (
+                  <FilaAgenda key={b.item.id} p={b.item} />
+                ) : (
+                  <GrupoTrato key={b.tratoId} items={b.items} />
+                ),
+              )}
             </>
           )}
         </Panel>

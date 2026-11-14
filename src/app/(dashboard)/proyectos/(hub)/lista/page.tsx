@@ -7,6 +7,7 @@ import { useConfirm } from "@/components/Confirm";
 import { SkeletonPage } from "@/components/Skeleton";
 import NuevaTareaModal from "@/app/(dashboard)/operaciones/components/NuevaTareaModal";
 import { coincide } from "@/lib/buscar";
+import { agruparPorTrato, nombreEventoCotizacion } from "@/lib/proyecto-evento";
 
 type Usuario = { id: string; name: string };
 
@@ -21,8 +22,15 @@ type Proyecto = {
   lugarEvento: string | null;
   avance: number;
   liquidacionCobrada: boolean;
+  tratoId: string | null;
   cliente: { id: string; nombre: string; empresa: string | null };
-  cotizacion: { id: string; granTotal: number } | null;
+  cotizacion: {
+    id: string;
+    granTotal: number;
+    numeroCotizacion?: string | null;
+    nombreCotizacion?: string | null;
+    nombreEvento?: string | null;
+  } | null;
 };
 
 const TABS = [
@@ -122,25 +130,69 @@ function ProyectosThead() {
   );
 }
 
-function ProyectoRow({ p, onEliminar, onRegistrarTarea, deletingId }: {
+/**
+ * Encabezado de un trato con varios eventos: lo que tienen en común (nombre del
+ * trato, cliente, fechas) va una sola vez y cada renglón de abajo es un evento.
+ */
+function TratoHeaderRow({ items }: { items: Proyecto[] }) {
+  const p0 = items[0];
+  const fechas = [...new Set(items.map(p => fmtFecha(p.fechaEvento)))];
+  const rango = fechas.length === 1 ? fechas[0] : `${fechas[0]} – ${fechas[fechas.length - 1]}`;
+  const total = items.reduce((s, p) => s + (p.cotizacion?.granTotal ?? 0), 0);
+  return (
+    <tr className="border-b border-[#1a1a1a] bg-[#0f0f0f]">
+      <td colSpan={8} className={`pl-4 pr-3 py-2 border-l-2 ${TIPO_EVENTO_BORDER[p0.tipoEvento] ?? 'border-l-transparent'}`}>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${TIPO_EVENTO_DOT[p0.tipoEvento] ?? 'bg-gray-600/50'}`} />
+          <p className="text-white text-sm font-semibold truncate">{p0.nombre || p0.cliente.nombre}</p>
+          <p className="text-gray-500 text-[11px] truncate">
+            {p0.nombre && p0.nombre !== p0.cliente.nombre ? `${p0.cliente.nombre} · ` : ''}{rango}
+          </p>
+          <span className="ml-auto shrink-0 flex items-center gap-2">
+            {total > 0 && <span className="text-[10px] text-[#B3985B]/70 tabular-nums hidden sm:inline">{fmtM(total)}</span>}
+            <span className="text-[10px] uppercase tracking-wider text-[#B3985B] border border-[#B3985B]/30 rounded-full px-2 py-0.5">
+              {items.length} eventos
+            </span>
+          </span>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function ProyectoRow({ p, enGrupo = false, onEliminar, onRegistrarTarea, deletingId }: {
   p: Proyecto;
+  /** Va debajo del encabezado de su trato: el título es el nombre del evento. */
+  enGrupo?: boolean;
   onEliminar: () => void;
   onRegistrarTarea: () => void;
   deletingId: string | null;
 }) {
+  const evento = nombreEventoCotizacion(p.nombre, p.cotizacion);
+  const cot = p.cotizacion?.numeroCotizacion;
   return (
     <tr className={`group hover:bg-[#111] border-b border-[#1a1a1a] last:border-0 transition-colors`}>
       <td className={`pl-4 pr-3 py-3 border-l-2 ${TIPO_EVENTO_BORDER[p.tipoEvento] ?? 'border-l-transparent'}`}>
-        <Link href={`/proyectos/${p.id}`} className="block min-w-0 cursor-pointer">
-          <div className="flex items-center gap-1.5">
-            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${TIPO_EVENTO_DOT[p.tipoEvento] ?? 'bg-gray-600/50'}`} />
-            <p className="text-white text-sm font-medium leading-snug truncate">{p.cliente.nombre}</p>
-          </div>
-          <p className="text-gray-600 text-[11px] truncate pl-3 mt-0.5">
-            {p.numeroProyecto}
-            {p.nombre && p.nombre !== p.cliente.nombre && ` · ${p.nombre}`}
-          </p>
-        </Link>
+        {enGrupo ? (
+          <Link href={`/proyectos/${p.id}`} className="block min-w-0 cursor-pointer pl-3 border-l border-[#B3985B]/25 ml-0.5">
+            <p className="text-white text-sm font-medium leading-snug truncate">{evento ?? cot ?? p.nombre}</p>
+            <p className="text-gray-600 text-[11px] truncate mt-0.5">
+              {p.numeroProyecto}{cot ? ` · ${cot}` : ''}
+            </p>
+          </Link>
+        ) : (
+          <Link href={`/proyectos/${p.id}`} className="block min-w-0 cursor-pointer">
+            <div className="flex items-center gap-1.5">
+              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${TIPO_EVENTO_DOT[p.tipoEvento] ?? 'bg-gray-600/50'}`} />
+              <p className="text-white text-sm font-medium leading-snug truncate">{p.cliente.nombre}</p>
+            </div>
+            <p className="text-gray-600 text-[11px] truncate pl-3 mt-0.5">
+              {p.numeroProyecto}
+              {p.nombre && p.nombre !== p.cliente.nombre && ` · ${p.nombre}`}
+              {evento && <span className="text-[#B3985B]/80"> · {evento}</span>}
+            </p>
+          </Link>
+        )}
       </td>
 
       <td className="hidden sm:table-cell px-3 py-3 whitespace-nowrap">
@@ -258,7 +310,10 @@ export default function ProyectosPage() {
     .filter(p => {
       const matchTab = mapEstado(p.estado) === tabActivo;
       const matchTipo = !filtroTipo || p.tipoEvento === filtroTipo;
-      const matchSearch = coincide(busqueda, p.cliente.nombre, p.nombre, p.numeroProyecto, p.lugarEvento);
+      const matchSearch = coincide(
+        busqueda, p.cliente.nombre, p.nombre, p.numeroProyecto, p.lugarEvento,
+        p.cotizacion?.numeroCotizacion, p.cotizacion?.nombreCotizacion, p.cotizacion?.nombreEvento,
+      );
       return matchTab && matchTipo && matchSearch;
     })
     .sort((a, b) => new Date(a.fechaEvento).getTime() - new Date(b.fechaEvento).getTime());
@@ -295,15 +350,24 @@ export default function ProyectosPage() {
   }
   const maxEstadoCount = Math.max(...TABS.map(t => resumenEstado(t.key).count), 1);
 
-  const renderRow = (p: Proyecto) => (
+  const renderRow = (p: Proyecto, enGrupo = false) => (
     <ProyectoRow
       key={p.id}
       p={p}
+      enGrupo={enGrupo}
       onEliminar={() => eliminar(p)}
       onRegistrarTarea={() => setTareaProyecto({ id: p.id, nombre: p.nombre || p.cliente.nombre })}
       deletingId={deletingId}
     />
   );
+
+  // Los proyectos del mismo trato van juntos bajo su encabezado.
+  const renderRows = (list: Proyecto[]) =>
+    agruparPorTrato(list).flatMap(b =>
+      b.tipo === 'solo'
+        ? [renderRow(b.item)]
+        : [<TratoHeaderRow key={`trato-${b.tratoId}`} items={b.items} />, ...b.items.map(p => renderRow(p, true))],
+    );
 
   return (
     <div className="p-4 md:p-6">
@@ -324,7 +388,7 @@ export default function ProyectosPage() {
           <circle cx="11" cy="11" r="8"/><path strokeLinecap="round" d="m21 21-4.35-4.35"/>
         </svg>
         <input value={busqueda} onChange={e => setBusqueda(e.target.value)}
-          placeholder="Buscar por cliente, número o venue..."
+          placeholder="Buscar por cliente, evento, número o venue..."
           className="ms-input-search" />
         {busqueda && (
           <button onClick={() => setBusqueda('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#555] hover:text-white text-xs">✕</button>
@@ -420,7 +484,7 @@ export default function ProyectosPage() {
                 <table className="w-full text-left border-collapse">
                   <ProyectosThead />
                   <tbody>
-                    {g.items.map(renderRow)}
+                    {renderRows(g.items)}
                   </tbody>
                 </table>
               </div>
@@ -439,7 +503,7 @@ export default function ProyectosPage() {
                 <table className="w-full text-left border-collapse">
                   <ProyectosThead />
                   <tbody>
-                    {pasados.map(renderRow)}
+                    {renderRows(pasados)}
                   </tbody>
                 </table>
               </div>

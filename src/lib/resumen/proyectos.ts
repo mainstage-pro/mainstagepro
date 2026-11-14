@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { computarPendientes } from "@/lib/pendientes";
 import { diasEntre, num, sumarDias, ventana } from "./base";
+import { nombreEventoCotizacion } from "@/lib/proyecto-evento";
 
 const VIVOS = ["PLANEACION", "CONFIRMADO", "EN_CURSO"];
 
@@ -12,6 +13,7 @@ export interface ProyectoResumido {
    *  el del proyecto: varios proyectos de un mismo trato suelen llamarse igual. */
   evento: string | null;
   cotizacion: string | null;
+  tratoId: string | null;
   cliente: string;
   estado: string;
   fechaEvento: Date;
@@ -41,6 +43,7 @@ export async function resumenProyectos() {
         fechaEvento: true,
         zona: true,
         planProduccionAprobado: true,
+        tratoId: true,
         cotizacion: { select: { numeroCotizacion: true, nombreCotizacion: true, nombreEvento: true } },
         cliente: { select: { nombre: true, empresa: true } },
         encargado: { select: { name: true } },
@@ -80,17 +83,13 @@ export async function resumenProyectos() {
     }).catch(() => null),
   ]);
 
-  const nombreEvento = (p: (typeof proximos)[number]) => {
-    const n = (p.cotizacion?.nombreCotizacion || p.cotizacion?.nombreEvento || "").trim();
-    return n && n.toLowerCase() !== p.nombre.trim().toLowerCase() ? n : null;
-  };
-
   const lista: ProyectoResumido[] = proximos.map(p => ({
     id: p.id,
     numero: p.numeroProyecto,
     nombre: p.nombre,
-    evento: nombreEvento(p),
+    evento: nombreEventoCotizacion(p.nombre, p.cotizacion),
     cotizacion: p.cotizacion?.numeroCotizacion ?? null,
+    tratoId: p.tratoId,
     cliente: p.cliente?.empresa || p.cliente?.nombre || "—",
     estado: p.estado,
     fechaEvento: p.fechaEvento,

@@ -47,7 +47,7 @@ export async function GET(req: Request) {
         encargado: { select: { name: true } },
         personal: { select: { confirmado: true } },
         trato: { select: { responsable: { select: { name: true } } } },
-        cotizacion: { select: { id: true, numeroCotizacion: true, granTotal: true } },
+        cotizacion: { select: { id: true, numeroCotizacion: true, granTotal: true, nombreCotizacion: true, nombreEvento: true } },
         equipos: { select: { id: true }, take: 1 },
         cuentasCobrar: { select: { id: true, tipoPago: true, estado: true } },
         checklist: { select: { completado: true, item: true } },
