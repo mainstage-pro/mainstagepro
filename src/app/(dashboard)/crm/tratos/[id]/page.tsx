@@ -397,6 +397,85 @@ function fmtFechaEventoCorta(iso: string | null | undefined): string | null {
 }
 
 // ─── Editor inline de fecha de evento ────────────────────────────────────────
+// Renombra el evento en su lugar: clic en el nombre (o en ✎), Enter guarda, Esc cancela.
+// Se aplica a todas las opciones del evento y al proyecto si se llamaba igual.
+function EventoNombreInline({
+  tratoId,
+  cotizacionIds,
+  nombre,
+  onSaved,
+}: {
+  tratoId: string;
+  cotizacionIds: string[];
+  nombre: string;
+  onSaved: (nombre: string, cotizacionIds: string[], proyectoIds: string[]) => void;
+}) {
+  const toast = useToast();
+  const [editing, setEditing] = useState(false);
+  const [val, setVal] = useState(nombre);
+  const [saving, setSaving] = useState(false);
+
+  async function guardar() {
+    const limpio = val.trim();
+    if (!limpio || limpio === nombre) { setEditing(false); setVal(nombre); return; }
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/tratos/${tratoId}/nombre-evento`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cotizacionIds, nombre: limpio, nombreAnterior: nombre }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (res.ok) {
+        onSaved(limpio, cotizacionIds, d.proyectos ?? []);
+        setEditing(false);
+      } else {
+        toast.error(d.error ?? "No se pudo cambiar el nombre");
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (editing) {
+    return (
+      <span className="flex items-center gap-1.5 min-w-0">
+        <input
+          type="text"
+          value={val}
+          autoFocus
+          maxLength={120}
+          onFocus={(e) => e.currentTarget.select()}
+          onChange={(e) => setVal(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") guardar();
+            if (e.key === "Escape") { setVal(nombre); setEditing(false); }
+          }}
+          disabled={saving}
+          className="min-w-0 w-64 max-w-full bg-[#1a1a1a] border border-[#333] rounded px-2 py-0.5 text-white text-sm font-semibold focus:outline-none focus:border-[#B3985B]"
+        />
+        <button onClick={guardar} disabled={saving || !val.trim()} className="text-emerald-400 text-xs hover:text-emerald-300 disabled:opacity-40">
+          {saving ? "…" : "✓"}
+        </button>
+        <button onClick={() => { setVal(nombre); setEditing(false); }} className="text-gray-500 text-xs hover:text-gray-300">
+          ✕
+        </button>
+      </span>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => { setVal(nombre); setEditing(true); }}
+      className="group/nombre flex items-center gap-1.5 min-w-0 text-left"
+      title="Cambiar nombre del evento"
+    >
+      <span className="text-white text-sm font-semibold truncate group-hover/nombre:text-[#B3985B] transition-colors">{nombre}</span>
+      <span className="text-gray-600 text-xs opacity-0 group-hover/nombre:opacity-100 transition-opacity shrink-0">✎</span>
+    </button>
+  );
+}
+
 // Cambia la fecha desde un solo lugar y la propaga a todas las cotizaciones del
 // evento (y su proyecto). Si es el evento principal, también actualiza la fecha
 // estimada del trato.
@@ -1182,6 +1261,20 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     }
   }
 
+  function handleNombreEventoGuardado(nombre: string, cotizacionIds: string[], proyectoIds: string[]) {
+    const ids = new Set(cotizacionIds);
+    const proys = new Set(proyectoIds);
+    setTrato(prev => prev ? {
+      ...prev,
+      cotizaciones: prev.cotizaciones.map(c =>
+        ids.has(c.id)
+          ? { ...c, nombreCotizacion: nombre, proyecto: c.proyecto && proys.has(c.proyecto.id) ? { ...c.proyecto, nombre } : c.proyecto }
+          : c
+      ),
+    } : prev);
+    toast.success(proyectoIds.length ? "Nombre del evento y su proyecto actualizados" : "Nombre del evento actualizado");
+  }
+
   function handleFechaEventoGuardada(fechaIso: string, cotizacionIds: string[], actualizarEstimada: boolean) {
     const ids = new Set(cotizacionIds);
     setTrato(prev => prev ? {
@@ -1922,7 +2015,12 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                     {/* Header del evento */}
                     <div className="flex items-center justify-between px-4 py-3 bg-[#151515]">
                       <div className="min-w-0">
-                        <p className="text-white text-sm font-semibold truncate">{eventoLabel}</p>
+                        <EventoNombreInline
+                          tratoId={trato.id}
+                          cotizacionIds={idsGrupo}
+                          nombre={eventoLabel}
+                          onSaved={handleNombreEventoGuardado}
+                        />
                         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                           <EventoFechaInline
                             tratoId={trato.id}

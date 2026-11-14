@@ -140,6 +140,33 @@ function asignarClaves(items: ItinerarioCheckpoint[], base: number): ItinerarioC
   return items;
 }
 
+function sumarDias(fecha: string, n: number): string {
+  const d = new Date(`${fecha}T12:00:00.000Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Pasa al día siguiente lo que ocurre después de medianoche. Dentro de un bloque la
+ * primera hora capturada abre la jornada; lo que cae antes de ella (p.ej. fin de
+ * montaje 1:00 AM tras un llamado a las 9:00 PM) es madrugada del día siguiente, y su
+ * fecha debe decirlo para que el itinerario no la ponga antes del llamado.
+ * Solo mueve renglones que comparten fecha con el que abre el bloque y que no traen
+ * una fecha capturada a mano (`fijas`).
+ */
+function rodarMedianoche(items: ItinerarioCheckpoint[], fijas: (it: ItinerarioCheckpoint) => boolean): ItinerarioCheckpoint[] {
+  const valores = minutosConAncla(items.map((it) => it.hora));
+  const ancla = items.find((it) => it.hora);
+  if (!ancla) return items;
+  const fechaAncla = ancla.fecha;
+  items.forEach((it, i) => {
+    if (valores[i] !== Infinity && valores[i] >= 1440 && it.fecha === fechaAncla && !fijas(it)) {
+      it.fecha = sumarDias(it.fecha, 1);
+    }
+  });
+  return items;
+}
+
 function horaValida(v: string | null | undefined): string | null {
   return v && /^\d{1,2}:\d{2}$/.test(v.trim()) ? v.trim() : null;
 }
@@ -217,7 +244,13 @@ export function checkpointsDeProyecto(p: ProyectoCronologia, bloques: BloqueTiem
   const llamadoFecha = p.llamadoBodega ? fechaISOaDia(p.llamadoBodega) : null;
   const montajeFecha = p.fechaMontaje ? fechaISOaDia(p.fechaMontaje) : llamadoFecha;
   const montajeDiaAparte = p.montajeDiaAparte === true && !!montajeFecha && montajeFecha !== dias[0];
-  const fechaMontaje = montajeDiaAparte ? montajeFecha! : dias[0];
+  // El llamado trae su propia fecha (se captura con fecha y hora). Si cae un poco antes
+  // del evento —llamado la noche previa para montar de madrugada— el montaje arranca
+  // ese día aunque no esté marcado como "día adicional". Fuera de esa ventana se ignora
+  // (fecha vieja de cuando el evento estaba en otro día).
+  const llamadoUtil =
+    llamadoFecha && llamadoFecha <= dias[0] && llamadoFecha >= sumarDias(dias[0], -3) ? llamadoFecha : null;
+  const fechaMontaje = montajeDiaAparte ? montajeFecha! : (llamadoUtil ?? dias[0]);
 
   const desmontajeFecha = p.fechaDesmontaje ? fechaISOaDia(p.fechaDesmontaje) : null;
   const desmontajeDiaAparte =
@@ -227,6 +260,11 @@ export function checkpointsDeProyecto(p: ProyectoCronologia, bloques: BloqueTiem
   // Renglones de la Logística general, repartidos por sección. Uno del programa que cae
   // fuera de los días del evento se va a montaje (antes) o desmontaje (después) para que
   // no quede invisible.
+  // Renglones cuya fecha capturó alguien a mano: no se mueven al cruzar medianoche.
+  const bloquesConFecha = new Set(bloques.filter((b) => b.fecha).map((b) => b.id));
+  const fechaFija = (it: ItinerarioCheckpoint) =>
+    (it.campo != null && fechas[it.campo] != null) || (it.bloqueId != null && bloquesConFecha.has(it.bloqueId));
+
   const ordenados = [...bloques].sort((a, b) => a.orden - b.orden);
   const diaBloque = (b: BloqueTiempo, def: string) => (b.fecha ? fechaISOaDia(b.fecha) : def);
   const extrasMontaje: { b: BloqueTiempo; fecha: string }[] = [];
@@ -274,7 +312,7 @@ export function checkpointsDeProyecto(p: ProyectoCronologia, bloques: BloqueTiem
     }),
     ...extrasMontaje.map(({ b, fecha }, j) => checkpointDeBloque(b, fecha, "MONTAJE", 10 + j)),
   ];
-  out.push(...asignarClaves(bloqueMontaje, RANGO_CATEGORIA.MONTAJE));
+  out.push(...asignarClaves(rodarMedianoche(bloqueMontaje, fechaFija), RANGO_CATEGORIA.MONTAJE));
 
   dias.forEach((fecha, i) => {
     const hd = horarioDeDia(fecha, i, dias, p.horariosEvento, {
@@ -316,23 +354,36 @@ export function checkpointsDeProyecto(p: ProyectoCronologia, bloques: BloqueTiem
       }),
     );
     // Offset por día (10 000 c/u) para que los días no se entrecrucen entre sí.
-    out.push(...asignarClaves(bloqueDia, RANGO_CATEGORIA.EVENTO + i * 10_000));
+    out.push(...asignarClaves(rodarMedianoche(bloqueDia, fechaFija), RANGO_CATEGORIA.EVENTO + i * 10_000));
   });
 
+  // El desmontaje arranca cuando termina el último día; si ese fin pasó de medianoche,
+  // o el desmontaje empieza a una hora "menor" que el fin, es ya el día siguiente.
+  let fechaDesmontajeBase = fechaDesmontaje;
+  if (!desmontajeDiaAparte) {
+    const finUltimo = out.filter((c) => c.campo === "finEvento").pop();
+    if (finUltimo && finUltimo.fecha > fechaDesmontajeBase) fechaDesmontajeBase = finUltimo.fecha;
+    const mFin = minutos(finUltimo?.hora ?? null);
+    const mDes = minutos(horaValida(h.inicioDesmontaje));
+    if (finUltimo && finUltimo.fecha === fechaDesmontajeBase && mFin != null && mDes != null && mDes < mFin) {
+      fechaDesmontajeBase = sumarDias(fechaDesmontajeBase, 1);
+    }
+  }
+
   const bloqueDesmontaje = [
-    checkpoint(fechaDe("inicioDesmontaje", fechaDesmontaje), "DESMONTAJE", "Inicio de desmontaje", 0, {
+    checkpoint(fechaDe("inicioDesmontaje", fechaDesmontajeBase), "DESMONTAJE", "Inicio de desmontaje", 0, {
       hora: h.inicioDesmontaje,
       notaEditable: notas.inicioDesmontaje,
       campo: "inicioDesmontaje",
     }),
-    checkpoint(fechaDe("finDesmontaje", fechaDesmontaje), "DESMONTAJE", "Fin de desmontaje (aprox.)", 1, {
+    checkpoint(fechaDe("finDesmontaje", fechaDesmontajeBase), "DESMONTAJE", "Fin de desmontaje (aprox.)", 1, {
       hora: h.finDesmontaje,
       notaEditable: notas.finDesmontaje,
       campo: "finDesmontaje",
     }),
     ...extrasDesmontaje.map(({ b, fecha }, j) => checkpointDeBloque(b, fecha, "DESMONTAJE", 10 + j)),
   ];
-  out.push(...asignarClaves(bloqueDesmontaje, RANGO_CATEGORIA.DESMONTAJE));
+  out.push(...asignarClaves(rodarMedianoche(bloqueDesmontaje, fechaFija), RANGO_CATEGORIA.DESMONTAJE));
 
   return out;
 }
@@ -453,15 +504,15 @@ export function renglonesDeItinerario(eventos: ItinerarioEvento[]): ItinerarioRe
 }
 
 /**
- * Minuto a minuto puro (para el PDF): ordena los renglones de UN día solo por la hora,
- * sin importar el evento ni la fase. Usa el minuto ya resuelto dentro de `clave`
- * (todas las bases son múltiplos de 10 000), así respeta el cruce de medianoche de
- * cada evento; los que no tienen hora (≥ CLAVE_PENDIENTE_BASE) quedan al final.
+ * Minuto a minuto puro (para el PDF): ordena los renglones de UN día solo por la hora
+ * de reloj, sin importar el evento ni la fase. Lo que pasa de medianoche ya trae la
+ * fecha del día siguiente (ver rodarMedianoche), así que dentro de un día la hora
+ * basta. Los que no tienen hora quedan al final, en su orden lógico.
  */
 export function ordenarPorHora(renglones: ItinerarioRenglon[]): ItinerarioRenglon[] {
   return renglones
-    .map((r, i) => ({ r, i, m: r.clave % 10_000 }))
-    .sort((a, b) => a.m - b.m || a.i - b.i)
+    .map((r, i) => ({ r, i, m: minutos(r.hora) ?? Infinity }))
+    .sort((a, b) => (a.m === b.m ? a.i - b.i : a.m - b.m))
     .map((x) => x.r);
 }
 
