@@ -7,7 +7,7 @@ import { useConfirm } from "@/components/Confirm";
 import { SkeletonPage } from "@/components/Skeleton";
 import NuevaTareaModal from "@/app/(dashboard)/operaciones/components/NuevaTareaModal";
 import { coincide } from "@/lib/buscar";
-import { agruparPorTrato, nombreEventoCotizacion } from "@/lib/proyecto-evento";
+import { agruparPorTrato, nombreDeCotizacion, nombreEventoCotizacion } from "@/lib/proyecto-evento";
 
 type Usuario = { id: string; name: string };
 
@@ -175,7 +175,7 @@ function ProyectoRow({ p, enGrupo = false, onEliminar, onRegistrarTarea, deletin
       <td className={`pl-4 pr-3 py-3 border-l-2 ${TIPO_EVENTO_BORDER[p.tipoEvento] ?? 'border-l-transparent'}`}>
         {enGrupo ? (
           <Link href={`/proyectos/${p.id}`} className="block min-w-0 cursor-pointer pl-3 border-l border-[#B3985B]/25 ml-0.5">
-            <p className="text-white text-sm font-medium leading-snug truncate">{evento ?? cot ?? p.nombre}</p>
+            <p className="text-white text-sm font-medium leading-snug truncate">{nombreDeCotizacion(p.cotizacion) ?? cot ?? p.nombre}</p>
             <p className="text-gray-600 text-[11px] truncate mt-0.5">
               {p.numeroProyecto}{cot ? ` · ${cot}` : ''}
             </p>

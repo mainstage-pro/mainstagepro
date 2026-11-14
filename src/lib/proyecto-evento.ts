@@ -12,12 +12,17 @@ export interface CotizacionEvento {
   nombreEvento?: string | null;
 }
 
+/** Nombre del evento tal como está en su cotización (puede repetir el del proyecto). */
+export function nombreDeCotizacion(cot: CotizacionEvento | null | undefined): string | null {
+  return (cot?.nombreCotizacion || cot?.nombreEvento || "").trim() || null;
+}
+
 /** Nombre del evento según su cotización, o null si solo repite el del proyecto. */
 export function nombreEventoCotizacion(
   nombreProyecto: string,
   cot: CotizacionEvento | null | undefined,
 ): string | null {
-  const n = (cot?.nombreCotizacion || cot?.nombreEvento || "").trim();
+  const n = nombreDeCotizacion(cot);
   if (!n) return null;
   return n.toLowerCase() === nombreProyecto.trim().toLowerCase() ? null : n;
 }

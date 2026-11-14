@@ -57,7 +57,7 @@ function FilaAgenda({ p, enGrupo = false }: { p: ProyectoResumido; enGrupo?: boo
   const faltaExterno = p.equiposExternosConfirmados < p.equiposExternos;
   const enRiesgo = p.dias <= 7 && (faltaPersonal || faltaExterno || !p.planAprobado);
   const titulo = enGrupo
-    ? p.evento ?? p.cotizacion ?? p.nombre
+    ? p.nombreCotizacion ?? p.cotizacion ?? p.nombre
     : p.evento
       ? <>{p.nombre} <span className="text-[#B3985B]">· {p.evento}</span></>
       : p.nombre;

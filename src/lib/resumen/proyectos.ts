@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { computarPendientes } from "@/lib/pendientes";
 import { diasEntre, num, sumarDias, ventana } from "./base";
-import { nombreEventoCotizacion } from "@/lib/proyecto-evento";
+import { nombreDeCotizacion, nombreEventoCotizacion } from "@/lib/proyecto-evento";
 
 const VIVOS = ["PLANEACION", "CONFIRMADO", "EN_CURSO"];
 
@@ -12,6 +12,8 @@ export interface ProyectoResumido {
   /** Nombre del evento en su cotización ("Evento 2", "Planta de luz") cuando no repite
    *  el del proyecto: varios proyectos de un mismo trato suelen llamarse igual. */
   evento: string | null;
+  /** Nombre de la cotización aunque repita el del proyecto: título dentro de un grupo. */
+  nombreCotizacion: string | null;
   cotizacion: string | null;
   tratoId: string | null;
   cliente: string;
@@ -88,6 +90,7 @@ export async function resumenProyectos() {
     numero: p.numeroProyecto,
     nombre: p.nombre,
     evento: nombreEventoCotizacion(p.nombre, p.cotizacion),
+    nombreCotizacion: nombreDeCotizacion(p.cotizacion),
     cotizacion: p.cotizacion?.numeroCotizacion ?? null,
     tratoId: p.tratoId,
     cliente: p.cliente?.empresa || p.cliente?.nombre || "—",
