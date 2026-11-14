@@ -9599,6 +9599,17 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 onCopiarLink={() => copiarDocLink("ficha-operativa")}
                 copiando={copiandoDoc === "ficha-operativa"}
               />
+              <BotonDocumento
+                label="Itinerario de Operaciones"
+                icono={<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>}
+                requisitos={reqDoc('ITINERARIO')}
+                cargando={downloading === `itinerario-${proyecto.numeroProyecto}.pdf`}
+                deshabilitado={!!downloading}
+                onDescargar={() => downloadPdf(`/api/proyectos/${proyecto.id}/itinerario`, `itinerario-${proyecto.numeroProyecto}.pdf`)}
+                urlEnLinea={`/api/proyectos/${proyecto.id}/itinerario?preview=1`}
+                onCopiarLink={() => copiarDocLink("itinerario")}
+                copiando={copiandoDoc === "itinerario"}
+              />
               {proyecto.tipoServicio === 'PRODUCCION_TECNICA' && (
                 <BotonDocumento
                   label="Info para Técnicos"

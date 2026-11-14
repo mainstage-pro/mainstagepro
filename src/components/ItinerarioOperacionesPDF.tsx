@@ -75,6 +75,8 @@ export interface ItinerarioPDFData {
   eventos: ItinerarioEvento[];
   inicio: string;
   fin: string;
+  /** Itinerario de un solo proyecto: se nombra en el encabezado en lugar de solo el rango. */
+  proyecto?: { numeroProyecto: string; nombre: string; clienteNombre: string } | null;
 }
 
 export function ItinerarioOperacionesPDF({ data }: { data: ItinerarioPDFData }) {
@@ -84,7 +86,11 @@ export function ItinerarioOperacionesPDF({ data }: { data: ItinerarioPDFData }) 
   return (
     <ReporteLayout
       titulo="ITINERARIO DE OPERACIONES"
-      subtitulo={`${fechaLargaDia(data.inicio)} — ${fechaLargaDia(data.fin)}`}
+      subtitulo={
+        data.proyecto
+          ? `${data.proyecto.numeroProyecto} · ${data.proyecto.nombre} · ${data.proyecto.clienteNombre}`
+          : `${fechaLargaDia(data.inicio)} — ${fechaLargaDia(data.fin)}`
+      }
       footerLabel="Mainstage Pro — Itinerario de operaciones"
     >
       {dias.map((d) => {

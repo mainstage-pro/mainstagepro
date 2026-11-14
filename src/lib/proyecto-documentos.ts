@@ -11,13 +11,15 @@ export type TipoDocumento =
   | "FICHA_OPERATIVA"
   | "HOJA_ENTREGA"
   | "CONTROL_CARGA"
-  | "BRIEF_TECNICO";
+  | "BRIEF_TECNICO"
+  | "ITINERARIO";
 
 export const DOCUMENTO_LABELS: Record<TipoDocumento, string> = {
   FICHA_OPERATIVA: "Ficha operativa",
   HOJA_ENTREGA: "Hoja de entrega",
   CONTROL_CARGA: "Lista de carga",
   BRIEF_TECNICO: "Info para técnicos",
+  ITINERARIO: "Itinerario de operaciones",
 };
 
 export interface ProyectoDocumentoInput {
@@ -174,6 +176,19 @@ export function requisitosDocumento(
         advertencias.push("Sin coordinador en sitio: el brief no dice con quién dirigirse");
       if (sinContactoEnSitio) advertencias.push("Sin encargado del lugar ni del cliente");
       if (falta(p.contactosEmergencia)) advertencias.push("Sin contactos de emergencia");
+      break;
+    }
+
+    // El minuto a minuto del proyecto. Siempre hay al menos la fecha del evento,
+    // así que no se bloquea: lo que falte sale como "Por definir" y se avisa.
+    case "ITINERARIO": {
+      if (operamosEnSitio(p)) {
+        if (!p.llamadoBodega) advertencias.push("Falta la hora del llamado");
+        if (sinMontaje) advertencias.push("Falta fecha u hora de montaje");
+      }
+      if (falta(p.horaInicioEvento) && falta(p.horaInicio))
+        advertencias.push("Falta la hora de inicio del evento");
+      if (p.bloquesCronologia === 0) advertencias.push("Cronología vacía");
       break;
     }
   }

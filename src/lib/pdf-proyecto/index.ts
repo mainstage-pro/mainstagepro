@@ -4,6 +4,7 @@ import { generarFichaOperativa } from "./ficha-operativa";
 import { generarListaCarga } from "./lista-carga";
 import { generarInfoTecnicos } from "./info-tecnicos";
 import { generarHojaEntrega } from "./hoja-entrega";
+import { generarItinerarioProyecto } from "./itinerario";
 
 export type { PdfProyecto } from "./render";
 export { respuestaPdf } from "./render";
@@ -36,6 +37,11 @@ export const DOCUMENTOS_PDF = {
     tipo: "HOJA_ENTREGA" as TipoDocumento,
     label: "Hoja de entrega",
     generar: generarHojaEntrega,
+  },
+  itinerario: {
+    tipo: "ITINERARIO" as TipoDocumento,
+    label: "Itinerario de operaciones",
+    generar: generarItinerarioProyecto,
   },
 } satisfies Record<string, { tipo: TipoDocumento; label: string; generar: (id: string) => Promise<PdfProyecto | null> }>;
 
