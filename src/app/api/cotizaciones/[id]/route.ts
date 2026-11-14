@@ -126,6 +126,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
           granTotal: true,
           numeroCotizacion: true,
           clienteId: true,
+          fechaEvento: true,
+          lugarEvento: true,
+          venueId: true,
+          horaInicioEvento: true,
+          horaFinEvento: true,
           proyecto: { select: { id: true } },
         },
       });
@@ -336,6 +341,21 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       // Nunca borra datos manuales; marca lo removido con necesitaRevision.
       if (prev?.proyecto?.id) {
         await sincronizarProyectoDesdeCotizacion(id);
+
+        // Fecha, lugar y horario del evento: el guardado completo desde el cotizador
+        // también los pasa al proyecto, igual que la edición rápida (PATCH parcial).
+        // Solo lo que cambió en ESTE guardado, para no pisar lo que producción haya
+        // ajustado en el proyecto mientras la cotización seguía igual.
+        const dia = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : null);
+        const cambios: Record<string, unknown> = {};
+        if (cotizacion.fechaEvento && dia(cotizacion.fechaEvento) !== dia(prev.fechaEvento)) cambios.fechaEvento = cotizacion.fechaEvento;
+        if (cotizacion.lugarEvento !== prev.lugarEvento) cambios.lugarEvento = cotizacion.lugarEvento;
+        if (cotizacion.venueId !== prev.venueId) cambios.venueId = cotizacion.venueId;
+        if (cotizacion.horaInicioEvento !== prev.horaInicioEvento) cambios.horaInicioEvento = cotizacion.horaInicioEvento;
+        if (cotizacion.horaFinEvento !== prev.horaFinEvento) cambios.horaFinEvento = cotizacion.horaFinEvento;
+        if (Object.keys(cambios).length > 0) {
+          await prisma.proyecto.update({ where: { id: prev.proyecto.id }, data: cambios });
+        }
       }
 
       await logActividad(session.id, "EDITAR", "cotizacion", id, `Cotización editada: ${nombreEvento ?? id}`);

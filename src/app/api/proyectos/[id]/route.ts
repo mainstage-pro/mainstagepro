@@ -460,6 +460,31 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const proyectoAntes = await prisma.proyecto.findUnique({ where: { id }, select: { estado: true, choferExterno: true, choferNombre: true, choferCosto: true } });
   let proyecto = await prisma.proyecto.update({ where: { id }, data });
 
+  // ── Fecha/lugar/horario ligados con la cotización de origen ────────────────
+  // Lo mismo en sentido inverso a PATCH /api/cotizaciones/[id]: si producción mueve
+  // el evento desde el proyecto, la venta (y sus opciones A/B/C del mismo grupo)
+  // deben decir lo mismo, o el trato y la agenda muestran otra fecha.
+  {
+    const ligados: Record<string, unknown> = {};
+    for (const k of ["fechaEvento", "lugarEvento", "venueId", "horaInicioEvento", "horaFinEvento"]) {
+      if (k in data && !(k === "fechaEvento" && !data[k])) ligados[k] = data[k];
+    }
+    if (Object.keys(ligados).length > 0 && proyecto.cotizacionId) {
+      const origen = await prisma.cotizacion.findUnique({
+        where: { id: proyecto.cotizacionId },
+        select: { id: true, grupoId: true, tratoId: true },
+      });
+      if (origen) {
+        await prisma.cotizacion.updateMany({
+          where: origen.grupoId && origen.tratoId
+            ? { tratoId: origen.tratoId, grupoId: origen.grupoId }
+            : { id: origen.id },
+          data: ligados,
+        });
+      }
+    }
+  }
+
   // ── Auto-crear/actualizar CxP para chofer externo ──────────────────────────
   if ("choferNombre" in body || "choferExterno" in body || "choferCosto" in body) {
     const esExterno = (data.choferExterno ?? proyectoAntes?.choferExterno) as boolean;
