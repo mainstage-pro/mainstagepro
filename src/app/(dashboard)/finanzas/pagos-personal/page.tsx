@@ -7,6 +7,7 @@ import { Combobox } from "@/components/Combobox";
 import { FileText, ArrowDownAZ, Calendar, MessageSquare, X } from "lucide-react";
 import DatosBancariosAcreedor from "@/components/finanzas/DatosBancariosAcreedor";
 import type { DatosBancarios } from "@/lib/datos-bancarios";
+import { compararJornada } from "@/lib/ciclo-pago";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -63,6 +64,7 @@ interface CuentaBancaria {
 
 interface CicloData {
   ciclo: string;
+  personalizado?: boolean;
   desde: string;
   hasta: string;
   proyectos: ProyectoCiclo[];
@@ -454,6 +456,15 @@ function EditablePersonalRow({
 
 export default function PagosPersonalPage() {
   const [ciclo, setCiclo] = useState(cicloActual);
+  // Periodo a calcular: ciclo semanal (miércoles de pago) o rango de fechas libre
+  const [modoPeriodo, setModoPeriodo] = useState<"ciclo" | "rango">("ciclo");
+  const [rangoDesde, setRangoDesde] = useState("");
+  const [rangoHasta, setRangoHasta] = useState("");
+  const rangoValido = modoPeriodo === "rango" && !!rangoDesde && !!rangoHasta;
+  const queryPeriodo = rangoValido
+    ? `ciclo=${ciclo}&desde=${rangoDesde}&hasta=${rangoHasta}`
+    : `ciclo=${ciclo}`;
+  const etiquetaPeriodo = rangoValido ? `${rangoDesde}_a_${rangoHasta}` : ciclo;
   const [pendingEdits, setPendingEdits] = useState<Record<string, Partial<PersonalSlot>>>({});
   const [savingBatch, setSavingBatch] = useState(false);
   const [editingGroup, setEditingGroup] = useState<string | null>(null);
@@ -632,11 +643,20 @@ export default function PagosPersonalPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch(`/api/pagos-personal?ciclo=${ciclo}`);
+    const res = await fetch(`/api/pagos-personal?${queryPeriodo}`);
     const d = await res.json();
     setData(d);
     setLoading(false);
-  }, [ciclo]);
+  }, [queryPeriodo]);
+
+  function activarRango() {
+    if (!rangoDesde || !rangoHasta) {
+      // Arranca con las fechas del ciclo que se está viendo
+      setRangoDesde(data?.desde ?? ciclo);
+      setRangoHasta(data?.hasta ?? ciclo);
+    }
+    setModoPeriodo("rango");
+  }
 
   useEffect(() => { load(); }, [load]);
 
@@ -915,7 +935,7 @@ export default function PagosPersonalPage() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="ms-h1">Pagos a Personal</h1>
-          <p className="ms-subtitle mt-0.5">Ciclo semanal · miércoles de pago</p>
+          <p className="ms-subtitle mt-0.5">{rangoValido ? "Rango de fechas personalizado" : "Ciclo semanal · miércoles de pago"}</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           {/* Botón de ordenar por evento / nombre A-Z del staff */}
@@ -947,26 +967,68 @@ export default function PagosPersonalPage() {
           </div>
 
           <BotonDescarga
-            url={`/api/pagos-personal/pdf?ciclo=${ciclo}`}
-            filename={`Pagos-personal-${ciclo}.pdf`}
-            titulo={`Pagos a personal ${ciclo}`}
+            url={`/api/pagos-personal/pdf?${queryPeriodo}`}
+            filename={`Pagos-personal-${etiquetaPeriodo}.pdf`}
+            titulo={`Pagos a personal ${etiquetaPeriodo}`}
             className="flex items-center gap-2 ms-card px-4 py-2 hover:bg-[#222] transition-colors text-sm font-medium text-[#B3985B] border border-[#B3985B]/30"
           >
             <FileText className="w-4 h-4" /> PDF
           </BotonDescarga>
-          <div className="flex items-center gap-2 ms-card px-3 py-2">
-            <button onClick={() => setCiclo(prevCiclo(ciclo))} className="text-gray-400 hover:text-white px-1 transition-colors">‹</button>
-            <div className="text-center">
-              <p className="text-xs text-gray-500">Ciclo de pago</p>
-              <input
-                type="date"
-                value={ciclo}
-                onChange={e => setCiclo(e.target.value)}
-                className="bg-transparent text-white text-sm font-semibold focus:outline-none text-center"
-              />
-            </div>
-            <button onClick={() => setCiclo(nextCiclo(ciclo))} className="text-gray-400 hover:text-white px-1 transition-colors">›</button>
+          <div className="flex items-center gap-1 bg-[#141414] border border-[#2a2a2a] rounded-lg p-1">
+            <button
+              type="button"
+              onClick={() => setModoPeriodo("ciclo")}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${modoPeriodo === "ciclo" ? "bg-[#222] text-white" : "text-gray-400 hover:text-white"}`}
+            >
+              Ciclo
+            </button>
+            <button
+              type="button"
+              onClick={activarRango}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${modoPeriodo === "rango" ? "bg-[#222] text-white" : "text-gray-400 hover:text-white"}`}
+            >
+              Rango de fechas
+            </button>
           </div>
+          {modoPeriodo === "ciclo" ? (
+            <div className="flex items-center gap-2 ms-card px-3 py-2">
+              <button onClick={() => setCiclo(prevCiclo(ciclo))} className="text-gray-400 hover:text-white px-1 transition-colors">‹</button>
+              <div className="text-center">
+                <p className="text-xs text-gray-500">Ciclo de pago</p>
+                <input
+                  type="date"
+                  value={ciclo}
+                  onChange={e => e.target.value && setCiclo(e.target.value)}
+                  className="bg-transparent text-white text-sm font-semibold focus:outline-none text-center"
+                />
+              </div>
+              <button onClick={() => setCiclo(nextCiclo(ciclo))} className="text-gray-400 hover:text-white px-1 transition-colors">›</button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 ms-card px-3 py-2">
+              <div>
+                <p className="text-xs text-gray-500">Desde</p>
+                <input
+                  type="date"
+                  value={rangoDesde}
+                  max={rangoHasta || undefined}
+                  onChange={e => setRangoDesde(e.target.value)}
+                  className="bg-transparent text-white text-sm font-semibold focus:outline-none"
+                />
+              </div>
+              <span className="text-gray-600">–</span>
+              <div>
+                <p className="text-xs text-gray-500">Hasta</p>
+                <input
+                  type="date"
+                  value={rangoHasta}
+                  min={rangoDesde || undefined}
+                  onChange={e => setRangoHasta(e.target.value)}
+                  className="bg-transparent text-white text-sm font-semibold focus:outline-none"
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1103,7 +1165,13 @@ export default function PagosPersonalPage() {
                         ))}
                       </div>
 
-                      {Array.from(grupos.entries()).map(([key, rawSlots]) => {
+                      {Array.from(grupos.entries())
+                        .sort(([ka], [kb]) => {
+                          const [ta, fa] = ka.split("|");
+                          const [tb, fb] = kb.split("|");
+                          return compararJornada({ participacion: ta, fechaJornada: fa || null }, { participacion: tb, fechaJornada: fb || null });
+                        })
+                        .map(([key, rawSlots]) => {
                         const [tipo, fecha] = key.split("|");
                         // Ordenar staff dentro de cada bloque de la A a la Z
                         const slots = [...rawSlots].sort((a, b) => {
@@ -1472,8 +1540,8 @@ export default function PagosPersonalPage() {
                     <div className="flex items-center gap-3">
                       {g.tecnicoId && (
                         <BotonDescarga
-                          url={`/api/pagos-personal/recibo?ciclo=${ciclo}&tecnico=${g.tecnicoId}`}
-                          filename={`Recibo-${g.tecnicoNombre.replace(/\s+/g, "-")}-${ciclo}.pdf`}
+                          url={`/api/pagos-personal/recibo?${queryPeriodo}&tecnico=${g.tecnicoId}`}
+                          filename={`Recibo-${g.tecnicoNombre.replace(/\s+/g, "-")}-${etiquetaPeriodo}.pdf`}
                           titulo={`Recibo ${g.tecnicoNombre}`}
                           className="text-[#B3985B] hover:text-white transition-colors flex items-center justify-center p-1.5 rounded-md hover:bg-[#B3985B]/20"
                         >
@@ -1555,10 +1623,12 @@ export default function PagosPersonalPage() {
             /* ── Nómina semanal ── */
             <div className="ms-table-wrapper sticky top-6">
               <div className="px-5 py-3 bg-[#1a1a1a] border-b border-[#222]">
-                <p className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Nómina de la semana</p>
+                <p className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">{data.personalizado ? "Nómina del periodo" : "Nómina de la semana"}</p>
                 <p className="text-xs text-gray-600 mt-0.5">
                   {data.nomina.length} técnico{data.nomina.length !== 1 ? "s" : ""}
-                  {" · "}miércoles {fmtDate(ciclo, { weekday: undefined, day: "numeric", month: "long", year: "numeric" })}
+                  {" · "}{data.personalizado
+                    ? `${fmtDate(data.desde, { weekday: undefined })} – ${fmtDate(data.hasta, { weekday: undefined, year: "numeric" })}`
+                    : `miércoles ${fmtDate(ciclo, { weekday: undefined, day: "numeric", month: "long", year: "numeric" })}`}
                 </p>
               </div>
 
@@ -1573,8 +1643,8 @@ export default function PagosPersonalPage() {
                           <p className="text-white text-sm font-medium">{row.tecnicoNombre}</p>
                           <div className="flex items-center gap-3">
                             <BotonDescarga
-                              url={`/api/pagos-personal/recibo?ciclo=${ciclo}&tecnico=${row.tecnicoId}`}
-                              filename={`Recibo-${row.tecnicoNombre.replace(/\s+/g, "-")}-${ciclo}.pdf`}
+                              url={`/api/pagos-personal/recibo?${queryPeriodo}&tecnico=${row.tecnicoId}`}
+                              filename={`Recibo-${row.tecnicoNombre.replace(/\s+/g, "-")}-${etiquetaPeriodo}.pdf`}
                               titulo={`Recibo ${row.tecnicoNombre}`}
                               className="text-[#B3985B] hover:text-white transition-colors flex items-center justify-center p-1 rounded-md hover:bg-[#B3985B]/20"
                             >

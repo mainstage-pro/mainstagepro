@@ -1,42 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { rangoNomina, compararJornada } from "@/lib/ciclo-pago";
 import { desgloseBonos, totalPagoPersonal } from "@/lib/pago-personal";
 import { getSession } from "@/lib/auth";
 import ReactPDF, { Document } from "@react-pdf/renderer";
 import { ReciboNominaTecnicoPDF, type ReciboNominaTecnicoPDFData } from "@/components/ReciboNominaTecnicoPDF";
 import React from "react";
 
-function cicloDesde(cicloDate: Date): { desde: Date; hasta: Date } {
-  const ciclo = new Date(cicloDate);
-  ciclo.setHours(12, 0, 0, 0);
-  const desde = new Date(ciclo);
-  desde.setDate(desde.getDate() - 7);
-  desde.setHours(0, 0, 0, 0);
-  const hasta = new Date(ciclo);
-  hasta.setDate(hasta.getDate() - 1);
-  hasta.setHours(23, 59, 59, 999);
-  return { desde, hasta };
-}
-
 export async function GET(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  const cicloStr = req.nextUrl.searchParams.get("ciclo");
   const tecnicoId = req.nextUrl.searchParams.get("tecnico");
   
   if (!tecnicoId) return NextResponse.json({ error: "Falta técnico ID" }, { status: 400 });
 
-  const cicloDate = cicloStr
-    ? new Date(cicloStr + "T12:00:00Z")
-    : (() => {
-        const d = new Date();
-        const dow = d.getDay();
-        d.setDate(d.getDate() + (dow <= 3 ? 3 - dow : 10 - dow));
-        return d;
-      })();
-
-  const { desde, hasta } = cicloDesde(cicloDate);
+  const { ciclo, desde, hasta, personalizado } = rangoNomina(req.nextUrl.searchParams);
 
   const tecnico = await prisma.tecnico.findUnique({
     where: { id: tecnicoId },
@@ -61,7 +40,11 @@ export async function GET(req: NextRequest) {
     orderBy: { proyecto: { fechaEvento: "asc" } }
   });
 
-  const pagos = asignaciones
+  const pagos = [...asignaciones]
+    .sort((a, b) =>
+      (a.proyecto.fechaEvento?.getTime() ?? 0) - (b.proyecto.fechaEvento?.getTime() ?? 0) ||
+      compararJornada(a, b)
+    )
     .filter(a => totalPagoPersonal(a) != null)
     .map(a => ({
     proyectoNombre: a.proyecto.nombre,
@@ -80,7 +63,8 @@ export async function GET(req: NextRequest) {
 
   const pdfData: ReciboNominaTecnicoPDFData = {
     tecnicoNombre: tecnico.nombre,
-    ciclo: cicloDate.toISOString().slice(0, 10),
+    ciclo,
+    personalizado,
     desde: desde.toISOString().slice(0, 10),
     hasta: hasta.toISOString().slice(0, 10),
     pagos,

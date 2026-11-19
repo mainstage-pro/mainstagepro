@@ -1,38 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { rangoNomina, compararJornada } from "@/lib/ciclo-pago";
 import { desgloseBonos, totalPagoPersonal } from "@/lib/pago-personal";
 import { getSession } from "@/lib/auth";
 import ReactPDF, { Document } from "@react-pdf/renderer";
 import { PagosPersonalPDF, type PagosPersonalPDFData } from "@/components/PagosPersonalPDF";
 import React from "react";
 
-function cicloDesde(cicloDate: Date): { desde: Date; hasta: Date } {
-  const ciclo = new Date(cicloDate);
-  ciclo.setHours(12, 0, 0, 0);
-  const desde = new Date(ciclo);
-  desde.setDate(desde.getDate() - 7);
-  desde.setHours(0, 0, 0, 0);
-  const hasta = new Date(ciclo);
-  hasta.setDate(hasta.getDate() - 1);
-  hasta.setHours(23, 59, 59, 999);
-  return { desde, hasta };
-}
-
 export async function GET(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  const cicloStr = req.nextUrl.searchParams.get("ciclo");
-  const cicloDate = cicloStr
-    ? new Date(cicloStr + "T12:00:00Z")
-    : (() => {
-        const d = new Date();
-        const dow = d.getDay();
-        d.setDate(d.getDate() + (dow <= 3 ? 3 - dow : 10 - dow));
-        return d;
-      })();
-
-  const { desde, hasta } = cicloDesde(cicloDate);
+  const { ciclo, desde, hasta, personalizado } = rangoNomina(req.nextUrl.searchParams);
 
   const proyectos = await prisma.proyecto.findMany({
     where: { fechaEvento: { gte: desde, lte: hasta }, personal: { some: {} } },
@@ -57,7 +36,7 @@ export async function GET(req: NextRequest) {
     cliente: p.cliente?.nombre ?? "",
     fechaEvento: p.fechaEvento?.toISOString().slice(0, 10) ?? "",
     presupuestoOp: p.cotizacion?.subtotalOperacion ?? 0,
-    personal: p.personal.map((pp) => {
+    personal: [...p.personal].sort(compararJornada).map((pp) => {
       const pagoTotal = totalPagoPersonal(pp);
       const tarifaTotal = pagoTotal ?? 0;
       const montoPagado = pp.movimiento?.monto ?? (pp.estadoPago === "PAGADO" ? tarifaTotal : 0);
@@ -150,7 +129,8 @@ export async function GET(req: NextRequest) {
   const totalPagado = nomina.filter((r) => r.todosPagados).reduce((s, r) => s + r.total, 0);
 
   const pdfData: PagosPersonalPDFData = {
-    ciclo: cicloDate.toISOString().slice(0, 10),
+    ciclo,
+    personalizado,
     desde: desde.toISOString().slice(0, 10),
     hasta: hasta.toISOString().slice(0, 10),
     proyectos: proyectosData,

@@ -4,6 +4,7 @@ import { base, ReporteLayout, fmtFecha, fmtMoney } from "@/components/pdf/Report
 
 export interface PagosPersonalPDFData {
   ciclo: string;
+  personalizado?: boolean;
   desde: string;
   hasta: string;
   totalPresupuestado: number;
@@ -40,8 +41,8 @@ export function PagosPersonalPDF({ data }: { data: PagosPersonalPDFData }) {
   return (
     <ReporteLayout
       titulo="REPORTE DE PAGOS A PERSONAL"
-      subtitulo={`Ciclo: ${fmtFecha(data.desde)} al ${fmtFecha(data.hasta)}`}
-      footerLabel={`Mainstage Pro — Pagos a Personal · Ciclo: ${data.ciclo}`}
+      subtitulo={`${data.personalizado ? "Periodo" : "Ciclo"}: ${fmtFecha(data.desde)} al ${fmtFecha(data.hasta)}`}
+      footerLabel={`Mainstage Pro — Pagos a Personal · ${data.personalizado ? `Periodo: ${data.desde} al ${data.hasta}` : `Ciclo: ${data.ciclo}`}`}
     >
       <View style={base.kpiRow}>
         <View style={base.kpiBoxDark}>

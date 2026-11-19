@@ -1,5 +1,6 @@
 "use client";
 
+import { ORDEN_PARTICIPACION, rangoParticipacion } from "@/lib/ciclo-pago";
 import React, { useEffect, useState, useRef, useMemo, useCallback, use } from "react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, MouseSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy, horizontalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
@@ -5695,7 +5696,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
             {/* ── Sugerencias de cotización — siempre visibles ── */}
             {proyecto.cotizacion && (() => {
-              const lineas = (proyecto.cotizacion.lineas ?? []).filter(l => l.tipo === "OPERACION_TECNICA");
+              const lineas = (proyecto.cotizacion.lineas ?? [])
+                .filter(l => l.tipo === "OPERACION_TECNICA")
+                .map((l, i) => ({ l, i, op: datosOperacionDeLinea(l.descripcion) }))
+                .sort((a, b) => rangoParticipacion(a.op.participacion) - rangoParticipacion(b.op.participacion) || a.i - b.i)
+                .map(x => x.l);
               if (lineas.length === 0) return null;
               const presupuestoCotizado = lineas.reduce((s, l) => s + l.precioUnitario * l.cantidad, 0);
               const presupuestoAsignado = proyecto.personal.reduce((s, p) => s + (totalPagoPersonal(p) ?? 0), 0);
@@ -5847,16 +5852,18 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     : (fechaEvento ?? "__sin_fecha__");
 
               // ── Agrupar por fecha ─────────────────────────────────────────────
+              // Orden natural de jornadas: montaje → operación → desmontaje
               const grupoMap = new Map<string, Personal[]>();
-              for (const p of proyecto.personal) {
+              for (const p of [...proyecto.personal].sort((a, b) => rangoParticipacion(a.participacion) - rangoParticipacion(b.participacion))) {
                 const key = fechaEf(p);
                 if (!grupoMap.has(key)) grupoMap.set(key, []);
                 grupoMap.get(key)!.push(p);
               }
+              const rangoGrupo = (k: string) => Math.min(...grupoMap.get(k)!.map(p => rangoParticipacion(p.participacion)));
               const fechasOrdenadas = [...grupoMap.keys()].sort((a, b) => {
                 if (a === "__sin_fecha__") return 1;
                 if (b === "__sin_fecha__") return -1;
-                return a.localeCompare(b);
+                return rangoGrupo(a) - rangoGrupo(b) || a.localeCompare(b);
               });
 
               const fmtFecha = (s: string) => {
@@ -8586,7 +8593,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
               // Agrupar por participacion
               const grupos = new Map<string, NonNullable<typeof proyecto>["personal"]>();
-              const ORDER = ["MONTAJE", "OPERACION", "DESMONTAJE", "TRANSPORTE", "OTRO"];
+              const ORDER = ORDEN_PARTICIPACION;
               for (const p of personal) {
                 const key = p.participacion ?? "OTRO";
                 if (!grupos.has(key)) grupos.set(key, []);

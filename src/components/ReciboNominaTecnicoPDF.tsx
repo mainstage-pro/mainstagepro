@@ -5,6 +5,7 @@ import { base, ReporteLayout, fmtFecha, fmtMoney } from "@/components/pdf/Report
 export interface ReciboNominaTecnicoPDFData {
   tecnicoNombre: string;
   ciclo: string;
+  personalizado?: boolean;
   desde: string;
   hasta: string;
   pagos: {
@@ -26,7 +27,7 @@ export function ReciboNominaTecnicoPDF({ data }: { data: ReciboNominaTecnicoPDFD
   return (
     <ReporteLayout
       titulo="RECIBO DE HONORARIOS (INTERNO)"
-      subtitulo={`Ciclo: ${fmtFecha(data.desde)} al ${fmtFecha(data.hasta)}`}
+      subtitulo={`${data.personalizado ? "Periodo" : "Ciclo"}: ${fmtFecha(data.desde)} al ${fmtFecha(data.hasta)}`}
       footerLabel={`Mainstage Pro — Recibo · ${data.tecnicoNombre}`}
     >
       <View style={base.kpiRow}>
