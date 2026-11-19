@@ -1233,9 +1233,9 @@ function CotizadorForm() {
           id: uid(), equipoId: eq.id, descripcion: eq.descripcion,
           marca: eq.marca ?? "", modelo: eq.modelo ?? "",
           cantidad: veces, dias,
-          precioUnitario: eq.precioRenta,
+          precioUnitario: preciosCliente[eq.id] ?? eq.precioRenta,
           costoProveedor: costo,
-          subtotal: eq.precioRenta * veces * dias,
+          subtotal: (preciosCliente[eq.id] ?? eq.precioRenta) * veces * dias,
           costoTotal: costo * veces * dias,
           proveedorId: mejorProveedor ? mejorProveedor.proveedor.id : (eq.proveedorDefaultId ?? null),
           categoria: eq.categoria?.nombre ?? "",
@@ -1328,7 +1328,7 @@ function CotizadorForm() {
   }
 
   // ── Guardar precio especial del cliente para un equipo ──
-  async function guardarPrecioCliente(linea: LineaEquipo) {
+  async function guardarPrecioCliente(linea: { id: string; equipoId: string; precioUnitario: number }) {
     const cId = resolvedClienteId || clienteId || manualClienteId;
     if (!cId || !linea.equipoId) {
       toast.error("Selecciona un cliente antes de guardar el precio especial.");
@@ -1371,9 +1371,9 @@ function CotizadorForm() {
       id: uid(), equipoId: eq.id, descripcion: eq.descripcion,
       marca: eq.marca ?? "", modelo: eq.modelo ?? "",
       cantidad: cant, dias,
-      precioUnitario: eq.precioRenta,
+      precioUnitario: preciosCliente[eq.id] ?? eq.precioRenta,
       costoProveedor: mejorProveedor ? mejorProveedor.precio : costo,
-      subtotal: eq.precioRenta * cant * dias,
+      subtotal: (preciosCliente[eq.id] ?? eq.precioRenta) * cant * dias,
       costoTotal: (mejorProveedor ? mejorProveedor.precio : costo) * cant * dias,
       proveedorId: mejorProveedor ? mejorProveedor.proveedor.id : (eq.proveedorDefaultId ?? null),
       categoria: eq.categoria?.nombre ?? "",
@@ -1925,6 +1925,52 @@ function CotizadorForm() {
       return;
     }
     setClienteSelectorError(false);
+
+    // Precios cambiados a mano que aún no son precio especial del cliente:
+    // se ofrece guardarlos una sola vez, antes de guardar la cotización.
+    const pendientes = new Map<string, { equipoId: string; precio: number; nombre: string }>();
+    for (const l of [...lineasEquipo, ...lineasExterno]) {
+      if (!l.equipoId) continue;
+      const base = preciosCliente[l.equipoId] ?? equipos.find(e => e.id === l.equipoId)?.precioRenta;
+      if (base == null || l.precioUnitario === base) continue;
+      pendientes.set(l.equipoId, {
+        equipoId: l.equipoId,
+        precio: l.precioUnitario,
+        nombre: [l.marca, l.modelo].filter(Boolean).join(" ") || l.descripcion,
+      });
+    }
+    if (pendientes.size > 0) {
+      const lista = [...pendientes.values()];
+      const recordar = await confirm({
+        message: `Cambiaste el precio de ${lista.length === 1 ? "1 equipo" : `${lista.length} equipos`}:\n\n` +
+          lista.map(p => `• ${p.nombre}: ${formatCurrency(p.precio)}`).join("\n") +
+          `\n\n¿Lo guardo como precio especial de este cliente para próximas cotizaciones?`,
+        danger: false,
+        confirmText: "Sí, guardar precio especial",
+        cancelText: "Solo en esta cotización",
+      });
+      if (recordar) {
+        const resultados = await Promise.all(lista.map(async p => {
+          const precioOriginal = equipos.find(e => e.id === p.equipoId)?.precioRenta ?? null;
+          try {
+            const res = await fetch(`/api/clientes/${cId}/precios-equipos`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ equipoId: p.equipoId, precio: p.precio, precioOriginal }),
+            });
+            return res.ok ? { ...p, precioOriginal } : null;
+          } catch { return null; }
+        }));
+        const ok = resultados.filter((r): r is NonNullable<typeof r> => r !== null);
+        if (ok.length > 0) {
+          setPreciosCliente(prev => ({ ...prev, ...Object.fromEntries(ok.map(r => [r.equipoId, r.precio])) }));
+          setPreciosClienteOriginal(prev => ({ ...prev, ...Object.fromEntries(ok.map(r => [r.equipoId, r.precioOriginal])) }));
+        }
+        if (ok.length < lista.length) toast.error(`No se pudieron guardar ${lista.length - ok.length} precio(s) especial(es).`);
+        else toast.success(ok.length === 1 ? "Precio especial guardado ✓" : `${ok.length} precios especiales guardados ✓`);
+      }
+    }
+
     setSaving(true); setError("");
 
     // Cancela el autoguardado pendiente y espera a que termine uno ya en vuelo,
@@ -3248,24 +3294,53 @@ function CotizadorForm() {
               <p className="text-gray-600 text-sm text-center py-2">Sin equipos de terceros</p>
             ) : (
               <div className="border border-[#222] rounded-lg overflow-hidden">
-                {lineasExterno.map(l => (
+                {lineasExterno.map(l => {
+                  const eqRef = equipos.find(e => e.id === l.equipoId);
+                  const precioBase = eqRef?.precioRenta ?? 0;
+                  const especial = preciosCliente[l.equipoId];
+                  const esPrecioEspecialActivo = especial != null && l.precioUnitario === especial;
+                  const esPrecioModificado = l.precioUnitario !== precioBase;
+                  const precioDifiere = l.precioUnitario !== (especial ?? precioBase);
+                  const precioOriginalCliente = preciosClienteOriginal[l.equipoId] ?? null;
+                  return (
                   <div key={l.id} className="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-[#111] last:border-0">
-                    <MiniaturaLinea src={equipos.find(e => e.id === l.equipoId)?.imagenUrl} size={28} />
+                    <MiniaturaLinea src={eqRef?.imagenUrl} size={28} />
                     <div className="w-full min-w-0 sm:w-auto sm:flex-1">
                       <div className="flex items-center gap-1.5">
                         <p className="text-white text-sm truncate">{[l.marca, l.modelo].filter(Boolean).join(" ") || l.descripcion}</p>
                         {l.categoria && <span className="shrink-0 text-[10px] px-1.5 py-0.5 bg-[#1e1e1e] text-[#6b7280] rounded" title="En el PDF aparece dentro de esta categoría">{l.categoria}</span>}
+                        {esPrecioEspecialActivo && (
+                          <span
+                            title={precioOriginalCliente != null ? `Precio especial (lista original: ${formatCurrency(precioOriginalCliente)})` : "Precio especial de este cliente"}
+                            className="text-[10px] px-1.5 py-0.5 bg-[#B3985B]/20 text-[#B3985B] rounded font-medium shrink-0 cursor-help">
+                            ★ especial{precioOriginalCliente != null ? ` · lista ${formatCurrency(precioOriginalCliente)}` : ""}
+                          </span>
+                        )}
+                        {!esPrecioEspecialActivo && esPrecioModificado && (
+                          <span title="Precio modificado manualmente en esta cotización" className="text-[10px] px-1.5 py-0.5 bg-blue-900/30 text-blue-400 rounded font-medium shrink-0">editado</span>
+                        )}
                       </div>
                       {(l.marca || l.modelo) && <p className="text-gray-500 text-xs">{l.descripcion}</p>}
                       <p className="text-[#555] text-[10px]">Costo proveedor: {formatCurrency(l.costoProveedor)}/u · Total costo: {formatCurrency(l.costoTotal)}</p>
                     </div>
                     <NumSelect value={l.cantidad} onChange={v => updateExterno(l.id, "cantidad", parseFloat(v) || 1)} max={50} className="w-14 py-1" title="Cantidad" />
                     <NumSelect value={l.dias} onChange={v => updateExterno(l.id, "dias", parseInt(v) || 1)} max={10} className="w-14 py-1" title="Días" />
-                    <input type="number" value={l.precioUnitario} min="0" onChange={e => updateExterno(l.id, "precioUnitario", parseFloat(e.target.value) || 0)} className="w-22 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white text-sm text-right" title="Precio al cliente" />
+                    <input type="number" value={l.precioUnitario} min="0" onChange={e => updateExterno(l.id, "precioUnitario", parseFloat(e.target.value) || 0)} className={`w-22 bg-[#1a1a1a] border rounded px-2 py-1 text-white text-sm text-right ${esPrecioEspecialActivo ? "border-[#B3985B]/50" : esPrecioModificado ? "border-blue-800" : "border-[#2a2a2a]"}`} title="Precio al cliente" />
                     <span className="ml-auto w-22 text-right text-white text-sm font-medium shrink-0 sm:ml-0">{formatCurrency(l.subtotal)}</span>
+                    {precioDifiere && (resolvedClienteId || clienteId || manualClienteId) && (
+                      <button
+                        onClick={() => guardarPrecioCliente(l)}
+                        disabled={guardandoPrecio === l.id}
+                        title="Guardar como precio especial de este cliente"
+                        className="text-[10px] text-[#B3985B] hover:text-white border border-[#B3985B]/40 hover:border-[#B3985B] px-2 py-1 rounded transition-colors shrink-0 disabled:opacity-40"
+                      >
+                        {guardandoPrecio === l.id ? "..." : "★ guardar"}
+                      </button>
+                    )}
                     <button onClick={() => setLineasExterno(p => p.filter(x => x.id !== l.id))} className="text-gray-600 hover:text-red-400 text-lg leading-none shrink-0">×</button>
                   </div>
-                ))}
+                  );
+                })}
                 <div className="flex justify-between px-3 py-2 bg-[#0d0d0d] border-t border-[#222]">
                   <span className="text-xs text-gray-500">Subtotal terceros (sin descuento)</span>
                   <span className="text-sm font-medium text-white">{formatCurrency(resumen.subtotalExternos)}</span>

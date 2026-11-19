@@ -36,13 +36,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const precios = await prisma.precioClienteEquipo.findMany({
     where: whereClause,
     select: { equipoId: true, precio: true, precioOriginal: true, nota: true, updatedAt: true },
+    // Del más viejo al más nuevo: si dos contactos de la empresa tienen precio para el
+    // mismo equipo, el último que se escribe en el mapa (el más reciente) es el que gana.
+    orderBy: { updatedAt: "asc" },
   });
 
   // Convertir a mapa { equipoId → { precio, precioOriginal, nota } }
   const mapa: Record<string, { precio: number; precioOriginal: number | null; nota: string | null; updatedAt: string }> = {};
   for (const p of precios) {
-    // If there are duplicates (multiple contacts have special price for same item), the last one wins
-    // We could sort by updatedAt if we wanted the newest one
     mapa[p.equipoId] = { precio: p.precio, precioOriginal: p.precioOriginal, nota: p.nota, updatedAt: p.updatedAt.toISOString() };
   }
 
