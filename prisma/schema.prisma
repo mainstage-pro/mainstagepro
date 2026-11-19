@@ -595,6 +595,17 @@ model Cotizacion {
   tipoBeneficio  String? // DESCUENTO_DIRECTO | SALDO_A_FAVOR
   montoBeneficio Float   @default(0)
 
+  // Patrocinio: la cotización no es una venta normal. No es un descuento: el valor
+  // regalado vive en montoPatrocinio y no ensucia montoDescuento ni las métricas de venta.
+  //   TOTAL           → no se cobra nada (sin CxC)
+  //   COSTO_OPERATIVO → equipo y paquetes en $0; se cobra operación, logística y terceros
+  //   INTERCAMBIO     → no se cobra en efectivo; se recibe algo en especie (patrocinioValorRecibido)
+  naturaleza                 String  @default("VENTA") // VENTA | PATROCINIO
+  patrocinioModalidad        String? // TOTAL | COSTO_OPERATIVO | INTERCAMBIO
+  patrocinioContraprestacion String? @db.Text // qué recibe Mainstage a cambio (logo, contenido, menciones…)
+  patrocinioValorRecibido    Float   @default(0) // valor estimado de lo recibido en especie (intercambio)
+  montoPatrocinio            Float   @default(0) // valor comercial regalado: precio de lista − lo cobrado (sin IVA)
+
   costosTotalesEstimados Float @default(0)
   utilidadEstimada       Float @default(0)
   porcentajeUtilidad     Float @default(0)

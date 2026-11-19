@@ -15,5 +15,6 @@ export const finanzasTabs: ModuleNavTab[] = [
   { href: "/finanzas/pasivos", label: "Pasivos y deudas", accessKey: "finanzas-pasivos", adminOnly: true },
   { href: "/finanzas/repartos", label: "Reparto de utilidades", accessKey: "finanzas-repartos", adminOnly: true },
   { href: "/finanzas/cuentas-corrientes", label: "Cuentas corrientes", accessKey: "finanzas-movimientos" },
+  { href: "/finanzas/patrocinios", label: "Patrocinios", accessKey: "finanzas-cobros" },
   { href: "/finanzas/configuracion", label: "Configuración", accessKey: "finanzas-config", adminOnly: true },
 ];

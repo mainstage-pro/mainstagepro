@@ -327,8 +327,9 @@ export async function crearProyectoDesdeCotizacion(
     } catch { /* ideasReferencias es texto plano, no JSON */ }
   }
 
-  // 5. Crear una única CxC por el total del evento
-  await tx.cuentaCobrar.create({
+  // 5. Crear una única CxC por el total del evento. Un patrocinio total o un
+  // intercambio no cobra nada: una CxC de $0 solo sería ruido en finanzas.
+  if (cot.granTotal > 0.01) await tx.cuentaCobrar.create({
     data: {
       clienteId: cot.clienteId,
       proyectoId: proy.id,

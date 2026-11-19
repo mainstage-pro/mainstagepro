@@ -589,6 +589,7 @@ const TXT = {
     patrocinio: (p: number, nota?: string | null) => `Patrocinio (${p}%)${nota ? ` · ${nota}` : ""}`,
     descFijo: "Descuento fijo",
     descGenerico: "Descuento",
+    patrocinioMs: (modalidad: string | null | undefined) => `Patrocinio Mainstage Pro${modalidad === "INTERCAMBIO" ? " · intercambio" : modalidad === "COSTO_OPERATIVO" ? " · equipo" : ""}`,
   },
   en: {
     tagline: "AUDIO · LIGHTING · VIDEO · TECHNICAL PRODUCTION",
@@ -669,6 +670,7 @@ const TXT = {
     patrocinio: (p: number, nota?: string | null) => `Sponsorship (${p}%)${nota ? ` · ${nota}` : ""}`,
     descFijo: "Fixed discount",
     descGenerico: "Discount",
+    patrocinioMs: (modalidad: string | null | undefined) => `Mainstage Pro sponsorship${modalidad === "INTERCAMBIO" ? " · trade" : modalidad === "COSTO_OPERATIVO" ? " · equipment" : ""}`,
   },
 } as const;
 
@@ -758,6 +760,9 @@ interface CotizacionData {
   descuentoMultidiaPct: number;
   descuentoPatrocinioPct: number;
   descuentoPatrocinioNota: string | null;
+  naturaleza?: string | null;
+  patrocinioModalidad?: string | null;
+  montoPatrocinio?: number | null;
   descuentoEspecialPct: number;
   descuentoEspecialNota?: string | null;
   descuentoFamilyFriendsPct: number;
@@ -1125,6 +1130,9 @@ export function CotizacionPDF({ cotizacion: c, logoSrc, descCategorias = {}, cat
       discRows.push({ label: `Mainstage Trade · ${t.nivelTrade[td.nivelSeleccionado] ?? ""} (${td.pct}%)`, monto: Math.round(sb * (td.pct / 100) * 100) / 100, gold: true });
     }
   } catch { /* noop */ }
+  // Patrocinio: no es descuento, pero en el PDF el cliente ve cuánto vale lo que recibe.
+  if (c.naturaleza === "PATROCINIO" && (c.montoPatrocinio ?? 0) > 0)
+    discRows.push({ label: t.patrocinioMs(c.patrocinioModalidad), monto: c.montoPatrocinio ?? 0, gold: true });
   // Fallback if no individual rows resolved
   if (discRows.length === 0 && tieneDescuento)
     discRows.push({ label: t.descGenerico, monto: c.montoDescuento });

@@ -1,3 +1,4 @@
+import { normalizarPatrocinio } from "@/lib/patrocinio";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
@@ -193,6 +194,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
             descuentoVolumenPct: descuentoVolumenPct ?? 0,
             descuentoB2bPct: descuentoB2bPct ?? 0,
             descuentoMultidiaPct: descuentoMultidiaPct ?? 0,
+            // Solo el cotizador manda la naturaleza; otros guardados con líneas no la tocan.
+            ...("naturaleza" in body ? normalizarPatrocinio(body) : {}),
             descuentoPatrocinioPct: descuentoPatrocinioPct ?? 0,
             descuentoPatrocinioNota: descuentoPatrocinioNota ?? null,
             descuentoEspecialPct: descuentoEspecialPct ?? 0,
@@ -294,6 +297,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
               }
               nuevoMonto = Math.max(nuevoMonto, cxc.montoCobrado);
               nuevoMonto = Math.round(nuevoMonto * 100) / 100;
+
+              // La cotización ya no cobra nada (patrocinio total o intercambio): una
+              // CxC de $0 sin cobros es ruido. Se borra si nada cuelga de ella.
+              if (nuevoMonto <= 0.01 && cxc.montoCobrado <= 0.01) {
+                return prisma.cuentaCobrar.deleteMany({
+                  where: { id: cxc.id, abonos: { none: {} }, cuotas: { none: {} }, aplicacionesCompensacion: { none: {} } },
+                });
+              }
 
               const log = cxc.ajustesLog ? (JSON.parse(cxc.ajustesLog) as unknown[]) : [];
               log.push({

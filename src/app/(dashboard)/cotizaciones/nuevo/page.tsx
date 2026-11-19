@@ -20,6 +20,7 @@ import { getEquipoDisplayName } from "@/lib/equipoNombre";
 import { coincide } from "@/lib/buscar";
 import SelectorEquipoCascada, { agruparEquiposPorCategoria } from "@/components/SelectorEquipoCascada";
 import { esEquipoDeTercero } from "@/lib/equipo-tipos";
+import { MODALIDADES_PATROCINIO, MODALIDAD_PATROCINIO_LABEL, MODALIDAD_PATROCINIO_HINT, cobraOperativo, type ModalidadPatrocinio } from "@/lib/patrocinio";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Equipo {
@@ -432,6 +433,11 @@ function CotizadorForm() {
   const [manualEsMonto, setManualEsMonto]         = useState(false); // false=%, true=$
   const [manualValor, setManualValor]             = useState("");
   const [manualRazon, setManualRazon]             = useState("");
+  // ─── Patrocinio (no es descuento: es la naturaleza de la cotización) ─────────
+  const [patroModalidad, setPatroModalidad]       = useState<ModalidadPatrocinio | null>(null);
+  const [patroContra, setPatroContra]             = useState("");
+  const [patroValorRecibido, setPatroValorRecibido] = useState("");
+  const esPatro = patroModalidad !== null;
   const [pagoAnticipadoActivo, setPagoAnticipadoActivo] = useState(false);
   const [pagoAnticipadoFecha, setPagoAnticipadoFecha]   = useState("");
   const [pagoAnticipadoTexto, setPagoAnticipadoTexto]   = useState("");
@@ -610,6 +616,12 @@ function CotizadorForm() {
           setManualActivo(true); setManualEsMonto(false); setManualValor(String(Math.round(pctEsp * 100)));
           setManualRazon(cot.descuentoEspecialNota ?? "");
           manualCargado = true;
+        }
+        // Patrocinio
+        if (cot.naturaleza === "PATROCINIO" && MODALIDADES_PATROCINIO.includes(cot.patrocinioModalidad)) {
+          setPatroModalidad(cot.patrocinioModalidad as ModalidadPatrocinio);
+          setPatroContra(cot.patrocinioContraprestacion ?? "");
+          setPatroValorRecibido(cot.patrocinioValorRecibido ? String(cot.patrocinioValorRecibido) : "");
         }
         // Pago anticipado
         if (cot.pagoAnticipadoActivo) {
@@ -1599,15 +1611,17 @@ function CotizadorForm() {
     const volumenEfectivo = volumenActivo;
 
     // 1) Descuento por volumen
-    const montoVolumen = volumenEfectivo ? baseDescuentable * pctV : 0;
+    // Con patrocinio no corre ningún descuento: el equipo y los paquetes van en $0
+    // y lo regalado se mide aparte (montoPatrocinio), no como descuento.
+    const montoVolumen = volumenEfectivo && !esPatro ? baseDescuentable * pctV : 0;
     const basePostVolumen = baseDescuentable - montoVolumen;
 
     // 2) Descuento B2B (sobre base post-volumen)
-    const montoB2b = b2bActivo ? basePostVolumen * pctB : 0;
+    const montoB2b = b2bActivo && !esPatro ? basePostVolumen * pctB : 0;
     const basePostB2b = basePostVolumen - montoB2b;
 
     // 3) Descuento manual (% sobre base post-B2B, o $ fijo)
-    const montoManual = manualActivo
+    const montoManual = manualActivo && !esPatro
       ? (manualEsMonto
           ? (parseFloat(manualValor) || 0)
           : basePostB2b * (parseFloat(manualValor) || 0) / 100)
@@ -1618,7 +1632,7 @@ function CotizadorForm() {
           : (parseFloat(manualValor) || 0) / 100)
       : 0;
     // Preservados (legacy retrocompat)
-    const montoDescuentoLegacy = subtotalEquiposBruto * (dMultidiaPreservado + dEspecialPreservado + dPatrocinioPreservado) + dFijoPreservado;
+    const montoDescuentoLegacy = esPatro ? 0 : subtotalEquiposBruto * (dMultidiaPreservado + dEspecialPreservado + dPatrocinioPreservado) + dFijoPreservado;
 
     // Neto descontado sobre la base combinada, repartido proporcionalmente entre
     // equipos y paquetes para conservar cada línea (y no alterar el pago anticipado).
@@ -1626,7 +1640,7 @@ function CotizadorForm() {
     // monto fijo no se puede repartir: se resta del total en vez de dejar netos negativos,
     // que contaminarían la base de comisión del vendedor.
     const descuentoGlobal = baseDescuentable === 0 ? (montoManual + montoDescuentoLegacy) : 0;
-    const netoDescuentable = baseDescuentable === 0 ? 0 : Math.max(0, basePostB2b - montoManual - montoDescuentoLegacy);
+    const netoDescuentable = baseDescuentable === 0 || esPatro ? 0 : Math.max(0, basePostB2b - montoManual - montoDescuentoLegacy);
     const shareEquipos = baseDescuentable > 0 ? subtotalEquiposBruto / baseDescuentable : 0;
     const subtotalEquiposNeto = netoDescuentable * shareEquipos;
     const subtotalPaquetesNeto = netoDescuentable - subtotalEquiposNeto;
@@ -1639,7 +1653,13 @@ function CotizadorForm() {
 
     const subtotalOcasionales = lineasOcasional.reduce((s, l) => s + l.subtotal, 0);
     const subtotalChofer = incluirChofer ? 500 : 0;
-    const baseTotal = subtotalEquiposNeto + subtotalPaquetesNeto + subtotalExternos + subtotalOcasionales + subtotalOperacion + subtotalDJ + subtotalTransporte + subtotalComidas + subtotalHospedaje + subtotalChofer - descuentoGlobal;
+    const resto = subtotalExternos + subtotalOcasionales + subtotalOperacion + subtotalDJ + subtotalTransporte + subtotalComidas + subtotalHospedaje + subtotalChofer;
+    // Patrocinio total o intercambio: no se cobra nada. Costo operativo: se cobra el resto.
+    const baseTotal = esPatro
+      ? (cobraOperativo(patroModalidad) ? resto : 0)
+      : subtotalEquiposNeto + subtotalPaquetesNeto + resto - descuentoGlobal;
+    // Valor comercial regalado: precio de lista menos lo que sí se cobra (sin IVA).
+    const montoPatrocinio = esPatro ? Math.max(0, baseDescuentable + resto - baseTotal) : 0;
 
     // Comisión interna / Gastos de producción
     const gastosProduccionMonto = gastosActivo
@@ -1680,6 +1700,7 @@ function CotizadorForm() {
       subtotalEquiposNeto, gastosProduccionMonto, gastosProduccionPct, baseTotal,
       total, montoIva, granTotal,
       montoPagoAnticipadoFinal, totalConPagoAnticipado,
+      montoPatrocinio,
       debeAutoVolumen,
       costos, utilidad, pctUtilidad, semaforo,
       zonaBonus, bonusZonaTotal,
@@ -1689,7 +1710,7 @@ function CotizadorForm() {
     cfgUmbralVolumen, cfgPctVolumen, cfgPctB2b, cfgPctAnticipado, cfgMaxManual,
     dMultidiaPreservado, dEspecialPreservado, dPatrocinioPreservado, dFijoPreservado,
     aplicaIva, incluirChofer, zonaEvento, numTecnicosZona,
-    gastosActivo, gastosEsMonto, gastosValor]);
+    gastosActivo, gastosEsMonto, gastosValor, esPatro, patroModalidad]);
 
   const sem = SEMAFORO_STYLE[resumen.semaforo];
 
@@ -1831,6 +1852,7 @@ function CotizadorForm() {
           costosTotalesEstimados: resumen.costos,
           utilidadEstimada: resumen.utilidad,
           porcentajeUtilidad: resumen.pctUtilidad,
+          ...camposPatrocinio(),
         };
 
         await fetch(`/api/cotizaciones/${editId}`, {
@@ -1859,7 +1881,27 @@ function CotizadorForm() {
     personasViaticosManual, comidasPorDia,
     volumenActivo, b2bActivo, manualActivo, manualEsMonto, manualValor, manualRazon,
     pagoAnticipadoActivo, pagoAnticipadoFecha, pagoAnticipadoTexto,
+    patroModalidad, patroContra, patroValorRecibido,
   ]);
+
+  // Campos de patrocinio para el guardado. Con patrocinio se apagan los descuentos
+  // guardados: el valor regalado vive en montoPatrocinio, no en los descuentos.
+  function camposPatrocinio() {
+    if (!esPatro) {
+      return { naturaleza: "VENTA", patrocinioModalidad: null, patrocinioContraprestacion: null, patrocinioValorRecibido: 0, montoPatrocinio: 0 };
+    }
+    return {
+      naturaleza: "PATROCINIO",
+      patrocinioModalidad: patroModalidad,
+      patrocinioContraprestacion: patroContra.trim() || null,
+      patrocinioValorRecibido: patroModalidad === "INTERCAMBIO" ? (parseFloat(patroValorRecibido) || 0) : 0,
+      montoPatrocinio: resumen.montoPatrocinio,
+      descuentoVolumenPct: 0, descuentoB2bPct: 0, descuentoMultidiaPct: 0,
+      descuentoEspecialPct: 0, descuentoPatrocinioPct: 0,
+      descuentoFamilyFriendsPct: 0, descuentoFijoMonto: 0, descuentoManualEsMonto: false,
+      descuentoManualRazon: null, pagoAnticipadoActivo: false,
+    };
+  }
 
   // ── Guardar ──
   async function guardar() {
@@ -2027,6 +2069,7 @@ function CotizadorForm() {
       gastosProduccionEsMonto: gastosEsMonto,
       gastosProduccionPct: !gastosEsMonto ? (parseFloat(gastosValor) || 0) / 100 : 0,
       gastosProduccionMonto: gastosActivo ? resumen.gastosProduccionMonto : 0,
+      ...camposPatrocinio(),
     };
 
     try {
@@ -3808,9 +3851,66 @@ function CotizadorForm() {
             })}
           </Seccion>
 
+          {/* ── Patrocinio ── */}
+          <Seccion titulo="Venta o patrocinio" hint="un patrocinio no es un descuento: su valor se reporta aparte">
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setPatroModalidad(null)}
+                  className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${!esPatro ? "bg-[#B3985B] border-[#B3985B] text-black font-semibold" : "border-[#333] text-gray-400 hover:text-white"}`}>
+                  Venta normal
+                </button>
+                {MODALIDADES_PATROCINIO.map((m) => (
+                  <button key={m}
+                    onClick={() => {
+                      setPatroModalidad(m);
+                      // Un patrocinio reemplaza a los descuentos: se apagan para que no queden guardados.
+                      setVolumenManualToggle(true); setVolumenActivo(false);
+                      setB2bManualToggle(true); setB2bActivo(false);
+                      setManualActivo(false); setPagoAnticipadoActivo(false);
+                    }}
+                    className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${patroModalidad === m ? "bg-[#B3985B] border-[#B3985B] text-black font-semibold" : "border-[#333] text-gray-400 hover:text-white"}`}>
+                    {MODALIDAD_PATROCINIO_LABEL[m]}
+                  </button>
+                ))}
+              </div>
+              {patroModalidad && (
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-500">{MODALIDAD_PATROCINIO_HINT[patroModalidad]}</p>
+                  <textarea value={patroContra} onChange={e => setPatroContra(e.target.value)}
+                    rows={2} placeholder="¿Qué recibe Mainstage a cambio? (logo, contenido, menciones, acceso…)"
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B] resize-none" />
+                  {patroModalidad === "INTERCAMBIO" && (
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs text-gray-500 shrink-0">Valor estimado de lo que recibimos:</label>
+                      <input type="number" min="0" step="100" value={patroValorRecibido}
+                        onChange={e => setPatroValorRecibido(e.target.value)} placeholder="0"
+                        className="w-32 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-sm text-right focus:outline-none focus:border-[#B3985B]" />
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm font-medium border-t border-[#222] pt-2">
+                    <span className="text-white">Valor patrocinado</span>
+                    <span className="text-[#B3985B] font-bold">{formatCurrency(resumen.montoPatrocinio)}</span>
+                  </div>
+                  <p className="text-[10px] text-gray-600">
+                    {resumen.total > 0
+                      ? `Se cobra ${formatCurrency(resumen.total)} de operación y logística.`
+                      : "No se cobra nada: no se genera cuenta por cobrar."}
+                  </p>
+                </div>
+              )}
+            </div>
+          </Seccion>
+
           {/* ── Descuentos ── */}
           <Seccion titulo="Descuentos" hint="sobre subtotal de equipos Mainstage">
             <div className="space-y-3">
+              {esPatro && (
+                <div className="text-xs text-gray-500 bg-[#111] border border-[#222] rounded-lg px-3 py-2">
+                  Con patrocinio no aplican descuentos: el equipo y los paquetes ya van en $0.
+                </div>
+              )}
+              {!esPatro && (<>
               {/* Aviso si hay descuentos legacy preservados */}
               {(dMultidiaPreservado > 0 || dEspecialPreservado > 0 || dPatrocinioPreservado > 0 || dFijoPreservado > 0) && (
                 <div className="text-[10px] text-amber-600/70 bg-amber-900/10 border border-amber-900/20 rounded-lg px-3 py-2">
@@ -3955,6 +4055,7 @@ function CotizadorForm() {
                   </div>
                 )}
               </div>
+              </>)}
 
               {/* Chofer + IVA (mantener) */}
               <div className="flex items-center gap-3 pt-2 border-t border-[#222]">

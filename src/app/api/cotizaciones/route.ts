@@ -1,3 +1,4 @@
+import { normalizarPatrocinio } from "@/lib/patrocinio";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
@@ -125,6 +126,7 @@ export async function POST(request: NextRequest) {
           : (sustituciones || null),
         clienteId,
         creadaPorId: session.id,
+        ...normalizarPatrocinio(body),
         descuentoPatrocinioPct,
         descuentoPatrocinioNota,
         descuentoEspecialPct,
