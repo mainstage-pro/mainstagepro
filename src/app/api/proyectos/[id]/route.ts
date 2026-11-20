@@ -78,7 +78,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         personal: {
           include: {
             tecnico: { select: { id: true, nombre: true, celular: true, rol: { select: { nombre: true } } } },
-            rolTecnico: { select: { id: true, nombre: true } },
+            rolTecnico: { select: { id: true, nombre: true, disciplina: true } },
             cotizacion: { select: { numeroCotizacion: true } },
           },
           orderBy: { id: "asc" },
@@ -152,7 +152,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         personal: {
           include: {
             tecnico: { select: { id: true, nombre: true, celular: true, rol: { select: { nombre: true } } } },
-            rolTecnico: { select: { id: true, nombre: true } },
+            rolTecnico: { select: { id: true, nombre: true, disciplina: true } },
             cotizacion: { select: { numeroCotizacion: true } },
           },
           orderBy: { id: "asc" },

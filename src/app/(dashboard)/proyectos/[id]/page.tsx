@@ -43,7 +43,8 @@ import ModalRegistrarPago, { type GrupoPago, type PagoCapturado } from "@/compon
 import DatosBancariosAcreedor from "@/components/finanzas/DatosBancariosAcreedor";
 import { datosBancarios, fichaAcreedorHref, type DatosBancarios } from "@/lib/datos-bancarios";
 import { labelConfiguracion, labelZona } from "@/lib/montaje-vocabulario";
-import { DISCIPLINA_COLORS, DISCIPLINA_LABELS } from "@/lib/disciplinaColors";
+import { disciplinaDePuesto } from "@/lib/disciplinaColors";
+import { DisciplinaBadge } from "@/components/DisciplinaBadge";
 import { contarRespondidos, contarIncidencias, nivelResultado, getEvalConfig, aplicaEvaluacion, type EvalPostEventoData } from "@/lib/evaluacion-post-evento";
 import { getDireccionConfig, promedioDireccion, type EvaluacionDireccionData } from "@/lib/evaluacion-direccion";
 import { diasEvento, parseHorariosEvento, horarioDeDia, parseFechasEvento } from "@/lib/fechas-evento";
@@ -88,7 +89,7 @@ interface Personal {
   tecnico: { id: string; nombre: string; celular: string | null; rol: { nombre: string } | null } | null;
   // Rol que exige el puesto. Es del slot, no del técnico: un operador de
   // iluminación puede cubrir un puesto de técnico general.
-  rolTecnico: { id: string; nombre: string } | null;
+  rolTecnico: { id: string; nombre: string; disciplina?: string | null } | null;
   cotizacion?: { numeroCotizacion: string } | null;
 }
 interface CotizacionFusionada { id: string; numeroCotizacion: string; nombreEvento: string | null; granTotal: number }
@@ -5675,6 +5676,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <div className="mt-2 space-y-1">
                     {fuera.map(p => (
                       <div key={p.id} className="flex items-center gap-2 flex-wrap text-[11px]">
+                        <DisciplinaBadge disciplina={disciplinaDePuesto(p.rolTecnico?.disciplina, p.rolTecnico?.nombre, p.rolEnEvento)} compacto />
                         <span className="text-gray-300 font-medium">{p.rolTecnico?.nombre ?? "Sin rol de puesto"}</span>
                         <span className="text-white">· {p.tecnico?.nombre ?? "sin asignar"}</span>
                         <span className="text-gray-600">· {PART_BADGE[p.participacion ?? "OPERACION"]?.label ?? "Operación"}</span>
@@ -5735,11 +5737,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5">
                               <span className="text-xs text-white font-medium truncate">{linea.rolTecnico?.nombre ?? linea.descripcion}</span>
-                              {disciplina && (
-                                <span className="text-[9px] px-1.5 py-0.5 rounded font-semibold shrink-0" style={{ color: DISCIPLINA_COLORS[disciplina] ?? "#888", backgroundColor: `${DISCIPLINA_COLORS[disciplina] ?? "#888"}1a` }}>
-                                  {DISCIPLINA_LABELS[disciplina] ?? disciplina}
-                                </span>
-                              )}
+                              <DisciplinaBadge disciplina={disciplinaDePuesto(disciplina, linea.rolTecnico?.nombre ?? linea.descripcion)} />
                             </div>
                             <div className="flex items-center gap-2 mt-0.5">
                               {linea.nivel && <span className="text-[10px] text-gray-500">{linea.nivel}</span>}
@@ -5880,7 +5878,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 // El rol es del puesto, no de quien lo cubra. Si el puesto llegó
                 // sin rol se pide aquí mismo, para no dejar el registro a medias.
                 const rolPuestoPanel = p.rolTecnico ? (
-                  <p className="text-[11px] text-gray-500">Rol del puesto: <span className="text-gray-300 font-medium">{p.rolTecnico.nombre}</span></p>
+                  <p className="text-[11px] text-gray-500 flex items-center gap-1.5">Rol del puesto: <DisciplinaBadge disciplina={disciplinaDePuesto(p.rolTecnico.disciplina, p.rolTecnico.nombre)} compacto /><span className="text-gray-300 font-medium">{p.rolTecnico.nombre}</span></p>
                 ) : (
                   <div>
                     <p className="text-[11px] text-amber-400 mb-1">Este puesto no tiene rol definido — elígelo para poder asignar</p>
@@ -5996,10 +5994,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             </div>
                           )
                         )}
-                        <p className="text-gray-500 text-xs mt-0.5">
-                          {p.rolTecnico?.nombre ?? <span className="text-amber-500">Sin rol de puesto</span>}
-                          {p.rolEnEvento ? ` · ${p.rolEnEvento}` : ""}
-                          {p.jornada ? ` · ${p.jornada}` : ""}
+                        <p className="text-gray-500 text-xs mt-0.5 flex items-center gap-1.5 flex-wrap">
+                          <DisciplinaBadge disciplina={disciplinaDePuesto(p.rolTecnico?.disciplina, p.rolTecnico?.nombre, p.rolEnEvento)} />
+                          <span>
+                            {p.rolTecnico?.nombre ?? <span className="text-amber-500">Sin rol de puesto</span>}
+                            {p.rolEnEvento ? ` · ${p.rolEnEvento}` : ""}
+                            {p.jornada ? ` · ${p.jornada}` : ""}
+                          </span>
                         </p>
                         {p.responsabilidad && <p className="text-gray-400 text-xs mt-1 leading-relaxed">{p.responsabilidad}</p>}
                       </div>

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { disciplinaDePuesto } from "@/lib/disciplinaColors";
 import { FichaOperativa, FichaOperativaData } from "@/components/pdf/FichaOperativa";
 import { Document } from "@react-pdf/renderer";
 import {
@@ -26,7 +27,7 @@ export async function generarFichaOperativa(id: string): Promise<PdfProyecto | n
       personal: {
         include: {
           tecnico: { select: { nombre: true, celular: true, rol: { select: { nombre: true } } } },
-          rolTecnico: { select: { nombre: true } },
+          rolTecnico: { select: { nombre: true, disciplina: true } },
         },
         orderBy: { id: "asc" },
       },
@@ -182,6 +183,7 @@ export async function generarFichaOperativa(id: string): Promise<PdfProyecto | n
       nombre: p.tecnico.nombre,
       rolEnEvento: p.rolEnEvento ?? null,
       rolTecnico: p.rolTecnico?.nombre ?? null,
+      disciplina: disciplinaDePuesto(p.rolTecnico?.disciplina, p.rolTecnico?.nombre, p.rolEnEvento),
       celular: p.tecnico.celular ?? null,
       confirmado: p.confirmado,
       fechaJornada: p.fechaJornada ?? null,

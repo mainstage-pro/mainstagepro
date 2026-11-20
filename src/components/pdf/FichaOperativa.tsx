@@ -17,6 +17,9 @@ import {
   EquipoRiderExtra, ProveedorRenta, MAPS,
 } from "./PdfShared";
 import { CronologiaEvento } from "./CronologiaEvento";
+import { DisciplinaChipPdf, DisciplinaIconoPdf } from "./DisciplinaPdf";
+import { DISCIPLINA_COLORS_PRINT, DISCIPLINA_LABELS, type Disciplina } from "@/lib/disciplinaColors";
+import { SECCIONES_ROL } from "@/lib/rolesTecnicos";
 import { construirCronologia, BloqueTiempo } from "@/lib/cronologia-evento";
 import { cadenaDeMando, parseReglasMando } from "@/lib/cadena-mando";
 import { frenteLabel } from "@/lib/frentes-produccion";
@@ -173,6 +176,8 @@ export interface PersonalItem {
   /** Lo que le toca hacer a esta persona en concreto. Se captura y hasta ahora no se imprimía. */
   responsabilidad: string | null;
   coordinaEnSitio: boolean;
+  /** Disciplina del puesto (audio, iluminación…) — da el color y el icono en la tabla. */
+  disciplina?: Disciplina | null;
 }
 export interface ProveedorEvento {
   nombreProveedor: string; servicioEquipo: string | null; frente: string | null;
@@ -777,6 +782,28 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
             return (
               <View style={base.section}>
                 <SecNum num={sec("personal")} titulo="Personal Tecnico" />
+                {(() => {
+                  // Leyenda: solo las disciplinas que de verdad hay en este evento.
+                  const presentes = SECCIONES_ROL.filter((d): d is Disciplina =>
+                    d !== null && data.personal.some(p => p.disciplina === d));
+                  if (presentes.length === 0) return null;
+                  return (
+                    <View wrap={false} style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", marginBottom: 6 }}>
+                      {presentes.map(d => {
+                        const n = data.personal.filter(p => p.disciplina === d).length;
+                        return (
+                          <View key={d} style={{ flexDirection: "row", alignItems: "center", marginRight: 10, marginBottom: 2 }}>
+                            <DisciplinaIconoPdf disciplina={d} size={8} />
+                            <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: DISCIPLINA_COLORS_PRINT[d], marginLeft: 3 }}>
+                              {DISCIPLINA_LABELS[d]}
+                            </Text>
+                            <Text style={{ fontSize: 7, color: C.grisMedio, marginLeft: 2 }}>· {n}</Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  );
+                })()}
                 {fechaKeys.map((fechaKey) => {
                   const itemsFecha = gruposFecha.get(fechaKey)!;
                   // Sub-agrupar por participacion dentro de cada fecha
@@ -811,7 +838,12 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                       )}
                       {/* Sub-encabezado de tipo + tabla */}
                       {tipoKeys.map((tipoKey) => {
-                        const items = subGrupos.get(tipoKey)!;
+                        // Mismo orden de disciplinas que el tabulador: los colores quedan juntos.
+                        const ordenDisc = (p: PersonalItem) => {
+                          const i = SECCIONES_ROL.indexOf(p.disciplina ?? null);
+                          return i < 0 ? SECCIONES_ROL.length : i;
+                        };
+                        const items = [...subGrupos.get(tipoKey)!].sort((a, b) => ordenDisc(a) - ordenDisc(b));
                         return (
                           <View key={tipoKey} style={{ marginBottom: 6 }}>
                             <View style={base.table}>
@@ -825,7 +857,10 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                                 <Text style={[base.thTxt, { width: 60 }]}>Estado</Text>
                               </View>
                               {items.map((p, i) => (
-                                <View key={i} style={i < items.length - 1 ? base.tableRow : base.tableRowLast} wrap={false}>
+                                <View key={i} style={[
+                                  i < items.length - 1 ? base.tableRow : base.tableRowLast,
+                                  { borderLeftWidth: 3, borderLeftColor: p.disciplina ? DISCIPLINA_COLORS_PRINT[p.disciplina] : "#e5e5e5" },
+                                ]} wrap={false}>
                                   <View style={{ flex: 1 }}>
                                     <Text style={[base.tdTxt, { fontFamily: "Helvetica-Bold" }]}>
                                       {p.nombre}{p.coordinaEnSitio ? "  † coordina" : ""}
@@ -836,7 +871,10 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                                       </Text>
                                     ) : null}
                                   </View>
-                                  <Text style={[base.tdMuted, { flex: 1 }]}>{p.rolEnEvento ?? p.rolTecnico ?? "—"}</Text>
+                                  <View style={{ flex: 1 }}>
+                                    {p.disciplina ? <DisciplinaChipPdf disciplina={p.disciplina} /> : null}
+                                    <Text style={[base.tdMuted, p.disciplina ? { marginTop: 2 } : {}]}>{p.rolEnEvento ?? p.rolTecnico ?? "—"}</Text>
+                                  </View>
                                   <Text style={[base.tdTxt, { width: 95 }]}>{p.celular ?? "—"}</Text>
                                   <Text style={p.confirmado ? base.chipOk : base.chipPend}>
                                     {p.confirmado ? "Confirmado" : "Pendiente"}
