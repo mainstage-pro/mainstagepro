@@ -10,6 +10,7 @@ import {
   type TipoAcreedor,
 } from "@/lib/proveedor-evento";
 import { esFrente } from "@/lib/frentes-produccion";
+import { asignarLineasAProveedorEvento } from "@/lib/proveedor-equipos";
 
 export const proveedorEventoInclude: Prisma.ProveedorEventoInclude = {
   proveedor: { select: { id: true, nombre: true, telefono: true } },
@@ -165,6 +166,11 @@ export async function POST(
         fechaDesmontaje: proyecto?.fechaDesmontaje ?? null,
       }),
     });
+  }
+
+  // Lo que cubre de la cotización: equipo propio subarrendado, de tercero o servicios.
+  if (Array.isArray(body.lineaIds) && body.lineaIds.length) {
+    await prisma.$transaction((tx) => asignarLineasAProveedorEvento(tx, id, creado.id, body.lineaIds));
   }
 
   const proveedor = await prisma.proveedorEvento.findUnique({

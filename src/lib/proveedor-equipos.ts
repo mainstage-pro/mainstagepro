@@ -175,3 +175,56 @@ export async function sincronizarProveedoresDeEquipos(
     await sincronizarProveedorDeEquipos(tx, proyectoId, proveedorId);
   }
 }
+
+// ── Conceptos de la cotización que cubre un proveedor ────────────────────────
+// Equipo propio que de último momento hay que subarrendar, equipo de tercero o un
+// servicio: se elige de lo que ya está cotizado en lugar de volver a escribirlo.
+
+/** Tipos de línea que un proveedor puede cubrir. El descuento no es algo que se renta. */
+export const TIPOS_LINEA_ASIGNABLES = [
+  "EQUIPO_PROPIO",
+  "EQUIPO_EXTERNO",
+  "PAQUETE",
+  "OPERACION_TECNICA",
+  "TRANSPORTE",
+  "HOSPEDAJE",
+  "COMIDA",
+  "DJ",
+  "OTRO",
+] as const;
+
+/**
+ * Deja ligadas al renglón del proveedor exactamente las líneas indicadas de la
+ * cotización del proyecto. Una línea que ya cubría otro proveedor pasa a este;
+ * las que este tenía y ya no vienen en la lista quedan libres. Ids ajenos a la
+ * cotización del proyecto se ignoran.
+ */
+export async function asignarLineasAProveedorEvento(
+  tx: Prisma.TransactionClient,
+  proyectoId: string,
+  proveedorEventoId: string,
+  lineaIds: string[],
+): Promise<void> {
+  const proyecto = await tx.proyecto.findUnique({
+    where: { id: proyectoId },
+    select: { cotizacionId: true },
+  });
+  if (!proyecto?.cotizacionId) return;
+
+  const ids = [...new Set(lineaIds.filter((x) => typeof x === "string" && x))];
+
+  await tx.cotizacionLinea.updateMany({
+    where: { proveedorEventoId, id: { notIn: ids } },
+    data: { proveedorEventoId: null },
+  });
+  if (ids.length) {
+    await tx.cotizacionLinea.updateMany({
+      where: {
+        id: { in: ids },
+        cotizacionId: proyecto.cotizacionId,
+        tipo: { in: [...TIPOS_LINEA_ASIGNABLES] },
+      },
+      data: { proveedorEventoId },
+    });
+  }
+}

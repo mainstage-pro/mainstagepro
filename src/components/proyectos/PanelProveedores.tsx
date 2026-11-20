@@ -60,6 +60,30 @@ export type ProveedorEventoItem = {
   items: ConceptoManual[];
 };
 
+/** Línea de la cotización que se le puede encargar a un proveedor. */
+type ConceptoCotizacion = {
+  id: string;
+  tipo: string;
+  descripcion: string;
+  marca: string | null;
+  modelo: string | null;
+  cantidad: number;
+  dias: number;
+  proveedorEventoId: string | null;
+  nombreProveedor: string | null;
+};
+
+const GRUPOS_CONCEPTO: { titulo: string; incluye: (tipo: string) => boolean }[] = [
+  { titulo: "Equipo propio (subarrendar)", incluye: (t) => t === "EQUIPO_PROPIO" },
+  { titulo: "Equipo de terceros", incluye: (t) => t === "EQUIPO_EXTERNO" },
+  { titulo: "Servicios y otros", incluye: (t) => t !== "EQUIPO_PROPIO" && t !== "EQUIPO_EXTERNO" },
+];
+
+const nombreConcepto = (c: { descripcion: string; marca: string | null; modelo: string | null }) =>
+  [c.marca, c.modelo].filter(Boolean).join(" ") || c.descripcion;
+
+const fmtCantidad = (n: number) => (Number.isInteger(n) ? String(n) : n.toLocaleString("es-MX", { maximumFractionDigits: 2 }));
+
 type ProveedorCatalogo = { id: string; nombre: string; empresa: string | null; telefono: string | null };
 
 /**
@@ -93,6 +117,8 @@ type Borrador = {
   costoAcordado: string;
   ventanas: Ventana[];
   conceptos: ConceptoManual[];
+  /** Líneas de la cotización que cubre. */
+  lineaIds: string[];
 };
 
 const money = (n: number) => n.toLocaleString("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 });
@@ -134,6 +160,7 @@ function borradorDe(prov: ProveedorEventoItem): Borrador {
     costoAcordado: prov.costoAcordado != null ? String(prov.costoAcordado) : "",
     ventanas: ventanasDe(prov),
     conceptos: (prov.items ?? []).map((it) => ({ id: it.id, descripcion: it.descripcion, cantidad: it.cantidad })),
+    lineaIds: (prov.lineas ?? []).map((l) => l.id),
   };
 }
 
@@ -154,6 +181,99 @@ function rangoDias(dias: string[], montaje: string | null, desmontaje: string | 
 
 const inputCls =
   "w-full bg-[#0d0d0d] border border-[#333] rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]";
+
+/**
+ * Lista de lo cotizado para marcar lo que cubre un proveedor. Lo que ya cubre otro
+ * se puede tomar igual: la línea se mueve a este proveedor al guardar.
+ */
+function SelectorConceptosCotizacion({
+  conceptos,
+  seleccion,
+  onChange,
+  proveedorEventoId,
+}: {
+  conceptos: ConceptoCotizacion[];
+  seleccion: string[];
+  onChange: (ids: string[]) => void;
+  /** Renglón que se edita; null en el alta. */
+  proveedorEventoId: string | null;
+}) {
+  const [busqueda, setBusqueda] = useState("");
+  if (!conceptos.length) {
+    return <p className="text-xs text-gray-600">El proyecto no tiene cotización con equipos o servicios para elegir.</p>;
+  }
+  const q = busqueda.trim().toLowerCase();
+  const visibles = q
+    ? conceptos.filter((c) => `${c.descripcion} ${c.marca ?? ""} ${c.modelo ?? ""}`.toLowerCase().includes(q))
+    : conceptos;
+  const alternar = (id: string) =>
+    onChange(seleccion.includes(id) ? seleccion.filter((x) => x !== id) : [...seleccion, id]);
+
+  return (
+    <div className="rounded-lg border border-[#222] bg-[#0d0d0d]">
+      {conceptos.length > 8 && (
+        <div className="p-2 border-b border-[#1a1a1a]">
+          <input
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Buscar en la cotización…"
+            className={inputCls}
+          />
+        </div>
+      )}
+      <div className="max-h-64 overflow-y-auto">
+        {GRUPOS_CONCEPTO.map((g) => {
+          const items = visibles.filter((c) => g.incluye(c.tipo));
+          if (!items.length) return null;
+          return (
+            <div key={g.titulo}>
+              <p className="px-2.5 pt-2 pb-1 text-[10px] text-gray-600 font-semibold uppercase tracking-[0.09em]">{g.titulo}</p>
+              {items.map((c) => {
+                const marcado = seleccion.includes(c.id);
+                const deOtro = c.proveedorEventoId && c.proveedorEventoId !== proveedorEventoId ? c.nombreProveedor : null;
+                const nombre = nombreConcepto(c);
+                return (
+                  <label
+                    key={c.id}
+                    className={`flex items-start gap-2 px-2.5 py-1.5 text-xs cursor-pointer hover:bg-[#161616] ${marcado ? "bg-[#B3985B]/10" : ""}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={marcado}
+                      onChange={() => alternar(c.id)}
+                      className="mt-0.5 accent-[#B3985B] shrink-0"
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="text-gray-200">
+                        {fmtCantidad(c.cantidad)} × {nombre}
+                      </span>
+                      {nombre !== c.descripcion && (
+                        <span className="block text-[11px] text-gray-600 truncate">{c.descripcion}</span>
+                      )}
+                    </span>
+                    {deOtro && (
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded shrink-0 ${marcado ? "bg-amber-900/30 text-amber-400" : "bg-[#1a1a1a] text-gray-500"}`}
+                      >
+                        {marcado ? `se quita a ${deOtro}` : `con ${deOtro}`}
+                      </span>
+                    )}
+                  </label>
+                );
+              })}
+            </div>
+          );
+        })}
+        {!visibles.length && <p className="px-2.5 py-2 text-xs text-gray-600">Nada coincide con la búsqueda.</p>}
+      </div>
+      {seleccion.length > 0 && (
+        <p className="px-2.5 py-1.5 border-t border-[#1a1a1a] text-[11px] text-[#B3985B]">
+          {seleccion.length} concepto{seleccion.length === 1 ? "" : "s"} de la cotización
+        </p>
+      )}
+    </div>
+  );
+}
 
 export function PanelProveedores({
   proyectoId,
@@ -197,6 +317,7 @@ export function PanelProveedores({
   const [proveedores, setProveedores] = useState<ProveedorEventoItem[]>([]);
   const [catalogo, setCatalogo] = useState<ProveedorCatalogo[]>([]);
   const [equiposTercero, setEquiposTercero] = useState<EquipoTercero[]>([]);
+  const [conceptosCot, setConceptosCot] = useState<ConceptoCotizacion[]>([]);
   const [cargando, setCargando] = useState(true);
   const [abierto, setAbierto] = useState<string | null>(null);
   const [guardando, setGuardando] = useState<string | null>(null);
@@ -208,16 +329,18 @@ export function PanelProveedores({
   const [altaCelular, setAltaCelular] = useState("");
   const [altaServicio, setAltaServicio] = useState("");
   const [altaFrente, setAltaFrente] = useState("");
+  const [altaLineas, setAltaLineas] = useState<string[]>([]);
   const [altaNuevo, setAltaNuevo] = useState(false);
   const [agregando, setAgregando] = useState(false);
 
   useEffect(() => {
     (async () => {
-      const [rp, rc, rl] = await Promise.all([
+      const [rp, rc, rl, rq] = await Promise.all([
         // Los imprevistos del día viven en su propia tarjeta, no en la coordinación previa.
         fetch(`/api/proyectos/${proyectoId}/proveedores-evento?imprevisto=0${sinPrecios ? "&discreto=1" : ""}`),
         fetch("/api/proveedores"),
         fetch(`/api/proyectos/${proyectoId}/equipos-cotizacion${sinPrecios ? "?discreto=1" : ""}`),
+        fetch(`/api/proyectos/${proyectoId}/conceptos-cotizacion`),
       ]);
       if (rp.ok) setProveedores((await rp.json()).proveedores ?? []);
       if (rc.ok) {
@@ -229,6 +352,7 @@ export function PanelProveedores({
         );
       }
       if (rl.ok) setEquiposTercero((await rl.json()).equiposTercero ?? []);
+      if (rq.ok) setConceptosCot((await rq.json()).conceptos ?? []);
       setCargando(false);
     })();
   }, [proyectoId, sinPrecios]);
@@ -260,6 +384,35 @@ export function PanelProveedores({
     () => rangoDias(dias, aDiaISO(evento.fechaMontaje ?? null) || null, aDiaISO(evento.fechaDesmontaje ?? null) || null),
     [dias, evento.fechaMontaje, evento.fechaDesmontaje],
   );
+
+  /**
+   * Refleja en pantalla que `lineas` ahora las cubre `pid`: el resto de los
+   * proveedores las pierde, igual que en la base.
+   */
+  function aplicarLineas(pid: string, nombre: string, lineas: LineaProveedor[]) {
+    const ids = new Set(lineas.map((l) => l.id));
+    setConceptosCot((prev) =>
+      prev.map((c) =>
+        ids.has(c.id)
+          ? { ...c, proveedorEventoId: pid, nombreProveedor: nombre }
+          : c.proveedorEventoId === pid
+            ? { ...c, proveedorEventoId: null, nombreProveedor: null }
+            : c,
+      ),
+    );
+    setProveedores((prev) =>
+      prev.map((p) =>
+        p.id === pid ? { ...p, lineas } : { ...p, lineas: p.lineas.filter((l) => !ids.has(l.id)) },
+      ),
+    );
+    setBorradores((prev) => {
+      const out: Record<string, Borrador> = {};
+      for (const [k, b] of Object.entries(prev)) {
+        out[k] = k === pid ? { ...b, lineaIds: [...ids] } : { ...b, lineaIds: b.lineaIds.filter((x) => !ids.has(x)) };
+      }
+      return out;
+    });
+  }
 
   function reemplazar(prov: ProveedorEventoItem) {
     setProveedores((prev) => prev.map((p) => (p.id === prov.id ? prov : p)));
@@ -305,15 +458,17 @@ export function PanelProveedores({
         telefonoProveedor: altaNuevo ? altaCelular : delCatalogo?.telefono ?? null,
         servicioEquipo: altaServicio || null,
         frente: altaFrente || null,
+        lineaIds: altaLineas,
       }),
     });
     if (res.ok) {
       const { proveedor } = await res.json();
       setProveedores((prev) => [...prev, proveedor]);
+      if (proveedor.lineas?.length) aplicarLineas(proveedor.id, proveedor.nombreProveedor, proveedor.lineas);
       if (altaNuevo && proveedor.proveedorId) {
         setCatalogo((prev) => [...prev, { id: proveedor.proveedorId, nombre, empresa: null, telefono: altaCelular || null }]);
       }
-      setAltaCatalogoId(""); setAltaNombre(""); setAltaCelular(""); setAltaServicio(""); setAltaFrente(""); setAltaNuevo(false);
+      setAltaCatalogoId(""); setAltaNombre(""); setAltaCelular(""); setAltaServicio(""); setAltaFrente(""); setAltaLineas([]); setAltaNuevo(false);
       setMostrarAlta(false);
       alternar(proveedor);
     } else {
@@ -362,7 +517,16 @@ export function PanelProveedores({
       if (!rItems.ok) throw new Error("items");
       const { items } = await rItems.json();
 
-      reemplazar({ ...proveedor, bloques, items });
+      const rLineas = await fetch(`/api/proyectos/${proyectoId}/proveedores-evento/${prov.id}/lineas`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lineaIds: b.lineaIds }),
+      });
+      if (!rLineas.ok) throw new Error("lineas");
+      const { lineas } = await rLineas.json();
+
+      reemplazar({ ...proveedor, bloques, items, lineas });
+      aplicarLineas(prov.id, proveedor.nombreProveedor, lineas);
       toast.success("Proveedor actualizado");
     } catch {
       toast.error("No se pudo guardar el proveedor");
@@ -419,8 +583,9 @@ export function PanelProveedores({
   function mensaje(prov: ProveedorEventoItem): string {
     const b = borradores[prov.id];
     const ventanas = (b?.ventanas ?? ventanasDe(prov)).filter((v) => v.fecha || v.horaInicio || v.detalle);
+    const lineasMsg = b ? conceptosCot.filter((c) => b.lineaIds.includes(c.id)) : prov.lineas;
     const rentado = [
-      ...prov.lineas.map((l) => `• ${l.cantidad} × ${[l.marca, l.modelo].filter(Boolean).join(" ") || l.descripcion}`),
+      ...lineasMsg.map((l) => `• ${fmtCantidad(l.cantidad)} × ${nombreConcepto(l)}`),
       ...(b?.conceptos ?? prov.items ?? [])
         .filter((c) => c.descripcion.trim())
         .map((c) => `• ${c.cantidad} × ${c.descripcion}`),
@@ -498,10 +663,26 @@ export function PanelProveedores({
                 {altaNuevo ? "← Elegir uno del catálogo" : "¿Es nuevo? Regístralo aquí con nombre y celular"}
               </button>
             </div>
+            <div>
+              <label className="text-xs text-gray-500 block mb-1">Equipos y servicios de la cotización que cubre</label>
+              <SelectorConceptosCotizacion
+                conceptos={conceptosCot}
+                seleccion={altaLineas}
+                onChange={setAltaLineas}
+                proveedorEventoId={null}
+              />
+            </div>
             <div className={frentes ? "grid grid-cols-2 gap-3" : undefined}>
               <div>
-                <label className="text-xs text-gray-500 block mb-1">Equipo / servicio que provee</label>
-                <input value={altaServicio} onChange={(e) => setAltaServicio(e.target.value)} placeholder="Ej. Pantalla LED 4×3" className={inputCls} />
+                <label className="text-xs text-gray-500 block mb-1">
+                  {altaLineas.length ? "Nota del servicio (opcional)" : "Equipo / servicio que provee"}
+                </label>
+                <input
+                  value={altaServicio}
+                  onChange={(e) => setAltaServicio(e.target.value)}
+                  placeholder={altaLineas.length ? "Ej. Subrenta por falta de stock" : "Ej. Pantalla LED 4×3"}
+                  className={inputCls}
+                />
               </div>
               {frentes && (
                 <div>
@@ -580,7 +761,7 @@ export function PanelProveedores({
                         )}
                         {prov.lineas.length > 0 && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#1a1a1a] text-gray-400">
-                            {prov.lineas.length} equipo{prov.lineas.length === 1 ? "" : "s"}
+                            {prov.lineas.length} de la cotización
                           </span>
                         )}
                         {prov.cuentaPagar && !sinPrecios && (
@@ -742,6 +923,15 @@ export function PanelProveedores({
 
                       <div>
                         <p className="text-[10.5px] text-gray-600 font-semibold uppercase tracking-[0.09em] mb-2">Qué nos renta</p>
+                        <p className="text-xs text-gray-500 mb-1.5">De la cotización del proyecto:</p>
+                        <SelectorConceptosCotizacion
+                          conceptos={conceptosCot}
+                          seleccion={b.lineaIds}
+                          onChange={(ids) => editar(prov.id, { lineaIds: ids })}
+                          proveedorEventoId={prov.id}
+                        />
+
+                        <p className="text-xs text-gray-500 mt-3 mb-1.5">Asignado en el rider:</p>
                         {equiposDe(prov.proveedorId).length > 0 ? (
                           <div className="rounded-lg border border-[#222] divide-y divide-[#1a1a1a]">
                             {equiposDe(prov.proveedorId).map((e) => (
