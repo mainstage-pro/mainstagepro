@@ -186,7 +186,14 @@ function PestanaArrastrable({ id, activa, onSelect, children }: {
   );
 }
 
-interface TransporteSlot { vehiculoId: string; choferId: string; horaSalida: string; comentarios: string }
+interface TransporteSlot {
+  vehiculoId: string; choferId: string; horaSalida: string; comentarios: string;
+  choferTelefono: string; empresa: string; responsableNombre: string; responsableTelefono: string;
+}
+const TRANSPORTE_VACIO: TransporteSlot = {
+  vehiculoId: "", choferId: "", horaSalida: "", comentarios: "",
+  choferTelefono: "", empresa: "", responsableNombre: "", responsableTelefono: "",
+};
 interface ViaticoProyecto {
   id: string; tipo: string; concepto: string; monto: number; modalidad: string;
   entregado: boolean; fechaEntrega: string | null; autorizadoEn: string | null; autorizadoPor: string | null;
@@ -1199,7 +1206,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
   // Estado de transportes (3 fichas JSON)
   const [transporteSlots, setTransporteSlots] = useState<TransporteSlot[]>([
-    { vehiculoId: "", choferId: "", horaSalida: "", comentarios: "" },
+    { ...TRANSPORTE_VACIO },
   ]);
   const [savingTransporte, setSavingTransporte] = useState(false);
 
@@ -1946,11 +1953,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     try {
       const parsed = proyecto.transportes ? JSON.parse(proyecto.transportes) : [];
       const normalized: TransporteSlot[] = (Array.isArray(parsed) && parsed.length > 0)
-        ? parsed.map((s: Partial<TransporteSlot>) => ({ vehiculoId: s.vehiculoId ?? "", choferId: s.choferId ?? "", horaSalida: s.horaSalida ?? "", comentarios: s.comentarios ?? "" }))
-        : [{ vehiculoId: "", choferId: "", horaSalida: "", comentarios: "" }];
+        ? parsed.map((s: Partial<TransporteSlot>) => ({ ...TRANSPORTE_VACIO, ...Object.fromEntries(Object.entries(s).filter(([, v]) => v != null)) }))
+        : [{ ...TRANSPORTE_VACIO }];
       setTransporteSlots(normalized);
     } catch {
-      setTransporteSlots([{ vehiculoId: "", choferId: "", horaSalida: "", comentarios: "" }]);
+      setTransporteSlots([{ ...TRANSPORTE_VACIO }]);
     }
     try {
       const c = proyecto.reporteCatering ? JSON.parse(proyecto.reporteCatering) : {};
@@ -5092,8 +5099,30 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       <datalist id={`chofer-list-${i}`}>
                         {tecnicos.map(t => <option key={t.id} value={t.nombre} />)}
                       </datalist>
-                    </div>
                     <div>
+                      <label className="text-xs text-gray-500 block mb-1">Empresa</label>
+                      <input value={slot.empresa}
+                        onChange={e => updateTransporte(i, "empresa", e.target.value)}
+                        onBlur={() => guardarTransportes(transporteSlots)}
+                        placeholder="Empresa de transporte (si aplica)"
+                        className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                    </div>
+                    </div>
+                    {([
+                      ["choferTelefono", "Teléfono del chofer", "Ej. 442 123 4567", "tel"],
+                      ["responsableNombre", "Responsable de la empresa", "Nombre del encargado", "text"],
+                      ["responsableTelefono", "Teléfono del responsable", "Ej. 442 123 4567", "tel"],
+                    ] as const).map(([field, label, ph, type]) => (
+                      <div key={field}>
+                        <label className="text-xs text-gray-500 block mb-1">{label}</label>
+                        <input type={type} value={slot[field]}
+                          onChange={e => updateTransporte(i, field, e.target.value)}
+                          onBlur={() => guardarTransportes(transporteSlots)}
+                          placeholder={ph}
+                          className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                      </div>
+                    ))}
+                    <div className="md:col-span-2">
                       <label className="text-xs text-gray-500 block mb-1">Notas</label>
                       <input value={slot.comentarios} onChange={e => { const n = transporteSlots.map((s, idx) => idx === i ? { ...s, comentarios: e.target.value } : s); setTransporteSlots(n); }} onBlur={() => guardarTransportes(transporteSlots)}
                         placeholder="Instrucciones, destino, etc."
@@ -5102,7 +5131,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   </div>
                 </div>
               ))}
-              <button onClick={() => { const n = [...transporteSlots, { vehiculoId: "", choferId: "", horaSalida: "", comentarios: "" }]; setTransporteSlots(n); }}
+              <button onClick={() => { const n = [...transporteSlots, { ...TRANSPORTE_VACIO }]; setTransporteSlots(n); }}
                 className="text-xs text-[#B3985B] border border-[#B3985B]/30 hover:border-[#B3985B] px-3 py-1.5 rounded-lg transition-colors">
                 + Agregar vehículo
               </button>

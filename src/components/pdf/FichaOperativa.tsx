@@ -15,6 +15,7 @@ import {
   C, base, fmtFechaDiaCorta, fmtHora, duracion, nowStr,
   agruparPorCategoria, EquipoFlat, TransporteSlot,
   EquipoRiderExtra, ProveedorRenta, MAPS,
+  transporteEmpresaTxt, transporteTieneDatos,
 } from "./PdfShared";
 import { CronologiaEvento } from "./CronologiaEvento";
 import { DisciplinaChipPdf, DisciplinaIconoPdf } from "./DisciplinaPdf";
@@ -258,7 +259,7 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
   // Agrupa TODOS los equipos (propios + externos) por categoría — igual que RiderPDF
   const todasCategorias = agruparPorCategoria(data.equipos);
 
-  const transConDatos = data.transportes.filter(t => t.horaSalida || t.choferNombre || t.vehiculoNombre);
+  const transConDatos = data.transportes.filter(transporteTieneDatos);
 
   const todosProveedores = [
     // El frente va pegado al servicio y no en columna propia: se ve al escanear la
@@ -588,13 +589,15 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                 <View style={base.tableHd}>
                   <Text style={[base.thTxt, { flex: 1 }]}>Vehículo</Text>
                   <Text style={[base.thTxt, { flex: 1 }]}>Chofer</Text>
+                  <Text style={[base.thTxt, { flex: 1.2 }]}>Empresa</Text>
                   <Text style={[base.thTxt, { width: 48 }]}>Salida</Text>
                   <Text style={[base.thTxt, { flex: 1 }]}>Notas</Text>
                 </View>
                 {transConDatos.map((t, i) => (
                   <View key={i} style={i < transConDatos.length - 1 ? base.tableRow : base.tableRowLast} wrap={false}>
                     <Text style={[base.tdTxt, { flex: 1 }]}>{t.vehiculoNombre ?? t.vehiculoId}</Text>
-                    <Text style={[base.tdTxt, { flex: 1 }]}>{t.choferNombre ?? t.choferId}</Text>
+                    <Text style={[base.tdTxt, { flex: 1 }]}>{t.choferNombre ?? t.choferId}{t.choferTelefono ? `\n${t.choferTelefono}` : ""}</Text>
+                    <Text style={[base.tdTxt, { flex: 1.2 }]}>{transporteEmpresaTxt(t)}</Text>
                     <Text style={[base.tdTxt, { width: 48, fontFamily: "Helvetica-Bold" }]}>{fmtHora(t.horaSalida)}</Text>
                     <Text style={[base.tdMuted, { flex: 1 }]}>{t.comentarios}</Text>
                   </View>

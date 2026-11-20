@@ -8,6 +8,7 @@ import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/render
 import {
   C, base, fmtFecha, fmtHora, nowStr,
   agruparPorCategoria, EquipoFlat, TransporteSlot,
+  transporteEmpresaTxt, transporteTieneDatos,
 } from "./PdfShared";
 import { PersonalItem, ProveedorEvento } from "./FichaCoordinador";
 import { cadenaDeMando, parseReglasMando } from "@/lib/cadena-mando";
@@ -125,7 +126,7 @@ export function FichaTecnicos({ data }: { data: FichaTecnicosData }) {
   const equiposExternos = data.equipos.filter(e => e.tipo === "EXTERNO");
   const gruposPropios = agruparPorCategoria(equiposPropios);
 
-  const transConDatos = data.transportes.filter(t => t.horaSalida || t.choferNombre || t.vehiculoNombre);
+  const transConDatos = data.transportes.filter(transporteTieneDatos);
 
   // Construir tabla de horarios — solo mostrar filas con hora
   type HoraItem = { label: string; hora: string; ref: string };
@@ -215,7 +216,7 @@ export function FichaTecnicos({ data }: { data: FichaTecnicosData }) {
                   {t.vehiculoNombre ?? t.vehiculoId ?? "Vehículo"}
                 </Text>
                 <Text style={{ flex: 1, fontSize: 8.5, color: C.grisMedio }}>
-                  {t.choferNombre ?? t.choferId}{t.horaSalida ? ` · Sale ${fmtHora(t.horaSalida)}` : ""}{t.comentarios ? ` · ${t.comentarios}` : ""}
+                  {t.choferNombre ?? t.choferId}{t.choferTelefono ? ` (${t.choferTelefono})` : ""}{transporteEmpresaTxt(t) ? ` · ${transporteEmpresaTxt(t)}` : ""}{t.horaSalida ? ` · Sale ${fmtHora(t.horaSalida)}` : ""}{t.comentarios ? ` · ${t.comentarios}` : ""}
                 </Text>
               </View>
             ))}

@@ -8,6 +8,7 @@ import {
   C, base, fmtFecha, fmtFechaCorta, fmtHora, duracion, nowStr,
   agruparPorCategoria, EquipoFlat,
   TransporteSlot, EquipoRiderExtra, ProveedorRenta,
+  transporteEmpresaTxt, transporteTieneDatos,
 } from "./PdfShared";
 import { diasEvento, horarioDeDia } from "@/lib/fechas-evento";
 import { frenteLabel } from "@/lib/frentes-produccion";
@@ -237,7 +238,7 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
     puntoSalidaBodega: data.puntoSalidaBodega, lugarEvento: data.lugarEvento,
   }, { bloques: data.bloquesTiempo, nombresProveedor: data.nombresProveedor });
 
-  const transConDatos = data.transportes.filter(t => t.horaSalida || t.choferNombre);
+  const transConDatos = data.transportes.filter(transporteTieneDatos);
   const todosProveedores = [
     // El frente va pegado al servicio y no en columna propia: el coordinador lo ve al
     // escanear la tabla, y los eventos sin frentes no se llenan de rayas vacías.
@@ -399,13 +400,15 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
               <View style={s.tblHd}>
                 <Text style={[s.tblHdTxt, { flex: 1 }]}>Vehículo</Text>
                 <Text style={[s.tblHdTxt, { flex: 1 }]}>Chofer</Text>
+                <Text style={[s.tblHdTxt, { flex: 1.2 }]}>Empresa</Text>
                 <Text style={[s.tblHdTxt, { width: 50 }]}>Salida</Text>
                 <Text style={[s.tblHdTxt, { flex: 1 }]}>Notas</Text>
               </View>
               {transConDatos.map((t, i) => (
                 <View key={i} style={i < transConDatos.length - 1 ? s.tblRow : s.tblRowLast} wrap={false}>
                   <Text style={[s.tblTxt, { flex: 1 }]}>{t.vehiculoNombre ?? t.vehiculoId}</Text>
-                  <Text style={[s.tblTxt, { flex: 1 }]}>{t.choferNombre ?? t.choferId}</Text>
+                  <Text style={[s.tblTxt, { flex: 1 }]}>{t.choferNombre ?? t.choferId}{t.choferTelefono ? `\n${t.choferTelefono}` : ""}</Text>
+                  <Text style={[s.tblTxt, { flex: 1.2 }]}>{transporteEmpresaTxt(t)}</Text>
                   <Text style={[s.tblTxt, { width: 50 }]}>{fmtHora(t.horaSalida)}</Text>
                   <Text style={[s.tblTxtMuted, { flex: 1 }]}>{t.comentarios}</Text>
                 </View>

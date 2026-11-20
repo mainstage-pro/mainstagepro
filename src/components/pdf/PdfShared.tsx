@@ -316,7 +316,18 @@ export type EquipoFlat = {
 };
 
 export type CronoRow = { horaInicio: string; horaFin: string; actividad: string; responsable: string; dia?: string };
-export type TransporteSlot = { vehiculoId: string; vehiculoNombre?: string; choferId: string; choferNombre?: string; horaSalida: string; comentarios: string };
+export type TransporteSlot = {
+  vehiculoId: string; vehiculoNombre?: string; choferId: string; choferNombre?: string; horaSalida: string; comentarios: string;
+  choferTelefono?: string; empresa?: string; responsableNombre?: string; responsableTelefono?: string;
+};
+/** "Empresa · Resp. Nombre (tel)" — vacío si no hay datos de empresa. */
+export function transporteEmpresaTxt(t: TransporteSlot): string {
+  const resp = [t.responsableNombre?.trim(), t.responsableTelefono?.trim() ? `(${t.responsableTelefono.trim()})` : ""].filter(Boolean).join(" ");
+  return [t.empresa?.trim(), resp ? `Resp. ${resp}` : ""].filter(Boolean).join(" · ");
+}
+export function transporteTieneDatos(t: TransporteSlot): boolean {
+  return Boolean(t.horaSalida || t.choferNombre || t.vehiculoNombre || t.empresa || t.responsableNombre || t.choferTelefono);
+}
 export type SoundcheckRow = { hora: string; artista: string; duracion: string; notas: string };
 export type ProgramaRow = { hora: string; actividad: string; responsable: string; notas: string };
 export type CoordProvRow = { proveedor: string; contacto: string; horario: string; notas: string };

@@ -276,10 +276,12 @@ export function BriefTecnico({ proyecto, logoSrc }: BriefTecnicoData) {
         // Es un array (podría ser array de slots)
         const lineas: string[] = [];
         parsed.forEach((item: Record<string, unknown>, idx: number) => {
-          if (item.vehiculoNombre || item.choferId || item.comentarios) {
+          if (item.vehiculoNombre || item.choferId || item.comentarios || item.empresa) {
             const partes: string[] = [];
             if (item.vehiculoNombre) partes.push(String(item.vehiculoNombre));
-            if (item.choferId) partes.push(`Chofer: ${item.choferId}`);
+            if (item.choferId) partes.push(`Chofer: ${item.choferId}${item.choferTelefono ? ` (${item.choferTelefono})` : ""}`);
+            if (item.empresa) partes.push(`Empresa: ${item.empresa}`);
+            if (item.responsableNombre || item.responsableTelefono) partes.push(`Resp.: ${[item.responsableNombre, item.responsableTelefono ? `(${item.responsableTelefono})` : ""].filter(Boolean).join(" ")}`);
             if (item.horaSalida) partes.push(`Salida: ${fmt24to12(String(item.horaSalida))}`);
             if (item.comentarios) partes.push(String(item.comentarios));
             lineas.push(`Vehículo ${idx + 1}: ${partes.join(" · ")}`);
