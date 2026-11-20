@@ -1,4 +1,5 @@
 import { DISCIPLINA_LABELS, DISCIPLINAS, type Disciplina } from "@/lib/disciplinaColors";
+import { rangoParticipacion } from "@/lib/ciclo-pago";
 
 /**
  * Orden único para listas de equipo de un proyecto (pantalla y PDFs):
@@ -114,4 +115,30 @@ export function agruparPorDisciplina<T>(
   return [...map.entries()]
     .sort((a, b) => rango(a[0]) - rango(b[0]))
     .map(([d, its]) => ({ disciplina: d, items: its }));
+}
+
+/**
+ * Personal en secciones jornada → disciplina: montaje, operación y desmontaje
+ * primero; dentro de cada jornada las disciplinas en orden de inventario y las
+ * personas por nombre. `abreJornada` marca la primera sección de cada jornada.
+ */
+export function seccionesPersonal<T extends { participacion: string | null; disciplina?: string | null; nombre: string }>(
+  items: T[],
+  rango: (d: string | null | undefined) => number,
+): { participacion: string; disciplina: string | null; abreJornada: boolean; items: T[] }[] {
+  const porPart = new Map<string, T[]>();
+  for (const t of items) {
+    const k = t.participacion ?? "OPERACION";
+    if (!porPart.has(k)) porPart.set(k, []);
+    porPart.get(k)!.push(t);
+  }
+  return [...porPart.entries()]
+    .sort((a, b) => rangoParticipacion(a[0]) - rangoParticipacion(b[0]))
+    .flatMap(([part, delPart]) =>
+      agruparPorDisciplina(delPart, t => t.disciplina, rango).map((g, i) => ({
+        participacion: part,
+        disciplina: g.disciplina,
+        abreJornada: i === 0,
+        items: [...g.items].sort((a, b) => a.nombre.localeCompare(b.nombre, "es")),
+      })));
 }

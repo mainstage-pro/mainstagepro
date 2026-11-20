@@ -7,6 +7,9 @@
 
 import { useState } from "react";
 import type { OrdenProduccion } from "@/lib/orden-produccion";
+import { agruparEquiposDisciplinaCategoria, agruparPorDisciplina, etiquetaDisciplina, rangoDisciplinas } from "@/lib/orden-equipos";
+import { DISCIPLINA_COLORS_PRINT } from "@/lib/disciplinaColors";
+import { rangoParticipacion } from "@/lib/ciclo-pago";
 import { Cantidad, CatHead, Chip, Cuadro, Miniatura, NotaBox, PorConfirmar, Telefono, Vacio } from "./ui";
 
 /**
@@ -20,6 +23,17 @@ function Hora({ children, className }: { children: string; className: string }) 
       {m ? m[1] : children}
       {m && <span className="ml-0.5 text-[9px] font-semibold text-[#9a9a9a] align-baseline">{m[2].toUpperCase()}</span>}
     </span>
+  );
+}
+
+/** Encabezado de disciplina sobre las categorías de equipo. */
+function DisciplinaHead({ disciplina }: { disciplina: string | null }) {
+  const color = (disciplina && DISCIPLINA_COLORS_PRINT[disciplina]) || "#4b5563";
+  return (
+    <div className="flex items-center gap-1.5 mb-1.5 pb-1 border-b-2" style={{ borderColor: color }}>
+      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
+      <span className="text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color }}>{etiquetaDisciplina(disciplina)}</span>
+    </div>
   );
 }
 
@@ -119,12 +133,13 @@ export function Equipo({ orden }: { orden: OrdenProduccion }) {
       )
     : orden.equipos;
 
-  const grupos = new Map<string, typeof orden.equipos>();
-  for (const e of filtrados) {
-    const lista = grupos.get(e.categoria);
-    if (lista) lista.push(e);
-    else grupos.set(e.categoria, [e]);
-  }
+  // Disciplina → categoría (orden del inventario) → equipo.
+  const grupos = agruparEquiposDisciplinaCategoria(filtrados, (e) => ({
+    categoria: e.categoria,
+    orden: e.categoriaOrden,
+    disciplina: e.disciplina,
+    descripcion: [e.marca, e.modelo].filter(Boolean).join(" ") || e.descripcion,
+  }), "General");
 
   const piezas = orden.equipos.reduce((n, e) => n + e.cantidad, 0);
 
@@ -147,8 +162,9 @@ export function Equipo({ orden }: { orden: OrdenProduccion }) {
       {filtrados.length === 0 ? (
         <Vacio>Nada coincide con “{q}”.</Vacio>
       ) : (
-        [...grupos.entries()].map(([categoria, items]) => (
+        grupos.map(({ categoria, items, disciplina, abreDisciplina }) => (
           <div key={categoria} className="mb-4 last:mb-0">
+            {abreDisciplina && <DisciplinaHead disciplina={disciplina} />}
             <CatHead>{categoria}</CatHead>
             <div className="mt-2 space-y-2">
               {items.map((e) => {
@@ -249,23 +265,41 @@ const PARTICIPACION: Record<string, string> = {
   TRANSPORTE: "Transporte", OTRO: "Otro",
 };
 
-/** Agrupado por participación: en sitio la pregunta es "¿quién viene al montaje?". */
+/**
+ * Agrupado por participación (montaje → operación → desmontaje): en sitio la
+ * pregunta es "¿quién viene al montaje?". Dentro, por disciplina en el orden
+ * del inventario.
+ */
 export function Personal({ orden }: { orden: OrdenProduccion }) {
   const grupos = new Map<string, typeof orden.personal>();
   for (const t of orden.personal) {
-    const k = t.participacion ?? "OTRO";
+    const k = t.participacion ?? "OPERACION";
     const lista = grupos.get(k);
     if (lista) lista.push(t);
     else grupos.set(k, [t]);
   }
+  const rango = rangoDisciplinas(orden.categoriasInventario);
 
   return (
     <div className="space-y-3">
-      {[...grupos.entries()].map(([k, items]) => (
+      {[...grupos.entries()]
+        .sort((a, b) => rangoParticipacion(a[0]) - rangoParticipacion(b[0]))
+        .map(([k, itemsPart]) => (
         <Cuadro key={k}>
-          <CatHead extra={<span className="text-[#aaa] text-[9.5px] shrink-0">{items.length}</span>}>
+          <CatHead extra={<span className="text-[#aaa] text-[9.5px] shrink-0">{itemsPart.length}</span>}>
             {PARTICIPACION[k] ?? k}
           </CatHead>
+          {agruparPorDisciplina(itemsPart, (t) => t.disciplina, rango).map(({ disciplina, items: itemsDisc }) => {
+            const items = [...itemsDisc].sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+            return (
+          <div key={disciplina ?? "_otros"}>
+          <div className="flex items-center gap-1.5 px-3 py-1 bg-[#f6f6f6] border-b border-[#ececec]">
+            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: (disciplina && DISCIPLINA_COLORS_PRINT[disciplina]) || "#4b5563" }} />
+            <span className="text-[10px] font-bold uppercase tracking-[0.12em]" style={{ color: (disciplina && DISCIPLINA_COLORS_PRINT[disciplina]) || "#4b5563" }}>
+              {disciplina ? etiquetaDisciplina(disciplina) : "Sin disciplina"}
+            </span>
+            <span className="text-[#aaa] text-[9.5px]">{items.length}</span>
+          </div>
           <div className="divide-y divide-[#f0f0f0]">
             {items.map((t) => (
               <div key={t.id} className="flex items-start justify-between gap-3 px-3 py-2.5">
@@ -290,6 +324,9 @@ export function Personal({ orden }: { orden: OrdenProduccion }) {
               </div>
             ))}
           </div>
+          </div>
+            );
+          })}
         </Cuadro>
       ))}
     </div>

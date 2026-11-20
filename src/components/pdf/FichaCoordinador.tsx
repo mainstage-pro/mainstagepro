@@ -11,7 +11,8 @@ import {
   transporteEmpresaTxt, transporteTieneDatos,
 } from "./PdfShared";
 import { DISCIPLINA_COLORS_PRINT } from "@/lib/disciplinaColors";
-import { etiquetaDisciplina } from "@/lib/orden-equipos";
+import { etiquetaDisciplina, rangoDisciplinas, seccionesPersonal } from "@/lib/orden-equipos";
+import { SeparadorPersonal } from "./BandaDisciplina";
 import { diasEvento, horarioDeDia } from "@/lib/fechas-evento";
 import { frenteLabel } from "@/lib/frentes-produccion";
 import { normalizarAmPm } from "@/lib/hora";
@@ -83,6 +84,8 @@ export interface PersonalItem {
   responsabilidad: string | null;
   /** Manda en sitio. Uno solo por proyecto. */
   coordinaEnSitio: boolean;
+  /** Disciplina del puesto: arma las secciones del personal. */
+  disciplina?: string | null;
 }
 export interface ProveedorEvento {
   /** id de ProveedorEvento: liga al proveedor con sus ventanas de la cronología. */
@@ -158,6 +161,8 @@ export interface FichaCoordinadorData {
   cliente: { nombre: string; empresa: string | null; telefono: string | null };
   equipos: EquipoFlat[];
   personal: PersonalItem[];
+  /** Orden y disciplina de las categorías del inventario. */
+  categoriasInventario?: { orden: number; disciplina: string | null }[];
   proveedoresEvento: ProveedorEvento[];
   proveedoresRenta: ProveedorRenta[];
   archivos: ArchivoItem[];
@@ -511,6 +516,7 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
             if (b === '__sin_fecha__') return -1;
             return a.localeCompare(b);
           });
+          const rangoDisc = rangoDisciplinas(data.categoriasInventario ?? []);
           const tieneMultiplesFechas = keys.filter(k => k !== '__sin_fecha__').length > 0 && keys.length > 1;
           const fmtJornada = (yyyymmdd: string): string => {
             try {
@@ -518,10 +524,6 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
                 timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long',
               });
             } catch { return yyyymmdd; }
-          };
-          const PART: Record<string, string> = {
-            OPERACION: 'Operación', MONTAJE: 'Montaje', DESMONTAJE: 'Desmontaje',
-            TRANSPORTE: 'Transporte', OTRO: 'Otro',
           };
           return (
             <View style={base.section}>
@@ -553,6 +555,11 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
                         <Text style={[s.tblHdTxt, { width: 90 }]}>Celular</Text>
                         <Text style={[s.tblHdTxt, { width: 60 }]}>Estado</Text>
                       </View>
+                      {seccionesPersonal(items, rangoDisc).map((sec) => {
+                        const items = sec.items;
+                        return (
+                        <React.Fragment key={`${sec.participacion}-${sec.disciplina ?? ''}`}>
+                        <SeparadorPersonal participacion={sec.participacion} disciplina={sec.disciplina} abreJornada={sec.abreJornada} n={items.length} />
                       {items.map((p, i) => (
                         <View key={i} style={i < items.length - 1 ? s.tblRow : s.tblRowLast} wrap={false}>
                           <Text style={[s.tblTxt, { flex: 1, fontFamily: 'Helvetica-Bold' }]}>
@@ -561,7 +568,6 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
                           <View style={{ flex: 1 }}>
                             <Text style={s.tblTxtMuted}>
                               {p.rolEnEvento ?? p.rolTecnico ?? '—'}
-                              {p.participacion && p.participacion !== 'OPERACION' ? ` · ${PART[p.participacion] ?? p.participacion}` : ''}
                             </Text>
                             {/* El encargo concreto: lo que esta persona tiene que resolver. */}
                             {p.responsabilidad && (
@@ -579,6 +585,9 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
                           </Text>
                         </View>
                       ))}
+                      </React.Fragment>
+                      );
+                      })}
                     </View>
                   </View>
                 );

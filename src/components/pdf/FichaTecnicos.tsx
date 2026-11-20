@@ -10,7 +10,8 @@ import {
   agruparPorCategoria, EquipoFlat, TransporteSlot,
   transporteEmpresaTxt, transporteTieneDatos,
 } from "./PdfShared";
-import { BandaDisciplina } from "./BandaDisciplina";
+import { BandaDisciplina, SeparadorPersonal } from "./BandaDisciplina";
+import { rangoDisciplinas, seccionesPersonal } from "@/lib/orden-equipos";
 import { PersonalItem, ProveedorEvento } from "./FichaCoordinador";
 import { cadenaDeMando, parseOcupantesMando, parseReglasMando } from "@/lib/cadena-mando";
 import { frenteLabel } from "@/lib/frentes-produccion";
@@ -111,6 +112,8 @@ export interface FichaTecnicosData {
   detallesEspecificos: string | null;
   equipos: EquipoFlat[];
   personal: PersonalItem[];
+  /** Orden y disciplina de las categorías del inventario. */
+  categoriasInventario?: { orden: number; disciplina: string | null }[];
   proveedoresEvento: ProveedorEvento[];
   transportes: TransporteSlot[];
   logoSrc: string | null;
@@ -141,6 +144,8 @@ export function FichaTecnicos({ data }: { data: FichaTecnicosData }) {
   // Quién manda: el coordinador en sitio sale del personal marcado, no del
   // encargado interno (que autoriza, pero no está parado en el venue).
   const coord = data.personal.find(p => p.coordinaEnSitio) ?? null;
+  // Montaje → operación → desmontaje y, dentro, disciplina en orden de inventario.
+  const personalOrdenado = seccionesPersonal(data.personal, rangoDisciplinas(data.categoriasInventario ?? [])).flatMap(x => x.items);
   const eslabones = cadenaDeMando({
     coordinadorSitio: coord
       ? { nombre: coord.nombre, celular: coord.celular, rol: coord.rolEnEvento ?? coord.rolTecnico }
@@ -251,8 +256,8 @@ export function FichaTecnicos({ data }: { data: FichaTecnicosData }) {
                 <Text style={[s.contactoHdTxt, { width: 110 }]}>Rol en el evento</Text>
                 <Text style={[s.contactoHdTxt, { flex: 1 }]}>Su encargo</Text>
               </View>
-              {data.personal.map((p, i) => (
-                <View key={i} style={i < data.personal.length - 1 ? s.contactoRow : s.contactoRowLast} wrap={false}>
+              {personalOrdenado.map((p, i) => (
+                <View key={i} style={i < personalOrdenado.length - 1 ? s.contactoRow : s.contactoRowLast} wrap={false}>
                   <Text style={[s.contactoTxt, { flex: 1 }]}>
                     {p.nombre}{p.coordinaEnSitio ? "  †" : ""}
                   </Text>
@@ -326,6 +331,7 @@ export function FichaTecnicos({ data }: { data: FichaTecnicosData }) {
             if (b === '__sin_fecha__') return -1;
             return a.localeCompare(b);
           });
+          const rangoDisc = rangoDisciplinas(data.categoriasInventario ?? []);
           const tieneMultiplesFechas = keys.length > 1 || (keys.length === 1 && keys[0] !== '__sin_fecha__');
           const fmtJornada = (yyyymmdd: string): string => {
             try {
@@ -333,10 +339,6 @@ export function FichaTecnicos({ data }: { data: FichaTecnicosData }) {
                 timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long',
               });
             } catch { return yyyymmdd; }
-          };
-          const PART: Record<string, string> = {
-            OPERACION: 'Operación', MONTAJE: 'Montaje', DESMONTAJE: 'Desmontaje',
-            TRANSPORTE: 'Transporte', OTRO: 'Otro',
           };
           const JORNADA: Record<string, string> = {
             CORTA: 'Corta', MEDIA: 'Media', LARGA: 'Larga',
@@ -373,6 +375,11 @@ export function FichaTecnicos({ data }: { data: FichaTecnicosData }) {
                       </View>
                     )}
                     {/* Filas de técnicos */}
+                    {seccionesPersonal(items, rangoDisc).map((sec) => {
+                      const items = sec.items;
+                      return (
+                      <React.Fragment key={`${sec.participacion}-${sec.disciplina ?? ''}`}>
+                      <SeparadorPersonal participacion={sec.participacion} disciplina={sec.disciplina} abreJornada={sec.abreJornada} n={items.length} />
                     {items.map((p, i) => (
                       <View
                         key={i}
@@ -385,9 +392,6 @@ export function FichaTecnicos({ data }: { data: FichaTecnicosData }) {
                         <Text style={s.equipoNombre}>{p.nombre}</Text>
                         <Text style={s.equipoRol}>
                           {p.rolEnEvento ?? p.rolTecnico ?? 'Técnico'}
-                          {p.participacion && p.participacion !== 'OPERACION'
-                            ? ` · ${PART[p.participacion] ?? p.participacion}`
-                            : ''}
                         </Text>
                         {p.jornada && (
                           <Text style={{
@@ -403,6 +407,9 @@ export function FichaTecnicos({ data }: { data: FichaTecnicosData }) {
                         </Text>
                       </View>
                     ))}
+                    </React.Fragment>
+                    );
+                    })}
                   </View>
                 );
               })}

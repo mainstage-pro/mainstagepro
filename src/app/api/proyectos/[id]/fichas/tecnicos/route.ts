@@ -1,3 +1,4 @@
+import { disciplinaDePuesto } from "@/lib/disciplinaColors";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
@@ -23,7 +24,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       personal: {
         include: {
           tecnico: { select: { nombre: true, celular: true, rol: { select: { nombre: true } } } },
-          rolTecnico: { select: { nombre: true } },
+          rolTecnico: { select: { nombre: true, disciplina: true } },
         },
         orderBy: { id: "asc" },
       },
@@ -40,6 +41,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   });
 
   if (!proyecto) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+
+  const categoriasInventario = await prisma.categoriaEquipo.findMany({ select: { orden: true, disciplina: true } });
 
   const logoSrc = logoBase64(path.join(process.cwd(), "public"));
 
@@ -128,7 +131,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       jornada: p.jornada ?? null,
       responsabilidad: p.responsabilidad ?? null,
       coordinaEnSitio: p.coordinaEnSitio ?? false,
+      disciplina: disciplinaDePuesto(p.rolTecnico?.disciplina, p.rolTecnico?.nombre, p.rolEnEvento),
     })),
+    categoriasInventario,
     proveedoresEvento,
     transportes,
     logoSrc,

@@ -15,6 +15,7 @@ import {
   type VistaCronologia,
 } from "@/lib/cronologia-evento";
 import { resumenMontaje } from "@/lib/montaje-reportes";
+import { disciplinaDePuesto } from "@/lib/disciplinaColors";
 import { avanceCarga, type AvanceCarga } from "@/lib/control-carga";
 import { cadenaDeMando, parseOcupantesMando, parseReglasMando, type EslabonMando } from "@/lib/cadena-mando";
 
@@ -24,6 +25,9 @@ export type OrdenEquipo = {
   marca: string | null;
   modelo: string | null;
   categoria: string;
+  /** Orden de la categoría en el inventario y su disciplina: arman las secciones. */
+  categoriaOrden: number | null;
+  disciplina: string | null;
   cantidad: number;
   tipo: string;
   confirmado: boolean;
@@ -75,6 +79,8 @@ export type OrdenPersonal = {
   responsabilidad: string | null;
   /** Manda en sitio. Uno solo por proyecto. */
   coordinaEnSitio: boolean;
+  /** Disciplina del puesto (audio, iluminación…). */
+  disciplina: string | null;
 };
 
 /** Entarimado: lo que cambia el montaje y nadie pregunta hasta estar en el venue. */
@@ -114,7 +120,7 @@ export async function ordenPorToken(token: string) {
       personal: {
         include: {
           tecnico: { select: { id: true, nombre: true, celular: true } },
-          rolTecnico: { select: { nombre: true } },
+          rolTecnico: { select: { nombre: true, disciplina: true } },
         },
         orderBy: { id: "asc" },
       },
@@ -123,7 +129,7 @@ export async function ordenPorToken(token: string) {
           equipo: {
             select: {
               descripcion: true, marca: true, modelo: true, imagenUrl: true,
-              categoria: { select: { nombre: true, disciplina: true } },
+              categoria: { select: { nombre: true, disciplina: true, orden: true } },
             },
           },
           proveedor: { select: { nombre: true, telefono: true } },
@@ -147,6 +153,9 @@ export async function ordenPorToken(token: string) {
   });
 
   if (!p) return null;
+
+  // Orden de disciplinas del inventario: ordena también al personal.
+  const categoriasInventario = await prisma.categoriaEquipo.findMany({ select: { orden: true, disciplina: true } });
 
   const cronoInput: ProyectoCronologia = {
     fechaEvento: p.fechaEvento,
@@ -198,6 +207,8 @@ export async function ordenPorToken(token: string) {
     marca: e.equipo?.marca ?? null,
     modelo: e.equipo?.modelo ?? null,
     categoria: e.equipo?.categoria?.nombre ?? "General",
+    categoriaOrden: e.equipo?.categoria?.orden ?? null,
+    disciplina: e.equipo?.categoria?.disciplina ?? null,
     cantidad: e.cantidad,
     tipo: e.tipo,
     confirmado: e.confirmado,
@@ -261,6 +272,7 @@ export async function ordenPorToken(token: string) {
     confirmado: !!x.confirmado,
     responsabilidad: x.responsabilidad ?? null,
     coordinaEnSitio: !!x.coordinaEnSitio,
+    disciplina: disciplinaDePuesto(x.rolTecnico?.disciplina, x.rolTecnico?.nombre, x.rolEnEvento),
   }));
 
   // Quién manda: se arma aquí para que la app en sitio no tenga que deducirlo.
@@ -351,6 +363,7 @@ export async function ordenPorToken(token: string) {
     equipos,
     equiposExtra,
     personal,
+    categoriasInventario,
     proveedores,
     archivos,
     pases,

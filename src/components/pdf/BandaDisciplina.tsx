@@ -27,3 +27,35 @@ export function BandaDisciplina({ disciplina, primera = false }: { disciplina: s
     </View>
   );
 }
+
+const JORNADA_LABEL: Record<string, string> = {
+  MONTAJE: "Montaje", OPERACION: "Operación técnica", DESMONTAJE: "Desmontaje",
+  TRANSPORTE: "Transporte", OTRO: "Otro",
+};
+
+/**
+ * Separadores de la lista de personal: la jornada (montaje, operación,
+ * desmontaje) al abrirla y, debajo, cada disciplina con su color.
+ */
+export function SeparadorPersonal({ participacion, disciplina, abreJornada, n }: {
+  participacion: string; disciplina: string | null; abreJornada: boolean; n: number;
+}) {
+  const color = (disciplina && DISCIPLINA_COLORS_PRINT[disciplina]) || "#4b5563";
+  return (
+    <View wrap={false} minPresenceAhead={24}>
+      {abreJornada && (
+        <View style={{ backgroundColor: "#e9e9e9", paddingVertical: 3, paddingHorizontal: 6 }}>
+          <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: "#8a6d2f", textTransform: "uppercase", letterSpacing: 1 }}>
+            {JORNADA_LABEL[participacion] ?? participacion}
+          </Text>
+        </View>
+      )}
+      <View style={{ flexDirection: "row", alignItems: "center", paddingVertical: 2.5, paddingHorizontal: 6, paddingLeft: 10, backgroundColor: "#f6f6f6" }}>
+        <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: color, marginRight: 4 }} />
+        <Text style={{ fontSize: 6.5, fontFamily: "Helvetica-Bold", color, textTransform: "uppercase", letterSpacing: 0.8 }}>
+          {disciplina ? etiquetaDisciplina(disciplina) : "Sin disciplina"} · {n}
+        </Text>
+      </View>
+    </View>
+  );
+}

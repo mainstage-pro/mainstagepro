@@ -1,3 +1,4 @@
+import { disciplinaDePuesto } from "@/lib/disciplinaColors";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
@@ -25,7 +26,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       personal: {
         include: {
           tecnico: { select: { nombre: true, celular: true, rol: { select: { nombre: true } } } },
-          rolTecnico: { select: { nombre: true } },
+          rolTecnico: { select: { nombre: true, disciplina: true } },
         },
         orderBy: { id: "asc" },
       },
@@ -51,6 +52,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   });
 
   if (!proyecto) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+
+  const categoriasInventario = await prisma.categoriaEquipo.findMany({ select: { orden: true, disciplina: true } });
 
   const logoSrc = logoBase64(path.join(process.cwd(), "public"));
 
@@ -156,8 +159,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       celular: p.tecnico.celular ?? null,
       confirmado: p.confirmado,
       responsabilidad: p.responsabilidad ?? null,
+      fechaJornada: p.fechaJornada ?? null,
+      participacion: p.participacion ?? null,
+      jornada: p.jornada ?? null,
       coordinaEnSitio: p.coordinaEnSitio ?? false,
+      disciplina: disciplinaDePuesto(p.rolTecnico?.disciplina, p.rolTecnico?.nombre, p.rolEnEvento),
     })),
+    categoriasInventario,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     proveedoresEvento: (proyecto.proveedoresEvento ?? []).map((p: any) => ({
       id: p.id,
