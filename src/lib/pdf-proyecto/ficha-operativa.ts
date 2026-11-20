@@ -54,6 +54,8 @@ export async function generarFichaOperativa(id: string): Promise<PdfProyecto | n
 
   if (!proyecto) return null;
 
+  const categoriasInventario = await prisma.categoriaEquipo.findMany({ select: { orden: true, disciplina: true } });
+
   const publicDir = path.join(process.cwd(), "public");
   const logoSrc = logoBase64(publicDir);
   const logoSrcDark = logoBase64Dark(publicDir);
@@ -183,6 +185,7 @@ export async function generarFichaOperativa(id: string): Promise<PdfProyecto | n
       empresa: proyecto.cliente.empresa ?? null,
       telefono: proyecto.cliente.telefono ?? null,
     },
+    categoriasInventario,
     equipos,
     equiposRiderExtra,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

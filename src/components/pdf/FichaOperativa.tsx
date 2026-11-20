@@ -18,9 +18,10 @@ import {
   transporteEmpresaTxt, transporteTieneDatos,
 } from "./PdfShared";
 import { BandaDisciplina } from "./BandaDisciplina";
+import { agruparPorDisciplina, etiquetaDisciplina, rangoDisciplinas } from "@/lib/orden-equipos";
 import { CronologiaEvento } from "./CronologiaEvento";
 import { DisciplinaChipPdf, DisciplinaIconoPdf } from "./DisciplinaPdf";
-import { DISCIPLINA_COLORS_PRINT, DISCIPLINA_LABELS, type Disciplina } from "@/lib/disciplinaColors";
+import { DISCIPLINA_COLORS, DISCIPLINA_COLORS_PRINT, DISCIPLINA_LABELS, type Disciplina } from "@/lib/disciplinaColors";
 import { SECCIONES_ROL } from "@/lib/rolesTecnicos";
 import { construirCronologia, ventanasPorProveedor, BloqueTiempo } from "@/lib/cronologia-evento";
 import { labelModalidad } from "@/lib/proveedor-evento";
@@ -196,6 +197,8 @@ export interface ArchivoItem { tipo: string; nombre: string; url: string }
 export interface CheckItemFlat { item: string; completado: boolean; tipo: string }
 
 export interface FichaOperativaData {
+  /** Orden y disciplina de las categorías del inventario: ordena las secciones del personal. */
+  categoriasInventario?: { orden: number; disciplina: string | null }[];
   nombre: string; numeroProyecto: string; estado: string;
   tipoEvento: string; tipoServicio: string | null; zona: string;
   /** JSON de logística de renta: da el nivel contratado para el sello del servicio. */
@@ -769,6 +772,9 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
               OPERACION: "Operacion tecnica", MONTAJE: "Montaje", DESMONTAJE: "Desmontaje",
               TRANSPORTE: "Transporte", OTRO: "Otro",
             };
+            const RANGO_PART: Record<string, number> = { MONTAJE: 0, OPERACION: 1, DESMONTAJE: 2, TRANSPORTE: 3, OTRO: 4 };
+            const rangoPart = (x: string | null) => RANGO_PART[x ?? "OPERACION"] ?? 5;
+            const rangoDisc = rangoDisciplinas(data.categoriasInventario ?? []);
 
             return (
               <View style={base.section}>
@@ -776,7 +782,8 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                 {(() => {
                   // Leyenda: solo las disciplinas que de verdad hay en este evento.
                   const presentes = SECCIONES_ROL.filter((d): d is Disciplina =>
-                    d !== null && data.personal.some(p => p.disciplina === d));
+                    d !== null && data.personal.some(p => p.disciplina === d))
+                    .sort((a, b) => rangoDisc(a) - rangoDisc(b));
                   if (presentes.length === 0) return null;
                   return (
                     <View wrap={false} style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", marginBottom: 6 }}>
@@ -797,14 +804,8 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                 })()}
                 {fechaKeys.map((fechaKey) => {
                   const itemsFecha = gruposFecha.get(fechaKey)!;
-                  // Sub-agrupar por participacion dentro de cada fecha
-                  const subGrupos = new Map<string, typeof data.personal>();
-                  for (const p of itemsFecha) {
-                    const pKey = p.participacion ?? "OTRO";
-                    if (!subGrupos.has(pKey)) subGrupos.set(pKey, []);
-                    subGrupos.get(pKey)!.push(p);
-                  }
-                  const tipoKeys = Array.from(subGrupos.keys()).sort();
+                  // Dentro de cada fecha: secciones por disciplina, en el orden del inventario.
+                  const subGrupos = agruparPorDisciplina(itemsFecha, p => p.disciplina, rangoDisc);
 
                   return (
                     <View key={fechaKey} style={{ marginBottom: tieneMultiplesFechas ? 10 : 0 }}>
@@ -828,21 +829,21 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                         </View>
                       )}
                       {/* Sub-encabezado de tipo + tabla */}
-                      {tipoKeys.map((tipoKey) => {
-                        // Mismo orden de disciplinas que el tabulador: los colores quedan juntos.
-                        const ordenDisc = (p: PersonalItem) => {
-                          const i = SECCIONES_ROL.indexOf(p.disciplina ?? null);
-                          return i < 0 ? SECCIONES_ROL.length : i;
-                        };
-                        const items = [...subGrupos.get(tipoKey)!].sort((a, b) => ordenDisc(a) - ordenDisc(b));
+                      {subGrupos.map(({ disciplina: discKey, items: itemsDisc }) => {
+                        // Montaje → operación → desmontaje, y luego por nombre.
+                        const items = [...itemsDisc].sort((a, b) =>
+                          rangoPart(a.participacion) - rangoPart(b.participacion) || a.nombre.localeCompare(b.nombre, "es"));
                         return (
-                          <View key={tipoKey} style={{ marginBottom: 6 }}>
+                          <View key={discKey ?? "_otros"} style={{ marginBottom: 6 }}>
                             <View style={base.table}>
-                              {/* Sub-encabezado de tipo de participacion */}
-                              <View style={[base.tableHd, { backgroundColor: "#1a1a1a" }]}>
-                                <Text style={[base.thTxt, { flex: 1, color: "#B3985B" }]}>
-                                  {PART_LABELS[tipoKey] ?? tipoKey}
-                                </Text>
+                              {/* Sub-encabezado de disciplina */}
+                              <View style={[base.tableHd, { backgroundColor: "#1a1a1a" }]} wrap={false}>
+                                <View style={{ flex: 1, flexDirection: "row", alignItems: "center" }}>
+                                  {discKey ? <DisciplinaIconoPdf disciplina={discKey as Disciplina} size={8} /> : null}
+                                  <Text style={[base.thTxt, { color: discKey ? DISCIPLINA_COLORS[discKey] ?? "#B3985B" : "#B3985B", marginLeft: discKey ? 4 : 0 }]}>
+                                    {discKey ? etiquetaDisciplina(discKey) : "Sin disciplina"} · {items.length}
+                                  </Text>
+                                </View>
                                 <Text style={[base.thTxt, { flex: 1 }]}>Rol en el evento</Text>
                                 <Text style={[base.thTxt, { width: 95 }]}>Celular</Text>
                                 <Text style={[base.thTxt, { width: 60 }]}>Estado</Text>
@@ -855,6 +856,9 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                                   <View style={{ flex: 1 }}>
                                     <Text style={[base.tdTxt, { fontFamily: "Helvetica-Bold" }]}>
                                       {p.nombre}{p.coordinaEnSitio ? "  † coordina" : ""}
+                                    </Text>
+                                    <Text style={{ fontSize: 6.5, color: C.grisMedio, marginTop: 1 }}>
+                                      {PART_LABELS[p.participacion ?? "OPERACION"] ?? p.participacion}
                                     </Text>
                                     {p.responsabilidad ? (
                                       <Text style={{ fontSize: 7, color: C.grisMedio, marginTop: 1.5 }}>

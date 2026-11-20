@@ -1,4 +1,4 @@
-import { DISCIPLINA_LABELS } from "@/lib/disciplinaColors";
+import { DISCIPLINA_LABELS, DISCIPLINAS, type Disciplina } from "@/lib/disciplinaColors";
 
 /**
  * Orden único para listas de equipo de un proyecto (pantalla y PDFs):
@@ -76,4 +76,42 @@ export function agruparEquiposDisciplinaCategoria<T>(
         .map(x => x.t),
     };
   });
+}
+
+/**
+ * Rango de cada disciplina según el inventario: la posición de su primera
+ * categoría. Sirve para ordenar lo que no es equipo (personal) igual que el
+ * equipo. Disciplinas sin categoría caen después, en el orden del catálogo.
+ */
+export function rangoDisciplinas(
+  categorias: { orden?: number | null; disciplina?: string | null }[],
+): (d: string | null | undefined) => number {
+  const min = new Map<string, number>();
+  for (const c of categorias) {
+    if (!c.disciplina) continue;
+    min.set(c.disciplina, Math.min(min.get(c.disciplina) ?? SIN_ORDEN, c.orden ?? SIN_ORDEN));
+  }
+  const orden = [...DISCIPLINAS].sort((a, b) =>
+    (min.get(a) ?? SIN_ORDEN) - (min.get(b) ?? SIN_ORDEN) || DISCIPLINAS.indexOf(a) - DISCIPLINAS.indexOf(b));
+  return d => {
+    const i = d ? orden.indexOf(d as Disciplina) : -1;
+    return i < 0 ? orden.length : i; // sin disciplina → al final
+  };
+}
+
+/** Agrupa cualquier lista por disciplina, ya en orden de inventario. */
+export function agruparPorDisciplina<T>(
+  items: T[],
+  disciplina: (t: T) => string | null | undefined,
+  rango: (d: string | null | undefined) => number,
+): { disciplina: string | null; items: T[] }[] {
+  const map = new Map<string | null, T[]>();
+  for (const t of items) {
+    const d = disciplina(t) ?? null;
+    if (!map.has(d)) map.set(d, []);
+    map.get(d)!.push(t);
+  }
+  return [...map.entries()]
+    .sort((a, b) => rango(a[0]) - rango(b[0]))
+    .map(([d, its]) => ({ disciplina: d, items: its }));
 }

@@ -44,7 +44,7 @@ import DatosBancariosAcreedor from "@/components/finanzas/DatosBancariosAcreedor
 import { datosBancarios, fichaAcreedorHref, type DatosBancarios } from "@/lib/datos-bancarios";
 import { labelConfiguracion, labelZona } from "@/lib/montaje-vocabulario";
 import { disciplinaDePuesto, DISCIPLINA_COLORS } from "@/lib/disciplinaColors";
-import { agruparEquiposDisciplinaCategoria, etiquetaDisciplina } from "@/lib/orden-equipos";
+import { agruparEquiposDisciplinaCategoria, agruparPorDisciplina, etiquetaDisciplina, rangoDisciplinas } from "@/lib/orden-equipos";
 import { DisciplinaBadge } from "@/components/DisciplinaBadge";
 import { contarRespondidos, contarIncidencias, nivelResultado, getEvalConfig, aplicaEvaluacion, type EvalPostEventoData } from "@/lib/evaluacion-post-evento";
 import { getDireccionConfig, promedioDireccion, type EvaluacionDireccionData } from "@/lib/evaluacion-direccion";
@@ -1230,8 +1230,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
   // Estados para equipos
   const [showAddEquipo, setShowAddEquipo] = useState(false);
-  const [equipoCatalogo, setEquipoCatalogo] = useState<{ id: string; descripcion: string; marca: string | null; modelo: string | null; imagenUrl: string | null; categoria: { nombre: string; orden?: number } }[]>([]);
+  const [equipoCatalogo, setEquipoCatalogo] = useState<{ id: string; descripcion: string; marca: string | null; modelo: string | null; imagenUrl: string | null; categoria: { nombre: string; orden?: number; disciplina?: string | null } }[]>([]);
   const equipoCatalogoPorCategoria = useMemo(() => agruparEquiposPorCategoria(equipoCatalogo), [equipoCatalogo]);
+  // Orden de disciplinas = orden de categorías del inventario (también para el personal).
+  const rangoDisciplina = useMemo(() => rangoDisciplinas(equipoCatalogo.map(e => e.categoria)), [equipoCatalogo]);
   const [selEquipoId, setSelEquipoId] = useState("");
   const [selEquipoTipo, setSelEquipoTipo] = useState("PROPIO");
   const [selEquipoCantidad, setSelEquipoCantidad] = useState("1");
@@ -6292,8 +6294,25 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             </div>
                           </div>
                         )}
-                        {/* Lista plana de técnicos */}
-                        {grupo.map(p => renderCard(p))}
+                        {/* Técnicos por disciplina (orden del inventario), luego jornada y nombre */}
+                        {agruparPorDisciplina(
+                          grupo,
+                          p => disciplinaDePuesto(p.rolTecnico?.disciplina, p.rolTecnico?.nombre, p.rolEnEvento),
+                          rangoDisciplina,
+                        ).map(({ disciplina, items }) => (
+                          <div key={disciplina ?? "_otros"}>
+                            <div className="px-4 py-1.5 bg-[#0d0d0d] border-y border-[#1a1a1a] flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: (disciplina && DISCIPLINA_COLORS[disciplina]) || "#6B7280" }} />
+                              <span className="text-[10px] text-gray-300 font-bold uppercase tracking-widest">{disciplina ? etiquetaDisciplina(disciplina) : "Sin disciplina"}</span>
+                              <span className="text-[10px] text-gray-600">{items.length}</span>
+                            </div>
+                            {[...items]
+                              .sort((a, b) => rangoParticipacion(a.participacion) - rangoParticipacion(b.participacion)
+                                || (a.tecnico ? 0 : 1) - (b.tecnico ? 0 : 1)
+                                || (a.tecnico?.nombre ?? "").localeCompare(b.tecnico?.nombre ?? "", "es"))
+                              .map(p => renderCard(p))}
+                          </div>
+                        ))}
                       </div>
                     );
                   })}
