@@ -68,7 +68,7 @@ const AREA_LABEL: Record<string, string> = {
 }
 const PRIO_COLOR: Record<string, string> = { URGENTE: RED, ALTA: AMBER, MEDIA: GOLD, BAJA: LIGHT }
 const FUENTE_LABEL: Record<FuenteKey, string> = {
-  NORMAL: 'Tarea', PLAN: 'Plan', EVENTO: 'Evento', EMPRESA: 'Empresa', TRATO: 'Trato',
+  NORMAL: 'Tarea', PLAN: 'Plan', EVENTO: 'Evento', EMPRESA: 'Empresa', TRATO: 'Oportunidad',
 }
 function perfColor(pct: number): string { return BANDA_HEX[bandaDe(pct)] }
 function fmtFecha(s: string | null): string {
@@ -336,7 +336,7 @@ function ReporteUsuario({ data }: { data: RendimientoReporteData }) {
           <View style={s.tableWrap}>
             {fuentes.map((f, i) => (
               <View key={f.k} style={i % 2 === 0 ? s.trow : s.trowAlt}>
-                <Text style={[s.tcellB, { flex: 1 }]}>{({ NORMAL: 'Tareas', PLAN: 'Plan de trabajo', EVENTO: 'Proyectos de evento', EMPRESA: 'Proyectos de empresa', TRATO: 'Tratos' } as Record<FuenteKey, string>)[f.k]}</Text>
+                <Text style={[s.tcellB, { flex: 1 }]}>{({ NORMAL: 'Tareas', PLAN: 'Plan de trabajo', EVENTO: 'Proyectos de evento', EMPRESA: 'Proyectos de empresa', TRATO: 'Oportunidades' } as Record<FuenteKey, string>)[f.k]}</Text>
                 <Text style={[s.tcell, { width: 50, textAlign: 'right' }]}>{f.completadas}/{f.total}</Text>
               </View>
             ))}

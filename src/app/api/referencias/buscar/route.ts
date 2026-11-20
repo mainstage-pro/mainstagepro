@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
   ]);
 
   const resultados: ReferenciaResultado[] = [
-    ...tratos.map((t): ReferenciaResultado => ({ tipo: "TRATO", id: t.id, nombre: t.nombreEvento ?? "Trato sin nombre", sub: t.cliente?.nombre })),
+    ...tratos.map((t): ReferenciaResultado => ({ tipo: "TRATO", id: t.id, nombre: t.nombreEvento ?? "Oportunidad sin nombre", sub: t.cliente?.nombre })),
     ...proyectos.map((p): ReferenciaResultado => ({ tipo: "PROYECTO", id: p.id, nombre: p.nombre })),
     ...cotizaciones.map((c): ReferenciaResultado => ({ tipo: "COTIZACION", id: c.id, nombre: c.nombreEvento ?? c.nombreCotizacion ?? c.numeroCotizacion })),
     ...clientes.map((c): ReferenciaResultado => ({ tipo: "CLIENTE", id: c.id, nombre: c.nombre, sub: c.empresa ?? undefined })),

@@ -143,7 +143,7 @@ export default function NuevoClientePage() {
               custom={perfilesCustom}
               onCreated={agregarPerfil}
             />
-            <p className="text-[11px] text-gray-500 mt-1">Quién es el contacto. Puedes elegir hasta 3 perfiles; al abrir un trato eliges con cuál te diriges. Define el mensaje de primer contacto y el material a compartir. Si ninguno encaja, usa «+» para agregar uno.</p>
+            <p className="text-[11px] text-gray-500 mt-1">Quién es el contacto. Puedes elegir hasta 3 perfiles; al abrir una oportunidad eliges con cuál te diriges. Define el mensaje de primer contacto y el material a compartir. Si ninguno encaja, usa «+» para agregar uno.</p>
           </div>
         </div>
 

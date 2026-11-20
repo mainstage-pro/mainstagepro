@@ -31,16 +31,22 @@ const nextConfig: NextConfig = {
       // ── Descubrimiento público: /f (retirado) → /descubrimiento ──────────────
       // Links de formulario ya enviados por WhatsApp siguen funcionando.
       { source: "/f/:token",                 destination: "/descubrimiento/:token",     permanent: true },
-      // ── El tercer nivel de la escalera se llama Production Management ───────
-      // La presentación ya se compartió con clientes bajo los slugs viejos.
+      // ── Production Management salió de la escalera de Pro: ahora es Mainstage
+      //    Live. Los slugs viejos (ya compartidos con clientes) caen a la vitrina
+      //    general en vez de 404. ──────────────────────────────────────────────
       {
         source: "/presentacion/servicio/direccion-tecnica",
-        destination: "/presentacion/servicio/production-management",
+        destination: "/presentacion/servicios",
         permanent: true,
       },
       {
         source: "/presentacion/servicio/direccion-y-operaciones",
-        destination: "/presentacion/servicio/production-management",
+        destination: "/presentacion/servicios",
+        permanent: true,
+      },
+      {
+        source: "/presentacion/servicio/production-management",
+        destination: "/presentacion/servicios",
         permanent: true,
       },
       // ── Calendario de eventos → Calendarios (módulo con pestañas) ────────────

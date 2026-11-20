@@ -108,7 +108,7 @@ export default function CotizacionesPage() {
         ) : cotizaciones.length === 0 ? (
           <div className="text-center py-16">
             <p className="ms-subtitle">No hay cotizaciones</p>
-            <p className="text-[#444] text-xs mt-1">Crea una cotización desde un trato</p>
+            <p className="text-[#444] text-xs mt-1">Crea una cotización desde una oportunidad</p>
           </div>
         ) : cotizacionesFiltradas.length === 0 ? (
           <div className="text-center py-16">

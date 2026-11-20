@@ -15,7 +15,7 @@ function CustomTooltip({ active, payload }: {
   return (
     <div className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-xs shadow-lg">
       <p className="text-white font-semibold">{name}</p>
-      <p className="text-gray-400">{value} trato{value !== 1 ? "s" : ""}</p>
+      <p className="text-gray-400">{value} oportunidad{value !== 1 ? "es" : ""}</p>
     </div>
   );
 }

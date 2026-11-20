@@ -13,6 +13,7 @@ import { getEquipoDisplayName } from "@/lib/equipoNombre";
 import { normalizarAmPm } from "@/lib/hora";
 import { TipoEventoCell, type TipoEventoOpcion } from "@/components/TipoEventoCell";
 import { AccesoriosTab } from "@/components/AccesoriosTab";
+import PestanasEditables from "@/components/nav/PestanasEditables";
 import { coincide } from "@/lib/buscar";
 import { DISCIPLINAS, DISCIPLINA_LABELS, DISCIPLINA_COLORS } from "@/lib/disciplinaColors";
 
@@ -1347,19 +1348,19 @@ export default function InventarioMaestroPage() {
 
       {/* Tabs Propios / Externos */}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex gap-1 ms-card p-1">
-          {(["propios", "externos", "premium", "accesorios"] as const).map(t => (
-            <button key={t} onClick={() => setTab(t)}
-              className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
-                tab === t ? "bg-[#B3985B] text-black" : "text-[#6b7280] hover:text-white"
-              }`}>
-              {t === "propios" ? `Equipos Propios (${propios.length})`
-                : t === "externos" ? `Equipos Externos (${externos.length})`
-                : t === "premium" ? `Premium (${premium.length})`
-                : `Accesorios${accesoriosCount !== null ? ` (${accesoriosCount})` : ""}`}
-            </button>
-          ))}
-        </div>
+        <PestanasEditables
+          scope="inventario-maestro"
+          variante="pastilla"
+          className="flex gap-1 ms-card p-1"
+          activa={tab}
+          onSelect={k => setTab(k as typeof tab)}
+          pestanas={[
+            { llave: "propios", label: "Equipos Propios", sufijo: `(${propios.length})` },
+            { llave: "externos", label: "Equipos Externos", sufijo: `(${externos.length})` },
+            { llave: "premium", label: "Premium", sufijo: `(${premium.length})` },
+            { llave: "accesorios", label: "Accesorios", sufijo: accesoriosCount !== null ? `(${accesoriosCount})` : undefined },
+          ]}
+        />
 
         {/* Filtros secundarios */}
         {tab !== "accesorios" && (

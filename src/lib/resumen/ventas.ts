@@ -86,7 +86,7 @@ export async function resumenVentas() {
     .filter(t => t.fechaProximaAccion && dia(t.fechaProximaAccion) < hoy)
     .map(t => ({
       id: t.id,
-      titulo: t.nombreEvento ?? "Trato",
+      titulo: t.nombreEvento ?? "Oportunidad",
       cliente: nombre(t.cliente),
       accion: t.proximaAccion || "Sin definir",
       dias: diasEntre(dia(t.fechaProximaAccion!), hoy),
@@ -133,7 +133,7 @@ export async function resumenVentas() {
     },
     cerradas90: cerradasRecientes.map(t => ({
       id: t.id,
-      titulo: t.nombreEvento ?? "Trato",
+      titulo: t.nombreEvento ?? "Oportunidad",
       cliente: nombre(t.cliente),
       monto: num(t.montoFinal || t.presupuestoEstimado),
       dias: t.fechaCierre ? diasEntre(dia(t.fechaCierre), hoy) : 0,

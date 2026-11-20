@@ -46,7 +46,7 @@ const TIPO_ORIGEN: Record<string, { label: string; color: string; bg: string; bo
   PLAN:     { label: "Plan",     color: "#B3985B", bg: "rgba(179,152,91,0.12)",  border: "rgba(179,152,91,0.35)" },
   PROYECTO: { label: "Empresa",  color: "#818cf8", bg: "rgba(99,102,241,0.14)",  border: "rgba(99,102,241,0.35)" },
   EVENTO:   { label: "Evento",   color: "#60a5fa", bg: "rgba(59,130,246,0.14)",  border: "rgba(59,130,246,0.35)" },
-  TRATO:    { label: "Trato",    color: "#2dd4bf", bg: "rgba(45,212,191,0.14)",  border: "rgba(45,212,191,0.35)" },
+  TRATO:    { label: "Oportunidad", color: "#2dd4bf", bg: "rgba(45,212,191,0.14)",  border: "rgba(45,212,191,0.35)" },
   CLIENTE:  { label: "Cliente",  color: "#f472b6", bg: "rgba(244,114,182,0.14)", border: "rgba(244,114,182,0.35)" },
   GIRA:     { label: "Gira",     color: "#c084fc", bg: "rgba(192,132,252,0.14)", border: "rgba(192,132,252,0.35)" },
 };

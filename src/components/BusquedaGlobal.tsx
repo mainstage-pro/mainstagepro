@@ -27,7 +27,7 @@ export interface ModuloBuscable {
 
 const TIPO_LABELS: Record<TipoResultado, string> = {
   cliente:    "Cliente",
-  trato:      "Trato",
+  trato:      "Oportunidad",
   cotizacion: "Cotización",
   proyecto:   "Proyecto de evento",
   tecnico:    "Técnico",

@@ -66,6 +66,7 @@ export async function POST(req: NextRequest) {
       tipoLinea: typeof body.tipoLinea === "string" ? body.tipoLinea : "HONORARIO",
       icono: typeof body.icono === "string" && body.icono.trim() ? body.icono.trim() : "Briefcase",
       nivelServicio: typeof body.nivelServicio === "string" ? body.nivelServicio : "AMBOS",
+      unidad: typeof body.unidad === "string" ? body.unidad : "LIVE",
       orden: numero(body.orden) ?? 0,
     },
   });

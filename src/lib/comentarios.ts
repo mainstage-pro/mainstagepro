@@ -17,7 +17,7 @@ export const ENTIDAD_HREF: Record<EntidadComentario, (id: string) => string> = {
 };
 
 export const ENTIDAD_LABEL: Record<EntidadComentario, string> = {
-  TRATO: "Trato",
+  TRATO: "Oportunidad",
   PROYECTO: "Proyecto",
   COTIZACION: "Cotización",
   CLIENTE: "Cliente",

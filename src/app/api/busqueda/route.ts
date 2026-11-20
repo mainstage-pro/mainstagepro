@@ -68,7 +68,7 @@ export async function GET(req: NextRequest) {
     })),
     ...tratos.map(t => ({
       tipo: "trato" as const, id: t.id,
-      titulo: t.nombreEvento ?? t.cliente.nombre, subtitulo: `Trato · ${t.etapa}`,
+      titulo: t.nombreEvento ?? t.cliente.nombre, subtitulo: `Oportunidad · ${t.etapa}`,
       fecha: t.fechaEventoEstimada,
       href: `/crm/tratos/${t.id}`,
     })),

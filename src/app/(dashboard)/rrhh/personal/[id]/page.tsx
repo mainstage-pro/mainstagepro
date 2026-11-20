@@ -11,6 +11,7 @@ import { useConfirm } from "@/components/Confirm";
 import { SkeletonPage } from "@/components/Skeleton";
 import { Combobox } from "@/components/Combobox";
 import { BackButton } from "@/components/BackButton";
+import PestanasEditables from "@/components/nav/PestanasEditables";
 
 interface Documento { id: string; tipo: string; nombre: string; url: string; fechaVencimiento: string | null; createdAt: string }
 interface DocLaboral { id: string; tipo: string; token: string; aceptado: boolean; aceptadoNombre: string | null; aceptadoEn: string | null; createdAt: string }
@@ -450,17 +451,17 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
       {editando && <EditModal />}
 
       {/* Tabs */}
-      <div className="flex gap-1 ms-card p-1 overflow-x-auto">
-        {TABS.map(t => {
+      <PestanasEditables
+        scope="rrhh-personal"
+        variante="pastilla"
+        className="flex gap-1 ms-card p-1 overflow-x-auto"
+        activa={tab}
+        onSelect={k => setTab(k as Tab)}
+        pestanas={TABS.map(t => {
           const count = t.key === "pagos" ? persona.pagos.length : t.key === "documentos" ? persona.documentos.length + docsLaborales.length : t.key === "desempeno" ? persona.evaluaciones.length : t.key === "disciplina" ? persona.actas.length + persona.incidencias.length : t.key === "vacaciones" ? persona.vacaciones.length : 0;
-          return (
-            <button key={t.key} onClick={() => setTab(t.key)}
-              className={`flex-shrink-0 px-3 py-2 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${tab === t.key ? "bg-[#B3985B] text-black" : "text-gray-400 hover:text-white"}`}>
-              {t.label}{count > 0 ? ` (${count})` : ""}
-            </button>
-          );
+          return { llave: t.key, label: t.label, sufijo: count > 0 ? `(${count})` : undefined };
         })}
-      </div>
+      />
 
       {tab === "perfil" && <PerfilTab />}
       {tab === "laboral" && <LaboralTab />}

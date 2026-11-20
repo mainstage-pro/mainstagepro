@@ -94,7 +94,7 @@ export async function GET() {
   });
   const tratosOpts = tratos.map(t => ({
     id: t.id,
-    nombre: t.nombreEvento || t.cliente?.nombre || "Trato sin nombre",
+    nombre: t.nombreEvento || t.cliente?.nombre || "Oportunidad sin nombre",
     cliente: t.cliente?.nombre ?? null,
     etapa: t.etapa,
     fechaEvento: t.fechaEventoEstimada ? t.fechaEventoEstimada.toISOString() : null,

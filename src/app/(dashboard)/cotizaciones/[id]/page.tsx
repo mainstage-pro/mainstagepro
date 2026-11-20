@@ -1227,7 +1227,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
             <Handshake className="w-5 h-5 text-[#B3985B]" />
             <div>
               <p className="text-[#B3985B] text-sm font-semibold">{cot.cliente.nombre}{cot.nombreEvento ? ` · ${cot.nombreEvento}` : ""}</p>
-              <p className="text-[#B3985B]/60 text-xs">Haz clic para abrir el trato en el CRM</p>
+              <p className="text-[#B3985B]/60 text-xs">Haz clic para abrir la oportunidad en el CRM</p>
             </div>
           </div>
           <span className="text-[#B3985B] text-xs px-2 py-1 bg-[#B3985B]/15 rounded-full">{cot.trato.etapa.replace(/_/g, " ")}</span>
@@ -2261,7 +2261,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
 
           <Link href={`/crm/tratos/${cot.trato.id}`}
             className="block ms-stat-card text-sm hover:border-[#B3985B] transition-colors">
-            <p className="text-gray-500 text-xs mb-1">Trato vinculado</p>
+            <p className="text-gray-500 text-xs mb-1">Oportunidad vinculada</p>
             <p className="text-white">{cot.trato.tipoEvento}</p>
             <p className="text-gray-400 text-xs">{cot.trato.etapa.replace(/_/g, " ")}</p>
           </Link>

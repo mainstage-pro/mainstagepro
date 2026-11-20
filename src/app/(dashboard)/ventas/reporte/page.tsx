@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { ReporteAnalisisSection } from '@/components/ui/ReporteAnalisisSection';
+import PestanasEditables from "@/components/nav/PestanasEditables";
 import { usePdfDownload } from "@/hooks/usePdfDownload";
 import { useSearchParams } from "next/navigation";
 import {
@@ -118,7 +119,7 @@ const TIPO_EVENTO_LABEL: Record<string, string> = {
 };
 const TIPO_SERVICIO_LABEL: Record<string, string> = {
   RENTA: "Renta de Equipo", PRODUCCION_TECNICA: "Producción Técnica",
-  DIRECCION_TECNICA: "Dirección y operaciones", OTRO: "Otro",
+  DIRECCION_TECNICA: "Production Management", OTRO: "Otro",
 };
 const ORIGEN_VENTA_LABEL: Record<string, string> = {
   CLIENTE_PROPIO: "Cliente Propio", PUBLICIDAD: "Publicidad", ASIGNADO: "Asignado",
@@ -331,21 +332,15 @@ export default function ReporteVentasPage() {
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-[#1a1a1a] flex gap-0">
-        {([
-          { key: "resultados" as const, label: "Resultados del Mes" },
-          { key: "comisiones" as const, label: "Comisiones por Vendedor" },
-        ]).map(t => (
-          <button key={t.key} id={`tab-${t.key}`} onClick={() => setActiveTab(t.key)}
-            className={`px-4 py-2.5 text-sm border-b-2 transition-colors ${
-              activeTab === t.key
-                ? 'border-[#B3985B] text-white font-medium'
-                : 'border-transparent text-white/40 hover:text-white/70'
-            }`}>
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <PestanasEditables
+        scope="ventas-reporte"
+        activa={activeTab}
+        onSelect={k => setActiveTab(k as typeof activeTab)}
+        pestanas={[
+          { llave: "resultados", label: "Resultados del Mes" },
+          { llave: "comisiones", label: "Comisiones por Vendedor" },
+        ]}
+      />
 
       {/* ══════════════════════════════════════════════════════════════════════
           TAB 1 — RESULTADOS

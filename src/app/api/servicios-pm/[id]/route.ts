@@ -27,6 +27,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     tipoLinea: typeof body.tipoLinea === "string" ? body.tipoLinea : undefined,
     icono: typeof body.icono === "string" && body.icono.trim() ? body.icono.trim() : undefined,
     nivelServicio: typeof body.nivelServicio === "string" ? body.nivelServicio : undefined,
+    unidad: typeof body.unidad === "string" ? body.unidad : undefined,
     precioSugerido: body.precioSugerido === null ? null : numero(body.precioSugerido),
     costoSugerido: body.costoSugerido === null ? null : numero(body.costoSugerido),
     activo: booleano(body.activo),

@@ -499,7 +499,7 @@ function SubetapaCard({
           />
         </div>
         <div className="flex items-center gap-3">
-          <label className="flex items-center gap-1.5 text-xs text-[#888] cursor-pointer" title="Si está activa, aparece en el proceso y los tratos pueden estar en ella.">
+          <label className="flex items-center gap-1.5 text-xs text-[#888] cursor-pointer" title="Si está activa, aparece en el proceso y las oportunidades pueden estar en ella.">
             <input type="checkbox" checked={sub.activa} onChange={() => onGuardarSubetapa(sub.id, "activa", !sub.activa)} />
             Activa
           </label>
@@ -635,7 +635,7 @@ function TareasDefectoSubetapa({ etapaInterna }: { etapaInterna: string }) {
     <div className="px-3 py-3 border-t border-[#262626] bg-[#0d0d0d]">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
         <h4 className="text-xs font-semibold" style={{ color: GOLD }}>Tareas por defecto</h4>
-        <span className="text-[10px] text-[#666]">Se crean al entrar el trato; al completarlas todas, avanza la subetapa</span>
+        <span className="text-[10px] text-[#666]">Se crean al entrar la oportunidad; al completarlas todas, avanza la subetapa</span>
       </div>
 
       {cargando ? (

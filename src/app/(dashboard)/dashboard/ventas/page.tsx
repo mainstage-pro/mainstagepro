@@ -136,7 +136,7 @@ export default async function DashboardVentasPage() {
             </span>
           )}
           <Link href="/crm/tratos/nuevo" className="ms-btn-primary">
-            + Nuevo trato
+            + Nueva oportunidad
           </Link>
         </div>
       </div>
@@ -227,10 +227,10 @@ export default async function DashboardVentasPage() {
         </div>
       </div>
 
-      {/* Tratos activos */}
+      {/* Oportunidades activas */}
       <div className="ms-card overflow-x-auto">
         <div className="flex items-center justify-between px-4 py-3 border-b border-[#1a1a1a]">
-          <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Tratos activos recientes</p>
+          <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Oportunidades activas recientes</p>
           <Link href="/crm/tratos" className="text-xs text-[#B3985B] hover:underline">Ver todos →</Link>
         </div>
         <table className="w-full min-w-[600px]">

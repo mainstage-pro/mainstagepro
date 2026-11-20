@@ -19,7 +19,7 @@ const FRASES_TAREA = [
 const FRASES_VENTA = [
   "¡Nuevo evento confirmado! El equipo entra en acción.",
   "¡Venta cerrada! Alguien va a vivir algo memorable gracias a ustedes.",
-  "¡Trato cerrado! Otro evento en el que Mainstage dejará huella.",
+  "¡Oportunidad cerrada! Otro evento en el que Mainstage dejará huella.",
   "¡Lo lograron! Un cliente más que confió en el equipo.",
   "¡Confirmado! Prepárense para crear algo increíble.",
 ];

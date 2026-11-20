@@ -1185,7 +1185,7 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
             href={`/crm/tratos/nuevo`}
             className="ms-btn-primary"
           >
-            + Nuevo trato
+            + Nueva oportunidad
           </Link>
           <button
             onClick={() => {
@@ -1368,7 +1368,7 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="ms-stat-card text-center">
           <p className="ms-h1">{cliente.tratos.length}</p>
-          <p className="text-gray-400 text-xs mt-1">Tratos</p>
+          <p className="text-gray-400 text-xs mt-1">Oportunidades</p>
         </div>
         <div className="ms-stat-card text-center">
           <p className="ms-h1">{cliente.cotizaciones.length}</p>
@@ -1413,7 +1413,7 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
       {cliente.tratos.length > 0 && (
         <div className="ms-card p-5">
           <h2 className="text-sm font-semibold text-[#B3985B] mb-4 uppercase tracking-wider">
-            Tratos
+            Oportunidades
           </h2>
           <div className="space-y-2">
             {cliente.tratos.map((t) => (

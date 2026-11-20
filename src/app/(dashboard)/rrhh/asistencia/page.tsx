@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
 import { BotonDescarga } from "@/components/BotonDescarga";
+import PestanasEditables from "@/components/nav/PestanasEditables";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Personal { id: string; nombre: string; puesto: string; departamento: string; diasLaborables: number[]; }
@@ -49,14 +50,6 @@ export default function AsistenciaPage() {
     });
   }, []);
 
-  const tabs = [
-    { id: "hoy",            label: "Captura diaria" },
-    { id: "historial",      label: "Historial" },
-    { id: "reporte",        label: "Reporte" },
-    { id: "penalizaciones", label: "Penalizaciones" },
-    { id: "config",         label: "Configuración" },
-  ] as const;
-
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-5">
       {/* Header */}
@@ -71,16 +64,20 @@ export default function AsistenciaPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 ms-card p-1 overflow-x-auto">
-        {tabs.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            className={`flex-1 whitespace-nowrap px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-              tab === t.id ? "bg-[#B3985B] text-black" : "text-gray-500 hover:text-white"
-            }`}>
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <PestanasEditables
+        scope="rrhh-asistencia"
+        variante="pastilla"
+        className="flex gap-1 ms-card p-1 overflow-x-auto"
+        activa={tab}
+        onSelect={k => setTab(k as typeof tab)}
+        pestanas={[
+          { llave: "hoy",            label: "Captura diaria" },
+          { llave: "historial",      label: "Historial" },
+          { llave: "reporte",        label: "Reporte" },
+          { llave: "penalizaciones", label: "Penalizaciones" },
+          { llave: "config",         label: "Configuración" },
+        ]}
+      />
 
       {/* Contenido */}
       {tab === "hoy"            && <TabHoy personal={personal} />}

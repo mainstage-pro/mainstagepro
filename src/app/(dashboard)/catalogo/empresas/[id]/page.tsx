@@ -311,13 +311,13 @@ export default function EmpresaDetallePage() {
                   </div>
                 </div>
                 <div className="flex gap-3 text-xs text-[#555] shrink-0">
-                  <span>{c.tratos.length} trato{c.tratos.length !== 1 ? "s" : ""}</span>
+                  <span>{c.tratos.length} oportunidad{c.tratos.length !== 1 ? "es" : ""}</span>
                   <span>{c.proyectos.length} proyecto{c.proyectos.length !== 1 ? "s" : ""}</span>
                 </div>
               </div>
               {c.tratos.length > 0 && (
                 <div className="px-4 pb-3 border-t border-[#1a1a1a]">
-                  <p className="text-[10px] text-[#555] uppercase tracking-wider mt-2 mb-1.5">Tratos recientes</p>
+                  <p className="text-[10px] text-[#555] uppercase tracking-wider mt-2 mb-1.5">Oportunidades recientes</p>
                   <div className="space-y-1">
                     {c.tratos.map(t => (
                       <div key={t.id} className="flex items-center justify-between text-xs">

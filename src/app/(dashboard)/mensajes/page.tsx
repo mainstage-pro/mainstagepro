@@ -315,7 +315,7 @@ export default function MensajesPage() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey && !sugUsuarios && !sugRefs) { e.preventDefault(); enviar(); }
                   }}
-                  placeholder="Escribe un mensaje... @ para mencionar, # para taggear proyecto/trato/cotización/cliente/equipo"
+                  placeholder="Escribe un mensaje... @ para mencionar, # para taggear proyecto/oportunidad/cotización/cliente/equipo"
                   rows={2}
                   className="ms-textarea w-full resize-none"
                 />

@@ -209,10 +209,10 @@ function ModalNuevo({ onClose, onSave }: { onClose: () => void; onSave: () => vo
         </div>
         <div className="space-y-4">
           <div>
-            <label className="text-[#555] text-[10px] uppercase tracking-wider block mb-1.5">Trato</label>
+            <label className="text-[#555] text-[10px] uppercase tracking-wider block mb-1.5">Oportunidad</label>
             <select value={tratoId} onChange={e => setTratoId(e.target.value)}
               className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-              <option value="">Seleccionar trato…</option>
+              <option value="">Seleccionar oportunidad…</option>
               {tratos.map(t => (
                 <option key={t.id} value={t.id}>{t.cliente.nombre}{t.nombreEvento ? ` · ${t.nombreEvento}` : ""}</option>
               ))}

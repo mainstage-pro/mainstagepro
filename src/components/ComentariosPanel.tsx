@@ -159,7 +159,7 @@ export default function ComentariosPanel({
         </div>
         <div>
           <h2 className="text-sm font-bold text-white tracking-tight">Comentarios</h2>
-          <p className="text-[10px] text-gray-600 mt-0.5">Usa @ para mencionar y # para taggear proyecto/trato/cotización/cliente/equipo</p>
+          <p className="text-[10px] text-gray-600 mt-0.5">Usa @ para mencionar y # para taggear proyecto/oportunidad/cotización/cliente/equipo</p>
         </div>
       </div>
 
@@ -203,7 +203,7 @@ export default function ComentariosPanel({
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey && !sugUsuarios && !sugRefs) { e.preventDefault(); enviar(); }
             }}
-            placeholder="Escribe un comentario... @nombre para mencionar, # para taggear proyecto/trato/cotización/cliente/equipo"
+            placeholder="Escribe un comentario... @nombre para mencionar, # para taggear proyecto/oportunidad/cotización/cliente/equipo"
             rows={2}
             className="ms-textarea w-full resize-none"
           />

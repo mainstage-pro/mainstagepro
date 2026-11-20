@@ -371,9 +371,9 @@ export default function GirasClient({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {[
               {
-                href: "/presentacion/servicio/production-management",
-                titulo: "Production Management",
-                sub: "Un solo responsable de que todo llegue junto, en gira o en evento.",
+                href: "/presentacion/servicio/produccion-tecnica",
+                titulo: "Producción técnica",
+                sub: "Montaje, operación y respaldo técnico integral del evento, de principio a fin.",
               },
               {
                 href: "/presentacion/galeria/musical",

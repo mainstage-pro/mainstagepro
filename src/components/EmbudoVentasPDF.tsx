@@ -41,7 +41,7 @@ export function EmbudoVentasPDF({ data }: { data: EmbudoVentasPDFData }) {
           <Text style={base.kpiSubDark}>valor estimado</Text>
         </View>
         <View style={base.kpiBox}>
-          <Text style={base.kpiLabel}>TRATOS ACTIVOS</Text>
+          <Text style={base.kpiLabel}>OPORTUNIDADES ACTIVAS</Text>
           <Text style={base.kpiValue}>{data.totalActivos}</Text>
           <Text style={base.kpiSub}>en el embudo</Text>
         </View>
@@ -56,7 +56,7 @@ export function EmbudoVentasPDF({ data }: { data: EmbudoVentasPDFData }) {
         <View key={et.etapa} style={base.seccion}>
           <View style={base.seccionHeader} wrap={false}>
             <Text style={base.seccionNombre}>{et.label.toUpperCase()}</Text>
-            <Text style={base.seccionCount}>{et.count} trato{et.count !== 1 ? "s" : ""} · {fmtMoney(et.valor)}</Text>
+            <Text style={base.seccionCount}>{et.count} oportunidad{et.count !== 1 ? "es" : ""} · {fmtMoney(et.valor)}</Text>
           </View>
           {et.tratos.length > 0 ? (
             <View style={base.table}>

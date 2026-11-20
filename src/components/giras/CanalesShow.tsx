@@ -710,15 +710,20 @@ function TablaCanales({
               {filas.map((f) => {
                 const delShow = f.origen === "SHOW";
                 const ajustado = f.origen === "AJUSTADO";
+                // Con un solo canal de esta fecha no hay con quién acomodarlo: la
+                // manija se apaga para no ofrecer un arrastre que no mueve nada.
+                const arrastrable = delShow && deLaFecha.length > 1;
                 return (
                   <FilaArrastrable
                     key={f.clave}
                     clave={f.clave}
-                    fijo={!delShow}
+                    fijo={!arrastrable}
                     titulo={
-                      delShow
+                      arrastrable
                         ? "Arrastrar para acomodarlo entre los canales de esta fecha"
-                        : "Este renglón lleva el orden del rider de la gira; se cambia allá"
+                        : delShow
+                          ? "Agrega otro canal de esta fecha para poder acomodarlo"
+                          : "Este renglón lleva el orden del rider de la gira; se cambia allá"
                     }
                     className={`ms-tr align-top ${delShow ? "bg-amber-400/[0.05]" : ajustado ? "bg-[#B3985B]/[0.06]" : ""}`}
                   >

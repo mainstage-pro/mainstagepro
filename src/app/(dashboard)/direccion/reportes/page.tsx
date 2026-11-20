@@ -39,7 +39,7 @@ const GRUPOS: Grupo[] = [
     desc: "Reportes profundos de cada área para ir al fondo de los números.",
     reportes: [
       { label: "Dirección · Estado de resultados", desc: "P&L mensual: ingresos, márgenes, nómina y utilidad neta.", href: "/direccion/estado-resultados", icon: LineChart, area: "Dirección" },
-      { label: "Ventas · Reporte", desc: "Tratos, cotizaciones, cierres y desempeño por vendedor.", href: "/ventas/reporte", icon: TrendingUp, area: "Ventas" },
+      { label: "Ventas · Reporte", desc: "Oportunidades, cotizaciones, cierres y desempeño por vendedor.", href: "/ventas/reporte", icon: TrendingUp, area: "Ventas" },
       { label: "Marketing · Resultados", desc: "Orgánico y campañas: alcance, leads y resultados de pauta.", href: "/marketing/resultados", icon: BarChart3, area: "Marketing" },
       { label: "Producción · Reporte", desc: "Operación técnica, uso de equipo y ejecución de eventos.", href: "/produccion/reporte", icon: ClipboardCheck, area: "Producción" },
       { label: "Administración · Reportes", desc: "Cuentas, cobros/pagos y estado administrativo.", href: "/admin/reportes", icon: Wallet, area: "Administración" },

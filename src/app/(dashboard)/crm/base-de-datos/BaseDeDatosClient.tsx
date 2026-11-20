@@ -660,7 +660,7 @@ function ContactoRow({
           )}
           <a href={`/crm/tratos/nuevo?clienteId=${c.id}`} onClick={e => e.stopPropagation()}
             className="cursor-pointer text-[10px] font-medium px-2 py-1 rounded-md border border-[#1e1e1e] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/40 hover:bg-[#B3985B]/10 transition-all whitespace-nowrap">
-            + Trato
+            + Oportunidad
           </a>
           <button onClick={e => { e.stopPropagation(); onCrearTarea(); }}
             className="cursor-pointer text-[10px] font-medium px-2 py-1 rounded-md border border-rose-900/30 text-rose-400/80 hover:text-rose-300 hover:border-rose-500/50 hover:bg-rose-500/10 transition-all whitespace-nowrap">
@@ -867,7 +867,7 @@ function ContactList({
     </div>
   );
 
-  const HEADERS = ["Nombre", "Empresa", "Tipo", "Clasificación", "Perfil", "Actividad", "Responsable", "Tratos", ""];
+  const HEADERS = ["Nombre", "Empresa", "Tipo", "Clasificación", "Perfil", "Actividad", "Responsable", "Oportunidades", ""];
 
   return (
     <div className="ms-card-deep" style={{ overflowX: "auto" }}>
