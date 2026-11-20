@@ -6294,25 +6294,45 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             </div>
                           </div>
                         )}
-                        {/* Técnicos por disciplina (orden del inventario), luego jornada y nombre */}
-                        {agruparPorDisciplina(
-                          grupo,
-                          p => disciplinaDePuesto(p.rolTecnico?.disciplina, p.rolTecnico?.nombre, p.rolEnEvento),
-                          rangoDisciplina,
-                        ).map(({ disciplina, items }) => (
-                          <div key={disciplina ?? "_otros"}>
-                            <div className="px-4 py-1.5 bg-[#0d0d0d] border-y border-[#1a1a1a] flex items-center gap-2">
-                              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: (disciplina && DISCIPLINA_COLORS[disciplina]) || "#6B7280" }} />
-                              <span className="text-[10px] text-gray-300 font-bold uppercase tracking-widest">{disciplina ? etiquetaDisciplina(disciplina) : "Sin disciplina"}</span>
-                              <span className="text-[10px] text-gray-600">{items.length}</span>
-                            </div>
-                            {[...items]
-                              .sort((a, b) => rangoParticipacion(a.participacion) - rangoParticipacion(b.participacion)
-                                || (a.tecnico ? 0 : 1) - (b.tecnico ? 0 : 1)
-                                || (a.tecnico?.nombre ?? "").localeCompare(b.tecnico?.nombre ?? "", "es"))
-                              .map(p => renderCard(p))}
-                          </div>
-                        ))}
+                        {/* Jornada (montaje → operación → desmontaje) → disciplina (orden del inventario) → nombre */}
+                        {(() => {
+                          const porPart = new Map<string, Personal[]>();
+                          for (const p of grupo) {
+                            const k = p.participacion ?? "OPERACION";
+                            if (!porPart.has(k)) porPart.set(k, []);
+                            porPart.get(k)!.push(p);
+                          }
+                          return [...porPart.entries()]
+                            .sort((a, b) => rangoParticipacion(a[0]) - rangoParticipacion(b[0]))
+                            .map(([part, delPart]) => {
+                              const badge = PART_BADGE[part] ?? PART_BADGE.OTRO;
+                              return (
+                                <div key={part}>
+                                  <div className="px-4 py-2 bg-[#0d0d0d] border-y border-[#1a1a1a] flex items-center gap-2">
+                                    <span className={`text-[11px] font-bold uppercase tracking-widest px-2 py-0.5 rounded border ${badge.cls}`}>{badge.label}</span>
+                                    <span className="text-[10px] text-gray-600">{delPart.length}</span>
+                                  </div>
+                                  {agruparPorDisciplina(
+                                    delPart,
+                                    p => disciplinaDePuesto(p.rolTecnico?.disciplina, p.rolTecnico?.nombre, p.rolEnEvento),
+                                    rangoDisciplina,
+                                  ).map(({ disciplina, items }) => (
+                                    <div key={disciplina ?? "_otros"}>
+                                      <div className="px-4 pl-6 py-1 border-b border-[#161616] flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: (disciplina && DISCIPLINA_COLORS[disciplina]) || "#6B7280" }} />
+                                        <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-widest">{disciplina ? etiquetaDisciplina(disciplina) : "Sin disciplina"}</span>
+                                        <span className="text-[10px] text-gray-600">{items.length}</span>
+                                      </div>
+                                      {[...items]
+                                        .sort((a, b) => (a.tecnico ? 0 : 1) - (b.tecnico ? 0 : 1)
+                                          || (a.tecnico?.nombre ?? "").localeCompare(b.tecnico?.nombre ?? "", "es"))
+                                        .map(p => renderCard(p))}
+                                    </div>
+                                  ))}
+                                </div>
+                              );
+                            });
+                        })()}
                       </div>
                     );
                   })}

@@ -21,7 +21,7 @@ import { BandaDisciplina } from "./BandaDisciplina";
 import { agruparPorDisciplina, etiquetaDisciplina, rangoDisciplinas } from "@/lib/orden-equipos";
 import { CronologiaEvento } from "./CronologiaEvento";
 import { DisciplinaChipPdf, DisciplinaIconoPdf } from "./DisciplinaPdf";
-import { DISCIPLINA_COLORS, DISCIPLINA_COLORS_PRINT, DISCIPLINA_LABELS, type Disciplina } from "@/lib/disciplinaColors";
+import { DISCIPLINA_COLORS_PRINT, DISCIPLINA_LABELS, type Disciplina } from "@/lib/disciplinaColors";
 import { SECCIONES_ROL } from "@/lib/rolesTecnicos";
 import { construirCronologia, ventanasPorProveedor, BloqueTiempo } from "@/lib/cronologia-evento";
 import { labelModalidad } from "@/lib/proveedor-evento";
@@ -804,8 +804,14 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                 })()}
                 {fechaKeys.map((fechaKey) => {
                   const itemsFecha = gruposFecha.get(fechaKey)!;
-                  // Dentro de cada fecha: secciones por disciplina, en el orden del inventario.
-                  const subGrupos = agruparPorDisciplina(itemsFecha, p => p.disciplina, rangoDisc);
+                  // Dentro de cada fecha: jornada (montaje → operación → desmontaje) y, dentro, disciplina.
+                  const porPart = new Map<string, typeof data.personal>();
+                  for (const p of itemsFecha) {
+                    const k = p.participacion ?? "OPERACION";
+                    if (!porPart.has(k)) porPart.set(k, []);
+                    porPart.get(k)!.push(p);
+                  }
+                  const subGrupos = [...porPart.entries()].sort((x, y) => rangoPart(x[0]) - rangoPart(y[0]));
 
                   return (
                     <View key={fechaKey} style={{ marginBottom: tieneMultiplesFechas ? 10 : 0 }}>
@@ -829,24 +835,34 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                         </View>
                       )}
                       {/* Sub-encabezado de tipo + tabla */}
-                      {subGrupos.map(({ disciplina: discKey, items: itemsDisc }) => {
-                        // Montaje → operación → desmontaje, y luego por nombre.
-                        const items = [...itemsDisc].sort((a, b) =>
-                          rangoPart(a.participacion) - rangoPart(b.participacion) || a.nombre.localeCompare(b.nombre, "es"));
+                      {subGrupos.map(([tipoKey, itemsPart]) => {
+                        const discs = agruparPorDisciplina(itemsPart, p => p.disciplina, rangoDisc);
                         return (
-                          <View key={discKey ?? "_otros"} style={{ marginBottom: 6 }}>
+                          <View key={tipoKey} style={{ marginBottom: 6 }}>
                             <View style={base.table}>
-                              {/* Sub-encabezado de disciplina */}
+                              {/* Sub-encabezado de jornada */}
                               <View style={[base.tableHd, { backgroundColor: "#1a1a1a" }]} wrap={false}>
-                                <View style={{ flex: 1, flexDirection: "row", alignItems: "center" }}>
-                                  {discKey ? <DisciplinaIconoPdf disciplina={discKey as Disciplina} size={8} /> : null}
-                                  <Text style={[base.thTxt, { color: discKey ? DISCIPLINA_COLORS[discKey] ?? "#B3985B" : "#B3985B", marginLeft: discKey ? 4 : 0 }]}>
-                                    {discKey ? etiquetaDisciplina(discKey) : "Sin disciplina"} · {items.length}
-                                  </Text>
-                                </View>
+                                <Text style={[base.thTxt, { flex: 1, color: "#B3985B" }]}>
+                                  {PART_LABELS[tipoKey] ?? tipoKey} · {itemsPart.length}
+                                </Text>
                                 <Text style={[base.thTxt, { flex: 1 }]}>Rol en el evento</Text>
                                 <Text style={[base.thTxt, { width: 95 }]}>Celular</Text>
                                 <Text style={[base.thTxt, { width: 60 }]}>Estado</Text>
+                              </View>
+                              {discs.map(({ disciplina: discKey, items: itemsDisc }) => {
+                              const items = [...itemsDisc].sort((x, y) => x.nombre.localeCompare(y.nombre, "es"));
+                              return (
+                              <View key={discKey ?? "_otros"}>
+                              {/* Fila de disciplina */}
+                              <View wrap={false} minPresenceAhead={24} style={{
+                                flexDirection: "row", alignItems: "center", paddingVertical: 3, paddingHorizontal: 6,
+                                backgroundColor: "#f4f4f4", borderBottomWidth: 0.5, borderBottomColor: "#e0e0e0", borderBottomStyle: "solid",
+                              }}>
+                                {discKey ? <DisciplinaIconoPdf disciplina={discKey as Disciplina} size={7} /> : null}
+                                <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", textTransform: "uppercase", letterSpacing: 0.8,
+                                  color: discKey ? DISCIPLINA_COLORS_PRINT[discKey] ?? "#4b5563" : "#4b5563", marginLeft: discKey ? 4 : 0 }}>
+                                  {discKey ? etiquetaDisciplina(discKey) : "Sin disciplina"} · {items.length}
+                                </Text>
                               </View>
                               {items.map((p, i) => (
                                 <View key={i} style={[
@@ -856,9 +872,6 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                                   <View style={{ flex: 1 }}>
                                     <Text style={[base.tdTxt, { fontFamily: "Helvetica-Bold" }]}>
                                       {p.nombre}{p.coordinaEnSitio ? "  † coordina" : ""}
-                                    </Text>
-                                    <Text style={{ fontSize: 6.5, color: C.grisMedio, marginTop: 1 }}>
-                                      {PART_LABELS[p.participacion ?? "OPERACION"] ?? p.participacion}
                                     </Text>
                                     {p.responsabilidad ? (
                                       <Text style={{ fontSize: 7, color: C.grisMedio, marginTop: 1.5 }}>
@@ -876,6 +889,9 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                                   </Text>
                                 </View>
                               ))}
+                              </View>
+                              );
+                              })}
                             </View>
                           </View>
                         );
