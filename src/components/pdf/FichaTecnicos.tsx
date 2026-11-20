@@ -10,8 +10,9 @@ import {
   agruparPorCategoria, EquipoFlat, TransporteSlot,
   transporteEmpresaTxt, transporteTieneDatos,
 } from "./PdfShared";
+import { BandaDisciplina } from "./BandaDisciplina";
 import { PersonalItem, ProveedorEvento } from "./FichaCoordinador";
-import { cadenaDeMando, parseReglasMando } from "@/lib/cadena-mando";
+import { cadenaDeMando, parseOcupantesMando, parseReglasMando } from "@/lib/cadena-mando";
 import { frenteLabel } from "@/lib/frentes-produccion";
 
 const s = StyleSheet.create({
@@ -150,7 +151,7 @@ export function FichaTecnicos({ data }: { data: FichaTecnicosData }) {
     encargadoClienteContacto: data.encargadoClienteContacto,
     encargadoLugar: data.encargadoLugar,
     encargadoLugarContacto: data.encargadoLugarContacto,
-  }, parseReglasMando(data.cadenaMandoReglas));
+  }, parseReglasMando(data.cadenaMandoReglas), parseOcupantesMando(data.cadenaMandoReglas));
 
   return (
     <Document title={`Brief Técnicos ${data.numeroProyecto}`} author="Mainstage Pro">
@@ -272,8 +273,9 @@ export function FichaTecnicos({ data }: { data: FichaTecnicosData }) {
         {equiposPropios.length > 0 && (
           <View style={s.secWrap}>
             <Text style={s.secTitle}>Lista de Carga — Equipos que llevas</Text>
-            {Array.from(gruposPropios.entries()).map(([cat, items]) => (
+            {gruposPropios.map(({ categoria: cat, items, disciplina, abreDisciplina }, gi) => (
               <View key={cat}>
+                {abreDisciplina && <BandaDisciplina disciplina={disciplina} primera={gi === 0} />}
                 <Text style={s.catHeader}>{cat}</Text>
                 {items.map((e, i) => (
                   <View key={i} style={s.checkRow} wrap={false}>

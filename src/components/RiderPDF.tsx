@@ -3,6 +3,8 @@ import {
   Document, Page, View, Text, Image, Link, StyleSheet,
 } from '@react-pdf/renderer'
 import { fmt24to12 } from '@/lib/hora'
+import { agruparEquiposDisciplinaCategoria } from '@/lib/orden-equipos'
+import { BandaDisciplina } from '@/components/pdf/BandaDisciplina'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -25,7 +27,7 @@ type ProyectoEquipoData = {
     marca: string | null
     modelo: string | null
     imagenUrl: string | null
-    categoria: { nombre: string } | null
+    categoria: { nombre: string; orden?: number | null; disciplina?: string | null } | null
   }
   riderAccesorios: RiderAccesorioData[]
 }
@@ -202,13 +204,13 @@ function SectionHeader({ title }: { title: string }) {
 // ── Main PDF Component ────────────────────────────────────────────────────────
 
 export function RiderPDF({ data }: { data: RiderPDFData }) {
-  // Group equipos by category
-  const categorias = new Map<string, ProyectoEquipoData[]>()
-  for (const eq of data.equipos) {
-    const cat = eq.equipo.categoria?.nombre ?? 'Sin categoría'
-    if (!categorias.has(cat)) categorias.set(cat, [])
-    categorias.get(cat)!.push(eq)
-  }
+  // Disciplina → categoría (orden del inventario) → equipo
+  const categorias = agruparEquiposDisciplinaCategoria(data.equipos, eq => ({
+    categoria: eq.equipo.categoria?.nombre,
+    orden: eq.equipo.categoria?.orden,
+    disciplina: eq.equipo.categoria?.disciplina,
+    descripcion: [eq.equipo.marca, eq.equipo.modelo].filter(Boolean).join(' ') || eq.equipo.descripcion,
+  }))
 
   const totalEquipos = data.equipos.reduce((s, e) => s + e.cantidad, 0)
   const totalAccesorios = data.equipos.reduce((s, e) => s + e.riderAccesorios.length, 0)
@@ -331,8 +333,9 @@ export function RiderPDF({ data }: { data: RiderPDFData }) {
         {/* ── Equipos por categoría ── */}
         <SectionHeader title="Equipos" />
 
-        {Array.from(categorias.entries()).map(([catNombre, equipos]) => (
+        {categorias.map(({ categoria: catNombre, items: equipos, disciplina, abreDisciplina }, gi) => (
           <View key={catNombre} style={{ marginBottom: 10 }}>
+            {abreDisciplina && <BandaDisciplina disciplina={disciplina} primera={gi === 0} />}
             {/* Categoría header — pegado al primer equipo */}
             <View style={s.catHead} wrap={false}>
               <Text style={s.catTxt}>{catNombre}</Text>

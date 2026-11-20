@@ -9,7 +9,7 @@ import { calcularAvanceProyecto } from "@/lib/proyecto-avance";
 import { ensureOperacionTecnicaColumns } from "@/lib/migraciones-lazy";
 import { sembrarNotasEquiposProyecto } from "@/lib/notas-equipos";
 import { avanceCarga } from "@/lib/control-carga";
-import { parseReglasMando } from "@/lib/cadena-mando";
+import { parseOcupantesMando, parseReglasMando, serializarMando } from "@/lib/cadena-mando";
 import { Prisma } from "@prisma/client";
 
 function proximoMiercolesTraEvento(fecha: Date): Date {
@@ -85,7 +85,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         },
         equipos: {
           include: {
-            equipo: { select: { descripcion: true, marca: true, modelo: true, imagenUrl: true, amperajeRequerido: true, amperajeRequerido220: true, voltajeRequerido: true, categoria: { select: { nombre: true, disciplina: true } }, accesorios: { select: { id: true, nombre: true, categoria: true, accesorioId: true }, orderBy: { createdAt: "asc" } } } },
+            equipo: { select: { descripcion: true, marca: true, modelo: true, imagenUrl: true, amperajeRequerido: true, amperajeRequerido220: true, voltajeRequerido: true, categoria: { select: { nombre: true, disciplina: true, orden: true } }, accesorios: { select: { id: true, nombre: true, categoria: true, accesorioId: true }, orderBy: { createdAt: "asc" } } } },
             proveedor: { select: { nombre: true, empresa: true, telefono: true } },
             cotizacion: { select: { numeroCotizacion: true } },
             riderAccesorios: { orderBy: { orden: "asc" } },
@@ -408,8 +408,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   // Reglas de mando reescritas: se sanean aquí para que el documento no dependa
   // de que el navegador haya mandado el JSON bien formado.
   if ("cadenaMandoReglas" in body) {
-    const limpias = parseReglasMando(body.cadenaMandoReglas);
-    data.cadenaMandoReglas = Object.keys(limpias).length ? limpias : Prisma.DbNull;
+    const limpio = serializarMando(
+      parseReglasMando(body.cadenaMandoReglas),
+      parseOcupantesMando(body.cadenaMandoReglas)
+    );
+    data.cadenaMandoReglas = limpio ?? Prisma.DbNull;
   }
   for (const key of allowed) {
     if (key in body) {

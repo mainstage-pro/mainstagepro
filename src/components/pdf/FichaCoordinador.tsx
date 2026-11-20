@@ -10,6 +10,8 @@ import {
   TransporteSlot, EquipoRiderExtra, ProveedorRenta,
   transporteEmpresaTxt, transporteTieneDatos,
 } from "./PdfShared";
+import { DISCIPLINA_COLORS_PRINT } from "@/lib/disciplinaColors";
+import { etiquetaDisciplina } from "@/lib/orden-equipos";
 import { diasEvento, horarioDeDia } from "@/lib/fechas-evento";
 import { frenteLabel } from "@/lib/frentes-produccion";
 import { normalizarAmPm } from "@/lib/hora";
@@ -435,8 +437,13 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
                 <Text style={[s.tblHdTxt, { flex: 1 }]}>Descripción</Text>
                 <Text style={[s.tblHdTxt, { width: 80 }]}>Categoría</Text>
               </View>
-              {Array.from(gruposPropios.entries()).map(([cat, items]) => (
+              {gruposPropios.map(({ categoria: cat, items, disciplina, abreDisciplina }) => (
                 <React.Fragment key={cat}>
+                  {abreDisciplina && (
+                    <View style={[s.catRow, { backgroundColor: "#e8e8e8" }]}>
+                      <Text style={[s.catTxt, { color: (disciplina && DISCIPLINA_COLORS_PRINT[disciplina]) || "#4b5563", fontSize: 7.5 }]}>{etiquetaDisciplina(disciplina)}</Text>
+                    </View>
+                  )}
                   <View style={s.catRow}><Text style={s.catTxt}>{cat}</Text></View>
                   {items.map((e, i) => (
                     <View key={i} style={s.tblRow} wrap={false}>
@@ -465,7 +472,7 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
                 <Text style={[s.tblHdTxt, { flex: 1 }]}>Proveedor</Text>
                 <Text style={[s.tblHdTxt, { width: 60 }]}>Estado</Text>
               </View>
-              {Array.from(gruposExternos.entries()).flatMap(([, items]) =>
+              {gruposExternos.flatMap(({ items }) =>
                 items.map((e, i) => (
                   <View key={i} style={s.tblRow} wrap={false}>
                     <Text style={[s.tblTxt, { width: 36 }]}>{e.cantidad}</Text>

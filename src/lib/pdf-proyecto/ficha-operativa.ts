@@ -33,7 +33,7 @@ export async function generarFichaOperativa(id: string): Promise<PdfProyecto | n
       },
       equipos: {
         include: {
-          equipo: { select: { descripcion: true, marca: true, modelo: true, imagenUrl: true, categoria: { select: { nombre: true, disciplina: true } } } },
+          equipo: { select: { descripcion: true, marca: true, modelo: true, imagenUrl: true, categoria: { select: { nombre: true, disciplina: true, orden: true } } } },
           proveedor: { select: { nombre: true, telefono: true } },
           riderAccesorios: { orderBy: { orden: "asc" } },
           posiciones: { orderBy: { orden: "asc" } },
@@ -100,6 +100,8 @@ export async function generarFichaOperativa(id: string): Promise<PdfProyecto | n
       marca: e.equipo?.marca ?? null,
       modelo: e.equipo?.modelo ?? null,
       categoria: e.equipo?.categoria?.nombre ?? "General",
+      categoriaOrden: e.equipo?.categoria?.orden ?? null,
+      disciplina: e.equipo?.categoria?.disciplina ?? null,
       cantidad: e.cantidad,
       tipo: e.tipo,
       confirmado: e.confirmado,

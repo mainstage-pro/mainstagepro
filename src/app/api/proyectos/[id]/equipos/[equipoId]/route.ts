@@ -34,7 +34,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       where: { id: equipoId },
       data,
       include: {
-        equipo: { include: { categoria: { select: { nombre: true } } } },
+        equipo: { include: { categoria: { select: { nombre: true, disciplina: true, orden: true } } } },
         proveedor: { select: { nombre: true } },
       },
     });

@@ -27,7 +27,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         confirmado: false,
       },
       include: {
-        equipo: { include: { categoria: { select: { nombre: true } } } },
+        equipo: { include: { categoria: { select: { nombre: true, disciplina: true, orden: true } } } },
         proveedor: { select: { nombre: true } },
       },
     });

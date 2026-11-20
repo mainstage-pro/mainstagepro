@@ -29,7 +29,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       },
       equipos: {
         include: {
-          equipo: { select: { descripcion: true, marca: true, imagenUrl: true, categoria: { select: { nombre: true, disciplina: true } } } },
+          equipo: { select: { descripcion: true, marca: true, imagenUrl: true, categoria: { select: { nombre: true, disciplina: true, orden: true } } } },
           proveedor: { select: { nombre: true } },
           posiciones: { orderBy: { orden: "asc" } },
         },
@@ -72,6 +72,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       descripcion: e.equipo?.descripcion ?? "",
       marca: e.equipo?.marca ?? null,
       categoria: e.equipo?.categoria?.nombre ?? "Sin categoría",
+      categoriaOrden: e.equipo?.categoria?.orden ?? null,
+      disciplina: e.equipo?.categoria?.disciplina ?? null,
       cantidad: e.cantidad,
       tipo: e.tipo,
       confirmado: e.confirmado,

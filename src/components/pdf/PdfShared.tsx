@@ -5,6 +5,7 @@
 import { StyleSheet } from "@react-pdf/renderer";
 import { fmt24to12, normalizarAmPm } from "@/lib/hora";
 import { SERVICIOS, SERVICIO_LABELS, espejoDeServicio } from "@/lib/servicios-trato";
+import { agruparEquiposDisciplinaCategoria, type GrupoCategoriaEquipo } from "@/lib/orden-equipos";
 
 // ─── Paleta ──────────────────────────────────────────────────────────────────
 export const C = {
@@ -310,6 +311,8 @@ export function makePdfImageResolver(publicDir: string) {
 // ─── Tipos compartidos ────────────────────────────────────────────────────────
 export type EquipoFlat = {
   descripcion: string; marca: string | null; modelo: string | null; categoria: string;
+  /** Orden de la categoría en el inventario y su disciplina: arman las secciones. */
+  categoriaOrden?: number | null; disciplina?: string | null;
   cantidad: number; tipo: string; confirmado: boolean; proveedor: string | null;
   imagenUrl?: string | null; notas?: string | null; montaje?: string;
   accesorios: { nombre: string; cantidad: number; categoria: string | null }[];
@@ -339,14 +342,14 @@ export type DocsData = {
   coordinacionProveedores: CoordProvRow[];
 };
 
-export function agruparPorCategoria(equipos: EquipoFlat[]): Map<string, EquipoFlat[]> {
-  const map = new Map<string, EquipoFlat[]>();
-  for (const e of equipos) {
-    const cat = e.categoria || "General";
-    if (!map.has(cat)) map.set(cat, []);
-    map.get(cat)!.push(e);
-  }
-  return map;
+/** Disciplina → categoría (orden del inventario) → equipo. */
+export function agruparPorCategoria(equipos: EquipoFlat[]): GrupoCategoriaEquipo<EquipoFlat>[] {
+  return agruparEquiposDisciplinaCategoria(equipos, e => ({
+    categoria: e.categoria,
+    orden: e.categoriaOrden,
+    disciplina: e.disciplina,
+    descripcion: [e.marca, e.modelo].filter(Boolean).join(" ") || e.descripcion,
+  }), "General");
 }
 
 const TIPO_EVENTO_MAP: Record<string, string> = {

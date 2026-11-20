@@ -30,7 +30,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         select: {
           id: true, tipo: true, descripcion: true, marca: true, modelo: true,
           cantidad: true, notas: true, esExterno: true,
-          equipo: { select: { imagenUrl: true, categoria: { select: { nombre: true } } } },
+          equipo: { select: { imagenUrl: true, categoria: { select: { nombre: true, orden: true, disciplina: true } } } },
         },
       },
     },

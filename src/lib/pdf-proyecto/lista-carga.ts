@@ -31,7 +31,7 @@ export async function generarListaCarga(id: string): Promise<PdfProyecto | null>
               marca: true,
               modelo: true,
               imagenUrl: true,
-              categoria: { select: { nombre: true, disciplina: true } },
+              categoria: { select: { nombre: true, disciplina: true, orden: true } },
             },
           },
           riderAccesorios: {
@@ -148,7 +148,7 @@ export async function generarListaCarga(id: string): Promise<PdfProyecto | null>
         marca: eq.equipo.marca,
         modelo: (eq.equipo as unknown as Record<string, unknown>).modelo as string | null ?? null,
         imagenUrl: imagenPorEquipo.get(eq.id) ?? logoIconSrc,
-        categoria: eq.equipo.categoria ? { nombre: eq.equipo.categoria.nombre } : null,
+        categoria: eq.equipo.categoria ? { nombre: eq.equipo.categoria.nombre, orden: eq.equipo.categoria.orden, disciplina: eq.equipo.categoria.disciplina } : null,
       },
       riderAccesorios: eq.riderAccesorios.map(a => ({
         id: a.id,

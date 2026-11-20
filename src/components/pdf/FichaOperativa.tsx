@@ -17,6 +17,7 @@ import {
   EquipoRiderExtra, ProveedorRenta, MAPS,
   transporteEmpresaTxt, transporteTieneDatos,
 } from "./PdfShared";
+import { BandaDisciplina } from "./BandaDisciplina";
 import { CronologiaEvento } from "./CronologiaEvento";
 import { DisciplinaChipPdf, DisciplinaIconoPdf } from "./DisciplinaPdf";
 import { DISCIPLINA_COLORS_PRINT, DISCIPLINA_LABELS, type Disciplina } from "@/lib/disciplinaColors";
@@ -24,7 +25,7 @@ import { SECCIONES_ROL } from "@/lib/rolesTecnicos";
 import { construirCronologia, ventanasPorProveedor, BloqueTiempo } from "@/lib/cronologia-evento";
 import { labelModalidad } from "@/lib/proveedor-evento";
 import { ProveedoresEvento as SeccionProveedores, type ProveedorFicha } from "./ProveedoresEvento";
-import { cadenaDeMando, parseReglasMando } from "@/lib/cadena-mando";
+import { cadenaDeMando, parseOcupantesMando, parseReglasMando } from "@/lib/cadena-mando";
 import { frenteLabel } from "@/lib/frentes-produccion";
 import { datosLogisticaRenta, selloDeServicio } from "@/lib/servicios-trato";
 
@@ -309,7 +310,7 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
     encargadoClienteContacto: data.encargadoClienteContacto,
     encargadoLugar: data.encargadoLugar,
     encargadoLugarContacto: data.encargadoLugarContacto,
-  }, parseReglasMando(data.cadenaMandoReglas));
+  }, parseReglasMando(data.cadenaMandoReglas), parseOcupantesMando(data.cadenaMandoReglas));
 
   // El bloque de escenario solo aparece si el evento lleva entarimado.
   const llevaEscenario = Boolean(
@@ -619,8 +620,9 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
           {data.equipos.length > 0 && (
             <View style={base.section}>
               <SecNum num={sec("rider")} titulo="Lista de Carga — Equipos" />
-              {Array.from(todasCategorias.entries()).map(([catNombre, items]) => (
+              {todasCategorias.map(({ categoria: catNombre, items, disciplina, abreDisciplina }, gi) => (
                 <View key={catNombre} style={{ marginBottom: 10 }}>
+                  {abreDisciplina && <BandaDisciplina disciplina={disciplina} primera={gi === 0} />}
                   {/* Header de categoría negro — igual que RiderPDF */}
                   <View style={s.riderCatHead} wrap={false}>
                     <Text style={s.riderCatTxt}>{catNombre}</Text>

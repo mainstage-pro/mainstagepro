@@ -43,7 +43,8 @@ import ModalRegistrarPago, { type GrupoPago, type PagoCapturado } from "@/compon
 import DatosBancariosAcreedor from "@/components/finanzas/DatosBancariosAcreedor";
 import { datosBancarios, fichaAcreedorHref, type DatosBancarios } from "@/lib/datos-bancarios";
 import { labelConfiguracion, labelZona } from "@/lib/montaje-vocabulario";
-import { disciplinaDePuesto } from "@/lib/disciplinaColors";
+import { disciplinaDePuesto, DISCIPLINA_COLORS } from "@/lib/disciplinaColors";
+import { agruparEquiposDisciplinaCategoria, etiquetaDisciplina } from "@/lib/orden-equipos";
 import { DisciplinaBadge } from "@/components/DisciplinaBadge";
 import { contarRespondidos, contarIncidencias, nivelResultado, getEvalConfig, aplicaEvaluacion, type EvalPostEventoData } from "@/lib/evaluacion-post-evento";
 import { getDireccionConfig, promedioDireccion, type EvaluacionDireccionData } from "@/lib/evaluacion-direccion";
@@ -55,14 +56,14 @@ import { construirCronologia, horariosResumen, MOMENTO_DE_ACTIVIDAD, VISTAS_CRON
 import { checksAvanceProduccion } from "@/lib/proyecto-avance";
 import { requisitosDocumento, type ProyectoDocumentoInput, type RequisitosDocumento, type TipoDocumento } from "@/lib/proyecto-documentos";
 import { preguntasAlCliente, textoSolicitud } from "@/lib/solicitud-cliente";
-import { cadenaDeMando, parseReglasMando, type ReglasMando } from "@/lib/cadena-mando";
+import { cadenaDeMando, parseOcupantesMando, parseReglasMando, serializarMando, type ClaveOcupable, type OcupanteMando, type ReglasMando } from "@/lib/cadena-mando";
 import { PanelCadenaMando } from "@/components/proyectos/PanelCadenaMando";
 import { getEquipoDisplayName } from "@/lib/equipoNombre";
 import { normalizarAmPm, fmt24to12 } from "@/lib/hora";
 import { coincide } from "@/lib/buscar";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
-interface Tecnico { id: string; nombre: string; nivel: string; rol: { nombre: string } | null; banco?: string | null; titularCuenta?: string | null; cuentaBancaria?: string | null; clabe?: string | null; noTarjeta?: string | null; datosFiscales?: string | null }
+interface Tecnico { id: string; nombre: string; celular?: string | null; nivel: string; rol: { nombre: string } | null; banco?: string | null; titularCuenta?: string | null; cuentaBancaria?: string | null; clabe?: string | null; noTarjeta?: string | null; datosFiscales?: string | null }
 interface RolTecnico { id: string; nombre: string; tipoPago: string; disciplina: string | null; tarifaAAACorta: number | null; tarifaAAAMedia: number | null; tarifaAAALarga: number | null; tarifaPlanaAAA: number | null; tarifaPlanaAA: number | null; tarifaPlanaA: number | null; tarifaHoraAAA: number | null; tarifaHoraAA: number | null; tarifaHoraA: number | null }
 interface SugerenciaTecnico {
   id: string; nombre: string; celular: string | null; nivel: string | null;
@@ -105,7 +106,7 @@ interface Bitacora { id: string; tipo: string; contenido: string; createdAt: str
 interface Gasto { id: string; fecha: string; concepto: string; monto: number; metodoPago: string; notas: string | null; referencia: string | null; categoriaId?: string | null; categoria: { id?: string; nombre: string } | null; proveedorId?: string | null; proveedor: { id?: string; nombre: string; empresa?: string | null } | null; cuentaOrigenId?: string | null; cuentaOrigen: { id: string; nombre: string; banco: string | null } | null; ligado?: boolean }
 interface EquipoAccesorioLib { id: string; nombre: string; categoria: string | null; accesorioId?: string | null }
 interface RiderAccesorio { id: string; nombre: string; cantidad: number; categoria: string | null; completado: boolean; esSugerencia: boolean; orden: number; origen?: string | null; accesorioId?: string | null }
-interface ProyectoEquipoItem { id: string; equipoId: string; proveedorId: string | null; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; confirmToken: string | null; confirmDisponible: boolean | null; notas: string | null; voltajeUso: string | null; necesitaRevision: boolean; escenarioId: string | null; equipo: { descripcion: string; marca: string | null; modelo: string | null; imagenUrl: string | null; amperajeRequerido?: number | null; amperajeRequerido220?: number | null; voltajeRequerido?: string | null; categoria: { nombre: string; disciplina?: string | null }; accesorios: EquipoAccesorioLib[] }; proveedor: { nombre: string; empresa: string | null; telefono: string | null } | null; cotizacion?: { numeroCotizacion: string } | null; riderAccesorios: RiderAccesorio[]; posiciones?: PosicionMontaje[] }
+interface ProyectoEquipoItem { id: string; equipoId: string; proveedorId: string | null; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; confirmToken: string | null; confirmDisponible: boolean | null; notas: string | null; voltajeUso: string | null; necesitaRevision: boolean; escenarioId: string | null; equipo: { descripcion: string; marca: string | null; modelo: string | null; imagenUrl: string | null; amperajeRequerido?: number | null; amperajeRequerido220?: number | null; voltajeRequerido?: string | null; categoria: { nombre: string; disciplina?: string | null; orden?: number | null }; accesorios: EquipoAccesorioLib[] }; proveedor: { nombre: string; empresa: string | null; telefono: string | null } | null; cotizacion?: { numeroCotizacion: string } | null; riderAccesorios: RiderAccesorio[]; posiciones?: PosicionMontaje[] }
 type FaseCrono = "montaje" | "soundcheck" | "operacion" | "desmontaje";
 const FASE_ORDEN: Record<FaseCrono, number> = { montaje: 0, soundcheck: 1, operacion: 2, desmontaje: 3 };
 const faseDe = (r: CronoRow): FaseCrono => r.fase ?? "operacion";
@@ -3252,13 +3253,27 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   }
 
   // ── Reglas de mando reescritas para este evento ──
-  async function guardarReglasMando(reglas: ReglasMando) {
+  // Reglas y personas puestas a mano viven en el mismo JSON: se manda completo.
+  async function guardarMando(json: Record<string, unknown> | null, error: string) {
     const res = await fetch(`/api/proyectos/${id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cadenaMandoReglas: reglas }),
+      body: JSON.stringify({ cadenaMandoReglas: json }),
     });
-    if (!res.ok) { toast.error("No se pudo guardar la regla"); return; }
-    setProyecto(prev => prev ? { ...prev, cadenaMandoReglas: reglas } : prev);
+    if (!res.ok) { toast.error(error); return; }
+    setProyecto(prev => prev ? { ...prev, cadenaMandoReglas: json } : prev);
+  }
+  function guardarReglasMando(reglas: ReglasMando) {
+    const ocupantes = parseOcupantesMando(proyecto?.cadenaMandoReglas);
+    return guardarMando(serializarMando(reglas, ocupantes), "No se pudo guardar la regla");
+  }
+  function guardarOcupanteMando(clave: ClaveOcupable, ocupante: OcupanteMando | null) {
+    const ocupantes = { ...parseOcupantesMando(proyecto?.cadenaMandoReglas) };
+    if (ocupante) ocupantes[clave] = ocupante;
+    else delete ocupantes[clave];
+    return guardarMando(
+      serializarMando(parseReglasMando(proyecto?.cadenaMandoReglas), ocupantes),
+      "No se pudo guardar quién manda"
+    );
   }
 
   // ── Coordinador en sitio: uno solo, el servidor releva al anterior ──
@@ -5086,6 +5101,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       />
                     </div>
                     <div>
+                      <label className="text-xs text-gray-500 block mb-1">Empresa</label>
+                      <input value={slot.empresa}
+                        onChange={e => updateTransporte(i, "empresa", e.target.value)}
+                        onBlur={() => guardarTransportes(transporteSlots)}
+                        placeholder="Empresa de transporte (si aplica)"
+                        className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                    </div>
+                    <div>
                       <label className="text-xs text-gray-500 block mb-1">Chofer</label>
                       <input
                         list={`chofer-list-${i}`}
@@ -5099,14 +5122,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       <datalist id={`chofer-list-${i}`}>
                         {tecnicos.map(t => <option key={t.id} value={t.nombre} />)}
                       </datalist>
-                    <div>
-                      <label className="text-xs text-gray-500 block mb-1">Empresa</label>
-                      <input value={slot.empresa}
-                        onChange={e => updateTransporte(i, "empresa", e.target.value)}
-                        onBlur={() => guardarTransportes(transporteSlots)}
-                        placeholder="Empresa de transporte (si aplica)"
-                        className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
-                    </div>
                     </div>
                     {([
                       ["choferTelefono", "Teléfono del chofer", "Ej. 442 123 4567", "tel"],
@@ -6685,20 +6700,25 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   encargadoLugar: proyecto.encargadoLugar,
                   encargadoLugarContacto: proyecto.encargadoLugarContacto,
                 },
-                parseReglasMando(proyecto.cadenaMandoReglas)
+                parseReglasMando(proyecto.cadenaMandoReglas),
+                parseOcupantesMando(proyecto.cadenaMandoReglas)
               );
               // Una persona con varios slots (montaje, operación…) aparece una sola vez.
               const vistos = new Set<string>();
               const opcionesTecnicos = proyecto.personal
                 .filter(p => p.tecnico && !vistos.has(p.tecnico.id) && vistos.add(p.tecnico.id))
-                .map(p => ({ personalId: p.id, nombre: p.tecnico!.nombre, celular: p.tecnico!.celular ?? null }));
+                .map(p => ({ personalId: p.id, tecnicoId: p.tecnico!.id, nombre: p.tecnico!.nombre, celular: p.tecnico!.celular ?? null }));
               return (
                 <PanelCadenaMando
                   eslabones={eslabones}
                   tecnicos={opcionesTecnicos}
-                  usuarios={usuariosActivos.map(u => ({ id: u.id, nombre: u.name + (u.area ? ` (${u.area})` : "") }))}
+                  tecnicosRegistrados={tecnicos.map(t => ({ id: t.id, nombre: t.nombre, celular: t.celular ?? null }))}
+                  usuarios={usuariosActivos.map(u => ({ id: u.id, nombre: u.name + (u.area ? ` (${u.area})` : ""), telefono: u.telefono }))}
                   encargadoId={proyecto.encargado?.id ?? ""}
+                  encargadoNombre={proyecto.encargado?.name ?? null}
                   coordinadorPersonalId={coordSlot?.id ?? ""}
+                  ocupantes={parseOcupantesMando(proyecto.cadenaMandoReglas)}
+                  onOcupante={guardarOcupanteMando}
                   onCoordinador={personalId => {
                     if (personalId) marcarCoordinador(personalId, false);
                     else if (coordSlot) marcarCoordinador(coordSlot.id, true);
@@ -7195,14 +7215,23 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   );
                 }
 
-                // Agrupado por disciplina → categoría, en orden de montaje real
-                // (rigging y escenario primero, DJ al final).
-                const grupos: Record<string, typeof riderEquipos> = {};
-                for (const e of riderEquipos) { const cat = e.equipo.categoria.nombre; if (!grupos[cat]) grupos[cat] = []; grupos[cat].push(e); }
+                // Agrupado por disciplina → categoría, en el mismo orden que el inventario.
+                const grupos = agruparEquiposDisciplinaCategoria(riderEquipos, e => ({
+                  categoria: e.equipo.categoria.nombre,
+                  orden: e.equipo.categoria.orden,
+                  disciplina: e.equipo.categoria.disciplina,
+                  descripcion: getEquipoDisplayName(e.equipo),
+                }));
                 return (
                   <div className="ms-table-wrapper">
-                    {Object.entries(grupos).map(([cat, items]) => (
+                    {grupos.map(({ categoria: cat, items, disciplina, abreDisciplina }) => (
                       <div key={cat}>
+                        {abreDisciplina && (
+                          <div className="px-4 py-2 bg-[#141414] border-b border-[#222] flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: (disciplina && DISCIPLINA_COLORS[disciplina]) || "#6B7280" }} />
+                            <span className="text-[11px] text-white font-bold uppercase tracking-widest">{etiquetaDisciplina(disciplina)}</span>
+                          </div>
+                        )}
                         <div className="px-4 py-1.5 bg-[#0a0a0a] border-b border-[#1a1a1a]">
                           <span className="text-[10px] text-[#B3985B]/60 font-bold uppercase tracking-widest">{cat}</span>
                         </div>

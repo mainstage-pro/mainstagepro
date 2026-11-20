@@ -19,6 +19,29 @@ export const CLAVES_MANDO: ClaveMando[] = ["SITIO", "CAMBIOS", "CLIENTE", "VENUE
 /** Reglas reescritas para un proyecto. Lo que no venga aquí usa la de la casa. */
 export type ReglasMando = Partial<Record<ClaveMando, string>>;
 
+/**
+ * Persona puesta a mano en un eslabón, por encima de lo que se deduce. Sirve
+ * para que mande en sitio alguien que no está en el personal del evento, o que
+ * autorice cambios un técnico o una persona de fuera.
+ *
+ * Se guarda como foto (nombre + teléfono) y no como referencia: el documento
+ * debe salir igual aunque la persona se dé de baja después.
+ */
+export type OrigenOcupante = "USUARIO" | "TECNICO" | "LIBRE";
+export type OcupanteMando = {
+  origen: OrigenOcupante;
+  /** id de User o de Tecnico; null cuando se escribió a mano. */
+  refId: string | null;
+  nombre: string;
+  contacto: string | null;
+};
+/** Solo los eslabones de casa se reescriben así: cliente y venue ya son texto libre. */
+export type ClaveOcupable = "SITIO" | "CAMBIOS";
+export type OcupantesMando = Partial<Record<ClaveOcupable, OcupanteMando>>;
+
+/** Llave dentro del mismo JSON de reglas: así no hace falta otra columna. */
+const LLAVE_OCUPANTES = "ocupantes";
+
 export type CadenaMandoInput = {
   /** Técnico marcado como coordinador en sitio. */
   coordinadorSitio: { nombre: string; celular: string | null; rol: string | null } | null;
@@ -77,15 +100,52 @@ export function parseReglasMando(valor: unknown): ReglasMando {
   return out;
 }
 
+/** Lee las personas puestas a mano. Lo mal formado se descarta, igual que las reglas. */
+export function parseOcupantesMando(valor: unknown): OcupantesMando {
+  if (!valor || typeof valor !== "object" || Array.isArray(valor)) return {};
+  const crudo = (valor as Record<string, unknown>)[LLAVE_OCUPANTES];
+  if (!crudo || typeof crudo !== "object" || Array.isArray(crudo)) return {};
+  const out: OcupantesMando = {};
+  for (const clave of ["SITIO", "CAMBIOS"] as const) {
+    const o = (crudo as Record<string, unknown>)[clave] as Record<string, unknown> | undefined;
+    if (!o || typeof o !== "object") continue;
+    const nombre = typeof o.nombre === "string" ? o.nombre.trim() : "";
+    if (!nombre) continue;
+    const origen: OrigenOcupante =
+      o.origen === "USUARIO" || o.origen === "TECNICO" ? o.origen : "LIBRE";
+    const contacto = typeof o.contacto === "string" && o.contacto.trim() ? o.contacto.trim() : null;
+    const refId = origen !== "LIBRE" && typeof o.refId === "string" && o.refId ? o.refId : null;
+    out[clave] = { origen, refId, nombre, contacto };
+  }
+  return out;
+}
+
+/** Junta reglas y ocupantes en el JSON que se guarda. null si no hay nada. */
+export function serializarMando(reglas: ReglasMando, ocupantes: OcupantesMando): Record<string, unknown> | null {
+  const out: Record<string, unknown> = { ...reglas };
+  if (Object.keys(ocupantes).length) out[LLAVE_OCUPANTES] = ocupantes;
+  return Object.keys(out).length ? out : null;
+}
+
 /**
  * Los cuatro eslabones, siempre en el mismo orden y siempre presentes: un hueco
  * visible ("Sin asignar") comunica más que omitir el renglón.
  */
-export function cadenaDeMando(p: CadenaMandoInput, reglas: ReglasMando = {}): EslabonMando[] {
+export function cadenaDeMando(
+  p: CadenaMandoInput,
+  reglas: ReglasMando = {},
+  manuales: OcupantesMando = {}
+): EslabonMando[] {
   const coord = p.coordinadorSitio;
+  const sitio = manuales.SITIO
+    ? { nombre: manuales.SITIO.nombre, contacto: manuales.SITIO.contacto, critico: false }
+    : { nombre: coord?.nombre ?? null, contacto: coord?.celular ?? null, critico: !coord };
+  const cambios = manuales.CAMBIOS
+    ? { nombre: manuales.CAMBIOS.nombre, contacto: manuales.CAMBIOS.contacto, critico: false }
+    : { nombre: p.encargadoNombre, contacto: p.encargadoContacto, critico: !p.encargadoNombre };
   const ocupantes: Record<ClaveMando, { nombre: string | null; contacto: string | null; critico: boolean }> = {
-    SITIO: { nombre: coord?.nombre ?? null, contacto: coord?.celular ?? null, critico: !coord },
-    CAMBIOS: { nombre: p.encargadoNombre, contacto: p.encargadoContacto, critico: !p.encargadoNombre },
+    SITIO: sitio,
+    CAMBIOS: cambios,
     CLIENTE: { nombre: p.encargadoCliente, contacto: p.encargadoClienteContacto, critico: false },
     VENUE: { nombre: p.encargadoLugar, contacto: p.encargadoLugarContacto, critico: false },
   };
@@ -103,7 +163,9 @@ export function cadenaDeMando(p: CadenaMandoInput, reglas: ReglasMando = {}): Es
 }
 
 /** Una línea suelta para encabezar documentos cortos. */
-export function resumenMando(p: CadenaMandoInput): string {
+export function resumenMando(p: CadenaMandoInput, manuales: OcupantesMando = {}): string {
+  const m = manuales.SITIO;
+  if (m) return `Coordina en sitio: ${m.nombre}${m.contacto ? ` · ${m.contacto}` : ""}`;
   const coord = p.coordinadorSitio;
   if (!coord) return "Sin coordinador en sitio asignado";
   const tel = coord.celular ? ` · ${coord.celular}` : "";
