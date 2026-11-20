@@ -40,7 +40,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       checklist: { orderBy: { orden: "asc" } },
       archivos: { orderBy: { createdAt: "desc" } },
       cuentasCobrar: { select: { concepto: true, monto: true, montoCobrado: true, estado: true, tipoPago: true } },
-      proveedoresEvento: { orderBy: { createdAt: "asc" } },
+      proveedoresEvento: {
+        // Lo surgido sobre la marcha no se coordina antes del evento: no va en la ficha.
+        where: { imprevisto: false },
+        orderBy: { createdAt: "asc" },
+        include: { proveedor: { select: { correo: true, telefono: true } } },
+      },
       bloquesTiempo: { orderBy: { orden: "asc" } },
     },
   });
@@ -153,10 +158,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     })),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     proveedoresEvento: (proyecto.proveedoresEvento ?? []).map((p: any) => ({
+      id: p.id,
       nombreProveedor: p.nombreProveedor,
       servicioEquipo: p.servicioEquipo ?? null,
       frente: p.frente ?? null,
-      telefonoProveedor: p.telefonoProveedor ?? null,
+      // El teléfono del evento manda; si no se capturó, el del catálogo.
+      telefonoProveedor: p.telefonoProveedor ?? p.proveedor?.telefono ?? null,
+      correoProveedor: p.proveedor?.correo ?? null,
+      responsable: p.responsable ?? null,
+      notas: p.notas ?? null,
       modalidadEntrega: p.modalidadEntrega ?? null,
       modalidadRegreso: p.modalidadRegreso ?? null,
     })),

@@ -381,7 +381,9 @@ export function derivadosLogistica(
  *                      false = versión cliente: solo montaje en venue y horarios de cada día.
  * @param opts.bloques  Filas de ProyectoBloqueTiempo del proyecto. Se intercalan en el día
  *                      que les toca, entre el inicio y el fin del evento.
- * @param opts.tipos    Qué tipos de bloque incluir. Sin esto, entran todos. Es el filtro con
+ * @param opts.tipos    Qué tipos de bloque incluir. Sin esto, entra la logística operativa
+ *                      (todo menos PROVEEDOR): las ventanas de proveedor no son de la casa y
+ *                      viven en su propia sección (`proveedoresConVentanas`). Es el filtro con
  *                      el que cada documento se queda solo con lo suyo (ej. solo SOUNDCHECK).
  * @param opts.nombresProveedor  id de ProveedorEvento → nombre, para etiquetar sus ventanas.
  * @param opts.base     Qué horarios derivados del proyecto acompañan a los bloques.
@@ -413,7 +415,7 @@ export function construirCronologia(
   };
 
   // ── Bloques de tiempo capturados, agrupados por día ──
-  const permitidos = opts?.tipos ?? [...TIPOS_BLOQUE];
+  const permitidos = opts?.tipos ?? VISTAS_CRONOLOGIA.LOGISTICA.tipos;
   const extras = (opts?.bloques ?? [])
     .filter((b) => permitidos.includes(b.tipo as TipoBloque))
     .sort((a, b) => a.orden - b.orden);
@@ -558,4 +560,50 @@ export function construirCronologia(
   });
 
   return bloques;
+}
+
+/** Una ventana de participación del proveedor (instalación, operación o recolección), lista para imprimir. */
+export type VentanaProveedor = {
+  fase: string;
+  /** "Instalación", "Operación"… */
+  titulo: string;
+  /** "sáb 21 nov"; null si el bloque no trae fecha. */
+  fecha: string | null;
+  /** 12 h ("7:00 AM"); null = por definir. */
+  hora: string | null;
+  horaFin: string | null;
+  detalle: string | null;
+  responsable: string | null;
+};
+
+const ORDEN_FASE: Record<string, number> = { INSTALACION: 0, OPERACION: 1, RECOLECCION: 2 };
+const TITULO_FASE: Record<string, string> = { INSTALACION: "Instalación", OPERACION: "Operación", RECOLECCION: "Recolección" };
+
+/**
+ * Las ventanas de cada proveedor externo, agrupadas por `proveedorEventoId` y en el
+ * orden en que ocurren (instalación → operación → recolección). Es la otra lectura de
+ * la misma captura: la cronología operativa ya no las trae, así que la sección de
+ * proveedores de cada documento sale de aquí.
+ */
+export function ventanasPorProveedor(bloques: BloqueTiempo[] | null | undefined): Record<string, VentanaProveedor[]> {
+  const out: Record<string, VentanaProveedor[]> = {};
+  (bloques ?? [])
+    .filter((b) => b.tipo === "PROVEEDOR" && b.proveedorEventoId)
+    .sort(
+      (a, b) =>
+        (ORDEN_FASE[a.fase ?? ""] ?? 9) - (ORDEN_FASE[b.fase ?? ""] ?? 9) || a.orden - b.orden,
+    )
+    .forEach((b) => {
+      const fase = b.fase ?? "";
+      (out[b.proveedorEventoId!] ??= []).push({
+        fase,
+        titulo: TITULO_FASE[fase] ?? b.titulo,
+        fecha: b.fecha ? fechaCorta(fechaISOaDia(b.fecha)) : null,
+        hora: b.horaInicio ? horaAmPm(b.horaInicio) : null,
+        horaFin: b.horaFin ? horaAmPm(b.horaFin) : null,
+        detalle: b.detalle || b.involucrados || null,
+        responsable: b.responsable || null,
+      });
+    });
+  return out;
 }

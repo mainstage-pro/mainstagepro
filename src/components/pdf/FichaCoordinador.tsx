@@ -14,7 +14,8 @@ import { diasEvento, horarioDeDia } from "@/lib/fechas-evento";
 import { frenteLabel } from "@/lib/frentes-produccion";
 import { normalizarAmPm } from "@/lib/hora";
 import { CronologiaEvento } from "./CronologiaEvento";
-import { construirCronologia, BloqueTiempo } from "@/lib/cronologia-evento";
+import { construirCronologia, ventanasPorProveedor, BloqueTiempo } from "@/lib/cronologia-evento";
+import { ProveedoresEvento as SeccionProveedores, type ProveedorFicha } from "./ProveedoresEvento";
 import { labelModalidad } from "@/lib/proveedor-evento";
 
 const s = StyleSheet.create({
@@ -82,10 +83,15 @@ export interface PersonalItem {
   coordinaEnSitio: boolean;
 }
 export interface ProveedorEvento {
+  /** id de ProveedorEvento: liga al proveedor con sus ventanas de la cronología. */
+  id?: string;
   nombreProveedor: string;
   servicioEquipo: string | null;
   frente: string | null;
   telefonoProveedor: string | null;
+  correoProveedor?: string | null;
+  responsable?: string | null;
+  notas?: string | null;
   modalidadEntrega?: string | null;
   modalidadRegreso?: string | null;
 }
@@ -155,7 +161,7 @@ export interface FichaCoordinadorData {
   archivos: ArchivoItem[];
   checklist: CheckItemFlat[];
   cuentasCobrar: CxCFlat[];
-  /** Cronología unificada: montaje, soundcheck, programa, ventanas de proveedor y desmontaje. */
+  /** Bloques de tiempo: la cronología usa los operativos; los de proveedor van a su sección. */
   bloquesTiempo: BloqueTiempo[];
   /** id de ProveedorEvento → nombre, para etiquetar sus ventanas. */
   nombresProveedor: Record<string, string>;
@@ -239,20 +245,22 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
   }, { bloques: data.bloquesTiempo, nombresProveedor: data.nombresProveedor });
 
   const transConDatos = data.transportes.filter(transporteTieneDatos);
-  const todosProveedores = [
-    // El frente va pegado al servicio y no en columna propia: el coordinador lo ve al
-    // escanear la tabla, y los eventos sin frentes no se llenan de rayas vacías.
-    ...data.proveedoresEvento.map(p => ({
-      nombre: p.nombreProveedor,
-      servicio: [frenteLabel(p.frente), p.servicioEquipo].filter(Boolean).join(" · ") || null,
-      telefono: p.telefonoProveedor,
-      entrega: p.modalidadEntrega ?? null, regreso: p.modalidadRegreso ?? null,
-    })),
-    ...data.proveedoresRenta.map(p => ({
-      nombre: p.nombre, servicio: p.equipos.join(", "), telefono: p.contacto,
-      entrega: null, regreso: null,
-    })),
-  ];
+  // Proveedores externos: cada uno con su contacto y sus propias ventanas. Van en su
+  // sección y no en la cronología, que es solo la operación de la casa.
+  const ventanas = ventanasPorProveedor(data.bloquesTiempo);
+  const fichasProveedor: ProveedorFicha[] = data.proveedoresEvento.map(p => ({
+    nombre: p.nombreProveedor,
+    servicio: [frenteLabel(p.frente), p.servicioEquipo].filter(Boolean).join(" · ") || null,
+    responsable: p.responsable ?? null,
+    telefono: p.telefonoProveedor,
+    correo: p.correoProveedor ?? null,
+    entrega: labelModalidad(p.modalidadEntrega),
+    regreso: labelModalidad(p.modalidadRegreso),
+    notas: p.notas ?? null,
+    ventanas: p.id ? ventanas[p.id] ?? [] : [],
+  }));
+  const subrentas = data.proveedoresRenta.map(p => ({ nombre: p.nombre, contacto: p.contacto, equipos: p.equipos }));
+  const hayProveedores = fichasProveedor.length > 0 || subrentas.length > 0;
 
   return (
     <Document title={`Ficha Operativa ${data.numeroProyecto}`} author="Mainstage Pro">
@@ -473,28 +481,11 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
           </View>
         )}
 
-        {/* 8. PROVEEDORES Y SUBRENTAS */}
-        {todosProveedores.length > 0 && (
+        {/* 8. PROVEEDORES — contacto, entrega/regreso y ventanas de cada uno */}
+        {hayProveedores && (
           <View style={base.section}>
             <SeccionHeader num="8" titulo="Proveedores y Subrentas" />
-            <View style={s.tbl}>
-              <View style={s.tblHd}>
-                <Text style={[s.tblHdTxt, { flex: 1 }]}>Proveedor</Text>
-                <Text style={[s.tblHdTxt, { flex: 1 }]}>Equipo / Servicio</Text>
-                <Text style={[s.tblHdTxt, { flex: 1 }]}>Entrega / Regreso</Text>
-                <Text style={[s.tblHdTxt, { width: 90 }]}>Teléfono</Text>
-              </View>
-              {todosProveedores.map((p, i) => (
-                <View key={i} style={i < todosProveedores.length - 1 ? s.tblRow : s.tblRowLast} wrap={false}>
-                  <Text style={[s.tblTxt, { flex: 1, fontFamily: "Helvetica-Bold" }]}>{p.nombre}</Text>
-                  <Text style={[s.tblTxtMuted, { flex: 1 }]}>{p.servicio ?? "—"}</Text>
-                  <Text style={[s.tblTxtMuted, { flex: 1 }]}>
-                    {[labelModalidad(p.entrega), labelModalidad(p.regreso)].filter(Boolean).join(" · ") || "—"}
-                  </Text>
-                  <Text style={[s.tblTxtMuted, { width: 90 }]}>{p.telefono ?? "—"}</Text>
-                </View>
-              ))}
-            </View>
+            <SeccionProveedores proveedores={fichasProveedor} subrentas={subrentas} />
           </View>
         )}
 
