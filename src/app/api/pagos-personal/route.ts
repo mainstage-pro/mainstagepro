@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { rangoNomina, compararJornada } from "@/lib/ciclo-pago";
 import { getSession } from "@/lib/auth";
-import { marcarFilaNominaPagada, getCategoriaPersonalFreelance } from "@/lib/nomina-pagos";
+import {
+  marcarFilaNominaPagada,
+  getCategoriaPersonalFreelance,
+  complementosPorFila,
+  etiquetaComplemento,
+} from "@/lib/nomina-pagos";
 import { datosBancarios, SELECT_BANCARIOS_TECNICO, type DatosBancarios } from "@/lib/datos-bancarios";
 import { desgloseBonos, SELECT_BONOS, totalPagoPersonal } from "@/lib/pago-personal";
 
@@ -30,6 +35,14 @@ export async function GET(req: NextRequest) {
     orderBy: { fechaEvento: "asc" },
   });
 
+  // Pagado real de cada fila = movimiento ligado + complementos posteriores.
+  const complementos = await complementosPorFila(
+    prisma,
+    proyectos.flatMap((p) => p.personal.map((pp) => pp.id)),
+  );
+  const pagadoFila = (pp: { id: string; movimiento: { monto: number } | null }) =>
+    (pp.movimiento?.monto ?? 0) + (complementos.get(pp.id) ?? 0);
+
   // Build per-project data
   const proyectosData = proyectos.map((p) => ({
     id: p.id,
@@ -45,7 +58,7 @@ export async function GET(req: NextRequest) {
 
       const montoPagado = esPagado
         ? tarifaTotal
-        : (pp.movimiento?.monto ?? 0);
+        : pagadoFila(pp);
       const montoPendiente = esPagado
         ? 0
         : Math.max(0, tarifaTotal - montoPagado);
@@ -117,7 +130,7 @@ export async function GET(req: NextRequest) {
       const entry = tecMap.get(key)!;
       const tarifaSlot = pagoPP;
       const esPagadoSlot = pp.estadoPago === "PAGADO";
-      const pagadoSlot = esPagadoSlot ? tarifaSlot : (pp.movimiento?.monto ?? 0);
+      const pagadoSlot = esPagadoSlot ? tarifaSlot : pagadoFila(pp);
       const pendienteSlot = esPagadoSlot ? 0 : Math.max(0, tarifaSlot - pagadoSlot);
 
       const existing = entry.pagos.find((x) => x.proyectoId === p.id);
@@ -235,18 +248,24 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  const filasPendientes = todasFilas.filter((f) => {
-    if (f.estadoPago === "PENDIENTE" || f.estadoPago === "PARCIAL") return true;
-    const total = totalPagoPersonal(f) ?? 0;
-    const pagado = f.movimiento?.monto ?? 0;
-    return total > pagado + 0.01;
-  });
+  // Pagado real de cada fila = movimiento ligado + complementos posteriores.
+  const complementos = await complementosPorFila(prisma, todasFilas.map((f) => f.id));
+  const pagadoFila = (f: (typeof todasFilas)[number]) =>
+    (f.movimiento?.monto ?? 0) + (complementos.get(f.id) ?? 0);
+
+  const filasPendientes = todasFilas
+    .filter((f) => {
+      if (f.estadoPago === "PENDIENTE" || f.estadoPago === "PARCIAL") return true;
+      const total = totalPagoPersonal(f) ?? 0;
+      return total > pagadoFila(f) + 0.01;
+    })
+    // Orden estable para repartir pagos parciales: primero las jornadas más antiguas.
+    .sort((a, b) => (a.fechaJornada ?? "").localeCompare(b.fechaJornada ?? "") || a.id.localeCompare(b.id));
 
   // Total adeudado real: tarifa total menos lo ya cubierto por movimientos
   const filasTotal = filasPendientes.reduce((s, f) => {
     const total = totalPagoPersonal(f) ?? 0;
-    const pagado = f.movimiento?.monto ?? 0;
-    return s + Math.max(0, total - pagado);
+    return s + Math.max(0, total - pagadoFila(f));
   }, 0);
   const totalOwed = totalOwedFromClient ?? filasTotal;
 
@@ -277,8 +296,11 @@ export async function POST(req: NextRequest) {
 
   const fullyPaid = totalOwed > 0 ? totalPagado >= totalOwed - 0.01 : true;
 
-  if (fullyPaid) {
-    // ── Pago completo: distribuir las entradas sobre las filas de nómina ─────
+  // ── Distribuir las entradas sobre las filas de nómina ──────────────────────
+  // Completo o parcial, el pago se reparte jornada por jornada: las que se
+  // cubren quedan PAGADO, la última que alcanza a tocarse queda PARCIAL y el
+  // resto sigue PENDIENTE. Así el adeudo baja en pantalla con cada abono.
+  {
     const movIds: string[] = [];
     
     // Configurar distribución
@@ -291,7 +313,7 @@ export async function POST(req: NextRequest) {
 
       for (const fila of filasPendientes) {
         const tarifaTotalFila = totalPagoPersonal(fila) ?? 0;
-        const yaPagadoFila = fila.movimiento?.monto ?? 0;
+        const yaPagadoFila = pagadoFila(fila);
         let filaMontoPendiente = Math.max(0, tarifaTotalFila - yaPagadoFila);
 
         // Si la fila no tiene monto pendiente, aseguramos su estado
@@ -348,7 +370,8 @@ export async function POST(req: NextRequest) {
                   metodoPago: entradaActual.metodoPago,
                   cuentaOrigenId: entradaActual.cuentaOrigenId || null,
                   referencia: entradaActual.referencia || null,
-                  notas: notasPago,
+                  // La etiqueta liga el complemento a su fila (ver complementosPorFila).
+                  notas: [notasPago, etiquetaComplemento(fila.id)].filter(Boolean).join(" "),
                   proyectoId: fila.proyectoId,
                   categoriaId: categoriaFreelanceId,
                   creadoPor: session.id,
@@ -395,33 +418,16 @@ export async function POST(req: NextRequest) {
                 entradaRestante = entradasADistribuir[entradaIdx].monto;
               }
             }
+          } else {
+            // Entrada agotada (residuo de centavos): pasar a la siguiente.
+            entradaIdx++;
+            if (entradaIdx < entradasADistribuir.length) {
+              entradaRestante = entradasADistribuir[entradaIdx].monto;
+            }
           }
         }
       }
-    });
-    return NextResponse.json({ ok: true, movimientosCreados: movIds.length, totalPagado, fullyPaid: true });
+    }, { timeout: 30000, maxWait: 10000 });
+    return NextResponse.json({ ok: true, movimientosCreados: movIds.length, totalPagado, fullyPaid });
   }
-
-  // ── Pago parcial: registrar el desembolso sin marcar filas ni liquidar CxP ─
-  const movIds: string[] = [];
-  await prisma.$transaction(async (tx) => {
-    for (const entrada of validEntradas) {
-      const mov = await tx.movimientoFinanciero.create({
-        data: {
-          tipo: "GASTO",
-          fecha: fechaPago,
-          concepto: `Nómina parcial — ${tecnico?.nombre ?? tecnicoId}`,
-          monto: entrada.monto,
-          metodoPago: entrada.metodoPago || "TRANSFERENCIA",
-          cuentaOrigenId: entrada.cuentaOrigenId || null,
-          referencia: entrada.referencia || null,
-          notas: notas || null,
-          proyectoId: proyectoIds[0],
-          creadoPor: session.id,
-        },
-      });
-      movIds.push(mov.id);
-    }
-  });
-  return NextResponse.json({ ok: true, movimientosCreados: movIds.length, totalPagado, fullyPaid: false });
 }

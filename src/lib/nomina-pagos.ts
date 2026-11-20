@@ -140,6 +140,8 @@ export async function marcarFilaNominaPagada(
       tipo: "GASTO",
       concepto: { startsWith: `Nómina — ${tecNombre}` },
       proyectoPersonal: null,
+      // Los complementos de otra fila también quedan sin ligar: no reutilizarlos.
+      OR: [{ notas: null }, { NOT: { notas: { contains: "[fila:" } } }],
     },
     orderBy: { createdAt: "desc" },
   });
@@ -193,18 +195,51 @@ export async function marcarFilaNominaPagada(
     },
   });
   if (cxp) {
+    // Un pago parcial (overrideMonto menor al total de la fila) deja la CxP en
+    // PARCIAL con lo realmente pagado, en vez de liquidarla completa.
+    const esParcial = finalMonto < pagoFila - 0.01;
     await tx.cuentaPagar.update({
       where: { id: cxp.id },
       data: {
-        estado: "LIQUIDADO",
+        estado: esParcial ? "PARCIAL" : "LIQUIDADO",
         movimientoId: movId,
         fechaPagoReal: opts.fecha,
-        montoPagado: cxp.monto,
+        montoPagado: esParcial ? Math.min(cxp.monto, finalMonto) : cxp.monto,
       },
     });
   }
 
   return movId;
+}
+
+// ── Complementos de pago ─────────────────────────────────────────────────────
+// Una fila de nómina solo puede ligar UN movimiento (movimientoId @unique). Los
+// pagos posteriores sobre una fila parcial se registran como movimientos
+// propios (con su fecha y cuenta reales) y se marcan en `notas` con esta
+// etiqueta para poder sumarlos al pagado de la fila.
+export function etiquetaComplemento(filaId: string): string {
+  return `[fila:${filaId}]`;
+}
+
+/** Suma, por fila, el monto de los movimientos de complemento registrados. */
+export async function complementosPorFila(
+  db: Pick<Prisma.TransactionClient, "movimientoFinanciero">,
+  filaIds: string[],
+): Promise<Map<string, number>> {
+  const res = new Map<string, number>();
+  if (!filaIds.length) return res;
+  const buscadas = new Set(filaIds);
+  const movs = await db.movimientoFinanciero.findMany({
+    where: { tipo: "GASTO", notas: { contains: "[fila:" } },
+    select: { monto: true, notas: true },
+  });
+  for (const m of movs) {
+    for (const match of (m.notas ?? "").matchAll(/\[fila:([^\]]+)\]/g)) {
+      const id = match[1];
+      if (buscadas.has(id)) res.set(id, (res.get(id) ?? 0) + m.monto);
+    }
+  }
+  return res;
 }
 
 /**
