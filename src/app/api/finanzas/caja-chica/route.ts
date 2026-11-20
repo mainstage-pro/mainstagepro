@@ -124,10 +124,9 @@ export async function POST(req: NextRequest) {
   }
 
   // ── GASTO: money leaving caja chica ─────────────────────────────────────────
+  // Se permite registrar el gasto aunque no haya saldo suficiente: la caja puede
+  // quedar en negativo y se regulariza después con una recarga.
   const saldoActual = await getSaldo();
-  if (montoNum > saldoActual) {
-    return NextResponse.json({ error: `Saldo insuficiente. Disponible: $${saldoActual.toLocaleString("es-MX", { maximumFractionDigits: 0 })}` }, { status: 400 });
-  }
 
   const movimiento = await prisma.movimientoFinanciero.create({
     data: {

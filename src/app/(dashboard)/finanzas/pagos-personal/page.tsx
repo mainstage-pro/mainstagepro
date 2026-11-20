@@ -741,7 +741,7 @@ export default function PagosPersonalPage() {
           }))
           .filter((e) => e.monto > 0);
 
-        await fetch("/api/pagos-personal", {
+        const res = await fetch("/api/pagos-personal", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -753,13 +753,19 @@ export default function PagosPersonalPage() {
             entradas: validEntradas,
           }),
         });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          alert(err.error || `No se pudo registrar el pago (error ${res.status})`);
+          return;
+        }
       } else {
+        const fallidos: string[] = [];
         for (const row of pagoTarget) {
           const selectedIds = row.pagos.filter(p => selectedEventos.has(`${row.tecnicoId}-${p.proyectoId}`)).map(p => p.proyectoId);
           if (selectedIds.length === 0) continue;
           const checkedTotal = row.pagos.reduce((s, p) => selectedEventos.has(`${row.tecnicoId}-${p.proyectoId}`) ? s + p.monto : s, 0);
 
-          await fetch("/api/pagos-personal", {
+          const res = await fetch("/api/pagos-personal", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -776,6 +782,15 @@ export default function PagosPersonalPage() {
               }],
             }),
           });
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            fallidos.push(`${row.tecnicoNombre}: ${err.error || `error ${res.status}`}`);
+          }
+        }
+        if (fallidos.length) {
+          alert(`No se pudieron registrar ${fallidos.length} pago(s):\n\n${fallidos.join("\n")}`);
+          await load();
+          return;
         }
       }
       setPagoTarget(null);
