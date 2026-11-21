@@ -1913,18 +1913,18 @@ model SerieRecurrente {
 }
 
 model CuentaCobrar {
-  id                String           @id @default(cuid())
-  clienteId         String?
-  cliente           Cliente?         @relation(fields: [clienteId], references: [id])
-  empresaId         String?
-  empresa           Empresa?         @relation(fields: [empresaId], references: [id])
-  proyectoId        String?
-  proyecto          Proyecto?        @relation(fields: [proyectoId], references: [id])
-  cotizacionId      String?
-  cotizacion        Cotizacion?      @relation(fields: [cotizacionId], references: [id])
-  serieRecurrenteId String?
-  serieRecurrente   SerieRecurrente? @relation(fields: [serieRecurrenteId], references: [id])
-  numeroPeriodo     Int?
+  id                  String             @id @default(cuid())
+  clienteId           String?
+  cliente             Cliente?           @relation(fields: [clienteId], references: [id])
+  empresaId           String?
+  empresa             Empresa?           @relation(fields: [empresaId], references: [id])
+  proyectoId          String?
+  proyecto            Proyecto?          @relation(fields: [proyectoId], references: [id])
+  cotizacionId        String?
+  cotizacion          Cotizacion?        @relation(fields: [cotizacionId], references: [id])
+  serieRecurrenteId   String?
+  serieRecurrente     SerieRecurrente?   @relation(fields: [serieRecurrenteId], references: [id])
+  numeroPeriodo       Int?
   propuestaServicioId String?
   propuestaServicio   PropuestaServicio? @relation(fields: [propuestaServicioId], references: [id])
 
@@ -2308,9 +2308,9 @@ model Puesto {
   createdAt                DateTime        @default(now()) @map("created_at")
   updatedAt                DateTime        @updatedAt @map("updated_at")
 
-  ocupantes     PersonalInterno[] @relation("PuestoTitular")
+  ocupantes     PersonalInterno[]  @relation("PuestoTitular")
   postulaciones Postulacion[]
-  kpis          PTKPI[]           @relation("PTKPIPuesto")
+  kpis          PTKPI[]            @relation("PTKPIPuesto")
   formularios   FormularioPuesto[]
 
   @@map("puestos")
@@ -3534,13 +3534,13 @@ model Postulacion {
   etapa String @default("NUEVO") // NUEVO | EVALUACION | PRUEBA_PRACTICA | PROPUESTA_ENVIADA | APROBADO | CONTRATADO | RECHAZADO
 
   // Alta/trazabilidad (Fase 2 reclutamiento)
-  origen                 String?              @default("MANUAL") // FORMULARIO | MANUAL
-  disciplina             String?
-  nivel                  String?
-  formularioRespuestaId  String?              @unique @map("formulario_respuesta_id")
-  formularioRespuesta    FormularioRespuesta? @relation(fields: [formularioRespuestaId], references: [id])
-  pruebaPractica         String?              @db.Text @map("prueba_practica") // JSON {fecha,evaluador,checklist,calificacion,notas}
-  tecnicoId              String?              @map("tecnico_id") // Fase 2: vínculo opcional a Tecnico del directorio
+  origen                String?              @default("MANUAL") // FORMULARIO | MANUAL
+  disciplina            String?
+  nivel                 String?
+  formularioRespuestaId String?              @unique @map("formulario_respuesta_id")
+  formularioRespuesta   FormularioRespuesta? @relation(fields: [formularioRespuestaId], references: [id])
+  pruebaPractica        String?              @map("prueba_practica") @db.Text // JSON {fecha,evaluador,checklist,calificacion,notas}
+  tecnicoId             String?              @map("tecnico_id") // Fase 2: vínculo opcional a Tecnico del directorio
 
   // Propuesta de trabajo
   salarioPropuesto     Float?    @map("salario_propuesto")
@@ -3940,12 +3940,12 @@ model Artista {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tratos     Trato[]
-  proyectos  Proyecto[]
-  personas   ArtistaPersona[]
-  riders     ArtistaRider[]
-  giras      Gira[]
-  propuestas PropuestaServicio[]
+  tratos             Trato[]
+  proyectos          Proyecto[]
+  personas           ArtistaPersona[]
+  riders             ArtistaRider[]
+  giras              Gira[]
+  propuestas         PropuestaServicio[]
   proyectosCreativos ProyectoCreativo[]
 
   @@index([nombre])
@@ -6430,8 +6430,8 @@ model Gira {
   /// src/lib/giras.ts: COMPLEJIDAD_GIRA / ALCANCE_GEOGRAFICO_GIRA). No alimenta
   /// ninguna lógica operativa todavía — es contexto para cotizar y para
   /// reportes futuros de Live.
-  complejidad        String? // SHOW_CHICO|SHOW_MEDIANO|FESTIVAL|GIRA_CORTA|GIRA_LARGA
-  alcanceGeografico  String? // LOCAL|NACIONAL|INTERNACIONAL
+  complejidad       String? // SHOW_CHICO|SHOW_MEDIANO|FESTIVAL|GIRA_CORTA|GIRA_LARGA
+  alcanceGeografico String? // LOCAL|NACIONAL|INTERNACIONAL
 
   /// Esta gira parcha una interfaz antes de la consola y el pre-patch se captura
   /// en «Invitados y canales». Apagado por default: la mayoría no la ocupa y una
@@ -6456,16 +6456,16 @@ model Gira {
   shows        GiraShow[]
   cotizaciones Cotizacion[]
 
-  prePatch   PrePatchCanal[]
-  crew       GiraCrew[]
-  hospedajes GiraHospedaje[]
-  roomings   GiraRooming[]
-  viajes     GiraViaje[]
-  setlists   GiraSetlist[]
-  archivos   GiraArchivo[]
-  propuestas PropuestaServicio[]
-  checklist  GiraChecklistItem[]
-  tareas     Tarea[]             @relation("TareasDeGira")
+  prePatch           PrePatchCanal[]
+  crew               GiraCrew[]
+  hospedajes         GiraHospedaje[]
+  roomings           GiraRooming[]
+  viajes             GiraViaje[]
+  setlists           GiraSetlist[]
+  archivos           GiraArchivo[]
+  propuestas         PropuestaServicio[]
+  checklist          GiraChecklistItem[]
+  tareas             Tarea[]             @relation("TareasDeGira")
   proyectosCreativos ProyectoCreativo[]
 
   @@index([artistaId])
@@ -6511,7 +6511,7 @@ model GiraShow {
   advanceCerradoEn DateTime?
 
   notas     String?
-  docsToken String?  @unique
+  docsToken String? @unique
 
   /// Notas y aprendizajes de este show (coordinación, tiempos, montaje,
   /// soundcheck, show, desmontaje). Ver src/lib/gira-evaluacion.ts.
@@ -6525,6 +6525,7 @@ model GiraShow {
   momentos        ShowMomento[]
   invitados       ShowInvitado[]
   canales         ShowCanal[]
+  ordenesCanales  ShowCanalOrden[]
   prePatch        PrePatchCanal[]
   stagePlots      ShowStagePlot[]
   crew            GiraCrew[]
@@ -6658,6 +6659,28 @@ model ShowCanal {
   @@index([showId])
   @@index([invitadoId])
   @@map("show_canales")
+}
+
+/// El orden del patch de UNA fecha cuando quien parcha lo acomodó a mano.
+///
+/// Sin renglón, la fecha lee el rider en el orden del rider y su cola después.
+/// Con renglón, `claves` manda: son las `FilaCanal.clave` en el orden en que se
+/// parchan (el id del renglón del rider para lo que viene del rider, el id del
+/// `ShowCanal` para lo que nació aquí). Lo que no aparece —un renglón que el
+/// rider agregó después, un canal nuevo de la fecha— se acomoda detrás del que
+/// le precede en el orden natural. No toca el rider: las otras plazas no se
+/// enteran.
+model ShowCanalOrden {
+  showId String
+  show   GiraShow @relation(fields: [showId], references: [id], onDelete: Cascade)
+
+  tipo   String // INPUT|OUTPUT
+  claves String[]
+
+  updatedAt DateTime @updatedAt
+
+  @@id([showId, tipo])
+  @@map("show_canal_ordenes")
 }
 
 /// Un puerto del pre-patch de la interfaz.
@@ -7106,10 +7129,10 @@ model ProyectoCreativo {
   artista   Artista? @relation(fields: [artistaId], references: [id])
 
   tratoId String?
-  trato   Trato? @relation(fields: [tratoId], references: [id])
+  trato   Trato?  @relation(fields: [tratoId], references: [id])
 
   giraId String?
-  gira   Gira? @relation(fields: [giraId], references: [id])
+  gira   Gira?   @relation(fields: [giraId], references: [id])
 
   estado String @default("BRIEF") // BRIEF|EN_PROCESO|REVISION|ENTREGADO|CANCELADO
 
@@ -7148,7 +7171,7 @@ model ProyectoCreativo {
   updatedAt DateTime @updatedAt
 
   propuestas  PropuestaServicio[]
-  tareas      Tarea[]              @relation("TareasDeProyectoCreativo")
+  tareas      Tarea[]                   @relation("TareasDeProyectoCreativo")
   entregables CreativeEntregable[]
   archivos    ProyectoCreativoArchivo[]
 
@@ -7161,9 +7184,9 @@ model ProyectoCreativoArchivo {
   proyectoCreativo   ProyectoCreativo @relation(fields: [proyectoCreativoId], references: [id], onDelete: Cascade)
   nombre             String
   url                String
-  tipo               String   @default("REFERENCIA") // IMAGEN | DOCUMENTO | REFERENCIA | OTRO
+  tipo               String           @default("REFERENCIA") // IMAGEN | DOCUMENTO | REFERENCIA | OTRO
   subidoPor          String?
-  createdAt          DateTime @default(now())
+  createdAt          DateTime         @default(now())
 
   @@map("proyecto_creativo_archivos")
 }
@@ -7255,8 +7278,8 @@ model PropuestaServicio {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  lineas         PropuestaServicioLinea[]
-  cuentasCobrar  CuentaCobrar[]
+  lineas        PropuestaServicioLinea[]
+  cuentasCobrar CuentaCobrar[]
 
   @@map("propuestas_servicio")
 }
@@ -7552,7 +7575,7 @@ model Formulario {
   aceptaRespuestas    Boolean  @default(true) @map("acepta_respuestas")
   umbralAvanza        Int      @default(75) @map("umbral_avanza")
   umbralBanco         Int      @default(50) @map("umbral_banco")
-  mensajeConfirmacion String?  @db.Text @map("mensaje_confirmacion")
+  mensajeConfirmacion String?  @map("mensaje_confirmacion") @db.Text
   creadoPorId         String?  @map("creado_por_id")
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
@@ -7581,10 +7604,10 @@ model FormularioSeccion {
   formulario   Formulario @relation(fields: [formularioId], references: [id], onDelete: Cascade)
   orden        Int        @default(0)
   codigoBloque String?    @map("codigo_bloque") // id del seed, informativo
-  bloque       String?    // general | puesto | base | tecnico | operador | ingeniero — informativo
+  bloque       String? // general | puesto | base | tecnico | operador | ingeniero — informativo
   titulo       String
   descripcion  String?    @db.Text
-  mostrarSi    String?    @db.Text @map("mostrar_si") // JSON
+  mostrarSi    String?    @map("mostrar_si") @db.Text // JSON
   archivada    Boolean    @default(false)
   createdAt    DateTime   @default(now()) @map("created_at")
 
@@ -7601,10 +7624,10 @@ model FormularioPregunta {
   codigo      String?
   texto       String            @db.Text
   ayuda       String?           @db.Text
-  tipo        String            // texto_corto | parrafo | opcion_unica | opcion_multiple | si_no | lista | archivo_o_liga | casilla
+  tipo        String // texto_corto | parrafo | opcion_unica | opcion_multiple | si_no | lista | archivo_o_liga | casilla
   obligatoria Boolean           @default(true)
   opciones    String?           @db.Text // JSON string[]
-  mostrarSi   String?           @db.Text @map("mostrar_si") // JSON
+  mostrarSi   String?           @map("mostrar_si") @db.Text // JSON
   valoracion  String?           @db.Text // JSON — se guarda, se usa en Fase 2
   archivada   Boolean           @default(false)
   createdAt   DateTime          @default(now()) @map("created_at")
@@ -7622,7 +7645,7 @@ model FormularioRespuesta {
   enviadoAt            DateTime   @default(now()) @map("enviado_at")
   ipHash               String?    @map("ip_hash")
   excluido             Boolean?
-  motivoExclusion      String?    @db.Text @map("motivo_exclusion")
+  motivoExclusion      String?    @map("motivo_exclusion") @db.Text
   puntosObtenidos      Float?     @map("puntos_obtenidos")
   puntosPosibles       Float?     @map("puntos_posibles")
   porcentajePreliminar Float?     @map("porcentaje_preliminar")
@@ -7644,7 +7667,7 @@ model RespuestaPregunta {
   preguntaId         String              @map("pregunta_id")
   pregunta           FormularioPregunta  @relation(fields: [preguntaId], references: [id], onDelete: Cascade)
   valor              String?             @db.Text // JSON
-  snapshotPregunta   String              @db.Text @map("snapshot_pregunta") // JSON {texto,tipo,opciones,valoracion}
+  snapshotPregunta   String              @map("snapshot_pregunta") @db.Text // JSON {texto,tipo,opciones,valoracion}
   puntosAuto         Float?              @map("puntos_auto")
   calificacionManual Float?              @map("calificacion_manual")
   calificadoPorId    String?             @map("calificado_por_id")

@@ -242,6 +242,9 @@ export interface ListasDelShow {
   /// Hay rider maestro del que colgarse. Sin él la numeración arranca en 1 y hay
   /// que avisarlo: la lista se vería completa cuando no lo está.
   conRider: boolean;
+  /// La fecha acomodó a mano su patch (ver `ShowCanalOrden`): la lista ya no se
+  /// lee en el orden del rider y se puede regresar a él.
+  ordenPropio: Record<TipoCanal, boolean>;
   resumen: {
     entradasRider: number;
     entradasShow: number;
@@ -538,6 +541,46 @@ function numerarCorrido(filas: FilaCanal[], tipo: TipoCanal): FilaCanal[] {
   });
 }
 
+/// El orden que una fecha le dio a mano a su patch, por tipo. Sin entrada = el
+/// orden natural: el rider como él viene y la cola de la fecha detrás.
+export type OrdenPropio = Partial<Record<TipoCanal, string[]>>;
+
+/**
+ * Acomoda las filas según el orden guardado de la fecha.
+ *
+ * Lo que no está en el orden guardado (un renglón que el rider agregó después,
+ * un canal nuevo de la fecha, uno que se regresó a la lista) se queda detrás
+ * del que le precede en el orden natural, para que caiga donde se esperaría y
+ * no al final de todo.
+ */
+function aplicarOrden(filas: FilaCanal[], claves: string[] | undefined): FilaCanal[] {
+  if (!claves?.length) return filas;
+  const posicion = new Map(claves.map((c, i) => [c, i]));
+  let anterior = -1;
+  return filas
+    .map((fila, natural) => {
+      const p = posicion.get(fila.clave);
+      if (p !== undefined) anterior = p;
+      return { fila, natural, llave: p ?? anterior + 0.5 };
+    })
+    .sort((a, b) => a.llave - b.llave || a.natural - b.natural)
+    .map((x) => x.fila);
+}
+
+/// El orden a mano de la fecha. Si la tabla aún no existe (entorno sin el DDL
+/// de `scripts/ddl-orden-canales-show.ts`) la lista se lee en el orden natural
+/// en vez de caerse: el patch importa más que el acomodo.
+export async function ordenDelShow(showId: string): Promise<OrdenPropio> {
+  try {
+    const filas = await prisma.showCanalOrden.findMany({ where: { showId }, select: { tipo: true, claves: true } });
+    const orden: OrdenPropio = {};
+    for (const f of filas) if (esTipoCanal(f.tipo) && f.claves.length) orden[f.tipo] = f.claves;
+    return orden;
+  } catch {
+    return {};
+  }
+}
+
 /**
  * La lista real de la fecha: el rider maestro con los ajustes de esta plaza
  * encima, más los canales que solo existen aquí, en una sola secuencia.
@@ -550,6 +593,7 @@ export function unificarCanales(
   maestros: CanalMaestro[],
   delShow: CanalShow[],
   invitados: InvitadoShow[],
+  orden: OrdenPropio = {},
 ): ListasDelShow {
   const indice = new Map(invitados.map((i) => [i.id, i]));
   const ajustes = new Map(delShow.filter((c) => c.riderCanalId).map((c) => [c.riderCanalId as string, c]));
@@ -583,11 +627,17 @@ export function unificarCanales(
   }
 
   const inputs = numerarCorrido(
-    visibles.filter((f) => f.tipo === "INPUT"),
+    aplicarOrden(
+      visibles.filter((f) => f.tipo === "INPUT"),
+      orden.INPUT,
+    ),
     "INPUT",
   );
   const outputs = numerarCorrido(
-    visibles.filter((f) => f.tipo === "OUTPUT"),
+    aplicarOrden(
+      visibles.filter((f) => f.tipo === "OUTPUT"),
+      orden.OUTPUT,
+    ),
     "OUTPUT",
   );
 
@@ -600,6 +650,7 @@ export function unificarCanales(
     quitados,
     huerfanos,
     conRider: maestros.length > 0,
+    ordenPropio: { INPUT: !!orden.INPUT?.length, OUTPUT: !!orden.OUTPUT?.length },
     resumen: {
       entradasRider: inputs.filter(delRider).length,
       entradasShow: inputs.filter((f) => f.origen === "SHOW").length,
@@ -614,12 +665,13 @@ export function unificarCanales(
 /// Las dos listas de una fecha, leídas de cero. Es lo que devuelven todas las
 /// mutaciones: el cliente nunca recalcula un número.
 export async function listasDelShow(showId: string): Promise<ListasDelShow> {
-  const [rider, canales, invitados] = await Promise.all([
+  const [rider, canales, invitados, orden] = await Promise.all([
     riderMaestroDelShow(showId),
     canalesDelShow(showId),
     prisma.showInvitado.findMany({ where: { showId }, select: SELECT_INVITADO }),
+    ordenDelShow(showId),
   ]);
-  return unificarCanales(rider?.canales ?? [], canales, invitados);
+  return unificarCanales(rider?.canales ?? [], canales, invitados, orden);
 }
 
 // ── Divergencia rider ↔ fechas ───────────────────────────────────────────────
@@ -737,8 +789,23 @@ export async function fechasConAjuste(riderId: string): Promise<Record<string, F
  * agregar, quitar o volver estéreo un canal: si se borra el 33 de 33–35, lo que
  * sigue se recorre y la lista vuelve a leerse corrida. El orden relativo lo
  * decide `orden` (la secuencia en que se agregaron), no el número viejo.
+ *
+ * Si la fecha acomodó su patch a mano, la cola ya no va al final: cada canal de
+ * la fecha guarda el número que de verdad ocupa en la lista unificada, que es
+ * el que lee el renglón del invitado.
  */
 export async function renumerarCola(showId: string, tipo: TipoCanal): Promise<void> {
+  const orden = await ordenDelShow(showId);
+  if (orden[tipo]?.length) {
+    const listas = await listasDelShow(showId);
+    const filas = tipo === "INPUT" ? listas.inputs : listas.outputs;
+    for (const f of filas) {
+      if (f.origen !== "SHOW" || !f.canalShowId) continue;
+      await prisma.showCanal.update({ where: { id: f.canalShowId }, data: { numero: f.numero } });
+    }
+    return;
+  }
+
   const rider = await riderMaestroDelShow(showId);
   const tope = topeDeCanales(tipo, rider?.canales ?? []);
 

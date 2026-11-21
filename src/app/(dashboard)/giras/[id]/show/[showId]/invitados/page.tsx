@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { fmtFechaLarga } from "@/lib/giras";
 import {
   canalesDelShow,
+  ordenDelShow,
   invitadosDelShow,
   riderMaestroDelShow,
   unificarCanales,
@@ -54,14 +55,15 @@ export default async function InvitadosShowPage({
 
   if (!show) notFound();
 
-  const [rider, invitados, canales, prePatch] = await Promise.all([
+  const [rider, invitados, canales, prePatch, orden] = await Promise.all([
     riderMaestroDelShow(showId),
     invitadosDelShow(showId),
     canalesDelShow(showId),
     listasPrePatchDelShow(showId, id),
+    ordenDelShow(showId),
   ]);
 
-  const listas = unificarCanales(rider?.canales ?? [], canales, invitados);
+  const listas = unificarCanales(rider?.canales ?? [], canales, invitados, orden);
   const ciudad = show.ciudad ?? show.venue?.ciudad ?? null;
 
   return (

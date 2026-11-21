@@ -260,20 +260,28 @@ export default function CanalesShow({ showId, listas, invitados, onListas, onInv
   }
 
   /**
-   * Acomoda la cola de esta fecha.
+   * Acomoda el patch de esta fecha, también los renglones del rider. El orden
+   * vale solo en esta plaza: el rider de la gira no se mueve.
    *
    * No se reordena en pantalla antes de la respuesta: el número de una salida
    * estéreo se lleva dos canales, así que mover un renglón recorre etiquetas que
    * solo el servidor sabe calcular.
+   *
+   * `claves` vacío regresa la fecha al orden del rider.
    */
-  async function reordenar(tipo: TipoCanal, ids: string[]) {
+  async function reordenar(tipo: TipoCanal, claves: string[]) {
     setReordenando(tipo);
     try {
-      const res = await fetch(`/api/gira-shows/${showId}/canales/orden`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tipo, ids }),
-      });
+      const res = await fetch(
+        `/api/gira-shows/${showId}/canales/orden${claves.length ? "" : `?tipo=${tipo}`}`,
+        claves.length
+          ? {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ tipo, claves }),
+            }
+          : { method: "DELETE" },
+      );
       const d = await res.json().catch(() => ({}));
       if (!res.ok) {
         toast.error(d.error ?? "No se pudo acomodar la lista");
@@ -550,7 +558,7 @@ export default function CanalesShow({ showId, listas, invitados, onListas, onInv
 
       <TablaCanales
         titulo="Input list de la fecha"
-        nota="El orden del patch es el número de canal. El rider de la gira va primero: lo que cambies o saques aquí vale solo en esta plaza."
+        nota="El orden del patch es el número de canal. Arrastra por la manija para acomodarlo: lo que muevas, cambies o saques aquí vale solo en esta plaza."
         tipo="INPUT"
         filas={listas.inputs}
         valor={valor}
@@ -561,6 +569,7 @@ export default function CanalesShow({ showId, listas, invitados, onListas, onInv
         subirAlRider={subirAlRider}
         reordenar={reordenar}
         reordenando={reordenando === "INPUT"}
+        ordenPropio={listas.ordenPropio?.INPUT ?? false}
         abrir={abrir}
         trabajando={trabajando}
       />
@@ -578,6 +587,7 @@ export default function CanalesShow({ showId, listas, invitados, onListas, onInv
         subirAlRider={subirAlRider}
         reordenar={reordenar}
         reordenando={reordenando === "OUTPUT"}
+        ordenPropio={listas.ordenPropio?.OUTPUT ?? false}
         abrir={abrir}
         trabajando={trabajando}
       />
@@ -628,8 +638,11 @@ interface TablaProps {
   quitar: (fila: FilaCanal) => Promise<void>;
   volverAlRider: (fila: FilaCanal) => Promise<void>;
   subirAlRider: (fila: FilaCanal) => Promise<void>;
-  reordenar: (tipo: TipoCanal, ids: string[]) => Promise<void>;
+  /// Recibe las claves de toda la lista en el orden nuevo; vacío = orden del rider.
+  reordenar: (tipo: TipoCanal, claves: string[]) => Promise<void>;
   reordenando: boolean;
+  /// La fecha ya no sigue el orden del rider.
+  ordenPropio: boolean;
   abrir: (tipo: TipoCanal, cantidad: number) => Promise<void>;
   trabajando: boolean;
 }
@@ -647,13 +660,14 @@ function TablaCanales({
   subirAlRider,
   reordenar,
   reordenando,
+  ordenPropio,
   abrir,
   trabajando,
 }: TablaProps) {
   const esInput = tipo === "INPUT";
-  /// Solo la cola de la fecha se arrastra: los renglones del rider llevan el
-  /// orden del rider de la gira, que es el mismo en todas las plazas.
-  const deLaFecha = filas.filter((f) => f.origen === "SHOW");
+  /// Toda la lista se arrastra: el orden se guarda solo para esta fecha. Con un
+  /// solo renglón no hay con quién acomodarlo y la manija se apaga.
+  const arrastrable = filas.length > 1 && !reordenando;
 
   return (
     <section className="space-y-2">
@@ -678,9 +692,9 @@ function TablaCanales({
         </div>
       ) : (
         <TablaOrdenable
-          filas={deLaFecha}
+          filas={filas}
           claveDe={(f) => f.clave}
-          onReordenar={(fs) => void reordenar(tipo, fs.map((f) => f.id))}
+          onReordenar={(fs) => void reordenar(tipo, fs.map((f) => f.clave))}
         >
           <table className={`${esInput ? "min-w-[1114px]" : "min-w-[914px]"} w-full ${reordenando ? "opacity-60" : ""}`}>
             <thead className="ms-thead">
@@ -710,9 +724,6 @@ function TablaCanales({
               {filas.map((f) => {
                 const delShow = f.origen === "SHOW";
                 const ajustado = f.origen === "AJUSTADO";
-                // Con un solo canal de esta fecha no hay con quién acomodarlo: la
-                // manija se apaga para no ofrecer un arrastre que no mueve nada.
-                const arrastrable = delShow && deLaFecha.length > 1;
                 return (
                   <FilaArrastrable
                     key={f.clave}
@@ -720,10 +731,10 @@ function TablaCanales({
                     fijo={!arrastrable}
                     titulo={
                       arrastrable
-                        ? "Arrastrar para acomodarlo entre los canales de esta fecha"
-                        : delShow
-                          ? "Agrega otro canal de esta fecha para poder acomodarlo"
-                          : "Este renglón lleva el orden del rider de la gira; se cambia allá"
+                        ? "Arrastrar para cambiar su lugar en el patch de esta fecha"
+                        : reordenando
+                          ? "Acomodando la lista…"
+                          : "Agrega otro canal para poder acomodarlo"
                     }
                     className={`ms-tr align-top ${delShow ? "bg-amber-400/[0.05]" : ajustado ? "bg-[#B3985B]/[0.06]" : ""}`}
                   >
@@ -875,11 +886,23 @@ function TablaCanales({
         </TablaOrdenable>
       )}
 
-      {deLaFecha.length > 1 && (
-        <p className="ms-micro">
-          Los {deLaFecha.length} canales que nacieron en esta fecha se acomodan entre ellos arrastrando el renglón por
-          la manija. Los del rider van primero y en el orden del rider de la gira.
-        </p>
+      {filas.length > 1 && (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="ms-micro">
+            {ordenPropio
+              ? "Esta fecha tiene su propio orden. El rider de la gira no cambió: las demás plazas lo siguen leyendo como viene."
+              : "Arrastra cualquier renglón por la manija para acomodar el patch de esta fecha. El rider de la gira no se mueve."}
+          </p>
+          {ordenPropio && (
+            <button
+              onClick={() => void reordenar(tipo, [])}
+              disabled={reordenando}
+              className="ms-btn-ghost text-xs shrink-0"
+            >
+              Volver al orden del rider
+            </button>
+          )}
+        </div>
       )}
     </section>
   );

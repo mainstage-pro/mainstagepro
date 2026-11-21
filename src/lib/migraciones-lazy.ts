@@ -1013,3 +1013,31 @@ export async function ensureGiraNotasColumns() {
   }
   _giraNotasReady = true;
 }
+
+/**
+ * Orden propio del patch por fecha (show_canal_ordenes, ver ShowCanalOrden).
+ * Red de seguridad para dev/local; en prod se aplica antes del deploy con
+ * scripts/ddl-orden-canales-show.ts. Es tabla nueva: crearla no bloquea nada.
+ */
+let _showCanalOrdenReady = false;
+
+export async function ensureShowCanalOrdenTable() {
+  if (_showCanalOrdenReady) return;
+  const rows = await prisma.$queryRaw<{ exists: boolean }[]>`
+    SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'show_canal_ordenes') as exists
+  `;
+  if (rows[0]?.exists !== true) {
+    try {
+      await prisma.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "show_canal_ordenes" (
+        "showId" TEXT NOT NULL,
+        "tipo" TEXT NOT NULL,
+        "claves" TEXT[],
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "show_canal_ordenes_pkey" PRIMARY KEY ("showId", "tipo"),
+        CONSTRAINT "show_canal_ordenes_showId_fkey" FOREIGN KEY ("showId")
+          REFERENCES "gira_shows"("id") ON DELETE CASCADE ON UPDATE CASCADE
+      )`);
+    } catch { /* ya existe */ }
+  }
+  _showCanalOrdenReady = true;
+}

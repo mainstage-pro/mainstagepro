@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logActividad } from "@/lib/actividad";
-import { camposDeCanal, esTipoCanal, listasDelShow, riderMaestroDelShow } from "@/lib/show-canales";
+import { camposDeCanal, esTipoCanal, listasDelShow, renumerarCola, riderMaestroDelShow } from "@/lib/show-canales";
 
 /**
  * Meterse con un renglón del rider maestro SOLO en esta fecha.
@@ -88,6 +88,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ sho
         : `Ajustó «${maestro.nombre}» del rider solo en esta fecha`,
     { showId, riderCanalId },
   );
+
+  // Quitar o regresar un renglón del rider recorre lo que sigue; con un orden a
+  // mano, los canales de la fecha guardan el número que de verdad ocupan.
+  if (oculto !== undefined) await renumerarCola(showId, maestro.tipo);
 
   return NextResponse.json({ listas: await listasDelShow(showId) });
 }
