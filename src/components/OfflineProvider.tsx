@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { usePathname } from "next/navigation";
 import { getQueueSize, requestSync, clearQueue } from "@/lib/offline-queue";
 import { WifiOff } from "lucide-react";
 
@@ -135,6 +136,17 @@ export function useOnlineStatus() {
 // ── Banner visual ─────────────────────────────────────────────────────────────
 export default function OfflineProvider() {
   const { online, queueSize, syncing, justSynced, retry, discard } = useOnlineStatus();
+  const [updateReady, setUpdateReady] = useState(false);
+  const pathname = usePathname();
+  const lastPathname = useRef(pathname);
+
+  // Hay un deploy nuevo y el usuario acaba de cambiar de página: es el momento
+  // seguro para recargar (no pierde lo que estaba escribiendo) y tomar el build nuevo.
+  useEffect(() => {
+    if (lastPathname.current === pathname) return;
+    lastPathname.current = pathname;
+    if (updateReady) window.location.reload();
+  }, [pathname, updateReady]);
 
   // Registrar el SW
   useEffect(() => {
@@ -145,16 +157,23 @@ export default function OfflineProvider() {
     const buildId = process.env.NEXT_PUBLIC_BUILD_ID || "dev";
     const swUrl = `/sw.js?v=${encodeURIComponent(buildId)}`;
 
-    // Si al montar ya había un controlador, cualquier cambio de controlador
-    // posterior significa que se activó un deploy nuevo → recargar una sola vez
-    // para tomar el HTML y los chunks nuevos (y no pedir chunks que ya no existen).
-    // En la primera visita no hay controlador, así que evitamos recargar de más.
-    const hadController = !!navigator.serviceWorker.controller;
-    let reloading = false;
+    // NUNCA recargar a media tarea. Antes, al activarse un SW nuevo se hacía
+    // window.location.reload() al instante: con varios deploys al día, la app se
+    // "reiniciaba sola" al abrirla o mientras se escribía en un buscador/form.
+    //
+    // Ahora:
+    // - Si la página ya trae el build del SW nuevo (lo normal al abrir la app:
+    //   el HTML llega fresco de la red), no hay nada que actualizar.
+    // - Si la página es de un build anterior, solo se marca la actualización y
+    //   se aplica en la siguiente navegación del usuario (ver efecto de pathname).
     const onControllerChange = () => {
-      if (reloading || !hadController) return;
-      reloading = true;
-      window.location.reload();
+      const ctrl = navigator.serviceWorker.controller;
+      let swBuild: string | null = null;
+      try {
+        swBuild = ctrl ? new URL(ctrl.scriptURL).searchParams.get("v") : null;
+      } catch { /* noop */ }
+      if (swBuild && swBuild === buildId) return;
+      setUpdateReady(true);
     };
     navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
 
@@ -184,6 +203,29 @@ export default function OfflineProvider() {
       if (updateTimer) clearInterval(updateTimer);
     };
   }, []);
+
+  // Deploy nuevo pendiente: aviso discreto, el usuario decide cuándo recargar.
+  if (updateReady && online && queueSize === 0 && !syncing && !justSynced) {
+    return (
+      <div
+        style={{ zIndex: 9999, position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)", pointerEvents: "none" }}
+        className="flex items-center justify-center"
+      >
+        <div
+          className="flex items-center gap-2.5 px-4 py-2 rounded-full text-xs font-medium shadow-xl bg-neutral-900/90 text-neutral-200 border border-neutral-700/60"
+          style={{ backdropFilter: "blur(12px)", pointerEvents: "auto" }}
+        >
+          <span>Hay una versión nueva</span>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-2 py-0.5 rounded-full bg-white/15 hover:bg-white/25 text-white font-semibold transition-colors"
+          >
+            Actualizar
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // No mostrar nada si estamos online y no hay cola ni sync
   if (online && queueSize === 0 && !syncing && !justSynced) return null;
