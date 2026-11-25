@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
+import { esAdelanto, periodoSemanal, periodoSiguiente, type TipoPeriodoNomina } from "@/lib/nomina-periodo";
 
 interface PagoNomina {
   id: string;
@@ -23,6 +24,7 @@ interface PagoNomina {
 interface PersonalRow {
   id: string; nombre: string; puesto: string; departamento: string;
   salario: number | null; periodoPago: string; cuentaBancaria: string | null;
+  ultimoTipoPeriodo: string | null;
 }
 
 interface Cuenta { id: string; nombre: string }
@@ -77,12 +79,7 @@ function NuevoPagoModal({
     dias: "1",
     montoOverride: "",
     concepto: "Pago variable/destajo",
-    periodo: (() => {
-      const d = new Date();
-      const startOfYear = new Date(d.getFullYear(), 0, 1);
-      const week = Math.ceil(((d.getTime() - startOfYear.getTime()) / 86400000 + startOfYear.getDay() + 1) / 7);
-      return `${d.getFullYear()}-W${String(week).padStart(2, "0")}`;
-    })()
+    periodo: periodoSemanal(new Date())
   });
 
   const selectedPersona = personal.find(p => p.id === form.targetId);
@@ -186,6 +183,160 @@ function NuevoPagoModal({
     </div>
   );
 }
+
+const TIPOS_FIJOS: TipoPeriodoNomina[] = ["SEMANAL", "QUINCENAL", "MENSUAL"];
+const inputCls = "w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#B3985B] outline-none";
+
+// Adelanto de nómina: paga hoy el periodo que aún no llega. Se guarda con la
+// clave de ese periodo, así el cron/"generar nómina" no lo vuelve a crear.
+function AdelantoModal({
+  personal, cuentas, onClose, onSaved,
+}: {
+  personal: PersonalRow[]; cuentas: Cuenta[]; onClose: () => void; onSaved: () => void;
+}) {
+  const toast = useToast();
+  const [saving, setSaving] = useState(false);
+  const cuentaEfectivo = cuentas.find(c => /efectivo/i.test(c.nombre))?.id ?? "";
+  const [form, setForm] = useState({
+    personalId: "",
+    tipoPeriodo: "SEMANAL" as TipoPeriodoNomina,
+    periodo: periodoSiguiente("SEMANAL"),
+    monto: "",
+    metodo: "EFECTIVO",
+    cuentaId: cuentaEfectivo,
+    fecha: new Date().toLocaleDateString("en-CA"),
+    notas: "",
+  });
+
+  function elegirPersona(id: string) {
+    const p = personal.find(x => x.id === id);
+    const tipo = (TIPOS_FIJOS as string[]).includes(p?.ultimoTipoPeriodo ?? "")
+      ? (p!.ultimoTipoPeriodo as TipoPeriodoNomina)
+      : (TIPOS_FIJOS as string[]).includes(p?.periodoPago ?? "") ? (p!.periodoPago as TipoPeriodoNomina) : "SEMANAL";
+    setForm(f => ({ ...f, personalId: id, tipoPeriodo: tipo, periodo: periodoSiguiente(tipo), monto: p?.salario ? String(p.salario) : "" }));
+  }
+
+  function elegirMetodo(metodo: string) {
+    setForm(f => ({ ...f, metodo, cuentaId: metodo === "EFECTIVO" && cuentaEfectivo ? cuentaEfectivo : f.cuentaId }));
+  }
+
+  const persona = personal.find(p => p.id === form.personalId);
+  const monto = parseFloat(form.monto) || 0;
+
+  async function guardar() {
+    if (!form.personalId || monto <= 0 || !form.periodo.trim() || !form.cuentaId) {
+      toast.error("Elige persona, periodo, monto y cuenta");
+      return;
+    }
+    setSaving(true);
+    const r = await fetch("/api/rrhh/nomina/adelanto", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        personalId: form.personalId,
+        tipoPeriodo: form.tipoPeriodo,
+        periodo: form.periodo.trim(),
+        monto,
+        metodoPago: form.metodo,
+        cuentaOrigenId: form.cuentaId,
+        fechaPago: form.fecha,
+        notas: form.notas,
+      }),
+    });
+    setSaving(false);
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      toast.error(d.error ?? "No se pudo registrar el adelanto");
+      return;
+    }
+    toast.success(`Adelanto registrado · ${form.periodo}`);
+    onSaved();
+    onClose();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="bg-[#0e0e0e] border border-[#2a2a2a] rounded-2xl w-full max-w-md mx-4 shadow-2xl">
+        <div className="p-5 border-b border-[#1e1e1e]">
+          <h2 className="text-white font-semibold text-base">Adelantar pago de nómina</h2>
+          <p className="text-gray-500 text-xs mt-1">
+            Paga hoy un periodo que aún no llega. Queda como pagado y, cuando llegue ese periodo, ya no se genera otra vez.
+          </p>
+        </div>
+        <div className="p-5 space-y-4">
+          <div>
+            <label className="text-gray-500 text-xs block mb-1">Persona</label>
+            <Combobox
+              value={form.personalId}
+              onChange={elegirPersona}
+              options={[{ value: "", label: "Seleccionar persona..." }, ...personal.map(p => ({ value: p.id, label: p.nombre }))]}
+              className={inputCls}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-gray-500 text-xs block mb-1">Tipo de periodo</label>
+              <Combobox
+                value={form.tipoPeriodo}
+                onChange={v => setForm(f => ({ ...f, tipoPeriodo: v as TipoPeriodoNomina, periodo: periodoSiguiente(v as TipoPeriodoNomina) }))}
+                options={TIPOS_FIJOS.map(t => ({ value: t, label: TIPO_LABELS[t] }))}
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className="text-gray-500 text-xs block mb-1">Periodo que se adelanta</label>
+              <input value={form.periodo} onChange={e => setForm(f => ({ ...f, periodo: e.target.value }))} className={inputCls} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-gray-500 text-xs block mb-1">Monto ($)</label>
+              <input type="number" value={form.monto} onChange={e => setForm(f => ({ ...f, monto: e.target.value }))} className={inputCls} />
+              {persona?.salario ? <p className="text-gray-600 text-[11px] mt-1">Tarifa base {fmt(persona.salario)}</p> : null}
+            </div>
+            <div>
+              <label className="text-gray-500 text-xs block mb-1">Fecha de pago</label>
+              <input type="date" value={form.fecha} onChange={e => setForm(f => ({ ...f, fecha: e.target.value }))} className={inputCls} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-gray-500 text-xs block mb-1">Método</label>
+              <Combobox
+                value={form.metodo}
+                onChange={elegirMetodo}
+                options={[{ value: "EFECTIVO", label: "Efectivo" }, { value: "TRANSFERENCIA", label: "Transferencia" }, { value: "TARJETA", label: "Tarjeta" }]}
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className="text-gray-500 text-xs block mb-1">Sale de la cuenta</label>
+              <Combobox
+                value={form.cuentaId}
+                onChange={v => setForm(f => ({ ...f, cuentaId: v }))}
+                options={[{ value: "", label: "— Cuenta —" }, ...cuentas.map(c => ({ value: c.id, label: c.nombre }))]}
+                className={inputCls}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-gray-500 text-xs block mb-1">Nota (opcional)</label>
+            <input value={form.notas} onChange={e => setForm(f => ({ ...f, notas: e.target.value }))}
+              placeholder="ej. lo pidió por un gasto personal" className={inputCls} />
+          </div>
+        </div>
+        <div className="p-5 border-t border-[#1e1e1e] flex gap-3">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-[#2a2a2a] text-gray-400 text-sm hover:text-white transition-colors">Cancelar</button>
+          <button onClick={guardar} disabled={saving || !form.personalId || monto <= 0}
+            className="flex-1 py-2.5 rounded-xl bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9aa67] transition-colors disabled:opacity-50">
+            {saving ? "Registrando..." : `Pagar adelanto${monto > 0 ? ` · ${fmt(monto)}` : ""}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function NominaPage() {
   const toast = useToast();
   const [pendientes, setPendientes] = useState<PagoNomina[]>([]);
@@ -195,6 +346,7 @@ export default function NominaPage() {
   const [cuentas, setCuentas] = useState<Cuenta[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNuevoPago, setShowNuevoPago] = useState(false);
+  const [showAdelanto, setShowAdelanto] = useState(false);
 
   // Confirmar pago
   const [confirmando, setConfirmando] = useState<string | null>(null);
@@ -271,7 +423,11 @@ export default function NominaPage() {
             {pendientes.length === 0 && "sin pagos pendientes"}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <button onClick={() => setShowAdelanto(true)}
+            className="bg-[#1a1a1a] border border-[#333] hover:bg-[#222] text-[#B3985B] text-sm px-4 py-2 rounded-lg transition-colors">
+            Adelantar pago
+          </button>
           <button onClick={() => setShowNuevoPago(true)}
             className="bg-[#1a1a1a] border border-[#333] hover:bg-[#222] text-[#B3985B] text-sm px-4 py-2 rounded-lg transition-colors">
             + Nuevo pago variable
@@ -460,7 +616,12 @@ export default function NominaPage() {
                     )}
                     <p className="text-gray-600 text-xs">{p.personal?.puesto || "FREELANCE"}</p>
                   </td>
-                  <td className="ms-td text-xs text-gray-500">{p.periodo}</td>
+                  <td className="ms-td text-xs text-gray-500">
+                    {p.periodo}
+                    {esAdelanto(p.concepto) && (
+                      <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded font-medium bg-[#B3985B]/15 text-[#B3985B]">Adelanto</span>
+                    )}
+                  </td>
                   <td className="ms-td text-xs text-gray-400 max-w-[200px] truncate">{p.concepto ?? "—"}</td>
                   <td className="ms-td text-white font-medium">{fmt(p.monto)}</td>
                   <td className="ms-td text-xs text-gray-500">
@@ -474,6 +635,15 @@ export default function NominaPage() {
         </div>
       )}
       
+      {showAdelanto && (
+        <AdelantoModal
+          personal={personal}
+          cuentas={cuentas}
+          onClose={() => setShowAdelanto(false)}
+          onSaved={() => { load(); }}
+        />
+      )}
+
       {showNuevoPago && (
         <NuevoPagoModal
           personal={personal}

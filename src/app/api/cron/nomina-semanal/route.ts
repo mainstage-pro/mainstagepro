@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { periodoSemanal } from "@/lib/nomina-periodo";
 
 // GET /api/cron/nomina-semanal
 // Corre todos los lunes — genera PagoNomina + CuentaPagar para personal SEMANAL activo
@@ -12,15 +13,9 @@ export async function GET(req: NextRequest) {
 
   const ahora = new Date();
 
-  // Período: semana del lunes actual (formato YYYY-WXX)
-  const startOfYear = new Date(ahora.getFullYear(), 0, 1);
-  const weekNum = Math.ceil(
-    ((ahora.getTime() - startOfYear.getTime()) / 86400000 +
-      startOfYear.getDay() +
-      1) /
-      7
-  );
-  const periodo = `${ahora.getFullYear()}-W${String(weekNum).padStart(2, "0")}`;
+  // Período: semana del lunes actual (formato YYYY-WXX). Si ya hay un pago
+  // con esta clave (p. ej. un adelanto), se salta: ver lib/nomina-periodo.ts.
+  const periodo = periodoSemanal(ahora);
 
   // Fecha compromiso: este mismo lunes (pago inmediato)
   const fechaCompromiso = new Date(ahora);

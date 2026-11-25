@@ -28,7 +28,18 @@ export async function GET() {
     prisma.tecnico.findMany({ where: { activo: true }, select: { id: true, nombre: true }, orderBy: { nombre: "asc" } }),
   ]);
 
-  return NextResponse.json({ pendientes, historial, personal, cuentas, tecnicos });
+  // Último pago de nómina fija por persona: el adelanto propone su mismo tipo de
+  // periodo (el periodoPago de la ficha no siempre refleja cómo se le paga).
+  const ultimos = await prisma.pagoNomina.findMany({
+    where: { personalId: { in: personal.map(p => p.id) }, tipoPeriodo: { in: ["SEMANAL", "QUINCENAL", "MENSUAL"] } },
+    orderBy: { createdAt: "desc" },
+    distinct: ["personalId"],
+    select: { personalId: true, tipoPeriodo: true },
+  });
+  const tipoPorPersona = new Map(ultimos.map(u => [u.personalId, u.tipoPeriodo]));
+  const personalConTipo = personal.map(p => ({ ...p, ultimoTipoPeriodo: tipoPorPersona.get(p.id) ?? null }));
+
+  return NextResponse.json({ pendientes, historial, personal: personalConTipo, cuentas, tecnicos });
 }
 
 // POST — generar nómina para un período
