@@ -4156,7 +4156,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     personalSinAsignar: proyecto.personal.filter(p => !p.tecnico).length,
     personalSinRol: proyecto.personal.filter(p => p.tecnico && !p.rolTecnico && !p.rolEnEvento?.trim()).length,
     equiposSinConfirmar: proyecto.equipos.filter(e => !e.confirmado).length,
-    coordinadoresEnSitio: proyecto.personal.filter(p => p.tecnico && p.coordinaEnSitio).length,
+    coordinadoresEnSitio: new Set(proyecto.personal.filter(p => p.tecnico && p.coordinaEnSitio).map(p => p.tecnico!.id)).size,
     proveedoresSinResponsable: proyecto.proveedoresEvento.filter(
       pv => !pv.imprevisto && !pv.responsable?.trim()
     ).length,
@@ -6065,8 +6065,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             title={!proyecto._canViewTecnicoCosts
                               ? (p.coordinaEnSitio ? "Quitarle la coordinación en sitio" : "Marcar como quien manda en sitio")
                               : p.coordinaEnSitio
-                              ? `Quitarle la coordinación en sitio${p.bonoEncargado != null ? ` (y su bono de ${fmt(p.bonoEncargado)})` : ""}`
-                              : `Marcar como quien manda en sitio — le suma el bono de encargado (${fmt(bonosCatalogo?.bonoEncargado ?? 0)})`}
+                              ? "Quitarle la coordinación en sitio (en todas sus jornadas, junto con su bono de encargado)"
+                              : `Marcar como quien manda en sitio — se marca en todas sus jornadas y el bono de encargado (${fmt(bonosCatalogo?.bonoEncargado ?? 0)}) se suma en una sola`}
                             className={`text-xs px-1.5 py-0.5 rounded border transition-colors ${p.coordinaEnSitio ? "border-[#B3985B]/60 text-[#B3985B]" : "border-transparent text-gray-700 hover:text-[#B3985B] hover:border-[#333]"}`}>
                             ★
                           </button>

@@ -90,7 +90,8 @@ export async function bloqueosDocumento(
     personalSinAsignar: p.personal.filter(x => !x.tecnicoId).length,
     personalSinRol: p.personal.filter(x => x.tecnicoId && !x.rolTecnicoId && !x.rolEnEvento?.trim()).length,
     equiposSinConfirmar: p.equipos.filter(e => !e.confirmado).length,
-    coordinadoresEnSitio: p.personal.filter(x => x.tecnicoId && x.coordinaEnSitio).length,
+    // La estrella va en todas las jornadas de la persona: se cuentan personas.
+    coordinadoresEnSitio: new Set(p.personal.filter(x => x.tecnicoId && x.coordinaEnSitio).map(x => x.tecnicoId)).size,
     // Los imprevistos se piden con el evento ya corriendo: no hay preproducción
     // que los asigne, así que no cuentan para el candado.
     proveedoresSinResponsable: p.proveedoresEvento.filter(

@@ -4,6 +4,7 @@ import { getSession, puedeVerCostosTecnicos } from "@/lib/auth";
 import { BONOS_PERSONAL, CONFIG_BONOS_DEFAULT, totalPagoPersonal } from "@/lib/pago-personal";
 import { ensureOperacionTecnicaColumns } from "@/lib/migraciones-lazy";
 import { marcarFilaNominaPagada, revertirFilaNominaPagada } from "@/lib/nomina-pagos";
+import { normalizarCoordinadorSitio } from "@/lib/coordinador-sitio";
 
 function proximoMiercolesTraEvento(fecha: Date): Date {
   const d = new Date(fecha);
@@ -77,17 +78,31 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   // Encargar a alguien y pagarle por encargarse es un solo acto: la estrella de
   // "coordina en sitio" arrastra el bono, para no tener dos botones que dicen lo
-  // mismo y puedan quedar en desacuerdo. El monto se congela al aplicarse.
-  if ("coordinaEnSitio" in body && canEditTecnicoCosts && previo?.estadoPago !== "PAGADO") {
-    if (body.coordinaEnSitio === true) {
-      if (previo?.bonoEncargado == null) {
-        const cfg = await prisma.configPagoPersonal.findUnique({ where: { id: "singleton" } });
-        const monto = cfg?.bonoEncargado ?? CONFIG_BONOS_DEFAULT.bonoEncargado;
-        if (monto > 0) data.bonoEncargado = monto;
-      }
+  // mismo y puedan quedar en desacuerdo. La estrella es de la PERSONA (va en
+  // todas sus jornadas) y el bono se paga una vez (en una sola jornada); eso lo
+  // resuelve normalizarCoordinadorSitio, no este renglón por su cuenta.
+  delete data.coordinaEnSitio;
+  delete data.bonoEncargado;
+  const cambiaCoordinador = "coordinaEnSitio" in body;
+  const cambiaTecnico = "tecnicoId" in body && (body.tecnicoId || null) !== (previo?.tecnicoId ?? null);
+  let coordinadorTecnicoId: string | null = null;
+  if (previo && (cambiaCoordinador || cambiaTecnico)) {
+    if (cambiaCoordinador) {
+      const tecnicoFila = "tecnicoId" in body ? (body.tecnicoId || null) : previo.tecnicoId;
+      coordinadorTecnicoId = body.coordinaEnSitio === true ? tecnicoFila : null;
     } else {
-      data.bonoEncargado = null;
+      // Cambió el técnico de una jornada: la estrella sigue a quien ya coordinaba.
+      const actual = await prisma.proyectoPersonal.findFirst({
+        where: { proyectoId: previo.proyectoId, coordinaEnSitio: true, tecnicoId: { not: null }, id: { not: personalId } },
+        select: { tecnicoId: true },
+      });
+      coordinadorTecnicoId = actual?.tecnicoId ?? null;
     }
+  }
+  let montoBonoEncargado: number | null = null;
+  if ((cambiaCoordinador || cambiaTecnico) && canEditTecnicoCosts) {
+    const cfg = await prisma.configPagoPersonal.findUnique({ where: { id: "singleton" } });
+    montoBonoEncargado = cfg?.bonoEncargado ?? CONFIG_BONOS_DEFAULT.bonoEncargado;
   }
 
   // ── Detectar transición de estado de pago ────────────────────────────────
@@ -96,26 +111,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const pasaAPendiente = nuevoEstado === "PENDIENTE" && previo?.estadoPago === "PAGADO";
 
   const personal = await prisma.$transaction(async (tx) => {
-    // El coordinador en sitio es uno solo: al nombrar a alguien se releva al
-    // anterior. Si no, dos personas creerían mandar y volvemos al problema.
-    if (data.coordinaEnSitio === true && previo?.proyectoId) {
-      await tx.proyectoPersonal.updateMany({
-        where: { proyectoId: previo.proyectoId, id: { not: personalId } },
-        data: { coordinaEnSitio: false },
-      });
-      // Al relevado se le quita el bono, salvo que ya se le haya pagado: un pago
-      // hecho no se deshace desde aquí.
-      await tx.proyectoPersonal.updateMany({
-        where: {
-          proyectoId: previo.proyectoId, id: { not: personalId },
-          estadoPago: { not: "PAGADO" }, bonoEncargado: { not: null },
-        },
-        data: { bonoEncargado: null },
-      });
-    }
     // Aplicar primero los cambios de campos (tarifa, estado, rol, etc.) para
     // que el helper vea los valores efectivos al construir el movimiento.
     await tx.proyectoPersonal.update({ where: { id: personalId }, data });
+
+    // El coordinador en sitio es uno solo: al nombrar a alguien se releva al
+    // anterior. Si no, dos personas creerían mandar y volvemos al problema.
+    if (previo && (cambiaCoordinador || cambiaTecnico)) {
+      await normalizarCoordinadorSitio(tx, previo.proyectoId, coordinadorTecnicoId, montoBonoEncargado);
+    }
 
     // Transición de estado de pago → crear o revertir el movimiento ligado.
     if (pasaAPagado) {
