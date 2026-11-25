@@ -35,24 +35,20 @@ export function seccionCxP(c: {
   return "OTRO";
 }
 
-export type SeccionCxC = "EVENTO" | "LIVE" | "CREATIVE" | "RECURRENTE" | "OTRO";
+export type SeccionCxC = "EVENTO" | "RECURRENTE" | "OTRO";
 
+// Cobros y pagos es de Mainstage Pro: las secciones de CxC no separan otras
+// unidades de negocio.
 export const SECCIONES_CXC: { key: SeccionCxC; label: string; ayuda: string }[] = [
-  { key: "EVENTO", label: "Eventos", ayuda: "Clientes de producción (Pro)" },
-  { key: "LIVE", label: "Giras · Live", ayuda: "Propuestas ligadas a una gira" },
-  { key: "CREATIVE", label: "Creative", ayuda: "Propuestas ligadas a un proyecto creativo" },
+  { key: "EVENTO", label: "Eventos", ayuda: "Cobros ligados a un proyecto" },
   { key: "RECURRENTE", label: "Recurrentes", ayuda: "Igualas y cobros periódicos" },
-  { key: "OTRO", label: "Otros", ayuda: "Sin proyecto ni propuesta" },
+  { key: "OTRO", label: "Otros", ayuda: "Sin proyecto" },
 ];
 
-// Mismo criterio de unidad que unidadDeCuentaCobrar (src/lib/unidad-negocio.ts).
 export function seccionCxC(c: {
   proyecto?: { id: string } | null;
   serieRecurrenteId?: string | null;
-  propuestaServicio?: { gira: unknown | null; proyectoCreativo: unknown | null } | null;
 }): SeccionCxC {
-  if (c.propuestaServicio?.proyectoCreativo) return "CREATIVE";
-  if (c.propuestaServicio?.gira) return "LIVE";
   if (c.serieRecurrenteId) return "RECURRENTE";
   if (c.proyecto) return "EVENTO";
   return "OTRO";
