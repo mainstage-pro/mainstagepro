@@ -603,7 +603,11 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
         fetch("/api/cuentas-pagar", { cache: "no-store" }).then(r => r.json()).catch(() => []),
         fetch("/api/movimientos?directos=true", { cache: "no-store" }).then(r => r.json()).catch(() => ({ movimientos: [] })),
       ]);
-      setCxc(Array.isArray(rc) ? rc.map(conProyectoEfectivo) : []);
+      // Cobros y pagos es de Mainstage Pro: lo que cobran Live (gira) y
+      // Creative (proyecto creativo) no entra a esta lista ni a sus totales.
+      setCxc(Array.isArray(rc)
+        ? rc.filter((c: CxCItem) => !c.propuestaServicio?.gira && !c.propuestaServicio?.proyectoCreativo).map(conProyectoEfectivo)
+        : []);
       setCxp(Array.isArray(rp) ? rp : []);
       setMovDirectos(rm.movimientos ?? []);
     } finally {
