@@ -11,6 +11,7 @@ import RowActions from "@/components/ui/RowActions";
 import { usePdfDownload } from "@/hooks/usePdfDownload";
 import { Calendar } from "lucide-react";
 import { coincide } from "@/lib/buscar";
+import { SECCIONES_CXC, SECCIONES_CXP, seccionCxC, seccionCxP, type SeccionCxC, type SeccionCxP } from "@/lib/secciones-cuentas";
 
 // Test de despliegue automático en Vercel
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -130,6 +131,10 @@ interface CxPItem {
   serieRecurrenteId?: string | null;
   numeroPeriodo?: number | null;
   esPrestamo?: boolean;
+  esNomina?: boolean;
+  esDeuda?: boolean;
+  esReparto?: boolean;
+  gastoRecurrenteId?: string | null;
 }
 
 interface MovDirecto {
@@ -446,7 +451,8 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
   // Préstamo de capital: a quién se le devuelve ("socio:<id>" | "prov:<id>" | "").
   const [editAcreedor, setEditAcreedor] = useState("");
   const [socios, setSocios] = useState<Array<{ id: string; nombre: string }>>([]);
-  const [soloPrestamos, setSoloPrestamos] = useState(false);
+  const [seccionCxPSel, setSeccionCxPSel] = useState<SeccionCxP | "TODAS">("TODAS");
+  const [seccionCxCSel, setSeccionCxCSel] = useState<SeccionCxC | "TODAS">("TODAS");
   const [editMonto, setEditMonto] = useState("");
   const [editConcepto, setEditConcepto] = useState("");
   const [editFecha, setEditFecha] = useState("");
@@ -730,8 +736,25 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
     }
   }
 
+  const pasaFiltroEstado = (estado: string) =>
+    filtro === "pendientes" ? estado !== "LIQUIDADO" && estado !== "CANCELADO"
+    : filtro === "liquidados" ? estado === "LIQUIDADO" || estado === "CANCELADO"
+    : true;
+
+  // Secciones: conteo y saldo con el filtro de estado vigente (sin el de sección).
+  const resumenSecciones = <K extends string, T extends { estado: string; monto: number }>(
+    items: T[], defs: { key: K; label: string; ayuda: string }[], seccion: (c: T) => K, pagado: (c: T) => number,
+  ) => defs.map(d => {
+    const del = items.filter(c => seccion(c) === d.key && pasaFiltroEstado(c.estado));
+    const saldo = del.filter(c => c.estado !== "LIQUIDADO" && c.estado !== "CANCELADO").reduce((s, c) => s + (c.monto - pagado(c)), 0);
+    return { ...d, n: del.length, saldo };
+  });
+  const seccionesCxC = resumenSecciones(cxc, SECCIONES_CXC, seccionCxC, c => c.montoCobrado);
+  const seccionesCxP = resumenSecciones(cxp, SECCIONES_CXP, seccionCxP, c => c.montoPagado);
+
   const cxcList = applySort(
     cxc.map(enrichCxC).filter(c => {
+      if (seccionCxCSel !== "TODAS" && seccionCxC(c) !== seccionCxCSel) return false;
       if (filtro === "pendientes") return c.estado !== "LIQUIDADO" && c.estado !== "CANCELADO";
       if (filtro === "liquidados") return c.estado === "LIQUIDADO" || c.estado === "CANCELADO";
       return true;
@@ -740,7 +763,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
   );
   const cxpList = applySort(
     cxp.map(enrichCxP).filter(c => {
-      if (soloPrestamos && !c.esPrestamo) return false;
+      if (seccionCxPSel !== "TODAS" && seccionCxP(c) !== seccionCxPSel) return false;
       if (filtro === "pendientes") return c.estado !== "LIQUIDADO" && c.estado !== "CANCELADO";
       if (filtro === "liquidados") return c.estado === "LIQUIDADO" || c.estado === "CANCELADO";
       return true;
@@ -1280,14 +1303,6 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
                 {label}
               </button>
             ))}
-            {tab === "pagar" && (
-              <button onClick={() => setSoloPrestamos(v => !v)}
-                className={`shrink-0 text-xs px-3 py-1 rounded-lg border transition-colors ${
-                  soloPrestamos ? "border-teal-700/60 bg-teal-900/30 text-teal-300" : "border-[#333] text-[#555] hover:text-white"
-                }`}>
-                Préstamos de capital
-              </button>
-            )}
           </div>
           {/* Sort button — only for CxC / CxP tabs */}
           {tab !== "directos" && (
@@ -1322,6 +1337,39 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
           )}
         </div>
       </div>
+
+      {/* Secciones de la cuenta */}
+      {!loading && tab !== "directos" && (() => {
+        const esCxP = tab === "pagar";
+        const sel = esCxP ? seccionCxPSel : seccionCxCSel;
+        const todas = esCxP ? seccionesCxP : seccionesCxC;
+        const secciones = todas.filter(d => d.n > 0 || d.key === sel);
+        const setSel = (k: string) => esCxP ? setSeccionCxPSel(k as SeccionCxP | "TODAS") : setSeccionCxCSel(k as SeccionCxC | "TODAS");
+        if (todas.every(d => d.n === 0)) return null;
+        const total = secciones.reduce((s, d) => s + d.saldo, 0);
+        const totalN = secciones.reduce((s, d) => s + d.n, 0);
+        const chips = [{ key: "TODAS", label: "Todas", ayuda: "", n: totalN, saldo: total }, ...secciones];
+        return (
+          <div className="flex gap-2 overflow-x-auto pb-3 mb-1" style={{ scrollbarWidth: "none" }}>
+            {chips.map(d => {
+              const activo = sel === d.key;
+              return (
+                <button key={d.key} onClick={() => setSel(d.key)} title={d.ayuda || undefined}
+                  className={`shrink-0 text-left rounded-xl border px-3 py-2 transition-colors ${
+                    activo ? "border-[#B3985B]/60 bg-[#B3985B]/10" : "border-[#222] bg-[#0d0d0d] hover:border-[#333]"
+                  }`}>
+                  <span className={`block text-xs font-medium ${activo ? "text-[#B3985B]" : "text-gray-300"}`}>
+                    {d.label} <span className="text-[#555] font-normal">· {d.n}</span>
+                  </span>
+                  {d.saldo > 0 && (
+                    <span className="block text-[11px] text-[#777] tabular-nums mt-0.5">{formatCurrency(d.saldo)} pend.</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        );
+      })()}
 
       {loading ? (
         <div className="space-y-2">
