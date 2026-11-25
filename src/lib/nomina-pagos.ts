@@ -261,3 +261,114 @@ export async function revertirFilaNominaPagada(
   });
   await tx.movimientoFinanciero.delete({ where: { id: movimientoId } }).catch(() => {});
 }
+
+// ── Corrección de pagos ya registrados ───────────────────────────────────────
+// Desde Finanzas → Pagos a personal se puede editar o eliminar un pago de
+// nómina ya hecho. Cada cambio deja la fila, su CxP y el ledger cuadrados:
+// el estado de la fila se recalcula con lo realmente pagado y la CxP se ajusta
+// por la diferencia (no se recalcula desde cero para no pisar abonos hechos
+// por otra vía, como Cobros y pagos).
+
+const RE_FILA = /\[fila:([^\]]+)\]/;
+
+/** Fila de nómina a la que pertenece un movimiento (ligado o complemento). */
+export async function filaDeMovimiento(
+  tx: Prisma.TransactionClient,
+  movimientoId: string,
+): Promise<{ filaId: string; esComplemento: boolean } | null> {
+  const mov = await tx.movimientoFinanciero.findUnique({
+    where: { id: movimientoId },
+    select: { notas: true, proyectoPersonal: { select: { id: true } } },
+  });
+  if (!mov) return null;
+  if (mov.proyectoPersonal) return { filaId: mov.proyectoPersonal.id, esComplemento: false };
+  const m = (mov.notas ?? "").match(RE_FILA);
+  return m ? { filaId: m[1], esComplemento: true } : null;
+}
+
+/** Recalcula el estado de pago de la fila con lo que de verdad se ha pagado. */
+export async function recalcularEstadoFila(
+  tx: Prisma.TransactionClient,
+  filaId: string,
+): Promise<void> {
+  const fila = await tx.proyectoPersonal.findUnique({
+    where: { id: filaId },
+    select: { id: true, tarifaAcordada: true, ...SELECT_BONOS, movimiento: { select: { monto: true } } },
+  });
+  if (!fila) return;
+  const complementos = await complementosPorFila(tx, [filaId]);
+  const pagado = (fila.movimiento?.monto ?? 0) + (complementos.get(filaId) ?? 0);
+  const total = totalPagoPersonal(fila) ?? 0;
+  const estadoPago =
+    pagado > 0.01 && pagado >= total - 0.01 ? "PAGADO" : pagado > 0.01 ? "PARCIAL" : "PENDIENTE";
+  await tx.proyectoPersonal.update({ where: { id: filaId }, data: { estadoPago } });
+}
+
+/**
+ * Ajusta la CxP del técnico en el proyecto por `delta` (positivo = se pagó
+ * más, negativo = se pagó menos). Prefiere la CxP ligada al movimiento; si no,
+ * la más reciente con algo pagado (o la más reciente, si delta > 0).
+ */
+export async function ajustarCxPNomina(
+  tx: Prisma.TransactionClient,
+  opts: { tecnicoId: string | null; proyectoId: string; movimientoId: string; delta: number },
+): Promise<void> {
+  if (!opts.tecnicoId || Math.abs(opts.delta) < 0.01) return;
+  const base = { tecnicoId: opts.tecnicoId, proyectoId: opts.proyectoId, tipoAcreedor: "TECNICO" };
+  const cxp =
+    (await tx.cuentaPagar.findFirst({ where: { ...base, movimientoId: opts.movimientoId } })) ??
+    (await tx.cuentaPagar.findFirst({
+      where: opts.delta < 0 ? { ...base, montoPagado: { gt: 0 } } : base,
+      orderBy: { createdAt: "desc" },
+    }));
+  if (!cxp) return;
+  const montoPagado = Math.min(cxp.monto, Math.max(0, (cxp.montoPagado ?? 0) + opts.delta));
+  const estado = montoPagado >= cxp.monto - 0.01 ? "LIQUIDADO" : montoPagado > 0.01 ? "PARCIAL" : "PENDIENTE";
+  await tx.cuentaPagar.update({
+    where: { id: cxp.id },
+    data: { montoPagado, estado, ...(estado === "PENDIENTE" ? { fechaPagoReal: null } : {}) },
+  });
+}
+
+/**
+ * Elimina un pago de nómina (ligado o complemento). Si era el pago ligado y la
+ * fila tiene complementos, el más antiguo pasa a ser el pago ligado para que
+ * la fila no pierda su historial.
+ */
+export async function eliminarPagoNomina(
+  tx: Prisma.TransactionClient,
+  movimientoId: string,
+): Promise<boolean> {
+  const ref = await filaDeMovimiento(tx, movimientoId);
+  if (!ref) return false;
+  const [mov, fila] = await Promise.all([
+    tx.movimientoFinanciero.findUnique({ where: { id: movimientoId }, select: { monto: true } }),
+    tx.proyectoPersonal.findUnique({ where: { id: ref.filaId }, select: { tecnicoId: true, proyectoId: true } }),
+  ]);
+  if (!mov || !fila) return false;
+
+  await ajustarCxPNomina(tx, { ...fila, movimientoId, delta: -mov.monto });
+  await tx.cuentaPagar.updateMany({ where: { movimientoId }, data: { movimientoId: null } });
+
+  if (!ref.esComplemento) {
+    await tx.proyectoPersonal.update({ where: { id: ref.filaId }, data: { movimientoId: null } });
+    const etiqueta = etiquetaComplemento(ref.filaId);
+    const siguiente = await tx.movimientoFinanciero.findFirst({
+      where: { tipo: "GASTO", notas: { contains: etiqueta } },
+      orderBy: [{ fecha: "asc" }, { createdAt: "asc" }],
+      select: { id: true, notas: true, concepto: true },
+    });
+    if (siguiente) {
+      const notas = (siguiente.notas ?? "").replace(etiqueta, "").trim() || null;
+      await tx.movimientoFinanciero.update({
+        where: { id: siguiente.id },
+        data: { notas, concepto: siguiente.concepto.replace(" (Complemento)", "") },
+      });
+      await tx.proyectoPersonal.update({ where: { id: ref.filaId }, data: { movimientoId: siguiente.id } });
+    }
+  }
+
+  await tx.movimientoFinanciero.delete({ where: { id: movimientoId } });
+  await recalcularEstadoFila(tx, ref.filaId);
+  return true;
+}

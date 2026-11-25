@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Combobox } from "@/components/Combobox";
 import { FileText, ArrowDownAZ, Calendar, MessageSquare, X } from "lucide-react";
 import DatosBancariosAcreedor from "@/components/finanzas/DatosBancariosAcreedor";
+import EditarPagosNominaModal from "@/components/finanzas/EditarPagosNominaModal";
 import type { DatosBancarios } from "@/lib/datos-bancarios";
 import { compararJornada } from "@/lib/ciclo-pago";
 
@@ -563,6 +564,8 @@ export default function PagosPersonalPage() {
 
   // Shared modal state
   const [pagoTarget, setPagoTarget] = useState<NominaRow[] | null>(null);
+  // Técnico cuyos pagos ya registrados se están corrigiendo.
+  const [editarPagosRow, setEditarPagosRow] = useState<NominaRow | null>(null);
   const [selectedEventos, setSelectedEventos] = useState<Set<string>>(new Set());
   const [pagoFecha, setPagoFecha] = useState(new Date().toISOString().split("T")[0]);
   const [pagoNotas, setPagoNotas] = useState("");
@@ -1698,6 +1701,17 @@ export default function PagosPersonalPage() {
                           ))}
                         </div>
 
+                        {row.pagos.some((p) => (p.montoPagado ?? 0) > 0.01) && (
+                          <div className="flex justify-end -mt-1 mb-2">
+                            <button
+                              onClick={() => setEditarPagosRow(row)}
+                              className="text-[11px] text-gray-500 hover:text-[#B3985B] transition-colors"
+                            >
+                              ✎ Editar pagos registrados
+                            </button>
+                          </div>
+                        )}
+
                         <DatosBancariosAcreedor
                           datos={row.datosBancarios}
                           nombre={row.tecnicoNombre}
@@ -1813,6 +1827,17 @@ export default function PagosPersonalPage() {
           )}
 
         </div>
+      )}
+
+      {editarPagosRow && data && (
+        <EditarPagosNominaModal
+          tecnicoId={editarPagosRow.tecnicoId}
+          tecnicoNombre={editarPagosRow.tecnicoNombre}
+          proyectoIds={editarPagosRow.pagos.map((p) => p.proyectoId)}
+          cuentas={data.cuentas}
+          onClose={() => setEditarPagosRow(null)}
+          onChanged={load}
+        />
       )}
 
       {/* ── Modal de pago ── */}
