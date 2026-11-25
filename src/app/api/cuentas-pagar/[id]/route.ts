@@ -8,7 +8,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params;
   const body = await req.json();
-  const { monto, motivo, concepto, fechaCompromiso, cuentaOrigenId, proveedorId, tecnicoId, notas, editarSiguientes } = body;
+  const { monto, motivo, concepto, fechaCompromiso, cuentaOrigenId, proveedorId, tecnicoId, socioId, notas, editarSiguientes } = body;
 
   if (monto !== undefined && (typeof monto !== "number" || monto < 0))
     return NextResponse.json({ error: "Monto inválido" }, { status: 400 });
@@ -41,18 +41,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (fechaCompromiso !== undefined) updateData.fechaCompromiso = new Date(fechaCompromiso);
   if (cuentaOrigenId !== undefined) updateData.cuentaOrigenId = cuentaOrigenId || null;
   
-  if (proveedorId !== undefined) {
-    updateData.proveedorId = proveedorId || null;
-    if (proveedorId) updateData.tipoAcreedor = "PROVEEDOR";
-  }
-  
-  if (tecnicoId !== undefined) {
-    updateData.tecnicoId = tecnicoId || null;
-    if (tecnicoId) updateData.tipoAcreedor = "TECNICO";
-  }
+  if (proveedorId !== undefined) updateData.proveedorId = proveedorId || null;
+  if (tecnicoId !== undefined) updateData.tecnicoId = tecnicoId || null;
+  if (socioId !== undefined) updateData.socioId = socioId || null;
 
-  if (proveedorId === null && tecnicoId === null && (proveedorId !== undefined || tecnicoId !== undefined)) {
-    updateData.tipoAcreedor = "OTRO";
+  // El tipo de acreedor solo se recalcula si de verdad cambió a quién se le
+  // paga — antes, guardar sin tocar el acreedor volvía "OTRO" a una CxP de
+  // nómina o de socio porque el modal manda proveedorId/tecnicoId en null.
+  const cambioAcreedor =
+    (proveedorId !== undefined && (proveedorId || null) !== cxp.proveedorId) ||
+    (tecnicoId !== undefined && (tecnicoId || null) !== cxp.tecnicoId) ||
+    (socioId !== undefined && (socioId || null) !== cxp.socioId);
+  if (cambioAcreedor) {
+    const sId = socioId !== undefined ? socioId || null : cxp.socioId;
+    const pId = proveedorId !== undefined ? proveedorId || null : cxp.proveedorId;
+    const tId = tecnicoId !== undefined ? tecnicoId || null : cxp.tecnicoId;
+    updateData.tipoAcreedor = sId ? "SOCIO" : pId ? "PROVEEDOR" : tId ? "TECNICO" : cxp.esPrestamo ? "SOCIO" : "OTRO";
   }
 
   if (notas !== undefined) updateData.notas = notas || null;

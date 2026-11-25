@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { getTipoMovimientoMap, naturalezaDe } from "@/lib/tipos-movimiento";
 import { registrarAltaMovimiento } from "@/lib/auditoria-movimiento";
+import { sincronizarCxPPrestamo } from "@/lib/prestamos-capital";
 
 export async function GET(req: NextRequest) {
   const session = await getSession();
@@ -136,6 +137,12 @@ export async function POST(request: NextRequest) {
           });
         }
       }
+
+      // Aportación de capital tipo "Préstamo" → nace su cuenta por pagar.
+      await sincronizarCxPPrestamo(tx, mov.id, {
+        acreedor: body.prestamoAcreedor || null,
+        fechaPago: body.prestamoFechaPago || null,
+      });
 
       return mov;
     });

@@ -2025,6 +2025,11 @@ model CuentaPagar {
   esDeuda                  Boolean                  @default(false) // true si viene de PasivoDeuda
   esReparto                Boolean                  @default(false) // true si viene de RepartoUtilidad
   esNomina                 Boolean                  @default(false) // true si viene de nómina de personal interno
+  // Préstamo de capital: nace solo al registrar una aportación de capital con
+  // categoría "Préstamo" (src/lib/prestamos-capital.ts). movimientoOrigenId es
+  // el movimiento de ENTRADA del préstamo — no confundir con movimientoId.
+  esPrestamo               Boolean                  @default(false)
+  movimientoOrigenId       String?                  @unique
 
   @@map("cuentas_pagar")
 }

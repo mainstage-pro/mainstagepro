@@ -98,13 +98,20 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const socioId = searchParams.get("socioId");
 
+  // Lo de Mauricio vive en su ficha de socio (HERVAM), salvo los préstamos de
+  // capital: esos se controlan y se pagan desde aquí, sea quien sea el acreedor.
   const whereClause: any = socioId ? { socioId } : {
-    NOT: [
-      { socio: { nombre: { contains: "Mauricio Hernández" } } },
-      { proveedor: { nombre: { contains: "Mauricio Hernández" } } },
-      { tecnico: { nombre: { contains: "Mauricio Hernández" } } },
-      { empresa: { nombre: { contains: "Mauricio Hernández" } } },
-    ]
+    OR: [
+      { esPrestamo: true },
+      {
+        NOT: [
+          { socio: { nombre: { contains: "Mauricio Hernández" } } },
+          { proveedor: { nombre: { contains: "Mauricio Hernández" } } },
+          { tecnico: { nombre: { contains: "Mauricio Hernández" } } },
+          { empresa: { nombre: { contains: "Mauricio Hernández" } } },
+        ],
+      },
+    ],
   };
 
   const cuentas = await prisma.cuentaPagar.findMany({

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { tipoMovimientoPagoCxP, asegurarTipoDevolucionPrestamo } from "@/lib/prestamos-capital";
 
 type Params = { params: Promise<{ id: string; cuotaId: string }> };
 
@@ -23,11 +24,13 @@ export async function POST(req: NextRequest, { params }: Params) {
   const montoAbono = monto && monto > 0 ? parseFloat(monto) : cuota.monto;
   const fechaPago = fecha ? new Date(fecha) : new Date();
 
+  if (cuenta.esPrestamo) await asegurarTipoDevolucionPrestamo();
+
   const result = await prisma.$transaction(async (tx) => {
     // 1. Crear movimiento financiero (EGRESO)
     const movimiento = await tx.movimientoFinanciero.create({
       data: {
-        tipo: "EGRESO",
+        tipo: tipoMovimientoPagoCxP(cuenta, "EGRESO"),
         concepto: `Pago cuota ${cuota.numeroCuota} — ${cuenta.concepto}`,
         monto: montoAbono,
         fecha: fechaPago,

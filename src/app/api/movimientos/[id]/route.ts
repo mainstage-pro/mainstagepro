@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { getTipoMovimientoMap, naturalezaDe } from "@/lib/tipos-movimiento";
 import { diffMovimiento, registrarCambioMovimiento, registrarBajaMovimiento } from "@/lib/auditoria-movimiento";
+import { sincronizarCxPPrestamo } from "@/lib/prestamos-capital";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -44,7 +45,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
-  const updated = await prisma.$transaction(async (tx) => {
+  const { movUpdated: updated, avisoPrestamo } = await prisma.$transaction(async (tx) => {
     const movUpdated = await tx.movimientoFinanciero.update({ where: { id }, data });
 
     // Sincronizar con entidades relacionadas
@@ -87,12 +88,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
     }
 
-    return movUpdated;
+    // Si cambió categoría, tipo, monto o concepto, la CxP del préstamo se
+    // crea / ajusta / borra para seguir al movimiento.
+    const prestamo = await sincronizarCxPPrestamo(tx, id);
+
+    return { movUpdated, avisoPrestamo: prestamo.aviso };
   });
 
   await registrarCambioMovimiento(session.id, id, updated.concepto, diffMovimiento(mov, data));
 
-  return NextResponse.json({ movimiento: updated });
+  return NextResponse.json({ movimiento: updated, aviso: avisoPrestamo ?? null });
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -112,7 +117,19 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: "Este movimiento está vinculado a un cobro o pago. Usa la opción Anular desde cobros y pagos." }, { status: 400 });
   }
 
-  await prisma.movimientoFinanciero.delete({ where: { id } });
+  // Préstamo de capital: su CxP se va con él, salvo que ya se haya devuelto algo.
+  const cxpPrestamo = await prisma.cuentaPagar.findUnique({
+    where: { movimientoOrigenId: id },
+    select: { id: true, montoPagado: true },
+  });
+  if (cxpPrestamo && cxpPrestamo.montoPagado > 0) {
+    return NextResponse.json({ error: "Este préstamo ya tiene pagos registrados en su cuenta por pagar. Anula esos pagos antes de borrarlo." }, { status: 400 });
+  }
+
+  await prisma.$transaction(async (tx) => {
+    if (cxpPrestamo) await tx.cuentaPagar.delete({ where: { id: cxpPrestamo.id } });
+    await tx.movimientoFinanciero.delete({ where: { id } });
+  });
   await registrarBajaMovimiento(session.id, id, mov.concepto, mov.monto);
   return NextResponse.json({ ok: true });
 }

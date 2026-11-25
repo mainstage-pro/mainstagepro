@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Combobox } from "@/components/Combobox";
 import { buttonClass } from "@/lib/tipo-colores";
 import { fmtFechaCorta } from "@/lib/dates";
+import { esCategoriaPrestamo } from "@/lib/prestamos-capital-ui";
 
 interface Cuenta { id: string; nombre: string; banco: string | null; }
 interface Categoria { id: string; nombre: string; tipo: string; }
@@ -32,6 +33,7 @@ export default function NuevoMovimientoPage() {
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [proyectos, setProyectos] = useState<Proyecto[]>([]);
+  const [socios, setSocios] = useState<Array<{ id: string; nombre: string; status: string }>>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -51,6 +53,9 @@ export default function NuevoMovimientoPage() {
     proyectoId: "",
     referencia: "",
     notas: "",
+    // Solo para aportaciones con categoría "Préstamo": nace su cuenta por pagar.
+    prestamoAcreedor: "",
+    prestamoFechaPago: "",
   });
 
   useEffect(() => {
@@ -61,7 +66,8 @@ export default function NuevoMovimientoPage() {
       fetch("/api/proveedores").then(r => r.json()),
       fetch("/api/clientes").then(r => r.json()),
       fetch("/api/proyectos").then(r => r.json()),
-    ]).then(([t, c, cat, p, cl, pr]) => {
+      fetch("/api/socios").then(r => r.json()).catch(() => ({ socios: [] })),
+    ]).then(([t, c, cat, p, cl, pr, so]) => {
       const ts: TipoMov[] = t.tipos ?? [];
       setTipos(ts);
       setForm(f => ({ ...f, tipo: f.tipo || ts[0]?.clave || "" }));
@@ -70,6 +76,7 @@ export default function NuevoMovimientoPage() {
       setProveedores(p.proveedores ?? []);
       setClientes(cl.clientes ?? []);
       setProyectos((pr.proyectos ?? []).filter((p: Proyecto) => !["CANCELADO"].includes(p.estado)));
+      setSocios((so.socios ?? []).filter((x: { status: string }) => x.status !== "INACTIVO"));
     });
   }, []);
 
@@ -79,6 +86,8 @@ export default function NuevoMovimientoPage() {
   const esEntrada = naturaleza === "ENTRADA";
 
   const categoriasFiltradas = categorias.filter(c => c.tipo === form.tipo);
+  const categoriaSel = categorias.find(c => c.id === form.categoriaId);
+  const esPrestamo = esEntrada && esCategoriaPrestamo(categoriaSel?.nombre);
 
   function seleccionarTipo(clave: string) {
     setForm(prev => ({ ...prev, tipo: clave, categoriaId: "", clienteId: "", proveedorId: "", proyectoId: "", cuentaDestinoId: "" }));
@@ -193,6 +202,30 @@ export default function NuevoMovimientoPage() {
                 <label className={labelCls}>Categoría</label>
                 <Combobox value={form.categoriaId} onChange={v => setForm(p => ({ ...p, categoriaId: v }))}
                   options={[{ value: "", label: "— Sin categoría —" }, ...categoriasFiltradas.map(c => ({ value: c.id, label: c.nombre }))]} />
+              </div>
+            )}
+
+            {esPrestamo && (
+              <div className="rounded-lg border border-teal-800/40 bg-teal-900/10 p-4 space-y-3">
+                <p className="text-xs text-teal-300">
+                  Es un préstamo: al registrarlo se crea su cuenta por pagar. Puedes elegir ahora a quién y cuándo se le paga, o dejarlo para después en Cobros y Pagos.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className={labelCls}>¿A quién se le devuelve?</label>
+                    <Combobox value={form.prestamoAcreedor} onChange={v => setForm(p => ({ ...p, prestamoAcreedor: v }))}
+                      options={[
+                        { value: "", label: "— Por asignar —" },
+                        ...socios.map(x => ({ value: `socio:${x.id}`, label: `${x.nombre} · Socio` })),
+                        ...proveedores.map(p => ({ value: `prov:${p.id}`, label: p.nombre + (p.empresa ? ` · ${p.empresa}` : "") + " · Proveedor" })),
+                      ]} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>¿Cuándo se le paga?</label>
+                    <input name="prestamoFechaPago" type="date" value={form.prestamoFechaPago} onChange={handleChange} className={inputCls} />
+                    <p className="text-[10px] text-gray-600 mt-1">Si lo dejas vacío: 30 días después del préstamo.</p>
+                  </div>
+                </div>
               </div>
             )}
           </div>

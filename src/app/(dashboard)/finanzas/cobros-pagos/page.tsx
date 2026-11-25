@@ -129,6 +129,7 @@ interface CxPItem {
   abonos: AbonoItem[];
   serieRecurrenteId?: string | null;
   numeroPeriodo?: number | null;
+  esPrestamo?: boolean;
 }
 
 interface MovDirecto {
@@ -441,7 +442,11 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
   const [guardandoTecnico, setGuardandoTecnico] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState<"cxc" | "cxp_emp" | "cxp_tec" | null>(null);
   // Editar CxC / CxP
-  const [editModal, setEditModal] = useState<{ id: string; tipo: "cxc" | "cxp"; concepto: string; monto: number; fechaCompromiso: string; esRecurrente?: boolean } | null>(null);
+  const [editModal, setEditModal] = useState<{ id: string; tipo: "cxc" | "cxp"; concepto: string; monto: number; fechaCompromiso: string; esRecurrente?: boolean; esPrestamo?: boolean } | null>(null);
+  // Préstamo de capital: a quién se le devuelve ("socio:<id>" | "prov:<id>" | "").
+  const [editAcreedor, setEditAcreedor] = useState("");
+  const [socios, setSocios] = useState<Array<{ id: string; nombre: string }>>([]);
+  const [soloPrestamos, setSoloPrestamos] = useState(false);
   const [editMonto, setEditMonto] = useState("");
   const [editConcepto, setEditConcepto] = useState("");
   const [editFecha, setEditFecha] = useState("");
@@ -612,6 +617,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
     fetch("/api/proveedores", { cache: "no-store" }).then(r => r.json()).then(d => setProveedores(d.proveedores ?? [])).catch(() => {});
     fetch("/api/empresas", { cache: "no-store" }).then(r => r.json()).then(d => setEmpresas(d.empresas ?? [])).catch(() => {});
     fetch("/api/tecnicos", { cache: "no-store" }).then(r => r.json()).then(d => setTecnicos(d.tecnicos ?? [])).catch(() => {});
+    fetch("/api/socios", { cache: "no-store" }).then(r => r.json()).then(d => setSocios((d.socios ?? []).filter((x: { status: string }) => x.status !== "INACTIVO"))).catch(() => {});
     fetch("/api/proyectos", { cache: "no-store" }).then(r => r.json()).then(d => setProyectos((d.proyectos ?? []).filter((p: { estado: string }) => p.estado !== "CANCELADO"))).catch(() => {});
   }, []);
 
@@ -734,6 +740,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
   );
   const cxpList = applySort(
     cxp.map(enrichCxP).filter(c => {
+      if (soloPrestamos && !c.esPrestamo) return false;
       if (filtro === "pendientes") return c.estado !== "LIQUIDADO" && c.estado !== "CANCELADO";
       if (filtro === "liquidados") return c.estado === "LIQUIDADO" || c.estado === "CANCELADO";
       return true;
@@ -774,7 +781,8 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
   function openEdit(item: CxCItem | CxPItem, tipo: "cxc" | "cxp") {
     setEditModal({ 
       id: item.id, tipo, concepto: item.concepto, monto: item.monto, fechaCompromiso: item.fechaCompromiso.slice(0, 10),
-      esRecurrente: !!item.serieRecurrenteId
+      esRecurrente: !!item.serieRecurrenteId,
+      esPrestamo: tipo === "cxp" && !!(item as CxPItem).esPrestamo,
     });
     setEditMonto(String(item.monto));
     setEditConcepto(item.concepto);
@@ -793,6 +801,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
       setEditCuentaId(cxpItem.cuentaOrigen?.id ?? "");
       setEditProveedorId(cxpItem.proveedor?.id ?? "");
       setEditTecnicoId(cxpItem.tecnico?.id ?? "");
+      setEditAcreedor(cxpItem.socio ? `socio:${cxpItem.socio.id}` : cxpItem.proveedor ? `prov:${cxpItem.proveedor.id}` : "");
     }
   }
 
@@ -814,6 +823,11 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
     if (editModal.tipo === "cxc") {
       body.clienteId = editClienteId || null;
       body.cuentaDestinoId = editCuentaId || null;
+    } else if (editModal.esPrestamo) {
+      body.cuentaOrigenId = editCuentaId || null;
+      body.socioId = editAcreedor.startsWith("socio:") ? editAcreedor.slice(6) : null;
+      body.proveedorId = editAcreedor.startsWith("prov:") ? editAcreedor.slice(5) : null;
+      body.tecnicoId = null;
     } else {
       body.cuentaOrigenId = editCuentaId || null;
       body.proveedorId = editProveedorId || null;
@@ -1266,6 +1280,14 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
                 {label}
               </button>
             ))}
+            {tab === "pagar" && (
+              <button onClick={() => setSoloPrestamos(v => !v)}
+                className={`shrink-0 text-xs px-3 py-1 rounded-lg border transition-colors ${
+                  soloPrestamos ? "border-teal-700/60 bg-teal-900/30 text-teal-300" : "border-[#333] text-[#555] hover:text-white"
+                }`}>
+                Préstamos de capital
+              </button>
+            )}
           </div>
           {/* Sort button — only for CxC / CxP tabs */}
           {tab !== "directos" && (
@@ -1650,7 +1672,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
               )}
               <div className="space-y-2">
                 {grupo.items.map(c => {
-            let beneficiario = c.socio?.nombre ?? c.empresa?.nombre ?? c.proveedor?.nombre ?? c.tecnico?.nombre ?? "—";
+            let beneficiario = c.socio?.nombre ?? c.empresa?.nombre ?? c.proveedor?.nombre ?? c.tecnico?.nombre ?? (c.esPrestamo ? "Acreedor por asignar" : "—");
             let displayConcepto = c.concepto;
             if (beneficiario === "—" && displayConcepto.includes(" — ")) {
               const parts = displayConcepto.split(" — ");
@@ -1667,9 +1689,15 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${ESTADO_COLORS[c.estado] ?? "bg-gray-800 text-gray-400"}`}>
                         {c.estado}
                       </span>
-                      <span className="text-[10px] text-gray-600 bg-[#1a1a1a] px-2 py-0.5 rounded-full capitalize">
-                        {c.tipoAcreedor === "TECNICO" ? "Técnico" : c.tipoAcreedor === "PROVEEDOR" ? "Proveedor" : c.tipoAcreedor}
-                      </span>
+                      {c.esPrestamo ? (
+                        <span className="text-[10px] text-teal-300 bg-teal-900/30 border border-teal-800/40 px-2 py-0.5 rounded-full">
+                          Préstamo de capital
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-gray-600 bg-[#1a1a1a] px-2 py-0.5 rounded-full capitalize">
+                          {c.tipoAcreedor === "TECNICO" ? "Técnico" : c.tipoAcreedor === "PROVEEDOR" ? "Proveedor" : c.tipoAcreedor}
+                        </span>
+                      )}
                       {c.esVencida && <span className="text-[10px] text-red-400 font-medium">⚠ Vencida</span>}
                     </div>
                     <p className="text-[#9ca3af] text-xs">{displayConcepto}</p>
@@ -2198,7 +2226,23 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
                   className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]"
                 />
               </div>
-              {editModal.tipo === "cxp" && (
+              {editModal.tipo === "cxp" && editModal.esPrestamo && (
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">¿A quién se le devuelve el préstamo?</label>
+                  <Combobox
+                    value={editAcreedor}
+                    onChange={setEditAcreedor}
+                    options={[
+                      { value: "", label: "— Por asignar —" },
+                      ...socios.map(x => ({ value: `socio:${x.id}`, label: `${x.nombre} · Socio` })),
+                      ...proveedores.map(p => ({ value: `prov:${p.id}`, label: p.nombre + (p.empresa ? ` · ${p.empresa}` : "") + " · Proveedor" })),
+                    ]}
+                    className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]"
+                  />
+                  <p className="text-[10px] text-gray-600 mt-1">La fecha compromiso es cuándo se le pagará.</p>
+                </div>
+              )}
+              {editModal.tipo === "cxp" && !editModal.esPrestamo && (
                 <>
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">Proveedor</label>

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { ensureCuentaPagarCategoria } from "@/lib/mantenimiento-costo";
 import { getCategoriaSueldosYSalarios, getCategoriaPersonalFreelance } from "@/lib/nomina-pagos";
+import { tipoMovimientoPagoCxP, asegurarTipoDevolucionPrestamo } from "@/lib/prestamos-capital";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -25,6 +26,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const nuevoMontoPagado = Math.round((cxp.montoPagado + montoAbono) * 100) / 100;
   const liquidado = nuevoMontoPagado >= cxp.monto;
 
+  // La devolución de un préstamo de capital no es gasto (ver prestamos-capital.ts).
+  if (cxp.esPrestamo) await asegurarTipoDevolucionPrestamo();
+
   await prisma.$transaction(async (tx) => {
     const esNomina = cxp.esNomina || cxp.tipoAcreedor === "PERSONAL_INTERNO" || !!cxp.pagoNomina;
     let isFreelance = false;
@@ -38,7 +42,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const movimiento = await tx.movimientoFinanciero.create({
       data: {
-        tipo: "GASTO",
+        tipo: tipoMovimientoPagoCxP(cxp, "GASTO"),
         fecha: fecha ? new Date(fecha) : new Date(),
         concepto: cxp.concepto,
         monto: montoAbono,
