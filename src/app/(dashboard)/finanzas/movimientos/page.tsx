@@ -313,6 +313,21 @@ export default function MovimientosPage() {
   const saldoTotal = cuentas.reduce((s, c) => s + c.saldo, 0);
   const saldoMostrado = cuentaActiva ? cuentaActiva.saldo : saldoTotal;
 
+  // Saldo de la cuenta después de cada movimiento. Solo con una cuenta elegida:
+  // ahí la API trae TODOS sus movimientos (sin recorte), así que la suma corrida
+  // termina exactamente en el saldo de la pestaña. Mismo día → orden de captura.
+  const cronologico = (a: Movimiento, b: Movimiento) =>
+    a.fecha.slice(0, 10).localeCompare(b.fecha.slice(0, 10)) || a.createdAt.localeCompare(b.createdAt);
+  const saldoDespues = new Map<string, number>();
+  if (cuentaFiltro) {
+    let corrido = 0;
+    for (const m of [...movimientosFiltrados].sort(cronologico)) {
+      if (m.cuentaDestino?.id === cuentaFiltro) corrido += m.monto;
+      if (m.cuentaOrigen?.id === cuentaFiltro) corrido -= m.monto;
+      saldoDespues.set(m.id, Math.round(corrido * 100) / 100);
+    }
+  }
+
   const movimientosOrdenados = [...movimientosFiltrados].sort((a, b) => {
     let diff = 0;
     if (orden === "categoria") {
@@ -329,10 +344,9 @@ export default function MovimientosPage() {
       diff = tipoA.localeCompare(tipoB);
     }
     
-    if (diff === 0) {
-      diff = new Date(b.fecha).getTime() - new Date(a.fecha).getTime();
-    }
-    return diff;
+    // Más reciente arriba; el mismo día, el último capturado arriba — así el
+    // saldo de cada renglón es el de abajo más su monto.
+    return diff || cronologico(b, a);
   });
   const categoriasFiltradas = categorias.filter(c =>
     editando ? c.tipo === editForm.tipo : true
@@ -443,8 +457,8 @@ export default function MovimientosPage() {
           <table className="w-full min-w-[700px]">
             <thead className="ms-thead">
               <tr>
-                {["Fecha", "Concepto", "Categoría", "Cuenta", "Tipo", "Monto", ""].map((h, i) => (
-                  <th key={i} className="ms-th last:w-16">
+                {["Fecha", "Concepto", "Categoría", "Cuenta", "Tipo", "Monto", ...(cuentaFiltro ? ["Saldo"] : []), ""].map((h, i) => (
+                  <th key={i} className={`ms-th last:w-16 ${h === "Monto" || h === "Saldo" ? "text-right" : ""}`}>
                     {h}
                   </th>
                 ))}
@@ -486,6 +500,14 @@ export default function MovimientosPage() {
                       );
                     })()}
                   </td>
+                  {cuentaFiltro && (() => {
+                    const s = saldoDespues.get(mov.id) ?? 0;
+                    return (
+                      <td className={`ms-td text-right whitespace-nowrap text-sm tabular-nums ${s < 0 ? "text-red-400/80" : "text-[#b3b3b3]"}`}>
+                        {formatCurrency(s)}
+                      </td>
+                    );
+                  })()}
                   <td className="ms-td">
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button onClick={e => { e.stopPropagation(); abrirEditar(mov); }}
