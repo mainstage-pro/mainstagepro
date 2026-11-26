@@ -1,3 +1,4 @@
+import { migrarImagenesBase64, imagenAUrl } from "@/lib/imagen-blob";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
@@ -53,6 +54,9 @@ export async function GET(req: NextRequest) {
   // resolviéndose por id en referencias históricas).
   where.estadoMigracion = null;
 
+  // Fotos guardadas en base64 → Blob (una vez por instancia). Ver src/lib/imagen-blob.ts.
+  await migrarImagenesBase64();
+
   const equipos = await prisma.equipo.findMany({
     where,
     select: EQUIPO_SELECT,
@@ -73,7 +77,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "descripcion y categoriaId son requeridos" }, { status: 400 });
   }
 
-  const imagen = imagenUrl || (await imagenDeModeloExistente(marca, modelo));
+  const imagen = (await imagenAUrl(imagenUrl, "equipos")) || (await imagenDeModeloExistente(marca, modelo));
 
   const equipo = await prisma.equipo.create({
     data: {

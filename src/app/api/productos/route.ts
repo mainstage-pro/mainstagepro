@@ -1,3 +1,4 @@
+import { imagenAUrl } from "@/lib/imagen-blob";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
@@ -90,7 +91,7 @@ export async function POST(req: NextRequest) {
 
   // Imagen por default: la del equipo dominante si no se pasó una
   const domId = equipoDominanteId || limpios[0]?.equipoId || null;
-  const imagenDefault = imagenUrl || equipos.find((e) => e.id === domId)?.imagenUrl || null;
+  const imagenDefault = (await imagenAUrl(imagenUrl, "productos")) || equipos.find((e) => e.id === domId)?.imagenUrl || null;
 
   const maxOrden = await prisma.producto.aggregate({ _max: { orden: true } });
   const cobs = limpiarCoberturas(coberturas);

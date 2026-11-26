@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ensureProductosTables } from "@/lib/productos";
+import { migrarImagenesBase64 } from "@/lib/imagen-blob";
 
 // Listado público de productos activos — usado por el selector del descubrimiento
 // (incluye formularios públicos por token) y el cotizador.
 export async function GET() {
   await ensureProductosTables();
+  // Fotos guardadas en base64 → Blob (una vez por instancia). Ver src/lib/imagen-blob.ts.
+  await migrarImagenesBase64();
 
   const productos = await prisma.producto.findMany({
     where: { activo: true },

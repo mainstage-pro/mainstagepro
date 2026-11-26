@@ -1,3 +1,4 @@
+import { imagenAUrl, imagenesJsonAUrls } from "@/lib/imagen-blob";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
@@ -60,6 +61,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       }
     }
   }
+  // Nunca guardar la foto en base64 en la BD: se sube a Blob y se guarda la URL.
+  if ("imagenUrl" in data) data.imagenUrl = await imagenAUrl(data.imagenUrl, "equipos");
+  if ("imagenesUrls" in data) data.imagenesUrls = await imagenesJsonAUrls(data.imagenesUrls, "equipos");
   if ("amperajeRequerido" in body) data.amperajeRequerido = body.amperajeRequerido !== "" && body.amperajeRequerido != null ? parseFloat(body.amperajeRequerido) : null;
   if ("amperajeRequerido220" in body) data.amperajeRequerido220 = body.amperajeRequerido220 !== "" && body.amperajeRequerido220 != null ? parseFloat(body.amperajeRequerido220) : null;
   if ("voltajeRequerido" in body) data.voltajeRequerido = body.voltajeRequerido !== "" && body.voltajeRequerido != null ? String(body.voltajeRequerido) : null;

@@ -1,3 +1,4 @@
+import { imagenAUrl } from "@/lib/imagen-blob";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
@@ -76,7 +77,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (disponibilidad !== undefined) data.disponibilidad = ["subrenta", "bajo_pedido"].includes(disponibilidad) ? disponibilidad : "propio";
   if (proveedorRef !== undefined) data.proveedorRef = proveedorRef || null;
   if (costoRef !== undefined) data.costoRef = costoRef != null && costoRef !== "" ? Number(costoRef) : null;
-  if (imagenUrl !== undefined) data.imagenUrl = imagenUrl || null;
+  if (imagenUrl !== undefined) data.imagenUrl = (await imagenAUrl(imagenUrl, "productos")) || null;
   if (equipoDominanteId !== undefined) data.equipoDominanteId = equipoDominanteId || null;
   if (precioManual !== undefined)
     data.precioManual = precioManual != null && precioManual !== "" ? Number(precioManual) : null;

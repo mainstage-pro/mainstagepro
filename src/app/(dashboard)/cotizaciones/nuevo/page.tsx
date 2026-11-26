@@ -485,8 +485,16 @@ function CotizadorForm() {
   }, []);
 
   // Refresca catálogos al volver a la pestaña (visibilitychange) o recuperar el foco.
+  // Como mucho una vez por minuto: focus y visibilitychange llegan juntos, y cambiar
+  // de ventana varias veces seguidas re-descargaba todo el inventario cada vez.
+  const ultimaRecargaRef = useRef(Date.now());
   useEffect(() => {
-    const onFocus = () => { if (document.visibilityState === "visible") recargarCatalogos(); };
+    const onFocus = () => {
+      if (document.visibilityState !== "visible") return;
+      if (Date.now() - ultimaRecargaRef.current < 60_000) return;
+      ultimaRecargaRef.current = Date.now();
+      recargarCatalogos();
+    };
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onFocus);
     return () => {
