@@ -6,6 +6,7 @@ import ReactPDF, { Document } from "@react-pdf/renderer";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { getEquipoDisplayName, getEquipoMarcaModelo } from "@/lib/equipoNombre";
+import { makePdfImageResolver } from "@/components/pdf/PdfShared";
 import { ListaPreciosPDF, type ListaPreciosGrupo, type ListaPreciosItem } from "@/components/ListaPreciosPDF";
 
 const ORIGENES = {
@@ -15,6 +16,16 @@ const ORIGENES = {
 } as const;
 
 type Origen = keyof typeof ORIGENES;
+
+/** Resuelve en tandas: cada foto se descarga de Blob y pasa por sharp, y cientos
+ *  en paralelo saturan la memoria de la función. */
+async function mapEnTandas<T, R>(items: T[], tanda: number, fn: (it: T) => Promise<R>): Promise<R[]> {
+  const out: R[] = [];
+  for (let i = 0; i < items.length; i += tanda) {
+    out.push(...await Promise.all(items.slice(i, i + tanda).map(fn)));
+  }
+  return out;
+}
 
 function agrupar(items: (ListaPreciosItem & { categoria: string; orden: number })[]): ListaPreciosGrupo[] {
   const grupos = new Map<string, { orden: number; grupo: ListaPreciosGrupo }>();
@@ -37,21 +48,14 @@ export async function GET(req: NextRequest) {
   if (!(origen in ORIGENES)) {
     return NextResponse.json({ error: "Origen inválido" }, { status: 400 });
   }
-  // El costo de proveedor y el margen son datos internos: solo para administración.
-  const incluyeCostos = session.role === "ADMIN";
 
   const [equipos, accesorios] = await Promise.all([
     prisma.equipo.findMany({
       where: { tipo: origen, activo: true, estadoMigracion: null },
       select: {
         id: true, descripcion: true, marca: true, modelo: true,
-        cantidadTotal: true, precioRenta: true, costoProveedor: true, noCotizable: true,
+        cantidadTotal: true, precioRenta: true, noCotizable: true, imagenUrl: true,
         categoria: { select: { nombre: true, orden: true } },
-        proveedoresPrecios: {
-          where: { activo: true },
-          select: { precio: true },
-          orderBy: { proveedor: { prioridad: "desc" } },
-        },
       },
       orderBy: [{ categoria: { orden: "asc" } }, { descripcion: "asc" }],
     }),
@@ -60,32 +64,35 @@ export async function GET(req: NextRequest) {
       where: { activo: true, proveedorId: origen === "EXTERNO" ? { not: null } : null },
       select: {
         id: true, nombre: true, marca: true, modelo: true,
-        tipoConteo: true, cantidad: true, precioRenta: true,
+        tipoConteo: true, cantidad: true, precioRenta: true, fotoUrl: true,
         categoria: { select: { nombre: true } },
       },
       orderBy: { nombre: "asc" },
     }),
   ]);
 
-  const equiposItems = equipos.map(e => ({
+  // La lista es solo de precios: ni costo de proveedor ni margen, para nadie.
+  const resolveImg = makePdfImageResolver(path.join(process.cwd(), "public"));
+
+  const equiposItems = await mapEnTandas(equipos, 8, async e => ({
     id: e.id,
     nombre: getEquipoDisplayName(e),
     subtitulo: getEquipoMarcaModelo(e) ? e.descripcion : null,
     cantidad: e.cantidadTotal,
     precioRenta: e.precioRenta,
-    costo: e.costoProveedor ?? e.proveedoresPrecios[0]?.precio ?? null,
+    imagen: await resolveImg(e.imagenUrl),
     noCotizable: e.noCotizable,
     categoria: e.categoria.nombre,
     orden: e.categoria.orden,
   }));
 
-  const accesoriosItems = accesorios.map(a => ({
+  const accesoriosItems = await mapEnTandas(accesorios, 8, async a => ({
     id: a.id,
     nombre: a.nombre,
     subtitulo: [a.marca, a.modelo].filter(Boolean).join(" · ") || null,
     cantidad: a.tipoConteo === "cuantificable" ? (a.cantidad ?? 0) : null,
     precioRenta: a.precioRenta ?? 0,
-    costo: null,
+    imagen: await resolveImg(a.fotoUrl),
     categoria: a.categoria?.nombre ?? "Sin categoría",
     orden: a.categoria ? 0 : 1,
   }));
@@ -111,7 +118,6 @@ export async function GET(req: NextRequest) {
         totalUnidades: equiposItems.reduce((t, e) => t + (e.cantidad ?? 0), 0),
         totalAccesorios: accesoriosItems.length,
         sinPrecio,
-        incluyeCostos,
         generadoEn: new Date().toISOString(),
       },
     }) as React.ReactElement<React.ComponentProps<typeof Document>>

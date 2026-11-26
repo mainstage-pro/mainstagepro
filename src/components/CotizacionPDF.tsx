@@ -213,7 +213,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 40,
     borderBottom: "1 solid #f5f3ef",
   },
-  colImg: { width: 22, marginRight: 4 },
+  colImg: { width: 30, marginRight: 6 },
   colDesc: { flex: 3.5 },
   colMarca: { flex: 2 },
   colCant: { flex: 1, textAlign: "center" },
@@ -819,7 +819,7 @@ function FilaEquipo({ l, i }: { l: Linea; i: number }) {
       {/* Thumbnail */}
       <View style={[s.colImg, { justifyContent: "center", alignItems: "center" }]}>
         {l.imagenUrl ? (
-          <Image src={l.imagenUrl} style={{ width: 18, height: 18, objectFit: "contain" }} />
+          <Image src={l.imagenUrl} style={{ width: 28, height: 24, objectFit: "contain" }} />
         ) : null}
       </View>
       <Text style={[s.cellMarca, s.colMarca]}>{[l.marca, l.modelo].filter(Boolean).join(" ") || "—"}</Text>

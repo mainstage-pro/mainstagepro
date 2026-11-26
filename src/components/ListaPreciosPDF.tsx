@@ -91,33 +91,28 @@ const s = StyleSheet.create({
     borderBottomColor: MID,
   },
   th: { fontSize: 6, fontFamily: "Helvetica-Bold", color: "#888888", letterSpacing: 0.6 },
-  row:    { flexDirection: "row", alignItems: "center", paddingHorizontal: 10, paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: MID },
-  rowAlt: { flexDirection: "row", alignItems: "center", paddingHorizontal: 10, paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: MID, backgroundColor: "#FAFAF8" },
+  row:    { flexDirection: "row", alignItems: "center", paddingHorizontal: 10, paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: MID },
+  rowAlt: { flexDirection: "row", alignItems: "center", paddingHorizontal: 10, paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: MID, backgroundColor: "#FAFAF8" },
 
   // Columnas
+  cImg:     { width: 34, height: 28, marginRight: 10, alignItems: "center", justifyContent: "center" },
   cNombre:  { flex: 1, paddingRight: 8 },
-  cCant:    { width: 34, textAlign: "center" },
-  cCosto:   { width: 62, textAlign: "right" },
-  cPrecio:  { width: 74, textAlign: "right" },
-  cMargen:  { width: 44, textAlign: "right" },
+  cCant:    { width: 44, textAlign: "center" },
+  cPrecio:  { width: 90, textAlign: "right" },
 
   tdNombre: { fontSize: 7.5, fontFamily: "Helvetica-Bold", color: BLACK },
   tdSub:    { fontSize: 6, color: "#909090", marginTop: 1 },
   tdCant:   { fontSize: 7.5, color: GRAY },
-  tdCosto:  { fontSize: 7, color: "#8a8a8a" },
   tdPrecio: { fontSize: 8.5, fontFamily: "Helvetica-Bold", color: GOLD },
   tdVacio:  { fontSize: 7, color: "#c0c0c0", fontFamily: "Helvetica-Oblique" },
-  tdMargen: { fontSize: 7, fontFamily: "Helvetica-Bold" },
-  margenAlto:  { color: "#16a34a" },
-  margenMedio: { color: "#d97706" },
-  margenBajo:  { color: "#dc2626" },
+  img:      { width: 34, height: 28, objectFit: "contain" },
+  imgVacia: { width: 26, height: 22, borderRadius: 3, backgroundColor: MID },
 
   tag: { fontSize: 5.5, color: "#a0a0a0", letterSpacing: 0.5 },
 
   // ── Cierre ──
   divider: { borderBottomWidth: 1, borderBottomColor: MID, marginTop: 14, marginBottom: 10 },
   nota: { fontSize: 6.5, color: "#999999", lineHeight: 1.5 },
-  notaInterna: { fontSize: 6.5, color: GOLD, fontFamily: "Helvetica-Bold", letterSpacing: 0.5, marginTop: 5 },
 
   // ── Footer ──
   footer: {
@@ -141,7 +136,8 @@ export interface ListaPreciosItem {
   subtitulo: string | null;
   cantidad: number | null;
   precioRenta: number;
-  costo: number | null;
+  /** data URI ya reescalada (resolvePdfImage); null = sin foto. */
+  imagen: string | null;
   noCotizable?: boolean;
 }
 
@@ -159,7 +155,6 @@ export interface ListaPreciosPDFData {
   totalUnidades: number;
   totalAccesorios: number;
   sinPrecio: number;
-  incluyeCostos: boolean;
   generadoEn: string;
 }
 
@@ -170,34 +165,29 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" });
 }
 
-function margenStyle(m: number) {
-  if (m >= 40) return s.margenAlto;
-  if (m >= 20) return s.margenMedio;
-  return s.margenBajo;
-}
-
 // ─── Tabla de una categoría ──────────────────────────────────────────────────
 function Categoria({
-  grupo, incluyeCostos, etiquetaNombre,
-}: { grupo: ListaPreciosGrupo; incluyeCostos: boolean; etiquetaNombre: string }) {
+  grupo, etiquetaNombre,
+}: { grupo: ListaPreciosGrupo; etiquetaNombre: string }) {
   const unidades = grupo.items.reduce((t, i) => t + (i.cantidad ?? 0), 0);
 
   const thead = (
     <View style={s.thead}>
+      <View style={[s.cImg, { height: "auto" }]} />
       <Text style={[s.th, s.cNombre]}>{etiquetaNombre}</Text>
       <Text style={[s.th, s.cCant]}>CANT.</Text>
-      {incluyeCostos && <Text style={[s.th, s.cCosto]}>COSTO</Text>}
       <Text style={[s.th, s.cPrecio]}>PRECIO DE RENTA</Text>
-      {incluyeCostos && <Text style={[s.th, s.cMargen]}>MARGEN</Text>}
     </View>
   );
 
   const fila = (item: ListaPreciosItem, i: number) => {
-    const margen = item.costo != null && item.costo > 0 && item.precioRenta > 0
-      ? ((item.precioRenta - item.costo) / item.precioRenta) * 100
-      : null;
     return (
-      <View key={item.id} style={i % 2 === 0 ? s.row : s.rowAlt}>
+      <View key={item.id} style={i % 2 === 0 ? s.row : s.rowAlt} wrap={false}>
+        <View style={s.cImg}>
+          {item.imagen
+            ? <Image src={item.imagen} style={s.img} />
+            : <View style={s.imgVacia} />}
+        </View>
         <View style={s.cNombre}>
           <Text style={s.tdNombre}>{item.nombre}</Text>
           {(item.subtitulo || item.noCotizable) && (
@@ -209,19 +199,11 @@ function Categoria({
           )}
         </View>
         <Text style={[s.tdCant, s.cCant]}>{item.cantidad ?? "—"}</Text>
-        {incluyeCostos && (
-          <Text style={[s.tdCosto, s.cCosto]}>{item.costo != null ? fmx(item.costo) : "—"}</Text>
-        )}
         <View style={s.cPrecio}>
           {item.precioRenta > 0
             ? <Text style={s.tdPrecio}>{fmx(item.precioRenta)}</Text>
             : <Text style={s.tdVacio}>sin precio</Text>}
         </View>
-        {incluyeCostos && (
-          <Text style={[s.tdMargen, s.cMargen, margen != null ? margenStyle(margen) : { color: "#c0c0c0" }]}>
-            {margen != null ? `${margen.toFixed(0)}%` : "—"}
-          </Text>
-        )}
       </View>
     );
   };
@@ -306,7 +288,7 @@ export function ListaPreciosPDF({ data, logoSrc }: { data: ListaPreciosPDFData; 
                 <Text style={s.bloqueMeta}>{data.origenDetalle}</Text>
               </View>
               {data.equipos.map(g => (
-                <Categoria key={`eq-${g.nombre}`} grupo={g} incluyeCostos={data.incluyeCostos} etiquetaNombre="EQUIPO" />
+                <Categoria key={`eq-${g.nombre}`} grupo={g} etiquetaNombre="EQUIPO" />
               ))}
             </>
           )}
@@ -319,7 +301,7 @@ export function ListaPreciosPDF({ data, logoSrc }: { data: ListaPreciosPDFData; 
                 <Text style={s.bloqueMeta}>{data.totalAccesorios} referencias del catálogo cotizable</Text>
               </View>
               {data.accesorios.map(g => (
-                <Categoria key={`acc-${g.nombre}`} grupo={g} incluyeCostos={false} etiquetaNombre="ACCESORIO" />
+                <Categoria key={`acc-${g.nombre}`} grupo={g} etiquetaNombre="ACCESORIO" />
               ))}
             </>
           )}
@@ -335,11 +317,6 @@ export function ListaPreciosPDF({ data, logoSrc }: { data: ListaPreciosPDFData; 
               ? ` ${data.sinPrecio} referencia${data.sinPrecio !== 1 ? "s" : ""} aún sin precio asignado; entra${data.sinPrecio !== 1 ? "n" : ""} en $0 al cotizar.`
               : ""}
           </Text>
-          {data.incluyeCostos && (
-            <Text style={s.notaInterna}>
-              DOCUMENTO INTERNO — incluye costo de proveedor y margen. No compartir con clientes.
-            </Text>
-          )}
         </View>
 
         {/* ── Footer ── */}

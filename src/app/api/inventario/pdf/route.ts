@@ -4,6 +4,8 @@ import { getSession } from "@/lib/auth";
 import ReactPDF, { Document } from "@react-pdf/renderer";
 import { InventarioPDF } from "@/components/InventarioPDF";
 import React from "react";
+import path from "path";
+import { makePdfImageResolver } from "@/components/pdf/PdfShared";
 
 export async function GET() {
   const session = await getSession();
@@ -27,6 +29,15 @@ export async function GET() {
   }
   const categorias = Array.from(catMap.values()).sort((a, b) => a.orden - b.orden);
 
+  // Fotos en tandas: cada una baja de Blob y pasa por sharp.
+  const resolveImg = makePdfImageResolver(path.join(process.cwd(), "public"));
+  const imagenes = new Map<string, string | null>();
+  for (let i = 0; i < equipos.length; i += 8) {
+    await Promise.all(equipos.slice(i, i + 8).map(async eq => {
+      imagenes.set(eq.id, await resolveImg(eq.imagenUrl));
+    }));
+  }
+
   const pdfData = {
     categorias: categorias.map(cat => ({
       nombre: cat.nombre,
@@ -39,6 +50,7 @@ export async function GET() {
         cantidadTotal: eq.cantidadTotal,
         estado: eq.estado,
         notas: eq.notas,
+        imagen: imagenes.get(eq.id) ?? null,
         categoria: { nombre: cat.nombre, orden: cat.orden },
       })),
     })),

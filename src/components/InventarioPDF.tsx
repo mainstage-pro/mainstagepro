@@ -1,5 +1,5 @@
 import React from "react";
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
 
 // ─── Paleta ──────────────────────────────────────────────────────────────────
 const GOLD  = "#B3985B";
@@ -69,14 +69,18 @@ const s = StyleSheet.create({
   // ── Tabla ──
   table: { borderRadius: 4, overflow: "hidden" },
   thead: { flexDirection: "row", backgroundColor: LIGHT, paddingHorizontal: 10, paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: MID },
+  thImg: { width: 30, marginRight: 8 },
   thDescripcion: { flex: 3, fontSize: 6.5, fontFamily: "Helvetica-Bold", color: "#888888", letterSpacing: 0.6 },
   thMarca: { flex: 1.5, fontSize: 6.5, fontFamily: "Helvetica-Bold", color: "#888888", letterSpacing: 0.6 },
   thModelo: { flex: 1.5, fontSize: 6.5, fontFamily: "Helvetica-Bold", color: "#888888", letterSpacing: 0.6 },
   thCantidad: { width: 40, fontSize: 6.5, fontFamily: "Helvetica-Bold", color: "#888888", letterSpacing: 0.6, textAlign: "center" },
   thEstado: { width: 60, fontSize: 6.5, fontFamily: "Helvetica-Bold", color: "#888888", letterSpacing: 0.6, textAlign: "center" },
 
-  tbodyRow: { flexDirection: "row", paddingHorizontal: 10, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: MID },
-  tbodyRowAlt: { flexDirection: "row", paddingHorizontal: 10, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: MID, backgroundColor: "#FAFAF8" },
+  tbodyRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 10, paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: MID },
+  tbodyRowAlt: { flexDirection: "row", alignItems: "center", paddingHorizontal: 10, paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: MID, backgroundColor: "#FAFAF8" },
+  tdImg: { width: 30, height: 24, marginRight: 8, alignItems: "center", justifyContent: "center" },
+  img: { width: 30, height: 24, objectFit: "contain" },
+  imgVacia: { width: 22, height: 18, borderRadius: 3, backgroundColor: MID },
   tdDescripcion: { flex: 3, fontSize: 7.5, color: BLACK },
   tdMarca: { flex: 1.5, fontSize: 7.5, color: GRAY },
   tdModelo: { flex: 1.5, fontSize: 7.5, color: GRAY },
@@ -115,6 +119,8 @@ export interface InventarioEquipoData {
   cantidadTotal: number;
   estado: string;
   notas: string | null;
+  /** data URI ya reescalada (resolvePdfImage); null = sin foto. */
+  imagen?: string | null;
   categoria: { nombre: string; orden: number };
 }
 
@@ -199,6 +205,7 @@ export function InventarioPDF({ data }: { data: InventarioPDFData }) {
               <View style={s.table}>
                 {/* Encabezado */}
                 <View style={s.thead}>
+                  <View style={s.thImg} />
                   <Text style={s.thDescripcion}>DESCRIPCIÓN</Text>
                   <Text style={s.thMarca}>MARCA</Text>
                   <Text style={s.thModelo}>MODELO</Text>
@@ -208,6 +215,9 @@ export function InventarioPDF({ data }: { data: InventarioPDFData }) {
                 {/* Filas */}
                 {cat.equipos.map((eq, i) => (
                   <View key={eq.id} style={i % 2 === 0 ? s.tbodyRow : s.tbodyRowAlt}>
+                    <View style={s.tdImg}>
+                      {eq.imagen ? <Image src={eq.imagen} style={s.img} /> : <View style={s.imgVacia} />}
+                    </View>
                     <Text style={s.tdDescripcion}>{eq.descripcion}</Text>
                     <Text style={s.tdMarca}>{eq.marca ?? "—"}</Text>
                     <Text style={s.tdModelo}>{eq.modelo ?? "—"}</Text>
