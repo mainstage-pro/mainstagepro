@@ -7,6 +7,7 @@ import { Combobox, type ComboboxOption } from "@/components/Combobox";
 import { SkeletonPage } from "@/components/Skeleton";
 import { DisciplinaBadge } from "@/components/DisciplinaBadge";
 import { DISCIPLINAS, DISCIPLINA_COLORS, DISCIPLINA_LABELS, type Disciplina } from "@/lib/disciplinaColors";
+import { JORNADAS_ROL, JORNADA_ROL_LABELS, NIVELES_ROL, rolUsaJornada } from "@/lib/rolesTecnicos";
 
 // ── Tipos (espejo de GET /api/proyectos/crew) ──────────────────────────────
 type TecnicoPuesto = { id: string; nombre: string; nivel: string; celular: string | null };
@@ -20,6 +21,7 @@ type Puesto = {
   tecnico: TecnicoPuesto | null;
   confirmado: boolean;
   confirmRespuesta: string | null;
+  invitado: boolean;
   necesitaRevision: boolean;
   coordinaEnSitio: boolean;
   esAdicional: boolean;
@@ -32,6 +34,7 @@ type ProyectoCrew = {
   cliente: string;
   lugar: string | null;
   horaInicio: string | null;
+  fichaFaltantes: string[];
   dias: string[];
   puestos: Puesto[];
 };
@@ -44,7 +47,7 @@ type TecnicoBase = {
   especialidad: string | null;
   rolIds: string[];
 };
-type Rol = { id: string; nombre: string; disciplina: string | null };
+type Rol = { id: string; nombre: string; disciplina: string | null; tipoPago: string };
 type Datos = { desde: string; hasta: string; proyectos: ProyectoCrew[]; tecnicos: TecnicoBase[]; roles: Rol[] };
 
 // ── Fechas ─────────────────────────────────────────────────────────────────
@@ -112,6 +115,13 @@ export default function MesaCrewClient() {
   const [nuevoPara, setNuevoPara] = useState<string | null>(null);
   const [nuevoNombre, setNuevoNombre] = useState("");
   const [nuevoCelular, setNuevoCelular] = useState("");
+  // Puesto adicional: llave "proyectoId|dia" del formulario abierto.
+  const [agregando, setAgregando] = useState<string | null>(null);
+  const [adRol, setAdRol] = useState("");
+  const [adParticipacion, setAdParticipacion] = useState("OPERACION");
+  const [adJornada, setAdJornada] = useState("CORTA");
+  const [adNivel, setAdNivel] = useState("AAA");
+  const [ocupado, setOcupado] = useState<string | null>(null);
 
   const { desde, hasta } = useMemo(() => rangoFechas(rango), [rango]);
 
@@ -200,6 +210,7 @@ export default function MesaCrewClient() {
     setNuevoPara(null);
     setNuevoNombre("");
     setNuevoCelular("");
+    setAgregando(null);
   }
 
   function aplicarLocal(puestoId: string, cambios: Partial<Puesto>) {
@@ -282,6 +293,86 @@ export default function MesaCrewClient() {
     }
   }
 
+  async function invitar(pr: ProyectoCrew, p: Puesto) {
+    if (pr.fichaFaltantes.length) {
+      toast.error(`Completa la ficha del proyecto antes de invitar: falta ${pr.fichaFaltantes.join(", ")}.`);
+      return;
+    }
+    // La ventana se abre en el clic: si se abre después del await, el navegador la bloquea.
+    const ventana = window.open("", "_blank");
+    setOcupado(p.id);
+    try {
+      const res = await fetch(`/api/proyectos/${pr.id}/personal/${p.id}/invitar`, { method: "POST" });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok || !d.token) throw new Error(d.error ?? "No se pudo generar la invitación");
+      if (d.whatsappUrl && ventana) {
+        ventana.location.href = d.whatsappUrl;
+      } else {
+        ventana?.close();
+        await navigator.clipboard.writeText(`${window.location.origin}/confirmar/tecnico/${d.token}`).catch(() => {});
+        toast.info(`${p.tecnico?.nombre ?? "El técnico"} no tiene celular registrado. Copié el link de confirmación.`);
+      }
+      aplicarLocal(p.id, { invitado: true, confirmado: false, confirmRespuesta: null });
+    } catch (e) {
+      ventana?.close();
+      toast.error(e instanceof Error ? e.message : "No se pudo generar la invitación");
+    } finally {
+      setOcupado(null);
+    }
+  }
+
+  // Uno solo por proyecto: el servidor releva al anterior y mueve el bono, así
+  // que se relee en vez de adivinar el resultado aquí.
+  async function coordinar(pr: ProyectoCrew, p: Puesto) {
+    setOcupado(p.id);
+    try {
+      const res = await fetch(`/api/proyectos/${pr.id}/personal/${p.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ coordinaEnSitio: !p.coordinaEnSitio }),
+      });
+      if (!res.ok) throw new Error();
+      await cargar();
+    } catch {
+      toast.error("No se pudo marcar al coordinador");
+    } finally {
+      setOcupado(null);
+    }
+  }
+
+  function abrirAgregar(prId: string, dia: string) {
+    cerrar();
+    setAgregando(`${prId}|${dia}`);
+    setAdRol("");
+    setAdParticipacion("OPERACION");
+    setAdJornada("CORTA");
+    setAdNivel("AAA");
+  }
+
+  async function agregarPuesto(prId: string, dia: string) {
+    if (!adRol) {
+      toast.error("Elige el rol del puesto");
+      return;
+    }
+    setGuardando(true);
+    try {
+      const res = await fetch("/api/proyectos/crew", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ proyectoId: prId, rolTecnicoId: adRol, fechaJornada: dia, participacion: adParticipacion, jornada: adJornada, nivel: adNivel }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok || !d.id) throw new Error(d.error ?? "No se pudo agregar el puesto");
+      setAgregando(null);
+      await cargar();
+      setAbierto(d.id);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo agregar el puesto");
+    } finally {
+      setGuardando(false);
+    }
+  }
+
   // Opciones del buscador: primero quien está libre ese día (y cubre el rol),
   // luego quien ya trabaja en otro evento ese día, marcado con dónde.
   function opcionesTecnico(proyectoId: string, puesto: Puesto): ComboboxOption[] {
@@ -355,6 +446,8 @@ export default function MesaCrewClient() {
                   <span className="text-red-400">Rechazó</span>
                 ) : p.confirmado ? (
                   <span className="text-green-400">Confirmado</span>
+                ) : p.invitado ? (
+                  <span className="text-sky-400/90">Invitado, esperando respuesta</span>
                 ) : (
                   <span className="text-gray-500">Por confirmar</span>
                 )}
@@ -367,15 +460,43 @@ export default function MesaCrewClient() {
             )}
           </div>
           {!estaAbierto && (
-            <button
-              onClick={() => {
-                cerrar();
-                setAbierto(p.id);
-              }}
-              className="shrink-0 text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-2 py-0.5 rounded transition-colors"
-            >
-              {p.tecnico ? "Cambiar" : "Asignar"}
-            </button>
+            <div className="shrink-0 flex items-center gap-1">
+              {p.tecnico && (
+                <button
+                  onClick={() => coordinar(pr, p)}
+                  disabled={ocupado === p.id}
+                  title={p.coordinaEnSitio ? "Quitarle la coordinación en sitio" : "Marcar como quien manda en sitio (releva al anterior)"}
+                  className={`text-xs px-1.5 py-0.5 rounded border transition-colors disabled:opacity-40 ${p.coordinaEnSitio ? "border-[#B3985B]/60 text-[#B3985B]" : "border-transparent text-gray-600 hover:text-[#B3985B] hover:border-[#333]"}`}
+                >
+                  {p.coordinaEnSitio ? "★" : "☆"}
+                </button>
+              )}
+              {p.tecnico && !p.confirmado && (
+                <button
+                  onClick={() => invitar(pr, p)}
+                  disabled={ocupado === p.id}
+                  title={
+                    pr.fichaFaltantes.length
+                      ? `Completa la ficha antes de invitar: falta ${pr.fichaFaltantes.join(", ")}`
+                      : p.invitado
+                        ? "Volver a mandar la invitación por WhatsApp (genera un link nuevo)"
+                        : "Mandar invitación por WhatsApp con link para confirmar"
+                  }
+                  className={`text-xs px-2 py-0.5 rounded border transition-colors disabled:opacity-40 ${pr.fichaFaltantes.length ? "border-[#333] text-gray-600" : "border-green-800/50 text-green-500 hover:bg-green-900/20 hover:border-green-600"}`}
+                >
+                  {p.invitado ? "Reenviar" : "Invitar"}
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  cerrar();
+                  setAbierto(p.id);
+                }}
+                className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-2 py-0.5 rounded transition-colors"
+              >
+                {p.tecnico ? "Cambiar" : "Asignar"}
+              </button>
+            </div>
           )}
         </div>
 
@@ -481,6 +602,9 @@ export default function MesaCrewClient() {
                 {visibles.map((pr) => {
                   const n = pr.puestosDia.length;
                   const ok = pr.puestosDia.filter((x) => !!x.tecnico).length;
+                  const sinCoordinador = pr.puestos.some((x) => !!x.tecnico) && !pr.puestos.some((x) => x.tecnico && x.coordinaEnSitio);
+                  const llave = `${pr.id}|${dia}`;
+                  const rolAd = datos?.roles.find((r) => r.id === adRol);
                   return (
                     <div key={pr.id} className="ms-card overflow-hidden">
                       <div className="px-3 pt-3 pb-2 flex items-start gap-2">
@@ -493,6 +617,9 @@ export default function MesaCrewClient() {
                             {pr.lugar ? ` · ${pr.lugar}` : ""}
                             {pr.horaInicio ? ` · ${pr.horaInicio}` : ""}
                           </p>
+                          {sinCoordinador && (
+                            <p className="text-[11px] text-amber-500/90 mt-0.5">Nadie coordina en sitio: marca a alguien con ☆</p>
+                          )}
                         </div>
                         {n > 0 && (
                           <span className={`text-[11px] shrink-0 ${ok === n ? "text-green-400" : "text-gray-400"}`}>
@@ -510,6 +637,71 @@ export default function MesaCrewClient() {
                           </p>
                         ) : (
                           pr.filtrados.map((p) => renglonPuesto(pr, p))
+                        )}
+                        {agregando === llave ? (
+                          <div className="mx-3 mt-2 p-3 bg-[#0d0d0d] border border-[#333] rounded-lg space-y-2">
+                            <p className="text-gray-300 text-xs font-semibold">Puesto adicional (fuera de lo cotizado)</p>
+                            <Combobox
+                              value={adRol}
+                              placeholder="Rol del puesto"
+                              onChange={(v) => setAdRol(v)}
+                              options={(datos?.roles ?? []).map((r) => ({ value: r.id, label: r.nombre }))}
+                              className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1 text-white text-sm focus:outline-none"
+                            />
+                            <div className="flex gap-2">
+                              <select
+                                value={adParticipacion}
+                                onChange={(e) => setAdParticipacion(e.target.value)}
+                                className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1 text-white text-xs focus:outline-none"
+                              >
+                                <option value="OPERACION">Operación</option>
+                                <option value="MONTAJE">Montaje</option>
+                                <option value="DESMONTAJE">Desmontaje</option>
+                                <option value="TRANSPORTE">Transporte</option>
+                              </select>
+                              {rolAd && rolUsaJornada(rolAd.tipoPago) ? (
+                                <select
+                                  value={adJornada}
+                                  onChange={(e) => setAdJornada(e.target.value)}
+                                  className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1 text-white text-xs focus:outline-none"
+                                >
+                                  {JORNADAS_ROL.map((j) => (
+                                    <option key={j} value={j}>{JORNADA_ROL_LABELS[j]}</option>
+                                  ))}
+                                </select>
+                              ) : rolAd ? (
+                                <select
+                                  value={adNivel}
+                                  onChange={(e) => setAdNivel(e.target.value)}
+                                  className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1 text-white text-xs focus:outline-none"
+                                >
+                                  {NIVELES_ROL.map((nv) => (
+                                    <option key={nv} value={nv}>{nv}</option>
+                                  ))}
+                                </select>
+                              ) : null}
+                            </div>
+                            <p className="text-[10px] text-gray-500">La tarifa sale del tabulador del rol; se ajusta en el proyecto si hace falta.</p>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => agregarPuesto(pr.id, dia)}
+                                disabled={guardando || !adRol}
+                                className="flex-1 bg-white/10 hover:bg-white/20 disabled:opacity-40 text-white text-xs font-semibold py-1.5 rounded-lg transition-colors"
+                              >
+                                {guardando ? "Agregando…" : "Agregar puesto"}
+                              </button>
+                              <button onClick={() => setAgregando(null)} className="px-3 text-gray-500 hover:text-white text-xs">
+                                Cancelar
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => abrirAgregar(pr.id, dia)}
+                            className="mx-3 mt-1 text-[11px] text-gray-500 hover:text-[#B3985B] transition-colors"
+                          >
+                            ＋ Puesto adicional
+                          </button>
                         )}
                       </div>
                     </div>

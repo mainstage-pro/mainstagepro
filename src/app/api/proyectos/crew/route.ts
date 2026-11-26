@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { diasEvento, fechaISOaDia } from "@/lib/fechas-evento";
 import { disciplinaDePuesto } from "@/lib/disciplinaColors";
+import { ensureOperacionTecnicaColumns } from "@/lib/migraciones-lazy";
+import { nivelEfectivo, rolUsaJornada, tarifaRol } from "@/lib/rolesTecnicos";
 
 /**
  * GET /api/proyectos/crew?desde=YYYY-MM-DD&hasta=YYYY-MM-DD
@@ -52,6 +54,9 @@ export async function GET(req: NextRequest) {
       fechasEvento: true,
       lugarEvento: true,
       horaInicioEvento: true,
+      horaFinEvento: true,
+      tipoServicio: true,
+      trato: { select: { tipoServicio: true } },
       cliente: { select: { nombre: true, empresa: true } },
       personal: {
         select: {
@@ -65,6 +70,7 @@ export async function GET(req: NextRequest) {
           nivel: true,
           confirmado: true,
           confirmRespuesta: true,
+          confirmToken: true,
           necesitaRevision: true,
           coordinaEnSitio: true,
           esAdicional: true,
@@ -92,6 +98,7 @@ export async function GET(req: NextRequest) {
             tecnico: x.tecnico,
             confirmado: x.confirmado,
             confirmRespuesta: x.confirmRespuesta,
+            invitado: !!x.confirmToken,
             necesitaRevision: x.necesitaRevision,
             coordinaEnSitio: x.coordinaEnSitio,
             esAdicional: x.esAdicional,
@@ -103,6 +110,12 @@ export async function GET(req: NextRequest) {
       )
         .filter(enRango)
         .sort();
+      // Mismo candado que la operación del proyecto: sin hora y lugar no se invita.
+      const esRenta = p.tipoServicio === "RENTA" || p.trato?.tipoServicio === "RENTA";
+      const fichaFaltantes: string[] = [];
+      if (!esRenta && !p.horaInicioEvento) fichaFaltantes.push("hora inicio del evento");
+      if (!esRenta && !p.horaFinEvento) fichaFaltantes.push("hora fin del evento");
+      if (!p.lugarEvento) fichaFaltantes.push("lugar del evento");
       return {
         id: p.id,
         numeroProyecto: p.numeroProyecto,
@@ -111,6 +124,7 @@ export async function GET(req: NextRequest) {
         cliente: p.cliente.empresa || p.cliente.nombre,
         lugar: p.lugarEvento,
         horaInicio: p.horaInicioEvento,
+        fichaFaltantes,
         dias,
         puestos,
       };
@@ -133,7 +147,7 @@ export async function GET(req: NextRequest) {
     }),
     prisma.rolTecnico.findMany({
       where: { activo: true },
-      select: { id: true, nombre: true, disciplina: true },
+      select: { id: true, nombre: true, disciplina: true, tipoPago: true },
       orderBy: [{ orden: "asc" }, { nombre: "asc" }],
     }),
   ]);
@@ -153,4 +167,57 @@ export async function GET(req: NextRequest) {
     })),
     roles,
   });
+}
+
+/**
+ * POST /api/proyectos/crew — agrega un puesto adicional (fuera de lo cotizado)
+ * a un proyecto, en un día, sin técnico. La tarifa sale del tabulador del rol
+ * aquí en el servidor, para que la Mesa no tenga que ver montos.
+ * Body: { proyectoId, rolTecnicoId, fechaJornada, participacion?, jornada?, nivel? }
+ */
+export async function POST(req: NextRequest) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  if (session.role === "READONLY") return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
+
+  await ensureOperacionTecnicaColumns();
+
+  const body = await req.json().catch(() => ({}));
+  const { proyectoId, rolTecnicoId, fechaJornada } = body as Record<string, string | undefined>;
+  const participacion = ["OPERACION", "MONTAJE", "DESMONTAJE", "TRANSPORTE"].includes(body.participacion)
+    ? body.participacion
+    : "OPERACION";
+  if (!proyectoId || !rolTecnicoId || !fechaJornada || !RE_FECHA.test(fechaJornada)) {
+    return NextResponse.json({ error: "Falta el proyecto, el rol o el día" }, { status: 400 });
+  }
+
+  const [proyecto, rol] = await Promise.all([
+    prisma.proyecto.findUnique({ where: { id: proyectoId }, select: { id: true, estado: true } }),
+    prisma.rolTecnico.findUnique({ where: { id: rolTecnicoId } }),
+  ]);
+  if (!proyecto || ["COMPLETADO", "CANCELADO"].includes(proyecto.estado)) {
+    return NextResponse.json({ error: "Proyecto no disponible" }, { status: 404 });
+  }
+  if (!rol) return NextResponse.json({ error: "Rol no encontrado" }, { status: 404 });
+
+  const jornada = rolUsaJornada(rol.tipoPago) && ["CORTA", "MEDIA", "LARGA"].includes(body.jornada) ? body.jornada : "CORTA";
+  const nivel = nivelEfectivo(rol.tipoPago, ["AAA", "AA", "A"].includes(body.nivel) ? body.nivel : "AAA");
+  const tarifa = tarifaRol(rol, nivel, jornada);
+
+  const personal = await prisma.proyectoPersonal.create({
+    data: {
+      proyectoId,
+      rolTecnicoId,
+      participacion,
+      fechaJornada,
+      nivel,
+      jornada,
+      tarifaAcordada: tarifa > 0 ? tarifa : null,
+      esAdicional: true,
+      confirmado: false,
+    },
+    select: { id: true },
+  });
+
+  return NextResponse.json({ id: personal.id });
 }
